@@ -5,13 +5,13 @@ import { useState } from "react";
 import NumbersManualCreate from "@/components/admin/numbers/NumbersManualCreate";
 import NumbersAssistantCreate from "@/components/admin/numbers/NumbersAssistantCreate";
 import NumbersAdminList from "@/components/admin/numbers/NumbersAdminList";
-import NumbersRawExplorer from "@/components/admin/numbers/NumbersRawExplorer";
+import NumbersBacklogExplorer from "@/components/admin/numbers/NumbersBacklogExplorer";
 
 /* ========================================================= */
 
 export default function NumbersPage() {
 
-  const [tab, setTab] = useState<"raw" | "assistant" | "manual" | "admin">("raw");
+  const [tab, setTab] = useState<"backlog" | "assistant" | "manual" | "admin">("backlog");
 
   /* ========================================================= */
 
@@ -28,14 +28,14 @@ export default function NumbersPage() {
       <div className="flex gap-4">
 
         <button
-          onClick={() => setTab("raw")}
+          onClick={() => setTab("backlog")}
           className={`px-3 py-1 rounded ${
-            tab === "raw"
+            tab === "backlog"
               ? "bg-ratecard-blue text-white"
               : "bg-gray-200"
           }`}
         >
-          Raw
+          Backlog
         </button>
 
         <button
@@ -75,7 +75,7 @@ export default function NumbersPage() {
 
       {/* CONTENT */}
 
-      {tab === "raw" && <NumbersRawExplorer />}
+      {tab === "backlog" && <NumbersBacklogExplorer />}
 
       {tab === "assistant" && <NumbersAssistantCreate />}
 
