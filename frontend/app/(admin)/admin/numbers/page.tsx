@@ -5,12 +5,13 @@ import { useState } from "react";
 import NumbersManualCreate from "@/components/admin/numbers/NumbersManualCreate";
 import NumbersAssistantCreate from "@/components/admin/numbers/NumbersAssistantCreate";
 import NumbersAdminList from "@/components/admin/numbers/NumbersAdminList";
+import NumbersRawExplorer from "@/components/admin/numbers/NumbersRawExplorer";
 
 /* ========================================================= */
 
 export default function NumbersPage() {
 
-  const [tab, setTab] = useState<"manual" | "assistant" | "admin">("manual");
+  const [tab, setTab] = useState<"raw" | "assistant" | "manual" | "admin">("raw");
 
   /* ========================================================= */
 
@@ -27,14 +28,14 @@ export default function NumbersPage() {
       <div className="flex gap-4">
 
         <button
-          onClick={() => setTab("manual")}
+          onClick={() => setTab("raw")}
           className={`px-3 py-1 rounded ${
-            tab === "manual"
+            tab === "raw"
               ? "bg-ratecard-blue text-white"
               : "bg-gray-200"
           }`}
         >
-          Manual
+          Raw
         </button>
 
         <button
@@ -46,6 +47,17 @@ export default function NumbersPage() {
           }`}
         >
           Assistant
+        </button>
+
+        <button
+          onClick={() => setTab("manual")}
+          className={`px-3 py-1 rounded ${
+            tab === "manual"
+              ? "bg-ratecard-blue text-white"
+              : "bg-gray-200"
+          }`}
+        >
+          Manual
         </button>
 
         <button
@@ -63,9 +75,11 @@ export default function NumbersPage() {
 
       {/* CONTENT */}
 
-      {tab === "manual" && <NumbersManualCreate />}
+      {tab === "raw" && <NumbersRawExplorer />}
 
       {tab === "assistant" && <NumbersAssistantCreate />}
+
+      {tab === "manual" && <NumbersManualCreate />}
 
       {tab === "admin" && <NumbersAdminList />}
 
