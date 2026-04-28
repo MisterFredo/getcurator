@@ -338,11 +338,45 @@ def check_number_coherence(
 
 def create_number(data) -> Dict:
 
-    # 🔥 support Pydantic model + dict
+    # ============================================================
+    # 🔧 INPUT NORMALIZATION
+    # ============================================================
+
     if hasattr(data, "dict"):
         data = data.dict()
 
     payload = normalize_number_payload(data)
+
+    # ============================================================
+    # 🔍 MATCH EXISTING NUMBERS
+    # ============================================================
+
+    existing = find_existing_numbers(
+        id_number_type=payload["id_number_type"],
+        zone=payload["zone"],
+        period=payload["period"],
+        company_ids=payload["company_ids"],
+        topic_ids=payload["topic_ids"],
+        solution_ids=payload["solution_ids"],
+    )
+
+    # ============================================================
+    # 🚫 EXACT DUPLICATE CHECK
+    # ============================================================
+
+    for e in existing:
+        if e.get("VALUE") == payload["value"]:
+            return {
+                "id_number": None,
+                "quality": {
+                    "status": "duplicate_exact",
+                    "existing_id": e.get("ID_NUMBER"),
+                }
+            }
+
+    # ============================================================
+    # 📊 BASIC QUALITY CHECK (existant)
+    # ============================================================
 
     quality = check_basic_quality(
         value=payload["value"],
@@ -351,6 +385,35 @@ def create_number(data) -> Dict:
         period=payload["period"],
         company_ids=payload["company_ids"],
     )
+
+    # ============================================================
+    # 📈 COHERENCE CHECK (existant)
+    # ============================================================
+
+    coherence = check_number_coherence(
+        value=payload["value"],
+        id_number_type=payload["id_number_type"],
+        zone=payload["zone"],
+        period=payload["period"],
+        company_id=payload["company_ids"][0] if payload["company_ids"] else None,
+        topic_id=payload["topic_ids"][0] if payload["topic_ids"] else None,
+        solution_id=payload["solution_ids"][0] if payload["solution_ids"] else None,
+    )
+
+    # ============================================================
+    # 🚨 BLOCK IF STRONG INCONSISTENCY
+    # ============================================================
+
+    if coherence.get("status") == "high_inconsistency":
+        return {
+            "id_number": None,
+            "quality": coherence,
+            "existing": existing
+        }
+
+    # ============================================================
+    # 🧱 INSERT NUMBER
+    # ============================================================
 
     id_number = str(uuid.uuid4())
 
@@ -387,11 +450,18 @@ def create_number(data) -> Dict:
         payload.get("solution_ids")
     )
 
+    # ============================================================
+    # ✅ RETURN
+    # ============================================================
+
     return {
         "id_number": id_number,
-        "quality": quality
+        "quality": {
+            **quality,
+            "coherence": coherence.get("status"),
+        },
+        "existing": existing
     }
-
 
 # ============================================================
 # RELATIONS
