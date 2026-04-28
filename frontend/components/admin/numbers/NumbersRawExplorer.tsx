@@ -5,86 +5,24 @@ import { api } from "@/lib/api";
 
 /* ========================================================= */
 
-type RawNumber = {
-  id_content: string;
-  label: string;
-  value: number;
-  unit: string;
-  scale?: string | null;
-  actor: string;
-  market: string;
-  period: string;
-};
-
-/* ========================================================= */
-
 export default function NumbersRawExplorer() {
 
-  const [items, setItems] = useState<RawNumber[]>([]);
-  const [grouped, setGrouped] = useState<any[]>([]);
-
-  const [loading, setLoading] = useState(false);
-
-  /* ========================================================= */
-
-  function normalizeLabel(label: string) {
-    return label
-      .toLowerCase()
-      .replace(/[^a-z0-9 ]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  /* ========================================================= */
-
-  function groupData(data: RawNumber[]) {
-
-    const map: any = {};
-
-    data.forEach((item) => {
-
-      const key = normalizeLabel(item.label);
-
-      if (!map[key]) {
-        map[key] = {
-          label: key,
-          count: 0,
-          examples: [],
-        };
-      }
-
-      map[key].count += 1;
-
-      if (map[key].examples.length < 3) {
-        map[key].examples.push(item.label);
-      }
-
-    });
-
-    return Object.values(map)
-      .sort((a: any, b: any) => b.count - a.count);
-  }
+  const [items, setItems] = useState<any[]>([]);
+  const [types, setTypes] = useState<any[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [typeId, setTypeId] = useState("");
 
   /* ========================================================= */
 
   async function load() {
 
-    try {
+    const [raw, typesRes] = await Promise.all([
+      api.get("/numbers/raw"),
+      api.get("/numbers/types"),
+    ]);
 
-      setLoading(true);
-
-      const res = await api.get("/numbers/raw");
-
-      const data = res.items || [];
-
-      setItems(data);
-      setGrouped(groupData(data));
-
-    } catch (e) {
-      console.error(e);
-    }
-
-    setLoading(false);
+    setItems(raw.items || []);
+    setTypes(typesRes || []);
   }
 
   useEffect(() => {
@@ -93,52 +31,125 @@ export default function NumbersRawExplorer() {
 
   /* ========================================================= */
 
+  async function handleDismiss(id: string) {
+
+    await api.post(`/numbers/raw/${id}/dismiss`);
+
+    setItems(prev => prev.filter(i => i.id !== id));
+  }
+
+  async function handleKeep(item: any) {
+
+    if (!typeId) {
+      alert("Select a type");
+      return;
+    }
+
+    await api.post("/numbers/", {
+      label: item.label,
+      value: item.value,
+      unit: item.unit,
+      scale: item.scale || null,
+      zone: item.market,
+      period: item.period,
+      id_number_type: typeId,
+    });
+
+    setItems(prev => prev.filter(i => i !== item));
+    setSelectedId(null);
+    setTypeId("");
+  }
+
+  /* ========================================================= */
+
   return (
 
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       <h2 className="text-xl font-semibold">
-        Raw Numbers Explorer
+        Raw Numbers Review
       </h2>
 
-      {loading && <div>Loading...</div>}
+      <div className="border rounded">
 
-      {!loading && (
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_auto] text-xs bg-gray-100 p-2 font-semibold">
+          <div>Label</div>
+          <div>Value</div>
+          <div>Unit</div>
+          <div>Market</div>
+          <div>Period</div>
+          <div>Actor</div>
+          <div></div>
+        </div>
 
-        <div className="border rounded">
+        {items.map((item) => (
 
-          <div className="grid grid-cols-[2fr_1fr_3fr_auto] text-xs bg-gray-100 p-2 font-semibold">
-            <div>Label (normalized)</div>
-            <div>Count</div>
-            <div>Examples</div>
-            <div></div>
-          </div>
+          <div key={item.id} className="border-t p-2 text-sm">
 
-          {grouped.map((g: any, i: number) => (
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_auto] items-center">
 
-            <div
-              key={i}
-              className="grid grid-cols-[2fr_1fr_3fr_auto] text-sm p-2 border-t"
-            >
+              <div>{item.label}</div>
+              <div>{item.value}</div>
+              <div>{item.unit}</div>
+              <div>{item.market}</div>
+              <div>{item.period}</div>
+              <div>{item.actor}</div>
 
-              <div>{g.label}</div>
-              <div>{g.count}</div>
-              <div>{g.examples.join(" / ")}</div>
+              <div className="flex gap-2">
 
-              <button
-                className="text-blue-600"
-                onClick={() => alert("TODO: send to assistant")}
-              >
-                Select
-              </button>
+                <button
+                  onClick={() => handleDismiss(item.id)}
+                  className="text-red-600"
+                >
+                  Dismiss
+                </button>
+
+                <button
+                  onClick={() => setSelectedId(item.id)}
+                  className="text-blue-600"
+                >
+                  Keep
+                </button>
+
+              </div>
 
             </div>
 
-          ))}
+            {/* KEEP PANEL */}
 
-        </div>
+            {selectedId === item.id && (
 
-      )}
+              <div className="mt-2 flex gap-2">
+
+                <select
+                  value={typeId}
+                  onChange={(e) => setTypeId(e.target.value)}
+                  className="border p-1"
+                >
+                  <option value="">Type</option>
+                  {types.map((t: any) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => handleKeep(item)}
+                  className="bg-blue-600 text-white px-2 rounded"
+                >
+                  Confirm
+                </button>
+
+              </div>
+
+            )}
+
+          </div>
+
+        ))}
+
+      </div>
 
     </div>
   );
