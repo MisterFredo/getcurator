@@ -26,7 +26,7 @@ export default function NumbersPage() {
       setRunning(true);
       setResult(null);
 
-      const res = await api.post("/numbers/backlog/run?limit=200");
+      const res = await api.post("/numbers/backlog/run?limit=200", {})
 
       setResult(res);
 
