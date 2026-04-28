@@ -91,6 +91,60 @@ def normalize_number_payload(data: Dict) -> Dict:
         "solution_ids": data.get("solution_ids") or [],
     }
 
+# ============================================================
+# MATCH EXISTING NUMBERS
+# ============================================================
+
+def find_existing_numbers(
+    id_number_type: str,
+    zone: str,
+    period: str,
+    company_ids: Optional[List[str]] = None,
+    topic_ids: Optional[List[str]] = None,
+    solution_ids: Optional[List[str]] = None,
+) -> List[Dict]:
+
+    if not (company_ids or topic_ids or solution_ids):
+        return []
+
+    if company_ids:
+        join = f"JOIN `{TABLE_NUMBERS_COMPANY}` rel ON n.ID_NUMBER = rel.ID_NUMBER"
+        condition = "rel.ID_COMPANY IN UNNEST(@entity_ids)"
+        entity_ids = company_ids
+
+    elif topic_ids:
+        join = f"JOIN `{TABLE_NUMBERS_TOPIC}` rel ON n.ID_NUMBER = rel.ID_NUMBER"
+        condition = "rel.ID_TOPIC IN UNNEST(@entity_ids)"
+        entity_ids = topic_ids
+
+    else:
+        join = f"JOIN `{TABLE_NUMBERS_SOLUTION}` rel ON n.ID_NUMBER = rel.ID_NUMBER"
+        condition = "rel.ID_SOLUTION IN UNNEST(@entity_ids)"
+        entity_ids = solution_ids
+
+    rows = query_bq(f"""
+        SELECT
+            n.ID_NUMBER,
+            n.LABEL,
+            n.VALUE,
+            n.SCALE,
+            n.UNIT
+        FROM `{TABLE_NUMBERS}` n
+        {join}
+        WHERE {condition}
+        AND n.ID_NUMBER_TYPE = @type_id
+        AND n.ZONE = @zone
+        AND n.PERIOD = @period
+        LIMIT 20
+    """, {
+        "entity_ids": entity_ids,
+        "type_id": id_number_type,
+        "zone": zone,
+        "period": period,
+    })
+
+    return rows
+
 
 # ============================================================
 # PARSE CHIFFRES (FROM CONTENT)
