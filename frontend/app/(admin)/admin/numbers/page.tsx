@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { api } from "@/lib/api";
 
 import NumbersManualCreate from "@/components/admin/numbers/NumbersManualCreate";
 import NumbersAssistantCreate from "@/components/admin/numbers/NumbersAssistantCreate";
@@ -13,6 +14,30 @@ export default function NumbersPage() {
 
   const [tab, setTab] = useState<"backlog" | "assistant" | "manual" | "admin">("backlog");
 
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  /* ========================================================= */
+
+  async function runBacklog() {
+
+    try {
+
+      setRunning(true);
+      setResult(null);
+
+      const res = await api.post("/numbers/backlog/run?limit=200");
+
+      setResult(res);
+
+    } catch (e) {
+      console.error(e);
+      alert("Erreur run backlog");
+    }
+
+    setRunning(false);
+  }
+
   /* ========================================================= */
 
   return (
@@ -20,9 +45,33 @@ export default function NumbersPage() {
     <div className="space-y-6">
 
       {/* HEADER */}
-      <h1 className="text-2xl font-semibold text-ratecard-blue">
-        Numbers
-      </h1>
+      <div className="flex items-center justify-between">
+
+        <h1 className="text-2xl font-semibold text-ratecard-blue">
+          Numbers
+        </h1>
+
+        {/* 🔥 RUN BACKLOG */}
+        <button
+          onClick={runBacklog}
+          disabled={running}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          {running ? "Running..." : "Run Backlog"}
+        </button>
+
+      </div>
+
+      {/* RESULT */}
+      {result && (
+        <div className="text-sm bg-gray-100 p-3 rounded">
+
+          <div><b>Processed:</b> {result.processed}</div>
+          <div><b>Keep:</b> {result.keep}</div>
+          <div><b>Reject:</b> {result.reject}</div>
+
+        </div>
+      )}
 
       {/* TABS */}
       <div className="flex gap-4">
