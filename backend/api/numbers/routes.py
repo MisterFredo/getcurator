@@ -10,7 +10,7 @@ from core.numbers.service import (
     get_numbers_from_content,
     check_number_coherence,
     get_number_types,
-    get_raw_numbers,
+    get_raw_numbers,  # 🔧 debug uniquement
     search_numbers_service,
     get_numbers_feed_service,
     get_numbers_for_entity,
@@ -18,8 +18,10 @@ from core.numbers.service import (
 
 from core.numbers.insight_service import (
     generate_numbers_insight,
-    get_numbers_by_ids,
 )
+
+from utils.bigquery_utils import query_bq
+from config import BQ_PROJECT, BQ_DATASET
 
 router = APIRouter()
 
@@ -102,6 +104,66 @@ def from_content_route(id_content: str):
 
 
 # ============================================================
+# BACKLOG (🔥 PRINCIPAL)
+# ============================================================
+
+@router.get("/backlog/processed")
+def backlog_processed(limit: int = 200):
+
+    try:
+        rows = query_bq(f"""
+            SELECT *
+            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG`
+            ORDER BY CREATED_AT DESC
+            LIMIT @limit
+        """, {
+            "limit": limit
+        })
+
+        return {
+            "status": "ok",
+            "items": rows,
+        }
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur backlog processed : {e}")
+
+
+# ============================================================
+# RAW (⚠️ DEBUG ONLY)
+# ============================================================
+
+@router.get("/raw")
+def raw_numbers(limit: int = 500):
+
+    try:
+        items = get_raw_numbers(limit=limit)
+
+        return {
+            "status": "ok",
+            "items": items,
+        }
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur raw numbers : {e}")
+
+
+# ============================================================
+# TYPES
+# ============================================================
+
+@router.get("/types")
+def get_types():
+
+    try:
+        items = get_number_types()
+        return items
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur types numbers : {e}")
+
+
+# ============================================================
 # COHERENCE CHECK
 # ============================================================
 
@@ -126,40 +188,6 @@ def check_coherence_route(payload: dict):
 
     except Exception as e:
         raise HTTPException(400, f"Erreur coherence check : {e}")
-
-
-# ============================================================
-# TYPES
-# ============================================================
-
-@router.get("/types")
-def get_types():
-
-    try:
-        items = get_number_types()
-        return items
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur types numbers : {e}")
-
-
-# ============================================================
-# RAW
-# ============================================================
-
-@router.get("/raw")
-def raw_numbers(limit: int = 500):
-
-    try:
-        items = get_raw_numbers(limit=limit)
-
-        return {
-            "status": "ok",
-            "items": items,
-        }
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur raw numbers : {e}")
 
 
 # ============================================================
@@ -217,7 +245,7 @@ def numbers_by_entity(
 
 
 # ============================================================
-# FEED (🔥 UNIVERSE ONLY — CLEAN)
+# FEED (🔥 UNIVERSE ONLY)
 # ============================================================
 
 @router.get("/feed")
