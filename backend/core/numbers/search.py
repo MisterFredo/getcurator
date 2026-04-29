@@ -140,6 +140,62 @@ def get_numbers_feed_service(
 
     return query_bq(sql, params)
 
+def get_numbers_admin_service(
+    limit: int = 200,
+    offset: int = 0,
+    query: Optional[str] = None,
+    type_id: Optional[str] = None,
+    source_id: Optional[str] = None,
+):
+    conditions = []
+    params = {
+        "limit": limit,
+        "offset": offset,
+    }
+
+    if query:
+        conditions.append("LOWER(n.LABEL) LIKE LOWER(@query)")
+        params["query"] = f"%{query}%"
+
+    if type_id:
+        conditions.append("n.ID_NUMBER_TYPE = @type_id")
+        params["type_id"] = type_id
+
+    if source_id:
+        conditions.append("n.ID_SOURCE = @source_id")
+        params["source_id"] = source_id
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    sql = f"""
+    SELECT
+        n.ID_NUMBER,
+        n.LABEL,
+        n.VALUE,
+        n.UNIT,
+        n.SCALE,
+        nt.TYPE,
+        n.ZONE,
+        n.PERIOD,
+        n.ID_SOURCE,
+        n.CREATED_AT
+
+    FROM `{TABLE_NUMBERS}` n
+
+    LEFT JOIN `{TABLE_NUMBERS_TYPES}` nt
+      ON n.ID_NUMBER_TYPE = nt.ID_TYPE
+
+    {where_clause}
+
+    ORDER BY n.CREATED_AT DESC
+    LIMIT @limit
+    OFFSET @offset
+    """
+
+    return query_bq(sql, params)
+
 
 # ============================================================
 # BY ENTITY
