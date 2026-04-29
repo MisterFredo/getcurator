@@ -161,17 +161,38 @@ def parse_chiffres(chiffres: List[str]) -> List[Dict]:
 
         parts = [p.strip() for p in line.split("|")]
 
-        if len(parts) != 6:
+        # ============================================================
+        # SUPPORT 6 OU 7 COLONNES
+        # ============================================================
+
+        if len(parts) == 6:
+            label, value, unit_raw, actor, market, period = parts
+            type_ = None
+
+        elif len(parts) == 7:
+            label, value, unit_raw, actor, market, period, type_ = parts
+
+        else:
             continue
 
-        label, value, unit_raw, actor, market, period = parts
+        # ============================================================
+        # VALUE
+        # ============================================================
 
         try:
             value = float(value)
         except:
             continue
 
+        # ============================================================
+        # UNIT / SCALE
+        # ============================================================
+
         unit, scale = _extract_unit_scale(unit_raw)
+
+        # ============================================================
+        # RESULT
+        # ============================================================
 
         results.append({
             "label": label,
@@ -181,6 +202,7 @@ def parse_chiffres(chiffres: List[str]) -> List[Dict]:
             "actor": actor,
             "zone": market,
             "period": period,
+            "type": type_,  # 🔥 NOUVEAU (None si ancien format)
         })
 
     return results
