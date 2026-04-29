@@ -20,8 +20,6 @@ from core.numbers.insight_service import (
     generate_numbers_insight,
 )
 
-from core.numbers.backlog_pipeline import run_backlog_pipeline
-
 from utils.bigquery_utils import query_bq
 from config import BQ_PROJECT, BQ_DATASET
 
@@ -65,6 +63,7 @@ def create_route(payload: NumberInput):
             "status": "ok",
             "id_number": result["id_number"],
             "quality": result.get("quality"),
+            "existing": result.get("existing"),
         }
 
     except Exception as e:
@@ -72,7 +71,7 @@ def create_route(payload: NumberInput):
 
 
 # ============================================================
-# LIST
+# LIST (simple)
 # ============================================================
 
 @router.get("/")
@@ -91,7 +90,7 @@ def list_route(limit: int = 100):
 
 
 # ============================================================
-# DELETE
+# DELETE (🔥 CONTROL PANEL CORE)
 # ============================================================
 
 @router.delete("/{id_number}")
@@ -103,6 +102,7 @@ def delete_route(id_number: str):
         return {
             "status": "ok",
             "deleted": True,
+            "id_number": id_number,
         }
 
     except Exception as e:
@@ -129,48 +129,7 @@ def from_content_route(id_content: str):
 
 
 # ============================================================
-# BACKLOG
-# ============================================================
-
-@router.get("/backlog/processed")
-def backlog_processed(limit: int = 200):
-
-    try:
-        rows = query_bq(f"""
-            SELECT *
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG`
-            ORDER BY CREATED_AT DESC
-            LIMIT @limit
-        """, {
-            "limit": limit
-        })
-
-        return {
-            "status": "ok",
-            "items": rows,
-        }
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur backlog processed : {e}")
-
-
-# ============================================================
-# RUN BACKLOG
-# ============================================================
-
-@router.post("/backlog/run")
-def run_backlog(limit: int = 100):
-
-    try:
-        result = run_backlog_pipeline(limit=limit)
-        return result
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur backlog pipeline : {e}")
-
-
-# ============================================================
-# RAW (DEBUG)
+# RAW (🔥 EXPLORATION LLM)
 # ============================================================
 
 @router.get("/raw")
@@ -203,7 +162,7 @@ def get_types():
 
 
 # ============================================================
-# COHERENCE CHECK (🔥 FIX LLM)
+# COHERENCE CHECK
 # ============================================================
 
 @router.post("/check-coherence")
@@ -213,7 +172,7 @@ def check_coherence_route(payload: dict):
 
         type_id = payload.get("id_number_type")
 
-        # 🔥 fallback LLM
+        # 🔥 support LLM
         if not type_id and payload.get("type"):
             type_id = _map_type_to_id(payload.get("type"))
 
@@ -237,7 +196,7 @@ def check_coherence_route(payload: dict):
 
 
 # ============================================================
-# SEARCH
+# SEARCH (🔥 CONTROL PANEL ENTRY POINT)
 # ============================================================
 
 @router.get("/search")
