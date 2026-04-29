@@ -1,100 +1,48 @@
-import uuid
-from datetime import datetime, timezone
-from typing import List, Dict, Optional
-
-from google.cloud import bigquery
+from typing import Optional, List, Dict
 
 from config import BQ_PROJECT, BQ_DATASET
-from utils.bigquery_utils import query_bq, get_bigquery_client
+from utils.bigquery_utils import query_bq
 
+# ============================================================
+# IMPORTS MÉTIERS
+# ============================================================
+
+from core.numbers.create import create_number
 from core.numbers.parsing import (
     parse_chiffres,
-    get_raw_numbers,
     get_numbers_from_content,
+    get_raw_numbers,
 )
-
-from core.numbers.quality import (
-    check_basic_quality,
-    check_number_coherence,
-)
-
+from core.numbers.quality import check_number_coherence
 from core.numbers.search import (
-    search_numbers_service
-    get_numbers_feed_service
-    get_numbers_for_entity
+    search_numbers_service,
+    get_numbers_feed_service,
+    get_numbers_for_entity,
 )
+from core.numbers.insight_service import generate_numbers_insight
 
-from core.numbers.create import (
-    create_number
-    normalize_number_payload
-    map_type_to_id
-    find_existing_numbers
-    _insert_relations
-    _now
-)
 
-from core.numbers.create import (
-    _map_actor_to_company_ids
-    ingest_numbers_from_content
-)
+# ============================================================
+# TABLES
+# ============================================================
 
 TABLE_NUMBERS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS"
-
-TABLE_NUMBERS_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_COMPANY"
-TABLE_NUMBERS_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TOPIC"
-TABLE_NUMBERS_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_SOLUTION"
 TABLE_NUMBERS_TYPES = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TYPE"
-VIEW_NUMBERS = f"{BQ_PROJECT}.{BQ_DATASET}.V_NUMBERS_ENRICHED"
-VIEW_NUMBERS_CARDS = f"{BQ_PROJECT}.{BQ_DATASET}.V_NUMBERS_CARDS"
-
-# ============================================================
-# ORDER (UX métier)
-# ============================================================
-
-CATEGORY_ORDER = [
-    "VALUE",
-    "PERFORMANCE",
-    "AUDIENCE",
-    "POSITION",
-    "DYNAMICS",
-    "STRUCTURE",
-    "MONETIZATION",
-]
 
 
 # ============================================================
-# HELPERS
+# CREATE
 # ============================================================
 
-def _now():
-    return datetime.now(timezone.utc).isoformat()
+def create_number_service(data):
+    return create_number(data)
 
-
-# ============================================================
-# NORMALIZATION
-# ============================================================
-
-def _extract_unit_scale(unit_raw: str):
-    u = (unit_raw or "").lower()
-
-    if "%" in u:
-        return "PERCENT", None
-    if "€" in u or "eur" in u:
-        if "billion" in u or "milliard" in u:
-            return "EUR", "billion"
-        if "million" in u:
-            return "EUR", "million"
-        if "thousand" in u or "k" in u:
-            return "EUR", "thousand"
-        return "EUR", None
-
-    return unit_raw.upper() if unit_raw else None, None
 
 # ============================================================
 # LIST
 # ============================================================
 
-def list_numbers(limit: int = 400):
+def list_numbers(limit: int = 100):
 
     return query_bq(f"""
         SELECT *
@@ -108,30 +56,29 @@ def list_numbers(limit: int = 400):
 # DELETE
 # ============================================================
 
-def delete_number_relations(id_number: str):
-
-    query_bq(f"""
-        DELETE FROM `{TABLE_NUMBERS_COMPANY}`
-        WHERE ID_NUMBER = @id_number
-    """, {"id_number": id_number})
-
-    query_bq(f"""
-        DELETE FROM `{TABLE_NUMBERS_TOPIC}`
-        WHERE ID_NUMBER = @id_number
-    """, {"id_number": id_number})
-
-    query_bq(f"""
-        DELETE FROM `{TABLE_NUMBERS_SOLUTION}`
-        WHERE ID_NUMBER = @id_number
-    """, {"id_number": id_number})
-
-
 def delete_number(id_number: str):
 
+    # relations
+    query_bq(f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_COMPANY`
+        WHERE ID_NUMBER = @id
+    """, {"id": id_number})
+
+    query_bq(f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TOPIC`
+        WHERE ID_NUMBER = @id
+    """, {"id": id_number})
+
+    query_bq(f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_SOLUTION`
+        WHERE ID_NUMBER = @id
+    """, {"id": id_number})
+
+    # main
     query_bq(f"""
         DELETE FROM `{TABLE_NUMBERS}`
-        WHERE ID_NUMBER = @id_number
-    """, {"id_number": id_number})
+        WHERE ID_NUMBER = @id
+    """, {"id": id_number})
 
 
 # ============================================================
@@ -143,7 +90,7 @@ def get_number_types():
     rows = query_bq(f"""
         SELECT ID_TYPE, TYPE
         FROM `{TABLE_NUMBERS_TYPES}`
-        WHERE IS_ACTIVE IS TRUE OR IS_ACTIVE IS NULL
+        WHERE IS_ACTIVE = TRUE OR IS_ACTIVE IS NULL
         ORDER BY TYPE
     """)
 
@@ -156,3 +103,82 @@ def get_number_types():
     ]
 
 
+# ============================================================
+# COHERENCE
+# ============================================================
+
+def check_number_coherence_service(payload: dict):
+
+    return check_number_coherence(
+        value=payload.get("value"),
+        id_number_type=payload.get("id_number_type"),
+        zone=payload.get("zone"),
+        period=payload.get("period"),
+        company_id=payload.get("company_id"),
+        topic_id=payload.get("topic_id"),
+        solution_id=payload.get("solution_id"),
+    )
+
+
+# ============================================================
+# SEARCH
+# ============================================================
+
+def search_numbers(
+    id_number_type: Optional[str] = None,
+    topic_id: Optional[str] = None,
+    company_id: Optional[str] = None,
+    solution_id: Optional[str] = None,
+    limit: int = 200,
+):
+
+    return search_numbers_service(
+        id_number_type=id_number_type,
+        topic_id=topic_id,
+        company_id=company_id,
+        solution_id=solution_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# FEED
+# ============================================================
+
+def get_numbers_feed(
+    limit: int = 50,
+    query: Optional[str] = None,
+    universe_id: Optional[str] = None,
+):
+
+    return get_numbers_feed_service(
+        limit=limit,
+        query=query,
+        universe_id=universe_id,
+    )
+
+
+# ============================================================
+# ENTITY
+# ============================================================
+
+def numbers_by_entity(
+    entity_type: str,
+    entity_id: str,
+    limit: Optional[int] = None,
+):
+
+    return get_numbers_for_entity(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# INSIGHT
+# ============================================================
+
+def numbers_insight(ids: List[str]):
+
+    return generate_numbers_insight(ids)
