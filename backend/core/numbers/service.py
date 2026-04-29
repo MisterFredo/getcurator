@@ -33,6 +33,11 @@ from core.numbers.create import (
     _now
 )
 
+from core.numbers.create import (
+    _map_actor_to_company_ids
+    ingest_numbers_from_content
+)
+
 TABLE_NUMBERS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS"
 
 TABLE_NUMBERS_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_COMPANY"
