@@ -92,6 +92,9 @@ def delete_route(id_number: str):
     except Exception as e:
         raise HTTPException(400, f"Erreur suppression number : {e}")
 
+@router.delete("/by-source/{source_id}")
+def delete_numbers_by_source(source_id: str):
+
 
 # ============================================================
 # FROM CONTENT (DEBUG / ANALYSE)
