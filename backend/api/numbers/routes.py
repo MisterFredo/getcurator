@@ -10,7 +10,7 @@ from core.numbers.service import (
     get_numbers_from_content,
     check_number_coherence,
     get_number_types,
-    get_raw_numbers,  # 🔧 debug uniquement
+    get_raw_numbers,
     search_numbers_service,
     get_numbers_feed_service,
     get_numbers_for_entity,
@@ -26,6 +26,29 @@ from utils.bigquery_utils import query_bq
 from config import BQ_PROJECT, BQ_DATASET
 
 router = APIRouter()
+
+
+# ============================================================
+# 🔧 HELPER — TYPE MAPPING
+# ============================================================
+
+def _map_type_to_id(type_value: Optional[str]):
+
+    if not type_value:
+        return None
+
+    rows = query_bq(f"""
+        SELECT ID_TYPE, TYPE
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TYPE`
+        WHERE IS_ACTIVE = TRUE
+    """)
+
+    mapping = {
+        r["TYPE"].lower(): r["ID_TYPE"]
+        for r in rows
+    }
+
+    return mapping.get(type_value.lower())
 
 
 # ============================================================
@@ -106,7 +129,7 @@ def from_content_route(id_content: str):
 
 
 # ============================================================
-# BACKLOG (🔥 PRINCIPAL)
+# BACKLOG
 # ============================================================
 
 @router.get("/backlog/processed")
@@ -130,8 +153,9 @@ def backlog_processed(limit: int = 200):
     except Exception as e:
         raise HTTPException(400, f"Erreur backlog processed : {e}")
 
+
 # ============================================================
-# RUN BACKLOG PIPELINE
+# RUN BACKLOG
 # ============================================================
 
 @router.post("/backlog/run")
@@ -146,7 +170,7 @@ def run_backlog(limit: int = 100):
 
 
 # ============================================================
-# RAW (⚠️ DEBUG ONLY)
+# RAW (DEBUG)
 # ============================================================
 
 @router.get("/raw")
@@ -172,24 +196,30 @@ def raw_numbers(limit: int = 500):
 def get_types():
 
     try:
-        items = get_number_types()
-        return items
+        return get_number_types()
 
     except Exception as e:
         raise HTTPException(400, f"Erreur types numbers : {e}")
 
 
 # ============================================================
-# COHERENCE CHECK
+# COHERENCE CHECK (🔥 FIX LLM)
 # ============================================================
 
 @router.post("/check-coherence")
 def check_coherence_route(payload: dict):
 
     try:
+
+        type_id = payload.get("id_number_type")
+
+        # 🔥 fallback LLM
+        if not type_id and payload.get("type"):
+            type_id = _map_type_to_id(payload.get("type"))
+
         result = check_number_coherence(
             value=payload.get("value"),
-            id_number_type=payload.get("id_number_type"),
+            id_number_type=type_id,
             zone=payload.get("zone"),
             period=payload.get("period"),
             company_id=payload.get("company_id"),
@@ -261,7 +291,7 @@ def numbers_by_entity(
 
 
 # ============================================================
-# FEED (🔥 UNIVERSE ONLY)
+# FEED
 # ============================================================
 
 @router.get("/feed")
@@ -296,7 +326,6 @@ def numbers_insight(payload: dict):
 
     try:
         ids = payload.get("ids", [])
-
         insight = generate_numbers_insight(ids)
 
         return {
