@@ -49,6 +49,7 @@ export default function NewsDrawer({ id, onClose }: Props) {
   } = useDrawer();
 
   const [data, setData] = useState<NewsData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
 
   /* =========================================================
@@ -117,13 +118,41 @@ export default function NewsDrawer({ id, onClose }: Props) {
         requestAnimationFrame(() => setIsOpen(true));
       } catch (e) {
         console.error(e);
+      } finally {
+        setLoading(false);
       }
     }
 
     load();
   }, [id, isCurator]);
 
-  if (!data) return null;
+  /* =========================================================
+     LOADING STATE
+  ========================================================= */
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
+        <p className="text-sm text-gray-500">
+          Chargement de la news…
+        </p>
+      </div>
+    );
+  }
+
+  /* =========================================================
+     EMPTY STATE
+  ========================================================= */
+
+  if (!data) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
+        <p className="text-sm text-gray-500">
+          News indisponible
+        </p>
+      </div>
+    );
+  }
 
   /* =========================================================
      VISUAL
@@ -220,9 +249,7 @@ export default function NewsDrawer({ id, onClose }: Props) {
             />
           )}
 
-          {/* =====================================================
-              CTA NEWSLETTER (désactivable plus tard côté Curator si besoin)
-          ===================================================== */}
+          {/* CTA NEWSLETTER */}
           <div className="border border-gray-200 rounded-xl bg-gray-50 p-6 text-center space-y-3">
             <p className="text-xs uppercase tracking-wide text-gray-500">
               Newsletter
