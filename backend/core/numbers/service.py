@@ -590,19 +590,43 @@ def get_raw_numbers(limit: int = 200):
 
         for line in chiffres:
 
-            parts = [p.strip() for p in line.split("|")]
-
-            if len(parts) != 6:
+            if not line or "|" not in line:
                 continue
 
-            label, value, unit_raw, actor, market, period = parts
+            parts = [p.strip() for p in line.split("|")]
+
+            # ============================================================
+            # SUPPORT 6 OU 7 COLONNES
+            # ============================================================
+
+            if len(parts) == 6:
+                label, value, unit_raw, actor, market, period = parts
+                type_ = None
+
+            elif len(parts) == 7:
+                label, value, unit_raw, actor, market, period, type_ = parts
+
+            else:
+                continue
+
+            # ============================================================
+            # VALUE
+            # ============================================================
 
             try:
                 value = float(value)
             except:
                 continue
 
+            # ============================================================
+            # UNIT / SCALE
+            # ============================================================
+
             unit, scale = _extract_unit_scale(unit_raw)
+
+            # ============================================================
+            # RESULT
+            # ============================================================
 
             results.append({
                 "id_content": r["ID_CONTENT"],
@@ -613,10 +637,10 @@ def get_raw_numbers(limit: int = 200):
                 "actor": actor,
                 "market": market,
                 "period": period,
+                "type": type_,  # 🔥 NOUVEAU
             })
 
     return results
-
 
 # ============================================================
 # TYPES
