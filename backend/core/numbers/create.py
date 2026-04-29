@@ -93,10 +93,6 @@ def map_type_to_id(type_value: str):
 # FIND EXISTING
 # ============================================================
 
-# ============================================================
-# FIND EXISTING (FIX CLEAN)
-# ============================================================
-
 def find_existing_numbers(
     id_number_type,
     zone,
