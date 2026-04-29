@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
@@ -8,11 +8,6 @@ from utils.bigquery_utils import query_bq
 # ============================================================
 
 from core.numbers.create import create_number
-from core.numbers.parsing import (
-    parse_chiffres,
-    get_numbers_from_content,
-    get_raw_numbers,
-)
 from core.numbers.quality import check_number_coherence
 from core.numbers.search import (
     search_numbers_service,
@@ -31,14 +26,6 @@ TABLE_NUMBERS_TYPES = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TYPE"
 
 
 # ============================================================
-# CREATE
-# ============================================================
-
-def create_number_service(data):
-    return create_number(data)
-
-
-# ============================================================
 # LIST
 # ============================================================
 
@@ -53,7 +40,7 @@ def list_numbers(limit: int = 100):
 
 
 # ============================================================
-# DELETE
+# DELETE (SIMPLE)
 # ============================================================
 
 def delete_number(id_number: str):
@@ -79,6 +66,27 @@ def delete_number(id_number: str):
         DELETE FROM `{TABLE_NUMBERS}`
         WHERE ID_NUMBER = @id
     """, {"id": id_number})
+
+
+# ============================================================
+# DELETE BY SOURCE (🔥 IMPORTANT)
+# ============================================================
+
+def delete_numbers_by_source(source_id: str):
+
+    # récupérer les ids
+    rows = query_bq(f"""
+        SELECT ID_NUMBER
+        FROM `{TABLE_NUMBERS}`
+        WHERE ID_SOURCE = @source_id
+    """, {"source_id": source_id})
+
+    ids = [r["ID_NUMBER"] for r in rows]
+
+    for id_number in ids:
+        delete_number(id_number)
+
+    return {"deleted_count": len(ids)}
 
 
 # ============================================================
@@ -121,10 +129,10 @@ def check_number_coherence_service(payload: dict):
 
 
 # ============================================================
-# SEARCH
+# SEARCH (ADMIN)
 # ============================================================
 
-def search_numbers(
+def search_numbers_admin(
     id_number_type: Optional[str] = None,
     topic_id: Optional[str] = None,
     company_id: Optional[str] = None,
@@ -142,7 +150,7 @@ def search_numbers(
 
 
 # ============================================================
-# FEED
+# CURATOR — FEED
 # ============================================================
 
 def get_numbers_feed(
@@ -159,7 +167,7 @@ def get_numbers_feed(
 
 
 # ============================================================
-# ENTITY
+# CURATOR — ENTITY
 # ============================================================
 
 def numbers_by_entity(
