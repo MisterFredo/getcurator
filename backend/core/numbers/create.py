@@ -93,6 +93,10 @@ def map_type_to_id(type_value: str):
 # FIND EXISTING
 # ============================================================
 
+# ============================================================
+# FIND EXISTING (FIX CLEAN)
+# ============================================================
+
 def find_existing_numbers(
     id_number_type,
     zone,
@@ -101,8 +105,6 @@ def find_existing_numbers(
     topic_ids=None,
     solution_ids=None,
 ):
-
-    TABLE_NUMBERS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS"
 
     if not (company_ids or topic_ids or solution_ids):
         return []
@@ -122,8 +124,8 @@ def find_existing_numbers(
         condition = "rel.ID_SOLUTION IN UNNEST(@entity_ids)"
         entity_ids = solution_ids
 
-    rows = query_bq(f"""
-        SELECT ID_NUMBER, VALUE
+    return query_bq(f"""
+        SELECT ID_NUMBER, VALUE, SCALE, UNIT
         FROM `{TABLE_NUMBERS}` n
         {join}
         WHERE {condition}
@@ -136,9 +138,6 @@ def find_existing_numbers(
         "zone": zone,
         "period": period,
     })
-
-    return rows
-
 
 # ============================================================
 # INSERT RELATIONS
@@ -166,9 +165,8 @@ def _insert_relations(id_number, company_ids, topic_ids, solution_ids):
             for sid in solution_ids
         ], TABLE_NUMBERS_SOLUTION).result()
 
-
 # ============================================================
-# MAIN
+# CREATE (FIX COHERENCE + DUPLICATE)
 # ============================================================
 
 def create_number(data) -> Dict:
@@ -179,7 +177,7 @@ def create_number(data) -> Dict:
     payload = normalize_number_payload(data)
 
     # ============================================================
-    # TYPE MAPPING (LLM)
+    # TYPE MAPPING
     # ============================================================
 
     if not payload.get("id_number_type") and payload.get("type"):
@@ -206,8 +204,13 @@ def create_number(data) -> Dict:
         payload["solution_ids"],
     )
 
+    # 🔥 DUPLICATE ROBUSTE
     for e in existing:
-        if e.get("VALUE") == payload["value"]:
+
+        existing_value = e.get("VALUE")
+        existing_scale = e.get("SCALE")
+
+        if existing_value == payload["value"] and existing_scale == payload["scale"]:
             return {
                 "id_number": None,
                 "quality": {"status": "duplicate_exact"}
@@ -225,12 +228,15 @@ def create_number(data) -> Dict:
         payload["company_ids"],
     )
 
+    # 🔥 COHERENCE CORRECTE
     coherence = check_number_coherence(
-        payload["value"],
-        payload["id_number_type"],
-        payload["zone"],
-        payload["period"],
-        payload["company_ids"][0] if payload["company_ids"] else None,
+        value=payload["value"],
+        id_number_type=payload["id_number_type"],
+        zone=payload["zone"],
+        period=payload["period"],
+        company_id=payload["company_ids"][0] if payload["company_ids"] else None,
+        topic_id=payload["topic_ids"][0] if payload["topic_ids"] else None,
+        solution_id=payload["solution_ids"][0] if payload["solution_ids"] else None,
     )
 
     if coherence.get("status") == "high_inconsistency":
@@ -278,5 +284,8 @@ def create_number(data) -> Dict:
 
     return {
         "id_number": id_number,
-        "quality": quality
+        "quality": {
+            **quality,
+            "coherence": coherence.get("status"),
+        }
     }
