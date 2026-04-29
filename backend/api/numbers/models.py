@@ -16,7 +16,7 @@ class Number(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    id_number_type: str
+    id_number_type: Optional[str] = None  # 🔥 devient optionnel
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -42,7 +42,9 @@ class NumberInput(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    id_number_type: str
+    # 🔥 DOUBLE SUPPORT
+    id_number_type: Optional[str] = None
+    type: Optional[str] = None  # 🔥 LLM
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -66,8 +68,8 @@ class NumberInput(BaseModel):
 
 class NumberCreateResponse(BaseModel):
 
-    id_number: str
-    quality: Dict  # 🔥 aligné avec ton service
+    id_number: Optional[str] = None  # 🔥 peut être None (duplicate / reject)
+    quality: Dict
 
 
 # ============================================================
@@ -86,6 +88,8 @@ class ParsedNumber(BaseModel):
     zone: Optional[str] = None
     period: Optional[str] = None
 
+    type: Optional[str] = None  # 🔥 NOUVEAU
+
 
 # ============================================================
 # LIST ITEM
@@ -100,7 +104,7 @@ class NumberListItem(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    id_number_type: str
+    id_number_type: Optional[str] = None
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -131,7 +135,6 @@ class NumberFeedItem(BaseModel):
     category: Optional[str] = None
 
     entities: Optional[List[Dict]] = []
-
     universes: Optional[List[str]] = []
 
     created_at: Optional[datetime] = None
