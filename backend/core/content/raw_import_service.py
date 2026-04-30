@@ -375,10 +375,10 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
     # TITLE (inchangé)
     title = soup.title.string.strip() if soup.title else "NO TITLE"
 
-    # DATE (améliorée mais sans changer la logique)
+    # DATE (amélioration minimale)
     date_source = None
 
-    # 1️⃣ meta classique (comme avant)
+    # 1️⃣ meta classique (comportement historique)
     meta_date = soup.find("meta", {"property": "article:published_time"})
     if meta_date and meta_date.get("content"):
         try:
@@ -386,12 +386,12 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 2️⃣ fallback <time> (ajout minimal)
+    # 2️⃣ fallback <time> (uniquement si meta absent)
     if not date_source:
         time_tag = soup.find("time")
         if time_tag:
             try:
-                date_source = parse(time_tag.get_text()).date()
+                date_source = parse(time_tag.get_text(), dayfirst=True, fuzzy=True).date()
             except Exception:
                 pass
 
