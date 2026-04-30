@@ -213,11 +213,15 @@ def parse_raw_blocks(text: str) -> List[Dict]:
 
                 date_str = date_match.group(1).strip()
 
-                # 🔥 FIX : tentative générique + fallback FR
-                date_source = parse_date(date_str)
+                # 🔥 PRIORITÉ au comportement historique (FR)
+                date_source = parse_date_fr(date_str)
 
+                # fallback si format non FR
                 if not date_source:
-                    date_source = parse_date_fr(date_str)
+                    try:
+                        date_source = parse(date_str, dayfirst=True, fuzzy=True).date()
+                    except Exception:
+                        pass
 
                 if not date_source:
                     print("[RAW_IMPORT] date non parsée:", date_str)
