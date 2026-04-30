@@ -15,6 +15,7 @@ from api.topic.models import TopicCreate, TopicUpdate
 TABLE_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
 TABLE_TOPIC_METRICS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC_METRICS"
 TABLE_NUMBERS_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TOPIC"
+TABLE_TOPIC_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC_UNIVERSE"
 
 
 # ============================================================
@@ -30,9 +31,6 @@ ALLOWED_FREQUENCIES = {"WEEKLY", "MONTHLY", "QUARTERLY"}
 # ============================================================
 def create_topic(data: TopicCreate) -> str:
 
-    if data.topic_axis not in ALLOWED_AXES:
-        raise ValueError(f"Invalid topic_axis: {data.topic_axis}")
-
     topic_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
@@ -44,7 +42,6 @@ def create_topic(data: TopicCreate) -> str:
     row = [{
         "ID_TOPIC": topic_id,
         "LABEL": data.label,
-        "TOPIC_AXIS": data.topic_axis,
         "DESCRIPTION": data.description,
 
         "MEDIA_SQUARE_ID": None,
@@ -61,68 +58,61 @@ def create_topic(data: TopicCreate) -> str:
     }]
 
     client = get_bigquery_client()
-    job = client.load_table_from_json(
+
+    # 1️⃣ insert topic
+    client.load_table_from_json(
         row,
         TABLE_TOPIC,
-        job_config=bigquery.LoadJobConfig(
-            write_disposition="WRITE_APPEND"
-        ),
-    )
-    job.result()
+        job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND"),
+    ).result()
+
+    # 2️⃣ insert univers
+    if data.universe_ids:
+        rows = [
+            {
+                "ID_TOPIC": topic_id,
+                "ID_UNIVERSE": uid,
+                "CREATED_AT": now,
+            }
+            for uid in data.universe_ids
+        ]
+
+        client.load_table_from_json(
+            rows,
+            TABLE_TOPIC_UNIVERSE,
+            job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND"),
+        ).result()
 
     return topic_id
-
 
 # ============================================================
 # LIST TOPICS
 # ============================================================
 def list_topics():
+
     sql = f"""
         SELECT
             t.ID_TOPIC,
             t.LABEL,
-            t.TOPIC_AXIS,
             t.INSIGHT_FREQUENCY,
 
-            COALESCE(m.total, 0) AS NB_ANALYSES,
-            COALESCE(m.last_30_days, 0) AS DELTA_30D,
+            ARRAY_AGG(
+                STRUCT(u.ID_UNIVERSE, u2.LABEL)
+            ) AS UNIVERS
 
-            -- ✅ HAS NUMBERS
-            nt.ID_TOPIC IS NOT NULL AS HAS_NUMBERS,
+        FROM `{TABLE_TOPIC}` t
 
-            -- 🔥 RADAR
-            r.ID_INSIGHT,
-            r.KEY_POINTS
+        LEFT JOIN `{TABLE_TOPIC_UNIVERSE}` u
+          ON u.ID_TOPIC = t.ID_TOPIC
 
-        FROM {TABLE_TOPIC} t
-
-        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_TOPIC` m
-          ON m.id_topic = t.ID_TOPIC
-
-        -- ✅ NUMBERS JOIN
-        LEFT JOIN (
-            SELECT DISTINCT ID_TOPIC
-            FROM `{TABLE_NUMBERS_TOPIC}`
-        ) nt
-          ON nt.ID_TOPIC = t.ID_TOPIC
-
-        -- 🔥 LATEST RADAR PER TOPIC
-        LEFT JOIN (
-            SELECT *
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_RADAR`
-            WHERE STATUS = "GENERATED"
-
-            QUALIFY ROW_NUMBER() OVER (
-                PARTITION BY ENTITY_ID
-                ORDER BY YEAR DESC, PERIOD DESC
-            ) = 1
-        ) r
-          ON r.ENTITY_ID = t.ID_TOPIC
-          AND r.ENTITY_TYPE = "topic"
+        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u2
+          ON u.ID_UNIVERSE = u2.ID_UNIVERSE
 
         WHERE COALESCE(t.IS_ACTIVE, TRUE) = TRUE
 
-        ORDER BY NB_ANALYSES DESC, t.LABEL ASC
+        GROUP BY t.ID_TOPIC, t.LABEL, t.INSIGHT_FREQUENCY
+
+        ORDER BY t.LABEL
     """
 
     rows = query_bq(sql)
@@ -131,23 +121,19 @@ def list_topics():
         {
             "id_topic": r["ID_TOPIC"],
             "label": r["LABEL"],
-            "topic_axis": r.get("TOPIC_AXIS"),
             "insight_frequency": r.get("INSIGHT_FREQUENCY"),
-            "nb_analyses": r["NB_ANALYSES"],
-            "delta_30d": r["DELTA_30D"],
 
-            # ✅ NEW
-            "has_numbers": r.get("HAS_NUMBERS", False),
-
-            # 🔥 RADAR
-            "last_radar": {
-                "id_insight": r["ID_INSIGHT"],
-                "key_points": r["KEY_POINTS"],
-            } if r.get("ID_INSIGHT") else None,
+            "universes": [
+                {
+                    "id_universe": u["ID_UNIVERSE"],
+                    "label": u["LABEL"],
+                }
+                for u in (r.get("UNIVERS") or [])
+                if u["ID_UNIVERSE"]
+            ],
         }
         for r in rows
     ]
-
 
 # ============================================================
 # GET ONE TOPIC
@@ -157,15 +143,26 @@ def get_topic(topic_id: str):
     sql = f"""
         SELECT
             t.*,
-            nt.ID_TOPIC IS NOT NULL AS HAS_NUMBERS
+
+            ARRAY_AGG(
+                STRUCT(u.ID_UNIVERSE, u2.LABEL)
+            ) AS UNIVERS
+
         FROM `{TABLE_TOPIC}` t
-        LEFT JOIN (
-            SELECT DISTINCT ID_TOPIC
-            FROM `{TABLE_NUMBERS_TOPIC}`
-        ) nt
-          ON nt.ID_TOPIC = t.ID_TOPIC
+
+        LEFT JOIN `{TABLE_TOPIC_UNIVERSE}` u
+          ON u.ID_TOPIC = t.ID_TOPIC
+
+        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u2
+          ON u.ID_UNIVERSE = u2.ID_UNIVERSE
+
         WHERE t.ID_TOPIC = @id
-        LIMIT 1
+
+        GROUP BY t.ID_TOPIC, t.LABEL, t.DESCRIPTION,
+                 t.SEO_TITLE, t.SEO_DESCRIPTION,
+                 t.INSIGHT_FREQUENCY,
+                 t.MEDIA_SQUARE_ID, t.MEDIA_RECTANGLE_ID,
+                 t.IS_ACTIVE, t.CREATED_AT, t.UPDATED_AT
     """
 
     rows = query_bq(sql, {"id": topic_id})
@@ -178,20 +175,24 @@ def get_topic(topic_id: str):
     return {
         "id_topic": r["ID_TOPIC"],
         "label": r["LABEL"],
-        "topic_axis": r.get("TOPIC_AXIS"),
         "description": r.get("DESCRIPTION"),
         "seo_title": r.get("SEO_TITLE"),
         "seo_description": r.get("SEO_DESCRIPTION"),
         "insight_frequency": r.get("INSIGHT_FREQUENCY"),
         "is_active": r.get("IS_ACTIVE", True),
 
-        # ✅ NEW
-        "has_numbers": r.get("HAS_NUMBERS", False),
+        "universes": [
+            {
+                "id_universe": u["ID_UNIVERSE"],
+                "label": u["LABEL"],
+            }
+            for u in (r.get("UNIVERS") or [])
+            if u["ID_UNIVERSE"]
+        ],
 
         "created_at": r.get("CREATED_AT"),
         "updated_at": r.get("UPDATED_AT"),
     }
-
 
 # ============================================================
 # UPDATE TOPIC
@@ -203,19 +204,10 @@ def update_topic(id_topic: str, data: TopicUpdate) -> bool:
     if not values:
         return False
 
-    if "topic_axis" in values:
-        if values["topic_axis"] not in ALLOWED_AXES:
-            raise ValueError(f"Invalid topic_axis: {values['topic_axis']}")
-
-    if "insight_frequency" in values:
-        if values["insight_frequency"] not in ALLOWED_FREQUENCIES:
-            raise ValueError("Invalid insight_frequency")
-
     now = datetime.utcnow().isoformat()
 
     mapping = {
         "label": "LABEL",
-        "topic_axis": "TOPIC_AXIS",
         "description": "DESCRIPTION",
         "seo_title": "SEO_TITLE",
         "seo_description": "SEO_DESCRIPTION",
@@ -231,14 +223,44 @@ def update_topic(id_topic: str, data: TopicUpdate) -> bool:
         if k in mapping
     }
 
-    bq_values["UPDATED_AT"] = now
+    if bq_values:
+        bq_values["UPDATED_AT"] = now
 
-    return update_bq(
-        table=TABLE_TOPIC,
-        fields=bq_values,
-        where={"ID_TOPIC": id_topic},
-    )
+        update_bq(
+            table=TABLE_TOPIC,
+            fields=bq_values,
+            where={"ID_TOPIC": id_topic},
+        )
 
+    # 🔥 univers update
+    if "universe_ids" in values:
+
+        client = get_bigquery_client()
+
+        # delete anciens
+        query_bq(
+            f"DELETE FROM `{TABLE_TOPIC_UNIVERSE}` WHERE ID_TOPIC = @id",
+            {"id": id_topic},
+        )
+
+        # insert nouveaux
+        if values["universe_ids"]:
+            rows = [
+                {
+                    "ID_TOPIC": id_topic,
+                    "ID_UNIVERSE": uid,
+                    "CREATED_AT": now,
+                }
+                for uid in values["universe_ids"]
+            ]
+
+            client.load_table_from_json(
+                rows,
+                TABLE_TOPIC_UNIVERSE,
+                job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND"),
+            ).result()
+
+    return True
 
 # ============================================================
 # DELETE TOPIC (SOFT)
