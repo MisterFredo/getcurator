@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
-type TopicAxis = "MEDIA" | "RETAIL" | "FOUNDATIONS";
+type Universe = {
+  id_universe: string;
+  label: string;
+};
 
 type TopicRow = {
   id_topic: string;
   label: string;
-  topic_axis?: TopicAxis;
+  universes?: Universe[];
   nb_analyses?: number;
   delta_30d?: number;
 };
@@ -45,34 +48,28 @@ export default function TopicList() {
 
   }, []);
 
-  function renderAxis(axis?: TopicAxis) {
+  // ============================================================
+  // RENDER UNIVERS
+  // ============================================================
 
-    switch (axis) {
+  function renderUniverses(universes?: Universe[]) {
 
-      case "MEDIA":
-        return (
-          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-            MEDIA
-          </span>
-        );
-
-      case "RETAIL":
-        return (
-          <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
-            RETAIL
-          </span>
-        );
-
-      case "FOUNDATIONS":
-      default:
-        return (
-          <span className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-800">
-            FOUNDATIONS
-          </span>
-        );
-
+    if (!universes || universes.length === 0) {
+      return <span className="text-gray-400 text-xs">Aucun</span>;
     }
 
+    return (
+      <div className="flex flex-wrap gap-1">
+        {universes.map((u) => (
+          <span
+            key={u.id_universe}
+            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800"
+          >
+            {u.label}
+          </span>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -109,7 +106,7 @@ export default function TopicList() {
             <thead className="bg-gray-100 text-left">
               <tr>
                 <th className="p-3">Label</th>
-                <th className="p-3">Axe</th>
+                <th className="p-3">Univers</th>
                 <th className="p-3">Analyses</th>
                 <th className="p-3">Δ 30j</th>
                 <th className="p-3 w-24 text-right">Actions</th>
@@ -127,7 +124,7 @@ export default function TopicList() {
                   </td>
 
                   <td className="p-3">
-                    {renderAxis(t.topic_axis)}
+                    {renderUniverses(t.universes)}
                   </td>
 
                   <td className="p-3 text-gray-700">
