@@ -236,6 +236,12 @@ def match_solution(data: SolutionMatch):
 
     alias = data.alias.strip()
 
+    if not alias:
+        raise ValueError("alias vide")
+
+    def norm_expr(field: str) -> str:
+        return f"REGEXP_REPLACE(UPPER({field}), r'[^A-Z0-9 ]', '')"
+
     # ---------------------------------------
     # IGNORE
     # ---------------------------------------
@@ -243,21 +249,27 @@ def match_solution(data: SolutionMatch):
     if data.action == "IGNORE":
 
         sql_ignore = f"""
-        INSERT INTO `{TABLE_ALIAS}`
-        (ALIAS, MATCH_STATUS)
-        VALUES (@alias, 'NO_MATCH')
+        INSERT INTO `{TABLE_ALIAS}` (ALIAS, MATCH_STATUS)
+
+        SELECT @alias, 'NO_MATCH'
+        FROM UNNEST([1]) AS _
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM `{TABLE_ALIAS}`
+            WHERE {norm_expr("ALIAS")} = {norm_expr("CAST(@alias AS STRING)")}
+        )
         """
 
-        job_config_ignore = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("alias", "STRING", alias),
-            ]
-        )
-
-        client.query(sql_ignore, job_config=job_config_ignore).result()
+        client.query(
+            sql_ignore,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                ]
+            ),
+        ).result()
 
         return
-
 
     # ---------------------------------------
     # MATCH
@@ -269,48 +281,64 @@ def match_solution(data: SolutionMatch):
     if not data.id_solution:
         raise ValueError("id_solution obligatoire")
 
-    # 1️⃣ enregistrer alias
+    # 1️⃣ ALIAS (sans doublon)
 
     sql_alias = f"""
-    INSERT INTO `{TABLE_ALIAS}`
-    (ALIAS, ID_SOLUTION, MATCH_STATUS)
-    VALUES (@alias, @id_solution, 'MATCH')
+    INSERT INTO `{TABLE_ALIAS}` (ALIAS, ID_SOLUTION, MATCH_STATUS)
+
+    SELECT @alias, @id_solution, 'MATCH'
+    FROM UNNEST([1]) AS _
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM `{TABLE_ALIAS}`
+        WHERE {norm_expr("ALIAS")} = {norm_expr("CAST(@alias AS STRING)")}
+    )
     """
 
-    job_config_alias = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("alias", "STRING", alias),
-            bigquery.ScalarQueryParameter("id_solution", "STRING", data.id_solution),
-        ]
-    )
+    client.query(
+        sql_alias,
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                bigquery.ScalarQueryParameter("id_solution", "STRING", data.id_solution),
+            ]
+        ),
+    ).result()
 
-    client.query(sql_alias, job_config=job_config_alias).result()
-
-    # 2️⃣ créer relations contenu → solution
-    # 🔥 FIX : inclut ACTEURS_CITES en fallback
+    # 2️⃣ RELATION contenu → solution (avec anti-duplicate)
 
     sql_relation = f"""
     INSERT INTO `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION`
     (ID_CONTENT, ID_SOLUTION)
 
-    SELECT
+    SELECT DISTINCT
         c.ID_CONTENT,
         @id_solution
+
     FROM `{TABLE_CONTENT}` c,
     UNNEST(ARRAY_CONCAT(
         IFNULL(c.SOLUTIONS_LLM, []),
         IFNULL(c.ACTEURS_CITES, [])
     )) AS solution
+
     WHERE solution IS NOT NULL
     AND TRIM(solution) != ""
-    AND UPPER(TRIM(solution)) = UPPER(@alias)
+    AND {norm_expr("solution")} = {norm_expr("CAST(@alias AS STRING)")}
+
+    AND NOT EXISTS (
+        SELECT 1
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION` t
+        WHERE t.ID_CONTENT = c.ID_CONTENT
+        AND t.ID_SOLUTION = @id_solution
+    )
     """
 
-    job_config_relation = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("alias", "STRING", alias),
-            bigquery.ScalarQueryParameter("id_solution", "STRING", data.id_solution),
-        ]
-    )
-
-    client.query(sql_relation, job_config=job_config_relation).result()
+    client.query(
+        sql_relation,
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                bigquery.ScalarQueryParameter("id_solution", "STRING", data.id_solution),
+            ]
+        ),
+    ).result()
