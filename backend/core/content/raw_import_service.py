@@ -372,13 +372,25 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # TITLE (inchangé)
-    title = soup.title.string.strip() if soup.title else "NO TITLE"
+    # --------------------------------------------------
+    # TITLE (robuste mais sans fallback artificiel)
+    # --------------------------------------------------
+    title = None
 
-    # DATE (amélioration minimale)
+    if soup.title:
+        title = soup.title.get_text(strip=True)
+
+    # 👉 on garde le comportement historique :
+    # si pas de titre exploitable → on rejette
+    if not title:
+        raise Exception("TITLE vide")
+
+    # --------------------------------------------------
+    # DATE (ajout minimal sans casser le reste)
+    # --------------------------------------------------
     date_source = None
 
-    # 1️⃣ meta classique (comportement historique)
+    # 1️⃣ meta (historique)
     meta_date = soup.find("meta", {"property": "article:published_time"})
     if meta_date and meta_date.get("content"):
         try:
@@ -386,7 +398,7 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 2️⃣ fallback <time> (uniquement si meta absent)
+    # 2️⃣ fallback <time> (ajout contrôlé)
     if not date_source:
         time_tag = soup.find("time")
         if time_tag:
@@ -395,13 +407,24 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
-    # RAW TEXT (STRICTEMENT inchangé)
+    # --------------------------------------------------
+    # RAW TEXT (STRICTEMENT logique d’avant)
+    # --------------------------------------------------
     paragraphs = soup.find_all("p")
-    raw_text = "\n".join(p.get_text() for p in paragraphs).strip()
 
+    raw_text = "\n".join(
+        p.get_text(strip=True)
+        for p in paragraphs
+        if p.get_text(strip=True)
+    ).strip()
+
+    # 👉 comportement historique : on rejette si vide
     if not raw_text:
         raise Exception("RAW_TEXT vide")
 
+    # --------------------------------------------------
+    # RETURN
+    # --------------------------------------------------
     return {
         "TITLE": title,
         "DATE_SOURCE": date_source,
