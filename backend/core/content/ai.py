@@ -31,15 +31,31 @@ def generate_summary(
     if not isinstance(source_text, str) or not source_text.strip():
         raise ValueError("Source vide")
 
+    if not source_id:
+        raise ValueError("source_id obligatoire")
+
     # ============================================================
-    # LOAD GOVERNED TOPICS
+    # LOAD TOPICS BY SOURCE UNIVERSE
     # ============================================================
 
     topics_rows = query_bq(f"""
-        SELECT ID_TOPIC, LABEL
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC`
-        WHERE IS_ACTIVE = TRUE
-    """)
+        SELECT
+            t.ID_TOPIC,
+            t.LABEL
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE` su
+
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC_UNIVERSE` tu
+          ON su.ID_UNIVERSE = tu.ID_UNIVERSE
+
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC` t
+          ON t.ID_TOPIC = tu.ID_TOPIC
+
+        WHERE su.ID_SOURCE = @source_id
+          AND COALESCE(t.IS_ACTIVE, TRUE) = TRUE
+    """, {"source_id": source_id})
+
+    if not topics_rows:
+        raise ValueError(f"Aucun topic disponible pour la source {source_id}")
 
     allowed_topics = {
         row["LABEL"]: row["ID_TOPIC"]
@@ -76,7 +92,7 @@ Produire une analyse structurée permettant de comprendre :
 - quelles dynamiques sont à l’œuvre
 
 ================ SOURCE ================
-Source : {source_id or "inconnue"}
+Source : {source_id}
 
 {source_text}
 
@@ -97,9 +113,9 @@ IMPORTANT :
 - Si c’est un produit → SOLUTIONS (et PAS ACTEURS)
 - Si c’est une entreprise → ACTEURS (et PAS SOLUTIONS)
 - Ne jamais dupliquer une même entité dans les deux sections
-- Si tu hésites, privilégie :
+- Si tu hésites :
   → entreprise → ACTEURS
-  → produit / offre → SOLUTIONS
+  → produit → SOLUTIONS
 
 ================ FORMAT OBLIGATOIRE ================
 
@@ -115,10 +131,57 @@ Exhaustif mais strictement basé sur le texte.
 Une ligne = une information.)
 
 CHIFFRES
-Extraire uniquement les chiffres structurés présents dans la source.
+Extraire uniquement les chiffres présents dans la source.
 
-Chaque ligne doit respecter STRICTEMENT ce format :
+FORMAT STRICT OBLIGATOIRE :
+Chaque ligne doit respecter EXACTEMENT ce format (6 champs) :
+
 label | valeur | unité | acteur | marché | période
+
+RÈGLES STRICTES :
+
+1. valeur
+- nombre uniquement (pas de texte)
+- utiliser "." pour les décimales
+- ne jamais inclure d’unité dans la valeur
+- exemples valides : 13 | 3.5 | 1000
+
+2. unité
+- choisir parmi :
+  % | € | $ | utilisateurs | millions | milliards | ans | jours | heures
+- ne jamais mélanger unité et échelle
+
+3. acteur
+- entreprise uniquement (ex : Amazon, Netflix)
+- sinon écrire : Aucun
+
+4. marché
+- catégorie métier OU zone géographique
+- exemples :
+  CTV | Retail Media | Audio | France | US | Europe
+- ne jamais mettre une entreprise ici
+
+5. période
+- année ou période claire
+- exemples :
+  2024 | 2023 | Q1 2024 | Non précisé
+
+6. format obligatoire
+- EXACTEMENT 6 champs
+- séparés par "|"
+- aucun texte en dehors des lignes
+
+INTERDIT :
+- phrases
+- commentaires
+- champs manquants
+- champs supplémentaires
+
+EXEMPLES CORRECTS :
+
+Part de marché CTV | 35 | % | Netflix | CTV | 2024  
+Revenus publicitaires | 1200 | millions | Amazon | Retail Media | 2023  
+Utilisateurs actifs | 50 | millions | Aucun | Audio | Non précisé
 
 ACTEURS
 (Liste des entreprises citées ou "Aucun")
@@ -199,7 +262,7 @@ SIGNAL
             sections[current] += clean + "\n"
 
     # ============================================================
-    # LIST PARSER
+    # HELPERS
     # ============================================================
 
     def parse_list(block: str) -> List[str]:
@@ -213,7 +276,6 @@ SIGNAL
         items = []
 
         for line in block.splitlines():
-
             line = line.strip()
             line = re.sub(r"^[-•]\s*", "", line)
             line = re.sub(r"^\d+\.\s*", "", line)
@@ -222,10 +284,6 @@ SIGNAL
                 items.append(line)
 
         return items
-
-    # ============================================================
-    # CONCEPTS PARSER
-    # ============================================================
 
     def parse_concepts(block: str) -> List[Dict[str, str]]:
 
@@ -273,15 +331,15 @@ SIGNAL
         return results
 
     # ============================================================
-    # CLEAN BODY
+    # BODY
     # ============================================================
 
-    body = sections["POINTS CLES"].strip()
+    body_lines = parse_list(sections["POINTS CLES"])
 
-    if body:
-        lines = parse_list(body)
-        if lines:
-            body = "<ul>" + "".join(f"<li>{l}</li>" for l in lines) + "</ul>"
+    body = (
+        "<ul>" + "".join(f"<li>{l}</li>" for l in body_lines) + "</ul>"
+        if body_lines else ""
+    )
 
     # ============================================================
     # TOPICS
@@ -289,19 +347,16 @@ SIGNAL
 
     raw_topics = parse_list(sections["TOPICS"])
 
-    valid_topics = []
-
-    for t in raw_topics:
-        match = next(
-            (k for k in allowed_topics.keys()
-             if k.lower() == t.lower()),
-            None
-        )
-        if match:
-            valid_topics.append(match)
+    valid_topics = [
+        t for t in raw_topics
+        if any(k.lower() == t.lower() for k in allowed_topics.keys())
+    ]
 
     topic_ids = [
-        allowed_topics[t] for t in valid_topics
+        allowed_topics[
+            next(k for k in allowed_topics if k.lower() == t.lower())
+        ]
+        for t in valid_topics
     ]
 
     # ============================================================
