@@ -374,12 +374,32 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
     # DATE (tentative)
     date_source = None
 
+    # 1️⃣ meta classique
     meta_date = soup.find("meta", {"property": "article:published_time"})
     if meta_date and meta_date.get("content"):
         try:
             date_source = parse(meta_date["content"]).date()
         except Exception:
             pass
+
+    # 2️⃣ fallback <time>
+    if not date_source:
+        time_tag = soup.find("time")
+        if time_tag:
+            try:
+                date_source = parse(time_tag.get_text()).date()
+            except Exception:
+                pass
+
+    # 3️⃣ fallback texte brut (regex)
+    if not date_source:
+        text = soup.get_text(" ", strip=True)
+        match = re.search(r"\b\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9}\s+\d{4}\b", text)
+        if match:
+            try:
+                date_source = parse(match.group(0)).date()
+            except Exception:
+                pass
 
     # RAW TEXT
     paragraphs = soup.find_all("p")
