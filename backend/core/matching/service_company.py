@@ -263,10 +263,12 @@ def match_company(data: CompanyMatch):
     if fallback_rows and not data.id_company:
         solution_id = fallback_rows[0]["ID_SOLUTION"]
 
-        # 👉 1. NO_MATCH côté company
+        # 👉 1. NO_MATCH côté company (FIX ICI)
         sql_ignore = f"""
         INSERT INTO `{TABLE_ALIAS}` (ALIAS, MATCH_STATUS)
+
         SELECT @alias, 'NO_MATCH'
+        FROM UNNEST([1]) AS _
         WHERE NOT EXISTS (
             SELECT 1
             FROM `{TABLE_ALIAS}`
@@ -283,8 +285,7 @@ def match_company(data: CompanyMatch):
             ),
         ).result()
 
-        # 👉 2. MATCH côté solution (appel direct)
-
+        # 👉 2. MATCH côté solution
         match_solution(
             SolutionMatch(
                 alias=alias,
@@ -301,10 +302,12 @@ def match_company(data: CompanyMatch):
 
     if data.action == "IGNORE":
 
+        # FIX ICI AUSSI
         sql_ignore = f"""
         INSERT INTO `{TABLE_ALIAS}` (ALIAS, MATCH_STATUS)
 
         SELECT @alias, 'NO_MATCH'
+        FROM UNNEST([1]) AS _
         WHERE NOT EXISTS (
             SELECT 1
             FROM `{TABLE_ALIAS}`
@@ -341,6 +344,7 @@ def match_company(data: CompanyMatch):
     INSERT INTO `{TABLE_ALIAS}` (ALIAS, ID_COMPANY, MATCH_STATUS)
 
     SELECT @alias, @id_company, 'MATCH'
+    FROM UNNEST([1]) AS _
     WHERE NOT EXISTS (
         SELECT 1
         FROM `{TABLE_ALIAS}`
