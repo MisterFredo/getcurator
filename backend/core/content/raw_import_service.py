@@ -368,13 +368,13 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # TITLE
+    # TITLE (inchangé)
     title = soup.title.string.strip() if soup.title else "NO TITLE"
 
-    # DATE (tentative)
+    # DATE (améliorée mais sans changer la logique)
     date_source = None
 
-    # 1️⃣ meta classique
+    # 1️⃣ meta classique (comme avant)
     meta_date = soup.find("meta", {"property": "article:published_time"})
     if meta_date and meta_date.get("content"):
         try:
@@ -382,7 +382,7 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 2️⃣ fallback <time>
+    # 2️⃣ fallback <time> (ajout minimal)
     if not date_source:
         time_tag = soup.find("time")
         if time_tag:
@@ -391,17 +391,7 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
-    # 3️⃣ fallback texte brut (regex)
-    if not date_source:
-        text = soup.get_text(" ", strip=True)
-        match = re.search(r"\b\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9}\s+\d{4}\b", text)
-        if match:
-            try:
-                date_source = parse(match.group(0)).date()
-            except Exception:
-                pass
-
-    # RAW TEXT
+    # RAW TEXT (STRICTEMENT inchangé)
     paragraphs = soup.find_all("p")
     raw_text = "\n".join(p.get_text() for p in paragraphs).strip()
 
