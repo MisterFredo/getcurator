@@ -20,9 +20,9 @@ import SolutionSelector, {
 } from "@/components/admin/SolutionSelector";
 
 type Props = {
-  topicsRaw: any[];
+  topicsRaw: string[];
   acteursRaw: string[];
-  conceptsRaw: any[];
+  conceptsRaw: string[];
   solutionsRaw: string[];
 
   topics: string[];
@@ -59,7 +59,7 @@ export default function StepValidation({
   const [allSolutions, setAllSolutions] = useState<Solution[]>([]);
 
   // ============================================================
-  // LOAD + NORMALIZE API DATA
+  // LOAD DATA
   // ============================================================
 
   useEffect(() => {
@@ -79,35 +79,31 @@ export default function StepValidation({
           api.get("/solution/list"),
         ]);
 
-        // 🔥 TOPICS (snake / old format compatible)
         setAllTopics(
           (topicRes?.topics || []).map((t: any) => ({
-            ID_TOPIC: t.ID_TOPIC ?? t.id_topic,
-            LABEL: t.LABEL ?? t.label,
+            ID_TOPIC: t.id_topic,
+            LABEL: t.label,
           }))
         );
 
-        // 🔥 COMPANIES
         setAllCompanies(
           (companyRes?.companies || []).map((c: any) => ({
-            id_company: c.id_company ?? c.ID_COMPANY,
-            name: c.name ?? c.NAME,
+            id_company: c.id_company,
+            name: c.name,
           }))
         );
 
-        // 🔥 CONCEPTS
         setAllConcepts(
           (conceptRes?.concepts || []).map((c: any) => ({
-            id_concept: c.id_concept ?? c.ID_CONCEPT,
-            title: c.title ?? c.TITLE,
+            id_concept: c.id_concept,
+            title: c.title,
           }))
         );
 
-        // 🔥 SOLUTIONS
         setAllSolutions(
           (solutionRes?.solutions || []).map((s: any) => ({
-            id_solution: s.id_solution ?? s.ID_SOLUTION,
-            name: s.name ?? s.NAME,
+            id_solution: s.id_solution,
+            name: s.name,
           }))
         );
 
@@ -121,7 +117,7 @@ export default function StepValidation({
   }, []);
 
   // ============================================================
-  // AUTO-INJECT LLM TOPICS (ONCE, SAFE FORMAT)
+  // AUTO-INJECT TOPICS (LLM)
   // ============================================================
 
   const [autoInjected, setAutoInjected] = useState(false);
@@ -130,13 +126,7 @@ export default function StepValidation({
 
     if (!autoInjected && topicsRaw?.length > 0) {
 
-      const normalized = topicsRaw.map((t: any) =>
-        typeof t === "string"
-          ? t
-          : t.id_topic ?? t.ID_TOPIC
-      );
-
-      onChange({ topics: normalized });
+      onChange({ topics: topicsRaw });
       setAutoInjected(true);
     }
 
@@ -176,14 +166,7 @@ export default function StepValidation({
 
         {topicsRaw?.length > 0 && (
           <div>
-            <strong>Topics LLM :</strong>{" "}
-            {topicsRaw
-              .map((t: any) =>
-                typeof t === "string"
-                  ? t
-                  : t.label ?? t.LABEL
-              )
-              .join(", ")}
+            <strong>Topics LLM :</strong> {topicsRaw.join(", ")}
           </div>
         )}
 
@@ -195,14 +178,7 @@ export default function StepValidation({
 
         {conceptsRaw?.length > 0 && (
           <div>
-            <strong>Concepts LLM :</strong>{" "}
-            {conceptsRaw
-              .map((c: any) =>
-                typeof c === "string"
-                  ? c
-                  : c.label ?? c.LABEL
-              )
-              .join(", ")}
+            <strong>Concepts LLM :</strong> {conceptsRaw.join(", ")}
           </div>
         )}
 
@@ -235,11 +211,10 @@ export default function StepValidation({
         }
       />
 
-      {/* CONCEPTS */}
+      {/* CONCEPTS — 🔥 PLUS DE FILTRE PAR TOPIC */}
 
       <ConceptSelector
         values={selectedConcepts}
-        topicIds={topics}
         onChange={(vals) =>
           onChange({
             concepts: vals.map((v) => v.id_concept),
