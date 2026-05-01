@@ -3,15 +3,27 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
+/* ========================================================= */
+
+type Concept = {
+  id_concept: string;
+  title: string;
+};
+
 type AnalysisData = {
   id_content: string;
   angle_title: string;
-  concept?: string | null;
+
+  concepts?: Concept[];
+
   content_body?: string | null;
   chiffres: string[];
   acteurs_cites: string[];
+
   published_at: string;
 };
+
+/* ========================================================= */
 
 export default function AnalysisContent({ id }: { id: string }) {
   const [data, setData] = useState<AnalysisData | null>(null);
@@ -22,7 +34,6 @@ export default function AnalysisContent({ id }: { id: string }) {
       setLoading(true);
 
       try {
-        // 🔑 CURATOR = lecture via /analysis/*
         const res = await api.get(`/analysis/${id}`);
         setData(res);
       } catch (e) {
@@ -54,6 +65,7 @@ export default function AnalysisContent({ id }: { id: string }) {
 
   return (
     <div className="space-y-10">
+
       {/* =====================================================
           TITLE
       ===================================================== */}
@@ -62,17 +74,25 @@ export default function AnalysisContent({ id }: { id: string }) {
       </h1>
 
       {/* =====================================================
-          CONCEPT
+          CONCEPTS (STRUCTURÉS)
       ===================================================== */}
-      {data.concept && (
-        <div className="border-l-4 border-ratecard-blue pl-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
-            Concept clé
+      {data.concepts?.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Concepts clés
           </h2>
-          <p className="text-sm text-gray-700">
-            {data.concept}
-          </p>
-        </div>
+
+          <div className="flex flex-wrap gap-2">
+            {data.concepts.map((c) => (
+              <span
+                key={c.id_concept}
+                className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+              >
+                {c.title}
+              </span>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* =====================================================
@@ -148,6 +168,7 @@ export default function AnalysisContent({ id }: { id: string }) {
           {new Date(data.published_at).toLocaleDateString("fr-FR")}
         </p>
       </div>
+
     </div>
   );
 }
