@@ -138,14 +138,30 @@ def list_topics():
 # ============================================================
 # GET ONE TOPIC
 # ============================================================
+# ============================================================
+# GET ONE TOPIC
+# ============================================================
 def get_topic(topic_id: str):
 
     sql = f"""
         SELECT
-            t.*,
+            t.ID_TOPIC,
+            t.LABEL,
+            t.DESCRIPTION,
+            t.SEO_TITLE,
+            t.SEO_DESCRIPTION,
+            t.INSIGHT_FREQUENCY,
+            t.MEDIA_SQUARE_ID,
+            t.MEDIA_RECTANGLE_ID,
+            t.IS_ACTIVE,
+            t.CREATED_AT,
+            t.UPDATED_AT,
 
             ARRAY_AGG(
-                STRUCT(u.ID_UNIVERSE, u2.LABEL)
+                STRUCT(
+                    u.ID_UNIVERSE AS ID_UNIVERSE,
+                    u2.LABEL AS LABEL
+                )
             ) AS UNIVERS
 
         FROM `{TABLE_TOPIC}` t
@@ -158,11 +174,18 @@ def get_topic(topic_id: str):
 
         WHERE t.ID_TOPIC = @id
 
-        GROUP BY t.ID_TOPIC, t.LABEL, t.DESCRIPTION,
-                 t.SEO_TITLE, t.SEO_DESCRIPTION,
-                 t.INSIGHT_FREQUENCY,
-                 t.MEDIA_SQUARE_ID, t.MEDIA_RECTANGLE_ID,
-                 t.IS_ACTIVE, t.CREATED_AT, t.UPDATED_AT
+        GROUP BY
+            t.ID_TOPIC,
+            t.LABEL,
+            t.DESCRIPTION,
+            t.SEO_TITLE,
+            t.SEO_DESCRIPTION,
+            t.INSIGHT_FREQUENCY,
+            t.MEDIA_SQUARE_ID,
+            t.MEDIA_RECTANGLE_ID,
+            t.IS_ACTIVE,
+            t.CREATED_AT,
+            t.UPDATED_AT
     """
 
     rows = query_bq(sql, {"id": topic_id})
