@@ -7,35 +7,36 @@ import SearchableMultiSelect, {
 } from "@/components/ui/SearchableMultiSelect";
 
 /* ---------------------------------------------------------
-   TYPES (UI = snake_case)
+   TYPES
 --------------------------------------------------------- */
 export type Concept = {
   id_concept: string;
-  title: string;
+  label: string;
 };
 
 type Props = {
   values: Concept[];
   onChange: (concepts: Concept[]) => void;
-  topicIds?: string[];
 };
 
 type ConceptApi = {
   id_concept: string;
-  title: string;
+  label: string;
 };
 
+/* ---------------------------------------------------------
+   COMPONENT
+--------------------------------------------------------- */
 export default function ConceptSelector({
   values,
   onChange,
-  topicIds,
 }: Props) {
 
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   /* ---------------------------------------------------------
-     LOAD CONCEPTS (DYNAMIQUE SELON TOPICS)
+     LOAD ALL CONCEPTS
   --------------------------------------------------------- */
   useEffect(() => {
 
@@ -45,19 +46,13 @@ export default function ConceptSelector({
 
         setLoading(true);
 
-        let url = "/concept/list";
-
-        if (topicIds && topicIds.length > 0) {
-          url += `?topic_ids=${topicIds.join(",")}`;
-        }
-
-        const res = await api.get(url);
+        const res = await api.get("/concept/list");
 
         const concepts: ConceptApi[] = res?.concepts || [];
 
         const mappedOptions: SelectOption[] = concepts.map((c) => ({
           id: c.id_concept,
-          label: c.title,
+          label: c.label,
         }));
 
         setOptions(mappedOptions);
@@ -77,26 +72,7 @@ export default function ConceptSelector({
 
     load();
 
-  }, [topicIds]);
-
-  /* ---------------------------------------------------------
-     NETTOYAGE AUTOMATIQUE DES CONCEPTS INVALIDES
-  --------------------------------------------------------- */
-  useEffect(() => {
-
-    if (!options.length || !values.length) return;
-
-    const validIds = new Set(options.map((o) => o.id));
-
-    const filtered = values.filter((v) =>
-      validIds.has(v.id_concept)
-    );
-
-    if (filtered.length !== values.length) {
-      onChange(filtered);
-    }
-
-  }, [options]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ---------------------------------------------------------
      HANDLE CHANGE
@@ -110,7 +86,7 @@ export default function ConceptSelector({
 
     const mapped: Concept[] = selected.map((item) => ({
       id_concept: item.id,
-      title: item.label,
+      label: item.label,
     }));
 
     onChange(mapped);
@@ -130,12 +106,12 @@ export default function ConceptSelector({
 
   return (
     <SearchableMultiSelect
-      label="Concepts"
-      placeholder="Rechercher un ou plusieurs concepts…"
+      label="Axes d’analyse"
+      placeholder="Rechercher un ou plusieurs axes…"
       options={options}
       values={values.map((v) => ({
         id: v.id_concept,
-        label: v.title,
+        label: v.label,
       }))}
       onChange={handleChange}
     />
