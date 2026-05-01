@@ -63,6 +63,7 @@ def search(
         c.universes,
         c.companies,
         c.solutions,
+        c.concepts,  
         c.id_source,
 
         -- 🔥 SCORE (optionnel mais utile pour ranking)
@@ -172,6 +173,7 @@ def latest(
 
         c.companies,
         c.solutions,
+        c.concepts,  
         c.id_source
 
     FROM `{VIEW_CONTENT}` c
@@ -252,6 +254,7 @@ def get_item_curator(
 
             c.companies,
             c.solutions,
+            c.concepts,  
 
             -- 🔥 OK ici
             SAFE_CAST(c.id_source AS STRING) AS id_source
@@ -428,6 +431,7 @@ def _map_feed_row(r: Dict) -> Dict:
     topics = r.get("topics") or []
     companies = r.get("companies") or []
     solutions = r.get("solutions") or []
+    concepts = r.get("concepts") or []
     universes = r.get("universes") or []
 
     badges = []
@@ -447,6 +451,16 @@ def _map_feed_row(r: Dict) -> Dict:
                 "type": "topic",
                 "label": t,
             })
+
+    # =====================================================
+    # CONCEPTS
+    # =====================================================
+    for c in concepts:
+        badges.append({
+            "type": "concept",
+            "label": c.get("title") if isinstance(c, dict) else c,
+            "id": c.get("id_concept") if isinstance(c, dict) else None,
+        })
 
     # =====================================================
     # COMPANIES
@@ -490,6 +504,7 @@ def _map_feed_row(r: Dict) -> Dict:
         "topics": topics,
         "companies": companies,
         "solutions": solutions,
+        "concepts": concepts,
         "universes": universes,
 
         # 🔥 NOUVEAU CONTRAT
