@@ -329,7 +329,7 @@ def get_news(id_news: str):
 
     concept_rows = query_bq(
         f"""
-        SELECT C.ID_CONCEPT, C.TITLE
+        SELECT C.ID_CONCEPT, C.LABEL
         FROM `{TABLE_NEWS_CONCEPT}` NC
         JOIN `{TABLE_CONCEPT}` C
           ON NC.ID_CONCEPT = C.ID_CONCEPT
@@ -341,7 +341,7 @@ def get_news(id_news: str):
     news["concepts"] = [
         {
             "id_concept": c["ID_CONCEPT"],
-            "title": c["TITLE"],
+            "label": r["LABEL"],
         }
         for c in concept_rows
     ]
