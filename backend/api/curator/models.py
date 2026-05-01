@@ -19,17 +19,26 @@ class Solution(BaseModel):
     name: str
 
 
+# 🔥 NEW
+class Concept(BaseModel):
+    id_concept: str
+    title: str
+
+
 class FeedItem(BaseModel):
     id: str
     type: Literal["news", "analysis"]
 
     title: str
     excerpt: Optional[str] = None
-    published_at: Optional[datetime] = None  # ✅ garde datetime
+    published_at: Optional[datetime] = None
 
     topics: List[Topic] = Field(default_factory=list)
     companies: List[Company] = Field(default_factory=list)
     solutions: List[Solution] = Field(default_factory=list)
+
+    # 🔥 NEW
+    concepts: List[Concept] = Field(default_factory=list)
 
     news_type: Optional[str] = None
 
