@@ -7,7 +7,8 @@ export type FeedBadgeType =
   | "company"
   | "solution"
   | "news_type"
-  | "universe";
+  | "universe"
+  | "concept"; // 🔥 ajout propre
 
 export type FeedBadge = {
   id?: string;
@@ -17,39 +18,29 @@ export type FeedBadge = {
 
 
 /* =========================================================
-   ENTITIES (ALIGNÉ BACKEND + EXTENSIBLE)
+   ENTITIES
 ========================================================= */
 
 export type Topic = {
   id_topic: string;
   label: string;
 
-  // structure
   axis?: string;
 
-  // stats
   nb_analyses?: number;
   delta_30d?: number;
 };
-
-/* =========================================================
-   ENTITIES (ALIGNÉ BACKEND + EXTENSIBLE)
-========================================================= */
 
 export type Company = {
   id_company: string;
   name: string;
 
-  // branding
   media_logo_rectangle_id?: string | null;
 
-  // 🔥 NEW
   logo_type?: "company";
 
-  // statut
   is_partner?: boolean;
 
-  // stats
   nb_analyses?: number;
   delta_30d?: number;
 };
@@ -58,22 +49,26 @@ export type Solution = {
   id_solution: string;
   name: string;
 
-  // relation
   id_company?: string;
   company_name?: string;
 
-  // branding
   media_logo_rectangle_id?: string | null;
 
-  // 🔥 NEW (CRITIQUE)
   logo_type?: "solution" | "company";
 
-  // statut
   is_partner?: boolean;
 
-  // stats
   nb_analyses?: number;
   delta_30d?: number;
+};
+
+/* =========================================================
+   🔥 NEW — CONCEPT (ALIGNÉ BACKEND)
+========================================================= */
+
+export type Concept = {
+  id_concept: string;
+  title: string;
 };
 
 
@@ -89,16 +84,18 @@ export type FeedItem = {
   title: string;
   excerpt?: string | null;
   published_at?: string | null;
-   
-  // 🔥 UNIVERS (aligné backend)
-   universes?: {
-     id_universe: string;
-     label: string;
-   }[];
+
+  universes?: {
+    id_universe: string;
+    label: string;
+  }[];
 
   topics?: Topic[];
   companies?: Company[];
   solutions?: Solution[];
+
+  // 🔥 NEW
+  concepts?: Concept[];
 
   news_type?: string | null;
 
@@ -110,7 +107,7 @@ export type FeedItem = {
 
 
 /* =========================================================
-   META (FUTUR — FILTRES / FACETS)
+   META
 ========================================================= */
 
 export type MetaItem = {
