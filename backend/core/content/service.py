@@ -237,7 +237,11 @@ def create_content(data: ContentCreate) -> str:
             ],
         )
 
-    if data.concepts:
+    # 🔥 PATCH CONCEPTS (SEULE MODIFICATION)
+
+    final_concepts = data.concepts if data.concepts else data.concepts_llm
+
+    if final_concepts:
         insert_bq(
             TABLE_CONTENT_CONCEPT,
             [
@@ -246,7 +250,8 @@ def create_content(data: ContentCreate) -> str:
                     "ID_CONCEPT": cid,
                     "CREATED_AT": now
                 }
-                for cid in data.concepts
+                for cid in set(final_concepts)
+                if cid
             ],
         )
 
@@ -264,8 +269,6 @@ def create_content(data: ContentCreate) -> str:
         )
 
     print("✔ RELATIONS DONE FOR:", content_id)
-
-
 
     return content_id
 
