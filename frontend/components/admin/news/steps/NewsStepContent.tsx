@@ -132,69 +132,10 @@ export default function NewsStepContent({
   }, []);
 
   /* =====================================================
-     CONCEPTS DYNAMIQUES SELON TOPICS
-  ===================================================== */
-
-  const [availableConcepts, setAvailableConcepts] = useState<Concept[]>([]);
-
-  useEffect(() => {
-
-    async function loadConcepts() {
-
-      if (!topics || topics.length === 0) {
-        setAvailableConcepts([]);
-        return;
-      }
-
-      try {
-
-        const topicIds = topics
-          .map((t: any) => t.id_topic)
-          .filter(Boolean);
-
-        if (!topicIds.length) {
-          setAvailableConcepts([]);
-          return;
-        }
-
-        const query = topicIds.join(",");
-        const res = await api.get(`/concept/list?topic_ids=${query}`);
-
-        const fetched = res.concepts || [];
-
-        const mapped: Concept[] = fetched.map((c: any) => ({
-          id_concept: c.id_concept,
-          title: c.title,
-        }));
-
-        setAvailableConcepts(mapped);
-
-        const validIds = new Set(mapped.map((c) => c.id_concept));
-
-        const filtered = concepts.filter((c) =>
-          validIds.has(c.id_concept)
-        );
-
-        if (filtered.length !== concepts.length) {
-          onChange({ concepts: filtered });
-        }
-
-      } catch (e) {
-        console.error("Erreur chargement concepts dynamiques", e);
-        setAvailableConcepts([]);
-      }
-    }
-
-    loadConcepts();
-
-  }, [topics]); // eslint-disable-line
-
-  /* =====================================================
      UI
   ===================================================== */
 
   return (
-
     <div className="space-y-8">
 
       {/* TYPE */}
@@ -264,9 +205,9 @@ export default function NewsStepContent({
           onChange={(items) => onChange({ topics: items })}
         />
 
+        {/* ✅ Concepts indépendants des topics */}
         <ConceptSelector
           values={concepts}
-          topicIds={topics.map((t: any) => t.id_topic)}
           onChange={(items) => onChange({ concepts: items })}
         />
 
