@@ -97,7 +97,7 @@ export default function StepValidation({
         setAllConcepts(
           (conceptRes?.concepts || []).map((c: any) => ({
             ID_CONCEPT: c.id_concept,
-            LABEL: c.title,
+            LABEL: c.label || c.title, // 🔥 FIX ICI
           }))
         );
 
