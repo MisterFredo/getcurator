@@ -420,7 +420,7 @@ def get_content(id_content: str):
 
     concept_rows = query_bq(
         f"""
-        SELECT C.ID_CONCEPT, C.TITLE
+        SELECT C.ID_CONCEPT, C.LABEL
         FROM `{TABLE_CONTENT_CONCEPT}` CC
         JOIN `{TABLE_CONCEPT}` C
           ON CC.ID_CONCEPT = C.ID_CONCEPT
@@ -432,7 +432,7 @@ def get_content(id_content: str):
     content["concepts"] = [
         {
             "id_concept": r["ID_CONCEPT"],
-            "title": r["TITLE"],
+            "label": r["LABEL"],
         }
         for r in concept_rows
     ]
