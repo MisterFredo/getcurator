@@ -796,7 +796,7 @@ def destock_raw_contents(
             )
 
             concepts_llm = normalize_llm_list(
-                [c["label"] for c in summary.get("concepts", [])]
+                summary.get("concepts", [])
             )
 
             solutions_llm = normalize_llm_list(
