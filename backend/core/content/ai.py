@@ -155,7 +155,7 @@ Extraire uniquement les chiffres présents dans la source.
 FORMAT STRICT OBLIGATOIRE :
 Chaque ligne doit respecter EXACTEMENT ce format (6 champs) :
 
-label | valeur | unité | acteur | marché | période
+label | valeur | unité | acteur | géographie | période
 
 RÈGLES STRICTES :
 
@@ -174,11 +174,16 @@ RÈGLES STRICTES :
 - entreprise uniquement (ex : Amazon, Netflix)
 - sinon écrire : Aucun
 
-4. marché
-- catégorie métier OU zone géographique
-- exemples :
-  CTV | Retail Media | Audio | France | US | Europe
-- ne jamais mettre une entreprise ici
+4. géographie
+- uniquement une zone géographique
+- exemples autorisés :
+  France | UK | US | Europe | Global
+- si non précisé → écrire : Global
+
+INTERDIT :
+- catégories métier (CTV, Retail Media, Audio, etc.)
+- noms d’entreprises
+- concepts ou topics
 
 5. période
 - année ou période claire
@@ -198,9 +203,9 @@ INTERDIT :
 
 EXEMPLES CORRECTS :
 
-Part de marché CTV | 35 | % | Netflix | CTV | 2024  
-Revenus publicitaires | 1200 | millions | Amazon | Retail Media | 2023  
-Utilisateurs actifs | 50 | millions | Aucun | Audio | Non précisé
+Part de marché CTV | 35 | % | Netflix | France| 2024  
+Revenus publicitaires | 1200 | millions | Amazon | Etats-Unis | 2023  
+Utilisateurs actifs | 50 | millions | Aucun | Moldavie | Non précisé
 
 ACTEURS
 (Liste des entreprises citées ou "Aucun")
