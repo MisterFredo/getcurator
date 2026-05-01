@@ -23,6 +23,11 @@ type Solution = {
   name: string;
 };
 
+type Concept = {
+  id_concept: string;
+  title: string;
+};
+
 type AnalysisData = {
   id_content: string;
   title: string;
@@ -35,15 +40,14 @@ type AnalysisData = {
   point_de_friction?: string;
   signal_analytique?: string;
 
-  concepts_llm?: string[];
-
   chiffres?: string[];
-  citations?: string[]; // conservé backend
+  citations?: string[];
   acteurs_cites?: string[];
 
   topics?: Topic[];
   companies?: Company[];
   solutions?: Solution[];
+  concepts?: Concept[];
 
   published_at?: string;
 };
@@ -195,19 +199,20 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </div>
           )}
 
-          {data.concepts_llm?.length > 0 && (
+          {/* 🔥 CONCEPTS STRUCTURÉS UNIQUEMENT */}
+          {data.concepts?.length > 0 && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Concepts clés
               </h3>
 
               <div className="flex flex-wrap gap-2">
-                {data.concepts_llm.map((c, i) => (
+                {data.concepts.map((c) => (
                   <span
-                    key={i}
-                    className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+                    key={c.id_concept}
+                    className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-800"
                   >
-                    {c}
+                    {c.title}
                   </span>
                 ))}
               </div>
