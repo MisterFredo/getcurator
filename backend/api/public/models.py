@@ -30,9 +30,14 @@ class ContentDetailResponse(BaseModel):
     chiffres: List[str]
     acteurs_cites: List[str]
 
+    # LLM
     concepts_llm: List[str]
     solutions_llm: List[str]
     topics_llm: List[str]
+
+    # STRUCTURÉ
+    concepts: Optional[List[dict]] = None
+    solutions: Optional[List[dict]] = None
 
     published_at: Optional[datetime]
 
