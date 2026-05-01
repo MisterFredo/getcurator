@@ -71,13 +71,13 @@ def generate_summary(
     # ============================================================
 
     concepts_rows = query_bq(f"""
-        SELECT ID_CONCEPT, TITLE
+        SELECT ID_CONCEPT, LABEL
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT`
-        WHERE STATUS = "PUBLISHED"
+        WHERE COALESCE(IS_ACTIVE, TRUE) = TRUE
     """)
 
     allowed_concepts = {
-        row["TITLE"]: row["ID_CONCEPT"]
+        row["LABEL"]: row["ID_CONCEPT"]
         for row in concepts_rows
     }
 
