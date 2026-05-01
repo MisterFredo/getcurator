@@ -19,22 +19,21 @@ TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
 # CREATE CONCEPT
 # ============================================================
 def create_concept(data: ConceptCreate) -> str:
+
     concept_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
     row = [{
         "ID_CONCEPT": concept_id,
-        "TITLE": data.title,
+        "LABEL": data.label,
         "DESCRIPTION": data.description,
-        "CONTENT": data.content,
-        "STATUS": data.status or "DRAFT",
-        "VECTORISE": data.vectorise or False,
-        "ID_TOPIC": data.id_topic,
+        "IS_ACTIVE": True,
         "CREATED_AT": now,
         "UPDATED_AT": now,
     }]
 
     client = get_bigquery_client()
+
     job = client.load_table_from_json(
         row,
         TABLE_CONCEPT,
@@ -42,6 +41,7 @@ def create_concept(data: ConceptCreate) -> str:
             write_disposition="WRITE_APPEND"
         ),
     )
+
     job.result()
 
     return concept_id
@@ -50,56 +50,32 @@ def create_concept(data: ConceptCreate) -> str:
 # ============================================================
 # LIST CONCEPTS
 # ============================================================
-def list_concepts(topic_ids: Optional[List[str]] = None):
+def list_concepts():
 
-    client = get_bigquery_client()
-
-    base_sql = f"""
+    sql = f"""
         SELECT
             ID_CONCEPT,
-            TITLE,
+            LABEL,
             DESCRIPTION,
-            STATUS,
-            VECTORISE,
-            ID_TOPIC,
             CREATED_AT,
             UPDATED_AT
         FROM `{TABLE_CONCEPT}`
-        WHERE COALESCE(STATUS, 'DRAFT') != 'ARCHIVED'
+        WHERE COALESCE(IS_ACTIVE, TRUE) = TRUE
+        ORDER BY LABEL ASC
     """
 
-    if topic_ids:
-        base_sql += " AND ID_TOPIC IN UNNEST(@topic_ids)"
+    rows = query_bq(sql)
 
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ArrayQueryParameter(
-                    "topic_ids",
-                    "STRING",
-                    topic_ids
-                )
-            ]
-        )
-
-        rows = client.query(base_sql + " ORDER BY TITLE ASC", job_config=job_config).result()
-    else:
-        rows = query_bq(base_sql + " ORDER BY TITLE ASC")
-
-    # 🔥 MAPPING UPPER → snake_case
     return [
         {
             "id_concept": r["ID_CONCEPT"],
-            "title": r["TITLE"],
+            "label": r["LABEL"],
             "description": r["DESCRIPTION"],
-            "status": r["STATUS"],
-            "vectorise": r["VECTORISE"],
-            "id_topic": r["ID_TOPIC"],
             "created_at": r["CREATED_AT"],
             "updated_at": r["UPDATED_AT"],
         }
         for r in rows
     ]
-
 
 # ============================================================
 # GET ONE CONCEPT
@@ -109,12 +85,8 @@ def get_concept(concept_id: str):
     sql = f"""
         SELECT
             ID_CONCEPT,
-            TITLE,
+            LABEL,
             DESCRIPTION,
-            CONTENT,
-            STATUS,
-            VECTORISE,
-            ID_TOPIC,
             CREATED_AT,
             UPDATED_AT
         FROM `{TABLE_CONCEPT}`
@@ -129,15 +101,10 @@ def get_concept(concept_id: str):
 
     r = rows[0]
 
-    # 🔥 MAPPING UPPER → snake_case
     return {
         "id_concept": r["ID_CONCEPT"],
-        "title": r["TITLE"],
+        "label": r["LABEL"],
         "description": r["DESCRIPTION"],
-        "content": r["CONTENT"],
-        "status": r["STATUS"],
-        "vectorise": r["VECTORISE"],
-        "id_topic": r["ID_TOPIC"],
         "created_at": r["CREATED_AT"],
         "updated_at": r["UPDATED_AT"],
     }
@@ -146,18 +113,16 @@ def get_concept(concept_id: str):
 # UPDATE CONCEPT
 # ============================================================
 def update_concept(id_concept: str, data: ConceptUpdate) -> bool:
+
     values = data.dict(exclude_unset=True)
 
     if not values:
         return False
 
     mapping = {
-        "title": "TITLE",
+        "label": "LABEL",
         "description": "DESCRIPTION",
-        "content": "CONTENT",
-        "status": "STATUS",
-        "vectorise": "VECTORISE",
-        "id_topic": "ID_TOPIC",
+        "is_active": "IS_ACTIVE",
     }
 
     bq_values = {
@@ -165,9 +130,6 @@ def update_concept(id_concept: str, data: ConceptUpdate) -> bool:
         for k, v in values.items()
         if k in mapping
     }
-
-    if "CONTENT" in bq_values:
-        bq_values["VECTORISE"] = False
 
     bq_values["UPDATED_AT"] = datetime.utcnow().isoformat()
 
@@ -195,12 +157,11 @@ def delete_concept(id_concept: str) -> bool:
     if not existing:
         return False
 
-    query_bq(
-        f"""
-        DELETE FROM `{TABLE_CONCEPT}`
-        WHERE ID_CONCEPT = @id
-        """,
-        {"id": id_concept},
+    return update_bq(
+        table=TABLE_CONCEPT,
+        fields={
+            "IS_ACTIVE": False,
+            "UPDATED_AT": datetime.utcnow().isoformat(),
+        },
+        where={"ID_CONCEPT": id_concept},
     )
-
-    return True
