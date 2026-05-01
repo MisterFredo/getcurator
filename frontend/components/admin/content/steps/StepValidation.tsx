@@ -7,13 +7,13 @@ import MultiSelectTopics, {
   Topic,
 } from "@/components/admin/content/steps/MultiSelectTopics";
 
+import MultiSelectConcepts, {
+  Concept,
+} from "@/components/admin/content/steps/MultiSelectConcepts";
+
 import CompanySelector, {
   Company,
 } from "@/components/admin/CompanySelector";
-
-import ConceptSelector, {
-  Concept,
-} from "@/components/admin/ConceptSelector";
 
 import SolutionSelector, {
   Solution,
@@ -93,10 +93,11 @@ export default function StepValidation({
           }))
         );
 
+        // 🔥 FORMAT ALIGNÉ MultiSelectConcepts
         setAllConcepts(
           (conceptRes?.concepts || []).map((c: any) => ({
-            id_concept: c.id_concept,
-            title: c.title,
+            ID_CONCEPT: c.id_concept,
+            LABEL: c.title,
           }))
         );
 
@@ -117,20 +118,42 @@ export default function StepValidation({
   }, []);
 
   // ============================================================
-  // AUTO-INJECT TOPICS (LLM)
+  // AUTO-INJECT LLM (TOPICS + CONCEPTS)
   // ============================================================
 
   const [autoInjected, setAutoInjected] = useState(false);
 
   useEffect(() => {
 
-    if (!autoInjected && topicsRaw?.length > 0) {
+    if (!autoInjected) {
 
-      onChange({ topics: topicsRaw });
+      // 🔵 TOPICS
+      if (topicsRaw?.length > 0) {
+        onChange({ topics: topicsRaw });
+      }
+
+      // 🟣 CONCEPTS → mapping label → ID
+      if (conceptsRaw?.length > 0 && allConcepts.length > 0) {
+
+        const mapped = conceptsRaw
+          .map((label) => {
+            const match = allConcepts.find(
+              (c) =>
+                c.LABEL.toLowerCase() === label.toLowerCase()
+            );
+            return match?.ID_CONCEPT;
+          })
+          .filter(Boolean) as string[];
+
+        if (mapped.length > 0) {
+          onChange({ concepts: mapped });
+        }
+      }
+
       setAutoInjected(true);
     }
 
-  }, [topicsRaw, autoInjected, onChange]);
+  }, [topicsRaw, conceptsRaw, allConcepts, autoInjected, onChange]);
 
   // ============================================================
   // MAPPING IDS → OBJECTS
@@ -138,10 +161,6 @@ export default function StepValidation({
 
   const selectedCompanies = allCompanies.filter((c) =>
     companies.includes(c.id_company)
-  );
-
-  const selectedConcepts = allConcepts.filter((c) =>
-    concepts.includes(c.id_concept)
   );
 
   const selectedSolutions = allSolutions.filter((s) =>
@@ -211,14 +230,13 @@ export default function StepValidation({
         }
       />
 
-      {/* CONCEPTS — 🔥 PLUS DE FILTRE PAR TOPIC */}
+      {/* CONCEPTS — 🔥 VERSION BULLES */}
 
-      <ConceptSelector
-        values={selectedConcepts}
-        onChange={(vals) =>
-          onChange({
-            concepts: vals.map((v) => v.id_concept),
-          })
+      <MultiSelectConcepts
+        concepts={allConcepts}
+        selected={concepts}
+        onChange={(ids: string[]) =>
+          onChange({ concepts: ids })
         }
       />
 
