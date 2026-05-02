@@ -423,11 +423,17 @@ def _map_feed_row(r: Dict) -> Dict:
     # CONCEPTS
     # =====================================================
     for c in concepts:
-        badges.append({
-            "type": "concept",
-            "label": c.get("title") if isinstance(c, dict) else c,
-            "id": c.get("id_concept") if isinstance(c, dict) else None,
-        })
+        if isinstance(c, dict):
+            badges.append({
+                "type": "concept",
+                "label": c.get("label"),        # ✅ FIX
+                "id": c.get("id_concept"),      # ✅ OK
+            })
+        else:
+            badges.append({
+                "type": "concept",
+                "label": c,
+            })
 
     # =====================================================
     # COMPANIES
