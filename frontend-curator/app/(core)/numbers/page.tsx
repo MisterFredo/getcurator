@@ -9,33 +9,24 @@ import NumbersHeader from "@/components/numbers/NumbersHeader";
 
 /* ========================================================= */
 
-type NumberItem = {
-  id: string;
-  context_title?: string;
-  TYPE?: string;
-  [key: string]: any;
-};
-
 type Universe = {
   id_universe: string;
   label: string;
 };
 
-/* ========================================================= */
-
 export default function NumbersPage() {
   const LIMIT = 100;
 
-  const [items, setItems] = useState<NumberItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [query, setQuery] = useState("");
 
-  // 🔥 UNIVERS
+  /* 🔥 univers = IDENTIQUE feed */
   const [universes, setUniverses] = useState<Universe[]>([]);
-  const [selectedUniverse, setSelectedUniverse] = useState<string>("");
+  const [activeUniverse, setActiveUniverse] = useState<string | null>(null);
 
-  // 🔥 SELECTION
+  /* selection */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -53,12 +44,13 @@ export default function NumbersPage() {
 
       params.append("limit", String(LIMIT));
 
-      if (finalQuery) params.append("q", finalQuery);
-      if (selectedUniverse) params.append("universe_id", selectedUniverse);
+      if (finalQuery) params.append("query", finalQuery);
+      if (activeUniverse) params.append("universe_id", activeUniverse);
 
-      const res = await api.get(`/curator/numbers?${params.toString()}`);
+      const res = await api.get(`/numbers/feed/backlog?${params}`);
 
       setItems(res?.items ?? []);
+
     } catch (e) {
       console.error("❌ Numbers load error", e);
       setItems([]);
@@ -68,29 +60,33 @@ export default function NumbersPage() {
   }
 
   /* =========================================================
-     LOAD UNIVERS
+     UNIVERS (IDENTIQUE FEED)
   ========================================================= */
 
-  async function loadUniverses() {
-    try {
-      const res = await api.get("/universe/list");
-      setUniverses(res?.universes || []);
-    } catch (e) {
-      console.error("❌ universe load error", e);
-    }
-  }
-
   useEffect(() => {
-    load();
+    async function loadUniverses() {
+      try {
+        const res = await api.get("/universe/list-for-user");
+        setUniverses(res?.universes || []);
+      } catch (e) {
+        console.error("❌ universe load error", e);
+      }
+    }
+
     loadUniverses();
   }, []);
+
+  /* reload quand univers change */
+  useEffect(() => {
+    load();
+  }, [activeUniverse]);
 
   /* =========================================================
      SELECTION
   ========================================================= */
 
-  function toggleSelect(item: NumberItem) {
-    const id = item.id;
+  function toggleSelect(item: any) {
+    const id = item.ID_NUMBER;
 
     setSelectedIds((prev) =>
       prev.includes(id)
@@ -105,8 +101,8 @@ export default function NumbersPage() {
      GROUP BY CONTENT
   ========================================================= */
 
-  function groupByContent(items: NumberItem[]) {
-    const map: Record<string, NumberItem[]> = {};
+  function groupByContent(items: any[]) {
+    const map: Record<string, any[]> = {};
 
     items.forEach((item) => {
       const key = item.context_title || "Autres";
@@ -135,51 +131,40 @@ export default function NumbersPage() {
           onSearch={(q) => load(q)}
         />
 
-        {/* 🔥 UNIVERSE FILTER */}
-        <div className="flex gap-2 items-center">
-
-          <select
-            value={selectedUniverse}
-            onChange={(e) => {
-              setSelectedUniverse(e.target.value);
-            }}
-            className="border p-2 text-sm rounded"
-          >
-            <option value="">Tous les univers</option>
-            {universes.map((u) => (
-              <option key={u.id_universe} value={u.id_universe}>
-                {u.label}
-              </option>
-            ))}
-          </select>
+        {/* 🔥 UNIVERS (copie feed) */}
+        <div className="flex gap-2 flex-wrap">
 
           <button
-            onClick={() => load()}
-            className="bg-black text-white px-3 py-2 text-sm rounded"
+            onClick={() => setActiveUniverse(null)}
+            className={`px-3 py-1 text-xs rounded ${
+              !activeUniverse
+                ? "bg-black text-white"
+                : "bg-gray-100"
+            }`}
           >
-            Appliquer
+            Tous
           </button>
 
-        </div>
+          {universes.map((u) => (
+            <button
+              key={u.id_universe}
+              onClick={() => setActiveUniverse(u.id_universe)}
+              className={`px-3 py-1 text-xs rounded ${
+                activeUniverse === u.id_universe
+                  ? "bg-black text-white"
+                  : "bg-gray-100"
+              }`}
+            >
+              {u.label}
+            </button>
+          ))}
 
-        {/* COUNT */}
-        {!loading && (
-          <div className="text-xs text-gray-400">
-            {items.length} chiffres
-          </div>
-        )}
+        </div>
 
         {/* LOADING */}
         {loading && (
           <p className="text-sm text-gray-400">
-            Chargement des chiffres...
-          </p>
-        )}
-
-        {/* EMPTY */}
-        {!loading && items.length === 0 && (
-          <p className="text-sm text-gray-400">
-            Aucun chiffre disponible.
+            Chargement...
           </p>
         )}
 
@@ -189,40 +174,34 @@ export default function NumbersPage() {
 
             <section key={title} className="space-y-3">
 
-              {/* TITLE */}
-              <div className="flex items-center justify-between">
-
-                <div className="text-sm font-semibold text-gray-800">
+              <div className="flex justify-between items-center">
+                <div className="text-sm font-semibold">
                   {title}
                 </div>
 
                 <div className="text-xs text-gray-400">
-                  {groupItems.length} chiffres
+                  {groupItems.length}
                 </div>
-
               </div>
 
-              {/* GRID CARDS */}
               <div className="
                 grid
                 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
                 gap-3
               ">
-
                 {groupItems.map((item) => {
 
-                  const selected = selectedIds.includes(item.id);
+                  const selected = selectedIds.includes(item.ID_NUMBER);
 
                   return (
                     <NumberCard
-                      key={item.id}
+                      key={item.ID_NUMBER}
                       item={item}
                       selected={selected}
                       onClick={() => toggleSelect(item)}
                     />
                   );
                 })}
-
               </div>
 
             </section>
@@ -232,7 +211,7 @@ export default function NumbersPage() {
 
       {/* RIGHT PANEL */}
       {isPanelOpen && (
-        <div className="xl:col-span-1 sticky top-6 h-[calc(100vh-120px)]">
+        <div className="xl:col-span-1 sticky top-6">
           <NumbersSelectionPanel
             items={items}
             selectedIds={selectedIds}
