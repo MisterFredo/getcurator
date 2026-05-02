@@ -3,16 +3,22 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 
-import NumberCard from "@/components/numbers/NumberCard";
 import NumbersSelectionPanel from "@/components/numbers/NumbersSelectionPanel";
 import NumbersHeader from "@/components/numbers/NumbersHeader";
 
 /* ========================================================= */
 
 type NumberItem = {
-  ID_NUMBER: string;
-  TYPE?: string;
-  [key: string]: any;
+  id: string;
+  label?: string;
+  value?: number;
+  unit?: string;
+
+  zone?: string;
+  period?: string;
+  actor?: string;
+
+  context_title?: string;
 };
 
 /* ========================================================= */
@@ -40,16 +46,14 @@ export default function NumbersPage() {
 
     try {
       const res = await api.get(
-        `/numbers/feed?limit=${LIMIT}${
+        `/curator/numbers?limit=${LIMIT}${
           finalQuery
-            ? `&query=${encodeURIComponent(finalQuery)}`
+            ? `&q=${encodeURIComponent(finalQuery)}`
             : ""
         }`
       );
 
-      const data = res?.items ?? [];
-
-      setItems(data);
+      setItems(res?.items ?? []);
     } catch (e) {
       console.error("❌ Numbers load error", e);
       setItems([]);
@@ -67,7 +71,7 @@ export default function NumbersPage() {
   ========================================================= */
 
   function toggleSelect(item: NumberItem) {
-    const id = item.ID_NUMBER;
+    const id = item.id;
 
     setSelectedIds((prev) =>
       prev.includes(id)
@@ -79,28 +83,23 @@ export default function NumbersPage() {
   }
 
   /* =========================================================
-     GROUP BY TYPE
+     GROUP BY CONTENT
   ========================================================= */
 
-  function groupByType(items: NumberItem[]) {
+  function groupByContent(items: NumberItem[]) {
     const map: Record<string, NumberItem[]> = {};
 
     items.forEach((item) => {
-      const key = item.TYPE ?? "Autres"; // ⚠️ seul fallback toléré ici
+      const key = item.context_title || "Autres";
 
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
 
-    // tri alphabétique des groupes
-    return Object.fromEntries(
-      Object.entries(map).sort(([a], [b]) =>
-        a.localeCompare(b, "fr", { sensitivity: "base" })
-      )
-    );
+    return Object.entries(map);
   }
 
-  const grouped = groupByType(items);
+  const grouped = groupByContent(items);
 
   const hasContent = items.length > 0;
 
@@ -142,36 +141,50 @@ export default function NumbersPage() {
 
         {/* CONTENT */}
         {!loading && hasContent &&
-          Object.entries(grouped).map(([type, groupItems]) => (
-            <section key={type} className="space-y-4">
+          grouped.map(([title, groupItems]) => (
 
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  {type}
-                </h2>
+            <section key={title} className="space-y-4">
 
-                <span className="text-xs text-gray-300">
-                  {groupItems.length}
-                </span>
+              {/* 🔹 CONTENT TITLE */}
+              <div className="text-sm font-semibold text-gray-800">
+                {title}
               </div>
 
-              <div className="
-                grid
-                grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
-                gap-3
-              ">
+              {/* 🔹 NUMBERS LIST */}
+              <div className="space-y-2">
+
                 {groupItems.map((item) => {
-                  const selected = selectedIds.includes(item.ID_NUMBER);
+
+                  const selected = selectedIds.includes(item.id);
 
                   return (
-                    <NumberCard
-                      key={item.ID_NUMBER}
-                      item={item}
-                      selected={selected}
+                    <div
+                      key={item.id}
                       onClick={() => toggleSelect(item)}
-                    />
+                      className={`
+                        border rounded p-3 cursor-pointer
+                        ${selected ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}
+                      `}
+                    >
+
+                      <div className="text-sm font-medium">
+                        {item.label}
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        {item.value} {item.unit} • {item.zone} • {item.period}
+                      </div>
+
+                      {item.actor && (
+                        <div className="text-xs text-gray-400">
+                          {item.actor}
+                        </div>
+                      )}
+
+                    </div>
                   );
                 })}
+
               </div>
 
             </section>
