@@ -211,59 +211,26 @@ def get_item_curator(
 ) -> Optional[Dict]:
 
     sql = f"""
-    SELECT * FROM (
+    SELECT
+        c.id_content AS id,
+        'analysis' AS type,
+        c.title,
+        c.excerpt,
+        c.published_at,
 
-        -- =====================================================
-        -- NEWS
-        -- =====================================================
-        SELECT
-            n.id_news AS id,
-            'news' AS type,
-            n.title,
-            n.excerpt,
-            n.published_at,
-            n.news_type,
-            n.topics,
+        -- compat ancien modèle
+        NULL AS news_type,
 
-            ARRAY<STRUCT<id_company STRING, name STRING>>[
-              STRUCT(n.id_company, n.company_name)
-            ] AS companies,
+        c.topics,
+        c.companies,
+        c.solutions,
+        c.concepts,
 
-            ARRAY<STRUCT<id_solution STRING, name STRING>>[] AS solutions,
+        SAFE_CAST(c.id_source AS STRING) AS id_source
 
-            -- 🔥 FIX ICI
-            NULL AS id_source
+    FROM `{VIEW_CONTENT}` c
 
-        FROM `{VIEW_NEWS}` n
-
-
-        UNION ALL
-
-
-        -- =====================================================
-        -- ANALYSIS
-        -- =====================================================
-        SELECT
-            c.id_content AS id,
-            'analysis' AS type,
-            c.title,
-            c.excerpt,
-            c.published_at,
-            NULL AS news_type,
-            c.topics,
-
-            c.companies,
-            c.solutions,
-            c.concepts,  
-
-            -- 🔥 OK ici
-            SAFE_CAST(c.id_source AS STRING) AS id_source
-
-        FROM `{VIEW_CONTENT}` c
-
-    ) AS items
-
-    WHERE id = @id
+    WHERE c.id_content = @id
 
     AND (
         @user_id IS NULL
@@ -273,7 +240,7 @@ def get_item_curator(
             JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE` uu
               ON uu.ID_UNIVERSE = su.ID_UNIVERSE
             WHERE uu.ID_USER = @user_id
-              AND su.ID_SOURCE = items.id_source
+              AND su.ID_SOURCE = c.id_source
         )
     )
 
