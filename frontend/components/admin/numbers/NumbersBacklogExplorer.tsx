@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
+/* ========================================================= */
+
 export default function NumbersBacklogExplorer() {
 
   const [items, setItems] = useState<any[]>([]);
@@ -12,12 +14,24 @@ export default function NumbersBacklogExplorer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [typeId, setTypeId] = useState("");
 
+  // 🔥 FILTERS
+  const [query, setQuery] = useState("");
+  const [decision, setDecision] = useState("NULL"); // default = à traiter
+
+  /* ========================================================= */
+
   async function load() {
+
     try {
       setLoading(true);
 
+      const params = new URLSearchParams();
+
+      if (query) params.append("query", query);
+      if (decision) params.append("decision", decision);
+
       const [res, typesRes] = await Promise.all([
-        api.get("/numbers/backlog"),
+        api.get(`/numbers/backlog?${params.toString()}`),
         api.get("/numbers/types"),
       ]);
 
@@ -35,8 +49,12 @@ export default function NumbersBacklogExplorer() {
     load();
   }, []);
 
+  /* ========================================================= */
+
   async function handleIgnore(id: string) {
+
     try {
+
       await api.post(`/numbers/backlog/update/${id}`, {
         decision: "IGNORE",
       });
@@ -47,6 +65,8 @@ export default function NumbersBacklogExplorer() {
       console.error(e);
     }
   }
+
+  /* ========================================================= */
 
   async function handleCreate(item: any) {
 
@@ -75,6 +95,8 @@ export default function NumbersBacklogExplorer() {
     }
   }
 
+  /* ========================================================= */
+
   return (
 
     <div className="space-y-4">
@@ -82,6 +104,35 @@ export default function NumbersBacklogExplorer() {
       <h2 className="text-xl font-semibold">
         Backlog Review
       </h2>
+
+      {/* 🔥 FILTER BAR */}
+      <div className="flex gap-2 items-center">
+
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search label or actor..."
+          className="border p-1 text-sm"
+        />
+
+        <select
+          value={decision}
+          onChange={(e) => setDecision(e.target.value)}
+          className="border p-1 text-sm"
+        >
+          <option value="">All</option>
+          <option value="NULL">To review</option>
+          <option value="IGNORE">Ignored</option>
+        </select>
+
+        <button
+          onClick={load}
+          className="bg-gray-200 px-2 py-1 text-sm rounded"
+        >
+          Apply
+        </button>
+
+      </div>
 
       {loading && <div>Loading...</div>}
 
@@ -91,14 +142,17 @@ export default function NumbersBacklogExplorer() {
 
           {items.map((item) => (
 
-            <div key={item.id_backlog} className="border-t p-3 text-sm space-y-1">
+            <div
+              key={item.id_backlog}
+              className="border-t p-3 text-sm space-y-1"
+            >
 
-              {/* CONTEXT */}
+              {/* 🔹 CONTEXT */}
               <div className="text-xs text-gray-500">
                 {item.context_title}
               </div>
 
-              {/* DATA */}
+              {/* 🔹 DATA */}
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_auto] gap-2 items-center">
 
                 <div>{item.label}</div>
@@ -110,6 +164,7 @@ export default function NumbersBacklogExplorer() {
 
                 <div className="flex gap-2">
 
+                  {/* IGNORE */}
                   <button
                     onClick={() => handleIgnore(item.id_backlog)}
                     className="text-red-600 text-xs"
@@ -117,6 +172,7 @@ export default function NumbersBacklogExplorer() {
                     Ignore
                   </button>
 
+                  {/* CREATE */}
                   <button
                     onClick={() => setSelectedId(item.id_backlog)}
                     className="text-blue-600 text-xs"
@@ -128,6 +184,7 @@ export default function NumbersBacklogExplorer() {
 
               </div>
 
+              {/* 🔹 CREATE PANEL */}
               {selectedId === item.id_backlog && (
 
                 <div className="flex gap-2 mt-2">
@@ -135,7 +192,7 @@ export default function NumbersBacklogExplorer() {
                   <select
                     value={typeId}
                     onChange={(e) => setTypeId(e.target.value)}
-                    className="border p-1"
+                    className="border p-1 text-sm"
                   >
                     <option value="">Type</option>
                     {types.map((t: any) => (
@@ -147,7 +204,7 @@ export default function NumbersBacklogExplorer() {
 
                   <button
                     onClick={() => handleCreate(item)}
-                    className="bg-blue-600 text-white px-2 rounded"
+                    className="bg-blue-600 text-white px-2 rounded text-sm"
                   >
                     Confirm
                   </button>
@@ -159,6 +216,12 @@ export default function NumbersBacklogExplorer() {
             </div>
 
           ))}
+
+          {items.length === 0 && (
+            <div className="p-4 text-sm text-gray-500">
+              No backlog items
+            </div>
+          )}
 
         </div>
 
