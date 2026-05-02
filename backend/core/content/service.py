@@ -18,6 +18,9 @@ from utils.bigquery_utils import (
     get_bigquery_client,
 )
 
+from core.numbers.parsing import get_numbers_from_content
+from core.numbers.backlog_service import insert_backlog_numbers
+
 # ============================================================
 # TABLES
 # ============================================================
@@ -1362,7 +1365,7 @@ def publish_content(
     now_dt = datetime.now(timezone.utc)
 
     # ============================================================
-    # 1️⃣ CHECK STATUS + RÉCUP SOURCE_DATE
+    # 1️⃣ CHECK STATUS + SOURCE_DATE
     # ============================================================
 
     rows = query_bq(
@@ -1384,7 +1387,7 @@ def publish_content(
         raise ValueError("Content must be READY before publish")
 
     # ============================================================
-    # 2️⃣ DATE PAR DÉFAUT = SOURCE_DATE
+    # 2️⃣ DATE PAR DÉFAUT
     # ============================================================
 
     if published_at is None:
@@ -1406,7 +1409,7 @@ def publish_content(
             published_at = published_at.replace(tzinfo=timezone.utc)
 
     # ============================================================
-    # 4️⃣ DÉTERMINATION STATUS
+    # 4️⃣ STATUS
     # ============================================================
 
     if published_at <= now_dt:
@@ -1415,7 +1418,7 @@ def publish_content(
         status = "SCHEDULED"
 
     # ============================================================
-    # 5️⃣ UPDATE BQ
+    # 5️⃣ UPDATE CONTENT
     # ============================================================
 
     update_bq(
@@ -1429,20 +1432,34 @@ def publish_content(
     )
 
     # ============================================================
-    # 6️⃣ AUTO VECTORISATION (ON HOLD)
+    # 6️⃣ BACKLOG NUMBERS (🔥 KEY FEATURE)
     # ============================================================
 
     if status == "PUBLISHED":
-        # 🚧 ON HOLD — désactivé temporairement
-        # try:
-        #     from core.vectorization.content_vector_service import vectorize_content
-        #
-        #     print("🚀 AUTO VECTORIZE CONTENT (PUBLISH):", id_content)
-        #
-        #     vectorize_content(id_content)
-        #
-        # except Exception as e:
-        #     print("❌ VECTORISATION ERROR:", str(e))
+
+        try:
+            print("📊 Parsing numbers for content:", id_content)
+
+            chiffres = get_numbers_from_content(id_content)
+
+            if chiffres:
+                insert_backlog_numbers(
+                    parsed_numbers=chiffres,
+                    id_content=id_content
+                )
+                print(f"✅ {len(chiffres)} numbers inserted into backlog")
+
+            else:
+                print("ℹ️ No numbers found in content")
+
+        except Exception as e:
+            print("❌ BACKLOG INSERT ERROR:", str(e))
+
+    # ============================================================
+    # 7️⃣ VECTORISATION (ON HOLD)
+    # ============================================================
+
+    if status == "PUBLISHED":
         pass
 
     # ============================================================
