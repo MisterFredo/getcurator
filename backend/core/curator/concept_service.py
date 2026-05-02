@@ -1,57 +1,76 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
+from core.curator.service import build_user_filter
+
+# ============================================================
+# TABLES
+# ============================================================
 
 TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
 TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
 VIEW_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_ENRICHED"
-TABLE_USER_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
-
 
 # ============================================================
-# GET CONCEPTS (USER FILTERED)
+# LIST CONCEPTS (USER-AWARE)
 # ============================================================
 
-def get_concepts(user_id: str) -> List[Dict]:
+def get_curator_concepts(
+    user_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+) -> List[Dict]:
 
-    rows = query_bq(f"""
-        SELECT
-            c.ID_CONCEPT,
-            c.LABEL,
-            c.CATEGORY
-
-        FROM `{TABLE_CONCEPT}` c
-
-        WHERE c.IS_ACTIVE = TRUE
-
-        -- 🔐 uniquement concepts présents dans les contenus accessibles
+    universe_filter = ""
+    if universe_id:
+        universe_filter = """
         AND EXISTS (
             SELECT 1
-            FROM `{TABLE_CONTENT_CONCEPT}` cc
-            JOIN `{VIEW_CONTENT}` vc
-              ON vc.id_content = cc.ID_CONTENT
-
-            JOIN `{TABLE_USER_UNIVERSE}` uu
-              ON uu.ID_UNIVERSE IN (
-                  SELECT u.id_universe FROM UNNEST(vc.universes) u
-              )
-
-            WHERE cc.ID_CONCEPT = c.ID_CONCEPT
-              AND uu.ID_USER = @user_id
+            FROM UNNEST(c.universes) u
+            WHERE u.id_universe = @universe_id
         )
+        """
 
-        ORDER BY c.CATEGORY, c.LABEL
-    """, {
-        "user_id": user_id
-    })
+    sql = f"""
+    SELECT DISTINCT
+        con.ID_CONCEPT,
+        con.LABEL,
+        con.CATEGORY
+
+    FROM `{TABLE_CONCEPT}` con
+
+    WHERE con.IS_ACTIVE = TRUE
+
+    -- 🔥 IMPORTANT : filtrer via CONTENT (pas via JOIN IN)
+    AND EXISTS (
+        SELECT 1
+        FROM `{TABLE_CONTENT_CONCEPT}` cc
+        JOIN `{VIEW_CONTENT}` c
+          ON c.id_content = cc.ID_CONTENT
+
+        WHERE cc.ID_CONCEPT = con.ID_CONCEPT
+
+        {build_user_filter("c") if user_id else ""}
+
+        {universe_filter}
+    )
+
+    ORDER BY con.CATEGORY, con.LABEL
+    """
+
+    params = {
+        "user_id": user_id,
+        "universe_id": universe_id,
+    }
+
+    rows = query_bq(sql, params)
 
     return [
         {
-            "id": r["ID_CONCEPT"],
-            "label": r["LABEL"],
-            "category": r["CATEGORY"],
+            "id_concept": r.get("ID_CONCEPT"),
+            "title": r.get("LABEL"),
+            "category": r.get("CATEGORY"),
         }
         for r in rows
     ]
