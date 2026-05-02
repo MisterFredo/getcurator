@@ -111,11 +111,16 @@ def _get_entity_feed(
         n.published_at,
         n.news_type,
         n.topics,
+
         ARRAY<STRUCT<id_company STRING, name STRING>>[
           STRUCT(n.id_company, n.company_name)
         ] AS companies,
-        [] AS solutions
-        ARRAY<STRUCT<id_concept STRING, label STRING>>[] AS concepts,
+
+        [] AS solutions,
+
+        -- 🔥 AJOUT CORRECT
+        ARRAY<STRUCT<id_concept STRING, label STRING>>[] AS concepts
+
     FROM `{VIEW_NEWS}` n
     WHERE {where_clause_news}
     {user_filter_news}
