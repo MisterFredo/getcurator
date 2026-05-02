@@ -142,26 +142,7 @@ def get_backlog_feed(
         for r in rows
     ]
 
-def get_concepts():
 
-    rows = query_bq(f"""
-        SELECT
-            ID_CONCEPT,
-            LABEL,
-            CATEGORY
-        FROM `{TABLE_CONCEPT}`
-        WHERE IS_ACTIVE = TRUE
-        ORDER BY CATEGORY, LABEL
-    """)
-
-    return [
-        {
-            "id": r["ID_CONCEPT"],
-            "label": r["LABEL"],
-            "category": r["CATEGORY"],
-        }
-        for r in rows
-    ]
 
 # ============================================================
 # ADMIN (GLOBAL PANEL)
