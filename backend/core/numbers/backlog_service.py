@@ -5,7 +5,8 @@
 from typing import List, Dict, Optional
 
 from config import BQ_PROJECT, BQ_DATASET
-from utils.bigquery_utils import query_bq
+from utils.bigquery_utils import query_bq, get_bigquery_client
+from datetime import datetime, timezone
 
 from core.numbers.insight_service import build_numbers_prompt
 from utils.llm import run_llm
@@ -17,6 +18,12 @@ from utils.llm import run_llm
 
 TABLE_BACKLOG = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG"
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat()
+
 
 
 # ============================================================
@@ -144,6 +151,42 @@ def get_backlog_admin(
     """, params)
 
     return rows
+
+def insert_backlog_numbers(parsed_numbers, id_content):
+
+    client = get_bigquery_client()
+
+    rows = []
+
+    for p in parsed_numbers:
+
+        # 🔥 sécurité minimum
+        if p.get("value") is None:
+            continue
+
+        rows.append({
+            "ID_BACKLOG": None,  # auto / ou UUID si besoin
+            "ID_CONTENT": id_content,
+            "RAW_LINE": None,
+
+            "LABEL": p.get("label"),
+            "VALUE": str(p.get("value")),
+            "UNIT": p.get("unit"),
+
+            "ACTOR": p.get("actor"),
+            "MARKET": p.get("zone"),
+            "PERIOD": p.get("period"),
+
+            "DECISION": None,
+            "CONFIDENCE": None,
+            "CONTEXT": None,
+
+            "CREATED_AT": _now(),
+        })
+
+    if rows:
+        client.load_table_from_json(rows, TABLE_BACKLOG).result()
+
 
 # ============================================================
 # UPDATE DECISION (ADMIN ACTION)
