@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Request
-from typing import Optional
+from typing import List, Dict, Optional
 
 # ============================================================
 # CORE CONTENT SERVICES
