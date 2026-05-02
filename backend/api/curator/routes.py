@@ -22,7 +22,7 @@ from core.curator.numbers_service import (
     latest_curator_numbers,
 )
 
-from core.curator.concept_service import get_concepts
+from core.curator.concept_service import get_curator_concepts
 
 # 🔐 AUTH
 from utils.auth import get_user_id_from_request
