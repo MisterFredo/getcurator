@@ -223,27 +223,52 @@ def insert_backlog_numbers(parsed_numbers, id_content):
 
     client = get_bigquery_client()
 
-    # 🔥 CLEAN AVANT INSERT (évite doublons)
+    # ============================================================
+    # 1️⃣ CLEAN EXISTANT (PAR CONTENT)
+    # ============================================================
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("id_content", "STRING", id_content),
+        ]
+    )
+
     client.query(f"""
         DELETE FROM `{TABLE_BACKLOG}`
         WHERE ID_CONTENT = @id_content
-    """, {"id_content": id_content}).result()
+    """, job_config=job_config).result()
 
+    # ============================================================
+    # 2️⃣ DEDUP LOCAL (IMPORTANT)
+    # ============================================================
+
+    seen = set()
     rows = []
 
     for p in parsed_numbers:
 
-        if p.get("value") is None:
+        value = p.get("value")
+        label = p.get("label")
+
+        if value is None or not label:
             continue
 
+        # 🔥 clé simple de dédup
+        key = (label.strip().lower(), str(value))
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
         rows.append({
-            "ID_BACKLOG": str(uuid.uuid4()),  # 🔥 ICI
+            "ID_BACKLOG": str(uuid.uuid4()),
 
             "ID_CONTENT": id_content,
             "RAW_LINE": None,
 
-            "LABEL": p.get("label"),
-            "VALUE": str(p.get("value")),
+            "LABEL": label,
+            "VALUE": str(value),
             "UNIT": p.get("unit"),
 
             "ACTOR": p.get("actor"),
@@ -257,8 +282,14 @@ def insert_backlog_numbers(parsed_numbers, id_content):
             "CREATED_AT": _now(),
         })
 
+    # ============================================================
+    # 3️⃣ INSERT
+    # ============================================================
+
     if rows:
         client.load_table_from_json(rows, TABLE_BACKLOG).result()
+
+
 # ============================================================
 # UPDATE DECISION (ADMIN ACTION)
 # ============================================================
