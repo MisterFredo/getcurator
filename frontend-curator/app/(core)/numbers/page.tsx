@@ -14,6 +14,13 @@ type Universe = {
   label: string;
 };
 
+type Concept = {
+  id_concept: string;
+  title: string;
+};
+
+/* ========================================================= */
+
 export default function NumbersPage() {
   const LIMIT = 100;
 
@@ -22,16 +29,20 @@ export default function NumbersPage() {
 
   const [query, setQuery] = useState("");
 
-  /* 🔥 univers = IDENTIQUE feed */
+  /* 🔥 univers (comme feed) */
   const [universes, setUniverses] = useState<Universe[]>([]);
   const [activeUniverse, setActiveUniverse] = useState<string | null>(null);
+
+  /* 🔥 concepts (NEW) */
+  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [activeConcepts, setActiveConcepts] = useState<string[]>([]);
 
   /* selection */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   /* =========================================================
-     LOAD
+     LOAD NUMBERS
   ========================================================= */
 
   async function load(q?: string) {
@@ -44,10 +55,19 @@ export default function NumbersPage() {
 
       params.append("limit", String(LIMIT));
 
-      if (finalQuery) params.append("query", finalQuery);
+      if (finalQuery) params.append("q", finalQuery);
       if (activeUniverse) params.append("universe_id", activeUniverse);
 
-      const res = await api.get(`/numbers/feed/backlog?${params}`);
+      if (activeConcepts.length > 0) {
+        activeConcepts.forEach((c) =>
+          params.append("concept_ids", c)
+        );
+      }
+
+      // ✅ NEW ROUTE (curator)
+      const res = finalQuery
+        ? await api.get(`/curator/numbers?${params}`)
+        : await api.get(`/curator/numbers/latest?${params}`);
 
       setItems(res?.items ?? []);
 
@@ -60,7 +80,7 @@ export default function NumbersPage() {
   }
 
   /* =========================================================
-     UNIVERS (IDENTIQUE FEED)
+     LOAD UNIVERS
   ========================================================= */
 
   useEffect(() => {
@@ -76,10 +96,30 @@ export default function NumbersPage() {
     loadUniverses();
   }, []);
 
-  /* reload quand univers change */
+  /* =========================================================
+     LOAD CONCEPTS (NEW)
+  ========================================================= */
+
+  useEffect(() => {
+    async function loadConcepts() {
+      try {
+        const res = await api.get("/curator/concepts");
+        setConcepts(res?.items || []);
+      } catch (e) {
+        console.error("❌ concepts load error", e);
+      }
+    }
+
+    loadConcepts();
+  }, []);
+
+  /* =========================================================
+     RELOAD
+  ========================================================= */
+
   useEffect(() => {
     load();
-  }, [activeUniverse]);
+  }, [activeUniverse, activeConcepts]);
 
   /* =========================================================
      SELECTION
@@ -95,6 +135,18 @@ export default function NumbersPage() {
     );
 
     setIsPanelOpen(true);
+  }
+
+  /* =========================================================
+     CONCEPT TOGGLE
+  ========================================================= */
+
+  function toggleConcept(id: string) {
+    setActiveConcepts((prev) =>
+      prev.includes(id)
+        ? prev.filter((c) => c !== id)
+        : [...prev, id]
+    );
   }
 
   /* =========================================================
@@ -122,7 +174,7 @@ export default function NumbersPage() {
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
       {/* LEFT */}
-      <div className="xl:col-span-2 space-y-8">
+      <div className="xl:col-span-2 space-y-6">
 
         {/* HEADER */}
         <NumbersHeader
@@ -131,7 +183,9 @@ export default function NumbersPage() {
           onSearch={(q) => load(q)}
         />
 
-        {/* 🔥 UNIVERS (copie feed) */}
+        {/* =====================================================
+            UNIVERS FILTER
+        ===================================================== */}
         <div className="flex gap-2 flex-wrap">
 
           <button
@@ -161,6 +215,32 @@ export default function NumbersPage() {
 
         </div>
 
+        {/* =====================================================
+            CONCEPTS FILTER (NEW)
+        ===================================================== */}
+        <div className="flex gap-2 flex-wrap">
+
+          {concepts.map((c) => {
+
+            const active = activeConcepts.includes(c.id_concept);
+
+            return (
+              <button
+                key={c.id_concept}
+                onClick={() => toggleConcept(c.id_concept)}
+                className={`px-3 py-1 text-xs rounded border ${
+                  active
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-200"
+                }`}
+              >
+                {c.title}
+              </button>
+            );
+          })}
+
+        </div>
+
         {/* LOADING */}
         {loading && (
           <p className="text-sm text-gray-400">
@@ -172,7 +252,7 @@ export default function NumbersPage() {
         {!loading &&
           grouped.map(([title, groupItems]) => (
 
-            <section key={title} className="space-y-3">
+            <section key={title} className="space-y-2">
 
               <div className="flex justify-between items-center">
                 <div className="text-sm font-semibold">
