@@ -78,6 +78,7 @@ def get_backlog_admin(
     limit: int = 200,
     offset: int = 0,
     query: Optional[str] = None,
+    decision: Optional[str] = None,
 ) -> List[Dict]:
 
     conditions = ["TRUE"]
@@ -86,9 +87,25 @@ def get_backlog_admin(
         "offset": offset,
     }
 
+    # 🔍 SEARCH (label + actor)
     if query:
-        conditions.append("LOWER(b.LABEL) LIKE LOWER(@query)")
+        conditions.append("""
+            (
+                LOWER(b.LABEL) LIKE LOWER(@query)
+                OR LOWER(b.ACTOR) LIKE LOWER(@query)
+            )
+        """)
         params["query"] = f"%{query}%"
+
+    # 🔥 DECISION FILTER
+    if decision == "NULL":
+        conditions.append("b.DECISION IS NULL")
+
+    elif decision:
+        conditions.append("b.DECISION = @decision")
+        params["decision"] = decision
+
+    # 👉 si decision == "" → ALL → pas de filtre
 
     where_clause = " AND ".join(conditions)
 
@@ -100,7 +117,7 @@ def get_backlog_admin(
 
             b.RAW_LINE,
             b.LABEL,
-            b.VALUE,
+            SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
             b.UNIT,
 
             b.ACTOR,
@@ -121,12 +138,12 @@ def get_backlog_admin(
         WHERE {where_clause}
 
         ORDER BY b.CREATED_AT DESC
+
         LIMIT @limit
         OFFSET @offset
     """, params)
 
     return rows
-
 
 # ============================================================
 # UPDATE DECISION (ADMIN ACTION)
