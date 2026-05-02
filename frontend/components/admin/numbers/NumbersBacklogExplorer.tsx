@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
-/* ========================================================= */
-
 export default function NumbersBacklogExplorer() {
 
   const [items, setItems] = useState<any[]>([]);
@@ -14,16 +12,12 @@ export default function NumbersBacklogExplorer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [typeId, setTypeId] = useState("");
 
-  /* ========================================================= */
-
   async function load() {
-
     try {
-
       setLoading(true);
 
       const [res, typesRes] = await Promise.all([
-        api.get("/numbers/backlog/processed"),
+        api.get("/numbers/backlog"),
         api.get("/numbers/types"),
       ]);
 
@@ -41,7 +35,18 @@ export default function NumbersBacklogExplorer() {
     load();
   }, []);
 
-  /* ========================================================= */
+  async function handleIgnore(id: string) {
+    try {
+      await api.post(`/numbers/backlog/update/${id}`, {
+        decision: "IGNORE",
+      });
+
+      setItems(prev => prev.filter(i => i.id_backlog !== id));
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   async function handleCreate(item: any) {
 
@@ -53,21 +58,15 @@ export default function NumbersBacklogExplorer() {
     try {
 
       await api.post("/numbers/", {
-        label: item.LABEL,
-        value: item.VALUE,
-        unit: item.UNIT,
-        scale: null,
+        label: item.label,
+        value: item.value,
+        unit: item.unit,
         id_number_type: typeId,
-        zone: item.MARKET,
-        period: item.PERIOD,
-        source_id: null,
-
-        company_ids: [],
-        topic_ids: [],
-        solution_ids: [],
+        zone: item.zone,
+        period: item.period,
       });
 
-      setItems(prev => prev.filter(i => i.ID_BACKLOG !== item.ID_BACKLOG));
+      setItems(prev => prev.filter(i => i.id_backlog !== item.id_backlog));
       setSelectedId(null);
       setTypeId("");
 
@@ -75,8 +74,6 @@ export default function NumbersBacklogExplorer() {
       console.error(e);
     }
   }
-
-  /* ========================================================= */
 
   return (
 
@@ -92,60 +89,48 @@ export default function NumbersBacklogExplorer() {
 
         <div className="border rounded">
 
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_1fr_auto] text-xs bg-gray-100 p-2 font-semibold">
-            <div>Label</div>
-            <div>Value</div>
-            <div>Unit</div>
-            <div>Market</div>
-            <div>Period</div>
-            <div>Actor</div>
-            <div>Decision</div>
-            <div></div>
-          </div>
-
           {items.map((item) => (
 
-            <div key={item.ID_BACKLOG} className="border-t p-2 text-sm">
+            <div key={item.id_backlog} className="border-t p-3 text-sm space-y-1">
 
-              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_1fr_auto] items-center">
+              {/* CONTEXT */}
+              <div className="text-xs text-gray-500">
+                {item.context_title}
+              </div>
 
-                <div>{item.LABEL}</div>
-                <div>{item.VALUE}</div>
-                <div>{item.UNIT}</div>
-                <div>{item.MARKET}</div>
-                <div>{item.PERIOD}</div>
-                <div>{item.ACTOR}</div>
+              {/* DATA */}
+              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_2fr_auto] gap-2 items-center">
 
-                <div
-                  className={`text-xs font-medium ${
-                    item.DECISION === "KEEP"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {item.DECISION}
-                </div>
+                <div>{item.label}</div>
+                <div>{item.value}</div>
+                <div>{item.unit}</div>
+                <div>{item.zone}</div>
+                <div>{item.period}</div>
+                <div>{item.actor}</div>
 
                 <div className="flex gap-2">
 
-                  {item.DECISION === "KEEP" && (
-                    <button
-                      onClick={() => setSelectedId(item.ID_BACKLOG)}
-                      className="text-blue-600"
-                    >
-                      Create
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleIgnore(item.id_backlog)}
+                    className="text-red-600 text-xs"
+                  >
+                    Ignore
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedId(item.id_backlog)}
+                    className="text-blue-600 text-xs"
+                  >
+                    Create
+                  </button>
 
                 </div>
 
               </div>
 
-              {/* CREATE PANEL */}
+              {selectedId === item.id_backlog && (
 
-              {selectedId === item.ID_BACKLOG && (
-
-                <div className="mt-2 flex gap-2">
+                <div className="flex gap-2 mt-2">
 
                   <select
                     value={typeId}
@@ -174,12 +159,6 @@ export default function NumbersBacklogExplorer() {
             </div>
 
           ))}
-
-          {items.length === 0 && (
-            <div className="p-4 text-sm text-gray-500">
-              No backlog items
-            </div>
-          )}
 
         </div>
 
