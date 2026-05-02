@@ -3,31 +3,22 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 
+import NumberCard from "@/components/numbers/NumberCard";
 import NumbersSelectionPanel from "@/components/numbers/NumbersSelectionPanel";
 import NumbersHeader from "@/components/numbers/NumbersHeader";
-import NumbersContentGroup from "@/components/numbers/NumbersContentGroup";
 
 /* ========================================================= */
 
-type Concept = {
-  id_concept: string;
-  title: string;
-};
-
 type NumberItem = {
   id: string;
-  label?: string;
-  value?: number;
-  unit?: string;
-
-  zone?: string;
-  period?: string;
-  actor?: string;
-
   context_title?: string;
-  published_at?: string;
+  TYPE?: string;
+  [key: string]: any;
+};
 
-  concepts?: Concept[];
+type Universe = {
+  id_universe: string;
+  label: string;
 };
 
 /* ========================================================= */
@@ -39,8 +30,12 @@ export default function NumbersPage() {
   const [loading, setLoading] = useState(true);
 
   const [query, setQuery] = useState("");
-  const [conceptFilter, setConceptFilter] = useState("");
 
+  // 🔥 UNIVERS
+  const [universes, setUniverses] = useState<Universe[]>([]);
+  const [selectedUniverse, setSelectedUniverse] = useState<string>("");
+
+  // 🔥 SELECTION
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -51,20 +46,17 @@ export default function NumbersPage() {
   async function load(q?: string) {
     const finalQuery = (q ?? query)?.trim();
 
-    const mergedQuery = [finalQuery, conceptFilter]
-      .filter(Boolean)
-      .join(" ");
-
     setLoading(true);
 
     try {
-      const res = await api.get(
-        `/curator/numbers?limit=${LIMIT}${
-          mergedQuery
-            ? `&q=${encodeURIComponent(mergedQuery)}`
-            : ""
-        }`
-      );
+      const params = new URLSearchParams();
+
+      params.append("limit", String(LIMIT));
+
+      if (finalQuery) params.append("q", finalQuery);
+      if (selectedUniverse) params.append("universe_id", selectedUniverse);
+
+      const res = await api.get(`/curator/numbers?${params.toString()}`);
 
       setItems(res?.items ?? []);
     } catch (e) {
@@ -75,8 +67,22 @@ export default function NumbersPage() {
     }
   }
 
+  /* =========================================================
+     LOAD UNIVERS
+  ========================================================= */
+
+  async function loadUniverses() {
+    try {
+      const res = await api.get("/universe/list");
+      setUniverses(res?.universes || []);
+    } catch (e) {
+      console.error("❌ universe load error", e);
+    }
+  }
+
   useEffect(() => {
     load();
+    loadUniverses();
   }, []);
 
   /* =========================================================
@@ -96,7 +102,7 @@ export default function NumbersPage() {
   }
 
   /* =========================================================
-     GROUPING
+     GROUP BY CONTENT
   ========================================================= */
 
   function groupByContent(items: NumberItem[]) {
@@ -113,7 +119,6 @@ export default function NumbersPage() {
   }
 
   const grouped = groupByContent(items);
-  const hasContent = items.length > 0;
 
   /* ========================================================= */
 
@@ -121,7 +126,7 @@ export default function NumbersPage() {
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
       {/* LEFT */}
-      <div className="xl:col-span-2 space-y-10">
+      <div className="xl:col-span-2 space-y-8">
 
         {/* HEADER */}
         <NumbersHeader
@@ -130,18 +135,32 @@ export default function NumbersPage() {
           onSearch={(q) => load(q)}
         />
 
-        {/* CONCEPT FILTER */}
-        {conceptFilter && (
-          <div className="text-xs text-blue-600">
-            Filtre : {conceptFilter}
-            <button
-              className="ml-2"
-              onClick={() => setConceptFilter("")}
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {/* 🔥 UNIVERSE FILTER */}
+        <div className="flex gap-2 items-center">
+
+          <select
+            value={selectedUniverse}
+            onChange={(e) => {
+              setSelectedUniverse(e.target.value);
+            }}
+            className="border p-2 text-sm rounded"
+          >
+            <option value="">Tous les univers</option>
+            {universes.map((u) => (
+              <option key={u.id_universe} value={u.id_universe}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => load()}
+            className="bg-black text-white px-3 py-2 text-sm rounded"
+          >
+            Appliquer
+          </button>
+
+        </div>
 
         {/* COUNT */}
         {!loading && (
@@ -158,23 +177,55 @@ export default function NumbersPage() {
         )}
 
         {/* EMPTY */}
-        {!loading && !hasContent && (
+        {!loading && items.length === 0 && (
           <p className="text-sm text-gray-400">
             Aucun chiffre disponible.
           </p>
         )}
 
         {/* CONTENT */}
-        {!loading && hasContent &&
+        {!loading &&
           grouped.map(([title, groupItems]) => (
-            <NumbersContentGroup
-              key={title}
-              title={title}
-              items={groupItems}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              onSelectConcept={(c) => setConceptFilter(c)}
-            />
+
+            <section key={title} className="space-y-3">
+
+              {/* TITLE */}
+              <div className="flex items-center justify-between">
+
+                <div className="text-sm font-semibold text-gray-800">
+                  {title}
+                </div>
+
+                <div className="text-xs text-gray-400">
+                  {groupItems.length} chiffres
+                </div>
+
+              </div>
+
+              {/* GRID CARDS */}
+              <div className="
+                grid
+                grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
+                gap-3
+              ">
+
+                {groupItems.map((item) => {
+
+                  const selected = selectedIds.includes(item.id);
+
+                  return (
+                    <NumberCard
+                      key={item.id}
+                      item={item}
+                      selected={selected}
+                      onClick={() => toggleSelect(item)}
+                    />
+                  );
+                })}
+
+              </div>
+
+            </section>
           ))}
 
       </div>
