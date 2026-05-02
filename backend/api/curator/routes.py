@@ -22,6 +22,8 @@ from core.curator.numbers_service import (
     latest_curator_numbers,
 )
 
+from core.curator.concept_service import get_concepts
+
 # 🔐 AUTH
 from utils.auth import get_user_id_from_request
 
@@ -83,6 +85,7 @@ def search_numbers_route(
     limit: int = Query(50),
     offset: int = Query(0),
     universe_id: Optional[str] = Query(None),
+    concept_ids: Optional[List[str]] = Query(None),  # 🔥 NEW
 ):
     try:
         user_id = require_user(request)
@@ -93,6 +96,7 @@ def search_numbers_route(
             offset=offset,
             user_id=user_id,
             universe_id=universe_id,
+            concept_ids=concept_ids,  # 🔥 injecté
         )
 
         return {"items": items, "count": len(items)}
@@ -101,6 +105,18 @@ def search_numbers_route(
         print(f"❌ Numbers search error: {e}")
         raise HTTPException(status_code=500, detail="Internal error")
 
+@router.get("/concepts")
+def get_concepts_route(request: Request):
+    try:
+        user_id = require_user(request)
+
+        items = get_concepts(user_id)
+
+        return {"items": items}
+
+    except Exception as e:
+        print(f"❌ Concepts error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 # ============================================================
 # 🆕 LATEST NUMBERS
@@ -112,6 +128,7 @@ def latest_numbers_route(
     limit: int = Query(50),
     offset: int = Query(0),
     universe_id: Optional[str] = Query(None),
+    concept_ids: Optional[List[str]] = Query(None),  # 🔥 NEW
 ):
     try:
         user_id = require_user(request)
@@ -121,6 +138,7 @@ def latest_numbers_route(
             offset=offset,
             user_id=user_id,
             universe_id=universe_id,
+            concept_ids=concept_ids,
         )
 
         return {"items": items, "count": len(items)}
@@ -128,6 +146,8 @@ def latest_numbers_route(
     except Exception as e:
         print(f"❌ Latest numbers error: {e}")
         raise HTTPException(status_code=500, detail="Internal error")
+
+
 
 
 # ============================================================
@@ -142,13 +162,20 @@ def numbers_by_content_route(
     try:
         _ = require_user(request)
 
-        from core.numbers.backlog_service import get_backlog_feed
+        from core.curator.numbers_service import search_curator_numbers
 
-        # 👉 simple filter côté python (ok pour V1)
-        items = [
-            n for n in get_backlog_feed(limit=200)
-            if n.get("id_content") == content_id
-        ]
+        # 🔥 filtrage direct SQL (clean)
+        items = search_curator_numbers(
+            query=None,
+            limit=200,
+            offset=0,
+            user_id=None,  # optionnel ici
+            universe_id=None,
+            concept_ids=None,
+        )
+
+        # 🔥 filtre propre
+        items = [i for i in items if i.get("ID_CONTENT") == content_id]
 
         return {"items": items, "count": len(items)}
 
