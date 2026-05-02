@@ -12,6 +12,7 @@ from core.curator.service import build_user_filter
 
 VIEW_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_ENRICHED"
 TABLE_BACKLOG = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG"
+TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
 
 
 # ============================================================
@@ -24,6 +25,7 @@ def search_curator_numbers(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
+    concept_ids: Optional[List[str]] = None,
 ) -> List[Dict]:
 
     query = (query or "").strip()
@@ -39,6 +41,21 @@ def search_curator_numbers(
             SELECT 1
             FROM UNNEST(c.universes) u
             WHERE u.id_universe = @universe_id
+        )
+        """
+
+    # ============================================================
+    # 🧠 CONCEPT FILTER (STRUCTURANT)
+    # ============================================================
+
+    concept_filter = ""
+    if concept_ids:
+        concept_filter = f"""
+        AND EXISTS (
+            SELECT 1
+            FROM `{TABLE_CONTENT_CONCEPT}` cc
+            WHERE cc.ID_CONTENT = c.id_content
+              AND cc.ID_CONCEPT IN UNNEST(@concept_ids)
         )
         """
 
@@ -70,7 +87,7 @@ def search_curator_numbers(
                 WHERE LOWER(s.name) LIKE LOWER(CONCAT('%', @query, '%'))
             )
 
-            -- 🟣 CONCEPTS (🔥 IMPORTANT)
+            -- 🟣 CONCEPTS
             OR EXISTS (
                 SELECT 1
                 FROM UNNEST(c.concepts) con
@@ -95,7 +112,7 @@ def search_curator_numbers(
         b.LABEL,
         SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
         b.UNIT,
-        b.MARKET AS zone,
+        b.MARKET AS ZONE,
         b.PERIOD,
         b.ACTOR
 
@@ -111,11 +128,14 @@ def search_curator_numbers(
     -- 🔐 USER FILTER
     {build_user_filter("c") if user_id else ""}
 
-    -- 🌍 UNIVERSE FILTER
+    -- 🌍 UNIVERSE
     {universe_filter}
 
-    -- 🔥 CLEAN BACKLOG
-    AND (b.DECISION IS NULL)
+    -- 🧠 CONCEPTS
+    {concept_filter}
+
+    -- 🔥 BACKLOG CLEAN
+    AND b.DECISION IS NULL
 
     ORDER BY c.published_at DESC
 
@@ -129,6 +149,7 @@ def search_curator_numbers(
         "offset": offset,
         "user_id": user_id,
         "universe_id": universe_id,
+        "concept_ids": concept_ids,
     }
 
     rows = query_bq(sql, params)
@@ -137,7 +158,7 @@ def search_curator_numbers(
 
 
 # ============================================================
-# LATEST (NO QUERY)
+# LATEST
 # ============================================================
 
 def latest_curator_numbers(
@@ -145,6 +166,7 @@ def latest_curator_numbers(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
+    concept_ids: Optional[List[str]] = None,
 ) -> List[Dict]:
 
     return search_curator_numbers(
@@ -153,11 +175,12 @@ def latest_curator_numbers(
         offset=offset,
         user_id=user_id,
         universe_id=universe_id,
+        concept_ids=concept_ids,
     )
 
 
 # ============================================================
-# ENTITY (V2 PASSTHROUGH)
+# ENTITY (V2 ONLY — OFFICIAL NUMBERS)
 # ============================================================
 
 def get_curator_numbers_by_entity(
@@ -176,7 +199,7 @@ def get_curator_numbers_by_entity(
 
 
 # ============================================================
-# MAPPER
+# MAPPER (🔥 COMPAT FRONT)
 # ============================================================
 
 def _map_number_row(r: Dict) -> Dict:
@@ -185,18 +208,30 @@ def _map_number_row(r: Dict) -> Dict:
         return dt.isoformat() if dt else None
 
     return {
-        "id": r.get("ID_BACKLOG"),
-        "type": "number_backlog",
+        # 🔥 CRUCIAL → compat NumberCard
+        "ID_NUMBER": r.get("ID_BACKLOG"),
 
-        # 🔢 NUMBER
-        "label": r.get("LABEL"),
-        "value": r.get("VALUE"),
-        "unit": r.get("UNIT"),
-        "zone": r.get("zone"),
-        "period": r.get("PERIOD"),
-        "actor": r.get("ACTOR"),
+        "LABEL": r.get("LABEL"),
+        "VALUE": r.get("VALUE"),
+        "UNIT": r.get("UNIT"),
+        "SCALE": None,
 
-        # 🧠 CONTEXT
+        "ZONE": r.get("ZONE"),
+        "PERIOD": r.get("PERIOD"),
+
+        # 🔥 fallback actor → affichage badges
+        "ENTITIES": [
+            {
+                "ENTITY_TYPE": "actor",
+                "ENTITY_LABEL": r.get("ACTOR"),
+            }
+        ] if r.get("ACTOR") else [],
+
+        "TYPE": None,
+        "CATEGORY": None,
+
+        # 🧠 CONTEXTE
         "context_title": r.get("context_title"),
+        "ID_CONTENT": r.get("ID_CONTENT"),
         "published_at": fmt(r.get("published_at")),
     }
