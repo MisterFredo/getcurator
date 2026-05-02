@@ -121,7 +121,7 @@ def find_existing_numbers(
         entity_ids = solution_ids
 
     return query_bq(f"""
-        SELECT ID_NUMBER, VALUE, SCALE, UNIT
+        SELECT n.ID_NUMBER, n.VALUE, n.SCALE, n.UNIT
         FROM `{TABLE_NUMBERS}` n
         {join}
         WHERE {condition}
