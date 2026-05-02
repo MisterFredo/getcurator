@@ -156,16 +156,21 @@ def insert_backlog_numbers(parsed_numbers, id_content):
 
     client = get_bigquery_client()
 
+    # 🔥 CLEAN AVANT INSERT
+    client.query(f"""
+        DELETE FROM `{TABLE_BACKLOG}`
+        WHERE ID_CONTENT = @id_content
+    """, {"id_content": id_content}).result()
+
     rows = []
 
     for p in parsed_numbers:
 
-        # 🔥 sécurité minimum
         if p.get("value") is None:
             continue
 
         rows.append({
-            "ID_BACKLOG": None,  # auto / ou UUID si besoin
+            "ID_BACKLOG": None,
             "ID_CONTENT": id_content,
             "RAW_LINE": None,
 
@@ -186,7 +191,6 @@ def insert_backlog_numbers(parsed_numbers, id_content):
 
     if rows:
         client.load_table_from_json(rows, TABLE_BACKLOG).result()
-
 
 # ============================================================
 # UPDATE DECISION (ADMIN ACTION)
