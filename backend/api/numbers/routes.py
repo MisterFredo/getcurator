@@ -30,7 +30,7 @@ from core.numbers.insight_service import generate_numbers_insight
 # V1 SERVICES (BACKLOG) — 🔥 À CRÉER
 # ============================================================
 
-from core.numbers_backlog.service import (
+from core.numbers.backlog_service import (
     get_backlog_feed,
     get_backlog_admin,
     update_backlog_decision,
