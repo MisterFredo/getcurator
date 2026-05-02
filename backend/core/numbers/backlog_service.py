@@ -31,19 +31,56 @@ def _now():
 # FEED (CURATOR V1)
 # ============================================================
 
-def get_backlog_feed(limit: int = 50) -> List[Dict]:
+def get_backlog_feed(
+    limit: int = 50,
+    query: Optional[str] = None,
+    universe_id: Optional[str] = None,
+) -> List[Dict]:
+
+    conditions = ["TRUE"]
+    params = {"limit": limit}
+
+    # 🔍 SEARCH (label + actor + contenu)
+    if query:
+        conditions.append("""
+            (
+                LOWER(b.LABEL) LIKE LOWER(@query)
+                OR LOWER(b.ACTOR) LIKE LOWER(@query)
+                OR LOWER(c.TITLE) LIKE LOWER(@query)
+            )
+        """)
+        params["query"] = f"%{query}%"
+
+    # 🌍 UNIVERSE FILTER (comme feed)
+    if universe_id:
+        conditions.append(f"""
+        EXISTS (
+            SELECT 1
+            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE` su
+            WHERE su.ID_SOURCE = c.ID_SOURCE
+              AND su.ID_UNIVERSE = @universe_id
+        )
+        """)
+        params["universe_id"] = universe_id
+
+    # 🔥 IGNORE FILTER
+    conditions.append("(b.DECISION IS NULL OR b.DECISION != 'IGNORE')")
+
+    where_clause = " AND ".join(conditions)
 
     rows = query_bq(f"""
         SELECT
             b.ID_BACKLOG,
             b.ID_CONTENT,
             c.TITLE AS context_title,
+            c.ID_SOURCE,
 
             b.LABEL,
             SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
             b.UNIT,
 
-            b.MARKET AS zone,
+            b.ACTOR,
+            b.MARKET AS ZONE,
             b.PERIOD,
 
             b.CREATED_AT
@@ -53,30 +90,47 @@ def get_backlog_feed(limit: int = 50) -> List[Dict]:
         LEFT JOIN `{TABLE_CONTENT}` c
           ON b.ID_CONTENT = c.ID_CONTENT
 
-        WHERE b.DECISION IS NULL OR b.DECISION != 'IGNORE'
+        WHERE {where_clause}
 
         ORDER BY b.CREATED_AT DESC
         LIMIT @limit
-    """, {"limit": limit})
+    """, params)
 
     return [
         {
-            "id": r["ID_BACKLOG"],
-            "label": r.get("LABEL"),
-            "value": r.get("VALUE"),
-            "unit": r.get("UNIT"),
+            # 🔥 IMPORTANT → compat NumberCard / selection
+            "ID_NUMBER": r["ID_BACKLOG"],
 
-            "zone": r.get("zone"),
-            "period": r.get("PERIOD"),
+            # 🔹 DATA
+            "LABEL": r.get("LABEL"),
+            "VALUE": r.get("VALUE"),
+            "UNIT": r.get("UNIT"),
+            "SCALE": None,
 
+            "ZONE": r.get("ZONE"),
+            "PERIOD": r.get("PERIOD"),
+
+            # 🔹 ENTITIES (fallback ACTOR)
+            "ENTITIES": [
+                {
+                    "ENTITY_TYPE": "actor",
+                    "ENTITY_LABEL": r.get("ACTOR"),
+                }
+            ] if r.get("ACTOR") else [],
+
+            # 🔹 TYPE / CATEGORY (pas dispo en V1)
+            "TYPE": None,
+            "CATEGORY": None,
+
+            # 🔹 CONTEXT
             "context_title": r.get("context_title"),
+            "ID_CONTENT": r.get("ID_CONTENT"),
             "source_type": "content",
 
-            "created_at": r.get("CREATED_AT"),
+            "CREATED_AT": r.get("CREATED_AT"),
         }
         for r in rows
     ]
-
 
 # ============================================================
 # ADMIN (GLOBAL PANEL)
