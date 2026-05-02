@@ -1,17 +1,20 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
-from api.numbers.models import NumberInput
+from api.numbers.models import (
+    NumberInput,
+    NumberBacklogUpdate,
+)
 
 # ============================================================
-# CORE SERVICES
+# V2 SERVICES (OFFICIAL)
 # ============================================================
 
 from core.numbers.create import create_number
 from core.numbers.service import (
     list_numbers,
     delete_number,
-    delete_numbers_by_source,   # 🔥 AJOUT
+    delete_numbers_by_source,
     get_number_types,
 )
 from core.numbers.parsing import get_numbers_from_content
@@ -23,16 +26,25 @@ from core.numbers.search import (
 )
 from core.numbers.insight_service import generate_numbers_insight
 
+# ============================================================
+# V1 SERVICES (BACKLOG) — 🔥 À CRÉER
+# ============================================================
+
+from core.numbers_backlog.service import (
+    get_backlog_feed,
+    get_backlog_admin,
+    update_backlog_decision,
+    generate_backlog_insight,
+)
+
 router = APIRouter()
 
-
 # ============================================================
-# CREATE
+# CREATE (V2)
 # ============================================================
 
 @router.post("/")
 def create_route(payload: NumberInput):
-
     try:
         result = create_number(payload)
 
@@ -45,9 +57,8 @@ def create_route(payload: NumberInput):
     except Exception as e:
         raise HTTPException(400, f"Erreur création number : {e}")
 
-
 # ============================================================
-# ADMIN (CONTROL PANEL)
+# ADMIN V2 (OFFICIAL)
 # ============================================================
 
 @router.get("/admin")
@@ -58,7 +69,6 @@ def get_numbers_admin(
     type_id: Optional[str] = None,
     source_id: Optional[str] = None,
 ):
-
     try:
         items = get_numbers_admin_service(
             limit=limit,
@@ -68,113 +78,59 @@ def get_numbers_admin(
             source_id=source_id,
         )
 
-        return {
-            "status": "ok",
-            "items": items,
-        }
+        return {"status": "ok", "items": items}
 
     except Exception as e:
         raise HTTPException(400, f"Erreur admin numbers : {e}")
 
+# ============================================================
+# ADMIN V1 (BACKLOG)
+# ============================================================
+
+@router.get("/backlog")
+def get_numbers_backlog(
+    limit: int = 200,
+    offset: int = 0,
+    query: Optional[str] = None,
+):
+    try:
+        items = get_backlog_admin(
+            limit=limit,
+            offset=offset,
+            query=query,
+        )
+
+        return {"status": "ok", "items": items}
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur backlog numbers : {e}")
+
+@router.post("/backlog/update/{id_backlog}")
+def update_backlog(id_backlog: str, payload: NumberBacklogUpdate):
+    try:
+        update_backlog_decision(id_backlog, payload.decision)
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur update backlog : {e}")
 
 # ============================================================
-# DELETE
+# DELETE (V2)
 # ============================================================
 
 @router.delete("/{id_number}")
 def delete_route(id_number: str):
-
     try:
         delete_number(id_number)
 
-        return {
-            "status": "ok",
-            "deleted": True,
-            "id_number": id_number,
-        }
+        return {"status": "ok", "deleted": True}
 
     except Exception as e:
         raise HTTPException(400, f"Erreur suppression number : {e}")
 
-
-@router.delete("/by-source/{source_id}")
-def delete_by_source_route(source_id: str):
-
-    try:
-        delete_numbers_by_source(source_id)
-
-        return {
-            "status": "ok",
-            "deleted": True,
-            "source_id": source_id,
-        }
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur suppression par source : {e}")
-
-
 # ============================================================
-# FROM CONTENT (DEBUG)
-# ============================================================
-
-@router.get("/from-content/{id_content}")
-def from_content_route(id_content: str):
-
-    try:
-        items = get_numbers_from_content(id_content)
-
-        return {
-            "status": "ok",
-            "items": items,
-        }
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur parsing content : {e}")
-
-
-# ============================================================
-# TYPES
-# ============================================================
-
-@router.get("/types")
-def get_types():
-
-    try:
-        return get_number_types()
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur types numbers : {e}")
-
-
-# ============================================================
-# SEARCH (ADMIN SIMPLE)
-# ============================================================
-
-@router.get("/search")
-def search_numbers(
-    id_number_type: Optional[str] = None,
-    topic_id: Optional[str] = None,
-    company_id: Optional[str] = None,
-    solution_id: Optional[str] = None,
-    limit: int = 200,
-):
-
-    items = search_numbers_service(
-        id_number_type=id_number_type,
-        topic_id=topic_id,
-        company_id=company_id,
-        solution_id=solution_id,
-        limit=limit,
-    )
-
-    return {
-        "status": "ok",
-        "items": items,
-    }
-
-
-# ============================================================
-# CURATOR — FEED
+# CURATOR — FEED V2 (OFFICIAL)
 # ============================================================
 
 @router.get("/feed")
@@ -183,7 +139,6 @@ def get_numbers_feed(
     query: Optional[str] = None,
     universe_id: Optional[str] = Query(None),
 ):
-
     try:
         items = get_numbers_feed_service(
             limit=limit,
@@ -191,17 +146,29 @@ def get_numbers_feed(
             universe_id=universe_id,
         )
 
-        return {
-            "status": "ok",
-            "items": items,
-        }
+        return {"status": "ok", "items": items}
 
     except Exception as e:
         raise HTTPException(400, f"Erreur numbers feed : {e}")
 
+# ============================================================
+# CURATOR — FEED V1 (BACKLOG)
+# ============================================================
+
+@router.get("/feed/backlog")
+def get_numbers_feed_backlog(
+    limit: int = 50,
+):
+    try:
+        items = get_backlog_feed(limit=limit)
+
+        return {"status": "ok", "items": items}
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur backlog feed : {e}")
 
 # ============================================================
-# CURATOR — ENTITY
+# CURATOR — ENTITY (V2 ONLY)
 # ============================================================
 
 @router.get("/entity")
@@ -210,7 +177,6 @@ def numbers_by_entity(
     entity_id: str,
     limit: Optional[int] = None,
 ):
-
     try:
         items = get_numbers_for_entity(
             entity_type=entity_type,
@@ -218,30 +184,37 @@ def numbers_by_entity(
             limit=limit,
         )
 
-        return {
-            "status": "ok",
-            "items": items,
-        }
+        return {"status": "ok", "items": items}
 
     except Exception as e:
         raise HTTPException(400, f"Erreur numbers entity : {e}")
 
-
 # ============================================================
-# CURATOR — INSIGHT
+# INSIGHT V2
 # ============================================================
 
 @router.post("/insight")
 def numbers_insight(payload: dict):
-
     try:
         ids = payload.get("ids", [])
         insight = generate_numbers_insight(ids)
 
-        return {
-            "status": "ok",
-            "insight": insight,
-        }
+        return {"status": "ok", "insight": insight}
 
     except Exception as e:
         raise HTTPException(400, f"Erreur numbers insight : {e}")
+
+# ============================================================
+# INSIGHT V1 (BACKLOG)
+# ============================================================
+
+@router.post("/backlog/insight")
+def numbers_backlog_insight(payload: dict):
+    try:
+        ids = payload.get("ids", [])
+        insight = generate_backlog_insight(ids)
+
+        return {"status": "ok", "insight": insight}
+
+    except Exception as e:
+        raise HTTPException(400, f"Erreur backlog insight : {e}")
