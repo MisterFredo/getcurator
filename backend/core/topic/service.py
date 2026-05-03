@@ -151,6 +151,72 @@ def list_topics():
     ]
 
 
+def list_topics_for_user(user_id: str):
+
+    sql = f"""
+    SELECT
+        t.ID_TOPIC,
+        t.LABEL,
+        t.INSIGHT_FREQUENCY,
+
+        COALESCE(st.total, 0) AS NB_ANALYSES,
+        COALESCE(st.last_30_days, 0) AS DELTA_30D,
+
+        -- 🔥 univers filtrés user
+        ARRAY_AGG(DISTINCT u.LABEL IGNORE NULLS) AS universes
+
+    FROM `{TABLE_TOPIC}` t
+
+    -- 🔥 lien topic → univers
+    JOIN `{TABLE_TOPIC_UNIVERSE}` tu
+      ON tu.ID_TOPIC = t.ID_TOPIC
+
+    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
+      ON u.ID_UNIVERSE = tu.ID_UNIVERSE
+
+    -- 🔥 filtre user
+    JOIN `{TABLE_USER_UNIVERSE}` uu
+      ON uu.ID_UNIVERSE = tu.ID_UNIVERSE
+
+    -- 🔥 stats
+    LEFT JOIN `{VIEW_STATS_TOPIC}` st
+      ON st.id_topic = t.ID_TOPIC
+
+    WHERE
+        t.IS_ACTIVE = TRUE
+        AND uu.ID_USER = @user_id
+
+    GROUP BY
+        t.ID_TOPIC,
+        t.LABEL,
+        t.INSIGHT_FREQUENCY,
+        st.total,
+        st.last_30_days
+
+    HAVING COALESCE(st.total, 0) >= 1
+
+    ORDER BY t.LABEL
+    """
+
+    rows = query_bq(sql, {"user_id": user_id})
+
+    return {
+        "status": "ok",
+        "topics": [
+            {
+                "id_topic": r["ID_TOPIC"],
+                "label": r["LABEL"],
+                "insight_frequency": r.get("INSIGHT_FREQUENCY"),
+
+                "nb_analyses": r.get("NB_ANALYSES", 0),
+                "delta_30d": r.get("DELTA_30D", 0),
+
+                "universes": r.get("universes") or [],
+            }
+            for r in rows
+        ]
+    }
+
 # ============================================================
 # GET ONE TOPIC
 # ============================================================
