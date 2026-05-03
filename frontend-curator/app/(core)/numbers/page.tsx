@@ -259,12 +259,17 @@ export default function NumbersPage() {
                 {/* HEADER CLIQUABLE */}
                 <div
                   onClick={() => {
-                    if (firstItem?.context_id) {
-                      setSelectedItem({
-                        id: firstItem.context_id,
-                        type: "analysis",
-                      });
+                    console.log("CLICK HEADER", firstItem);
+
+                    if (!firstItem?.context_id) {
+                      console.warn("NO CONTEXT ID");
+                      return;
                     }
+
+                    setSelectedItem({
+                      id: firstItem.context_id,
+                      type: "analysis",
+                    });
                   }}
                   className="
                     group cursor-pointer
