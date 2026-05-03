@@ -15,12 +15,16 @@ type Props = {
 
   delta30d?: number;
 
-  universes?: string[]; // ✅ NEW
+  universes?: string[];
 
   lastRadar?: {
     id_insight: string;
     key_points: string[];
   };
+
+  // 🔥 NEW
+  isLoading?: boolean;
+  onClick?: () => void;
 };
 
 export default function CompanyCard({
@@ -32,6 +36,8 @@ export default function CompanyCard({
   delta30d,
   universes,
   lastRadar,
+  isLoading,
+  onClick,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,7 +50,15 @@ export default function CompanyCard({
   const totalContent =
     (totalAnalyses ?? 0) + (totalNews ?? 0);
 
+  /* =====================================================
+     HANDLERS
+  ===================================================== */
+
   function handleClick() {
+    if (isLoading) return; // 🔥 évite double click
+
+    if (onClick) onClick(); // 🔥 trigger loader parent
+
     openLeftDrawer("company", id);
 
     router.replace(
@@ -55,10 +69,16 @@ export default function CompanyCard({
 
   function handleRadarClick(e: React.MouseEvent) {
     e.stopPropagation();
-    openRightDrawer("radar", lastRadar!.id_insight);
+    if (lastRadar?.id_insight) {
+      openRightDrawer("radar", lastRadar.id_insight);
+    }
   }
 
   const mainUniverse = universes?.[0];
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <div
@@ -71,9 +91,18 @@ export default function CompanyCard({
         relative
       "
     >
-      {/* =====================================================
-          BADGES TOP
-      ===================================================== */}
+      {/* 🔥 LOADING OVERLAY */}
+      {isLoading && (
+        <div className="
+          absolute inset-0 z-20
+          bg-white/70 backdrop-blur-sm
+          flex items-center justify-center
+        ">
+          <div className="text-xs text-gray-500 animate-pulse">
+            Chargement...
+          </div>
+        </div>
+      )}
 
       {/* DELTA */}
       {typeof delta30d === "number" && delta30d > 0 && (
@@ -89,9 +118,7 @@ export default function CompanyCard({
         </div>
       )}
 
-      {/* =====================================================
-          VISUEL
-      ===================================================== */}
+      {/* VISUEL */}
       <div className="relative h-24 w-full bg-ratecard-light overflow-hidden">
         {visualUrl ? (
           <img
@@ -109,7 +136,7 @@ export default function CompanyCard({
           </div>
         )}
 
-        {/* RADAR OVERLAY (on garde) */}
+        {/* RADAR OVERLAY */}
         {lastRadar?.key_points?.[0] && (
           <div
             onClick={handleRadarClick}
@@ -128,9 +155,7 @@ export default function CompanyCard({
         )}
       </div>
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
+      {/* CONTENT */}
       <div className="p-3 space-y-1 text-center">
         <h3 className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:underline">
           {name}
@@ -151,7 +176,6 @@ export default function CompanyCard({
           </div>
         )}
 
-        {/* CTA radar */}
         {lastRadar && (
           <div
             onClick={handleRadarClick}
