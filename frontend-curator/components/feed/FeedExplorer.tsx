@@ -74,7 +74,7 @@ export default function FeedExplorer({
         selectedUniverse={selectedUniverse}
         onSelectUniverse={onSelectUniverse}
 
-        loading={loading} // 🔥 important
+        loading={loading} // ✅ AJOUT
       />
 
       {/* LIST */}
@@ -85,9 +85,10 @@ export default function FeedExplorer({
         loading={loading}
         hasMore={hasMore}
 
-        onLoadMore={!loading ? onLoadMore : () => {}}
-        onSelectItem={!loading ? onSelectItem : () => {}}
-        onClickBadge={!loading ? onClickBadge : () => {}}
+        onLoadMore={!loading ? onLoadMore : () => {}} // ✅ FIX
+
+        onSelectItem={onSelectItem}
+        onClickBadge={onClickBadge}
 
         loadingItemId={loadingItemId}
 
