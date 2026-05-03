@@ -142,10 +142,37 @@ def get_numbers_feed_service(
         n.ZONE,
         n.PERIOD,
         n.ENTITIES,
-        n.CREATED_AT
+        n.CREATED_AT,
+
+        -- 🔥 AJOUT CONTEXT
+        ANY_VALUE(b.ID_CONTENT) AS context_id,
+        ANY_VALUE(c.TITLE) AS context_title
 
     FROM `{VIEW_NUMBERS_CARDS}` n
+
+    -- 🔥 JOIN BACKLOG (liaison number → content)
+    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG` b
+      ON b.LABEL = n.LABEL
+
+    -- 🔥 JOIN CONTENT
+    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
+      ON c.ID_CONTENT = b.ID_CONTENT
+
     WHERE {where_sql}
+
+    GROUP BY
+        n.ID_NUMBER,
+        n.LABEL,
+        n.VALUE,
+        n.UNIT,
+        n.SCALE,
+        n.TYPE,
+        n.CATEGORY,
+        n.ZONE,
+        n.PERIOD,
+        n.ENTITIES,
+        n.CREATED_AT
+
     ORDER BY n.CREATED_AT DESC
     LIMIT @limit
     """
