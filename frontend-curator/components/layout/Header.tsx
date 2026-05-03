@@ -19,7 +19,7 @@ export default function Header({ user }: Props) {
 
       {/* LEFT */}
       <div className="font-semibold text-gray-900">
-        GetCurator : chercher, comprendre, analyser, partager.
+        GetCurator : Bringing clarity to complexity
       </div>
 
       {/* RIGHT */}
