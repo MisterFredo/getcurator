@@ -207,31 +207,44 @@ def _map_number_row(r: Dict) -> Dict:
     def fmt(dt):
         return dt.isoformat() if dt else None
 
+    # 🔥 SAFE ACCESS (BigQuery peut renvoyer en minuscule)
+    def get_key(row, *keys):
+        for k in keys:
+            if k in row and row.get(k) is not None:
+                return row.get(k)
+        return None
+
+    id_content = get_key(r, "ID_CONTENT", "id_content")
+
     return {
         # 🔥 CRUCIAL → compat NumberCard
-        "ID_NUMBER": r.get("ID_BACKLOG"),
+        "ID_NUMBER": get_key(r, "ID_BACKLOG", "id_backlog"),
 
-        "LABEL": r.get("LABEL"),
-        "VALUE": r.get("VALUE"),
-        "UNIT": r.get("UNIT"),
+        "LABEL": get_key(r, "LABEL", "label"),
+        "VALUE": get_key(r, "VALUE", "value"),
+        "UNIT": get_key(r, "UNIT", "unit"),
         "SCALE": None,
 
-        "ZONE": r.get("ZONE"),
-        "PERIOD": r.get("PERIOD"),
+        "ZONE": get_key(r, "ZONE", "zone"),
+        "PERIOD": get_key(r, "PERIOD", "period"),
 
         # 🔥 fallback actor → affichage badges
         "ENTITIES": [
             {
                 "ENTITY_TYPE": "actor",
-                "ENTITY_LABEL": r.get("ACTOR"),
+                "ENTITY_LABEL": get_key(r, "ACTOR", "actor"),
             }
-        ] if r.get("ACTOR") else [],
+        ] if get_key(r, "ACTOR", "actor") else [],
 
         "TYPE": None,
         "CATEGORY": None,
 
-        # 🧠 CONTEXTE
-        "context_title": r.get("context_title"),
-        "ID_CONTENT": r.get("ID_CONTENT"),
-        "published_at": fmt(r.get("published_at")),
+        # 🧠 CONTEXTE (clé critique pour le drawer)
+        "context_title": get_key(r, "context_title"),
+        "ID_CONTENT": id_content,
+
+        # 🔥 optionnel mais utile pour debug front
+        "context_id": id_content,
+
+        "published_at": fmt(get_key(r, "published_at")),
     }
