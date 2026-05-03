@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 type Topic = {
   id_topic: string;
   label: string;
-  topic_axis: string;
+  universes: string[];   // 🔥 NEW
   nb_analyses: number;
   delta_30d: number;
 };
@@ -20,7 +20,7 @@ type Topic = {
 type SortMode = "alpha" | "activity" | "growth";
 
 /* =========================================================
-   FETCH (🔥 FIX CRITIQUE ICI)
+   FETCH
 ========================================================= */
 
 async function fetchTopics(): Promise<Topic[]> {
@@ -33,16 +33,17 @@ async function fetchTopics(): Promise<Topic[]> {
     if (!res.ok) return [];
 
     const json = await res.json();
-
     if (json.status !== "ok") return [];
 
     return (json.topics || []).map((t: any) => ({
       id_topic: t.id_topic ?? t.ID_TOPIC,
       label: t.label ?? t.LABEL,
-      topic_axis:
-        t.topic_axis ??
-        t.TOPIC_AXIS ??
-        "Autres", // 🔥 fallback
+
+      // 🔥 CRITIQUE
+      universes: (t.universes || []).map((u: any) =>
+        typeof u === "string" ? u : u.label
+      ),
+
       nb_analyses: t.nb_analyses ?? t.NB_ANALYSES ?? 0,
       delta_30d: t.delta_30d ?? t.DELTA_30D ?? 0,
     }));
@@ -62,40 +63,36 @@ function sortTopics(items: Topic[], mode: SortMode) {
 
   switch (mode) {
     case "activity":
-      return copy.sort(
-        (a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0)
-      );
+      return copy.sort((a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0));
 
     case "growth":
-      return copy.sort(
-        (a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0)
-      );
+      return copy.sort((a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0));
 
     default:
       return copy.sort((a, b) =>
-        a.label.localeCompare(b.label, "fr", {
-          sensitivity: "base",
-        })
+        a.label.localeCompare(b.label, "fr", { sensitivity: "base" })
       );
   }
 }
 
 /* =========================================================
-   GROUP (🔥 SAFE)
+   GROUP BY UNIVERSE (🔥 FIX MAJEUR)
 ========================================================= */
 
-function groupByAxis(topics: Topic[], mode: SortMode) {
+function groupByUniverse(topics: Topic[], mode: SortMode) {
   const map: Record<string, Topic[]> = {};
 
   topics.forEach((t) => {
-    const axis = t.topic_axis || "Autres";
+    const universes = t.universes?.length ? t.universes : ["Autres"];
 
-    if (!map[axis]) map[axis] = [];
-    map[axis].push(t);
+    universes.forEach((u) => {
+      if (!map[u]) map[u] = [];
+      map[u].push(t);
+    });
   });
 
-  Object.keys(map).forEach((axis) => {
-    map[axis] = sortTopics(map[axis], mode);
+  Object.keys(map).forEach((u) => {
+    map[u] = sortTopics(map[u], mode);
   });
 
   return map;
@@ -108,10 +105,10 @@ function groupByAxis(topics: Topic[], mode: SortMode) {
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortMode, setSortMode] =
-    useState<SortMode>("activity");
+  const [sortMode, setSortMode] = useState<SortMode>("activity");
 
-  const [openAxis, setOpenAxis] = useState<Record<string, boolean>>({});
+  // 🔥 ACCORDÉON
+  const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
 
   const { openLeftDrawer } = useDrawer();
   const searchParams = useSearchParams();
@@ -121,6 +118,7 @@ export default function TopicsPage() {
   /* ---------------------------------------------------------
      LOAD
   --------------------------------------------------------- */
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -135,6 +133,7 @@ export default function TopicsPage() {
   /* ---------------------------------------------------------
      DRAWER
   --------------------------------------------------------- */
+
   useEffect(() => {
     const topicId = searchParams.get("topic_id");
 
@@ -150,8 +149,9 @@ export default function TopicsPage() {
   }, [searchParams, openLeftDrawer]);
 
   /* ---------------------------------------------------------
-     AUTO OPEN AXIS
+     AUTO OPEN UNIVERSE
   --------------------------------------------------------- */
+
   useEffect(() => {
     const topicId = searchParams.get("topic_id");
     if (!topicId) return;
@@ -159,11 +159,12 @@ export default function TopicsPage() {
     const topic = topics.find((t) => t.id_topic === topicId);
     if (!topic) return;
 
-    const axis = topic.topic_axis || "Autres";
+    const universe = topic.universes?.[0];
+    if (!universe) return;
 
-    setOpenAxis((prev) => ({
+    setOpenUniverses((prev) => ({
       ...prev,
-      [axis]: true,
+      [universe]: true,
     }));
   }, [topics, searchParams]);
 
@@ -171,10 +172,10 @@ export default function TopicsPage() {
      HELPERS
   --------------------------------------------------------- */
 
-  function toggleAxis(axis: string) {
-    setOpenAxis((prev) => ({
+  function toggleUniverse(u: string) {
+    setOpenUniverses((prev) => ({
       ...prev,
-      [axis]: !prev[axis],
+      [u]: !prev[u],
     }));
   }
 
@@ -182,7 +183,7 @@ export default function TopicsPage() {
      DATA
   --------------------------------------------------------- */
 
-  const grouped = groupByAxis(topics, sortMode);
+  const grouped = groupByUniverse(topics, sortMode);
   const hasContent = topics.length > 0;
 
   /* =========================================================
@@ -246,13 +247,13 @@ export default function TopicsPage() {
       {!loading && hasContent &&
         Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([axis, items]) => (
+          .map(([universe, items]) => (
 
-            <section key={axis} className="space-y-2">
+            <section key={universe} className="space-y-2">
 
               {/* HEADER */}
               <div
-                onClick={() => toggleAxis(axis)}
+                onClick={() => toggleUniverse(universe)}
                 className="
                   flex items-center justify-between
                   cursor-pointer
@@ -262,24 +263,22 @@ export default function TopicsPage() {
                 "
               >
                 <h2 className="text-xs font-semibold uppercase text-gray-500">
-                  {axis}
+                  {universe}
                 </h2>
 
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span>{items.length}</span>
-                  <span
-                    className={`
-                      transition-transform
-                      ${openAxis[axis] ? "rotate-90" : ""}
-                    `}
-                  >
+                  <span className={`
+                    transition-transform
+                    ${openUniverses[universe] ? "rotate-90" : ""}
+                  `}>
                     ▶
                   </span>
                 </div>
               </div>
 
               {/* GRID */}
-              {openAxis[axis] && (
+              {openUniverses[universe] && (
                 <div className="pt-2">
                   <div className="
                     grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8
