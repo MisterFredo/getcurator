@@ -20,6 +20,7 @@ from utils.bigquery_utils import (
 
 from core.numbers.parsing import get_numbers_from_content
 from core.numbers.backlog_service import insert_backlog_numbers
+from core.numbers.parsing import get_numbers_from_content_clean
 
 # ============================================================
 # TABLES
