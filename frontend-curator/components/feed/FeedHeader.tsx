@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /* ========================================================= */
 
 type Universe = {
   id: string;
   label: string;
-  count?: number; // 🔥 optionnel
+  count?: number;
 };
 
 type Props = {
@@ -18,6 +18,8 @@ type Props = {
   universes: Universe[];
   selectedUniverse: string | null;
   onSelectUniverse: (id: string | null) => void;
+
+  loading?: boolean; // ✅ AJOUT
 };
 
 /* ========================================================= */
@@ -29,10 +31,18 @@ export default function FeedHeader({
   universes,
   selectedUniverse,
   onSelectUniverse,
+  loading = false, // ✅ default safe
 }: Props) {
   const [input, setInput] = useState(query);
 
+  // 🔥 sync input quand query change (important UX)
+  useEffect(() => {
+    setInput(query);
+  }, [query]);
+
   function triggerSearch() {
+    if (loading) return; // ✅ bloque double clic
+
     const value = input.trim();
     setQuery(value);
     onSearch();
@@ -46,9 +56,8 @@ export default function FeedHeader({
       ===================================================== */}
       <div className="flex gap-2 overflow-x-auto scrollbar-none px-1">
 
-        {/* TOUS */}
         <button
-          onClick={() => onSelectUniverse(null)}
+          onClick={() => !loading && onSelectUniverse(null)}
           className={`
             flex items-center gap-1
             whitespace-nowrap
@@ -58,19 +67,19 @@ export default function FeedHeader({
                 ? "bg-black text-white border-black shadow-sm"
                 : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
             }
+            ${loading ? "opacity-50 cursor-not-allowed" : ""}
           `}
         >
           Tous
         </button>
 
-        {/* UNIVERS */}
         {universes.map((u) => {
           const active = selectedUniverse === u.id;
 
           return (
             <button
               key={u.id}
-              onClick={() => onSelectUniverse(u.id)}
+              onClick={() => !loading && onSelectUniverse(u.id)}
               className={`
                 flex items-center gap-1
                 whitespace-nowrap
@@ -80,11 +89,11 @@ export default function FeedHeader({
                     ? "bg-black text-white border-black shadow-sm scale-[1.02]"
                     : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                 }
+                ${loading ? "opacity-50 cursor-not-allowed" : ""}
               `}
             >
               {u.label}
 
-              {/* 🔥 COUNT */}
               {u.count !== undefined && (
                 <span
                   className={`
@@ -111,6 +120,7 @@ export default function FeedHeader({
 
         <input
           value={input}
+          disabled={loading} // ✅ important
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") triggerSearch();
@@ -124,20 +134,23 @@ export default function FeedHeader({
             text-sm
             bg-white
             focus:outline-none focus:ring-2 focus:ring-black
+            disabled:opacity-50
           "
         />
 
         <button
           onClick={triggerSearch}
+          disabled={loading} // ✅ clé
           className="
             px-4 py-2
             rounded-lg
             bg-black text-white
             text-sm
             hover:opacity-90 transition
+            disabled:opacity-50 disabled:cursor-not-allowed
           "
         >
-          Rechercher
+          {loading ? "..." : "Rechercher"} {/* ✅ feedback simple */}
         </button>
 
       </div>
