@@ -49,25 +49,21 @@ export default function FeedRow({
   ========================================================= */
 
   const badges: FeedBadge[] = [
-    // 🔥 UNIVERS EN PREMIER
     ...universes.map((u: any) => ({
       id: u.id_universe,
       label: u.label,
       type: "universe" as const,
     })),
-
     ...companies.map((c: any) => ({
       id: c.id_company,
       label: c.name,
       type: "company" as const,
     })),
-
     ...topics.map((t: any) => ({
       id: t.id_topic,
       label: t.label,
       type: "topic" as const,
     })),
-
     ...solutions.map((s: any) => ({
       id: s.id_solution,
       label: s.name,
@@ -76,13 +72,23 @@ export default function FeedRow({
   ];
 
   /* =========================================================
+     DEDUP BADGES
+  ========================================================= */
+
+  const uniqueBadges: FeedBadge[] = Array.from(
+    new Map(
+      badges.map((b) => [`${b.type}-${b.id || b.label}`, b])
+    ).values()
+  );
+
+  /* =========================================================
      BADGE STYLE
   ========================================================= */
 
   function getBadgeClass(type?: string) {
     switch (type) {
       case "universe":
-        return "bg-black text-white"; // 🔥 fort visuellement
+        return "bg-black text-white";
 
       case "company":
         return "bg-blue-50 text-blue-600 border border-blue-100";
@@ -102,16 +108,19 @@ export default function FeedRow({
 
   return (
     <article
-      onClick={onClick}
+      onClick={!loading ? onClick : undefined}
       className={`
         cursor-pointer
         px-4 py-4
         transition
-        ${loading ? "opacity-50" : "hover:bg-gray-50"}
+        ${
+          loading
+            ? "opacity-50 pointer-events-none"
+            : "hover:bg-gray-50"
+        }
       `}
     >
       <div className="flex gap-4 items-start">
-
         <div className="flex-1 space-y-2">
 
           {/* META */}
@@ -127,15 +136,15 @@ export default function FeedRow({
             </div>
           </div>
 
-          {/* 🔥 BADGES UNIFIÉS */}
-          {badges.length > 0 && (
+          {/* BADGES */}
+          {uniqueBadges.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {badges.map((b, i) => (
+              {uniqueBadges.map((b, i) => (
                 <button
                   key={`${b.type}-${b.id || b.label}-${i}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onClickBadge?.(b);
+                    if (!loading) onClickBadge?.(b);
                   }}
                   className={`
                     px-2 py-0.5 text-[10px] rounded-full uppercase tracking-wide
