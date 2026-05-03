@@ -96,21 +96,39 @@ def list_topics():
             t.LABEL,
             t.INSIGHT_FREQUENCY,
 
+            -- 🔥 UNIVERS PROPRE
             ARRAY_AGG(
-                STRUCT(u.ID_UNIVERSE, u2.LABEL)
-            ) AS UNIVERS
+                DISTINCT STRUCT(
+                    u.ID_UNIVERSE AS id_universe,
+                    u2.LABEL AS label
+                )
+            ) AS universes,
+
+            -- 🔥 STATS
+            COALESCE(s.total, 0) AS nb_analyses,
+            COALESCE(s.last_30_days, 0) AS delta_30d
 
         FROM `{TABLE_TOPIC}` t
 
+        -- UNIVERS
         LEFT JOIN `{TABLE_TOPIC_UNIVERSE}` u
           ON u.ID_TOPIC = t.ID_TOPIC
 
         LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u2
           ON u.ID_UNIVERSE = u2.ID_UNIVERSE
 
+        -- 🔥 STATS JOIN
+        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_TOPIC` s
+          ON s.id_topic = t.ID_TOPIC
+
         WHERE COALESCE(t.IS_ACTIVE, TRUE) = TRUE
 
-        GROUP BY t.ID_TOPIC, t.LABEL, t.INSIGHT_FREQUENCY
+        GROUP BY
+            t.ID_TOPIC,
+            t.LABEL,
+            t.INSIGHT_FREQUENCY,
+            s.total,
+            s.last_30_days
 
         ORDER BY t.LABEL
     """
@@ -123,21 +141,20 @@ def list_topics():
             "label": r["LABEL"],
             "insight_frequency": r.get("INSIGHT_FREQUENCY"),
 
+            "nb_analyses": r.get("nb_analyses", 0),
+            "delta_30d": r.get("delta_30d", 0),
+
             "universes": [
                 {
-                    "id_universe": u["ID_UNIVERSE"],
-                    "label": u["LABEL"],
+                    "id_universe": u["id_universe"],
+                    "label": u["label"],
                 }
-                for u in (r.get("UNIVERS") or [])
-                if u["ID_UNIVERSE"]
+                for u in (r.get("universes") or [])
+                if u.get("id_universe")
             ],
         }
         for r in rows
     ]
-
-# ============================================================
-# GET ONE TOPIC
-# ============================================================
 # ============================================================
 # GET ONE TOPIC
 # ============================================================
