@@ -10,7 +10,6 @@ from core.company.service import get_company
 # TABLES / VIEWS
 # ============================================================
 
-VIEW_NEWS = f"{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_ENRICHED"
 VIEW_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_ENRICHED"
 
 VIEW_STATS_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_COMPANY"
@@ -24,11 +23,10 @@ TABLE_USER_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
 
 
 # ============================================================
-# 🔥 GENERIC FEED BUILDER
+# 🔥 GENERIC FEED BUILDER (CONTENT ONLY)
 # ============================================================
 
 def _get_entity_feed(
-    where_clause_news: str,
     where_clause_content: str,
     params: Dict,
     limit: int = 50,
@@ -38,26 +36,13 @@ def _get_entity_feed(
 ) -> List[Dict]:
 
     # ============================================================
-    # 🔐 USER FILTER (COMPANY → UNIVERS)
+    # 🔐 USER FILTER
     # ============================================================
 
-    user_filter_news = ""
-    user_filter_content = ""
+    user_filter = ""
 
     if user_id:
-
-        user_filter_news = f"""
-        AND EXISTS (
-            SELECT 1
-            FROM `{TABLE_COMPANY_UNIVERSE}` cu
-            JOIN `{TABLE_USER_UNIVERSE}` uu
-              ON uu.ID_UNIVERSE = cu.ID_UNIVERSE
-            WHERE uu.ID_USER = @user_id
-              AND cu.ID_COMPANY = n.id_company
-        )
-        """
-
-        user_filter_content = f"""
+        user_filter = f"""
         AND EXISTS (
             SELECT 1
             FROM UNNEST(c.companies) comp
@@ -70,24 +55,13 @@ def _get_entity_feed(
         """
 
     # ============================================================
-    # 🌍 UNIVERSE FILTER (UI FILTER)
+    # 🌍 UNIVERSE FILTER
     # ============================================================
 
-    universe_filter_news = ""
-    universe_filter_content = ""
+    universe_filter = ""
 
     if universe_id:
-
-        universe_filter_news = f"""
-        AND EXISTS (
-            SELECT 1
-            FROM `{TABLE_COMPANY_UNIVERSE}` cu
-            WHERE cu.ID_COMPANY = n.id_company
-              AND cu.ID_UNIVERSE = @universe_id
-        )
-        """
-
-        universe_filter_content = f"""
+        universe_filter = f"""
         AND EXISTS (
             SELECT 1
             FROM UNNEST(c.companies) comp
@@ -102,33 +76,6 @@ def _get_entity_feed(
     # ============================================================
 
     sql = f"""
-    -- NEWS
-    SELECT
-        n.id_news AS id,
-        'news' AS type,
-        n.title,
-        n.excerpt,
-        n.published_at,
-        n.news_type,
-        n.topics,
-
-        ARRAY<STRUCT<id_company STRING, name STRING>>[
-          STRUCT(n.id_company, n.company_name)
-        ] AS companies,
-
-        [] AS solutions,
-
-        -- 🔥 AJOUT CORRECT
-        ARRAY<STRUCT<id_concept STRING, label STRING>>[] AS concepts
-
-    FROM `{VIEW_NEWS}` n
-    WHERE {where_clause_news}
-    {user_filter_news}
-    {universe_filter_news}
-
-    UNION ALL
-
-    -- CONTENT
     SELECT
         c.id_content AS id,
         'analysis' AS type,
@@ -139,12 +86,14 @@ def _get_entity_feed(
         c.topics,
         c.companies,
         c.solutions
-    FROM `{VIEW_CONTENT}` c
-    WHERE {where_clause_content}
-    {user_filter_content}
-    {universe_filter_content}
 
-    ORDER BY published_at DESC
+    FROM `{VIEW_CONTENT}` c
+
+    WHERE {where_clause_content}
+    {user_filter}
+    {universe_filter}
+
+    ORDER BY c.published_at DESC
     LIMIT @limit
     OFFSET @offset
     """
@@ -177,7 +126,6 @@ def get_company_feed(
 ) -> List[Dict]:
 
     return _get_entity_feed(
-        where_clause_news="n.id_company = @company_id",
         where_clause_content="""
             EXISTS (
                 SELECT 1
@@ -239,13 +187,6 @@ def get_topic_feed(
 ) -> List[Dict]:
 
     return _get_entity_feed(
-        where_clause_news="""
-            EXISTS (
-                SELECT 1
-                FROM UNNEST(n.topics) t
-                WHERE t.id_topic = @topic_id
-            )
-        """,
         where_clause_content="""
             EXISTS (
                 SELECT 1
@@ -315,7 +256,6 @@ def get_solution_feed(
 ) -> List[Dict]:
 
     return _get_entity_feed(
-        where_clause_news="FALSE",
         where_clause_content="""
             EXISTS (
                 SELECT 1
@@ -399,7 +339,7 @@ def _map_feed_row(r: Dict):
         "title": r.get("title"),
         "excerpt": r.get("excerpt"),
         "published_at": fmt(r.get("published_at")),
-        "news_type": r.get("news_type"),
+        "news_type": None,
         "topics": r.get("topics") or [],
         "companies": r.get("companies") or [],
         "solutions": r.get("solutions") or [],
