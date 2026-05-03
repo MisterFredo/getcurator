@@ -1357,7 +1357,6 @@ def archive_content(id_content: str):
 # PUBLISH CONTENT
 # ============================================================
 
-from core.numbers.parsing import get_numbers_from_content_clean
 
 def publish_content(
     id_content: str,
