@@ -261,13 +261,13 @@ export default function NumbersPage() {
                   onClick={() => {
                     console.log("CLICK HEADER", firstItem);
 
-                    if (!firstItem?.context_id) {
+                    if (firstItem?.ID_CONTENT) {
                       console.warn("NO CONTEXT ID");
                       return;
                     }
 
                     setSelectedItem({
-                      id: firstItem.context_id,
+                      id: firstItem.ID_CONTENT,
                       type: "analysis",
                     });
                   }}
