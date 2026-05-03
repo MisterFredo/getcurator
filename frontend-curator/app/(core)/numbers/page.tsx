@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import NumberCard from "@/components/numbers/NumberCard";
 import NumbersSelectionPanel from "@/components/numbers/NumbersSelectionPanel";
 import NumbersHeader from "@/components/numbers/NumbersHeader";
-import AnalysisDrawer from "@/components/drawers/AnalysisDrawer"; // 🔥 NEW
+import AnalysisDrawer from "@/components/drawers/AnalysisDrawer";
 
 /* ========================================================= */
 
@@ -30,23 +30,23 @@ export default function NumbersPage() {
 
   const [query, setQuery] = useState("");
 
-  /* 🔥 univers (comme feed) */
+  /* UNIVERS */
   const [universes, setUniverses] = useState<Universe[]>([]);
   const [activeUniverse, setActiveUniverse] = useState<string | null>(null);
 
-  /* 🔥 concepts (NEW) */
+  /* CONCEPTS */
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [activeConcepts, setActiveConcepts] = useState<string[]>([]);
 
-  /* selection */
+  /* SELECTION */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  /* 🔥 NEW : drawer */
-  const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
+  /* 🔥 DRAWER (aligné feed) */
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   /* =========================================================
-     LOAD NUMBERS
+     LOAD
   ========================================================= */
 
   async function load(q?: string) {
@@ -153,7 +153,7 @@ export default function NumbersPage() {
   }
 
   /* =========================================================
-     GROUP BY CONTENT
+     GROUP
   ========================================================= */
 
   function groupByContent(items: any[]) {
@@ -161,7 +161,6 @@ export default function NumbersPage() {
 
     items.forEach((item) => {
       const key = item.context_title || "Autres";
-
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
@@ -179,72 +178,84 @@ export default function NumbersPage() {
       {/* LEFT */}
       <div className="xl:col-span-2 space-y-6">
 
-        {/* HEADER */}
+        {/* =====================================================
+            UNIVERS (style feed)
+        ===================================================== */}
+        <div className="flex gap-2 overflow-x-auto px-1">
+
+          <button
+            onClick={() => setActiveUniverse(null)}
+            className={`
+              px-3 py-1.5 rounded-full text-xs border
+              ${
+                activeUniverse === null
+                  ? "bg-black text-white border-black"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }
+            `}
+          >
+            Tous
+          </button>
+
+          {universes.map((u) => {
+            const active = activeUniverse === u.id_universe;
+
+            return (
+              <button
+                key={u.id_universe}
+                onClick={() => setActiveUniverse(u.id_universe)}
+                className={`
+                  px-3 py-1.5 rounded-full text-xs border
+                  ${
+                    active
+                      ? "bg-black text-white border-black"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  }
+                `}
+              >
+                {u.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* SEARCH */}
         <NumbersHeader
           query={query}
           setQuery={setQuery}
           onSearch={(q) => load(q)}
         />
 
-        {/* UNIVERS */}
-        <div className="flex gap-2 flex-wrap">
-
-          <button
-            onClick={() => setActiveUniverse(null)}
-            className={`px-3 py-1 text-xs rounded ${
-              !activeUniverse
-                ? "bg-black text-white"
-                : "bg-gray-100"
-            }`}
-          >
-            Tous
-          </button>
-
-          {universes.map((u) => (
-            <button
-              key={u.id_universe}
-              onClick={() => setActiveUniverse(u.id_universe)}
-              className={`px-3 py-1 text-xs rounded ${
-                activeUniverse === u.id_universe
-                  ? "bg-black text-white"
-                  : "bg-gray-100"
-              }`}
-            >
-              {u.label}
-            </button>
-          ))}
-
-        </div>
-
-        {/* CONCEPTS */}
+        {/* =====================================================
+            CONCEPTS (sobre)
+        ===================================================== */}
         <div className="flex gap-2 flex-wrap">
 
           {concepts.map((c) => {
-
             const active = activeConcepts.includes(c.id_concept);
 
             return (
               <button
                 key={c.id_concept}
                 onClick={() => toggleConcept(c.id_concept)}
-                className={`px-3 py-1 text-xs rounded border transition ${
-                  active
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100"
-                }`}
+                className={`
+                  px-3 py-1 text-xs rounded-full border transition
+                  ${
+                    active
+                      ? "bg-gray-800 text-white border-gray-800"
+                      : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                  }
+                `}
               >
                 {c.title}
               </button>
             );
           })}
-
         </div>
 
         {/* LOADING */}
         {loading && (
-          <p className="text-sm text-gray-400">
-            Chargement...
-          </p>
+          <p className="text-sm text-gray-400">Chargement...</p>
         )}
 
         {/* CONTENT */}
@@ -257,16 +268,14 @@ export default function NumbersPage() {
 
                 {/* 🔥 TITRE CLIQUABLE */}
                 <div
-                  className="
-                    flex items-center gap-2
-                    text-sm font-semibold
-                    cursor-pointer
-                    group
-                  "
+                  className="text-sm font-semibold cursor-pointer group flex items-center gap-2"
                   onClick={() => {
                     const firstItem = groupItems[0];
                     if (firstItem?.context_id) {
-                      setSelectedContentId(firstItem.context_id);
+                      setSelectedItem({
+                        id: firstItem.context_id,
+                        type: "analysis",
+                      });
                     }
                   }}
                 >
@@ -274,7 +283,7 @@ export default function NumbersPage() {
                     {title}
                   </span>
 
-                  <span className="text-gray-400 group-hover:text-gray-700 transition">
+                  <span className="text-gray-400 group-hover:text-gray-700">
                     →
                   </span>
                 </div>
@@ -285,11 +294,7 @@ export default function NumbersPage() {
 
               </div>
 
-              <div className="
-                grid
-                grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
-                gap-3
-              ">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {groupItems.map((item) => {
 
                   const selected = selectedIds.includes(item.ID_NUMBER);
@@ -322,10 +327,10 @@ export default function NumbersPage() {
       )}
 
       {/* 🔥 DRAWER */}
-      {selectedContentId && (
+      {selectedItem && (
         <AnalysisDrawer
-          id={selectedContentId}
-          onClose={() => setSelectedContentId(null)}
+          id={selectedItem.id}
+          onClose={() => setSelectedItem(null)}
         />
       )}
 
