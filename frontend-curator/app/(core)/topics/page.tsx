@@ -12,8 +12,7 @@ export const dynamic = "force-dynamic";
 type Topic = {
   id_topic: string;
   label: string;
-
-  universe: string; // 🔥 1:1 simplifié
+  universe: string;
 
   nb_analyses: number;
   delta_30d: number;
@@ -62,7 +61,6 @@ async function fetchTopics(): Promise<Topic[]> {
       id_topic: t.id_topic ?? t.ID_TOPIC,
       label: t.label ?? t.LABEL,
 
-      // 🔥 1:1 → on prend direct le premier
       universe:
         (t.universes?.[0] &&
           (typeof t.universes[0] === "string"
@@ -89,27 +87,33 @@ function sortTopics(items: Topic[], mode: SortMode) {
 
   switch (mode) {
     case "activity":
-      return copy.sort((a, b) => b.nb_analyses - a.nb_analyses);
+      return copy.sort(
+        (a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0)
+      );
 
     case "growth":
-      return copy.sort((a, b) => b.delta_30d - a.delta_30d);
+      return copy.sort(
+        (a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0)
+      );
 
     default:
       return copy.sort((a, b) =>
-        a.label.localeCompare(b.label, "fr", { sensitivity: "base" })
+        a.label.localeCompare(b.label, "fr", {
+          sensitivity: "base",
+        })
       );
   }
 }
 
 /* =========================================================
-   GROUP (1:1 SIMPLE)
+   GROUP (1:1 UNIVERSE)
 ========================================================= */
 
 function groupByUniverse(topics: Topic[], mode: SortMode) {
   const map: Record<string, Topic[]> = {};
 
   topics.forEach((t) => {
-    const u = t.universe;
+    const u = t.universe || "Autres";
 
     if (!map[u]) map[u] = [];
     map[u].push(t);
@@ -132,7 +136,7 @@ export default function TopicsPage() {
   const [sortMode, setSortMode] = useState<SortMode>("activity");
 
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
-  const [loadingId, setLoadingId] = useState<string | null>(null); // 🔥 UX loading
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const { openLeftDrawer } = useDrawer();
   const searchParams = useSearchParams();
@@ -155,6 +159,23 @@ export default function TopicsPage() {
   }, []);
 
   /* ---------------------------------------------------------
+     AUTO OPEN ALL UNIVERS (UX)
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    if (!topics.length) return;
+
+    const universes = [...new Set(topics.map((t) => t.universe))];
+
+    const initial: Record<string, boolean> = {};
+    universes.forEach((u) => {
+      initial[u] = true;
+    });
+
+    setOpenUniverses(initial);
+  }, [topics]);
+
+  /* ---------------------------------------------------------
      DRAWER
   --------------------------------------------------------- */
 
@@ -173,19 +194,38 @@ export default function TopicsPage() {
   }, [searchParams, openLeftDrawer]);
 
   /* ---------------------------------------------------------
-     AUTO OPEN
+     RESET LOADER (FIX BUG)
   --------------------------------------------------------- */
 
   useEffect(() => {
     const topicId = searchParams.get("topic_id");
 
-    // 🔥 reset loader si :
-    // - plus de topic_id (drawer fermé)
-    // - topic chargé différent
-    if (!topicId || topicId !== loadingId) {
+    if (!topicId) {
+      setLoadingId(null);
+      return;
+    }
+
+    if (loadingId && topicId !== loadingId) {
       setLoadingId(null);
     }
-  }, [searchParams, loadingId]);
+  }, [searchParams]);
+
+  /* ---------------------------------------------------------
+     AUTO OPEN CURRENT UNIVERSE
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    const topicId = searchParams.get("topic_id");
+    if (!topicId) return;
+
+    const topic = topics.find((t) => t.id_topic === topicId);
+    if (!topic) return;
+
+    setOpenUniverses((prev) => ({
+      ...prev,
+      [topic.universe]: true,
+    }));
+  }, [topics, searchParams]);
 
   /* ---------------------------------------------------------
      HELPERS
@@ -250,7 +290,7 @@ export default function TopicsPage() {
 
       {/* LOADING */}
       {loading && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-gray-400 animate-pulse">
           Chargement des topics...
         </p>
       )}
