@@ -96,39 +96,31 @@ def list_topics():
             t.LABEL,
             t.INSIGHT_FREQUENCY,
 
-            -- 🔥 UNIVERS PROPRE
-            ARRAY_AGG(
-                DISTINCT STRUCT(
-                    u.ID_UNIVERSE AS id_universe,
-                    u2.LABEL AS label
-                )
-            ) AS universes,
-
             -- 🔥 STATS
-            COALESCE(s.total, 0) AS nb_analyses,
-            COALESCE(s.last_30_days, 0) AS delta_30d
+            COALESCE(s.total, 0) AS NB_ANALYSES,
+            COALESCE(s.last_30_days, 0) AS DELTA_30D,
+
+            -- 🔥 UNIVERS (SAFE, SANS DISTINCT STRUCT)
+            ARRAY(
+                SELECT AS STRUCT
+                    u.ID_UNIVERSE,
+                    u2.LABEL
+                FROM (
+                    SELECT DISTINCT ID_UNIVERSE
+                    FROM `{TABLE_TOPIC_UNIVERSE}`
+                    WHERE ID_TOPIC = t.ID_TOPIC
+                ) u
+                LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u2
+                  ON u.ID_UNIVERSE = u2.ID_UNIVERSE
+            ) AS UNIVERS
 
         FROM `{TABLE_TOPIC}` t
 
-        -- UNIVERS
-        LEFT JOIN `{TABLE_TOPIC_UNIVERSE}` u
-          ON u.ID_TOPIC = t.ID_TOPIC
-
-        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u2
-          ON u.ID_UNIVERSE = u2.ID_UNIVERSE
-
-        -- 🔥 STATS JOIN
+        -- 🔥 JOIN STATS
         LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_TOPIC` s
           ON s.id_topic = t.ID_TOPIC
 
         WHERE COALESCE(t.IS_ACTIVE, TRUE) = TRUE
-
-        GROUP BY
-            t.ID_TOPIC,
-            t.LABEL,
-            t.INSIGHT_FREQUENCY,
-            s.total,
-            s.last_30_days
 
         ORDER BY t.LABEL
     """
@@ -141,20 +133,24 @@ def list_topics():
             "label": r["LABEL"],
             "insight_frequency": r.get("INSIGHT_FREQUENCY"),
 
-            "nb_analyses": r.get("nb_analyses", 0),
-            "delta_30d": r.get("delta_30d", 0),
+            # 🔥 STATS
+            "nb_analyses": r.get("NB_ANALYSES", 0),
+            "delta_30d": r.get("DELTA_30D", 0),
 
+            # 🔥 UNIVERS
             "universes": [
                 {
-                    "id_universe": u["id_universe"],
-                    "label": u["label"],
+                    "id_universe": u["ID_UNIVERSE"],
+                    "label": u["LABEL"],
                 }
-                for u in (r.get("universes") or [])
-                if u.get("id_universe")
+                for u in (r.get("UNIVERS") or [])
+                if u.get("ID_UNIVERSE")
             ],
         }
         for r in rows
     ]
+
+
 # ============================================================
 # GET ONE TOPIC
 # ============================================================
