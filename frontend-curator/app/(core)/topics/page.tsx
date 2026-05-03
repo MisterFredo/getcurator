@@ -20,7 +20,7 @@ type Topic = {
 type SortMode = "alpha" | "activity" | "growth";
 
 /* =========================================================
-   FETCH
+   FETCH (🔥 FIX CRITIQUE ICI)
 ========================================================= */
 
 async function fetchTopics(): Promise<Topic[]> {
@@ -36,7 +36,16 @@ async function fetchTopics(): Promise<Topic[]> {
 
     if (json.status !== "ok") return [];
 
-    return json.topics || [];
+    return (json.topics || []).map((t: any) => ({
+      id_topic: t.id_topic ?? t.ID_TOPIC,
+      label: t.label ?? t.LABEL,
+      topic_axis:
+        t.topic_axis ??
+        t.TOPIC_AXIS ??
+        "Autres", // 🔥 fallback
+      nb_analyses: t.nb_analyses ?? t.NB_ANALYSES ?? 0,
+      delta_30d: t.delta_30d ?? t.DELTA_30D ?? 0,
+    }));
 
   } catch (e) {
     console.error("❌ fetchTopics error:", e);
@@ -72,15 +81,17 @@ function sortTopics(items: Topic[], mode: SortMode) {
 }
 
 /* =========================================================
-   GROUP
+   GROUP (🔥 SAFE)
 ========================================================= */
 
 function groupByAxis(topics: Topic[], mode: SortMode) {
   const map: Record<string, Topic[]> = {};
 
   topics.forEach((t) => {
-    if (!map[t.topic_axis]) map[t.topic_axis] = [];
-    map[t.topic_axis].push(t);
+    const axis = t.topic_axis || "Autres";
+
+    if (!map[axis]) map[axis] = [];
+    map[axis].push(t);
   });
 
   Object.keys(map).forEach((axis) => {
@@ -100,7 +111,6 @@ export default function TopicsPage() {
   const [sortMode, setSortMode] =
     useState<SortMode>("activity");
 
-  // 🔥 ACCORDÉON
   const [openAxis, setOpenAxis] = useState<Record<string, boolean>>({});
 
   const { openLeftDrawer } = useDrawer();
@@ -140,7 +150,7 @@ export default function TopicsPage() {
   }, [searchParams, openLeftDrawer]);
 
   /* ---------------------------------------------------------
-     AUTO OPEN AXIS (deep link)
+     AUTO OPEN AXIS
   --------------------------------------------------------- */
   useEffect(() => {
     const topicId = searchParams.get("topic_id");
@@ -149,7 +159,7 @@ export default function TopicsPage() {
     const topic = topics.find((t) => t.id_topic === topicId);
     if (!topic) return;
 
-    const axis = topic.topic_axis;
+    const axis = topic.topic_axis || "Autres";
 
     setOpenAxis((prev) => ({
       ...prev,
@@ -184,7 +194,6 @@ export default function TopicsPage() {
 
       {/* HEADER */}
       <div className="flex items-center justify-between">
-
         <div>
           <h1 className="text-lg font-semibold text-gray-900">
             Topics
@@ -241,7 +250,7 @@ export default function TopicsPage() {
 
             <section key={axis} className="space-y-2">
 
-              {/* HEADER ACCORDÉON */}
+              {/* HEADER */}
               <div
                 onClick={() => toggleAxis(axis)}
                 className="
