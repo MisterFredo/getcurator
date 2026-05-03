@@ -207,7 +207,7 @@ def get_content(id_content: str) -> Dict:
         "concepts": [
             {
                 "id_concept": c["ID_CONCEPT"],
-                "label": r["LABEL"],
+                "label": c["LABEL"],
             }
             for c in concept_rows
         ],
