@@ -32,16 +32,13 @@ export default function AuthGuard({
   }, [user, loading, pathname, isPublic, router]);
 
   // --------------------------------------------------
-  // ⏳ LOADING → 🔥 FIX ICI
+  // ⏳ LOADING → UI stable (CRITIQUE)
   // --------------------------------------------------
   if (loading) {
     return (
-      <>
-        {children}
-        <div className="fixed bottom-4 right-4 text-xs text-gray-400">
-          Chargement…
-        </div>
-      </>
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
+        Chargement…
+      </div>
     );
   }
 
@@ -53,7 +50,7 @@ export default function AuthGuard({
   }
 
   // --------------------------------------------------
-  // 🔒 NOT AUTH
+  // 🔒 NOT AUTH → éviter null (CRITIQUE)
   // --------------------------------------------------
   if (!user) {
     return (
