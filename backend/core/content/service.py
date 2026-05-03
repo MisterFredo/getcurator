@@ -1357,9 +1357,6 @@ def archive_content(id_content: str):
 # PUBLISH CONTENT
 # ============================================================
 
-from datetime import datetime, date, timezone
-from typing import Optional
-
 def publish_content(
     id_content: str,
     published_at: Optional[datetime] = None,
@@ -1368,7 +1365,7 @@ def publish_content(
     now_dt = datetime.now(timezone.utc)
 
     # ============================================================
-    # 1️⃣ CHECK STATUS + SOURCE_DATE + NUMBERS_PARSED
+    # 1️⃣ CHECK
     # ============================================================
 
     rows = query_bq(
@@ -1391,15 +1388,11 @@ def publish_content(
         raise ValueError("Content must be READY before publish")
 
     # ============================================================
-    # 2️⃣ DATE PAR DÉFAUT
+    # 2️⃣ DATE
     # ============================================================
 
     if published_at is None:
         published_at = source_date or now_dt
-
-    # ============================================================
-    # 3️⃣ NORMALISATION TIMEZONE
-    # ============================================================
 
     if isinstance(published_at, date) and not isinstance(published_at, datetime):
         published_at = datetime.combine(
@@ -1407,22 +1400,17 @@ def publish_content(
             datetime.min.time(),
             tzinfo=timezone.utc
         )
-
-    elif isinstance(published_at, datetime):
-        if published_at.tzinfo is None:
-            published_at = published_at.replace(tzinfo=timezone.utc)
+    elif isinstance(published_at, datetime) and published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=timezone.utc)
 
     # ============================================================
-    # 4️⃣ STATUS
+    # 3️⃣ STATUS
     # ============================================================
 
-    if published_at <= now_dt:
-        status = "PUBLISHED"
-    else:
-        status = "SCHEDULED"
+    status = "PUBLISHED" if published_at <= now_dt else "SCHEDULED"
 
     # ============================================================
-    # 5️⃣ UPDATE CONTENT (STATUT)
+    # 4️⃣ UPDATE CONTENT
     # ============================================================
 
     update_bq(
@@ -1436,12 +1424,12 @@ def publish_content(
     )
 
     # ============================================================
-    # 6️⃣ BACKLOG NUMBERS (🔥 SÉCURISÉ)
+    # 5️⃣ BACKLOG NUMBERS
     # ============================================================
 
     if status == "PUBLISHED":
 
-        # 🔒 GARDE-FOU ABSOLU
+        # 🔒 skip si déjà traité
         if numbers_parsed:
             print("⏭️ Skip parsing (already processed):", id_content)
             return status
@@ -1451,16 +1439,19 @@ def publish_content(
 
             chiffres = get_numbers_from_content(id_content)
 
-            if chiffres:
-                insert_backlog_numbers(
-                    parsed_numbers=chiffres,
-                    id_content=id_content
-                )
-                print(f"✅ {len(chiffres)} numbers inserted into backlog")
-            else:
-                print("ℹ️ No numbers found in content")
+            if not chiffres:
+                print("ℹ️ No numbers found")
+                return status
 
-            # 🔒 MARQUER COMME TRAITÉ → CRITIQUE POUR TON POINT 6
+            # 🔥 INSERT FIRST
+            insert_backlog_numbers(
+                parsed_numbers=chiffres,
+                id_content=id_content
+            )
+
+            print(f"✅ {len(chiffres)} numbers inserted")
+
+            # 🔥 ONLY NOW mark as parsed
             update_bq(
                 table=TABLE_CONTENT,
                 fields={
@@ -1471,18 +1462,10 @@ def publish_content(
             )
 
         except Exception as e:
-            print("❌ BACKLOG INSERT ERROR:", str(e))
+            print("❌ BACKLOG ERROR:", str(e))
 
-    # ============================================================
-    # 7️⃣ VECTORISATION (ON HOLD)
-    # ============================================================
-
-    if status == "PUBLISHED":
-        pass
-
-    # ============================================================
-    # END
-    # ============================================================
+            # 🔥 IMPORTANT → ne PAS bloquer
+            return status
 
     return status
 
