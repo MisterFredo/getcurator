@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDrawer } from "@/contexts/DrawerContext";
+import { useEntityDrawer } from "@/hooks/useEntityDrawer";
 import TopicCard from "@/components/topics/TopicCard";
 
 export const dynamic = "force-dynamic";
@@ -136,12 +136,14 @@ export default function TopicsPage() {
   const [sortMode, setSortMode] = useState<SortMode>("activity");
 
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
-  const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
 
-  const lastOpenedId = useRef<string | null>(null);
+  // 🔥 HOOK CENTRALISÉ
+  const { loadingId, setLoadingId } = useEntityDrawer(
+    "topic",
+    "topic_id"
+  );
 
   /* ---------------------------------------------------------
      LOAD
@@ -159,7 +161,7 @@ export default function TopicsPage() {
   }, []);
 
   /* ---------------------------------------------------------
-     AUTO OPEN ALL UNIVERS (UX)
+     AUTO OPEN ALL UNIVERS
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -178,41 +180,6 @@ export default function TopicsPage() {
   }, [topics]);
 
   /* ---------------------------------------------------------
-     DRAWER
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    const topicId = searchParams.get("topic_id");
-
-    if (!topicId) {
-      lastOpenedId.current = null;
-      return;
-    }
-
-    if (lastOpenedId.current === topicId) return;
-
-    lastOpenedId.current = topicId;
-    openLeftDrawer("topic", topicId);
-  }, [searchParams, openLeftDrawer]);
-
-  /* ---------------------------------------------------------
-     RESET LOADER (FIX BUG)
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    const topicId = searchParams.get("topic_id");
-
-    if (!topicId) {
-      setLoadingId(null);
-      return;
-    }
-
-    if (loadingId && topicId !== loadingId) {
-      setLoadingId(null);
-    }
-  }, [searchParams]);
-
-  /* ---------------------------------------------------------
      AUTO OPEN CURRENT UNIVERSE
   --------------------------------------------------------- */
 
@@ -228,18 +195,6 @@ export default function TopicsPage() {
       [topic.universe]: true,
     }));
   }, [topics, searchParams]);
-
-  /* ---------------------------------------------------------
-   RESET LOADER ON DRAWER CLOSE (🔥 FIX FINAL)
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    setOnLeftClose(() => {
-      setLoadingId(null);
-    });
-
-    return () => setOnLeftClose(null);
-  }, []);
 
   /* ---------------------------------------------------------
      HELPERS
