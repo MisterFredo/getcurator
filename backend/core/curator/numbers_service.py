@@ -103,7 +103,7 @@ def search_curator_numbers(
     sql = f"""
     SELECT
         b.ID_BACKLOG,
-        b.ID_CONTENT,
+        b.ID_CONTENT AS context_id,
 
         c.title AS context_title,
         c.published_at,
