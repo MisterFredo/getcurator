@@ -97,14 +97,24 @@ export default function FeedPage() {
   }, []);
 
   /* =========================================================
-     LOAD FEED
+     LOAD FEED (FIXED)
   ========================================================= */
 
   async function load(reset = false, q?: string) {
-    if (loading) return;
+    // 🔥 autorise un reset même si loading
+    if (loading && !reset) return;
 
-    const finalQuery = (q ?? query)?.trim();
+    const finalQuery =
+      q !== undefined ? q.trim() : query.trim();
+
     const currentOffset = reset ? 0 : offset;
+
+    // 🔥 reset UX propre
+    if (reset) {
+      setItems([]);
+      setOffset(0);
+      setHasMore(true);
+    }
 
     setLoading(true);
 
@@ -133,6 +143,8 @@ export default function FeedPage() {
       setTotal(res.count ?? 0);
       setHasMore(res.items.length === LIMIT);
 
+    } catch (e) {
+      console.error("❌ load error", e);
     } finally {
       setLoading(false);
     }
@@ -176,20 +188,21 @@ export default function FeedPage() {
 
   function handleBadgeClick(badge: FeedBadge) {
 
-    // 🔥 CAS 1 : UNIVERS → filtre direct
+    // UNIVERS → filtre
     if (badge.type === "universe") {
       setActiveUniverse(badge.id || null);
-      setQuery(""); // reset recherche texte
+      setQuery("");
       window.scrollTo({ top: 0 });
       return;
     }
 
-    // 🔥 CAS 2 : AUTRES → recherche texte
+    // AUTRES → recherche
     const value = badge.label;
     if (!value) return;
 
     setQuery(value);
-    setActiveUniverse(null); // reset univers
+    setActiveUniverse(null);
+
     window.scrollTo({ top: 0 });
 
     load(true, value);
@@ -255,17 +268,16 @@ export default function FeedPage() {
 
       <div className="xl:col-span-2">
 
-        
         <FeedExplorer
           query={query}
           setQuery={setQuery}
           onSearch={() => load(true, query)}
 
-          // 🔥 AJOUT
           universes={universes.map(u => ({
             id: u.id_universe,
             label: u.label
           }))}
+
           selectedUniverse={activeUniverse}
           onSelectUniverse={(id) => setActiveUniverse(id)}
 
