@@ -165,7 +165,9 @@ export default function TopicsPage() {
   useEffect(() => {
     if (!topics.length) return;
 
-    const universes = [...new Set(topics.map((t) => t.universe))];
+    const universes = Array.from(
+      new Set(topics.map((t) => t.universe))
+    );
 
     const initial: Record<string, boolean> = {};
     universes.forEach((u) => {
