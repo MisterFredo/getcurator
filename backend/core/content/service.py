@@ -1358,6 +1358,8 @@ def archive_content(id_content: str):
 # PUBLISH CONTENT
 # ============================================================
 
+from core.numbers.parsing import get_numbers_from_content_clean
+
 def publish_content(
     id_content: str,
     published_at: Optional[datetime] = None,
@@ -1425,12 +1427,11 @@ def publish_content(
     )
 
     # ============================================================
-    # 5️⃣ BACKLOG NUMBERS
+    # 5️⃣ BACKLOG NUMBERS (🔥 FIX ICI)
     # ============================================================
 
     if status == "PUBLISHED":
 
-        # 🔒 skip si déjà traité
         if numbers_parsed:
             print("⏭️ Skip parsing (already processed):", id_content)
             return status
@@ -1438,21 +1439,21 @@ def publish_content(
         try:
             print("📊 Parsing numbers for content:", id_content)
 
-            chiffres = get_numbers_from_content(id_content)
+            # 🔥 NOUVEAU PARSING CLEAN
+            chiffres = get_numbers_from_content_clean(id_content)
 
             if not chiffres:
-                print("ℹ️ No numbers found")
+                print("ℹ️ No valid numbers found")
                 return status
 
-            # 🔥 INSERT FIRST
+            # 🔥 INSERT CLEAN
             insert_backlog_numbers(
                 parsed_numbers=chiffres,
                 id_content=id_content
             )
 
-            print(f"✅ {len(chiffres)} numbers inserted")
+            print(f"✅ {len(chiffres)} clean numbers inserted")
 
-            # 🔥 ONLY NOW mark as parsed
             update_bq(
                 table=TABLE_CONTENT,
                 fields={
@@ -1464,8 +1465,6 @@ def publish_content(
 
         except Exception as e:
             print("❌ BACKLOG ERROR:", str(e))
-
-            # 🔥 IMPORTANT → ne PAS bloquer
             return status
 
     return status
