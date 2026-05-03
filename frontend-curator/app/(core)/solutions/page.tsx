@@ -7,9 +7,7 @@ import SolutionCard from "@/components/solutions/SolutionCard";
 
 export const dynamic = "force-dynamic";
 
-/* =========================================================
-   TYPES
-========================================================= */
+/* ========================================================= */
 
 type Solution = {
   id_solution: string;
@@ -32,32 +30,21 @@ function sortSolutions(items: Solution[], mode: SortMode) {
 
   switch (mode) {
     case "activity":
-      return copy.sort(
-        (a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0)
-      );
-
+      return copy.sort((a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0));
     case "growth":
-      return copy.sort(
-        (a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0)
-      );
-
+      return copy.sort((a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0));
     default:
       return copy.sort((a, b) =>
-        a.name.localeCompare(b.name, "fr", {
-          sensitivity: "base",
-        })
+        a.name.localeCompare(b.name, "fr", { sensitivity: "base" })
       );
   }
 }
 
 /* =========================================================
-   GROUP BY UNIVERSE
+   GROUP
 ========================================================= */
 
-function groupByUniverse(
-  solutions: Solution[],
-  mode: SortMode
-) {
+function groupByUniverse(solutions: Solution[], mode: SortMode) {
   const map: Record<string, Solution[]> = {};
 
   solutions.forEach((s) => {
@@ -99,13 +86,9 @@ async function fetchSolutions(): Promise<Solution[]> {
       }
     );
 
-    if (!res.ok) {
-      console.error("❌ API ERROR:", res.status);
-      return [];
-    }
+    if (!res.ok) return [];
 
     const json = await res.json();
-
     if (json.status !== "ok") return [];
 
     return (json.solutions || []).map((s: any) => ({
@@ -134,10 +117,12 @@ export default function SolutionsPage() {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
 
-  // 🔥 ACCORDÉON
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
 
-  const { openLeftDrawer } = useDrawer();
+  // 🔥 NEW
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
 
   const lastOpenedId = useRef<string | null>(null);
@@ -158,7 +143,7 @@ export default function SolutionsPage() {
   }, []);
 
   /* ---------------------------------------------------------
-     DRAWER
+     DRAWER OPEN
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -176,7 +161,19 @@ export default function SolutionsPage() {
   }, [searchParams, openLeftDrawer]);
 
   /* ---------------------------------------------------------
-     AUTO OPEN UNIVERSE (deep link)
+     🔥 RESET LOADING (FIX CRITIQUE)
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    setOnLeftClose(() => {
+      setLoadingId(null);
+    });
+
+    return () => setOnLeftClose(null);
+  }, [setOnLeftClose]);
+
+  /* ---------------------------------------------------------
+     AUTO OPEN
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -231,7 +228,6 @@ export default function SolutionsPage() {
           </p>
         </div>
 
-        {/* SORT */}
         <div className="flex gap-2 text-xs">
           {[
             { key: "alpha", label: "A → Z" },
@@ -256,28 +252,24 @@ export default function SolutionsPage() {
         </div>
       </div>
 
-      {/* LOADING */}
       {loading && (
         <p className="text-sm text-gray-400">
           Chargement des produits...
         </p>
       )}
 
-      {/* EMPTY */}
       {!loading && !hasContent && (
         <p className="text-sm text-gray-400">
           Aucune solution disponible.
         </p>
       )}
 
-      {/* CONTENT */}
       {!loading && hasContent &&
         Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([universe, items]) => (
             <section key={universe} className="space-y-2">
 
-              {/* HEADER ACCORDÉON */}
               <div
                 onClick={() => toggleUniverse(universe)}
                 className="
@@ -294,18 +286,15 @@ export default function SolutionsPage() {
 
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span>{items.length}</span>
-                  <span
-                    className={`
-                      transition-transform
-                      ${openUniverses[universe] ? "rotate-90" : ""}
-                    `}
-                  >
+                  <span className={`
+                    transition-transform
+                    ${openUniverses[universe] ? "rotate-90" : ""}
+                  `}>
                     ▶
                   </span>
                 </div>
               </div>
 
-              {/* CONTENU */}
               {openUniverses[universe] && (
                 <div className="pt-2">
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
@@ -318,6 +307,10 @@ export default function SolutionsPage() {
                         nbAnalyses={s.nb_analyses}
                         delta30d={s.delta_30d}
                         isPartner={s.is_partner}
+
+                        // 🔥 NEW
+                        isLoading={loadingId === s.id_solution}
+                        onClick={() => setLoadingId(s.id_solution)}
                       />
                     ))}
                   </div>
