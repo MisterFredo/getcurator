@@ -271,37 +271,20 @@ def get_item_detail(
     if not item:
         return None
 
-    item_type = item.get("type")
+    # 🔥 ON NE GÈRE PLUS QUE LES ANALYSES
+    from core.content.public_service import get_content
 
-    if item_type == "analysis":
-        from core.content.public_service import get_content
-        content = get_content(item_id)
+    content = get_content(item_id)
 
-        if not content:
-            return None
+    if not content:
+        return None
 
-        return {
-            **content,
-            "topics": item.get("topics", []),
-            "companies": item.get("companies", []),
-            "solutions": item.get("solutions", []),
-        }
-
-    elif item_type == "news":
-        from core.news.service import get_news
-        news = get_news(item_id)
-
-        if not news:
-            return None
-
-        return {
-            **news,
-            "topics": item.get("topics", []),
-            "companies": item.get("companies", []),
-            "solutions": item.get("solutions", []),
-        }
-
-    return None
+    return {
+        **content,
+        "topics": item.get("topics", []),
+        "companies": item.get("companies", []),
+        "solutions": item.get("solutions", []),
+    }
 
 
 # ============================================================
