@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDrawer } from "@/contexts/DrawerContext";
+import { useEntityDrawer } from "@/hooks/useEntityDrawer";
 import CompanyCard from "@/components/companies/CompanyCard";
 import { api } from "@/lib/api";
 
@@ -104,12 +104,13 @@ export default function CompaniesPage() {
 
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
 
-  // 🔥 NEW
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-
-  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
-  const lastOpenedId = useRef<string | null>(null);
+
+  // 🔥 HOOK CENTRALISÉ
+  const { loadingId, setLoadingId } = useEntityDrawer(
+    "company",
+    "company_id"
+  );
 
   /* ---------------------------------------------------------
      AUTH
@@ -144,37 +145,7 @@ export default function CompaniesPage() {
   }, [ready]);
 
   /* ---------------------------------------------------------
-     DRAWER OPEN
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    const companyId = searchParams.get("company_id");
-
-    if (!companyId) {
-      lastOpenedId.current = null;
-      return;
-    }
-
-    if (lastOpenedId.current === companyId) return;
-
-    lastOpenedId.current = companyId;
-    openLeftDrawer("company", companyId);
-  }, [searchParams, openLeftDrawer]);
-
-  /* ---------------------------------------------------------
-     🔥 RESET LOADING (FIX MAJEUR)
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    setOnLeftClose(() => {
-      setLoadingId(null);
-    });
-
-    return () => setOnLeftClose(null);
-  }, [setOnLeftClose]);
-
-  /* ---------------------------------------------------------
-     AUTO OPEN
+     AUTO OPEN CURRENT UNIVERSE
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -261,18 +232,21 @@ export default function CompaniesPage() {
         </div>
       </div>
 
+      {/* LOADING */}
       {loading && (
         <p className="text-sm text-gray-400">
           Chargement des sociétés...
         </p>
       )}
 
+      {/* EMPTY */}
       {!loading && !hasContent && (
         <p className="text-sm text-gray-400">
           Aucune société disponible pour votre profil.
         </p>
       )}
 
+      {/* CONTENT */}
       {!loading && hasContent &&
         Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
@@ -315,8 +289,6 @@ export default function CompaniesPage() {
                         visualRectId={c.media_logo_rectangle_id}
                         totalAnalyses={c.nb_analyses}
                         delta30d={c.delta_30d}
-
-                        // 🔥 NEW
                         isLoading={loadingId === c.id_company}
                         onClick={() => setLoadingId(c.id_company)}
                       />
