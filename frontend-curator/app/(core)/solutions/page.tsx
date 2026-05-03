@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useDrawer } from "@/contexts/DrawerContext";
+import { useEntityDrawer } from "@/hooks/useEntityDrawer";
 import SolutionCard from "@/components/solutions/SolutionCard";
 
 export const dynamic = "force-dynamic";
@@ -119,13 +119,13 @@ export default function SolutionsPage() {
 
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
 
-  // 🔥 NEW
-  const [loadingId, setLoadingId] = useState<string | null>(null);
-
-  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
 
-  const lastOpenedId = useRef<string | null>(null);
+  // 🔥 HOOK CENTRALISÉ (comme Topics)
+  const { loadingId, setLoadingId } = useEntityDrawer(
+    "solution",
+    "solution_id"
+  );
 
   /* ---------------------------------------------------------
      LOAD
@@ -143,37 +143,7 @@ export default function SolutionsPage() {
   }, []);
 
   /* ---------------------------------------------------------
-     DRAWER OPEN
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    const solutionId = searchParams.get("solution_id");
-
-    if (!solutionId) {
-      lastOpenedId.current = null;
-      return;
-    }
-
-    if (lastOpenedId.current === solutionId) return;
-
-    lastOpenedId.current = solutionId;
-    openLeftDrawer("solution", solutionId);
-  }, [searchParams, openLeftDrawer]);
-
-  /* ---------------------------------------------------------
-     🔥 RESET LOADING (FIX CRITIQUE)
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-    setOnLeftClose(() => {
-      setLoadingId(null);
-    });
-
-    return () => setOnLeftClose(null);
-  }, [setOnLeftClose]);
-
-  /* ---------------------------------------------------------
-     AUTO OPEN
+     AUTO OPEN CURRENT UNIVERSE
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -252,18 +222,21 @@ export default function SolutionsPage() {
         </div>
       </div>
 
+      {/* LOADING */}
       {loading && (
         <p className="text-sm text-gray-400">
           Chargement des produits...
         </p>
       )}
 
+      {/* EMPTY */}
       {!loading && !hasContent && (
         <p className="text-sm text-gray-400">
           Aucune solution disponible.
         </p>
       )}
 
+      {/* CONTENT */}
       {!loading && hasContent &&
         Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
@@ -307,8 +280,6 @@ export default function SolutionsPage() {
                         nbAnalyses={s.nb_analyses}
                         delta30d={s.delta_30d}
                         isPartner={s.is_partner}
-
-                        // 🔥 NEW
                         isLoading={loadingId === s.id_solution}
                         onClick={() => setLoadingId(s.id_solution)}
                       />
