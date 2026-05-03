@@ -23,7 +23,7 @@ type DrawerTypeRight =
   | "analysis"
   | "newsletter"
   | "radar"
-  | "numbers" // ✅ NEW
+  | "numbers"
   | null;
 
 type DrawerMode = "silent" | "route";
@@ -32,7 +32,7 @@ type DrawerSlot = {
   type: DrawerTypeLeft | DrawerTypeRight;
   id: string | null;
   mode: DrawerMode | null;
-  payload?: any; // ✅ NEW
+  payload?: any;
 };
 
 type DrawerContextType = {
@@ -49,15 +49,16 @@ type DrawerContextType = {
     type: "news" | "analysis" | "radar" | "numbers",
     id: string,
     mode?: DrawerMode,
-    payload?: any // ✅ NEW
+    payload?: any
   ) => void;
 
-  openNewsletterDrawer: (
-    mode?: DrawerMode
-  ) => void;
+  openNewsletterDrawer: (mode?: DrawerMode) => void;
 
   closeLeftDrawer: () => void;
   closeRightDrawer: () => void;
+
+  // 🔥 NEW
+  setOnLeftClose: (fn: (() => void) | null) => void;
 };
 
 /* =========================================================
@@ -91,6 +92,15 @@ export function DrawerProvider({
     payload: undefined,
   });
 
+  // 🔥 NEW CALLBACK
+  const [onLeftClose, setOnLeftCloseState] = useState<
+    (() => void) | null
+  >(null);
+
+  function setOnLeftClose(fn: (() => void) | null) {
+    setOnLeftCloseState(() => fn);
+  }
+
   /* -----------------------------
      OPEN / CLOSE — LEFT
   ----------------------------- */
@@ -109,6 +119,15 @@ export function DrawerProvider({
   }
 
   function closeLeftDrawer() {
+    // 🔥 trigger callback AVANT reset
+    if (onLeftClose) {
+      try {
+        onLeftClose();
+      } catch (e) {
+        console.error("❌ onLeftClose error", e);
+      }
+    }
+
     setLeftDrawer({
       type: null,
       id: null,
@@ -165,6 +184,7 @@ export function DrawerProvider({
         openNewsletterDrawer,
         closeLeftDrawer,
         closeRightDrawer,
+        setOnLeftClose, // 🔥 expose
       }}
     >
       {children}
