@@ -17,7 +17,6 @@ type Props = {
     key_points?: string[];
   };
 
-  // 🔥 NEW
   isLoading?: boolean;
   onClick?: () => void;
 };
@@ -35,14 +34,16 @@ export default function TopicCard({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { openLeftDrawer, openRightDrawer } = useDrawer();
+  const { openLeftDrawer } = useDrawer();
 
   /* =========================================================
-     NAVIGATION
+     CLICK SAFE
   ========================================================= */
 
   function handleClick() {
-    if (onClick) onClick(); // 🔥 hook parent
+    if (isLoading) return; // 🔥 bloque double click
+
+    onClick?.();
 
     openLeftDrawer("topic", id);
 
@@ -66,28 +67,32 @@ export default function TopicCard({
   return (
     <div
       onClick={handleClick}
-      className={`
+      className="
         group cursor-pointer rounded-xl
         border border-gray-200
         bg-white shadow-sm transition
         hover:shadow-md hover:border-gray-300
         overflow-hidden relative
-      `}
+      "
     >
-      {/* 🔥 LOADING OVERLAY */}
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
       {isLoading && (
         <div className="
           absolute inset-0 z-20
           bg-white/70 backdrop-blur-sm
           flex items-center justify-center
         ">
-          <div className="text-xs text-gray-500">
-            Chargement...
+          <div className="text-xs text-gray-500 animate-pulse">
+            Chargement…
           </div>
         </div>
       )}
 
-      {/* BADGES */}
+      {/* =====================================================
+          BADGES
+      ===================================================== */}
       {isTrending && (
         <div className="absolute top-2 right-2 text-[9px] px-2 py-0.5 rounded bg-orange-100 text-orange-600 z-10">
           +{delta30d}
@@ -100,9 +105,11 @@ export default function TopicCard({
         </div>
       )}
 
-      {/* VISUAL */}
+      {/* =====================================================
+          VISUAL
+      ===================================================== */}
       <div className="
-        relative h-20 w-full
+        h-20 w-full
         bg-gray-50 flex items-center justify-center
         text-[11px] text-gray-500
         px-2 text-center
@@ -110,13 +117,12 @@ export default function TopicCard({
         {label}
       </div>
 
-      {/* CONTENT */}
-      <div className="p-3 space-y-1 text-center">
+      {/* =====================================================
+          CONTENT
+      ===================================================== */}
+      <div className="p-3 text-center space-y-1">
 
-        <h3 className="
-          text-xs font-semibold text-gray-900
-          line-clamp-2
-        ">
+        <h3 className="text-xs font-semibold text-gray-900 line-clamp-2">
           {label}
         </h3>
 
@@ -131,29 +137,19 @@ export default function TopicCard({
           </div>
         )}
 
-        {lastRadar?.id_insight && (
-          <div className="
-            text-[10px] text-gray-400
-            opacity-0 group-hover:opacity-100
-            transition
-          ">
-            Voir la veille →
-          </div>
-        )}
-
       </div>
 
-      {/* RADAR OVERLAY */}
+      {/* =====================================================
+          RADAR OVERLAY
+      ===================================================== */}
       {radarText && (
-        <div
-          className="
-            absolute inset-0
-            bg-black/0 group-hover:bg-black/40
-            transition
-            flex items-end p-3
-            opacity-0 group-hover:opacity-100
-          "
-        >
+        <div className="
+          absolute inset-0
+          bg-black/0 group-hover:bg-black/40
+          transition
+          flex items-end p-3
+          opacity-0 group-hover:opacity-100
+        ">
           <p className="text-[11px] text-white line-clamp-3">
             {radarText}
           </p>
