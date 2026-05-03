@@ -5,6 +5,7 @@ from api.topic.models import TopicCreate, TopicUpdate
 from core.topic.service import (
     create_topic,
     list_topics,
+    list_topics_for_user,
     get_topic,
     update_topic,
     delete_topic,
@@ -38,6 +39,21 @@ def list_route():
         return {"status": "ok", "topics": topics}
     except Exception as e:
         raise HTTPException(400, f"Erreur liste topics : {e}")
+
+@router.get("/list-for-user")
+def topic_list_for_user(request: Request):
+
+    user_id = request.headers.get("x-user-id")
+
+    if not user_id:
+        raise HTTPException(401, "User ID missing")
+
+    topics = list_topics_for_user(user_id)
+
+    return {
+        "status": "ok",
+        "topics": topics,
+    }
 
 
 # ============================================================
