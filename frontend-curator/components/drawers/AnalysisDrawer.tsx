@@ -25,7 +25,7 @@ type Solution = {
 
 type Concept = {
   id_concept: string;
-  title: string;
+  label: string;
 };
 
 type AnalysisData = {
@@ -212,7 +212,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
                     key={c.id_concept}
                     className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-800"
                   >
-                    {c.title}
+                    {c.label}
                   </span>
                 ))}
               </div>
