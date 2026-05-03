@@ -138,7 +138,7 @@ export default function TopicsPage() {
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const { openLeftDrawer } = useDrawer();
+  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
 
   const lastOpenedId = useRef<string | null>(null);
@@ -228,6 +228,18 @@ export default function TopicsPage() {
       [topic.universe]: true,
     }));
   }, [topics, searchParams]);
+
+  /* ---------------------------------------------------------
+   RESET LOADER ON DRAWER CLOSE (🔥 FIX FINAL)
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    setOnLeftClose(() => {
+      setLoadingId(null);
+    });
+
+    return () => setOnLeftClose(null);
+  }, []);
 
   /* ---------------------------------------------------------
      HELPERS
