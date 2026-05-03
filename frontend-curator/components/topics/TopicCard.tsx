@@ -10,7 +10,7 @@ type Props = {
   nbAnalyses?: number;
   delta30d?: number;
 
-  hasNumbers?: boolean; // ✅ NEW
+  hasNumbers?: boolean;
 
   lastRadar?: {
     id_insight: string;
@@ -23,7 +23,7 @@ export default function TopicCard({
   label,
   nbAnalyses,
   delta30d,
-  hasNumbers, // ✅ NEW
+  hasNumbers,
   lastRadar,
 }: Props) {
   const router = useRouter();
@@ -33,10 +33,9 @@ export default function TopicCard({
   function handleClick() {
     openLeftDrawer("topic", id);
 
-    router.replace(
-      `${pathname}?topic_id=${id}`,
-      { scroll: false }
-    );
+    router.replace(`${pathname}?topic_id=${id}`, {
+      scroll: false,
+    });
   }
 
   function handleRadarClick(e: React.MouseEvent) {
@@ -47,127 +46,108 @@ export default function TopicCard({
   const isTrending =
     typeof delta30d === "number" && delta30d > 0;
 
-  const intensity =
-    typeof nbAnalyses === "number"
-      ? Math.min(nbAnalyses * 2, 100)
-      : 0;
-
   return (
     <div
       onClick={handleClick}
       className="
-        group cursor-pointer relative
-        rounded-2xl border border-gray-200 bg-white
-        p-4
-        transition-all duration-200
-        hover:shadow-md hover:border-gray-300 hover:-translate-y-[2px]
+        group cursor-pointer rounded-xl
+        border border-gray-200
+        bg-white shadow-sm transition
+        hover:shadow-md hover:border-gray-300
+        overflow-hidden relative
       "
     >
       {/* =====================================================
-          BADGE NUMBERS
+          BADGES
       ===================================================== */}
+
+      {isTrending && (
+        <div className="absolute top-2 right-2 text-[9px] px-2 py-0.5 rounded bg-orange-100 text-orange-600 z-10">
+          +{delta30d}
+        </div>
+      )}
+
       {hasNumbers && (
-        <div className="
-          absolute top-2 left-2 z-10
-          text-[10px] px-2 py-0.5 rounded
-          bg-blue-50 text-blue-600
-          border border-blue-100
-        ">
+        <div className="absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 z-10">
           #
         </div>
       )}
 
       {/* =====================================================
-          HEADER
+          VISUAL BLOCK (FAKE LIKE COMPANY)
       ===================================================== */}
-      <div className="flex items-center justify-between mb-2">
-        {typeof nbAnalyses === "number" && (
-          <span className="text-[11px] text-gray-400">
-            {nbAnalyses} analyses
-          </span>
-        )}
 
-        {isTrending && (
-          <span className="
-            text-[10px] px-2 py-0.5 rounded-full
-            bg-orange-100 text-orange-600 font-medium
-          ">
-            +{delta30d}
-          </span>
-        )}
+      <div className="
+        relative h-20 w-full
+        bg-gray-50 flex items-center justify-center
+        text-[11px] text-gray-500
+        px-2 text-center
+      ">
+        {label}
       </div>
 
       {/* =====================================================
-          LABEL
+          CONTENT
       ===================================================== */}
-      <h3 className="
-        text-sm font-semibold text-gray-900 leading-snug
-        group-hover:text-black
-      ">
-        {label}
-      </h3>
+
+      <div className="p-3 space-y-1 text-center">
+
+        <h3 className="
+          text-xs font-semibold text-gray-900
+          leading-snug line-clamp-2
+          group-hover:underline
+        ">
+          {label}
+        </h3>
+
+        {typeof nbAnalyses === "number" && (
+          <div className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
+            <span>{nbAnalyses}</span>
+
+            {isTrending && (
+              <span className="text-orange-600">
+                +{delta30d}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* RADAR CTA */}
+        {lastRadar && (
+          <div
+            onClick={handleRadarClick}
+            className="
+              text-[10px] text-gray-400
+              opacity-0 group-hover:opacity-100
+              transition
+            "
+          >
+            Voir la veille →
+          </div>
+        )}
+
+      </div>
 
       {/* =====================================================
-          RADAR PREVIEW
+          RADAR OVERLAY (LIKE COMPANY)
       ===================================================== */}
+
       {lastRadar?.key_points?.[0] && (
         <div
           onClick={handleRadarClick}
           className="
-            mt-3 text-[12px] text-gray-600
-            line-clamp-2
-            group-hover:text-gray-800
+            absolute inset-0
+            bg-black/0 group-hover:bg-black/40
             transition
-          "
-        >
-          {lastRadar.key_points[0]}
-        </div>
-      )}
-
-      {/* =====================================================
-          CTA RADAR
-      ===================================================== */}
-      {lastRadar && (
-        <div
-          onClick={handleRadarClick}
-          className="
-            mt-2 text-[11px] text-gray-400
+            flex items-end p-3
             opacity-0 group-hover:opacity-100
-            transition
           "
         >
-          Voir la veille →
+          <p className="text-[11px] text-white line-clamp-3">
+            {lastRadar.key_points[0]}
+          </p>
         </div>
       )}
-
-      {/* =====================================================
-          BAR
-      ===================================================== */}
-      {typeof nbAnalyses === "number" && (
-        <div className="mt-4 h-[3px] w-full bg-gray-100 rounded overflow-hidden">
-          <div
-            className="
-              h-full bg-gray-900
-              transition-all duration-300
-              group-hover:bg-teal-600
-            "
-            style={{
-              width: `${intensity}%`,
-            }}
-          />
-        </div>
-      )}
-
-      {/* =====================================================
-          HOVER EFFECT
-      ===================================================== */}
-      <div className="
-        absolute inset-0 rounded-2xl
-        bg-gradient-to-t from-black/0 to-black/0
-        group-hover:from-black/[0.02]
-        pointer-events-none
-        transition
-      " />
     </div>
   );
 }
