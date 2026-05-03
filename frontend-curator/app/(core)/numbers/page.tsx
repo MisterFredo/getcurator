@@ -30,18 +30,24 @@ export default function NumbersPage() {
 
   const [query, setQuery] = useState("");
 
+  /* UNIVERS */
   const [universes, setUniverses] = useState<Universe[]>([]);
   const [activeUniverse, setActiveUniverse] = useState<string | null>(null);
 
+  /* CONCEPTS */
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [activeConcepts, setActiveConcepts] = useState<string[]>([]);
 
+  /* SELECTION */
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  /* DRAWER */
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
-  /* ========================================================= */
+  /* =========================================================
+     LOAD
+  ========================================================= */
 
   async function load(q?: string) {
     const finalQuery = (q ?? query)?.trim();
@@ -76,25 +82,37 @@ export default function NumbersPage() {
     }
   }
 
-  /* ========================================================= */
+  /* =========================================================
+     LOAD UNIVERS
+  ========================================================= */
+
+  useEffect(() => {
+    api.get("/universe/list-for-user")
+      .then((res) => setUniverses(res?.universes || []))
+      .catch(() => {});
+  }, []);
+
+  /* =========================================================
+     LOAD CONCEPTS
+  ========================================================= */
+
+  useEffect(() => {
+    api.get("/curator/concepts")
+      .then((res) => setConcepts(res?.items || []))
+      .catch(() => {});
+  }, []);
+
+  /* =========================================================
+     RELOAD
+  ========================================================= */
 
   useEffect(() => {
     load();
   }, [activeUniverse, activeConcepts]);
 
-  useEffect(() => {
-    api.get("/universe/list-for-user").then((res) =>
-      setUniverses(res?.universes || [])
-    );
-  }, []);
-
-  useEffect(() => {
-    api.get("/curator/concepts").then((res) =>
-      setConcepts(res?.items || [])
-    );
-  }, []);
-
-  /* ========================================================= */
+  /* =========================================================
+     SELECTION
+  ========================================================= */
 
   function toggleSelect(item: any) {
     const id = item.ID_NUMBER;
@@ -108,6 +126,10 @@ export default function NumbersPage() {
     setIsPanelOpen(true);
   }
 
+  /* =========================================================
+     CONCEPT TOGGLE
+  ========================================================= */
+
   function toggleConcept(id: string) {
     setActiveConcepts((prev) =>
       prev.includes(id)
@@ -115,6 +137,10 @@ export default function NumbersPage() {
         : [...prev, id]
     );
   }
+
+  /* =========================================================
+     GROUP
+  ========================================================= */
 
   function groupByContent(items: any[]) {
     const map: Record<string, any[]> = {};
@@ -135,9 +161,12 @@ export default function NumbersPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
+      {/* LEFT */}
       <div className="xl:col-span-2 space-y-6">
 
-        {/* UNIVERS */}
+        {/* =====================================================
+            UNIVERS (style feed)
+        ===================================================== */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none px-1">
 
           <button
@@ -185,7 +214,9 @@ export default function NumbersPage() {
           onSearch={(q) => load(q)}
         />
 
-        {/* CONCEPTS */}
+        {/* =====================================================
+            CONCEPTS (sobre)
+        ===================================================== */}
         <div className="flex gap-2 flex-wrap">
           {concepts.map((c) => {
             const active = activeConcepts.includes(c.id_concept);
@@ -214,7 +245,9 @@ export default function NumbersPage() {
           <p className="text-sm text-gray-400">Chargement...</p>
         )}
 
-        {/* CONTENT */}
+        {/* =====================================================
+            CONTENT
+        ===================================================== */}
         {!loading &&
           grouped.map(([title, groupItems]) => {
 
@@ -223,54 +256,59 @@ export default function NumbersPage() {
             return (
               <section key={title} className="space-y-3">
 
-                <div className="flex justify-between items-center">
+                {/* HEADER CLIQUABLE */}
+                <div
+                  onClick={() => {
+                    if (firstItem?.context_id) {
+                      setSelectedItem({
+                        id: firstItem.context_id,
+                        type: "analysis",
+                      });
+                    }
+                  }}
+                  className="
+                    group cursor-pointer
+                    px-4 py-3
+                    rounded-xl
+                    border border-gray-200
+                    bg-white
+                    hover:bg-gray-50
+                    hover:border-gray-300
+                    transition
+                  "
+                >
+                  <div className="flex items-center justify-between">
 
-                  {/* 🔥 FIX ICI */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log("CLICK TITLE");
-
-                      if (firstItem?.context_id) {
-                        setSelectedItem({
-                          id: firstItem.context_id,
-                          type: "analysis",
-                        });
-                      }
-                    }}
-                    className="flex items-center gap-2 text-sm font-semibold cursor-pointer group"
-                  >
-                    <span className="group-hover:underline">
+                    <div className="text-sm font-semibold text-gray-900 group-hover:underline">
                       {title}
-                    </span>
-                    <span className="text-gray-400 group-hover:text-gray-700">
-                      →
-                    </span>
-                  </button>
+                    </div>
 
-                  <div className="text-xs text-gray-400">
-                    {groupItems.length}
+                    <div className="text-xs text-gray-400 group-hover:text-gray-700">
+                      Voir →
+                    </div>
+
                   </div>
 
+                  <div className="text-xs text-gray-400 mt-1">
+                    {groupItems.length} chiffre(s)
+                  </div>
                 </div>
 
-                <div className="mt-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {groupItems.map((item) => {
+                {/* GRID */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {groupItems.map((item) => {
 
-                      const selected = selectedIds.includes(item.ID_NUMBER);
+                    const selected = selectedIds.includes(item.ID_NUMBER);
 
-                      return (
-                        <NumberCard
-                          key={item.ID_NUMBER}
-                          item={item}
-                          selected={selected}
-                          onClick={() => toggleSelect(item)}
-                        />
-                      );
-                    })}
-                  </div>
+                    return (
+                      <NumberCard
+                        key={item.ID_NUMBER}
+                        item={item}
+                        selected={selected}
+                        onClick={() => toggleSelect(item)}
+                      />
+                    );
+                  })}
                 </div>
 
               </section>
@@ -279,7 +317,7 @@ export default function NumbersPage() {
 
       </div>
 
-      {/* RIGHT */}
+      {/* RIGHT PANEL */}
       {isPanelOpen && (
         <div className="xl:col-span-1 sticky top-6">
           <NumbersSelectionPanel
