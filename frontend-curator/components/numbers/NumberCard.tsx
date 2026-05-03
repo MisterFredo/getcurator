@@ -38,93 +38,121 @@ export default function NumberCard({ item, onClick, selected }: Props) {
   return (
     <div
       onClick={(e) => {
-        e.stopPropagation();   // 🔥 FIX CRITIQUE
+        e.stopPropagation();
         onClick();
       }}
       className={`
-        p-3 rounded border cursor-pointer transition
+        group cursor-pointer rounded-xl
+        border transition overflow-hidden relative
         ${
           selected
-            ? "border-teal-500 bg-teal-50"
-            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            ? "border-teal-500 bg-teal-50 shadow-sm"
+            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
         }
       `}
     >
-      {/* BADGES */}
-      <div className="flex flex-wrap gap-1 mb-2">
+      {/* =====================================================
+          BADGES (TOP)
+      ===================================================== */}
+      {(item.TYPE || item.CATEGORY) && (
+        <div className="absolute top-2 left-2 flex gap-1 z-10">
 
-        {item.TYPE && (
-          <span className="
-            text-[9px] px-2 py-[2px] rounded-full
-            bg-gray-100 text-gray-600 uppercase
-          ">
-            {item.TYPE}
-          </span>
-        )}
+          {item.TYPE && (
+            <span className="
+              text-[9px] px-2 py-[2px] rounded-full
+              bg-gray-100 text-gray-600 uppercase
+            ">
+              {item.TYPE}
+            </span>
+          )}
 
-        {item.CATEGORY && (
-          <span className="
-            text-[9px] px-2 py-[2px] rounded-full
-            bg-gray-50 text-gray-400 uppercase
-          ">
-            {item.CATEGORY}
-          </span>
-        )}
+          {item.CATEGORY && (
+            <span className="
+              text-[9px] px-2 py-[2px] rounded-full
+              bg-gray-50 text-gray-400 uppercase
+            ">
+              {item.CATEGORY}
+            </span>
+          )}
 
-      </div>
-
-      {/* VALUE */}
-      <div className="text-sm font-semibold text-gray-900">
-        {formatValue(item)}
-      </div>
-
-      {/* LABEL */}
-      <div className="text-xs text-gray-700 mt-1 line-clamp-2">
-        {item.LABEL}
-      </div>
-
-      {/* META */}
-      {(item.ZONE || item.PERIOD) && (
-        <div className="text-[10px] text-gray-400 mt-1">
-          {[item.ZONE, item.PERIOD].filter(Boolean).join(" — ")}
         </div>
       )}
 
-      {/* ENTITIES */}
-      <div className="mt-2 flex flex-wrap gap-1">
+      {/* =====================================================
+          VALUE BLOCK (VISUAL ANCHOR)
+      ===================================================== */}
+      <div className="
+        h-16 flex items-center justify-center
+        bg-gray-50 text-gray-900
+        text-sm font-semibold
+        px-2 text-center
+      ">
+        {formatValue(item)}
+      </div>
 
-        {/* COMPANY */}
-        {companies.map((c: any) => (
-          <span
-            key={c.ENTITY_ID}
-            className="text-[10px] px-2 py-[2px] rounded-full bg-blue-50 text-blue-600"
-          >
-            {c.ENTITY_LABEL}
-          </span>
-        ))}
+      {/* =====================================================
+          CONTENT
+      ===================================================== */}
+      <div className="p-3 space-y-1 text-center">
 
-        {/* SOLUTION */}
-        {solutions.map((s: any) => (
-          <span
-            key={s.ENTITY_ID}
-            className="text-[10px] px-2 py-[2px] rounded-full bg-purple-50 text-purple-600"
-          >
-            {s.ENTITY_LABEL}
-          </span>
-        ))}
+        {/* LABEL */}
+        <div className="
+          text-xs text-gray-700
+          line-clamp-2
+          group-hover:text-gray-900
+        ">
+          {item.LABEL}
+        </div>
 
-        {/* TOPIC */}
-        {topics.map((t: any) => (
-          <span
-            key={t.ENTITY_ID}
-            className="text-[10px] px-2 py-[2px] rounded-full bg-gray-100 text-gray-600"
-          >
-            {t.ENTITY_LABEL}
-          </span>
-        ))}
+        {/* META */}
+        {(item.ZONE || item.PERIOD) && (
+          <div className="text-[10px] text-gray-400">
+            {[item.ZONE, item.PERIOD].filter(Boolean).join(" — ")}
+          </div>
+        )}
+
+        {/* ENTITIES */}
+        <div className="mt-2 flex flex-wrap justify-center gap-1">
+
+          {companies.map((c: any) => (
+            <span
+              key={c.ENTITY_ID}
+              className="text-[10px] px-2 py-[2px] rounded-full bg-blue-50 text-blue-600"
+            >
+              {c.ENTITY_LABEL}
+            </span>
+          ))}
+
+          {solutions.map((s: any) => (
+            <span
+              key={s.ENTITY_ID}
+              className="text-[10px] px-2 py-[2px] rounded-full bg-purple-50 text-purple-600"
+            >
+              {s.ENTITY_LABEL}
+            </span>
+          ))}
+
+          {topics.map((t: any) => (
+            <span
+              key={t.ENTITY_ID}
+              className="text-[10px] px-2 py-[2px] rounded-full bg-gray-100 text-gray-600"
+            >
+              {t.ENTITY_LABEL}
+            </span>
+          ))}
+
+        </div>
 
       </div>
 
+      {/* =====================================================
+          HOVER OVERLAY (léger)
+      ===================================================== */}
+      <div className="
+        absolute inset-0
+        bg-black/0 group-hover:bg-black/[0.02]
+        transition pointer-events-none
+      " />
     </div>
   );
 }
