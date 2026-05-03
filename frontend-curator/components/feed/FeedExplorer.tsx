@@ -17,7 +17,6 @@ type Props = {
   setQuery: (q: string) => void;
   onSearch: () => void;
 
-  // 🔥 AJOUT
   universes: Universe[];
   selectedUniverse: string | null;
   onSelectUniverse: (id: string | null) => void;
@@ -44,7 +43,6 @@ export default function FeedExplorer({
   setQuery,
   onSearch,
 
-  // 🔥 NEW
   universes,
   selectedUniverse,
   onSelectUniverse,
@@ -72,10 +70,11 @@ export default function FeedExplorer({
         setQuery={setQuery}
         onSearch={onSearch}
 
-        // 🔥 PASS THROUGH
         universes={universes}
         selectedUniverse={selectedUniverse}
         onSelectUniverse={onSelectUniverse}
+
+        loading={loading} // 🔥 important
       />
 
       {/* LIST */}
@@ -85,9 +84,11 @@ export default function FeedExplorer({
         total={total}
         loading={loading}
         hasMore={hasMore}
-        onLoadMore={onLoadMore}
-        onSelectItem={onSelectItem}
-        onClickBadge={onClickBadge}
+
+        onLoadMore={!loading ? onLoadMore : () => {}}
+        onSelectItem={!loading ? onSelectItem : () => {}}
+        onClickBadge={!loading ? onClickBadge : () => {}}
+
         loadingItemId={loadingItemId}
 
         selectedIds={selectedIds}
