@@ -37,7 +37,10 @@ export default function NumberCard({ item, onClick, selected }: Props) {
 
   return (
     <div
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();   // 🔥 FIX CRITIQUE
+        onClick();
+      }}
       className={`
         p-3 rounded border cursor-pointer transition
         ${
