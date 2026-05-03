@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useDrawer } from "@/contexts/DrawerContext";
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
 
   lastRadar?: {
     id_insight: string;
-    key_points: string[];
+    key_points?: string[];
   };
 };
 
@@ -28,23 +28,46 @@ export default function TopicCard({
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { openLeftDrawer, openRightDrawer } = useDrawer();
+
+  /* =========================================================
+     NAVIGATION SAFE
+  ========================================================= */
 
   function handleClick() {
     openLeftDrawer("topic", id);
 
-    router.replace(`${pathname}?topic_id=${id}`, {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("topic_id", id);
+
+    router.replace(`${pathname}?${params.toString()}`, {
       scroll: false,
     });
   }
 
+  /* =========================================================
+     RADAR
+  ========================================================= */
+
   function handleRadarClick(e: React.MouseEvent) {
     e.stopPropagation();
-    openRightDrawer("radar", lastRadar!.id_insight);
+
+    if (!lastRadar?.id_insight) return;
+
+    openRightDrawer("radar", lastRadar.id_insight);
   }
+
+  /* ========================================================= */
 
   const isTrending =
     typeof delta30d === "number" && delta30d > 0;
+
+  const radarText = lastRadar?.key_points?.[0];
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div
@@ -74,7 +97,7 @@ export default function TopicCard({
       )}
 
       {/* =====================================================
-          VISUAL BLOCK (FAKE LIKE COMPANY)
+          VISUAL BLOCK
       ===================================================== */}
 
       <div className="
@@ -112,8 +135,8 @@ export default function TopicCard({
           </div>
         )}
 
-        {/* RADAR CTA */}
-        {lastRadar && (
+        {/* CTA radar */}
+        {lastRadar?.id_insight && (
           <div
             onClick={handleRadarClick}
             className="
@@ -129,10 +152,10 @@ export default function TopicCard({
       </div>
 
       {/* =====================================================
-          RADAR OVERLAY (LIKE COMPANY)
+          RADAR OVERLAY
       ===================================================== */}
 
-      {lastRadar?.key_points?.[0] && (
+      {radarText && (
         <div
           onClick={handleRadarClick}
           className="
@@ -144,7 +167,7 @@ export default function TopicCard({
           "
         >
           <p className="text-[11px] text-white line-clamp-3">
-            {lastRadar.key_points[0]}
+            {radarText}
           </p>
         </div>
       )}
