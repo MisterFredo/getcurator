@@ -207,17 +207,22 @@ def _map_number_row(r: Dict) -> Dict:
     def fmt(dt):
         return dt.isoformat() if dt else None
 
-    # 🔥 SAFE ACCESS (BigQuery peut renvoyer en minuscule)
     def get_key(row, *keys):
         for k in keys:
-            if k in row and row.get(k) is not None:
+            if k in row and row.get(k) not in (None, "", "null"):
                 return row.get(k)
         return None
 
-    id_content = get_key(r, "ID_CONTENT", "id_content")
+    # 🔥 FIX CRITIQUE
+    id_content = get_key(
+        r,
+        "context_id",
+        "CONTEXT_ID",
+        "ID_CONTENT",
+        "id_content"
+    )
 
     return {
-        # 🔥 CRUCIAL → compat NumberCard
         "ID_NUMBER": get_key(r, "ID_BACKLOG", "id_backlog"),
 
         "LABEL": get_key(r, "LABEL", "label"),
@@ -228,7 +233,6 @@ def _map_number_row(r: Dict) -> Dict:
         "ZONE": get_key(r, "ZONE", "zone"),
         "PERIOD": get_key(r, "PERIOD", "period"),
 
-        # 🔥 fallback actor → affichage badges
         "ENTITIES": [
             {
                 "ENTITY_TYPE": "actor",
@@ -239,12 +243,9 @@ def _map_number_row(r: Dict) -> Dict:
         "TYPE": None,
         "CATEGORY": None,
 
-        # 🧠 CONTEXTE (clé critique pour le drawer)
         "context_title": get_key(r, "context_title"),
-        "ID_CONTENT": id_content,
-
-        # 🔥 optionnel mais utile pour debug front
-        "context_id": id_content,
+        "context_id": id_content,   # 🔥 clé utilisée par le front
+        "ID_CONTENT": id_content,   # 🔥 sécurité
 
         "published_at": fmt(get_key(r, "published_at")),
     }
