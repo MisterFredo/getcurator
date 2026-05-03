@@ -45,6 +45,9 @@ export default function CuratorShell({
   const navEntities = [
     { href: "/companies", label: "Sociétés", icon: Building2 },
     { href: "/solutions", label: "Produits", icon: Box },
+
+    // 🔥 TOPICS RÉACTIVÉ
+    { href: "/topics", label: "Topics", icon: Hash },
   ];
 
   const renderNav = (items: any[]) =>
@@ -105,6 +108,11 @@ export default function CuratorShell({
         </nav>
       </div>
 
+      {/* =====================================================
+         🔥 MCP ASSISTANT (STAND-BY)
+      ===================================================== */}
+
+      {/*
       <div className="mt-10">
         <div className="text-xs font-semibold text-gray-400 uppercase mb-2 px-3">
           AI
@@ -120,6 +128,7 @@ export default function CuratorShell({
           <span>MCP Assistant</span>
         </a>
       </div>
+      */}
     </>
   );
 
@@ -155,10 +164,8 @@ export default function CuratorShell({
       {/* MAIN */}
       <main className="flex-1 bg-gray-50">
 
-        {/* ✅ Header toujours stable */}
         <Header user={user} />
 
-        {/* 🔥 FIX CRITIQUE : NE JAMAIS return null */}
         {loading ? (
           <div className="p-6 text-sm text-gray-500">
             Chargement…
