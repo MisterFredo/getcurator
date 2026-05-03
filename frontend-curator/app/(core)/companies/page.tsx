@@ -72,7 +72,7 @@ function sortCompanies(companies: Company[], mode: SortMode): Company[] {
 }
 
 /* =========================================================
-   GROUP BY UNIVERSE
+   GROUP
 ========================================================= */
 
 function groupByUniverse(companies: Company[], mode: SortMode) {
@@ -102,10 +102,12 @@ export default function CompaniesPage() {
   const [ready, setReady] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
 
-  // 🔥 ACCORDÉON
   const [openUniverses, setOpenUniverses] = useState<Record<string, boolean>>({});
 
-  const { openLeftDrawer } = useDrawer();
+  // 🔥 NEW
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const { openLeftDrawer, setOnLeftClose } = useDrawer();
   const searchParams = useSearchParams();
   const lastOpenedId = useRef<string | null>(null);
 
@@ -142,7 +144,7 @@ export default function CompaniesPage() {
   }, [ready]);
 
   /* ---------------------------------------------------------
-     DRAWER
+     DRAWER OPEN
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -160,7 +162,19 @@ export default function CompaniesPage() {
   }, [searchParams, openLeftDrawer]);
 
   /* ---------------------------------------------------------
-     AUTO OPEN UNIVERSE
+     🔥 RESET LOADING (FIX MAJEUR)
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    setOnLeftClose(() => {
+      setLoadingId(null);
+    });
+
+    return () => setOnLeftClose(null);
+  }, [setOnLeftClose]);
+
+  /* ---------------------------------------------------------
+     AUTO OPEN
   --------------------------------------------------------- */
 
   useEffect(() => {
@@ -217,7 +231,6 @@ export default function CompaniesPage() {
           </p>
         </div>
 
-        {/* SORT */}
         <div className="flex gap-2 text-xs">
           {[
             { key: "alpha", label: "A → Z" },
@@ -242,28 +255,24 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {/* LOADING */}
       {loading && (
         <p className="text-sm text-gray-400">
           Chargement des sociétés...
         </p>
       )}
 
-      {/* EMPTY */}
       {!loading && !hasContent && (
         <p className="text-sm text-gray-400">
           Aucune société disponible pour votre profil.
         </p>
       )}
 
-      {/* CONTENT */}
       {!loading && hasContent &&
         Object.entries(grouped)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([universe, items]) => (
             <section key={universe} className="space-y-2">
 
-              {/* HEADER ACCORDÉON */}
               <div
                 onClick={() => toggleUniverse(universe)}
                 className="
@@ -280,18 +289,15 @@ export default function CompaniesPage() {
 
                 <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span>{items.length}</span>
-                  <span
-                    className={`
-                      transition-transform
-                      ${openUniverses[universe] ? "rotate-90" : ""}
-                    `}
-                  >
+                  <span className={`
+                    transition-transform
+                    ${openUniverses[universe] ? "rotate-90" : ""}
+                  `}>
                     ▶
                   </span>
                 </div>
               </div>
 
-              {/* CONTENT */}
               {openUniverses[universe] && (
                 <div className="pt-2">
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
@@ -303,6 +309,10 @@ export default function CompaniesPage() {
                         visualRectId={c.media_logo_rectangle_id}
                         totalAnalyses={c.nb_analyses}
                         delta30d={c.delta_30d}
+
+                        // 🔥 NEW
+                        isLoading={loadingId === c.id_company}
+                        onClick={() => setLoadingId(c.id_company)}
                       />
                     ))}
                   </div>
