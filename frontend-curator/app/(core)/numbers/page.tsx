@@ -261,8 +261,8 @@ export default function NumbersPage() {
                   onClick={() => {
                     console.log("CLICK HEADER", firstItem);
 
-                    if (firstItem?.ID_CONTENT) {
-                      console.warn("NO CONTEXT ID");
+                    if (!firstItem?.ID_CONTENT) {   // 🔥 inversion ici
+                      console.warn("NO CONTEXT ID", firstItem);
                       return;
                     }
 
