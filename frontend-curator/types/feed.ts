@@ -25,7 +25,10 @@ export type Topic = {
   id_topic: string;
   label: string;
 
-  axis?: string;
+  universes?: {
+    id_universe: string;
+    label: string;
+  }[];
 
   nb_analyses?: number;
   delta_30d?: number;
