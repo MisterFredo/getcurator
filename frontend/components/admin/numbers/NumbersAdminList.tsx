@@ -7,7 +7,10 @@ type Option = { id: string; label: string };
 
 export default function NumbersAdminList() {
 
+  const LIMIT = 100;
+
   const [items, setItems] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [types, setTypes] = useState<Option[]>([]);
   const [topics, setTopics] = useState<Option[]>([]);
@@ -21,10 +24,12 @@ export default function NumbersAdminList() {
 
   const [loading, setLoading] = useState(false);
 
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
   /* ========================================================= */
 
   async function loadFilters() {
-
     const [typesRes, t, c, s] = await Promise.all([
       api.get("/numbers/types"),
       api.get("/topic/list"),
@@ -38,44 +43,84 @@ export default function NumbersAdminList() {
     setSolutions(s.solutions || []);
   }
 
-  async function search() {
+  /* ========================================================= */
 
-    try {
+  async function search(reset = true) {
 
-      setLoading(true);
+    setLoading(true);
 
-      const params = new URLSearchParams();
+    const params = new URLSearchParams();
 
-      if (typeId) params.append("id_number_type", typeId);
-      if (topicId) params.append("topic_id", topicId);
-      if (companyId) params.append("company_id", companyId);
-      if (solutionId) params.append("solution_id", solutionId);
+    if (typeId) params.append("id_number_type", typeId);
+    if (topicId) params.append("topic_id", topicId);
+    if (companyId) params.append("company_id", companyId);
+    if (solutionId) params.append("solution_id", solutionId);
 
-      const res = await api.get(`/numbers/search?${params}`);
+    params.append("limit", String(LIMIT));
+    params.append("offset", String(reset ? 0 : offset));
 
-      setItems(res.items || []);
+    const res = await api.get(`/numbers/search?${params}`);
+    const newItems = res.items || [];
 
-    } catch (e) {
-      console.error(e);
+    if (reset) {
+      setItems(newItems);
+      setOffset(newItems.length);
+    } else {
+      setItems(prev => [...prev, ...newItems]);
+      setOffset(prev => prev + newItems.length);
     }
 
+    setHasMore(newItems.length === LIMIT);
     setLoading(false);
   }
 
-  async function handleDelete(id: string) {
+  /* =========================================================
+     SELECTION
+  ========================================================= */
 
-    if (!confirm("Delete this number ?")) return;
-
-    try {
-
-      await api.delete(`/numbers/${id}`);
-
-      setItems(prev => prev.filter(i => i.id !== id));
-
-    } catch (e) {
-      console.error(e);
-    }
+  function toggleSelect(id: string) {
+    setSelectedIds(prev =>
+      prev.includes(id)
+        ? prev.filter(i => i !== id)
+        : [...prev, id]
+    );
   }
+
+  function selectAllVisible() {
+    setSelectedIds(items.map(i => i.id));
+  }
+
+  function clearSelection() {
+    setSelectedIds([]);
+  }
+
+  /* =========================================================
+     BULK ACTIONS
+  ========================================================= */
+
+  async function validateSelected() {
+    if (!selectedIds.length) return;
+
+    await api.post("/numbers/bulk/validate", {
+      ids: selectedIds,
+    });
+
+    setItems(prev => prev.filter(i => !selectedIds.includes(i.id)));
+    setSelectedIds([]);
+  }
+
+  async function validateAllLoaded() {
+    const ids = items.map(i => i.id);
+
+    await api.post("/numbers/bulk/validate", {
+      ids,
+    });
+
+    setItems([]);
+    setSelectedIds([]);
+  }
+
+  /* ========================================================= */
 
   useEffect(() => {
     loadFilters();
@@ -120,16 +165,40 @@ export default function NumbersAdminList() {
           ))}
         </select>
 
-        <button onClick={search} className="bg-blue-600 text-white rounded px-3">
+        <button onClick={() => search(true)} className="bg-blue-600 text-white rounded px-3">
           Search
         </button>
 
       </div>
 
+      {/* BULK ACTION BAR */}
+      {items.length > 0 && (
+        <div className="flex gap-2 items-center text-sm">
+
+          <button onClick={selectAllVisible} className="px-3 py-1 bg-gray-100 rounded">
+            Select all
+          </button>
+
+          <button onClick={clearSelection} className="px-3 py-1 bg-gray-100 rounded">
+            Clear
+          </button>
+
+          <button onClick={validateSelected} className="px-3 py-1 bg-green-600 text-white rounded">
+            Validate selected ({selectedIds.length})
+          </button>
+
+          <button onClick={validateAllLoaded} className="px-3 py-1 bg-black text-white rounded">
+            Validate ALL loaded ({items.length})
+          </button>
+
+        </div>
+      )}
+
       {/* TABLE */}
       <div className="border rounded">
 
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] text-xs bg-gray-100 p-2 font-semibold">
+        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr] text-xs bg-gray-100 p-2 font-semibold">
+          <div></div>
           <div>Label</div>
           <div>Value</div>
           <div>Scale</div>
@@ -137,15 +206,20 @@ export default function NumbersAdminList() {
           <div>Type</div>
           <div>Zone</div>
           <div>Period</div>
-          <div></div>
         </div>
 
         {items.map((n) => (
 
           <div
             key={n.id}
-            className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] text-sm p-2 border-t"
+            className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr] text-sm p-2 border-t"
           >
+
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(n.id)}
+              onChange={() => toggleSelect(n.id)}
+            />
 
             <div>{n.label || "-"}</div>
             <div>{n.value}</div>
@@ -155,31 +229,16 @@ export default function NumbersAdminList() {
             <div>{n.zone}</div>
             <div>{n.period}</div>
 
-            <button
-              onClick={() => handleDelete(n.id)}
-              className="text-red-600"
-            >
-              Delete
-            </button>
-
-            {/* ENTITIES */}
-            <div className="col-span-8 text-xs text-gray-500 mt-1">
-              {(n.topics || []).join(", ")} | {(n.companies || []).join(", ")} | {(n.solutions || []).join(", ")}
-            </div>
-
           </div>
 
         ))}
 
-        {!loading && items.length === 0 && (
-          <div className="p-4 text-sm text-gray-500">
-            No results
-          </div>
-        )}
-
-        {loading && (
-          <div className="p-4 text-sm text-gray-500">
-            Loading...
+        {/* LOAD MORE */}
+        {!loading && hasMore && (
+          <div className="p-4 text-center">
+            <button onClick={() => search(false)} className="px-4 py-2 bg-gray-200 rounded">
+              Load more
+            </button>
           </div>
         )}
 
