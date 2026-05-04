@@ -13,8 +13,8 @@ module.exports = {
           green: "#99C221",
           blue: "#10323d",
           gray: "#2C2C2C",
-          light: "#F7F9FA",   // 🆕 fond workspace
-          border: "#E5E7EB",  // 🆕 séparations fines
+          light: "#F7F9FA",   // fond workspace
+          border: "#E5E7EB",  // séparations fines
         },
       },
       boxShadow: {
@@ -29,5 +29,6 @@ module.exports = {
   },
   plugins: [
     require("@tailwindcss/typography"),
+    require("@tailwindcss/line-clamp"), // 👈 AJOUT
   ],
 };
