@@ -1,5 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+/* =========================================================
+   🔥 REDIRECT HOME → FEED
+========================================================= */
+
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/feed");
+  }, [router]);
+
+  return null;
+}
+
+/* =========================================================
+   📦 ANCIENNE PAGE HOME (ONBOARDING)
+   → conservée pour réactivation future
+========================================================= */
+
+/*
+"use client";
+
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -56,10 +81,6 @@ export default function Home() {
   return (
     <div className="w-full min-h-screen bg-white px-10 py-10">
 
-      {/* ========================= */}
-      {/* STEPS */}
-      {/* ========================= */}
-
       {step === 0 && <StepTopics topics={topics} />}
       {step === 1 && <StepSources sources={sources} />}
       {step === 2 && <StepCompanies companies={companies} />}
@@ -69,10 +90,6 @@ export default function Home() {
           sources={sources}
         />
       )}
-
-      {/* ========================= */}
-      {/* CONTROL */}
-      {/* ========================= */}
 
       {step !== 3 && (
         <div className="flex justify-center mt-12">
@@ -88,3 +105,4 @@ export default function Home() {
     </div>
   );
 }
+*/
