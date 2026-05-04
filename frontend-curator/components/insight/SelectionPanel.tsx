@@ -30,6 +30,8 @@ export default function SelectionPanel({
 
   const [tab, setTab] = useState<"selection" | "analysis">("selection");
 
+  const [selectedCache, setSelectedCache] = useState<Record<string, FeedItem>>({});
+
   const selectedItems = selectedIds
     .map((id) => selectedCache[id])
     .filter(Boolean);
@@ -46,6 +48,20 @@ export default function SelectionPanel({
       return "";
     }
   }
+
+  useEffect(() => {
+    setSelectedCache((prev) => {
+      const updated = { ...prev };
+
+      items.forEach((item) => {
+        if (selectedIds.includes(item.id)) {
+          updated[item.id] = item;
+        }
+      });
+
+      return updated;
+    });
+  }, [items, selectedIds]);
 
   /* =========================================================
      SELECT + COPY (UNIVERSAL)
