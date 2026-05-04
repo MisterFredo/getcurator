@@ -263,18 +263,56 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
           {data.chiffres?.length > 0 && (
             <div>
-              <h2 className="text-xs uppercase text-gray-500 mb-2">
-                Chiffres clés
-              </h2>
+              {/* HEADER + LEGEND */}
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs uppercase text-gray-500">
+                  Chiffres clés
+                </h2>
+
+                <div className="text-[10px] text-gray-400 hidden md:flex gap-2">
+                  <span>Libellé</span>
+                  <span>•</span>
+                  <span>Valeur</span>
+                  <span>•</span>
+                  <span>Unité</span>
+                  <span>•</span>
+                  <span>Acteur</span>
+                  <span>•</span>
+                  <span>Marché</span>
+                  <span>•</span>
+                  <span>Période</span>
+                </div>
+              </div>
+
+              {/* LIST */}
               <ul className="space-y-2">
-                {data.chiffres.map((c, i) => (
-                  <li
-                    key={i}
-                    className="border rounded p-3 text-sm bg-gray-50"
-                  >
-                    {c}
-                  </li>
-                ))}
+                {data.chiffres.map((c, i) => {
+                  const parts = c.split("|").map((p) => p.trim());
+
+                  return (
+                    <li
+                      key={i}
+                      className="border rounded p-3 text-sm bg-gray-50"
+                    >
+                      {/* LIBELLÉ */}
+                      <div className="font-medium text-gray-900">
+                        {parts[0]}
+                      </div>
+
+                      {/* MÉTA */}
+                      {parts.length > 1 && (
+                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
+                          {parts.slice(1).map((p, idx) => (
+                            <span key={idx}>
+                              {p}
+                              {idx < parts.length - 2 && " •"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
