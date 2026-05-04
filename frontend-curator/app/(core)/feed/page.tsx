@@ -300,8 +300,7 @@ export default function FeedPage() {
       {isPanelOpen && (
         <div className="xl:col-span-1 sticky top-6 h-[calc(100vh-120px)]">
           <SelectionPanel
-            items={items}
-            selectedIds={selectedIds}
+            selectedItems={selectedItems} // 🔥 source unique
             analysis={analysis}
             loading={loadingInsight}
             onGenerateInsight={generateInsight}
