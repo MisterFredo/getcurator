@@ -58,7 +58,8 @@ export default function NumbersBlock({
 }: Props) {
   const { openRightDrawer } = useDrawer();
 
-  if (!numbers.length) return null;
+  // 🔥 FIX CRITIQUE
+  if (!Array.isArray(numbers) || numbers.length === 0) return null;
 
   return (
     <section className="space-y-3">
