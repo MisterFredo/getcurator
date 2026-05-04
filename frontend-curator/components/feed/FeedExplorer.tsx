@@ -16,7 +16,6 @@ type Props = {
   query: string;
   setQuery: (q: string) => void;
 
-  // 🔥 FIX → accepte le query
   onSearch: (q: string) => void;
 
   universes: Universe[];
@@ -71,8 +70,8 @@ export default function FeedExplorer({
         query={query}
         setQuery={setQuery}
 
-        // 🔥 FIX CRITIQUE → on passe le bon query
-        onSearch={() => onSearch(query)}
+        // ✅ FIX FINAL → on passe DIRECTEMENT
+        onSearch={onSearch}
 
         universes={universes}
         selectedUniverse={selectedUniverse}
