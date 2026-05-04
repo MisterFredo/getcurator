@@ -30,9 +30,9 @@ export default function SelectionPanel({
 
   const [tab, setTab] = useState<"selection" | "analysis">("selection");
 
-  const selectedItems = items.filter((i) =>
-    selectedIds.includes(i.id)
-  );
+  const selectedItems = selectedIds
+    .map((id) => selectedCache[id])
+    .filter(Boolean);
 
   /* =========================================================
      HELPERS
