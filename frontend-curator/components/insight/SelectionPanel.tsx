@@ -53,9 +53,17 @@ export default function SelectionPanel({
     setSelectedCache((prev) => {
       const updated = { ...prev };
 
+      // 🔥 AJOUT / MAJ
       items.forEach((item) => {
         if (selectedIds.includes(item.id)) {
           updated[item.id] = item;
+        }
+      });
+
+      // 🔥 CLEAN (important)
+      Object.keys(updated).forEach((id) => {
+        if (!selectedIds.includes(id)) {
+          delete updated[id];
         }
       });
 
