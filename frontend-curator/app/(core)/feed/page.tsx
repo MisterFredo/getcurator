@@ -56,6 +56,9 @@ export default function FeedPage() {
 
   const [selectedItems, setSelectedItems] = useState<FeedItem[]>([]);
 
+  // 🔥 IMPORTANT → dérivé (remplace ton ancien selectedIds)
+  const selectedIds = selectedItems.map((i) => i.id);
+
   /* =========================================================
      ANALYSIS
   ========================================================= */
@@ -97,11 +100,10 @@ export default function FeedPage() {
   }, []);
 
   /* =========================================================
-     LOAD FEED (FIXED)
+     LOAD FEED
   ========================================================= */
 
   async function load(reset = false, q?: string) {
-    // 🔥 autorise un reset même si loading
     if (loading && !reset) return;
 
     const finalQuery =
@@ -109,7 +111,6 @@ export default function FeedPage() {
 
     const currentOffset = reset ? 0 : offset;
 
-    // 🔥 reset UX propre
     if (reset) {
       setItems([]);
       setOffset(0);
@@ -188,7 +189,6 @@ export default function FeedPage() {
 
   function handleBadgeClick(badge: FeedBadge) {
 
-    // UNIVERS → filtre
     if (badge.type === "universe") {
       setActiveUniverse(badge.id || null);
       setQuery("");
@@ -196,7 +196,6 @@ export default function FeedPage() {
       return;
     }
 
-    // AUTRES → recherche
     const value = badge.label;
     if (!value) return;
 
@@ -233,9 +232,11 @@ export default function FeedPage() {
         return prev.filter((i) => i.id !== item.id);
       }
 
-      // 🔥 important : éviter doublon + garder ordre stable
       return [...prev, item];
     });
+
+    // 🔥 IMPORTANT → garde comportement panel
+    setIsPanelOpen(true);
   }
 
   /* =========================================================
@@ -302,7 +303,7 @@ export default function FeedPage() {
       {isPanelOpen && (
         <div className="xl:col-span-1 sticky top-6 h-[calc(100vh-120px)]">
           <SelectionPanel
-            selectedItems={selectedItems} // 🔥 source unique
+            selectedItems={selectedItems}
             analysis={analysis}
             loading={loadingInsight}
             onGenerateInsight={generateInsight}
