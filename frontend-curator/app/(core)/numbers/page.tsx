@@ -209,13 +209,18 @@ export default function NumbersPage() {
 
             const firstItem = groupItems[0];
 
+            const contentDate =
+              firstItem?.published_at ||
+              firstItem?.PUBLISHED_AT ||
+              null;
+
             return (
               <section
                 key={title}
                 className="space-y-3 pb-6 border-b border-gray-100"
               >
 
-                {/* HEADER LIGHT */}
+                {/* HEADER */}
                 <div
                   onClick={() => {
                     if (!firstItem?.ID_CONTENT) return;
@@ -228,16 +233,25 @@ export default function NumbersPage() {
                   className="cursor-pointer group flex items-center justify-between"
                 >
                   <div>
+                    {/* TITLE */}
                     <div className="text-sm font-semibold text-gray-900 group-hover:underline">
                       {title}
                     </div>
-                    <div className="text-xs text-gray-400">
-                      {groupItems.length} chiffre(s)
+
+                    {/* META */}
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <span>{groupItems.length} chiffre(s)</span>
+
+                      {contentDate && (
+                        <span>
+                          • {new Date(contentDate).toLocaleDateString("fr-FR")}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="text-xs text-gray-400 group-hover:text-gray-600">
-                    Voir →
+                      Voir →
                   </div>
                 </div>
 
