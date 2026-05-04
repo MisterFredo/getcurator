@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { FeedItem } from "@/types/feed";
 
 /* ========================================================= */
 
 type Props = {
-  items: FeedItem[];
-  selectedIds: string[];
+  selectedItems: FeedItem[]; // 🔥 source unique
 
   analysis: string;
-
   loading: boolean;
 
   onGenerateInsight: () => void;
@@ -20,8 +18,7 @@ type Props = {
 /* ========================================================= */
 
 export default function SelectionPanel({
-  items,
-  selectedIds,
+  selectedItems,
   analysis,
   loading,
   onGenerateInsight,
@@ -29,12 +26,6 @@ export default function SelectionPanel({
 }: Props) {
 
   const [tab, setTab] = useState<"selection" | "analysis">("selection");
-
-  const [selectedCache, setSelectedCache] = useState<Record<string, FeedItem>>({});
-
-  const selectedItems = selectedIds
-    .map((id) => selectedCache[id])
-    .filter(Boolean);
 
   /* =========================================================
      HELPERS
@@ -49,30 +40,8 @@ export default function SelectionPanel({
     }
   }
 
-  useEffect(() => {
-    setSelectedCache((prev) => {
-      const updated = { ...prev };
-
-      // 🔥 AJOUT / MAJ
-      items.forEach((item) => {
-        if (selectedIds.includes(item.id)) {
-          updated[item.id] = item;
-        }
-      });
-
-      // 🔥 CLEAN (important)
-      Object.keys(updated).forEach((id) => {
-        if (!selectedIds.includes(id)) {
-          delete updated[id];
-        }
-      });
-
-      return updated;
-    });
-  }, [items, selectedIds]);
-
   /* =========================================================
-     SELECT + COPY (UNIVERSAL)
+     COPY
   ========================================================= */
 
   function selectAndCopy() {
@@ -291,7 +260,7 @@ export default function SelectionPanel({
                   {item.title}
                 </div>
 
-                {/* 🔥 BADGES COMPLETS */}
+                {/* BADGES */}
                 <div className="flex flex-wrap gap-1">
 
                   {item.companies?.map((c: any) => (
@@ -321,7 +290,6 @@ export default function SelectionPanel({
                     </span>
                   ))}
 
-                  {/* 🔥 AJOUT CONCEPTS */}
                   {item.concepts?.map((c: any) => (
                     <span
                       key={c.id_concept}
