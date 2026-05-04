@@ -87,7 +87,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
       const res = await api.get(
         `/numbers/entity?entity_type=company&entity_id=${id}&limit=4`
       );
-      setNumbers(res.items ?? []);
+      setNumbers(Array.isArray(res?.items) ? res.items : []);
     }
 
     loadNumbers();
