@@ -54,7 +54,7 @@ export default function FeedPage() {
      SELECTION
   ========================================================= */
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<FeedItem[]>([]);
 
   /* =========================================================
      ANALYSIS
