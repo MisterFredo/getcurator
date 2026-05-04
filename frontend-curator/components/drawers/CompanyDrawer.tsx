@@ -61,43 +61,78 @@ export default function CompanyDrawer({ id, onClose }: any) {
     }
   }
 
+  /* =========================================================
+     LOAD COMPANY
+  ========================================================= */
+
   useEffect(() => {
     async function load() {
-      const res = await api.get(`/company/${id}/view`);
-      setData(res);
-      setItems(res.items ?? []);
+      try {
+        const res = await api.get(`/company/${id}/view`);
+        setData(res);
+        setItems(res?.items ?? []);
+      } catch (e) {
+        console.error("❌ company load error", e);
+      }
     }
 
     load();
   }, [id]);
 
+  /* =========================================================
+     LOAD RADAR
+  ========================================================= */
+
   useEffect(() => {
     async function loadRadar() {
-      const res = await api.get(
-        `/radar/latest?entity_type=company&entity_id=${id}`
-      );
-      setRadar(res?.insight ?? null);
+      try {
+        const res = await api.get(
+          `/radar/latest?entity_type=company&entity_id=${id}`
+        );
+        setRadar(res?.insight ?? null);
+      } catch (e) {
+        console.error("❌ radar load error", e);
+      }
     }
 
     loadRadar();
   }, [id]);
 
+  /* =========================================================
+     LOAD NUMBERS (🔥 IMPORTANT)
+  ========================================================= */
+
   useEffect(() => {
     async function loadNumbers() {
-      const res = await api.get(
-        `/numbers/entity?entity_type=company&entity_id=${id}&limit=4`
-      );
-      setNumbers(res.items ?? []);
+      try {
+        const res = await api.get(
+          `/numbers/entity?entity_type=company&entity_id=${id}&limit=4`
+        );
+
+        // 🔥 sécurisation → uniquement les numbers officiels
+        const items = res?.items ?? [];
+
+        setNumbers(Array.isArray(items) ? items : []);
+      } catch (e) {
+        console.error("❌ numbers load error", e);
+        setNumbers([]);
+      }
     }
 
     loadNumbers();
   }, [id]);
+
+  /* ========================================================= */
 
   if (!data) return null;
 
   const logoUrl = data.media_logo_rectangle_id
     ? `${GCS_BASE_URL}/companies/${data.media_logo_rectangle_id}`
     : null;
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <EntityDrawer
@@ -132,14 +167,17 @@ export default function CompanyDrawer({ id, onClose }: any) {
         />
       )}
 
+      {/* 🔥 NUMBERS OFFICIELS */}
       <NumbersBlock
         numbers={numbers}
         entityId={id}
         entityType="company"
       />
 
+      {/* RADAR */}
       <RadarBlock radar={radar} />
 
+      {/* FEED */}
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
           Contenus liés
