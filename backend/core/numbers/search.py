@@ -253,25 +253,53 @@ def get_numbers_for_entity(
     limit: Optional[int] = None
 ) -> List[Dict]:
 
+    if entity_type == "company":
+        table_rel = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_COMPANY"
+        field = "ID_COMPANY"
+
+    elif entity_type == "solution":
+        table_rel = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_SOLUTION"
+        field = "ID_SOLUTION"
+
+    elif entity_type == "topic":
+        table_rel = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_TOPIC"
+        field = "ID_TOPIC"
+
+    else:
+        raise ValueError("Invalid entity_type")
+
     sql = f"""
         SELECT
-            ID_NUMBER,
-            LABEL,
-            VALUE,
-            UNIT,
-            SCALE,
-            TYPE,
-            CATEGORY,
-            ZONE,
-            PERIOD
-        FROM `{VIEW_NUMBERS}`
-        WHERE ENTITY_TYPE = @entity_type
-          AND ENTITY_ID = @entity_id
-        ORDER BY PERIOD DESC
+            n.ID_NUMBER,
+            n.LABEL,
+            n.VALUE,
+            n.UNIT,
+            n.SCALE,
+
+            t.TYPE,
+            t.CATEGORY,
+
+            n.ZONE,
+            n.PERIOD,
+
+            n.CREATED_AT
+
+        FROM `{table_rel}` rel
+
+        JOIN `{TABLE_NUMBERS}` n
+          ON n.ID_NUMBER = rel.ID_NUMBER
+
+        LEFT JOIN `{TABLE_NUMBERS_TYPES}` t
+          ON t.ID_TYPE = n.ID_NUMBER_TYPE
+
+        WHERE rel.{field} = @entity_id
+        AND (t.IS_ACTIVE = TRUE OR t.IS_ACTIVE IS NULL)
+        AND n.VALUE IS NOT NULL
+
+        ORDER BY n.CREATED_AT DESC
     """
 
     rows = query_bq(sql, {
-        "entity_type": entity_type,
         "entity_id": entity_id
     })
 
