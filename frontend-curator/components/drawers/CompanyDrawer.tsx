@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -49,8 +49,14 @@ export default function CompanyDrawer({ id, onClose }: any) {
   const [numbers, setNumbers] = useState<any[]>([]);
   const [radar, setRadar] = useState<any>(null);
 
-  // 🔥 NEW
+  // 🔥 description state
   const [expanded, setExpanded] = useState(false);
+  const [showToggle, setShowToggle] = useState(false);
+  const descRef = useRef<HTMLDivElement | null>(null);
+
+  /* ========================================================= */
+  /* CLOSE */
+  /* ========================================================= */
 
   function close() {
     onClose?.();
@@ -63,6 +69,10 @@ export default function CompanyDrawer({ id, onClose }: any) {
       router.push("/companies", { scroll: false });
     }
   }
+
+  /* ========================================================= */
+  /* LOAD DATA */
+  /* ========================================================= */
 
   useEffect(() => {
     async function load() {
@@ -96,11 +106,37 @@ export default function CompanyDrawer({ id, onClose }: any) {
     loadNumbers();
   }, [id]);
 
+  /* ========================================================= */
+  /* DETECT OVERFLOW DESCRIPTION */
+  /* ========================================================= */
+
+  useEffect(() => {
+    if (!descRef.current) return;
+
+    const el = descRef.current;
+
+    // 🔥 reset clamp pour mesurer correctement
+    el.classList.remove("line-clamp-5");
+
+    const isOverflowing = el.scrollHeight > el.clientHeight;
+
+    // 🔥 remettre clamp si non expanded
+    if (!expanded) {
+      el.classList.add("line-clamp-5");
+    }
+
+    setShowToggle(isOverflowing);
+  }, [data?.description, expanded]);
+
+  /* ========================================================= */
+
   if (!data) return null;
 
   const logoUrl = data.media_logo_rectangle_id
     ? `${GCS_BASE_URL}/companies/${data.media_logo_rectangle_id}`
     : null;
+
+  /* ========================================================= */
 
   return (
     <EntityDrawer
@@ -129,6 +165,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
       {data.description && (
         <div className="border-b border-gray-200 py-4">
           <div
+            ref={descRef}
             className={`prose prose-sm max-w-none transition-all ${
               expanded ? "" : "line-clamp-5"
             }`}
@@ -137,23 +174,28 @@ export default function CompanyDrawer({ id, onClose }: any) {
             }}
           />
 
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            {expanded ? "Voir moins" : "Voir plus"}
-          </button>
+          {showToggle && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-700"
+            >
+              {expanded ? "Voir moins" : "Voir plus"}
+            </button>
+          )}
         </div>
       )}
 
+      {/* NUMBERS */}
       <NumbersBlock
         numbers={numbers}
         entityId={id}
         entityType="company"
       />
 
+      {/* RADAR */}
       <RadarBlock radar={radar} />
 
+      {/* FEED */}
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
           Contenus liés
