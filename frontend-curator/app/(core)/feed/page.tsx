@@ -227,12 +227,13 @@ export default function FeedPage() {
 
   function toggleSelect(item: FeedItem) {
     setSelectedItems((prev) => {
-      const exists = prev.find((i) => i.id === item.id);
+      const exists = prev.some((i) => i.id === item.id);
 
       if (exists) {
         return prev.filter((i) => i.id !== item.id);
       }
 
+      // 🔥 important : éviter doublon + garder ordre stable
       return [...prev, item];
     });
   }
