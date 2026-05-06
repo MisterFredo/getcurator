@@ -2,7 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
+/* ========================= */
+/* BASE RESET */
+/* ========================= */
+
+html,
+body {
   margin: 0;
   padding: 0;
 }
@@ -35,4 +40,8 @@ html, body {
     transform: scale(1.6);
     opacity: 1;
   }
+}
+
+.animate-zoomIn {
+  animation: zoomIn 0.3s ease forwards;
 }
