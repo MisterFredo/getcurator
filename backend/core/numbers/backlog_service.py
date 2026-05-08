@@ -1,401 +1,206 @@
-# ============================================================
-# IMPORTS
-# ============================================================
-
-from typing import List, Dict, Optional
-import uuid
+from typing import List, Dict
 
 from config import BQ_PROJECT, BQ_DATASET
-from utils.bigquery_utils import query_bq, get_bigquery_client
-from datetime import datetime, timezone
+from utils.bigquery_utils import query_bq
 
-from core.numbers.insight_service import build_numbers_prompt
-from utils.llm import run_llm
+def get_numbers_backlog(limit: int = 100) -> List[Dict]:
 
-
-# ============================================================
-# TABLES
-# ============================================================
-
-TABLE_BACKLOG = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG"
-TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
-TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
-
-
-
-def _now():
-    return datetime.now(timezone.utc).isoformat()
-
-
-
-# ============================================================
-# FEED (CURATOR V1)
-# ============================================================
-
-def get_backlog_feed(
-    limit: int = 50,
-    query: Optional[str] = None,
-    universe_id: Optional[str] = None,
-    concept_ids: Optional[List[str]] = None,
-) -> List[Dict]:
-
-    conditions = ["TRUE"]
-    params = {"limit": limit}
-
-    # 🔍 SEARCH
-    if query:
-        conditions.append("""
-            (
-                LOWER(b.LABEL) LIKE LOWER(@query)
-                OR LOWER(b.ACTOR) LIKE LOWER(@query)
-                OR LOWER(c.TITLE) LIKE LOWER(@query)
-            )
-        """)
-        params["query"] = f"%{query}%"
-
-    # 🌍 UNIVERSE
-    if universe_id:
-        conditions.append(f"""
-        EXISTS (
-            SELECT 1
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE` su
-            WHERE su.ID_SOURCE = c.ID_SOURCE
-              AND su.ID_UNIVERSE = @universe_id
-        )
-        """)
-        params["universe_id"] = universe_id
-
-    # 🧠 CONCEPT FILTER
-    if concept_ids:
-        conditions.append(f"""
-        EXISTS (
-            SELECT 1
-            FROM `{TABLE_CONTENT_CONCEPT}` cc
-            WHERE cc.ID_CONTENT = c.ID_CONTENT
-              AND cc.ID_CONCEPT IN UNNEST(@concept_ids)
-        )
-        """)
-        params["concept_ids"] = concept_ids
-
-    # 🚫 IGNORE
-    conditions.append("(b.DECISION IS NULL OR b.DECISION != 'IGNORE')")
-
-    where_clause = " AND ".join(conditions)
+    TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+    TABLE_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
+    TABLE_TOPIC_REF = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+    TABLE_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
+    TABLE_COMPANY_REF = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+    TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
+    TABLE_SOLUTION_REF = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
+    TABLE_BACKLOG = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG"
 
     rows = query_bq(f"""
-        SELECT
-            b.ID_BACKLOG,
-            b.ID_CONTENT,
-            c.TITLE AS context_title,
-            c.ID_SOURCE,
+        WITH base AS (
 
-            b.LABEL,
-            SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
-            b.UNIT,
+            SELECT
+                c.ID_CONTENT AS id_content,
+                c.SOURCE_DATE AS source_date,
+                chiffre,
 
-            b.ACTOR,
-            b.MARKET AS ZONE,
-            b.PERIOD,
+                IFNULL(STRING_AGG(DISTINCT t.LABEL), "Non précisé") AS topics,
+                IFNULL(STRING_AGG(DISTINCT comp.NAME), "Non précisé") AS companies,
+                IFNULL(STRING_AGG(DISTINCT sol.NAME), "Non précisé") AS solutions
 
-            b.CREATED_AT
+            FROM `{TABLE_CONTENT}` c
 
-        FROM `{TABLE_BACKLOG}` b
+            LEFT JOIN UNNEST(c.CHIFFRES) AS chiffre
 
-        LEFT JOIN `{TABLE_CONTENT}` c
-          ON b.ID_CONTENT = c.ID_CONTENT
+            LEFT JOIN `{TABLE_TOPIC}` ct
+              ON c.ID_CONTENT = ct.ID_CONTENT
+            LEFT JOIN `{TABLE_TOPIC_REF}` t
+              ON ct.ID_TOPIC = t.ID_TOPIC
 
-        WHERE {where_clause}
+            LEFT JOIN `{TABLE_COMPANY}` cc
+              ON c.ID_CONTENT = cc.ID_CONTENT
+            LEFT JOIN `{TABLE_COMPANY_REF}` comp
+              ON cc.ID_COMPANY = comp.ID_COMPANY
 
-        ORDER BY b.CREATED_AT DESC
-        LIMIT @limit
-    """, params)
+            LEFT JOIN `{TABLE_SOLUTION}` cs
+              ON c.ID_CONTENT = cs.ID_CONTENT
+            LEFT JOIN `{TABLE_SOLUTION_REF}` sol
+              ON cs.ID_SOLUTION = sol.ID_SOLUTION
 
-    return [
-        {
-            "ID_NUMBER": r["ID_BACKLOG"],
+            WHERE chiffre IS NOT NULL
 
-            "LABEL": r.get("LABEL"),
-            "VALUE": r.get("VALUE"),
-            "UNIT": r.get("UNIT"),
-            "SCALE": None,
-
-            "ZONE": r.get("ZONE"),
-            "PERIOD": r.get("PERIOD"),
-
-            "ENTITIES": [
-                {
-                    "ENTITY_TYPE": "actor",
-                    "ENTITY_LABEL": r.get("ACTOR"),
-                }
-            ] if r.get("ACTOR") else [],
-
-            "TYPE": None,
-            "CATEGORY": None,
-
-            "context_title": r.get("context_title"),
-            "ID_CONTENT": r.get("ID_CONTENT"),
-            "source_type": "content",
-
-            "CREATED_AT": r.get("CREATED_AT"),
-        }
-        for r in rows
-    ]
-
-
-
-# ============================================================
-# ADMIN (GLOBAL PANEL)
-# ============================================================
-
-def get_backlog_admin(
-    limit: int = 200,
-    offset: int = 0,
-    query: Optional[str] = None,
-    decision: Optional[str] = None,
-) -> List[Dict]:
-
-    conditions = ["TRUE"]
-    params = {
-        "limit": limit,
-        "offset": offset,
-    }
-
-    # 🔍 SEARCH (label + actor)
-    if query:
-        conditions.append("""
-            (
-                LOWER(b.LABEL) LIKE LOWER(@query)
-                OR LOWER(b.ACTOR) LIKE LOWER(@query)
-            )
-        """)
-        params["query"] = f"%{query}%"
-
-    # 🔥 DECISION FILTER
-    if decision == "NULL":
-        conditions.append("b.DECISION IS NULL")
-
-    elif decision:
-        conditions.append("b.DECISION = @decision")
-        params["decision"] = decision
-
-    # 👉 si decision == "" → ALL → pas de filtre
-
-    where_clause = " AND ".join(conditions)
-
-    rows = query_bq(f"""
-        SELECT
-            b.ID_BACKLOG,
-            b.ID_CONTENT,
-            c.TITLE AS context_title,
-
-            b.RAW_LINE,
-            b.LABEL,
-            SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
-            b.UNIT,
-
-            b.ACTOR,
-            b.MARKET,
-            b.PERIOD,
-
-            b.DECISION,
-            b.CONFIDENCE,
-            b.CONTEXT,
-
-            b.CREATED_AT
-
-        FROM `{TABLE_BACKLOG}` b
-
-        LEFT JOIN `{TABLE_CONTENT}` c
-          ON b.ID_CONTENT = c.ID_CONTENT
-
-        WHERE {where_clause}
-
-        ORDER BY b.CREATED_AT DESC
-
-        LIMIT @limit
-        OFFSET @offset
-    """, params)
-
-    return rows
-
-def insert_backlog_numbers(parsed_numbers, id_content):
-
-    client = get_bigquery_client()
-
-    # ============================================================
-    # 1️⃣ CLEAN EXISTANT (PAR CONTENT)
-    # ============================================================
-
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("id_content", "STRING", id_content),
-        ]
-    )
-
-    client.query(f"""
-        DELETE FROM `{TABLE_BACKLOG}`
-        WHERE ID_CONTENT = @id_content
-    """, job_config=job_config).result()
-
-    # ============================================================
-    # 2️⃣ RÉCUPÉRER LES NUMBERS IGNORÉS (ANTI-RETOUR DU BRUIT)
-    # ============================================================
-
-    ignored_rows = query_bq(f"""
-        SELECT LABEL, VALUE
-        FROM `{TABLE_BACKLOG}`
-        WHERE DECISION = 'IGNORE'
-    """)
-
-    ignored_set = {
-        (
-            (r.get("LABEL") or "").strip().lower(),
-            str(r.get("VALUE"))
+            GROUP BY
+                id_content,
+                source_date,
+                chiffre
         )
-        for r in ignored_rows
-    }
 
-    # ============================================================
-    # 3️⃣ DEDUP LOCAL + FILTRE IGNORE
-    # ============================================================
+        SELECT *
+        FROM base b
 
-    seen = set()
-    rows = []
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM `{TABLE_BACKLOG}` bl
+            WHERE bl.RAW_LINE = b.chiffre
+              AND bl.ID_CONTENT = b.id_content
+        )
 
-    for p in parsed_numbers:
-
-        label = (p.get("label") or "").strip()
-        value = p.get("value")
-
-        if value is None or not label:
-            continue
-
-        value_str = str(value)
-
-        key = (label.lower(), value_str)
-
-        # 🔥 dédup local
-        if key in seen:
-            continue
-
-        # 🔥 skip bruit déjà ignoré
-        if key in ignored_set:
-            continue
-
-        seen.add(key)
-
-        rows.append({
-            "ID_BACKLOG": str(uuid.uuid4()),
-
-            "ID_CONTENT": id_content,
-            "RAW_LINE": None,
-
-            "LABEL": label,
-            "VALUE": value_str,
-            "UNIT": p.get("unit"),
-
-            "ACTOR": p.get("actor"),
-            "MARKET": p.get("zone"),
-            "PERIOD": p.get("period"),
-
-            "DECISION": None,
-            "CONFIDENCE": None,
-            "CONTEXT": None,
-
-            "CREATED_AT": _now(),
-        })
-
-    # ============================================================
-    # 4️⃣ INSERT
-    # ============================================================
-
-    if rows:
-        client.load_table_from_json(rows, TABLE_BACKLOG).result()
-# ============================================================
-# UPDATE DECISION (ADMIN ACTION)
-# ============================================================
-
-def update_backlog_decision(id_backlog: str, decision: Optional[str]):
-
-    query_bq(f"""
-        UPDATE `{TABLE_BACKLOG}`
-        SET DECISION = @decision
-        WHERE ID_BACKLOG = @id
+        LIMIT @limit
     """, {
-        "id": id_backlog,
-        "decision": decision,
+        "limit": limit
     })
 
+    results = []
 
-# ============================================================
-# FETCH BY IDS (FOR INSIGHT)
-# ============================================================
+    for r in rows:
 
-def get_backlog_numbers_by_ids(ids: List[str]) -> List[Dict]:
+        results.append({
+            "id_content": r["id_content"],
+            "chiffre": r["chiffre"],
+            "date": str(r["source_date"]) if r.get("source_date") else None,
+            "topics": r["topics"],
+            "companies": r["companies"],
+            "solutions": r["solutions"],
+        })
 
-    if isinstance(ids, str):
-        ids = [ids]
-
-    if not ids:
-        return []
-
-    rows = query_bq(f"""
-        SELECT
-            b.ID_BACKLOG,
-            c.TITLE AS context_title,
-
-            b.LABEL,
-            SAFE_CAST(b.VALUE AS FLOAT64) AS VALUE,
-            b.UNIT,
-
-            b.ACTOR,
-            b.MARKET,
-            b.PERIOD
-
-        FROM `{TABLE_BACKLOG}` b
-
-        LEFT JOIN `{TABLE_CONTENT}` c
-          ON b.ID_CONTENT = c.ID_CONTENT
-
-        WHERE b.ID_BACKLOG IN UNNEST(@ids)
-    """, {"ids": ids})
-
-    return [
-        {
-            "label": r.get("LABEL"),
-            "value": r.get("VALUE"),
-            "unit": r.get("UNIT"),
-            "scale": None,
-
-            "type": None,
-            "category": None,
-
-            "zone": r.get("MARKET"),
-            "period": r.get("PERIOD"),
-
-            "entity_label": r.get("ACTOR"),
-        }
-        for r in rows
-    ]
+    return results
 
 
-# ============================================================
-# INSIGHT (V1)
-# ============================================================
+def build_prompt(row: dict) -> str:
 
-def generate_backlog_insight(ids: List[str]) -> str:
+    return f"""
+Tu es un expert data marketing senior.
 
-    numbers = get_backlog_numbers_by_ids(ids)
+Ta mission est de décider si un chiffre peut être intégré dans un dashboard professionnel.
 
-    if not numbers:
-        return ""
+--------------------------------------------------
 
-    prompt = build_numbers_prompt(numbers)
+OBJECTIF
 
-    result = run_llm(
-        prompt=prompt,
-        temperature=0.2,
-    )
+Ne garder QUE des KPI solides, comparables et réellement exploitables business.
 
-    return result or ""
+--------------------------------------------------
+
+1. DECISION
+
+- KEEP → uniquement si le chiffre peut être utilisé directement dans un dashboard
+- REJECT → sinon
+
+--------------------------------------------------
+
+2. CRITÈRES KEEP (OBLIGATOIRES)
+
+Le chiffre doit :
+
+✔ être un KPI business clair (revenus, part de marché, croissance, CPM, CPC, CPA, volume utilisateurs…)
+✔ être comparable (entre acteurs, périodes ou marchés)
+✔ être compréhensible seul (sans contexte externe)
+✔ contenir au moins un élément de contexte exploitable (acteur OU marché OU période)
+
+✔ les estimations de marché global sont autorisées (taille de marché, projections, croissance secteur)
+
+--------------------------------------------------
+
+3. REJECT SI (STRICT)
+
+❌ métrique marketing "soft" :
+   - affinité
+   - considération
+   - engagement relatif
+   - "plus susceptibles"
+   - "plus de chances"
+
+❌ formulation vague ou non standardisable :
+   - "augmentation"
+   - "baisse"
+   - "réduction"
+   sans précision KPI claire
+
+❌ événement ponctuel :
+   - acquisition
+   - levée de fonds
+   - annonce isolée
+
+❌ plusieurs valeurs dans une même ligne non séparables clairement
+❌ KPI reformulé ou interprété (ex: "croissance", "priorité", "augmentation") sans métrique directement exploitable
+
+❌ range :
+   - "10-15%"
+   - "2 à 3 fois"
+
+❌ absence de contexte exploitable
+
+❌ chiffre trop ancien ou non pertinent aujourd’hui (ex: data > 5-10 ans sans valeur benchmark claire)
+
+❌ KPI non standardisable ou non comparable dans un dashboard
+
+--------------------------------------------------
+
+4. STRUCTURE SI KEEP
+
+- decision
+- label → KPI métier clair, court, standardisé (ex: "part de marché retail media", "revenus annuels", "CPM moyen")
+- le label doit correspondre à un KPI standardisé directement utilisable dans un dashboard
+(ex: revenus, part de marché, volume, coût, performance)
+- value → nombre uniquement (pas de %, $, texte, espace)
+- unit → EXACTEMENT parmi :
+  %, $, €, millions, milliards, x, utilisateurs, autres
+- actor → sinon "Non précisé"
+- market → sinon "Non précisé"
+- period → sinon "Non précisé"
+- confidence → HIGH si très fiable, sinon MEDIUM
+
+--------------------------------------------------
+
+5. IMPORTANT
+
+- Si doute → REJECT
+- Priorité à la qualité, pas au volume
+- Objectif : environ 20-30% de KEEP maximum
+- Le KPI doit être directement exploitable dans un dashboard sans transformation
+
+--------------------------------------------------
+
+6. FORMAT
+
+Retourne UNIQUEMENT un JSON valide, sans texte avant ou après :
+
+{{
+  "decision": "...",
+  "label": "...",
+  "value": ...,
+  "unit": "...",
+  "actor": "...",
+  "market": "...",
+  "period": "...",
+  "confidence": "..."
+}}
+
+--------------------------------------------------
+
+DONNÉES :
+
+Chiffre : {row["chiffre"]}
+Date : {row["date"]}
+Topics : {row["topics"]}
+Companies : {row["companies"]}
+Solutions : {row["solutions"]}
+"""
