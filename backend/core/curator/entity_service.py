@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+from datetime import datetime
 
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
