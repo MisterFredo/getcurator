@@ -164,7 +164,7 @@ def get_company_feed(
     # ============================================================
 
     sql_ids = f"""
-    SELECT DISTINCT
+    SELECT
         c.ID_CONTENT
     FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
     JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` cc
