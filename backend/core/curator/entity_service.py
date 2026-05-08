@@ -256,8 +256,6 @@ def get_company_feed(
 
     query_params = {
         "company_id": company_id,
-        "year": year,
-        "month": month,
         "user_id": user_id,
     }
 
@@ -360,8 +358,6 @@ def get_topic_feed(
         """,
         params={
             "topic_id": topic_id,
-            "year": year,
-            "month": month,
         },
         user_id=user_id,
         universe_id=universe_id
@@ -476,8 +472,6 @@ def get_solution_feed(
         """,
         params={
             "solution_id": solution_id,
-            "year": year,
-            "month": month,
         },
         user_id=user_id,
         universe_id=universe_id
