@@ -5,6 +5,12 @@ from utils.bigquery_utils import query_bq
 
 
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+
+# 🔥 NEW
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
 TABLE_CONTENT_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
 TABLE_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
 
@@ -14,7 +20,6 @@ TABLE_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 TABLE_CONTENT_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
 TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 
-# 🔥 NEW
 TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
 TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
 
@@ -84,21 +89,9 @@ def get_content(id_content: str) -> Dict:
 
     rows = query_bq(
         f"""
-        SELECT
-            ID_CONTENT,
-            TITLE,
-            SIGNAL_ANALYTIQUE,
-            EXCERPT,
-            CONCEPTS_LLM,
-            CONTENT_BODY,
-            CHIFFRES,
-            ACTEURS_CITES,
-            PUBLISHED_AT
-        FROM {TABLE_CONTENT}
-        WHERE
-            ID_CONTENT = @id_content
-            AND STATUS = 'PUBLISHED'
-            AND IS_ACTIVE = TRUE
+        SELECT *
+        FROM `{TABLE_CONTENT_ENRICHED}`
+        WHERE id_content = @id_content
         LIMIT 1
         """,
         {"id_content": id_content},
@@ -109,114 +102,37 @@ def get_content(id_content: str) -> Dict:
 
     r = rows[0]
 
-    # ============================================================
-    # TOPICS
-    # ============================================================
-
-    topic_rows = query_bq(
-        f"""
-        SELECT T.ID_TOPIC, T.LABEL
-        FROM {TABLE_CONTENT_TOPIC} CT
-        JOIN {TABLE_TOPIC} T
-          ON CT.ID_TOPIC = T.ID_TOPIC
-        WHERE CT.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    # ============================================================
-    # COMPANIES
-    # ============================================================
-
-    company_rows = query_bq(
-        f"""
-        SELECT C.ID_COMPANY, C.NAME
-        FROM {TABLE_CONTENT_COMPANY} CC
-        JOIN {TABLE_COMPANY} C
-          ON CC.ID_COMPANY = C.ID_COMPANY
-        WHERE CC.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    # ============================================================
-    # SOLUTIONS
-    # ============================================================
-
-    solution_rows = query_bq(
-        f"""
-        SELECT S.ID_SOLUTION, S.NAME
-        FROM {TABLE_CONTENT_SOLUTION} CS
-        JOIN {TABLE_SOLUTION} S
-          ON CS.ID_SOLUTION = S.ID_SOLUTION
-        WHERE CS.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    # ============================================================
-    # 🔥 CONCEPTS STRUCTURÉS (NOUVEAU)
-    # ============================================================
-
-    concept_rows = query_bq(
-        f"""
-        SELECT C.ID_CONCEPT, C.LABEL
-        FROM {TABLE_CONTENT_CONCEPT} CC
-        JOIN {TABLE_CONCEPT} C
-          ON CC.ID_CONCEPT = C.ID_CONCEPT
-        WHERE CC.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
     return {
-        "id_content": r["ID_CONTENT"],
-        "title": r["TITLE"],
-        "signal": r.get("SIGNAL_ANALYTIQUE"),
-        "excerpt": r.get("EXCERPT"),
+        "id_content": r.get("id_content"),
 
-        # 🔥 LLM (suggestion)
-        "concepts_llm": r.get("CONCEPTS_LLM") or [],
+        "title": r.get("title"),
 
-        "content_body": r.get("CONTENT_BODY"),
-        "chiffres": r.get("CHIFFRES") or [],
-        "acteurs_cites": r.get("ACTEURS_CITES") or [],
-        "published_at": r["PUBLISHED_AT"],
+        "signal": r.get("signal_analytique"),
+
+        "excerpt": r.get("excerpt"),
+
+        # 🔥 LLM
+        "concepts_llm": r.get("concepts_llm") or [],
+
+        "content_body": r.get("content_body"),
+
+        "chiffres": r.get("chiffres") or [],
+
+        "acteurs_cites": r.get("acteurs_cites") or [],
+
+        "published_at": r.get("published_at"),
 
         # ========================================================
-        # ENRICHISSEMENTS
+        # ENRICHISSEMENTS DIRECTS
         # ========================================================
 
-        "topics": [
-            {
-                "id_topic": t["ID_TOPIC"],
-                "label": t["LABEL"],
-            }
-            for t in topic_rows
-        ],
+        "topics": r.get("topics") or [],
 
-        "companies": [
-            {
-                "id_company": c["ID_COMPANY"],
-                "name": c["NAME"],
-            }
-            for c in company_rows
-        ],
+        "companies": r.get("companies") or [],
 
-        # 🔥 STRUCTURÉ = vérité métier
-        "concepts": [
-            {
-                "id_concept": c["ID_CONCEPT"],
-                "label": c["LABEL"],
-            }
-            for c in concept_rows
-        ],
+        "solutions": r.get("solutions") or [],
 
-        "solutions": [
-            {
-                "id_solution": s["ID_SOLUTION"],
-                "name": s["NAME"],
-            }
-            for s in solution_rows
-        ],
+        "concepts": r.get("concepts") or [],
+
+        "universes": r.get("universes") or [],
     }
