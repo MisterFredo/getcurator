@@ -228,7 +228,7 @@ def _map_number_row(r: Dict) -> Dict:
         "LABEL": get_key(r, "LABEL", "label"),
         "VALUE": get_key(r, "VALUE", "value"),
         "UNIT": get_key(r, "UNIT", "unit"),
-        "SCALE": None,
+        "SCALE": get_key(r, "SCALE", "scale"),
 
         "ZONE": get_key(r, "ZONE", "zone"),
         "PERIOD": get_key(r, "PERIOD", "period"),
