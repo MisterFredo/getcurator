@@ -4,11 +4,9 @@ from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
 
-# ============================================================
-# VIEWS
-# ============================================================
-
-VIEW_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_ENRICHED"
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
 
 
 # ============================================================
