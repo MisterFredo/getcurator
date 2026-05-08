@@ -87,14 +87,17 @@ def create_content(data: ContentCreate) -> str:
         "AUTHOR": data.author,
 
         "SOURCE_ID": data.source_id,
+
         "SOURCE_PUBLISHED_AT": (
             data.source_published_at.isoformat()
             if data.source_published_at
             else None
         ),
+
         "TITLE": data.title.strip(),
         "EXCERPT": data.excerpt,
         "CONTENT_BODY": data.content_body,
+
         "CHIFFRES": normalize_array(data.chiffres),
         "ACTEURS_CITES": normalize_array(data.acteurs_cites),
 
@@ -111,18 +114,21 @@ def create_content(data: ContentCreate) -> str:
         "SEO_DESCRIPTION": data.seo_description,
 
         "PUBLISHED_AT": None,
+
         "CREATED_AT": now,
+
         "SOURCE_DATE": (
             data.source_date.isoformat()
             if data.source_date
             else None
         ),
+
         "UPDATED_AT": now,
     }]
 
-    # ===========================
+    # ============================================================
     # DEBUG AVANT INSERT
-    # ===========================
+    # ============================================================
 
     print("\n========== DEBUG CREATE_CONTENT ==========")
     print("ID_CONTENT:", content_id)
@@ -130,20 +136,28 @@ def create_content(data: ContentCreate) -> str:
     debug_row = row[0]
 
     for field in ["CONCEPTS_LLM", "SOLUTIONS_LLM", "TOPICS_LLM"]:
+
         value = debug_row.get(field)
+
         print(f"\nFIELD: {field}")
         print("TYPE:", type(value))
         print("VALUE:", value)
 
         if isinstance(value, list):
+
             for i, v in enumerate(value):
                 print(f"  [{i}] -> ({type(v)}) {v}")
 
     print("\nFULL ROW TYPES:")
+
     for k, v in debug_row.items():
         print(k, "=>", type(v))
 
     print("==========================================\n")
+
+    # ============================================================
+    # INSERT CONTENT
+    # ============================================================
 
     client = get_bigquery_client()
 
@@ -157,44 +171,65 @@ def create_content(data: ContentCreate) -> str:
 
     print("✔ INSERT DONE FOR:", content_id)
 
-    # ===========================
-    # NUMBERS STRUCTURED INSERT
-    # ===========================
+    # ============================================================
+    # NUMBERS → BACKLOG PIPELINE
+    # ============================================================
 
     try:
-
-        from core.numbers.insert_service import insert_structured_numbers
 
         chiffres = normalize_array(data.chiffres)
 
         if chiffres:
-            insert_structured_numbers(
-                content_id=content_id,
-                chiffres=chiffres,
-            )
 
-            print("✔ NUMBERS STRUCTURED INSERTED:", content_id)
+            backlog_rows = get_numbers_from_content(content_id)
+
+            processed_results = []
+
+            for backlog_row in backlog_rows:
+
+                result = process_backlog_row(backlog_row)
+
+                if result.get("status") == "ok":
+                    processed_results.append(result)
+
+            if processed_results:
+
+                insert_backlog_batch(processed_results)
+
+                print(
+                    "✔ NUMBERS BACKLOG INSERTED:",
+                    len(processed_results)
+                )
+
+            else:
+                print("ℹ️ NO VALID NUMBERS:", content_id)
 
         else:
-            print("ℹ️ NO CHIFFRES TO INSERT:", content_id)
+            print("ℹ️ NO CHIFFRES TO PROCESS:", content_id)
 
     except Exception as e:
-        print("❌ ERROR INSERT NUMBERS STRUCTURED:", str(e))
 
-    # ===========================
+        print("❌ ERROR NUMBERS BACKLOG:", str(e))
+
+    # ============================================================
     # RELATIONS
-    # ===========================
+    # ============================================================
 
-    final_topics = data.topics if data.topics else data.topics_llm
+    final_topics = (
+        data.topics
+        if data.topics
+        else data.topics_llm
+    )
 
     if final_topics:
+
         insert_bq(
             TABLE_CONTENT_TOPIC,
             [
                 {
                     "ID_CONTENT": content_id,
                     "ID_TOPIC": tid,
-                    "CREATED_AT": now
+                    "CREATED_AT": now,
                 }
                 for tid in set(final_topics)
                 if tid
@@ -202,32 +237,35 @@ def create_content(data: ContentCreate) -> str:
         )
 
     if data.events:
+
         insert_bq(
             TABLE_CONTENT_EVENT,
             [
                 {
                     "ID_CONTENT": content_id,
                     "ID_EVENT": eid,
-                    "CREATED_AT": now
+                    "CREATED_AT": now,
                 }
                 for eid in data.events
             ],
         )
 
     if data.companies:
+
         insert_bq(
             TABLE_CONTENT_COMPANY,
             [
                 {
                     "ID_CONTENT": content_id,
                     "ID_COMPANY": cid,
-                    "CREATED_AT": now
+                    "CREATED_AT": now,
                 }
                 for cid in data.companies
             ],
         )
 
     if data.persons:
+
         insert_bq(
             TABLE_CONTENT_PERSON,
             [
@@ -241,32 +279,44 @@ def create_content(data: ContentCreate) -> str:
             ],
         )
 
-    # 🔥 PATCH CONCEPTS (SEULE MODIFICATION)
+    # ============================================================
+    # CONCEPTS
+    # ============================================================
 
-    final_concepts = data.concepts if data.concepts else data.concepts_llm
+    final_concepts = (
+        data.concepts
+        if data.concepts
+        else data.concepts_llm
+    )
 
     if final_concepts:
+
         insert_bq(
             TABLE_CONTENT_CONCEPT,
             [
                 {
                     "ID_CONTENT": content_id,
                     "ID_CONCEPT": cid,
-                    "CREATED_AT": now
+                    "CREATED_AT": now,
                 }
                 for cid in set(final_concepts)
                 if cid
             ],
         )
 
+    # ============================================================
+    # SOLUTIONS
+    # ============================================================
+
     if data.solutions:
+
         insert_bq(
             TABLE_CONTENT_SOLUTION,
             [
                 {
                     "ID_CONTENT": content_id,
                     "ID_SOLUTION": sid,
-                    "CREATED_AT": now
+                    "CREATED_AT": now,
                 }
                 for sid in data.solutions
             ],
@@ -275,7 +325,6 @@ def create_content(data: ContentCreate) -> str:
     print("✔ RELATIONS DONE FOR:", content_id)
 
     return content_id
-
 # ============================================================
 # GET CONTENT
 # ============================================================
