@@ -143,25 +143,6 @@ def get_types():
 
 
 # ============================================================
-# RAW
-# ============================================================
-
-@router.get("/raw")
-def raw_numbers(limit: int = 500):
-
-    try:
-        items = get_raw_numbers(limit=limit)
-
-        return {
-            "status": "ok",
-            "items": items,
-        }
-
-    except Exception as e:
-        raise HTTPException(400, f"Erreur raw numbers : {e}")
-
-
-# ============================================================
 # SEARCH
 # ============================================================
 
