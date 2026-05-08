@@ -11,34 +11,63 @@ TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_BACKLOG"
 
 
 # ============================================================
-# SINGLE (à garder si besoin debug uniquement)
+# HELPERS
 # ============================================================
 
-def insert_backlog_result(result: dict):
+def _now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _safe_float(value):
+
+    if value in (None, "", "null"):
+        return None
+
+    try:
+        return float(value)
+    except:
+        return None
+
+
+# ============================================================
+# BUILD ROW
+# ============================================================
+
+def _build_backlog_row(result: dict):
 
     output = result.get("output") or {}
     input_data = result.get("input") or {}
 
-    row = {
+    return {
         "ID_BACKLOG": str(uuid.uuid4()),
         "ID_CONTENT": input_data.get("id_content"),
 
         "RAW_LINE": input_data.get("chiffre"),
 
         "LABEL": output.get("label"),
-        "VALUE": float(output.get("value")) if output.get("value") not in (None, "", "null") else None,
+        "VALUE": _safe_float(output.get("value")),
         "UNIT": output.get("unit"),
-        "CONTEXT": output.get("context"),
 
         "ACTOR": output.get("actor"),
         "MARKET": output.get("market"),
         "PERIOD": output.get("period"),
+
         "CONFIDENCE": output.get("confidence"),
 
+        # 🔥 KEEP / IGNORE recommandé
         "DECISION": output.get("decision"),
 
-        "CREATED_AT": datetime.now(timezone.utc).isoformat(),
+        "CREATED_AT": _now(),
     }
+
+
+# ============================================================
+# SINGLE (DEBUG)
+# ============================================================
+
+def insert_backlog_result(result: dict):
+
+    row = _build_backlog_row(result)
 
     client = get_bigquery_client()
 
@@ -52,7 +81,7 @@ def insert_backlog_result(result: dict):
 
 
 # ============================================================
-# BATCH (🔥 À UTILISER PARTOUT)
+# BATCH
 # ============================================================
 
 def insert_backlog_batch(results: List[dict]):
@@ -60,38 +89,46 @@ def insert_backlog_batch(results: List[dict]):
     if not results:
         return
 
-    rows = []
+    # ============================================================
+    # BUILD ROWS
+    # ============================================================
 
-    for r in results:
+    rows = [
+        _build_backlog_row(r)
+        for r in results
+    ]
 
-        output = r.get("output") or {}
-        input_data = r.get("input") or {}
+    # ============================================================
+    # DEDUP MEMORY
+    # ============================================================
 
-        rows.append({
-            "ID_BACKLOG": str(uuid.uuid4()),
-            "ID_CONTENT": input_data.get("id_content"),
+    seen = set()
+    deduped_rows = []
 
-            "RAW_LINE": input_data.get("chiffre"),
+    for row in rows:
 
-            "LABEL": output.get("label"),
-            "VALUE": float(output.get("value")) if output.get("value") not in (None, "", "null") else None,
-            "UNIT": output.get("unit"),
-            "CONTEXT": output.get("context"),
+        key = (
+            row.get("ID_CONTENT"),
+            row.get("RAW_LINE"),
+        )
 
-            "ACTOR": output.get("actor"),
-            "MARKET": output.get("market"),
-            "PERIOD": output.get("period"),
-            "CONFIDENCE": output.get("confidence"),
+        if key in seen:
+            continue
 
-            "DECISION": output.get("decision"),
+        seen.add(key)
+        deduped_rows.append(row)
 
-            "CREATED_AT": datetime.now(timezone.utc).isoformat(),
-        })
+    if not deduped_rows:
+        return
+
+    # ============================================================
+    # INSERT
+    # ============================================================
 
     client = get_bigquery_client()
 
     client.load_table_from_json(
-        rows,
+        deduped_rows,
         TABLE,
         job_config=bigquery.LoadJobConfig(
             write_disposition="WRITE_APPEND"
