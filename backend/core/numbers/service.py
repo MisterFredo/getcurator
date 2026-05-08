@@ -478,61 +478,24 @@ def get_numbers_for_entity(
         rows = rows[:limit]
 
     # ============================================================
-    # GROUPING
+    # FORMAT HISTORIQUE (FRONT COMPATIBLE)
     # ============================================================
 
-    grouped = {}
-
-    for r in rows:
-        category = r.get("CATEGORY") or "OTHER"
-        type_ = r.get("TYPE") or "UNKNOWN"
-
-        if category not in grouped:
-            grouped[category] = {}
-
-        if type_ not in grouped[category]:
-            grouped[category][type_] = []
-
-        grouped[category][type_].append({
-            "id_number": r.get("ID_NUMBER"),
-            "label": r.get("LABEL"),
-            "value": r.get("VALUE"),
-            "unit": r.get("UNIT"),
-            "scale": r.get("SCALE"),
-            "zone": r.get("ZONE"),
-            "period": r.get("PERIOD"),
-        })
-
-    # ============================================================
-    # FORMAT FINAL
-    # ============================================================
-
-    result = []
-
-    # tri des catégories
-    sorted_categories = sorted(
-        grouped.keys(),
-        key=lambda c: CATEGORY_ORDER.index(c)
-        if c in CATEGORY_ORDER else 999
-    )
-
-    for category in sorted_categories:
-        types = grouped[category]
-
-        type_list = []
-
-        for type_ in sorted(types.keys()):
-            type_list.append({
-                "type": type_,
-                "numbers": types[type_]
-            })
-
-        result.append({
-            "category": category,
-            "types": type_list
-        })
-
-    return result
+    return [
+        {
+            "ID_NUMBER": r.get("ID_NUMBER"),
+            "LABEL": r.get("LABEL"),
+            "VALUE": r.get("VALUE"),
+            "UNIT": r.get("UNIT"),
+            "SCALE": r.get("SCALE"),
+            "TYPE": r.get("TYPE"),
+            "CATEGORY": r.get("CATEGORY"),
+            "ZONE": r.get("ZONE"),
+            "PERIOD": r.get("PERIOD"),
+            "CREATED_AT": r.get("CREATED_AT"),
+        }
+        for r in rows
+    ]
 
 def get_numbers_feed_service(
     limit: int = 50,
