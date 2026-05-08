@@ -300,11 +300,9 @@ def get_company_view(
     stats = stats_rows[0] if stats_rows else {}
 
     items = get_company_feed(
-        company_id,
-        limit,
-        offset,
-        user_id,
-        universe_id
+        company_id=company_id,
+        user_id=user_id,
+        universe_id=universe_id
     )
 
     return {
@@ -415,11 +413,9 @@ def get_topic_view(
     stats = stats_rows[0] if stats_rows else {}
 
     items = get_topic_feed(
-        topic_id,
-        limit,
-        offset,
-        user_id,
-        universe_id
+        topic_id=topic_id,
+        user_id=user_id,
+        universe_id=universe_id
     )
 
     return {
@@ -536,12 +532,10 @@ def get_solution_view(
 
     stats = stats_rows[0] if stats_rows else {}
 
-    items = get_solution_feed(
-        solution_id,
-        limit,
-        offset,
-        user_id,
-        universe_id
+    items = get_topic_feed(
+        solution_id=solution_id,
+        user_id=user_id,
+        universe_id=universe_id
     )
 
     return {
