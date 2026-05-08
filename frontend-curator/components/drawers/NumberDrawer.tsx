@@ -6,20 +6,28 @@ import { api } from "@/lib/api";
 import EntityDrawerLayout from "@/components/drawers/EntityDrawerLayout";
 import DrawerHeader from "@/components/drawers/DrawerHeader";
 
-/* ========================================================= */
+/* =========================================================
+   TYPES
+========================================================= */
 
 type NumberItem = {
-  ID_NUMBER: string;
-  LABEL?: string;
-  VALUE?: number;
-  UNIT?: string;
-  SCALE?: string;
+  id_number: string;
+  label?: string;
+  value?: number;
+  unit?: string;
+  scale?: string;
+  zone?: string;
+  period?: string;
+};
 
-  TYPE?: string;
-  CATEGORY?: string;
+type NumberType = {
+  type: string;
+  numbers: NumberItem[];
+};
 
-  ZONE?: string;
-  PERIOD?: string;
+type NumberCategory = {
+  category: string;
+  types: NumberType[];
 };
 
 /* ========================================================= */
@@ -33,7 +41,7 @@ type Props = {
 /* ========================================================= */
 
 function formatValue(n: NumberItem) {
-  if (n.VALUE === undefined || n.VALUE === null) return "";
+  if (n.value === undefined || n.value === null) return "";
 
   const scaleMap: any = {
     millions: "M",
@@ -41,10 +49,10 @@ function formatValue(n: NumberItem) {
     billions: "Md",
   };
 
-  const scale = scaleMap[n.SCALE || ""] || "";
-  const unit = n.UNIT || "";
+  const scale = scaleMap[n.scale || ""] || "";
+  const unit = n.unit || "";
 
-  return [n.VALUE, scale, unit]
+  return [n.value, scale, unit]
     .filter(Boolean)
     .join(" ");
 }
@@ -56,7 +64,7 @@ export default function NumberDrawer({
   entityType,
   onClose,
 }: Props) {
-  const [data, setData] = useState<NumberItem[]>([]);
+  const [data, setData] = useState<NumberCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,7 +83,6 @@ export default function NumberDrawer({
         );
 
         setData(res.items ?? []);
-
       } catch (e) {
         console.error("❌ Numbers drawer load error", e);
         setData([]);
@@ -87,35 +94,17 @@ export default function NumberDrawer({
     load();
   }, [id, entityType]);
 
-  /* =========================================================
-     GROUP BY CATEGORY / TYPE (OPTIONNEL MAIS PROPRE)
-  ========================================================= */
-
-  const grouped: Record<string, Record<string, NumberItem[]>> = {};
-
-  data.forEach((n) => {
-    const cat = n.CATEGORY || "Autres";
-    const type = n.TYPE || "Autres";
-
-    if (!grouped[cat]) grouped[cat] = {};
-    if (!grouped[cat][type]) grouped[cat][type] = [];
-
-    grouped[cat][type].push(n);
-  });
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
-
   return (
     <EntityDrawerLayout onClose={onClose}>
 
+      {/* HEADER */}
       <DrawerHeader
         title="Chiffres"
         variant="topic"
         onClose={onClose}
       />
 
+      {/* CONTENT */}
       <div className="px-6 py-6 space-y-10">
 
         {loading ? (
@@ -127,37 +116,33 @@ export default function NumberDrawer({
             Aucun chiffre disponible.
           </p>
         ) : (
-          Object.entries(grouped).map(([category, types]) => (
-
-            <section key={category} className="space-y-4">
+          data.map((category) => (
+            <section key={category.category} className="space-y-4">
 
               {/* CATEGORY */}
               <h2 className="text-xs font-semibold uppercase text-gray-400">
-                {category}
+                {category.category}
               </h2>
 
-              {Object.entries(types).map(([type, numbers]) => (
-
-                <div key={type} className="space-y-3">
+              {category.types.map((type) => (
+                <div key={type.type} className="space-y-3">
 
                   {/* TYPE */}
                   <div className="text-xs text-gray-500">
-                    {type}
+                    {type.type}
                   </div>
 
-                  {/* GRID */}
+                  {/* GRID NUMBERS */}
                   <div className="grid grid-cols-2 gap-3">
-
-                    {numbers.map((n) => (
+                    {type.numbers.map((n) => (
                       <div
-                        key={n.ID_NUMBER}
-                        className="p-3 border rounded space-y-1"
+                        key={n.id_number}
+                        className="p-3 border rounded"
                       >
-
                         {/* CONTEXTE */}
-                        {(n.ZONE || n.PERIOD) && (
-                          <div className="text-[10px] text-gray-400">
-                            {[n.ZONE, n.PERIOD]
+                        {(n.zone || n.period) && (
+                          <div className="text-[10px] text-gray-400 mb-1">
+                            {[n.zone, n.period]
                               .filter(Boolean)
                               .join(" — ")}
                           </div>
@@ -169,23 +154,18 @@ export default function NumberDrawer({
                         </div>
 
                         {/* LABEL */}
-                        {n.LABEL && (
-                          <div className="text-xs text-gray-500">
-                            {n.LABEL}
+                        {n.label && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {n.label}
                           </div>
                         )}
-
                       </div>
                     ))}
-
                   </div>
 
                 </div>
-
               ))}
-
             </section>
-
           ))
         )}
 
