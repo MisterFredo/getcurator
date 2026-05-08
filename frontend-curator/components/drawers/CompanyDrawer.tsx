@@ -25,13 +25,6 @@ type FeedItem = {
   title: string;
 };
 
-type ArchiveMonth = {
-  year: number;
-  month: number;
-  label: string;
-  count: number;
-};
-
 type CompanyData = {
   id_company: string;
   name: string;
@@ -41,36 +34,24 @@ type CompanyData = {
   nb_analyses?: number;
   delta_30d?: number;
 
-  archives?: ArchiveMonth[];
+  items?: FeedItem[];
 };
 
 /* ========================================================= */
 
 export default function CompanyDrawer({ id, onClose }: any) {
-
   const router = useRouter();
   const pathname = usePathname();
-
-  const {
-    leftDrawer,
-    openRightDrawer,
-    closeLeftDrawer,
-  } = useDrawer();
+  const { leftDrawer, openRightDrawer, closeLeftDrawer } = useDrawer();
 
   const [data, setData] = useState<CompanyData | null>(null);
-
-  // 🔥 NEW → lazy loaded month items
-  const [monthItems, setMonthItems] = useState<
-    Record<string, FeedItem[]>
-  >({});
-
+  const [items, setItems] = useState<FeedItem[]>([]);
   const [numbers, setNumbers] = useState<any[]>([]);
   const [radar, setRadar] = useState<any>(null);
 
   // 🔥 description state
   const [expanded, setExpanded] = useState(false);
   const [showToggle, setShowToggle] = useState(false);
-
   const descRef = useRef<HTMLDivElement | null>(null);
 
   /* ========================================================= */
@@ -78,9 +59,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
   /* ========================================================= */
 
   function close() {
-
     onClose?.();
-
     closeLeftDrawer();
 
     if (
@@ -96,105 +75,48 @@ export default function CompanyDrawer({ id, onClose }: any) {
   /* ========================================================= */
 
   useEffect(() => {
-
     async function load() {
-
-      const res = await api.get(
-        `/company/${id}/view`
-      );
-
+      const res = await api.get(`/company/${id}/view`);
       setData(res);
+      setItems(res.items ?? []);
     }
 
     load();
-
   }, [id]);
 
-  /* ========================================================= */
-  /* LOAD RADAR */
-  /* ========================================================= */
-
   useEffect(() => {
-
     async function loadRadar() {
-
       const res = await api.get(
         `/radar/latest?entity_type=company&entity_id=${id}`
       );
-
       setRadar(res?.insight ?? null);
     }
 
     loadRadar();
-
   }, [id]);
 
-  /* ========================================================= */
-  /* LOAD NUMBERS */
-  /* ========================================================= */
-
   useEffect(() => {
-
     async function loadNumbers() {
-
       const res = await api.get(
         `/numbers/entity?entity_type=company&entity_id=${id}&limit=4`
       );
-
-      setNumbers(
-        Array.isArray(res?.items)
-          ? res.items
-          : []
-      );
+      setNumbers(Array.isArray(res?.items) ? res.items : []);
     }
 
     loadNumbers();
-
   }, [id]);
-
-  /* ========================================================= */
-  /* LOAD MONTH */
-  /* ========================================================= */
-
-  async function loadMonth(
-    year: number,
-    month: number
-  ) {
-
-    const key = `${year}-${month}`;
-
-    // 🔥 already loaded
-    if (monthItems[key]) {
-      return;
-    }
-
-    const res = await api.get(
-      `/company/${id}/feed?year=${year}&month=${month}`
-    );
-
-    setMonthItems((prev) => ({
-      ...prev,
-      [key]: res?.items ?? [],
-    }));
-  }
 
   /* ========================================================= */
   /* DETECT OVERFLOW DESCRIPTION */
   /* ========================================================= */
 
   useEffect(() => {
-
     if (!data?.description) {
-
       setShowToggle(false);
-
       return;
     }
 
-    setShowToggle(
-      data.description.length > 350
-    );
-
+    setShowToggle(data.description.length > 350);
   }, [data?.description]);
 
   /* ========================================================= */
@@ -219,7 +141,6 @@ export default function CompanyDrawer({ id, onClose }: any) {
         />
       }
     >
-
       {/* LOGO */}
       {logoUrl && (
         <div className="w-full border-b border-gray-200 flex justify-center py-4">
@@ -234,17 +155,11 @@ export default function CompanyDrawer({ id, onClose }: any) {
       {/* DESCRIPTION */}
       {data.description && (
         <div className="border-b border-gray-200 py-4">
-
           <div
             ref={descRef}
-            className={`
-              prose prose-sm max-w-none
-              transition-all duration-300
-              ${expanded
-                ? ""
-                : "max-h-32 overflow-hidden"
-              }
-            `}
+            className={`prose prose-sm max-w-none transition-all duration-300 ${
+              expanded ? "" : "max-h-32 overflow-hidden"
+            }`}
             dangerouslySetInnerHTML={{
               __html: data.description,
             }}
@@ -253,17 +168,9 @@ export default function CompanyDrawer({ id, onClose }: any) {
           {showToggle && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="
-                mt-3
-                text-xs
-                font-medium
-                text-ratecard-blue
-                hover:underline
-              "
+              className="mt-3 text-xs font-medium text-ratecard-blue hover:underline"
             >
-              {expanded
-                ? "Voir moins"
-                : "Voir plus"}
+              {expanded ? "Voir moins" : "Voir plus"}
             </button>
           )}
         </div>
@@ -281,74 +188,21 @@ export default function CompanyDrawer({ id, onClose }: any) {
 
       {/* FEED */}
       <section className="space-y-4">
-
         <h2 className="text-xs font-semibold uppercase text-gray-400">
           Contenus liés
         </h2>
 
-        <div className="space-y-3">
-
-          {(data.archives ?? []).map((archive) => {
-
-            const key = `${archive.year}-${archive.month}`;
-
-            return (
-              <details
-                key={key}
-                className="border border-gray-200 rounded-lg"
-                onToggle={(e) => {
-
-                  const target =
-                    e.target as HTMLDetailsElement;
-
-                  if (target.open) {
-
-                    loadMonth(
-                      archive.year,
-                      archive.month
-                    );
-                  }
-                }}
-              >
-
-                <summary
-                  className="
-                    cursor-pointer
-                    px-4
-                    py-3
-                    text-sm
-                    font-medium
-                    hover:bg-gray-50
-                  "
-                >
-                  {archive.label} ({archive.count})
-                </summary>
-
-                <div className="p-2">
-
-                  <FeedGroupedByMonth
-                    items={monthItems[key] ?? []}
-                    onClickItem={(item) =>
-                      openRightDrawer(
-                        item.type === "news"
-                          ? "news"
-                          : "analysis",
-                        item.id,
-                        "silent"
-                      )
-                    }
-                  />
-
-                </div>
-
-              </details>
-            );
-          })}
-
-        </div>
-
+        <FeedGroupedByMonth
+          items={items}
+          onClickItem={(item) =>
+            openRightDrawer(
+              item.type === "news" ? "news" : "analysis",
+              item.id,
+              "silent"
+            )
+          }
+        />
       </section>
-
     </EntityDrawer>
   );
 }
