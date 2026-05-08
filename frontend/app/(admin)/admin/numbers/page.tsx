@@ -3,67 +3,71 @@
 import { useState } from "react";
 
 import NumbersManualCreate from "@/components/admin/numbers/NumbersManualCreate";
+import NumbersAssistantCreate from "@/components/admin/numbers/NumbersAssistantCreate";
 import NumbersAdminList from "@/components/admin/numbers/NumbersAdminList";
-import NumbersBacklogExplorer from "@/components/admin/numbers/NumbersBacklogExplorer";
 
 /* ========================================================= */
 
 export default function NumbersPage() {
 
-  const [tab, setTab] = useState<"content" | "official">("content");
+  const [tab, setTab] = useState<"manual" | "assistant" | "admin">("manual");
+
+  /* ========================================================= */
 
   return (
 
     <div className="space-y-6">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-
-        <h1 className="text-2xl font-semibold text-ratecard-blue">
-          Numbers
-        </h1>
-
-      </div>
+      <h1 className="text-2xl font-semibold text-ratecard-blue">
+        Numbers
+      </h1>
 
       {/* TABS */}
       <div className="flex gap-4">
 
         <button
-          onClick={() => setTab("content")}
+          onClick={() => setTab("manual")}
           className={`px-3 py-1 rounded ${
-            tab === "content"
+            tab === "manual"
               ? "bg-ratecard-blue text-white"
               : "bg-gray-200"
           }`}
         >
-          Content Numbers
+          Manual
         </button>
 
         <button
-          onClick={() => setTab("official")}
+          onClick={() => setTab("assistant")}
           className={`px-3 py-1 rounded ${
-            tab === "official"
+            tab === "assistant"
               ? "bg-ratecard-blue text-white"
               : "bg-gray-200"
           }`}
         >
-          Official Numbers
+          Assistant
+        </button>
+
+        <button
+          onClick={() => setTab("admin")}
+          className={`px-3 py-1 rounded ${
+            tab === "admin"
+              ? "bg-ratecard-blue text-white"
+              : "bg-gray-200"
+          }`}
+        >
+          Admin
         </button>
 
       </div>
 
       {/* CONTENT */}
 
-      {tab === "content" && (
-        <NumbersBacklogExplorer />
-      )}
+      {tab === "manual" && <NumbersManualCreate />}
 
-      {tab === "official" && (
-        <div className="space-y-6">
-          <NumbersManualCreate />
-          <NumbersAdminList />
-        </div>
-      )}
+      {tab === "assistant" && <NumbersAssistantCreate />}
+
+      {tab === "admin" && <NumbersAdminList />}
 
     </div>
   );
