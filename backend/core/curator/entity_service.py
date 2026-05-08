@@ -145,15 +145,13 @@ def get_company_feed(
 ) -> List[Dict]:
 
     # ============================================================
-    # 🔥 DEFAULT = CURRENT MONTH
+    # 🔥 CURRENT MONTH
     # ============================================================
 
-    if year is None or month is None:
+    now = datetime.utcnow()
 
-        now = datetime.utcnow()
-
-        year = now.year
-        month = now.month
+    current_year = now.year
+    current_month = now.month
 
     # ============================================================
     # 🔐 USER FILTER
@@ -192,24 +190,6 @@ def get_company_feed(
         """
 
     # ============================================================
-    # 📅 DATE FILTER
-    # ============================================================
-
-    date_filter = ""
-
-    if year is not None:
-
-        date_filter += """
-        AND EXTRACT(YEAR FROM c.PUBLISHED_AT) = @year
-        """
-
-    if month is not None:
-
-        date_filter += """
-        AND EXTRACT(MONTH FROM c.PUBLISHED_AT) = @month
-        """
-
-    # ============================================================
     # QUERY
     # ============================================================
 
@@ -235,27 +215,23 @@ def get_company_feed(
     JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` cc
         ON cc.ID_CONTENT = e.id_content
 
-    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
-        ON c.ID_CONTENT = e.id_content
-
     WHERE
         cc.ID_COMPANY = @company_id
 
-        AND c.STATUS = 'PUBLISHED'
-        AND c.IS_ACTIVE = TRUE
-        AND c.PUBLISHED_AT IS NOT NULL
-
-        {date_filter}
+        AND EXTRACT(YEAR FROM e.published_at) = @year
+        AND EXTRACT(MONTH FROM e.published_at) = @month
 
         {user_filter}
 
         {universe_filter}
 
-    ORDER BY c.PUBLISHED_AT DESC
+    ORDER BY e.published_at DESC
     """
 
     query_params = {
         "company_id": company_id,
+        "year": current_year,
+        "month": current_month,
         "user_id": user_id,
     }
 
@@ -265,7 +241,6 @@ def get_company_feed(
     rows = query_bq(sql, query_params)
 
     return [_map_feed_row(r) for r in rows]
-
 
 def get_company_view(
     company_id: str,
