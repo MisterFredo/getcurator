@@ -256,6 +256,8 @@ def get_company_feed(
 
 def get_company_view(
     company_id: str,
+    limit: int = 50,
+    offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> Optional[Dict]:
