@@ -18,8 +18,9 @@ from utils.bigquery_utils import (
     get_bigquery_client,
 )
 
-from core.numbers.parsing import get_numbers_from_content
-from core.numbers.backlog_service import insert_backlog_numbers
+from core.numbers.backlog_service import get_numbers_from_content
+from core.numbers.backlog_llm import process_backlog_row
+from core.numbers.backlog_insert_service import insert_backlog_batch
 
 # ============================================================
 # TABLES
