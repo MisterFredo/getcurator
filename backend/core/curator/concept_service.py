@@ -5,13 +5,23 @@ from utils.bigquery_utils import query_bq
 
 from core.curator.service import build_user_filter
 
+
 # ============================================================
 # TABLES
 # ============================================================
 
-TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
-TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
-VIEW_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_ENRICHED"
+TABLE_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
+)
+
+TABLE_CONTENT_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
+)
+
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
 
 # ============================================================
 # LIST CONCEPTS (USER-AWARE)
@@ -22,8 +32,14 @@ def get_concepts(
     universe_id: Optional[str] = None,
 ) -> List[Dict]:
 
+    # ============================================================
+    # 🌍 UNIVERSE FILTER
+    # ============================================================
+
     universe_filter = ""
+
     if universe_id:
+
         universe_filter = """
         AND EXISTS (
             SELECT 1
@@ -31,6 +47,10 @@ def get_concepts(
             WHERE u.id_universe = @universe_id
         )
         """
+
+    # ============================================================
+    # QUERY
+    # ============================================================
 
     sql = f"""
     SELECT DISTINCT
@@ -42,11 +62,14 @@ def get_concepts(
 
     WHERE con.IS_ACTIVE = TRUE
 
-    -- 🔥 IMPORTANT : filtrer via CONTENT (pas via JOIN IN)
+    -- 🔥 IMPORTANT : filtrer via CONTENT ENRICHED
     AND EXISTS (
+
         SELECT 1
+
         FROM `{TABLE_CONTENT_CONCEPT}` cc
-        JOIN `{VIEW_CONTENT}` c
+
+        JOIN `{TABLE_CONTENT_ENRICHED}` c
           ON c.id_content = cc.ID_CONTENT
 
         WHERE cc.ID_CONCEPT = con.ID_CONCEPT
@@ -56,7 +79,9 @@ def get_concepts(
         {universe_filter}
     )
 
-    ORDER BY con.CATEGORY, con.LABEL
+    ORDER BY
+        con.CATEGORY,
+        con.LABEL
     """
 
     params = {
