@@ -140,8 +140,6 @@ def _get_entity_feed(
 
 def get_company_feed(
     company_id: str,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> List[Dict]:
@@ -323,8 +321,6 @@ def get_company_view(
 
 def get_topic_feed(
     topic_id: str,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> List[Dict]:
@@ -443,8 +439,6 @@ def get_topic_view(
 
 def get_solution_feed(
     solution_id: str,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> List[Dict]:
