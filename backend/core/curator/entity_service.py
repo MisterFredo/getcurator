@@ -125,20 +125,115 @@ def get_company_feed(
     universe_id: Optional[str] = None
 ) -> List[Dict]:
 
-    return _get_entity_feed(
-        where_clause_content="""
-            EXISTS (
-                SELECT 1
-                FROM UNNEST(c.companies) comp
-                WHERE comp.id_company = @company_id
-            )
-        """,
-        params={"company_id": company_id},
-        limit=limit,
-        offset=offset,
-        user_id=user_id,
-        universe_id=universe_id
-    )
+    # ============================================================
+    # 🔐 USER FILTER
+    # ============================================================
+
+    user_filter = ""
+
+    if user_id:
+        user_filter = f"""
+        AND EXISTS (
+            SELECT 1
+            FROM `{TABLE_COMPANY_UNIVERSE}` cu
+            JOIN `{TABLE_USER_UNIVERSE}` uu
+              ON uu.ID_UNIVERSE = cu.ID_UNIVERSE
+            WHERE cu.ID_COMPANY = cc.ID_COMPANY
+              AND uu.ID_USER = @user_id
+        )
+        """
+
+    # ============================================================
+    # 🌍 UNIVERSE FILTER
+    # ============================================================
+
+    universe_filter = ""
+
+    if universe_id:
+        universe_filter = f"""
+        AND EXISTS (
+            SELECT 1
+            FROM `{TABLE_COMPANY_UNIVERSE}` cu
+            WHERE cu.ID_COMPANY = cc.ID_COMPANY
+              AND cu.ID_UNIVERSE = @universe_id
+        )
+        """
+
+    # ============================================================
+    # 1️⃣ FILTER FIRST (FAST)
+    # ============================================================
+
+    sql_ids = f"""
+    SELECT DISTINCT
+        c.ID_CONTENT
+    FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
+    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` cc
+        ON cc.ID_CONTENT = c.ID_CONTENT
+
+    WHERE
+        cc.ID_COMPANY = @company_id
+        AND c.STATUS = 'PUBLISHED'
+        AND c.IS_ACTIVE = TRUE
+        AND c.PUBLISHED_AT IS NOT NULL
+
+        {user_filter}
+        {universe_filter}
+
+    ORDER BY c.PUBLISHED_AT DESC
+
+    LIMIT @limit
+    OFFSET @offset
+    """
+
+    query_params = {
+        "company_id": company_id,
+        "limit": limit,
+        "offset": offset,
+        "user_id": user_id,
+    }
+
+    if universe_id:
+        query_params["universe_id"] = universe_id
+
+    id_rows = query_bq(sql_ids, query_params)
+
+    content_ids = [
+        r["ID_CONTENT"]
+        for r in id_rows
+        if r.get("ID_CONTENT")
+    ]
+
+    if not content_ids:
+        return []
+
+    # ============================================================
+    # 2️⃣ ENRICH ONLY FINAL RESULTS
+    # ============================================================
+
+    sql_feed = f"""
+    SELECT
+        c.id_content AS id,
+        'analysis' AS type,
+        c.title,
+        c.excerpt,
+        c.published_at,
+        NULL AS news_type,
+        c.topics,
+        c.companies,
+        c.solutions
+
+    FROM `{VIEW_CONTENT}` c
+
+    WHERE c.id_content IN UNNEST(@content_ids)
+
+    ORDER BY c.published_at DESC
+    """
+
+    rows = query_bq(sql_feed, {
+        "content_ids": content_ids
+    })
+
+    return [_map_feed_row(r) for r in rows]
 
 
 def get_company_view(
