@@ -256,8 +256,6 @@ def get_company_feed(
 
 def get_company_view(
     company_id: str,
-    limit: int = 50,
-    offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> Optional[Dict]:
@@ -266,6 +264,10 @@ def get_company_view(
 
     if not company:
         return None
+
+    # ============================================================
+    # STATS
+    # ============================================================
 
     stats_rows = query_bq(
         f"""
@@ -284,19 +286,51 @@ def get_company_view(
 
     stats = stats_rows[0] if stats_rows else {}
 
-    items = get_company_feed(
-        company_id=company_id,
-        user_id=user_id,
-        universe_id=universe_id
+    # ============================================================
+    # 📅 MONTH ARCHIVES
+    # ============================================================
+
+    archive_rows = query_bq(
+        f"""
+        SELECT
+            EXTRACT(YEAR FROM e.published_at) AS year,
+            EXTRACT(MONTH FROM e.published_at) AS month,
+            COUNT(*) AS total
+
+        FROM `{TABLE_CONTENT_ENRICHED}` e
+
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` cc
+            ON cc.ID_CONTENT = e.id_content
+
+        WHERE cc.ID_COMPANY = @company_id
+
+        GROUP BY year, month
+
+        ORDER BY year DESC, month DESC
+        """,
+        {"company_id": company_id}
     )
+
+    # ============================================================
+    # RETURN
+    # ============================================================
 
     return {
         **company,
-        "nb_analyses": stats.get("NB_ANALYSES", 0),
-        "delta_30d": stats.get("DELTA_30D", 0),
-        "items": items
-    }
 
+        "nb_analyses": stats.get("NB_ANALYSES", 0),
+
+        "delta_30d": stats.get("DELTA_30D", 0),
+
+        "archives": [
+            {
+                "year": r["year"],
+                "month": r["month"],
+                "total": r["total"],
+            }
+            for r in archive_rows
+        ],
+    }
 
 # ============================================================
 # TOPIC
