@@ -1446,19 +1446,28 @@ def publish_content(
         published_at = source_date or now_dt
 
     if isinstance(published_at, date) and not isinstance(published_at, datetime):
+
         published_at = datetime.combine(
             published_at,
             datetime.min.time(),
             tzinfo=timezone.utc
         )
+
     elif isinstance(published_at, datetime) and published_at.tzinfo is None:
-        published_at = published_at.replace(tzinfo=timezone.utc)
+
+        published_at = published_at.replace(
+            tzinfo=timezone.utc
+        )
 
     # ============================================================
     # 3️⃣ STATUS
     # ============================================================
 
-    status = "PUBLISHED" if published_at <= now_dt else "SCHEDULED"
+    status = (
+        "PUBLISHED"
+        if published_at <= now_dt
+        else "SCHEDULED"
+    )
 
     # ============================================================
     # 4️⃣ UPDATE CONTENT
@@ -1475,32 +1484,62 @@ def publish_content(
     )
 
     # ============================================================
-    # 5️⃣ BACKLOG NUMBERS (🔥 FIX ICI)
+    # 5️⃣ BACKLOG NUMBERS
     # ============================================================
 
     if status == "PUBLISHED":
 
         if numbers_parsed:
-            print("⏭️ Skip parsing (already processed):", id_content)
+
+            print(
+                "⏭️ Skip parsing (already processed):",
+                id_content
+            )
+
             return status
 
         try:
-            print("📊 Parsing numbers for content:", id_content)
 
-            # 🔥 NOUVEAU PARSING CLEAN
-            chiffres = get_numbers_from_content_clean(id_content)
-
-            if not chiffres:
-                print("ℹ️ No valid numbers found")
-                return status
-
-            # 🔥 INSERT CLEAN
-            insert_backlog_numbers(
-                parsed_numbers=chiffres,
-                id_content=id_content
+            print(
+                "📊 Parsing numbers for content:",
+                id_content
             )
 
-            print(f"✅ {len(chiffres)} clean numbers inserted")
+            backlog_rows = get_numbers_from_content(
+                id_content
+            )
+
+            if not backlog_rows:
+
+                print("ℹ️ No valid numbers found")
+
+                return status
+
+            processed_results = []
+
+            for backlog_row in backlog_rows:
+
+                result = process_backlog_row(
+                    backlog_row
+                )
+
+                if result.get("status") == "ok":
+
+                    processed_results.append(result)
+
+            if processed_results:
+
+                insert_backlog_batch(
+                    processed_results
+                )
+
+                print(
+                    f"✅ {len(processed_results)} backlog numbers inserted"
+                )
+
+            else:
+
+                print("ℹ️ No valid backlog results")
 
             update_bq(
                 table=TABLE_CONTENT,
@@ -1512,10 +1551,16 @@ def publish_content(
             )
 
         except Exception as e:
-            print("❌ BACKLOG ERROR:", str(e))
+
+            print(
+                "❌ BACKLOG ERROR:",
+                str(e)
+            )
+
             return status
 
     return status
+
 
 def mark_content_ready(id_content: str):
 
