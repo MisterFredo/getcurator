@@ -145,8 +145,8 @@ def _get_entity_feed(
 
 def get_company_feed(
     company_id: str,
-    limit: int = 50,
-    offset: int = 0,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None
 ) -> List[Dict]:
@@ -188,17 +188,51 @@ def get_company_feed(
         """
 
     # ============================================================
-    # 1️⃣ FILTER FIRST (FAST)
+    # 📅 DATE FILTER
     # ============================================================
 
-    sql_ids = f"""
-    SELECT
-        c.ID_CONTENT
+    date_filter = ""
 
-    FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
+    if year is not None:
+
+        date_filter += """
+        AND EXTRACT(YEAR FROM c.PUBLISHED_AT) = @year
+        """
+
+    if month is not None:
+
+        date_filter += """
+        AND EXTRACT(MONTH FROM c.PUBLISHED_AT) = @month
+        """
+
+    # ============================================================
+    # QUERY
+    # ============================================================
+
+    sql = f"""
+    SELECT
+        e.id_content AS id,
+
+        'analysis' AS type,
+
+        e.title,
+        e.excerpt,
+
+        e.published_at,
+
+        NULL AS news_type,
+
+        e.topics,
+        e.companies,
+        e.solutions
+
+    FROM `{TABLE_CONTENT_ENRICHED}` e
 
     JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` cc
-        ON cc.ID_CONTENT = c.ID_CONTENT
+        ON cc.ID_CONTENT = e.id_content
+
+    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT` c
+        ON c.ID_CONTENT = e.id_content
 
     WHERE
         cc.ID_COMPANY = @company_id
@@ -207,70 +241,26 @@ def get_company_feed(
         AND c.IS_ACTIVE = TRUE
         AND c.PUBLISHED_AT IS NOT NULL
 
+        {date_filter}
+
         {user_filter}
+
         {universe_filter}
 
     ORDER BY c.PUBLISHED_AT DESC
-
-    LIMIT @limit
-    OFFSET @offset
     """
 
     query_params = {
         "company_id": company_id,
-        "limit": limit,
-        "offset": offset,
+        "year": year,
+        "month": month,
         "user_id": user_id,
     }
 
     if universe_id:
         query_params["universe_id"] = universe_id
 
-    id_rows = query_bq(sql_ids, query_params)
-
-    content_ids = [
-        r["ID_CONTENT"]
-        for r in id_rows
-        if r.get("ID_CONTENT")
-    ]
-
-    if not content_ids:
-        return []
-
-    # ============================================================
-    # 2️⃣ ENRICH ONLY FINAL RESULTS
-    # ============================================================
-
-    sql_feed = f"""
-    SELECT
-        c.id_content AS id,
-
-        'analysis' AS type,
-
-        c.title,
-        c.excerpt,
-
-        c.published_at,
-
-        NULL AS news_type,
-
-        c.topics,
-        c.companies,
-        c.solutions
-
-    FROM `{TABLE_CONTENT_ENRICHED}` c
-
-    WHERE c.id_content IN UNNEST(@content_ids)
-
-    ORDER BY c.published_at DESC
-    """
-
-    rows = query_bq(
-        sql_feed,
-        {
-            "content_ids": content_ids
-        }
-    )
+    rows = query_bq(sql, query_params)
 
     return [_map_feed_row(r) for r in rows]
 
