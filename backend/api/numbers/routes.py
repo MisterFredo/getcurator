@@ -10,7 +10,6 @@ from core.numbers.service import (
     get_numbers_from_content,
     check_number_coherence,
     get_number_types,
-    get_raw_numbers,
     search_numbers_service,
     get_numbers_feed_service,
     get_numbers_for_entity,
