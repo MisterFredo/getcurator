@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 # ============================================================
-# NUMBER (V2 — OFFICIAL)
+# NUMBER (CORE OBJECT)
 # ============================================================
 
 class Number(BaseModel):
@@ -16,7 +16,7 @@ class Number(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    id_number_type: Optional[str] = None
+    id_number_type: str
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -31,7 +31,7 @@ class Number(BaseModel):
 
 
 # ============================================================
-# INPUT (CREATE — V2)
+# INPUT (CREATE)
 # ============================================================
 
 class NumberInput(BaseModel):
@@ -42,9 +42,7 @@ class NumberInput(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    # 🔥 DOUBLE SUPPORT
-    id_number_type: Optional[str] = None
-    type: Optional[str] = None  # LLM
+    id_number_type: str
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -63,17 +61,17 @@ class NumberInput(BaseModel):
 
 
 # ============================================================
-# CREATE RESPONSE (V2)
+# CREATE RESPONSE
 # ============================================================
 
 class NumberCreateResponse(BaseModel):
 
-    id_number: Optional[str] = None
-    quality: Dict
+    id_number: str
+    quality: Dict  # 🔥 aligné avec ton service
 
 
 # ============================================================
-# PARSED NUMBER (TECH — V1 INTERMEDIATE)
+# PARSED NUMBER (FROM CONTENT)
 # ============================================================
 
 class ParsedNumber(BaseModel):
@@ -88,49 +86,9 @@ class ParsedNumber(BaseModel):
     zone: Optional[str] = None
     period: Optional[str] = None
 
-    type: Optional[str] = None
-
 
 # ============================================================
-# BACKLOG (V1 — CORE OBJECT)
-# ============================================================
-
-class NumberBacklogItem(BaseModel):
-
-    id_backlog: str
-
-    id_content: str
-    context_title: Optional[str] = None  # 🔥 utilisé en UI
-
-    label: Optional[str] = None
-    value: Optional[float] = None
-
-    unit: Optional[str] = None
-
-    actor: Optional[str] = None
-    market: Optional[str] = None
-    period: Optional[str] = None
-
-    decision: Optional[str] = None  # IGNORE / NULL
-    confidence: Optional[str] = None
-
-    created_at: Optional[datetime] = None
-
-
-# ============================================================
-# BACKLOG UPDATE (ADMIN — V1)
-# ============================================================
-
-class NumberBacklogUpdate(BaseModel):
-
-    decision: Optional[str] = None  # IGNORE / KEEP
-
-    class Config:
-        extra = "forbid"
-
-
-# ============================================================
-# LIST ITEM (V2)
+# LIST ITEM
 # ============================================================
 
 class NumberListItem(BaseModel):
@@ -142,7 +100,7 @@ class NumberListItem(BaseModel):
     unit: Optional[str] = None
     scale: Optional[str] = None
 
-    id_number_type: Optional[str] = None
+    id_number_type: str
 
     zone: Optional[str] = None
     period: Optional[str] = None
@@ -154,13 +112,12 @@ class NumberListItem(BaseModel):
 
 
 # ============================================================
-# FEED ITEM (UNIFIED READY — V1 + V2)
+# FEED ITEM (CARDS / UI)
 # ============================================================
 
 class NumberFeedItem(BaseModel):
 
-    id: str  # 🔥 unifié (id_backlog ou id_number)
-
+    id_number: str
     label: Optional[str] = None
     value: Optional[float] = None
 
@@ -170,15 +127,11 @@ class NumberFeedItem(BaseModel):
     zone: Optional[str] = None
     period: Optional[str] = None
 
-    # V2 uniquement
     type: Optional[str] = None
     category: Optional[str] = None
+
     entities: Optional[List[Dict]] = []
 
-    # V1 uniquement
-    context_title: Optional[str] = None
-
-    # commun
-    source_type: Optional[str] = None  # "content" | "official"
+    universes: Optional[List[str]] = []
 
     created_at: Optional[datetime] = None
