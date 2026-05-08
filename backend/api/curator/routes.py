@@ -51,7 +51,7 @@ def require_user(request: Request) -> str:
 def search_route(
     request: Request,
     q: str = Query(...),
-    limit: int = Query(20),
+    limit: int = Query(50),
     offset: int = Query(0),
     type: Optional[str] = Query(None),
     universe_id: Optional[str] = Query(None),
