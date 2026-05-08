@@ -9,15 +9,25 @@ type Props = {
 /* ========================================================= */
 
 function formatValue(item: any) {
-  if (!item.VALUE) return "";
+  if (item.VALUE === null || item.VALUE === undefined) return "";
+
+  const scaleRaw = (item.SCALE || "").toString().toLowerCase();
 
   const scaleMap: any = {
+    thousand: "K",
+    thousands: "K",
+
+    million: "M",
     millions: "M",
+
     billion: "Md",
     billions: "Md",
+
+    trillion: "T",
+    trillions: "T",
   };
 
-  const scale = scaleMap[item.SCALE || ""] || "";
+  const scale = scaleMap[scaleRaw] || item.SCALE || "";
   const unit = item.UNIT || "";
 
   return [item.VALUE, scale, unit]
@@ -27,13 +37,37 @@ function formatValue(item: any) {
 
 /* ========================================================= */
 
+function dedupeEntities(arr: any[]) {
+  const map = new Map();
+
+  arr.forEach((e) => {
+    const key = `${e.ENTITY_TYPE}_${e.ENTITY_LABEL}`;
+
+    if (!map.has(key)) {
+      map.set(key, e);
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+/* ========================================================= */
+
 export default function NumberCard({ item, onClick, selected }: Props) {
 
-  const entities = item.ENTITIES || [];
+  const entities = dedupeEntities(item.ENTITIES || []);
 
-  const companies = entities.filter((e: any) => e.ENTITY_TYPE === "company");
-  const topics = entities.filter((e: any) => e.ENTITY_TYPE === "topic");
-  const solutions = entities.filter((e: any) => e.ENTITY_TYPE === "solution");
+  const companies = entities.filter(
+    (e: any) => e.ENTITY_TYPE === "company"
+  );
+
+  const topics = entities.filter(
+    (e: any) => e.ENTITY_TYPE === "topic"
+  );
+
+  const solutions = entities.filter(
+    (e: any) => e.ENTITY_TYPE === "solution"
+  );
 
   return (
     <div
@@ -58,19 +92,23 @@ export default function NumberCard({ item, onClick, selected }: Props) {
         <div className="absolute top-2 left-2 flex gap-1 z-10">
 
           {item.TYPE && (
-            <span className="
-              text-[9px] px-2 py-[2px] rounded-full
-              bg-gray-100 text-gray-600 uppercase
-            ">
+            <span
+              className="
+                text-[9px] px-2 py-[2px] rounded-full
+                bg-gray-100 text-gray-600 uppercase
+              "
+            >
               {item.TYPE}
             </span>
           )}
 
           {item.CATEGORY && (
-            <span className="
-              text-[9px] px-2 py-[2px] rounded-full
-              bg-gray-50 text-gray-400 uppercase
-            ">
+            <span
+              className="
+                text-[9px] px-2 py-[2px] rounded-full
+                bg-gray-50 text-gray-400 uppercase
+              "
+            >
               {item.CATEGORY}
             </span>
           )}
@@ -81,12 +119,14 @@ export default function NumberCard({ item, onClick, selected }: Props) {
       {/* =====================================================
           VALUE BLOCK (VISUAL ANCHOR)
       ===================================================== */}
-      <div className="
-        h-16 flex items-center justify-center
-        bg-gray-50 text-gray-900
-        text-sm font-semibold
-        px-2 text-center
-      ">
+      <div
+        className="
+          h-16 flex items-center justify-center
+          bg-gray-50 text-gray-900
+          text-sm font-semibold
+          px-2 text-center
+        "
+      >
         {formatValue(item)}
       </div>
 
@@ -96,18 +136,22 @@ export default function NumberCard({ item, onClick, selected }: Props) {
       <div className="p-3 space-y-1 text-center">
 
         {/* LABEL */}
-        <div className="
-          text-xs text-gray-700
-          line-clamp-2
-          group-hover:text-gray-900
-        ">
+        <div
+          className="
+            text-xs text-gray-700
+            line-clamp-2
+            group-hover:text-gray-900
+          "
+        >
           {item.LABEL}
         </div>
 
         {/* META */}
         {(item.ZONE || item.PERIOD) && (
           <div className="text-[10px] text-gray-400">
-            {[item.ZONE, item.PERIOD].filter(Boolean).join(" — ")}
+            {[item.ZONE, item.PERIOD]
+              .filter(Boolean)
+              .join(" — ")}
           </div>
         )}
 
@@ -117,7 +161,11 @@ export default function NumberCard({ item, onClick, selected }: Props) {
           {companies.map((c: any) => (
             <span
               key={c.ENTITY_ID}
-              className="text-[10px] px-2 py-[2px] rounded-full bg-blue-50 text-blue-600"
+              className="
+                text-[10px] px-2 py-[2px]
+                rounded-full
+                bg-blue-50 text-blue-600
+              "
             >
               {c.ENTITY_LABEL}
             </span>
@@ -126,7 +174,11 @@ export default function NumberCard({ item, onClick, selected }: Props) {
           {solutions.map((s: any) => (
             <span
               key={s.ENTITY_ID}
-              className="text-[10px] px-2 py-[2px] rounded-full bg-purple-50 text-purple-600"
+              className="
+                text-[10px] px-2 py-[2px]
+                rounded-full
+                bg-purple-50 text-purple-600
+              "
             >
               {s.ENTITY_LABEL}
             </span>
@@ -135,7 +187,11 @@ export default function NumberCard({ item, onClick, selected }: Props) {
           {topics.map((t: any) => (
             <span
               key={t.ENTITY_ID}
-              className="text-[10px] px-2 py-[2px] rounded-full bg-gray-100 text-gray-600"
+              className="
+                text-[10px] px-2 py-[2px]
+                rounded-full
+                bg-gray-100 text-gray-600
+              "
             >
               {t.ENTITY_LABEL}
             </span>
@@ -148,11 +204,13 @@ export default function NumberCard({ item, onClick, selected }: Props) {
       {/* =====================================================
           HOVER OVERLAY (léger)
       ===================================================== */}
-      <div className="
-        absolute inset-0
-        bg-black/0 group-hover:bg-black/[0.02]
-        transition pointer-events-none
-      " />
+      <div
+        className="
+          absolute inset-0
+          bg-black/0 group-hover:bg-black/[0.02]
+          transition pointer-events-none
+        "
+      />
     </div>
   );
 }
