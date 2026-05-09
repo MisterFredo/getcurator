@@ -11,6 +11,7 @@ from google.cloud import bigquery
 from config import BQ_PROJECT, BQ_DATASET
 from api.content.models import ContentCreate, ContentUpdate
 from core.content.ai import generate_summary
+from core.content.news_ai import generate_news
 from utils.bigquery_utils import (
     query_bq,
     insert_bq,
@@ -69,6 +70,10 @@ def normalize_array(value):
 # CREATE CONTENT
 # ============================================================
 
+# ============================================================
+# CREATE CONTENT
+# ============================================================
+
 def create_content(data: ContentCreate) -> str:
 
     if not data.title or not data.title.strip():
@@ -82,6 +87,14 @@ def create_content(data: ContentCreate) -> str:
 
     row = [{
         "ID_CONTENT": content_id,
+
+        # 🔥 NEW
+        "CONTENT_TYPE": (
+            data.content_type
+            if data.content_type
+            else "ANALYSIS"
+        ),
+
         "STATUS": "DRAFT",
         "IS_ACTIVE": True,
         "AUTHOR": data.author,
@@ -177,9 +190,25 @@ def create_content(data: ContentCreate) -> str:
 
     try:
 
+        # 🔥 NEW
+        content_type = (
+            data.content_type
+            if data.content_type
+            else "ANALYSIS"
+        )
+
         chiffres = normalize_array(data.chiffres)
 
-        if chiffres:
+        # 🔥 NEW
+        # Les NEWS ne déclenchent pas le pipeline backlog
+        if content_type == "NEWS":
+
+            print(
+                "ℹ️ NEWS CONTENT → SKIP NUMBERS BACKLOG:",
+                content_id
+            )
+
+        elif chiffres:
 
             backlog_rows = get_numbers_from_content(content_id)
 
@@ -325,6 +354,8 @@ def create_content(data: ContentCreate) -> str:
     print("✔ RELATIONS DONE FOR:", content_id)
 
     return content_id
+
+
 # ============================================================
 # GET CONTENT
 # ============================================================
@@ -335,6 +366,10 @@ def get_content(id_content: str):
         f"""
         SELECT
           ID_CONTENT,
+
+          -- 🔥 NEW
+          CONTENT_TYPE,
+
           STATUS,
           SOURCE_ID,
           TITLE,
@@ -367,6 +402,13 @@ def get_content(id_content: str):
 
     content = {
         "id_content": row["ID_CONTENT"],
+
+        # 🔥 NEW
+        "content_type": (
+            row.get("CONTENT_TYPE")
+            or "ANALYSIS"
+        ),
+
         "status": row.get("STATUS"),
         "source_id": row.get("SOURCE_ID"),
 
@@ -522,6 +564,7 @@ def list_contents():
         f"""
         SELECT
           ID_CONTENT,
+          CONTENT_TYPE,
           TITLE,
           EXCERPT,
           PUBLISHED_AT
@@ -539,9 +582,20 @@ def list_contents():
     return [
         {
             "id_content": r["ID_CONTENT"],
+
+            # 🔥 NEW
+            "content_type": (
+                r.get("CONTENT_TYPE")
+                or "ANALYSIS"
+            ),
+
             "title": r["TITLE"],
+
             "excerpt": r.get("EXCERPT"),
-            "published_at": map_dt(r.get("PUBLISHED_AT")),
+
+            "published_at": map_dt(
+                r.get("PUBLISHED_AT")
+            ),
         }
         for r in rows
     ]
@@ -568,6 +622,7 @@ def list_contents_admin():
         f"""
         SELECT
           ID_CONTENT,
+          CONTENT_TYPE,
           TITLE,
           STATUS,
           SOURCE_DATE,
@@ -582,10 +637,17 @@ def list_contents_admin():
     return [
         {
             "id_content": r["ID_CONTENT"],
+
+            # 🔥 NEW
+            "content_type": (
+                r.get("CONTENT_TYPE")
+                or "ANALYSIS"
+            ),
+
             "title": r["TITLE"],
+
             "status": r["STATUS"],
 
-            # ✅ FIX : sérialisation propre
             "source_date": (
                 r["SOURCE_DATE"].isoformat()
                 if r.get("SOURCE_DATE")
@@ -616,6 +678,9 @@ def store_raw_content(
     source_title: str,
     raw_text: str,
     date_source: Optional[date] = None,
+
+    # 🔥 NEW
+    content_type: str = "ANALYSIS",
 ) -> str:
 
     if not source_id:
@@ -628,18 +693,36 @@ def store_raw_content(
         raise ValueError("raw_text vide")
 
     raw_id = str(uuid.uuid4())
+
     now_iso = datetime.utcnow().isoformat()
 
     row = [{
+
         "ID_RAW": raw_id,
+
+        # 🔥 NEW
+        "CONTENT_TYPE": content_type,
+
         "SOURCE_ID": source_id,
+
         "SOURCE_TITLE": source_title.strip(),
+
         "RAW_TEXT": raw_text.strip(),
-        "DATE_SOURCE": date_source.isoformat() if date_source else None,
+
+        "DATE_SOURCE": (
+            date_source.isoformat()
+            if date_source
+            else None
+        ),
+
         "STATUS": "STORED",
+
         "CREATED_AT": now_iso,
+
         "PROCESSED_AT": None,
+
         "GENERATED_CONTENT_ID": None,
+
         "ERROR_MESSAGE": None,
     }]
 
@@ -774,6 +857,10 @@ def destock_all_raw_contents(batch_size: int = 50):
     }
 
 
+# ============================================================
+# DESTOCK RAW CONTENTS
+# ============================================================
+
 def destock_raw_contents(
     limit: int = 5,
     specific_id: Optional[str] = None
@@ -784,6 +871,7 @@ def destock_raw_contents(
     # ====================================================
 
     if specific_id:
+
         raws = query_bq(
             f"""
             SELECT *
@@ -792,7 +880,9 @@ def destock_raw_contents(
             """,
             {"id_raw": specific_id}
         )
+
     else:
+
         raws = query_bq(
             f"""
             SELECT *
@@ -819,10 +909,13 @@ def destock_raw_contents(
             print("\n==============================")
             print("RAW ID:", raw_id)
             print("SOURCE_ID:", raw.get("SOURCE_ID"))
+
+            # 🔥 NEW
+            print("CONTENT_TYPE:", raw.get("CONTENT_TYPE"))
+
             print("RAW LENGTH:", len(raw.get("RAW_TEXT", "") or ""))
             print("------------------------------")
 
-            # 🔐 Sécurité
             if raw["STATUS"] not in ["STORED", "ERROR"]:
                 raise ValueError("RAW non traitable (status invalide)")
 
@@ -840,13 +933,31 @@ def destock_raw_contents(
             )
 
             # ====================================================
-            # GENERATE SUMMARY
+            # CONTENT TYPE
             # ====================================================
 
-            summary = generate_summary(
-                source_id=raw.get("SOURCE_ID"),
-                source_text=raw.get("RAW_TEXT", "")
+            content_type = (
+                raw.get("CONTENT_TYPE")
+                or "ANALYSIS"
             )
+
+            # ====================================================
+            # GENERATE CONTENT
+            # ====================================================
+
+            if content_type == "NEWS":
+
+                summary = generate_news(
+                    source_id=raw.get("SOURCE_ID"),
+                    source_text=raw.get("RAW_TEXT", "")
+                )
+
+            else:
+
+                summary = generate_summary(
+                    source_id=raw.get("SOURCE_ID"),
+                    source_text=raw.get("RAW_TEXT", "")
+                )
 
             concepts_llm = normalize_llm_list(
                 summary.get("concepts", [])
@@ -865,30 +976,34 @@ def destock_raw_contents(
             )
 
             # ====================================================
-            # CLEAN SOURCE_DATE (TIMESTAMP SAFE)
+            # CLEAN SOURCE_DATE
             # ====================================================
 
             raw_source_date = raw.get("DATE_SOURCE")
+
             source_date_clean = None
 
             if raw_source_date:
 
-                # ✅ Cas BigQuery DATE (le plus fréquent)
                 if isinstance(raw_source_date, date) and not isinstance(raw_source_date, datetime):
+
                     source_date_clean = raw_source_date
 
-                # ✅ Cas datetime
                 elif isinstance(raw_source_date, datetime):
+
                     source_date_clean = raw_source_date.date()
 
-                # ✅ Cas string ISO ou "YYYY-MM-DD"
                 elif isinstance(raw_source_date, str):
+
                     try:
+
                         source_date_clean = datetime.strptime(
                             raw_source_date.split("T")[0],
                             "%Y-%m-%d"
                         )
+
                     except Exception:
+
                         source_date_clean = None
 
             # ====================================================
@@ -896,20 +1011,38 @@ def destock_raw_contents(
             # ====================================================
 
             content_payload = ContentCreate(
+
+                # 🔥 NEW
+                content_type=content_type,
+
                 title=summary.get("title"),
+
                 excerpt=summary.get("excerpt"),
+
                 content_body=summary.get("content_body"),
+
                 chiffres=summary.get("chiffres", []),
+
                 acteurs_cites=summary.get("acteurs_cites", []),
+
                 concepts_llm=concepts_llm,
+
                 solutions_llm=solutions_llm,
+
                 topics_llm=topics_llm,
+
                 mecanique_expliquee=summary.get("mecanique_expliquee"),
+
                 enjeu_strategique=summary.get("enjeu_strategique"),
+
                 point_de_friction=summary.get("point_de_friction"),
+
                 signal_analytique=summary.get("signal_analytique"),
+
                 source_id=raw.get("SOURCE_ID"),
+
                 source_date=source_date_clean,
+
                 author=None,
             )
 
