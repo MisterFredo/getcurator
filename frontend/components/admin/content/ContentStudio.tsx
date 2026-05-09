@@ -23,6 +23,13 @@ export default function ContentStudio({ mode, contentId }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // =========================
+  // 🔥 CONTENT TYPE
+  // =========================
+
+  const [contentType, setContentType] =
+    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
+
+  // =========================
   // SOURCE
   // =========================
 
@@ -85,6 +92,11 @@ export default function ContentStudio({ mode, contentId }: Props) {
       const res = await api.get(`/content/${contentId}`);
       const c = res.content;
 
+      // 🔥 NEW
+      setContentType(
+        c.content_type || "ANALYSIS"
+      );
+
       setExcerpt(c.excerpt || "");
       setContentBody(c.content_body || "");
       setChiffres(c.chiffres || []);
@@ -121,6 +133,9 @@ export default function ContentStudio({ mode, contentId }: Props) {
   async function saveEditorial() {
 
     const payload = {
+
+      // 🔥 NEW
+      content_type: contentType,
 
       source_id: sourceId,
       source_text: sourceText,
@@ -166,6 +181,10 @@ export default function ContentStudio({ mode, contentId }: Props) {
     if (!internalContentId) return;
 
     await api.put(`/content/update/${internalContentId}`, {
+
+      // 🔥 NEW
+      content_type: contentType,
+
       topics,
       companies,
       concepts,
@@ -220,6 +239,38 @@ export default function ContentStudio({ mode, contentId }: Props) {
       {/* LEFT */}
 
       <div className="col-span-2 space-y-8">
+
+        {/* 🔥 NEW */}
+
+        <div className="bg-white border rounded p-4">
+
+          <div className="text-sm font-medium mb-3">
+            Type de contenu
+          </div>
+
+          <div className="flex gap-6">
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={contentType === "ANALYSIS"}
+                onChange={() => setContentType("ANALYSIS")}
+              />
+              Analysis
+            </label>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                checked={contentType === "NEWS"}
+                onChange={() => setContentType("NEWS")}
+              />
+              News
+            </label>
+
+          </div>
+
+        </div>
 
         {!internalContentId && (
           <StepSource
