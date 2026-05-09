@@ -9,9 +9,18 @@ type Props = {
 /* ========================================================= */
 
 function formatValue(item: any) {
-  if (item.VALUE === null || item.VALUE === undefined) return "";
 
-  const scaleRaw = (item.SCALE || "").toString().toLowerCase();
+  if (
+    item.VALUE === null ||
+    item.VALUE === undefined
+  ) {
+    return "";
+  }
+
+  const scaleRaw =
+    (item.SCALE || "")
+      .toString()
+      .toLowerCase();
 
   const scaleMap: any = {
     thousand: "K",
@@ -27,47 +36,82 @@ function formatValue(item: any) {
     trillions: "T",
   };
 
-  const scale = scaleMap[scaleRaw] || item.SCALE || "";
-  const unit = item.UNIT || "";
+  const scale =
+    scaleMap[scaleRaw] ||
+    item.SCALE ||
+    "";
 
-  return [item.VALUE, scale, unit]
+  const unit =
+    item.UNIT || "";
+
+  return [
+    item.VALUE,
+    scale,
+    unit,
+  ]
     .filter(Boolean)
     .join(" ");
 }
 
 /* ========================================================= */
 
-function dedupeEntities(arr: any[]) {
-  const map = new Map();
+function dedupeEntities(
+  arr: any[]
+) {
+
+  const map =
+    new Map();
 
   arr.forEach((e) => {
-    const key = `${e.ENTITY_TYPE}_${e.ENTITY_LABEL}`;
+
+    const key =
+      `${e.ENTITY_TYPE}_${e.ENTITY_LABEL}`;
 
     if (!map.has(key)) {
       map.set(key, e);
     }
   });
 
-  return Array.from(map.values());
+  return Array.from(
+    map.values()
+  );
 }
 
 /* ========================================================= */
 
-export default function NumberCard({ item, onClick, selected }: Props) {
+export default function NumberCard({
+  item,
+  onClick,
+  selected,
+}: Props) {
 
-  const entities = dedupeEntities(item.ENTITIES || []);
+  const entities =
+    dedupeEntities(
+      item.ENTITIES || []
+    );
 
-  const companies = entities.filter(
-    (e: any) => e.ENTITY_TYPE === "company"
-  );
+  const companies =
+    entities.filter(
+      (e: any) =>
+        e.ENTITY_TYPE ===
+        "company"
+    );
 
-  const topics = entities.filter(
-    (e: any) => e.ENTITY_TYPE === "topic"
-  );
+  const topics =
+    entities.filter(
+      (e: any) =>
+        e.ENTITY_TYPE ===
+        "topic"
+    );
 
-  const solutions = entities.filter(
-    (e: any) => e.ENTITY_TYPE === "solution"
-  );
+  const solutions =
+    entities.filter(
+      (e: any) =>
+        e.ENTITY_TYPE ===
+        "solution"
+    );
+
+  /* ========================================================= */
 
   return (
     <div
@@ -76,55 +120,74 @@ export default function NumberCard({ item, onClick, selected }: Props) {
         onClick();
       }}
       className={`
-        group cursor-pointer rounded-xl
-        border transition overflow-hidden relative
+        group
+        cursor-pointer
+        rounded-xl
+        border
+        transition
+        overflow-hidden
+        relative
+
         ${
           selected
             ? "border-teal-500 bg-teal-50 shadow-sm"
-            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
+            : `
+              border-gray-200
+              bg-white
+              hover:border-gray-300
+              hover:shadow-md
+            `
         }
       `}
     >
+
       {/* =====================================================
-          BADGES (TOP)
+          CATEGORY (OPTIONAL)
       ===================================================== */}
-      {(item.TYPE || item.CATEGORY) && (
-        <div className="absolute top-2 left-2 flex gap-1 z-10">
 
-          {item.TYPE && (
-            <span
-              className="
-                text-[9px] px-2 py-[2px] rounded-full
-                bg-gray-100 text-gray-600 uppercase
-              "
-            >
-              {item.TYPE}
-            </span>
-          )}
+      {item.CATEGORY && (
+        <div
+          className="
+            absolute
+            top-2
+            left-2
+            z-10
+          "
+        >
 
-          {item.CATEGORY && (
-            <span
-              className="
-                text-[9px] px-2 py-[2px] rounded-full
-                bg-gray-50 text-gray-400 uppercase
-              "
-            >
-              {item.CATEGORY}
-            </span>
-          )}
+          <span
+            className="
+              text-[9px]
+              px-2
+              py-[2px]
+              rounded-full
+              bg-gray-50
+              text-gray-400
+              uppercase
+            "
+          >
+            {item.CATEGORY}
+          </span>
 
         </div>
       )}
 
       {/* =====================================================
-          VALUE BLOCK (VISUAL ANCHOR)
+          VALUE BLOCK
       ===================================================== */}
+
       <div
         className="
-          h-16 flex items-center justify-center
-          bg-gray-50 text-gray-900
-          text-sm font-semibold
-          px-2 text-center
+          h-16
+          flex
+          items-center
+          justify-center
+          bg-gray-50
+          text-gray-900
+          text-sm
+          font-semibold
+          px-2
+          text-center
         "
       >
         {formatValue(item)}
@@ -133,12 +196,20 @@ export default function NumberCard({ item, onClick, selected }: Props) {
       {/* =====================================================
           CONTENT
       ===================================================== */}
-      <div className="p-3 space-y-1 text-center">
+
+      <div
+        className="
+          p-3
+          space-y-1
+          text-center
+        "
+      >
 
         {/* LABEL */}
         <div
           className="
-            text-xs text-gray-700
+            text-xs
+            text-gray-700
             line-clamp-2
             group-hover:text-gray-900
           "
@@ -147,70 +218,122 @@ export default function NumberCard({ item, onClick, selected }: Props) {
         </div>
 
         {/* META */}
-        {(item.ZONE || item.PERIOD) && (
-          <div className="text-[10px] text-gray-400">
-            {[item.ZONE, item.PERIOD]
+        {(item.ZONE ||
+          item.PERIOD) && (
+          <div
+            className="
+              text-[10px]
+              text-gray-400
+            "
+          >
+            {[
+              item.ZONE,
+              item.PERIOD,
+            ]
               .filter(Boolean)
               .join(" — ")}
           </div>
         )}
 
         {/* ENTITIES */}
-        <div className="mt-2 flex flex-wrap justify-center gap-1">
+        <div
+          className="
+            mt-2
+            flex
+            flex-wrap
+            justify-center
+            gap-1
+          "
+        >
 
-          {companies.map((c: any) => (
-            <span
-              key={c.ENTITY_ID}
-              className="
-                text-[10px] px-2 py-[2px]
-                rounded-full
-                bg-blue-50 text-blue-600
-              "
-            >
-              {c.ENTITY_LABEL}
-            </span>
-          ))}
+          {/* COMPANIES */}
+          {companies.map(
+            (c: any) => (
+              <span
+                key={
+                  c.ENTITY_ID
+                }
+                className="
+                  text-[10px]
+                  px-2
+                  py-[2px]
+                  rounded-full
+                  bg-blue-50
+                  text-blue-600
+                "
+              >
+                {
+                  c.ENTITY_LABEL
+                }
+              </span>
+            )
+          )}
 
-          {solutions.map((s: any) => (
-            <span
-              key={s.ENTITY_ID}
-              className="
-                text-[10px] px-2 py-[2px]
-                rounded-full
-                bg-purple-50 text-purple-600
-              "
-            >
-              {s.ENTITY_LABEL}
-            </span>
-          ))}
+          {/* SOLUTIONS */}
+          {solutions.map(
+            (s: any) => (
+              <span
+                key={
+                  s.ENTITY_ID
+                }
+                className="
+                  text-[10px]
+                  px-2
+                  py-[2px]
+                  rounded-full
+                  bg-purple-50
+                  text-purple-600
+                "
+              >
+                {
+                  s.ENTITY_LABEL
+                }
+              </span>
+            )
+          )}
 
-          {topics.map((t: any) => (
-            <span
-              key={t.ENTITY_ID}
-              className="
-                text-[10px] px-2 py-[2px]
-                rounded-full
-                bg-gray-100 text-gray-600
-              "
-            >
-              {t.ENTITY_LABEL}
-            </span>
-          ))}
+          {/* TOPICS */}
+          {topics.map(
+            (t: any) => (
+              <span
+                key={
+                  t.ENTITY_ID
+                }
+                className="
+                  text-[10px]
+                  px-2
+                  py-[2px]
+                  rounded-full
+                  bg-gray-100
+                  text-gray-600
+                "
+              >
+                {
+                  t.ENTITY_LABEL
+                }
+              </span>
+            )
+          )}
 
         </div>
 
       </div>
 
       {/* =====================================================
-          HOVER OVERLAY (léger)
+          HOVER OVERLAY
       ===================================================== */}
+
       <div
         className="
-          absolute inset-0
-          bg-black/0 group-hover:bg-black/[0.02]
-          transition pointer-events-none
+          absolute
+          inset-0
+          bg-black/0
+          group-hover:bg-black/[0.02]
+          transition
+          pointer-events-none
         "
       />
+
     </div>
   );
 }
