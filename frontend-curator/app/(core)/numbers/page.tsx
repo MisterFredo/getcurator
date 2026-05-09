@@ -25,8 +25,13 @@ export default function NumbersPage() {
 
   const [query, setQuery] = useState("");
 
-  /* SELECTION */
+  /* =========================================================
+     SELECTION
+  ========================================================= */
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<NumberItem[]>([]);
+
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   /* =========================================================
@@ -50,6 +55,7 @@ export default function NumbersPage() {
       const data = res?.items ?? [];
 
       setItems(data);
+
     } catch (e) {
       console.error("❌ Numbers load error", e);
       setItems([]);
@@ -69,13 +75,46 @@ export default function NumbersPage() {
   function toggleSelect(item: NumberItem) {
     const id = item.ID_NUMBER;
 
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((i) => i !== id)
-        : [...prev, id]
-    );
+    setSelectedIds((prev) => {
+      const exists = prev.includes(id);
+
+      if (exists) {
+
+        // REMOVE
+        setSelectedItems((items) =>
+          items.filter((i) => i.ID_NUMBER !== id)
+        );
+
+        return prev.filter((i) => i !== id);
+      }
+
+      // ADD
+      setSelectedItems((items) => {
+        if (items.find((i) => i.ID_NUMBER === id)) {
+          return items;
+        }
+
+        return [...items, item];
+      });
+
+      return [...prev, id];
+    });
 
     setIsPanelOpen(true);
+  }
+
+  /* =========================================================
+     REMOVE FROM PANEL
+  ========================================================= */
+
+  function removeFromSelection(id: string) {
+    setSelectedItems((prev) =>
+      prev.filter((item) => item.ID_NUMBER !== id)
+    );
+
+    setSelectedIds((prev) =>
+      prev.filter((i) => i !== id)
+    );
   }
 
   /* =========================================================
@@ -86,13 +125,12 @@ export default function NumbersPage() {
     const map: Record<string, NumberItem[]> = {};
 
     items.forEach((item) => {
-      const key = item.TYPE ?? "Autres"; // ⚠️ seul fallback toléré ici
+      const key = item.TYPE ?? "Autres";
 
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
 
-    // tri alphabétique des groupes
     return Object.fromEntries(
       Object.entries(map).sort(([a], [b]) =>
         a.localeCompare(b, "fr", { sensitivity: "base" })
@@ -155,13 +193,16 @@ export default function NumbersPage() {
                 </span>
               </div>
 
-              <div className="
-                grid
-                grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
-                gap-3
-              ">
+              <div
+                className="
+                  grid
+                  grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5
+                  gap-3
+                "
+              >
                 {groupItems.map((item) => {
-                  const selected = selectedIds.includes(item.ID_NUMBER);
+                  const selected =
+                    selectedIds.includes(item.ID_NUMBER);
 
                   return (
                     <NumberCard
@@ -183,9 +224,9 @@ export default function NumbersPage() {
       {isPanelOpen && (
         <div className="xl:col-span-1 sticky top-6 h-[calc(100vh-120px)]">
           <NumbersSelectionPanel
-            items={items}
-            selectedIds={selectedIds}
+            selectedItems={selectedItems}
             onClose={() => setIsPanelOpen(false)}
+            onRemove={removeFromSelection}
           />
         </div>
       )}
