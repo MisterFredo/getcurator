@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 
 import NumberCard from "@/components/numbers/NumberCard";
-import NumbersSelectionPanel from "@/components/numbers/NumbersSelectionPanel";
+import NumbersSelectionPanel from "@/components/insight/NumbersSelectionPanel";
 import NumbersHeader from "@/components/numbers/NumbersHeader";
 
 /* ========================================================= */
