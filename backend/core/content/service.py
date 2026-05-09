@@ -1596,7 +1596,14 @@ def publish_content(
 
     rows = query_bq(
         f"""
-        SELECT STATUS, SOURCE_DATE, NUMBERS_PARSED
+        SELECT
+            STATUS,
+            SOURCE_DATE,
+            NUMBERS_PARSED,
+
+            -- 🔥 NEW
+            CONTENT_TYPE
+
         FROM `{TABLE_CONTENT}`
         WHERE ID_CONTENT = @id_content
         """,
@@ -1607,8 +1614,16 @@ def publish_content(
         raise ValueError("Content introuvable")
 
     current_status = rows[0]["STATUS"]
+
     source_date = rows[0]["SOURCE_DATE"]
+
     numbers_parsed = rows[0].get("NUMBERS_PARSED")
+
+    # 🔥 NEW
+    content_type = (
+        rows[0].get("CONTENT_TYPE")
+        or "ANALYSIS"
+    )
 
     if current_status != "READY":
         raise ValueError("Content must be READY before publish")
@@ -1657,6 +1672,20 @@ def publish_content(
         },
         where={"ID_CONTENT": id_content},
     )
+
+    # ============================================================
+    # 🔥 NEW
+    # NEWS → PAS DE PIPELINE NUMBERS
+    # ============================================================
+
+    if content_type == "NEWS":
+
+        print(
+            "ℹ️ NEWS CONTENT → SKIP NUMBERS BACKLOG:",
+            id_content
+        )
+
+        return status
 
     # ============================================================
     # 5️⃣ BACKLOG NUMBERS
@@ -1832,6 +1861,8 @@ def get_content_stats():
 
           COUNTIF(STATUS = 'PUBLISHED') AS TOTAL_PUBLISHED,
           COUNTIF(STATUS = 'SCHEDULED') AS TOTAL_SCHEDULED,
+          COUNTIF(CONTENT_TYPE = 'NEWS') AS TOTAL_NEWS,
+          COUNTIF(CONTENT_TYPE = 'ANALYSIS') AS TOTAL_ANALYSIS,
 
           COUNTIF(
             STATUS = 'PUBLISHED'
@@ -1859,6 +1890,8 @@ def get_content_stats():
             "total_ready": 0,
             "total_published": 0,
             "total_scheduled": 0,
+            "total_news": r.get("TOTAL_NEWS", 0),
+            "total_analysis": r.get("TOTAL_ANALYSIS", 0),
             "total_published_this_year": 0,
             "total_published_this_month": 0,
         }
