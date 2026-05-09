@@ -105,20 +105,26 @@ def _get_entity_feed(
 
     sql = f"""
     SELECT
+
         c.id_content AS id,
 
-        'analysis' AS type,
+        -- 🔥 NEW
+        LOWER(
+            COALESCE(c.content_type, 'ANALYSIS')
+        ) AS type,
 
         c.title,
         c.excerpt,
 
         c.published_at,
 
-        NULL AS news_type,
-
         c.topics,
         c.companies,
-        c.solutions
+        c.solutions,
+        c.concepts,
+        c.universes,
+
+        c.source_id
 
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
@@ -453,12 +459,26 @@ def _map_feed_row(r: Dict):
 
     return {
         "id": r.get("id"),
+
+        # 🔥 NEW
         "type": r.get("type"),
+
         "title": r.get("title"),
         "excerpt": r.get("excerpt"),
-        "published_at": fmt(r.get("published_at")),
-        "news_type": None,
+
+        "published_at": fmt(
+            r.get("published_at")
+        ),
+
         "topics": r.get("topics") or [],
+
         "companies": r.get("companies") or [],
+
         "solutions": r.get("solutions") or [],
+
+        # 🔥 NEW
+        "concepts": r.get("concepts") or [],
+
+        # 🔥 NEW
+        "universes": r.get("universes") or [],
     }
