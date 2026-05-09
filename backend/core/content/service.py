@@ -1297,14 +1297,19 @@ def get_source_monitoring():
 
     query = """
     WITH ranked AS (
+
       SELECT
         r.SOURCE_ID,
+
+        -- 🔥 NEW
+        r.CONTENT_TYPE,
+
         r.DATE_SOURCE,
         r.SOURCE_URL,
         r.SOURCE_TITLE,
 
         ROW_NUMBER() OVER (
-          PARTITION BY r.SOURCE_ID
+          PARTITION BY r.SOURCE_ID, r.CONTENT_TYPE
           ORDER BY r.DATE_SOURCE DESC
         ) AS rn
 
@@ -1312,38 +1317,74 @@ def get_source_monitoring():
     ),
 
     last_article AS (
+
       SELECT
         SOURCE_ID,
+
+        -- 🔥 NEW
+        CONTENT_TYPE,
+
         DATE_SOURCE AS LAST_ARTICLE_DATE,
         SOURCE_URL AS LAST_ARTICLE_URL,
         SOURCE_TITLE AS LAST_ARTICLE_TITLE
+
       FROM ranked
+
       WHERE rn = 1
     ),
 
     agg AS (
+
       SELECT
         SOURCE_ID,
+
+        -- 🔥 NEW
+        CONTENT_TYPE,
+
         MAX(CREATED_AT) AS LAST_IMPORT_AT,
+
         COUNTIF(
-          CREATED_AT >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+          CREATED_AT >= TIMESTAMP_SUB(
+            CURRENT_TIMESTAMP(),
+            INTERVAL 7 DAY
+          )
         ) AS NB_IMPORTED_7D
+
       FROM `adex-5555.RATECARD_PROD.RATECARD_CONTENT_RAW`
-      GROUP BY SOURCE_ID
+
+      GROUP BY
+        SOURCE_ID,
+        CONTENT_TYPE
     )
 
     SELECT
+
       s.SOURCE_ID,
+
       s.NAME AS SOURCE_NAME,
+
+      -- 🔥 NEW
+      COALESCE(
+        la.CONTENT_TYPE,
+        agg.CONTENT_TYPE,
+        'ANALYSIS'
+      ) AS CONTENT_TYPE,
+
       la.LAST_ARTICLE_DATE,
       la.LAST_ARTICLE_URL,
       la.LAST_ARTICLE_TITLE,
+
       agg.LAST_IMPORT_AT,
       agg.NB_IMPORTED_7D
 
     FROM `adex-5555.RATECARD_PROD.RATECARD_SOURCE` s
-    LEFT JOIN last_article la ON s.SOURCE_ID = la.SOURCE_ID
-    LEFT JOIN agg ON s.SOURCE_ID = agg.SOURCE_ID
+
+    LEFT JOIN last_article la
+      ON s.SOURCE_ID = la.SOURCE_ID
+
+    LEFT JOIN agg
+      ON s.SOURCE_ID = agg.SOURCE_ID
+      AND la.CONTENT_TYPE = agg.CONTENT_TYPE
 
     ORDER BY agg.LAST_IMPORT_AT DESC
     """
