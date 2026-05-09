@@ -1249,10 +1249,35 @@ def get_raw_stats() -> dict:
 
     query = f"""
         SELECT
+
             COUNT(*) AS total,
-            SUM(CASE WHEN STATUS = 'STORED' THEN 1 ELSE 0 END) AS total_stored,
-            SUM(CASE WHEN STATUS = 'PROCESSING' THEN 1 ELSE 0 END) AS total_processing,
-            SUM(CASE WHEN STATUS = 'ERROR' THEN 1 ELSE 0 END) AS total_error
+
+            SUM(
+                CASE WHEN STATUS = 'STORED'
+                THEN 1 ELSE 0 END
+            ) AS total_stored,
+
+            SUM(
+                CASE WHEN STATUS = 'PROCESSING'
+                THEN 1 ELSE 0 END
+            ) AS total_processing,
+
+            SUM(
+                CASE WHEN STATUS = 'ERROR'
+                THEN 1 ELSE 0 END
+            ) AS total_error,
+
+            -- 🔥 NEW
+            SUM(
+                CASE WHEN COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'NEWS'
+                THEN 1 ELSE 0 END
+            ) AS total_news,
+
+            SUM(
+                CASE WHEN COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'ANALYSIS'
+                THEN 1 ELSE 0 END
+            ) AS total_analysis
+
         FROM `{TABLE_CONTENT_RAW}`
     """
 
@@ -1264,17 +1289,29 @@ def get_raw_stats() -> dict:
             "total_stored": 0,
             "total_processing": 0,
             "total_error": 0,
+
+            # 🔥 NEW
+            "total_news": 0,
+            "total_analysis": 0,
         }
 
     r = rows[0]
 
     return {
-        "total": r.get("total", 0),
-        "total_stored": r.get("total_stored", 0),
-        "total_processing": r.get("total_processing", 0),
-        "total_error": r.get("total_error", 0),
-    }
 
+        "total": r.get("total", 0),
+
+        "total_stored": r.get("total_stored", 0),
+
+        "total_processing": r.get("total_processing", 0),
+
+        "total_error": r.get("total_error", 0),
+
+        # 🔥 NEW
+        "total_news": r.get("total_news", 0),
+
+        "total_analysis": r.get("total_analysis", 0),
+    }
 # ============================================================
 # SUBSTACK
 # ============================================================
