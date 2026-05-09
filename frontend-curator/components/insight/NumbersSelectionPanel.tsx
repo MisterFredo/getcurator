@@ -4,13 +4,20 @@ import SelectionPanelCore from "./SelectionPanelCore";
 import NumbersSelectionRenderer from "./renderers/NumbersSelectionRenderer";
 import BasicAnalysisRenderer from "./renderers/BasicAnalysisRenderer";
 
+/* ========================================================= */
+
 export default function NumbersSelectionPanel(props: any) {
 
-  const { items, selectedIds, analysis, loading } = props;
+  const {
+    selectedItems,
+    analysis,
+    loading,
+    onRemove,
+  } = props;
 
   return (
     <SelectionPanelCore
-      selectedCount={selectedIds.length}
+      selectedCount={selectedItems.length}
       onGenerate={props.onGenerateInsight}
       onClose={props.onClose}
       loading={loading}
@@ -22,8 +29,8 @@ export default function NumbersSelectionPanel(props: any) {
 
       renderSelection={() => (
         <NumbersSelectionRenderer
-          items={items}
-          selectedIds={selectedIds}
+          selectedItems={selectedItems}
+          onRemove={onRemove}
         />
       )}
 
