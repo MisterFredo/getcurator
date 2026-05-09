@@ -1932,15 +1932,33 @@ def get_content_stats():
 
     sql = f"""
         SELECT
+
           COUNT(*) AS TOTAL,
 
-          COUNTIF(STATUS = 'DRAFT') AS TOTAL_DRAFT,
-          COUNTIF(STATUS = 'READY') AS TOTAL_READY,
+          COUNTIF(
+            STATUS = 'DRAFT'
+          ) AS TOTAL_DRAFT,
 
-          COUNTIF(STATUS = 'PUBLISHED') AS TOTAL_PUBLISHED,
-          COUNTIF(STATUS = 'SCHEDULED') AS TOTAL_SCHEDULED,
-          COUNTIF(CONTENT_TYPE = 'NEWS') AS TOTAL_NEWS,
-          COUNTIF(CONTENT_TYPE = 'ANALYSIS') AS TOTAL_ANALYSIS,
+          COUNTIF(
+            STATUS = 'READY'
+          ) AS TOTAL_READY,
+
+          COUNTIF(
+            STATUS = 'PUBLISHED'
+          ) AS TOTAL_PUBLISHED,
+
+          COUNTIF(
+            STATUS = 'SCHEDULED'
+          ) AS TOTAL_SCHEDULED,
+
+          -- 🔥 NEW
+          COUNTIF(
+            COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'NEWS'
+          ) AS TOTAL_NEWS,
+
+          COUNTIF(
+            COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'ANALYSIS'
+          ) AS TOTAL_ANALYSIS,
 
           COUNTIF(
             STATUS = 'PUBLISHED'
@@ -1962,14 +1980,18 @@ def get_content_stats():
     rows = query_bq(sql)
 
     if not rows:
+
         return {
             "total": 0,
             "total_draft": 0,
             "total_ready": 0,
             "total_published": 0,
             "total_scheduled": 0,
-            "total_news": r.get("TOTAL_NEWS", 0),
-            "total_analysis": r.get("TOTAL_ANALYSIS", 0),
+
+            # 🔥 NEW
+            "total_news": 0,
+            "total_analysis": 0,
+
             "total_published_this_year": 0,
             "total_published_this_month": 0,
         }
@@ -1977,13 +1999,31 @@ def get_content_stats():
     r = rows[0]
 
     return {
+
         "total": r.get("TOTAL", 0),
+
         "total_draft": r.get("TOTAL_DRAFT", 0),
+
         "total_ready": r.get("TOTAL_READY", 0),
+
         "total_published": r.get("TOTAL_PUBLISHED", 0),
+
         "total_scheduled": r.get("TOTAL_SCHEDULED", 0),
-        "total_published_this_year": r.get("TOTAL_PUBLISHED_THIS_YEAR", 0),
-        "total_published_this_month": r.get("TOTAL_PUBLISHED_THIS_MONTH", 0),
+
+        # 🔥 NEW
+        "total_news": r.get("TOTAL_NEWS", 0),
+
+        "total_analysis": r.get("TOTAL_ANALYSIS", 0),
+
+        "total_published_this_year": r.get(
+            "TOTAL_PUBLISHED_THIS_YEAR",
+            0
+        ),
+
+        "total_published_this_month": r.get(
+            "TOTAL_PUBLISHED_THIS_MONTH",
+            0
+        ),
     }
 
 def delete_content(id_content: str):
