@@ -44,21 +44,41 @@ export default function WorkspacePanel() {
   ========================================================= */
 
   async function generateContentInsight() {
-    if (!selectedContentItems.length) return;
+
+    if (!selectedContentItems.length) {
+      return;
+    }
 
     setLoading(true);
 
     try {
-      const res: any = await api.post("/insight/", {
-        ids: selectedContentItems.map((i) => i.id),
-      });
 
-      setAnalysis(res.insight || "");
+      const res: any =
+        await api.post(
+          "/insight/",
+          {
+            ids:
+              selectedContentItems.map(
+                (i) => i.id
+              ),
+          }
+        );
+
+      setAnalysis(
+        res.insight || ""
+      );
 
     } catch (e) {
-      console.error("❌ insight error", e);
+
+      console.error(
+        "❌ insight error",
+        e
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   }
 
@@ -67,54 +87,102 @@ export default function WorkspacePanel() {
   ========================================================= */
 
   async function generateNumbersInsight() {
-    if (!selectedNumberItems.length) return;
+
+    if (!selectedNumberItems.length) {
+      return;
+    }
 
     setLoading(true);
 
     try {
-      const res: any = await api.post("/numbers/insight", {
-        ids: selectedNumberItems.map((i) => i.ID_NUMBER),
-      });
 
-      setAnalysis(res.insight || "");
+      const res: any =
+        await api.post(
+          "/numbers/insight",
+          {
+            ids:
+              selectedNumberItems.map(
+                (i) =>
+                  i.ID_NUMBER
+              ),
+          }
+        );
+
+      setAnalysis(
+        res.insight || ""
+      );
 
     } catch (e) {
-      console.error("❌ numbers insight error", e);
+
+      console.error(
+        "❌ numbers insight error",
+        e
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   }
 
-  /* ========================================================= */
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
-    <div className="
-      fixed
-      top-24
-      right-6
-      w-[380px]
-      h-[calc(100vh-120px)]
-      z-40
-    ">
+    <div className="h-full">
 
-      <div className="h-full flex flex-col bg-white border rounded-xl overflow-hidden shadow-sm">
+      <div className="
+        h-full
+        flex
+        flex-col
+        bg-white
+        border
+        rounded-xl
+        overflow-hidden
+        shadow-sm
+      ">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+        <div className="
+          flex
+          items-center
+          justify-between
+          px-4
+          py-3
+          border-b
+          bg-gray-50
+        ">
 
           <div>
-            <div className="text-sm font-semibold text-gray-900">
+
+            <div className="
+              text-sm
+              font-semibold
+              text-gray-900
+            ">
               Workspace
             </div>
 
-            <div className="text-xs text-gray-400">
+            <div className="
+              text-xs
+              text-gray-400
+            ">
               {totalCount} élément(s)
             </div>
+
           </div>
 
           <button
-            onClick={() => setPanelOpen(false)}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            onClick={() =>
+              setPanelOpen(false)
+            }
+            className="
+              text-xs
+              text-gray-400
+              hover:text-gray-600
+            "
           >
             ✕
           </button>
@@ -122,13 +190,20 @@ export default function WorkspacePanel() {
         </div>
 
         {/* ACTIONS */}
-        <div className="p-3 border-b space-y-2">
+        <div className="
+          p-3
+          border-b
+          space-y-2
+        ">
 
           <button
-            onClick={generateContentInsight}
+            onClick={
+              generateContentInsight
+            }
             disabled={
               loading ||
-              selectedContentItems.length === 0
+              selectedContentItems.length ===
+                0
             }
             className="
               w-full
@@ -144,10 +219,13 @@ export default function WorkspacePanel() {
           </button>
 
           <button
-            onClick={generateNumbersInsight}
+            onClick={
+              generateNumbersInsight
+            }
             disabled={
               loading ||
-              selectedNumberItems.length === 0
+              selectedNumberItems.length ===
+                0
             }
             className="
               w-full
@@ -165,123 +243,205 @@ export default function WorkspacePanel() {
         </div>
 
         {/* CONTENT */}
-        <div className="flex-1 overflow-auto p-4 space-y-6">
+        <div className="
+          flex-1
+          overflow-auto
+          p-4
+          space-y-6
+        ">
 
           {/* CONTENT ITEMS */}
-          {selectedContentItems.length > 0 && (
-            <div className="space-y-3">
+          {selectedContentItems.length >
+            0 && (
+            <div className="
+              space-y-3
+            ">
 
-              <div className="text-[10px] uppercase tracking-wide text-gray-400">
+              <div className="
+                text-[10px]
+                uppercase
+                tracking-wide
+                text-gray-400
+              ">
                 Contenus
               </div>
 
-              {selectedContentItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="relative p-3 border rounded bg-gray-50"
-                >
-
-                  <button
-                    onClick={() => removeContent(item.id)}
+              {selectedContentItems.map(
+                (item) => (
+                  <div
+                    key={item.id}
                     className="
-                      absolute
-                      top-2
-                      right-2
-                      text-xs
-                      text-gray-400
-                      hover:text-red-500
+                      relative
+                      p-3
+                      border
+                      rounded
+                      bg-gray-50
                     "
                   >
-                    ✕
-                  </button>
 
-                  <div className="text-sm font-semibold text-gray-900">
-                    {item.title}
-                  </div>
+                    <button
+                      onClick={() =>
+                        removeContent(
+                          item.id
+                        )
+                      }
+                      className="
+                        absolute
+                        top-2
+                        right-2
+                        text-xs
+                        text-gray-400
+                        hover:text-red-500
+                      "
+                    >
+                      ✕
+                    </button>
 
-                  {item.excerpt && (
-                    <div className="text-xs text-gray-700 mt-1 line-clamp-3">
-                      {item.excerpt}
+                    <div className="
+                      text-sm
+                      font-semibold
+                      text-gray-900
+                    ">
+                      {item.title}
                     </div>
-                  )}
 
-                </div>
-              ))}
+                    {item.excerpt && (
+                      <div className="
+                        text-xs
+                        text-gray-700
+                        mt-1
+                        line-clamp-3
+                      ">
+                        {
+                          item.excerpt
+                        }
+                      </div>
+                    )}
+
+                  </div>
+                )
+              )}
 
             </div>
           )}
 
           {/* NUMBER ITEMS */}
-          {selectedNumberItems.length > 0 && (
-            <div className="space-y-3">
+          {selectedNumberItems.length >
+            0 && (
+            <div className="
+              space-y-3
+            ">
 
-              <div className="text-[10px] uppercase tracking-wide text-gray-400">
+              <div className="
+                text-[10px]
+                uppercase
+                tracking-wide
+                text-gray-400
+              ">
                 Chiffres
               </div>
 
-              {selectedNumberItems.map((item) => (
-                <div
-                  key={item.ID_NUMBER}
-                  className="relative p-3 border rounded bg-gray-50"
-                >
-
-                  <button
-                    onClick={() => removeNumber(item.ID_NUMBER)}
+              {selectedNumberItems.map(
+                (item) => (
+                  <div
+                    key={
+                      item.ID_NUMBER
+                    }
                     className="
-                      absolute
-                      top-2
-                      right-2
-                      text-xs
-                      text-gray-400
-                      hover:text-red-500
+                      relative
+                      p-3
+                      border
+                      rounded
+                      bg-gray-50
                     "
                   >
-                    ✕
-                  </button>
 
-                  <div className="text-sm font-semibold text-gray-900">
-                    {item.VALUE} {item.UNIT}
+                    <button
+                      onClick={() =>
+                        removeNumber(
+                          item.ID_NUMBER
+                        )
+                      }
+                      className="
+                        absolute
+                        top-2
+                        right-2
+                        text-xs
+                        text-gray-400
+                        hover:text-red-500
+                      "
+                    >
+                      ✕
+                    </button>
+
+                    <div className="
+                      text-sm
+                      font-semibold
+                      text-gray-900
+                    ">
+                      {item.VALUE}{" "}
+                      {item.UNIT}
+                    </div>
+
+                    <div className="
+                      text-xs
+                      text-gray-700
+                    ">
+                      {item.LABEL}
+                    </div>
+
+                    <div className="
+                      text-[10px]
+                      text-gray-400
+                      mt-1
+                    ">
+                      {item.TYPE}
+                    </div>
+
                   </div>
-
-                  <div className="text-xs text-gray-700">
-                    {item.LABEL}
-                  </div>
-
-                  <div className="text-[10px] text-gray-400 mt-1">
-                    {item.TYPE}
-                  </div>
-
-                </div>
-              ))}
+                )
+              )}
 
             </div>
           )}
 
           {/* ANALYSIS */}
-          <div className="pt-4 border-t">
+          <div className="
+            pt-4
+            border-t
+          ">
 
             {loading && (
-              <div className="text-xs text-gray-400">
+              <div className="
+                text-xs
+                text-gray-400
+              ">
                 Génération en cours...
               </div>
             )}
 
-            {!loading && !analysis && (
-              <div className="text-xs text-gray-400">
-                Lance une génération
-              </div>
-            )}
+            {!loading &&
+              !analysis && (
+                <div className="
+                  text-xs
+                  text-gray-400
+                ">
+                  Lance une
+                  génération
+                </div>
+              )}
 
-            {!loading && analysis && (
-              <div className="
-                text-sm
-                text-gray-800
-                whitespace-pre-wrap
-                leading-relaxed
-              ">
-                {analysis}
-              </div>
-            )}
+            {!loading &&
+              analysis && (
+                <div className="
+                  text-sm
+                  text-gray-800
+                  whitespace-pre-wrap
+                  leading-relaxed
+                ">
+                  {analysis}
+                </div>
+              )}
 
           </div>
 
