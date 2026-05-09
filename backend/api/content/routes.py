@@ -164,11 +164,19 @@ def publish_route(id_content: str, payload: ContentPublish):
 @router.post("/store-raw")
 def store_raw_route(payload: ContentRawCreate):
     try:
+
         raw_id = store_raw_content(
+
             source_id=payload.source_id,
+
             source_title=payload.source_title,
+
             raw_text=payload.raw_text,
+
             date_source=payload.date_source,
+
+            # 🔥 NEW
+            content_type=payload.content_type,
         )
 
         return {
@@ -317,16 +325,27 @@ def import_urls_route(payload: ImportUrlsRequest):
         raise HTTPException(400, str(e))
 
 @router.put("/raw/update/{id_raw}")
-def update_raw(id_raw: str, payload: dict):
+def update_raw(
+    id_raw: str,
+    payload: ContentRawUpdate
+):
 
     from core.content.service import update_raw_content
 
     try:
+
         update_raw_content(
+
             id_raw=id_raw,
-            date_source=payload.get("date_source"),
-            source_title=payload.get("source_title"),
-            raw_text=payload.get("raw_text"),
+
+            date_source=payload.date_source,
+
+            source_title=payload.source_title,
+
+            raw_text=payload.raw_text,
+
+            # 🔥 NEW
+            content_type=payload.content_type,
         )
 
         return {"status": "ok"}
@@ -376,10 +395,24 @@ def ai_generate(payload: ContentSummaryRequest):
         raise HTTPException(400, "Source manquante")
 
     try:
-        result = generate_summary(
-            source_id=payload.source_id,
-            source_text=payload.source_text,
-        )
+
+        # 🔥 NEW
+        if (
+            getattr(payload, "content_type", "ANALYSIS")
+            == "NEWS"
+        ):
+
+            result = generate_news(
+                source_id=payload.source_id,
+                source_text=payload.source_text,
+            )
+
+        else:
+
+            result = generate_summary(
+                source_id=payload.source_id,
+                source_text=payload.source_text,
+            )
 
         if not isinstance(result, dict):
             raise ValueError("Réponse IA invalide")
