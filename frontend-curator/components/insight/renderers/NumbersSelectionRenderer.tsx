@@ -1,22 +1,27 @@
 "use client";
 
 export default function NumbersSelectionRenderer({
-  items,
-  selectedIds,
+  selectedItems,
+  onRemove,
 }: any) {
-
-  const selected = items.filter((i: any) =>
-    selectedIds.includes(i.ID_NUMBER)
-  );
 
   return (
     <div className="space-y-3">
 
-      {selected.map((n: any) => (
+      {selectedItems.map((n: any) => (
         <div
           key={n.ID_NUMBER}
-          className="p-3 border rounded bg-gray-50"
+          className="relative p-3 border rounded bg-gray-50"
         >
+
+          {/* REMOVE */}
+          <button
+            onClick={() => onRemove(n.ID_NUMBER)}
+            className="absolute top-2 right-2 text-xs text-gray-400 hover:text-red-500"
+          >
+            ✕
+          </button>
+
           <div className="text-sm font-semibold">
             {n.VALUE} {n.UNIT}
           </div>
@@ -32,8 +37,10 @@ export default function NumbersSelectionRenderer({
           <div className="text-[10px] text-gray-400">
             {n.ENTITY_LABEL}
           </div>
+
         </div>
       ))}
+
     </div>
   );
 }
