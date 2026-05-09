@@ -65,11 +65,6 @@ def normalize_array(value):
 
     return []
 
-
-# ============================================================
-# CREATE CONTENT
-# ============================================================
-
 # ============================================================
 # CREATE CONTENT
 # ============================================================
@@ -784,6 +779,7 @@ def list_raw_stock(
     query = f"""
         SELECT
             r.ID_RAW,
+            r.CONTENT_TYPE,
             r.SOURCE_ID,
             s.NAME AS SOURCE_NAME,
             r.SOURCE_TITLE,
@@ -813,6 +809,10 @@ def list_raw_stock(
         "rows": [
             {
                 "id_raw": r["ID_RAW"],
+                "content_type": (
+                    r.get("CONTENT_TYPE")
+                    or "ANALYSIS"
+                ),
                 "source_id": r["SOURCE_ID"],
                 "source_name": r.get("SOURCE_NAME"),
                 "source_title": r["SOURCE_TITLE"],
@@ -1139,6 +1139,7 @@ def get_raw_detail(id_raw: str):
     query = f"""
         SELECT
             ID_RAW,
+            CONTENT_TYPE,
             SOURCE_ID,
             SOURCE_TITLE,
             DATE_SOURCE,
@@ -1161,6 +1162,10 @@ def get_raw_detail(id_raw: str):
 
     return {
         "id_raw": r["ID_RAW"],
+        "content_type": (
+            r.get("CONTENT_TYPE")
+            or "ANALYSIS"
+        ),
         "source_id": r["SOURCE_ID"],
         "source_title": r["SOURCE_TITLE"],
         "date_source": r.get("DATE_SOURCE"),
@@ -1176,6 +1181,9 @@ def update_raw_content(
     date_source: Optional[str],
     source_title: Optional[str],
     raw_text: Optional[str] = None,
+
+    # 🔥 NEW
+    content_type: Optional[str] = None,
 ):
 
     client = get_bigquery_client()
@@ -1187,20 +1195,54 @@ def update_raw_content(
         SET
             DATE_SOURCE = @date_source,
             SOURCE_TITLE = @source_title,
-            RAW_TEXT = @raw_text
+            RAW_TEXT = @raw_text,
+
+            -- 🔥 NEW
+            CONTENT_TYPE = @content_type
+
         WHERE ID_RAW = @id_raw
     """
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("date_source", "DATE", date_source),
-            bigquery.ScalarQueryParameter("source_title", "STRING", source_title),
-            bigquery.ScalarQueryParameter("raw_text", "STRING", raw_text),
-            bigquery.ScalarQueryParameter("id_raw", "STRING", id_raw),
+
+            bigquery.ScalarQueryParameter(
+                "date_source",
+                "DATE",
+                date_source
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "source_title",
+                "STRING",
+                source_title
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "raw_text",
+                "STRING",
+                raw_text
+            ),
+
+            # 🔥 NEW
+            bigquery.ScalarQueryParameter(
+                "content_type",
+                "STRING",
+                content_type
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "id_raw",
+                "STRING",
+                id_raw
+            ),
         ]
     )
 
-    client.query(query, job_config=job_config).result()
+    client.query(
+        query,
+        job_config=job_config
+    ).result()
 
 
 def get_raw_stats() -> dict:
