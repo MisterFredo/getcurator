@@ -54,6 +54,7 @@ def get_concepts(
 
     sql = f"""
     SELECT DISTINCT
+
         con.ID_CONCEPT,
         con.LABEL,
         con.CATEGORY
@@ -62,7 +63,8 @@ def get_concepts(
 
     WHERE con.IS_ACTIVE = TRUE
 
-    -- 🔥 IMPORTANT : filtrer via CONTENT ENRICHED
+    -- 🔥 IMPORTANT :
+    -- filtrer via CONTENT ENRICHED
     AND EXISTS (
 
         SELECT 1
@@ -73,6 +75,9 @@ def get_concepts(
           ON c.id_content = cc.ID_CONTENT
 
         WHERE cc.ID_CONCEPT = con.ID_CONCEPT
+
+        -- 🔥 NEW
+        AND c.published_at IS NOT NULL
 
         {build_user_filter("c") if user_id else ""}
 
