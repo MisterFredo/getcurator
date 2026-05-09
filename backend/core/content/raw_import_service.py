@@ -265,10 +265,15 @@ def parse_raw_blocks(text: str) -> List[Dict]:
 # INSERT BIGQUERY
 # ============================================================
 
+# ============================================================
+# INSERT BIGQUERY
+# ============================================================
+
 def insert_raw_rows(
     rows: List[Dict],
     id_source: str,
     import_type: str = "FILE",
+    content_type: str = "ANALYSIS",
 ):
 
     print("[RAW_IMPORT] Début insertion BigQuery")
@@ -284,17 +289,26 @@ def insert_raw_rows(
         payload.append(
             {
                 "ID_RAW": str(uuid.uuid4()),
+
                 "CREATED_AT": datetime.utcnow().isoformat(),
+
                 "STATUS": "STORED",
 
+                # 🔥 NEW
+                "CONTENT_TYPE": content_type,
+
                 "SOURCE_TITLE": r["TITLE"],
-                "IMPORT_TYPE": import_type,  # ✅ maintenant défini
+
+                "IMPORT_TYPE": import_type,
+
                 "DATE_SOURCE": (
                     r["DATE_SOURCE"].strftime("%Y-%m-%d")
                     if r.get("DATE_SOURCE")
                     else None
                 ),
+
                 "RAW_TEXT": r["RAW_TEXT"],
+
                 "SOURCE_ID": id_source,
             }
         )
@@ -317,11 +331,21 @@ def insert_raw_rows(
     print("[RAW_IMPORT] Insertion BigQuery OK")
 
     return len(payload)
+
+
 # ============================================================
 # MAIN SERVICE
 # ============================================================
 
-def import_raw_content(text: str, id_source: str):
+# ============================================================
+# MAIN SERVICE
+# ============================================================
+
+def import_raw_content(
+    text: str,
+    id_source: str,
+    content_type: str = "ANALYSIS",
+):
 
     # 1️⃣ nettoyage
     text = clean_raw_file(text)
@@ -330,9 +354,14 @@ def import_raw_content(text: str, id_source: str):
     rows = parse_raw_blocks(text)
 
     # 3️⃣ insertion BQ
-    inserted = insert_raw_rows(rows, id_source)
+    inserted = insert_raw_rows(
+        rows,
+        id_source,
+        content_type=content_type,
+    )
 
     return inserted
+
 
 def clean_urls(urls_text: str) -> List[str]:
 
@@ -432,7 +461,11 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         "SOURCE_URL": url
     }
 
-def import_urls_batch(urls_text: str, id_source: str):
+def import_urls_batch(
+    urls_text: str,
+    id_source: str,
+    content_type: str = "ANALYSIS",
+):
 
     import time
     import random
@@ -456,17 +489,22 @@ def import_urls_batch(urls_text: str, id_source: str):
             # --------------------------------------------------
             # SKIP si déjà existant
             # --------------------------------------------------
+
             if url_already_exists(url):
+
                 skipped_count += 1
                 continue
 
             # --------------------------------------------------
             # PARSE
             # --------------------------------------------------
+
             parsed = parse_article_from_url(url)
 
             title = parsed.get("TITLE")
+
             date_source = parsed.get("DATE_SOURCE")
+
             raw_text = parsed.get("RAW_TEXT", "")
 
             if not raw_text.strip():
@@ -475,6 +513,7 @@ def import_urls_batch(urls_text: str, id_source: str):
             # --------------------------------------------------
             # Prépare insertion BQ
             # --------------------------------------------------
+
             inserted_rows.append(
                 {
                     "TITLE": title,
@@ -488,36 +527,50 @@ def import_urls_batch(urls_text: str, id_source: str):
             # --------------------------------------------------
             # Délai sécurisé (anti-bot)
             # --------------------------------------------------
+
             time.sleep(random.uniform(7, 12))
 
         except Exception as e:
 
             print("[RAW_IMPORT_URL] erreur:", e)
+
             error_count += 1
 
     # ----------------------------------------------------------
     # INSERTION GROUPÉE
     # ----------------------------------------------------------
+
     if inserted_rows:
+
         insert_raw_rows(
             inserted_rows,
             id_source=id_source,
-            import_type="URL"
+            import_type="URL",
+
+            # 🔥 NEW
+            content_type=content_type,
         )
 
     # ----------------------------------------------------------
     # MESSAGE SIMPLE POUR FRONT
     # ----------------------------------------------------------
+
     message_parts = []
 
     if imported_count:
         message_parts.append(f"{imported_count} importée(s)")
+
     if skipped_count:
         message_parts.append(f"{skipped_count} déjà existante(s)")
+
     if error_count:
         message_parts.append(f"{error_count} erreur(s)")
 
-    message = " / ".join(message_parts) if message_parts else "Aucune URL traitée"
+    message = (
+        " / ".join(message_parts)
+        if message_parts
+        else "Aucune URL traitée"
+    )
 
     return {
         "status": "ok",
