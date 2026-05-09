@@ -8,6 +8,7 @@ from api.content.models import (
     ContentSummaryRequest,
     ContentRawCreate,
     ContentRawOut,
+    ContentRawUpdate,
     ContentRawDestockRequest,
     ImportUrlsRequest,
     BulkIdsRequest,
