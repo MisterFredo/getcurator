@@ -30,6 +30,7 @@ export default function ContentStockPage() {
     status: "",
     source_id: "",
     import_type: "",
+    content_type: "", // 🔥 NEW
   });
 
   // =========================
@@ -45,6 +46,11 @@ export default function ContentStockPage() {
       if (filters.status) queryParams.append("status", filters.status);
       if (filters.source_id) queryParams.append("source_id", filters.source_id);
       if (filters.import_type) queryParams.append("import_type", filters.import_type);
+
+      // 🔥 NEW
+      if (filters.content_type) {
+        queryParams.append("content_type", filters.content_type);
+      }
 
       queryParams.append("limit", PAGE_SIZE.toString());
       queryParams.append("offset", offset.toString());
@@ -226,6 +232,7 @@ export default function ContentStockPage() {
             status={filters.status}
             sourceId={filters.source_id}
             importType={filters.import_type}
+            contentType={filters.content_type} // 🔥 NEW
             total={total}
             onStatusChange={(v) =>
               setFilters((prev) => ({ ...prev, status: v }))
@@ -235,6 +242,14 @@ export default function ContentStockPage() {
             }
             onImportTypeChange={(v) =>
               setFilters((prev) => ({ ...prev, import_type: v }))
+            }
+
+            // 🔥 NEW
+            onContentTypeChange={(v) =>
+              setFilters((prev) => ({
+                ...prev,
+                content_type: v,
+              }))
             }
           />
         </div>
