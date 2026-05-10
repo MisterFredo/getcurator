@@ -11,7 +11,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/feed");
+    router.replace("/news");
   }, [router]);
 
   return null;
