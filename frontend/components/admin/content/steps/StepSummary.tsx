@@ -8,6 +8,9 @@ type Props = {
   sourceId: string | null;
   sourceText: string;
 
+  // 🔥 NEW
+  contentType?: "ANALYSIS" | "NEWS";
+
   excerpt: string;
   contentBody: string;
 
@@ -82,6 +85,10 @@ export default function StepSummary(props: Props) {
     try {
 
       const res = await api.post("/content/ai/generate", {
+
+        // 🔥 NEW
+        content_type: props.contentType,
+
         source_text: props.sourceText,
         source_id: props.sourceId,
       });
