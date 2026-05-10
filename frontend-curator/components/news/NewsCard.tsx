@@ -56,25 +56,28 @@ export default function NewsCard({
     );
 
   /* =========================================================
-     PRIMARY COMPANY
+     LOGO
   ========================================================= */
 
   const primaryCompany =
-    item.companies?.find(
-      (c: any) =>
-        c.id_company ===
-        item.id_primary_company
-    ) || item.companies?.[0];
-
-  /* =========================================================
-     LOGO
-  ========================================================= */
+    item.companies?.[0];
 
   const logoUrl =
     primaryCompany
       ?.media_logo_rectangle_id
+
       ? `${GCS_BASE_URL}/companies/${primaryCompany.media_logo_rectangle_id}`
+
       : null;
+
+  /* =========================================================
+     COMPANY
+  ========================================================= */
+
+  const companyName =
+    primaryCompany?.name ||
+    item.primary_company_name ||
+    "Unknown company";
 
   /* =========================================================
      DATE
@@ -95,14 +98,11 @@ export default function NewsCard({
 
   return (
 
-    <article
+    <div
       className="
         border-b
         border-gray-100
-        px-4
-        py-4
-        hover:bg-gray-50
-        transition
+        py-5
       "
     >
 
@@ -114,7 +114,9 @@ export default function NewsCard({
         "
       >
 
-        {/* LEFT */}
+        {/* =====================================================
+            LEFT COLUMN
+        ===================================================== */}
 
         <div
           className="
@@ -132,8 +134,9 @@ export default function NewsCard({
             className="
               w-12
               h-12
-              rounded-lg
+              rounded-xl
               border
+              border-gray-200
               bg-white
               overflow-hidden
               flex
@@ -146,10 +149,7 @@ export default function NewsCard({
 
               <img
                 src={logoUrl}
-                alt={
-                  primaryCompany?.name ||
-                  ""
-                }
+                alt={companyName}
                 className="
                   w-full
                   h-full
@@ -162,7 +162,7 @@ export default function NewsCard({
               <div
                 className="
                   text-[10px]
-                  text-gray-400
+                  text-gray-300
                 "
               >
                 —
@@ -181,79 +181,26 @@ export default function NewsCard({
               onToggleSelect(item)
             }
             className="
-              w-3.5
-              h-3.5
+              w-4
+              h-4
+              cursor-pointer
             "
           />
 
         </div>
 
-        {/* RIGHT */}
+        {/* =====================================================
+            CONTENT
+        ===================================================== */}
 
-        <div className="flex-1 min-w-0">
+        <div className="
+          flex-1
+          min-w-0
+        ">
 
-          {/* META */}
-
-          <div
-            className="
-              flex
-              flex-wrap
-              items-center
-              gap-2
-              mb-2
-            "
-          >
-
-            {/* DATE */}
-
-            {formattedDate && (
-
-              <div
-                className="
-                  text-[11px]
-                  text-gray-400
-                  shrink-0
-                "
-              >
-                {formattedDate}
-              </div>
-
-            )}
-
-            {/* TOPICS */}
-
-            {topicBadges.map(
-              (badge, idx) => (
-
-                <button
-                  key={`${badge.label}-${idx}`}
-                  onClick={() =>
-                    onClickBadge?.(
-                      badge
-                    )
-                  }
-                  className="
-                    px-2
-                    py-[3px]
-                    rounded-full
-                    text-[10px]
-                    uppercase
-                    tracking-wide
-                    bg-gray-100
-                    text-gray-600
-                    hover:bg-gray-200
-                    transition
-                  "
-                >
-                  {badge.label}
-                </button>
-
-              )
-            )}
-
-          </div>
-
-          {/* HEADER */}
+          {/* ===================================================
+              TOP ROW
+          =================================================== */}
 
           <div
             className="
@@ -265,6 +212,67 @@ export default function NewsCard({
           >
 
             <div className="min-w-0">
+
+              {/* META */}
+
+              <div
+                className="
+                  flex
+                  flex-wrap
+                  items-center
+                  gap-2
+                  mb-2
+                "
+              >
+
+                {/* DATE */}
+
+                {formattedDate && (
+
+                  <span
+                    className="
+                      text-[11px]
+                      text-gray-400
+                      shrink-0
+                    "
+                  >
+                    {formattedDate}
+                  </span>
+
+                )}
+
+                {/* TOPICS */}
+
+                {topicBadges.map(
+                  (badge, idx) => (
+
+                    <button
+                      key={`${badge.label}-${idx}`}
+                      onClick={() =>
+                        onClickBadge?.(
+                          badge
+                        )
+                      }
+                      className="
+                        px-2
+                        py-[3px]
+                        rounded-full
+                        text-[10px]
+                        uppercase
+                        tracking-wide
+                        bg-gray-100
+                        text-gray-600
+                        hover:bg-gray-200
+                        transition
+                      "
+                    >
+                      {badge.label}
+                    </button>
+
+                  )
+                )}
+
+              </div>
 
               {/* TITLE */}
 
@@ -288,87 +296,97 @@ export default function NewsCard({
                   mt-1
                 "
               >
-                {primaryCompany?.name ||
-                  "Unknown company"}
+                {companyName}
               </div>
 
             </div>
 
-            {/* EXPAND */}
+            {/* =================================================
+                EXPAND
+            ================================================= */}
 
             <button
               onClick={() =>
                 setOpen(!open)
               }
               className="
-                w-7
-                h-7
-                rounded-md
+                w-8
+                h-8
+                rounded-lg
                 border
+                border-gray-200
                 flex
                 items-center
                 justify-center
                 bg-white
-                shrink-0
                 hover:bg-gray-50
+                transition
+                shrink-0
               "
             >
 
               {open ? (
-                <ChevronUp size={14} />
+                <ChevronUp size={16} />
               ) : (
-                <ChevronDown size={14} />
+                <ChevronDown size={16} />
               )}
 
             </button>
 
           </div>
 
-          {/* EXPANDED */}
+          {/* ===================================================
+              EXCERPT PREVIEW
+          =================================================== */}
 
-          {open && (
+          {item.excerpt && (
+
+            <p
+              className={`
+                mt-3
+                text-sm
+                text-gray-600
+                leading-relaxed
+                transition-all
+
+                ${
+                  open
+                    ? ""
+                    : "line-clamp-2"
+                }
+              `}
+            >
+              {item.excerpt}
+            </p>
+
+          )}
+
+          {/* ===================================================
+              EXPANDED BODY
+          =================================================== */}
+
+          {open &&
+            item.content_body && (
 
             <div
               className="
                 mt-4
                 pt-4
                 border-t
-                space-y-4
+                border-gray-100
               "
             >
 
-              {/* EXCERPT */}
-
-              {item.excerpt && (
-
-                <div
-                  className="
-                    text-sm
-                    text-gray-700
-                    leading-6
-                  "
-                >
-                  {item.excerpt}
-                </div>
-
-              )}
-
-              {/* CONTENT */}
-
-              {item.content_body && (
-
-                <div
-                  className="
-                    text-sm
-                    text-gray-600
-                    leading-7
-                    whitespace-pre-wrap
-                  "
-                >
-                  {item.content_body}
-                </div>
-
-              )}
+              <div
+                className="
+                  text-sm
+                  text-gray-700
+                  leading-7
+                  whitespace-pre-wrap
+                "
+              >
+                {item.content_body}
+              </div>
 
             </div>
 
@@ -378,6 +396,6 @@ export default function NewsCard({
 
       </div>
 
-    </article>
+    </div>
   );
 }
