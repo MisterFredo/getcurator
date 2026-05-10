@@ -11,6 +11,9 @@ type Props = {
   // 🔥 NEW
   contentType?: "ANALYSIS" | "NEWS";
 
+  // 🔥 NEW
+  primaryCompanyId?: string | null;
+
   excerpt: string;
   contentBody: string;
 
@@ -88,6 +91,9 @@ export default function StepSummary(props: Props) {
 
         // 🔥 NEW
         content_type: props.contentType,
+
+        // 🔥 NEW
+        id_primary_company: props.primaryCompanyId,
 
         source_text: props.sourceText,
         source_id: props.sourceId,
