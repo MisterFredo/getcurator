@@ -42,6 +42,9 @@ class FeedItem(BaseModel):
     excerpt: Optional[str] = None
     published_at: Optional[datetime] = None
 
+    # 🔥 NEW
+    primary_company: Optional[Company] = None
+
     topics: List[Topic] = Field(default_factory=list)
     companies: List[Company] = Field(default_factory=list)
     solutions: List[Solution] = Field(default_factory=list)
