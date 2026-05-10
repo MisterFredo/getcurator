@@ -18,6 +18,7 @@ export default function ContentStockPage() {
   const [raws, setRaws] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [companies, setCompanies] = useState<any[]>([]);
 
   const [stats, setStats] = useState<any>(null);
   const [sources, setSources] = useState<any[]>([]);
@@ -206,6 +207,7 @@ export default function ContentStockPage() {
         <div className="border rounded-lg p-6 bg-white shadow-sm">
           <StockImportPanel
             sources={sources}
+            companies={companies}
             onImported={load}
           />
         </div>
