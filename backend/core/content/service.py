@@ -871,11 +871,11 @@ def list_raw_stock(
         params["content_type"] = content_type
 
     # 🔥 NEW
-    if primary_company_id:
+    if id_primary_company:
         conditions.append(
-            "r.PRIMARY_COMPANY_ID = @primary_company_id"
+            "r.ID_PRIMARY_COMPANY = @id_primary_company"
         )
-        params["primary_company_id"] = primary_company_id
+        params["id_primary_company"] = id_primary_company
 
     where_clause = ""
 
@@ -888,7 +888,7 @@ def list_raw_stock(
             r.CONTENT_TYPE,
 
             -- 🔥 NEW
-            r.PRIMARY_COMPANY_ID,
+            r.ID_PRIMARY_COMPANY,
 
             c.NAME AS PRIMARY_COMPANY_NAME,
 
@@ -913,7 +913,7 @@ def list_raw_stock(
 
         -- 🔥 NEW
         LEFT JOIN `{TABLE_COMPANY}` c
-            ON r.PRIMARY_COMPANY_ID = c.ID_COMPANY
+            ON r.ID_PRIMARY_COMPANY = c.ID_COMPANY
 
         {where_clause}
 
@@ -941,8 +941,8 @@ def list_raw_stock(
                 ),
 
                 # 🔥 NEW
-                "primary_company_id": r.get(
-                    "PRIMARY_COMPANY_ID"
+                "id_primary_company": r.get(
+                    "ID_PRIMARY_COMPANY"
                 ),
 
                 "primary_company_name": r.get(
@@ -1058,8 +1058,8 @@ def destock_raw_contents(
 
             # 🔥 NEW
             print(
-                "PRIMARY_COMPANY_ID:",
-                raw.get("PRIMARY_COMPANY_ID")
+                "ID_PRIMARY_COMPANY:",
+                raw.get("ID_PRIMARY_COMPANY")
             )
 
             print("RAW LENGTH:", len(raw.get("RAW_TEXT", "") or ""))
@@ -1091,8 +1091,8 @@ def destock_raw_contents(
             )
 
             # 🔥 NEW
-            primary_company_id = raw.get(
-                "PRIMARY_COMPANY_ID"
+            id_primary_company = raw.get(
+                "ID_PRIMARY_COMPANY"
             )
 
             # ====================================================
@@ -1173,7 +1173,7 @@ def destock_raw_contents(
                 content_type=content_type,
 
                 # 🔥 NEW
-                id_primary_company=primary_company_id,
+                id_primary_company=id_primary_company,
 
                 title=summary.get("title"),
 
@@ -1303,7 +1303,7 @@ def get_raw_detail(id_raw: str):
             r.CONTENT_TYPE,
 
             -- 🔥 NEW
-            r.PRIMARY_COMPANY_ID,
+            r.ID_PRIMARY_COMPANY,
 
             c.NAME AS PRIMARY_COMPANY_NAME,
 
@@ -1325,7 +1325,7 @@ def get_raw_detail(id_raw: str):
 
         -- 🔥 NEW
         LEFT JOIN `{TABLE_COMPANY}` c
-            ON r.PRIMARY_COMPANY_ID = c.ID_COMPANY
+            ON r.ID_PRIMARY_COMPANY = c.ID_COMPANY
 
         WHERE r.ID_RAW = @id_raw
 
@@ -1349,8 +1349,8 @@ def get_raw_detail(id_raw: str):
         ),
 
         # 🔥 NEW
-        "primary_company_id": r.get(
-            "PRIMARY_COMPANY_ID"
+        "id_primary_company": r.get(
+            "ID_PRIMARY_COMPANY"
         ),
 
         "primary_company_name": r.get(
@@ -1406,7 +1406,7 @@ def update_raw_content(
             CONTENT_TYPE = @content_type,
 
             -- 🔥 NEW
-            PRIMARY_COMPANY_ID = @id_primary_company
+            ID_PRIMARY_COMPANY = @id_primary_company
 
         WHERE ID_RAW = @id_raw
     """
@@ -1701,7 +1701,7 @@ def update_content(id_content: str, data: ContentUpdate):
     # ============================================================
 
     if data.id_primary_company is not None:
-        fields["PRIMARY_COMPANY_ID"] = data.id_primary_company
+        fields["ID_PRIMARY_COMPANY"] = data.id_primary_company
 
     # ============================================================
     # SOURCE
@@ -1927,7 +1927,7 @@ def publish_content(
             CONTENT_TYPE,
 
             -- 🔥 NEW
-            PRIMARY_COMPANY_ID
+            ID_PRIMARY_COMPANY
 
         FROM `{TABLE_CONTENT}`
 
@@ -1952,8 +1952,8 @@ def publish_content(
     )
 
     # 🔥 NEW
-    primary_company_id = rows[0].get(
-        "PRIMARY_COMPANY_ID"
+    id_primary_company = rows[0].get(
+        "ID_PRIMARY_COMPANY"
     )
 
     if current_status != "READY":
@@ -2016,7 +2016,7 @@ def publish_content(
             "id_content": id_content,
             "status": status,
             "content_type": content_type,
-            "primary_company_id": primary_company_id,
+            "id_primary_company": id_primary_company,
         }
     )
 
