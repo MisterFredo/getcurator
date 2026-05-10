@@ -1746,11 +1746,20 @@ def update_content(id_content: str, data: ContentUpdate):
         data.events if data.events is not None else [],
     )
 
+    # ============================================================
+    # 🔥 COMPANIES
+    # ============================================================
+
+    final_companies = set(data.companies or [])
+
+    if data.id_primary_company:
+        final_companies.add(data.id_primary_company)
+
     reset_and_insert(
         TABLE_CONTENT_COMPANY,
         "ID_COMPANY",
         id_content,
-        data.companies if data.companies is not None else [],
+        list(final_companies),
     )
 
     reset_and_insert(
@@ -1805,7 +1814,6 @@ def update_content(id_content: str, data: ContentUpdate):
         )
 
     return True
-
 
 # ============================================================
 # ARCHIVE CONTENT
