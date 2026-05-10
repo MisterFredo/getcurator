@@ -103,8 +103,13 @@ class ImportUrlsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     urls_text: str
+
     id_source: str
-    content_type: Optional[str] = "ANALYSIS"
+
+    content_type: Literal[
+        "ANALYSIS",
+        "NEWS"
+    ] = "ANALYSIS"
 
 
 # ============================================================
