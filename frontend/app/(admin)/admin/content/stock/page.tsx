@@ -113,6 +113,19 @@ export default function ContentStockPage() {
     loadSources();
   }, []);
 
+  useEffect(() => {
+    async function loadCompanies() {
+      try {
+        const res = await api.get("/company/list");
+        setCompanies(res.items || []);
+      } catch (e) {
+        console.error("Erreur chargement companies", e);
+      }
+    }
+
+    loadCompanies();
+  }, []);
+
   // =========================
   // ACTIONS
   // =========================
