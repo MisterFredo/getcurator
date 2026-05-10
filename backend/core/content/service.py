@@ -589,16 +589,31 @@ def list_contents():
     rows = query_bq(
         f"""
         SELECT
-          ID_CONTENT,
-          CONTENT_TYPE,
-          TITLE,
-          EXCERPT,
-          PUBLISHED_AT
-        FROM `{TABLE_CONTENT}`
+          c.ID_CONTENT,
+
+          c.CONTENT_TYPE,
+
+          -- 🔥 NEW
+          c.PRIMARY_COMPANY_ID,
+
+          pc.NAME AS PRIMARY_COMPANY_NAME,
+
+          c.TITLE,
+          c.EXCERPT,
+
+          c.PUBLISHED_AT
+
+        FROM `{TABLE_CONTENT}` c
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` pc
+          ON c.PRIMARY_COMPANY_ID = pc.ID_COMPANY
+
         WHERE
-          STATUS = 'PUBLISHED'
-          AND IS_ACTIVE = TRUE
-        ORDER BY PUBLISHED_AT DESC
+          c.STATUS = 'PUBLISHED'
+          AND c.IS_ACTIVE = TRUE
+
+        ORDER BY c.PUBLISHED_AT DESC
         """
     )
 
@@ -613,6 +628,15 @@ def list_contents():
             "content_type": (
                 r.get("CONTENT_TYPE")
                 or "ANALYSIS"
+            ),
+
+            # 🔥 NEW
+            "id_primary_company": r.get(
+                "PRIMARY_COMPANY_ID"
+            ),
+
+            "primary_company_name": r.get(
+                "PRIMARY_COMPANY_NAME"
             ),
 
             "title": r["TITLE"],
@@ -647,16 +671,34 @@ def list_contents_admin():
     rows = query_bq(
         f"""
         SELECT
-          ID_CONTENT,
-          CONTENT_TYPE,
-          TITLE,
-          STATUS,
-          SOURCE_DATE,
-          PUBLISHED_AT,
-          UPDATED_AT
-        FROM `{TABLE_CONTENT}`
-        WHERE IS_ACTIVE = TRUE
-        ORDER BY UPDATED_AT DESC
+          c.ID_CONTENT,
+
+          c.CONTENT_TYPE,
+
+          -- 🔥 NEW
+          c.PRIMARY_COMPANY_ID,
+
+          pc.NAME AS PRIMARY_COMPANY_NAME,
+
+          c.TITLE,
+
+          c.STATUS,
+
+          c.SOURCE_DATE,
+
+          c.PUBLISHED_AT,
+
+          c.UPDATED_AT
+
+        FROM `{TABLE_CONTENT}` c
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` pc
+          ON c.PRIMARY_COMPANY_ID = pc.ID_COMPANY
+
+        WHERE c.IS_ACTIVE = TRUE
+
+        ORDER BY c.UPDATED_AT DESC
         """
     )
 
@@ -668,6 +710,15 @@ def list_contents_admin():
             "content_type": (
                 r.get("CONTENT_TYPE")
                 or "ANALYSIS"
+            ),
+
+            # 🔥 NEW
+            "id_primary_company": r.get(
+                "PRIMARY_COMPANY_ID"
+            ),
+
+            "primary_company_name": r.get(
+                "PRIMARY_COMPANY_NAME"
             ),
 
             "title": r["TITLE"],
