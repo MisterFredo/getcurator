@@ -533,6 +533,11 @@ def _map_feed_row(r: Dict) -> Dict:
 
         "excerpt": r.get("excerpt"),
 
+        # 🔥 NEW
+        "content_body": r.get(
+            "content_body"
+        ),
+
         "published_at": r.get("published_at"),
 
         "topics": topics,
