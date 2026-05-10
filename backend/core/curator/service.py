@@ -55,10 +55,15 @@ def search(
 
         c.id_content AS id,
 
-        -- 🔥 NEW
         LOWER(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
+
+        -- 🔥 NEW
+        c.primary_company_id,
+
+        -- 🔥 NEW
+        c.primary_company_name,
 
         c.title,
         c.excerpt,
@@ -190,10 +195,15 @@ def latest(
 
         c.id_content AS id,
 
-        -- 🔥 NEW
         LOWER(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
+
+        -- 🔥 NEW
+        c.primary_company_id,
+
+        -- 🔥 NEW
+        c.primary_company_name,
 
         c.title,
         c.excerpt,
@@ -246,10 +256,15 @@ def get_item_curator(
 
         c.id_content AS id,
 
-        -- 🔥 NEW
         LOWER(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
+
+        -- 🔥 NEW
+        c.primary_company_id,
+
+        -- 🔥 NEW
+        c.primary_company_name,
 
         c.title,
         c.excerpt,
@@ -511,15 +526,33 @@ def _map_feed_row(r: Dict) -> Dict:
 
     return {
         "id": r.get("id"),
+
         "type": r.get("type"),
+
+        # 🔥 NEW
+        "primary_company_id": r.get(
+            "primary_company_id"
+        ),
+
+        # 🔥 NEW
+        "primary_company_name": r.get(
+            "primary_company_name"
+        ),
+
         "title": r.get("title"),
+
         "excerpt": r.get("excerpt"),
+
         "published_at": r.get("published_at"),
 
         "topics": topics,
+
         "companies": companies,
+
         "solutions": solutions,
+
         "concepts": concepts,
+
         "universes": universes,
 
         "badges": badges,
