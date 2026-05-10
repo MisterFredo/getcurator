@@ -113,6 +113,12 @@ def _get_entity_feed(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
+        -- 🔥 NEW
+        c.primary_company_id,
+
+        -- 🔥 NEW
+        c.primary_company_name,
+
         c.title,
         c.excerpt,
 
@@ -154,7 +160,6 @@ def _get_entity_feed(
 
     return [_map_feed_row(r) for r in rows]
 
-
 # ============================================================
 # COMPANY
 # ============================================================
@@ -169,10 +174,34 @@ def get_company_feed(
 
     return _get_entity_feed(
         where_clause_content="""
-            EXISTS (
-                SELECT 1
-                FROM UNNEST(c.companies) co
-                WHERE co.id_company = @company_id
+
+            (
+                -- =================================================
+                -- ANALYSES
+                -- =================================================
+
+                (
+                    COALESCE(c.content_type, 'ANALYSIS')
+                        = 'ANALYSIS'
+
+                    AND EXISTS (
+                        SELECT 1
+                        FROM UNNEST(c.companies) co
+                        WHERE co.id_company = @company_id
+                    )
+                )
+
+                OR
+
+                -- =================================================
+                -- NEWS
+                -- =================================================
+
+                (
+                    c.content_type = 'NEWS'
+
+                    AND c.primary_company_id = @company_id
+                )
             )
         """,
         params={
@@ -183,7 +212,6 @@ def get_company_feed(
         user_id=user_id,
         universe_id=universe_id
     )
-
 
 def get_company_view(
     company_id: str,
