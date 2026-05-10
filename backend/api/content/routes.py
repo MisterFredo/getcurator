@@ -178,6 +178,9 @@ def store_raw_route(payload: ContentRawCreate):
 
             # 🔥 NEW
             content_type=payload.content_type,
+
+            # 🔥 NEW
+            id_primary_company=payload.id_primary_company,
         )
 
         return {
@@ -205,10 +208,18 @@ def import_raw_route(payload: dict):
         "ANALYSIS"
     )
 
+    # 🔥 NEW
+    id_primary_company = payload.get(
+        "id_primary_company"
+    )
+
     count = import_raw_content(
         text=text,
         id_source=id_source,
         content_type=content_type,
+
+        # 🔥 NEW
+        id_primary_company=id_primary_company,
     )
 
     return {"imported": count}
@@ -325,6 +336,9 @@ def import_urls_route(payload: ImportUrlsRequest):
             urls_text=payload.urls_text,
             id_source=payload.id_source,
             content_type=payload.content_type,
+
+            # 🔥 NEW
+            id_primary_company=payload.id_primary_company,
         )
 
         return {
@@ -358,6 +372,9 @@ def update_raw(
 
             # 🔥 NEW
             content_type=payload.content_type,
+
+            # 🔥 NEW
+            id_primary_company=payload.id_primary_company,
         )
 
         return {"status": "ok"}
