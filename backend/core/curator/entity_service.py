@@ -108,22 +108,40 @@ def _get_entity_feed(
 
         c.id_content AS id,
 
-        -- 🔥 NEW
+        -- ========================================================
+        -- 🔥 FRONT OBJECT TYPE
+        -- ========================================================
+
+        'content' AS type,
+
+        -- ========================================================
+        -- 🔥 BUSINESS CONTENT TYPE
+        -- ========================================================
+
         LOWER(
             COALESCE(c.content_type, 'ANALYSIS')
-        ) AS type,
+        ) AS content_type,
 
-        -- 🔥 NEW
+        -- ========================================================
+        -- META
+        -- ========================================================
+
         c.id_primary_company,
+
         c.title,
+
         c.excerpt,
 
         c.published_at,
 
         c.topics,
+
         c.companies,
+
         c.solutions,
+
         c.concepts,
+
         c.universes,
 
         c.source_id
@@ -155,7 +173,6 @@ def _get_entity_feed(
     rows = query_bq(sql, query_params)
 
     return [_map_feed_row(r) for r in rows]
-
 # ============================================================
 # COMPANY
 # ============================================================
@@ -171,34 +188,12 @@ def get_company_feed(
     return _get_entity_feed(
         where_clause_content="""
 
-            (
-                -- =================================================
-                -- ANALYSES
-                -- =================================================
-
-                (
-                    COALESCE(c.content_type, 'ANALYSIS')
-                        = 'ANALYSIS'
-
-                    AND EXISTS (
-                        SELECT 1
-                        FROM UNNEST(c.companies) co
-                        WHERE co.id_company = @company_id
-                    )
-                )
-
-                OR
-
-                -- =================================================
-                -- NEWS
-                -- =================================================
-
-                (
-                    c.content_type = 'NEWS'
-
-                    AND c.id_primary_company = @company_id
-                )
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(c.companies) co
+                WHERE co.id_company = @company_id
             )
+
         """,
         params={
             "company_id": company_id
@@ -208,6 +203,7 @@ def get_company_feed(
         user_id=user_id,
         universe_id=universe_id
     )
+
 
 def get_company_view(
     company_id: str,
@@ -331,6 +327,10 @@ def get_topic_view(
 
     topic = topic_rows[0] if topic_rows else {}
 
+    # ============================================================
+    # STATS
+    # ============================================================
+
     stats_rows = query_bq(
         f"""
         SELECT
@@ -350,6 +350,10 @@ def get_topic_view(
 
     stats = stats_rows[0] if stats_rows else {}
 
+    # ============================================================
+    # ITEMS
+    # ============================================================
+
     items = get_topic_feed(
         topic_id=topic_id,
         limit=limit,
@@ -358,16 +362,25 @@ def get_topic_view(
         universe_id=universe_id
     )
 
+    # ============================================================
+    # RETURN
+    # ============================================================
+
     return {
         "id_topic": topic_id,
+
         "label": topic.get("LABEL"),
+
         "topic_axis": topic.get("TOPIC_AXIS"),
+
         "description": topic.get("DESCRIPTION"),
+
         "nb_analyses": stats.get("NB_ANALYSES", 0),
+
         "delta_30d": stats.get("DELTA_30D", 0),
+
         "items": items
     }
-
 
 # ============================================================
 # SOLUTION
@@ -432,6 +445,10 @@ def get_solution_view(
 
     solution = solution_rows[0] if solution_rows else {}
 
+    # ============================================================
+    # STATS
+    # ============================================================
+
     stats_rows = query_bq(
         f"""
         SELECT
@@ -451,6 +468,10 @@ def get_solution_view(
 
     stats = stats_rows[0] if stats_rows else {}
 
+    # ============================================================
+    # ITEMS
+    # ============================================================
+
     items = get_solution_feed(
         solution_id=solution_id,
         limit=limit,
@@ -459,18 +480,27 @@ def get_solution_view(
         universe_id=universe_id
     )
 
+    # ============================================================
+    # RETURN
+    # ============================================================
+
     return {
         "id_solution": solution_id,
+
         "name": solution.get("NAME"),
+
         "company_name": solution.get("COMPANY_NAME"),
+
         "media_logo_rectangle_id": solution.get(
             "MEDIA_LOGO_RECTANGLE_ID"
         ),
+
         "nb_analyses": stats.get("NB_ANALYSES", 0),
+
         "delta_30d": stats.get("DELTA_30D", 0),
+
         "items": items
     }
-
 
 # ============================================================
 # MAPPER
@@ -482,17 +512,33 @@ def _map_feed_row(r: Dict):
         return dt.isoformat() if dt else None
 
     return {
+
         "id": r.get("id"),
 
-        # 🔥 NEW
-        "type": r.get("type"),
+        # ========================================================
+        # TYPE
+        # ========================================================
+
+        "type": (
+            r.get("type")
+            or "analysis"
+        ).lower(),
+
+        # ========================================================
+        # CONTENT
+        # ========================================================
 
         "title": r.get("title"),
+
         "excerpt": r.get("excerpt"),
 
         "published_at": fmt(
             r.get("published_at")
         ),
+
+        # ========================================================
+        # ENTITIES
+        # ========================================================
 
         "topics": r.get("topics") or [],
 
@@ -500,9 +546,7 @@ def _map_feed_row(r: Dict):
 
         "solutions": r.get("solutions") or [],
 
-        # 🔥 NEW
         "concepts": r.get("concepts") or [],
 
-        # 🔥 NEW
         "universes": r.get("universes") or [],
     }
