@@ -95,9 +95,8 @@ export default function NewsCard({
 
   return (
 
-    <div
+    <article
       className="
-        bg-white
         border-b
         border-gray-100
         px-4
@@ -193,21 +192,66 @@ export default function NewsCard({
 
         <div className="flex-1 min-w-0">
 
-          {/* DATE */}
+          {/* META */}
 
-          {formattedDate && (
+          <div
+            className="
+              flex
+              flex-wrap
+              items-center
+              gap-2
+              mb-2
+            "
+          >
 
-            <div
-              className="
-                text-[11px]
-                text-gray-400
-                mb-1
-              "
-            >
-              {formattedDate}
-            </div>
+            {/* DATE */}
 
-          )}
+            {formattedDate && (
+
+              <div
+                className="
+                  text-[11px]
+                  text-gray-400
+                  shrink-0
+                "
+              >
+                {formattedDate}
+              </div>
+
+            )}
+
+            {/* TOPICS */}
+
+            {topicBadges.map(
+              (badge, idx) => (
+
+                <button
+                  key={`${badge.label}-${idx}`}
+                  onClick={() =>
+                    onClickBadge?.(
+                      badge
+                    )
+                  }
+                  className="
+                    px-2
+                    py-[3px]
+                    rounded-full
+                    text-[10px]
+                    uppercase
+                    tracking-wide
+                    bg-gray-100
+                    text-gray-600
+                    hover:bg-gray-200
+                    transition
+                  "
+                >
+                  {badge.label}
+                </button>
+
+              )
+            )}
+
+          </div>
 
           {/* HEADER */}
 
@@ -224,7 +268,7 @@ export default function NewsCard({
 
               {/* TITLE */}
 
-              <div
+              <h2
                 className="
                   text-[15px]
                   font-semibold
@@ -233,7 +277,7 @@ export default function NewsCard({
                 "
               >
                 {item.title}
-              </div>
+              </h2>
 
               {/* COMPANY */}
 
@@ -279,50 +323,6 @@ export default function NewsCard({
             </button>
 
           </div>
-
-          {/* TOPICS */}
-
-          {topicBadges.length > 0 && (
-
-            <div
-              className="
-                flex
-                flex-wrap
-                gap-2
-                mt-2
-              "
-            >
-
-              {topicBadges.map(
-                (badge, idx) => (
-
-                  <button
-                    key={`${badge.label}-${idx}`}
-                    onClick={() =>
-                      onClickBadge?.(
-                        badge
-                      )
-                    }
-                    className="
-                      px-2
-                      py-1
-                      rounded-full
-                      text-[11px]
-                      bg-gray-100
-                      text-gray-700
-                      hover:bg-gray-200
-                      transition
-                    "
-                  >
-                    {badge.label}
-                  </button>
-
-                )
-              )}
-
-            </div>
-
-          )}
 
           {/* EXPANDED */}
 
@@ -378,6 +378,6 @@ export default function NewsCard({
 
       </div>
 
-    </div>
+    </article>
   );
 }
