@@ -519,6 +519,9 @@ def import_urls_batch(
                     "TITLE": title,
                     "DATE_SOURCE": date_source,
                     "RAW_TEXT": raw_text,
+
+                    # 🔥 NEW
+                    "CONTENT_TYPE": content_type,
                 }
             )
 
