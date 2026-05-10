@@ -8,6 +8,9 @@ type RawItem = {
   source_title: string;
   date_source?: string | null;
   import_type?: string | null;
+
+  // 🔥 NEW
+  content_type?: string | null;
 };
 
 export default function RawDrawer({
@@ -23,6 +26,11 @@ export default function RawDrawer({
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [rawText, setRawText] = useState("");
+
+  // 🔥 NEW
+  const [contentType, setContentType] =
+    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
+
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +41,12 @@ export default function RawDrawer({
     setTitle(raw.source_title || "");
     setDate(raw.date_source ? raw.date_source.slice(0, 10) : "");
     setRawText("");
+
+    // 🔥 NEW
+    setContentType(
+      (raw.content_type as "ANALYSIS" | "NEWS") || "ANALYSIS"
+    );
+
     setError("");
 
     async function loadDetail() {
@@ -61,6 +75,9 @@ export default function RawDrawer({
         source_title: title,
         date_source: date || null,
         raw_text: rawText,
+
+        // 🔥 NEW
+        content_type: contentType,
       });
 
       onSaved();
@@ -118,6 +135,24 @@ export default function RawDrawer({
             onChange={(e) => setDate(e.target.value)}
             className="w-full border rounded p-2"
           />
+        </div>
+
+        {/* 🔥 CONTENT TYPE */}
+        <div className="space-y-2">
+          <label className="text-sm">Type de contenu</label>
+
+          <select
+            value={contentType}
+            onChange={(e) =>
+              setContentType(
+                e.target.value as "ANALYSIS" | "NEWS"
+              )
+            }
+            className="w-full border rounded p-2"
+          >
+            <option value="ANALYSIS">Analysis</option>
+            <option value="NEWS">News</option>
+          </select>
         </div>
 
         {/* RAW TEXT */}
