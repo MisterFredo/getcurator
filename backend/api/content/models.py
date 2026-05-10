@@ -25,6 +25,7 @@ class ContentSummaryRequest(BaseModel):
     source_text: str
     content_type: Literal["ANALYSIS", "NEWS"] = "ANALYSIS"
 
+
 # ============================================================
 # RAW — STORE
 # ============================================================
@@ -43,6 +44,9 @@ class ContentRawCreate(BaseModel):
 
     date_source: Optional[date] = None
 
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
+
 
 class ContentRawUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -50,6 +54,9 @@ class ContentRawUpdate(BaseModel):
     content_type: Optional[
         Literal["ANALYSIS", "NEWS"]
     ] = None
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
 
     source_title: Optional[str] = None
     date_source: Optional[date] = None
@@ -69,6 +76,9 @@ class ContentRawOut(BaseModel):
     source_id: str
     source_title: str
 
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
+
     date_source: Optional[date] = None
 
     status: str
@@ -77,6 +87,7 @@ class ContentRawOut(BaseModel):
 
 class ContentRawDestockRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
     id_raw: Optional[str] = None
     limit: int = 20
 
@@ -110,6 +121,9 @@ class ContentCreate(BaseModel):
         "ANALYSIS",
         "NEWS"
     ] = "ANALYSIS"
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
 
     # ========================================================
     # SOURCE
@@ -207,6 +221,9 @@ class ContentUpdate(BaseModel):
         Literal["ANALYSIS", "NEWS"]
     ] = None
 
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
+
     # ========================================================
     # SOURCE
     # ========================================================
@@ -303,6 +320,9 @@ class ContentOut(BaseModel):
         "ANALYSIS",
         "NEWS"
     ] = "ANALYSIS"
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None
 
     status: str
 
