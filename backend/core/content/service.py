@@ -91,7 +91,7 @@ def create_content(data: ContentCreate) -> str:
         ),
 
         # 🔥 NEW
-        "PRIMARY_COMPANY_ID": data.id_primary_company,
+        "ID_PRIMARY_COMPANY": data.id_primary_company,
 
         "STATUS": "DRAFT",
         "IS_ACTIVE": True,
@@ -378,7 +378,7 @@ def get_content(id_content: str):
           CONTENT_TYPE,
 
           -- 🔥 NEW
-          PRIMARY_COMPANY_ID,
+          ID_PRIMARY_COMPANY,
 
           STATUS,
           SOURCE_ID,
@@ -420,7 +420,7 @@ def get_content(id_content: str):
         ),
 
         # 🔥 NEW
-        "id_primary_company": row.get("PRIMARY_COMPANY_ID"),
+        "id_primary_company": row.get("ID_PRIMARY_COMPANY"),
 
         "status": row.get("STATUS"),
         "source_id": row.get("SOURCE_ID"),
@@ -594,7 +594,7 @@ def list_contents():
           c.CONTENT_TYPE,
 
           -- 🔥 NEW
-          c.PRIMARY_COMPANY_ID,
+          c.ID_PRIMARY_COMPANY,
 
           pc.NAME AS PRIMARY_COMPANY_NAME,
 
@@ -607,7 +607,7 @@ def list_contents():
 
         -- 🔥 NEW
         LEFT JOIN `{TABLE_COMPANY}` pc
-          ON c.PRIMARY_COMPANY_ID = pc.ID_COMPANY
+          ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
 
         WHERE
           c.STATUS = 'PUBLISHED'
@@ -632,7 +632,7 @@ def list_contents():
 
             # 🔥 NEW
             "id_primary_company": r.get(
-                "PRIMARY_COMPANY_ID"
+                "ID_PRIMARY_COMPANY"
             ),
 
             "primary_company_name": r.get(
@@ -676,7 +676,7 @@ def list_contents_admin():
           c.CONTENT_TYPE,
 
           -- 🔥 NEW
-          c.PRIMARY_COMPANY_ID,
+          c.ID_PRIMARY_COMPANY,
 
           pc.NAME AS PRIMARY_COMPANY_NAME,
 
@@ -694,7 +694,7 @@ def list_contents_admin():
 
         -- 🔥 NEW
         LEFT JOIN `{TABLE_COMPANY}` pc
-          ON c.PRIMARY_COMPANY_ID = pc.ID_COMPANY
+          ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
 
         WHERE c.IS_ACTIVE = TRUE
 
@@ -714,7 +714,7 @@ def list_contents_admin():
 
             # 🔥 NEW
             "id_primary_company": r.get(
-                "PRIMARY_COMPANY_ID"
+                "ID_PRIMARY_COMPANY"
             ),
 
             "primary_company_name": r.get(
@@ -784,7 +784,7 @@ def store_raw_content(
         "CONTENT_TYPE": content_type,
 
         # 🔥 NEW
-        "PRIMARY_COMPANY_ID": id_primary_company,
+        "ID_PRIMARY_COMPANY": id_primary_company,
 
         "SOURCE_ID": source_id,
 
@@ -844,7 +844,7 @@ def list_raw_stock(
 
     # 🔥 NEW
     content_type: Optional[str] = None,
-    primary_company_id: Optional[str] = None,
+    id_primary_company: Optional[str] = None,
 
     limit: int = 50,
     offset: int = 0,
