@@ -77,6 +77,19 @@ export default function NewsCard({
       : null;
 
   /* =========================================================
+     DATE
+  ========================================================= */
+
+  const formattedDate =
+    item.published_at
+      ? new Date(
+          item.published_at
+        ).toLocaleDateString(
+          "fr-FR"
+        )
+      : null;
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
@@ -85,32 +98,31 @@ export default function NewsCard({
     <div
       className="
         bg-white
-        border
-        rounded-xl
-        overflow-hidden
+        border-b
+        border-gray-100
+        px-4
+        py-4
+        hover:bg-gray-50
+        transition
       "
     >
 
-      {/* HEADER */}
-
       <div
         className="
-          px-4
-          py-4
           flex
           items-start
           gap-4
         "
       >
 
-        {/* LEFT COLUMN */}
+        {/* LEFT */}
 
         <div
           className="
             flex
             flex-col
             items-center
-            gap-3
+            gap-2
             shrink-0
           "
         >
@@ -119,9 +131,9 @@ export default function NewsCard({
 
           <div
             className="
-              w-20
-              h-20
-              rounded-2xl
+              w-12
+              h-12
+              rounded-lg
               border
               bg-white
               overflow-hidden
@@ -150,7 +162,7 @@ export default function NewsCard({
 
               <div
                 className="
-                  text-xs
+                  text-[10px]
                   text-gray-400
                 "
               >
@@ -169,16 +181,35 @@ export default function NewsCard({
             onChange={() =>
               onToggleSelect(item)
             }
-            className="mt-1"
+            className="
+              w-3.5
+              h-3.5
+            "
           />
 
         </div>
 
-        {/* CONTENT */}
+        {/* RIGHT */}
 
         <div className="flex-1 min-w-0">
 
-          {/* TOP */}
+          {/* DATE */}
+
+          {formattedDate && (
+
+            <div
+              className="
+                text-[11px]
+                text-gray-400
+                mb-1
+              "
+            >
+              {formattedDate}
+            </div>
+
+          )}
+
+          {/* HEADER */}
 
           <div
             className="
@@ -195,10 +226,10 @@ export default function NewsCard({
 
               <div
                 className="
-                  text-2xl
+                  text-[15px]
                   font-semibold
                   text-gray-900
-                  leading-tight
+                  leading-snug
                 "
               >
                 {item.title}
@@ -208,9 +239,9 @@ export default function NewsCard({
 
               <div
                 className="
-                  text-lg
+                  text-sm
                   text-gray-500
-                  mt-2
+                  mt-1
                 "
               >
                 {primaryCompany?.name ||
@@ -226,22 +257,23 @@ export default function NewsCard({
                 setOpen(!open)
               }
               className="
-                w-8
-                h-8
-                rounded-lg
+                w-7
+                h-7
+                rounded-md
                 border
                 flex
                 items-center
                 justify-center
                 bg-white
                 shrink-0
+                hover:bg-gray-50
               "
             >
 
               {open ? (
-                <ChevronUp size={16} />
+                <ChevronUp size={14} />
               ) : (
-                <ChevronDown size={16} />
+                <ChevronDown size={14} />
               )}
 
             </button>
@@ -257,7 +289,7 @@ export default function NewsCard({
                 flex
                 flex-wrap
                 gap-2
-                mt-4
+                mt-2
               "
             >
 
@@ -272,11 +304,12 @@ export default function NewsCard({
                       )
                     }
                     className="
-                      px-3
-                      py-1.5
+                      px-2
+                      py-1
                       rounded-full
-                      text-sm
+                      text-[11px]
                       bg-gray-100
+                      text-gray-700
                       hover:bg-gray-200
                       transition
                     "
@@ -291,60 +324,59 @@ export default function NewsCard({
 
           )}
 
+          {/* EXPANDED */}
+
+          {open && (
+
+            <div
+              className="
+                mt-4
+                pt-4
+                border-t
+                space-y-4
+              "
+            >
+
+              {/* EXCERPT */}
+
+              {item.excerpt && (
+
+                <div
+                  className="
+                    text-sm
+                    text-gray-700
+                    leading-6
+                  "
+                >
+                  {item.excerpt}
+                </div>
+
+              )}
+
+              {/* CONTENT */}
+
+              {item.content_body && (
+
+                <div
+                  className="
+                    text-sm
+                    text-gray-600
+                    leading-7
+                    whitespace-pre-wrap
+                  "
+                >
+                  {item.content_body}
+                </div>
+
+              )}
+
+            </div>
+
+          )}
+
         </div>
 
       </div>
-
-      {/* EXPANDED */}
-
-      {open && (
-
-        <div
-          className="
-            border-t
-            px-4
-            py-4
-            space-y-4
-            bg-gray-50
-          "
-        >
-
-          {/* EXCERPT */}
-
-          {item.excerpt && (
-
-            <div
-              className="
-                text-sm
-                text-gray-700
-                leading-6
-              "
-            >
-              {item.excerpt}
-            </div>
-
-          )}
-
-          {/* CONTENT */}
-
-          {item.content_body && (
-
-            <div
-              className="
-                text-sm
-                text-gray-600
-                leading-7
-                whitespace-pre-wrap
-              "
-            >
-              {item.content_body}
-            </div>
-
-          )}
-
-        </div>
-
-      )}
 
     </div>
   );
