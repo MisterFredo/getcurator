@@ -8,7 +8,7 @@ export type FeedBadgeType =
   | "solution"
   | "news_type"
   | "universe"
-  | "concept"; // 🔥 ajout propre
+  | "concept";
 
 export type FeedBadge = {
   id?: string;
@@ -65,8 +65,9 @@ export type Solution = {
   delta_30d?: number;
 };
 
+
 /* =========================================================
-   🔥 NEW — CONCEPT (ALIGNÉ BACKEND)
+   CONCEPT
 ========================================================= */
 
 export type Concept = {
@@ -76,7 +77,7 @@ export type Concept = {
 
 
 /* =========================================================
-   ITEM (ALIGNÉ SEARCH BACKEND)
+   ITEM
 ========================================================= */
 
 export type FeedItem = {
@@ -84,8 +85,18 @@ export type FeedItem = {
 
   type: "news" | "analysis";
 
+  // 🔥 PRIMARY COMPANY
+  id_primary_company?: string | null;
+  primary_company_name?: string | null;
+  primary_company_logo?: string | null;
+
   title: string;
+
   excerpt?: string | null;
+
+  // 🔥 NEW
+  content_body?: string | null;
+
   published_at?: string | null;
 
   universes?: {
@@ -94,15 +105,17 @@ export type FeedItem = {
   }[];
 
   topics?: Topic[];
+
   companies?: Company[];
+
   solutions?: Solution[];
 
-  // 🔥 NEW
   concepts?: Concept[];
 
   news_type?: string | null;
 
   has_visual?: boolean;
+
   media_id?: string | null;
 
   badges?: FeedBadge[];
