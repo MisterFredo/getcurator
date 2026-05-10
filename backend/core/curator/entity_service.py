@@ -115,10 +115,6 @@ def _get_entity_feed(
 
         -- 🔥 NEW
         c.primary_company_id,
-
-        -- 🔥 NEW
-        c.primary_company_name,
-
         c.title,
         c.excerpt,
 
