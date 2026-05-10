@@ -90,6 +90,9 @@ def create_content(data: ContentCreate) -> str:
             else "ANALYSIS"
         ),
 
+        # 🔥 NEW
+        "PRIMARY_COMPANY_ID": data.id_primary_company,
+
         "STATUS": "DRAFT",
         "IS_ACTIVE": True,
         "AUTHOR": data.author,
@@ -274,7 +277,16 @@ def create_content(data: ContentCreate) -> str:
             ],
         )
 
-    if data.companies:
+    # ============================================================
+    # COMPANIES
+    # ============================================================
+
+    final_companies = set(data.companies or [])
+
+    if data.id_primary_company:
+        final_companies.add(data.id_primary_company)
+
+    if final_companies:
 
         insert_bq(
             TABLE_CONTENT_COMPANY,
@@ -284,7 +296,7 @@ def create_content(data: ContentCreate) -> str:
                     "ID_COMPANY": cid,
                     "CREATED_AT": now,
                 }
-                for cid in data.companies
+                for cid in final_companies
             ],
         )
 
@@ -365,6 +377,9 @@ def get_content(id_content: str):
           -- 🔥 NEW
           CONTENT_TYPE,
 
+          -- 🔥 NEW
+          PRIMARY_COMPANY_ID,
+
           STATUS,
           SOURCE_ID,
           TITLE,
@@ -403,6 +418,9 @@ def get_content(id_content: str):
             row.get("CONTENT_TYPE")
             or "ANALYSIS"
         ),
+
+        # 🔥 NEW
+        "id_primary_company": row.get("PRIMARY_COMPANY_ID"),
 
         "status": row.get("STATUS"),
         "source_id": row.get("SOURCE_ID"),
@@ -488,6 +506,20 @@ def get_content(id_content: str):
         for r in company_rows
     ]
 
+    # ============================================================
+    # PRIMARY COMPANY
+    # ============================================================
+
+    primary_company = next(
+        (
+            c for c in content["companies"]
+            if c["id_company"] == content["id_primary_company"]
+        ),
+        None
+    )
+
+    content["primary_company"] = primary_company
+
     person_rows = query_bq(
         f"""
         SELECT P.ID_PERSON, P.NAME, CP.ROLE
@@ -547,7 +579,6 @@ def get_content(id_content: str):
     ]
 
     return content
-
 
 # ============================================================
 # LIST CONTENTS (PUBLIC)
@@ -676,6 +707,9 @@ def store_raw_content(
 
     # 🔥 NEW
     content_type: str = "ANALYSIS",
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None,
 ) -> str:
 
     if not source_id:
@@ -697,6 +731,9 @@ def store_raw_content(
 
         # 🔥 NEW
         "CONTENT_TYPE": content_type,
+
+        # 🔥 NEW
+        "PRIMARY_COMPANY_ID": id_primary_company,
 
         "SOURCE_ID": source_id,
 
@@ -780,20 +817,39 @@ def list_raw_stock(
         SELECT
             r.ID_RAW,
             r.CONTENT_TYPE,
+
+            -- 🔥 NEW
+            r.PRIMARY_COMPANY_ID,
+
+            c.NAME AS PRIMARY_COMPANY_NAME,
+
             r.SOURCE_ID,
             s.NAME AS SOURCE_NAME,
+
             r.SOURCE_TITLE,
             r.DATE_SOURCE,
+
             r.STATUS,
             r.ERROR_MESSAGE,
+
             r.CREATED_AT,
             r.IMPORT_TYPE,
+
             COUNT(*) OVER() AS TOTAL_COUNT
+
         FROM `{TABLE_CONTENT_RAW}` r
+
         LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE` s
             ON r.SOURCE_ID = s.SOURCE_ID
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` c
+            ON r.PRIMARY_COMPANY_ID = c.ID_COMPANY
+
         {where_clause}
+
         ORDER BY r.CREATED_AT DESC
+
         LIMIT @limit
         OFFSET @offset
     """
@@ -809,21 +865,40 @@ def list_raw_stock(
         "rows": [
             {
                 "id_raw": r["ID_RAW"],
+
                 "content_type": (
                     r.get("CONTENT_TYPE")
                     or "ANALYSIS"
                 ),
+
+                # 🔥 NEW
+                "primary_company_id": r.get(
+                    "PRIMARY_COMPANY_ID"
+                ),
+
+                "primary_company_name": r.get(
+                    "PRIMARY_COMPANY_NAME"
+                ),
+
                 "source_id": r["SOURCE_ID"],
+
                 "source_name": r.get("SOURCE_NAME"),
+
                 "source_title": r["SOURCE_TITLE"],
+
                 "date_source": r.get("DATE_SOURCE"),
+
                 "status": r["STATUS"],
+
                 "error_message": r.get("ERROR_MESSAGE"),
+
                 "created_at": r["CREATED_AT"],
+
                 "import_type": r.get("IMPORT_TYPE"),
             }
             for r in rows
         ],
+
         "total": total,
     }
 
@@ -913,6 +988,12 @@ def destock_raw_contents(
             # 🔥 NEW
             print("CONTENT_TYPE:", raw.get("CONTENT_TYPE"))
 
+            # 🔥 NEW
+            print(
+                "PRIMARY_COMPANY_ID:",
+                raw.get("PRIMARY_COMPANY_ID")
+            )
+
             print("RAW LENGTH:", len(raw.get("RAW_TEXT", "") or ""))
             print("------------------------------")
 
@@ -939,6 +1020,11 @@ def destock_raw_contents(
             content_type = (
                 raw.get("CONTENT_TYPE")
                 or "ANALYSIS"
+            )
+
+            # 🔥 NEW
+            primary_company_id = raw.get(
+                "PRIMARY_COMPANY_ID"
             )
 
             # ====================================================
@@ -985,7 +1071,10 @@ def destock_raw_contents(
 
             if raw_source_date:
 
-                if isinstance(raw_source_date, date) and not isinstance(raw_source_date, datetime):
+                if (
+                    isinstance(raw_source_date, date)
+                    and not isinstance(raw_source_date, datetime)
+                ):
 
                     source_date_clean = raw_source_date
 
@@ -1014,6 +1103,9 @@ def destock_raw_contents(
 
                 # 🔥 NEW
                 content_type=content_type,
+
+                # 🔥 NEW
+                id_primary_company=primary_company_id,
 
                 title=summary.get("title"),
 
@@ -1138,18 +1230,37 @@ def get_raw_detail(id_raw: str):
 
     query = f"""
         SELECT
-            ID_RAW,
-            CONTENT_TYPE,
-            SOURCE_ID,
-            SOURCE_TITLE,
-            DATE_SOURCE,
-            RAW_TEXT,
-            STATUS,
-            ERROR_MESSAGE,
-            IMPORT_TYPE,
-            CREATED_AT
-        FROM `{TABLE_CONTENT_RAW}`
-        WHERE ID_RAW = @id_raw
+            r.ID_RAW,
+
+            r.CONTENT_TYPE,
+
+            -- 🔥 NEW
+            r.PRIMARY_COMPANY_ID,
+
+            c.NAME AS PRIMARY_COMPANY_NAME,
+
+            r.SOURCE_ID,
+            r.SOURCE_TITLE,
+
+            r.DATE_SOURCE,
+
+            r.RAW_TEXT,
+
+            r.STATUS,
+            r.ERROR_MESSAGE,
+
+            r.IMPORT_TYPE,
+
+            r.CREATED_AT
+
+        FROM `{TABLE_CONTENT_RAW}` r
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` c
+            ON r.PRIMARY_COMPANY_ID = c.ID_COMPANY
+
+        WHERE r.ID_RAW = @id_raw
+
         LIMIT 1
     """
 
@@ -1161,20 +1272,41 @@ def get_raw_detail(id_raw: str):
     r = rows[0]
 
     return {
+
         "id_raw": r["ID_RAW"],
+
         "content_type": (
             r.get("CONTENT_TYPE")
             or "ANALYSIS"
         ),
+
+        # 🔥 NEW
+        "primary_company_id": r.get(
+            "PRIMARY_COMPANY_ID"
+        ),
+
+        "primary_company_name": r.get(
+            "PRIMARY_COMPANY_NAME"
+        ),
+
         "source_id": r["SOURCE_ID"],
+
         "source_title": r["SOURCE_TITLE"],
+
         "date_source": r.get("DATE_SOURCE"),
+
         "raw_text": r.get("RAW_TEXT"),
+
         "status": r["STATUS"],
+
         "error_message": r.get("ERROR_MESSAGE"),
+
         "import_type": r.get("IMPORT_TYPE"),
+
         "created_at": r["CREATED_AT"],
     }
+
+
 
 def update_raw_content(
     id_raw: str,
@@ -1184,6 +1316,9 @@ def update_raw_content(
 
     # 🔥 NEW
     content_type: Optional[str] = None,
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None,
 ):
 
     client = get_bigquery_client()
@@ -1194,11 +1329,16 @@ def update_raw_content(
         UPDATE `{table_id}`
         SET
             DATE_SOURCE = @date_source,
+
             SOURCE_TITLE = @source_title,
+
             RAW_TEXT = @raw_text,
 
             -- 🔥 NEW
-            CONTENT_TYPE = @content_type
+            CONTENT_TYPE = @content_type,
+
+            -- 🔥 NEW
+            PRIMARY_COMPANY_ID = @id_primary_company
 
         WHERE ID_RAW = @id_raw
     """
@@ -1231,6 +1371,13 @@ def update_raw_content(
                 content_type
             ),
 
+            # 🔥 NEW
+            bigquery.ScalarQueryParameter(
+                "id_primary_company",
+                "STRING",
+                id_primary_company
+            ),
+
             bigquery.ScalarQueryParameter(
                 "id_raw",
                 "STRING",
@@ -1243,7 +1390,6 @@ def update_raw_content(
         query,
         job_config=job_config
     ).result()
-
 
 def get_raw_stats() -> dict:
 
@@ -1483,6 +1629,13 @@ def update_content(id_content: str, data: ContentUpdate):
         fields["CONTENT_TYPE"] = data.content_type
 
     # ============================================================
+    # 🔥 PRIMARY COMPANY
+    # ============================================================
+
+    if data.id_primary_company is not None:
+        fields["PRIMARY_COMPANY_ID"] = data.id_primary_company
+
+    # ============================================================
     # SOURCE
     # ============================================================
 
@@ -1652,6 +1805,7 @@ def update_content(id_content: str, data: ContentUpdate):
         )
 
     return True
+
 
 # ============================================================
 # ARCHIVE CONTENT
