@@ -356,6 +356,7 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
         {!internalContentId && (
           <StepSource
+            contentType={contentType}
             onCreate={({ source_id, text, date_source }) => {
               setSourceId(source_id);
               setSourceText(text);
