@@ -108,7 +108,6 @@ export default function StepValidation({
           }))
         );
 
-        // 🔥 FORMAT ALIGNÉ MultiSelectConcepts
         setAllConcepts(
           (conceptRes?.concepts || []).map((c: any) => ({
             ID_CONCEPT: c.id_concept,
@@ -247,42 +246,37 @@ export default function StepValidation({
 
       {/* 🔥 PRIMARY COMPANY */}
 
-      {selectedCompanies.length > 0 && (
+      <div className="space-y-2">
 
-        <div className="space-y-2">
-
-          <div className="text-xs font-medium text-gray-600">
-            Primary company
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-
-            {selectedCompanies.map((company) => (
-
-              <button
-                key={company.id_company}
-                type="button"
-                onClick={() =>
-                  onPrimaryCompanyChange(
-                    company.id_company
-                  )
-                }
-                className={`px-3 py-1 rounded-full text-xs border ${
-                  primaryCompanyId === company.id_company
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-gray-700 border-gray-300"
-                }`}
-              >
-                {company.name}
-              </button>
-
-            ))}
-
-          </div>
-
+        <div className="text-xs font-medium text-gray-600">
+          Primary company
         </div>
 
-      )}
+        <select
+          value={primaryCompanyId || ""}
+          onChange={(e) =>
+            onPrimaryCompanyChange(
+              e.target.value || null
+            )
+          }
+          className="w-full border rounded p-2 text-sm"
+        >
+          <option value="">
+            Aucune
+          </option>
+
+          {allCompanies.map((company) => (
+            <option
+              key={company.id_company}
+              value={company.id_company}
+            >
+              {company.name}
+            </option>
+          ))}
+
+        </select>
+
+      </div>
 
       {/* CONCEPTS */}
 
