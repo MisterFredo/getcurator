@@ -52,6 +52,11 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
   const [topics, setTopics] = useState<string[]>([]);
   const [companies, setCompanies] = useState<string[]>([]);
+
+  // 🔥 NEW
+  const [primaryCompanyId, setPrimaryCompanyId] =
+    useState<string | null>(null);
+
   const [concepts, setConcepts] = useState<string[]>([]);
   const [solutions, setSolutions] = useState<string[]>([]);
 
@@ -116,6 +121,12 @@ export default function ContentStudio({ mode, contentId }: Props) {
       // STRUCTURED IDS
       setTopics((c.topics || []).map((x: any) => x.id_topic));
       setCompanies((c.companies || []).map((x: any) => x.id_company));
+
+      // 🔥 NEW
+      setPrimaryCompanyId(
+        c.id_primary_company || null
+      );
+
       setSolutions((c.solutions || []).map((x: any) => x.id_solution));
       setConcepts((c.concepts || []).map((x: any) => x.id_concept));
 
@@ -136,6 +147,9 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
       // 🔥 NEW
       content_type: contentType,
+
+      // 🔥 NEW
+      id_primary_company: primaryCompanyId,
 
       source_id: sourceId,
       source_text: sourceText,
@@ -184,6 +198,9 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
       // 🔥 NEW
       content_type: contentType,
+
+      // 🔥 NEW
+      id_primary_company: primaryCompanyId,
 
       topics,
       companies,
@@ -360,6 +377,10 @@ export default function ContentStudio({ mode, contentId }: Props) {
               companies={companies}
               concepts={concepts}
               solutions={solutions}
+
+              // 🔥 NEW
+              primaryCompanyId={primaryCompanyId}
+              onPrimaryCompanyChange={setPrimaryCompanyId}
 
               onChange={(d) => {
                 if (d.topics !== undefined) setTopics(d.topics);
