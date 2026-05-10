@@ -75,7 +75,7 @@ def search(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        c.primary_company_id,
+        c.id_primary_company,
 
         c.title,
         c.excerpt,
@@ -219,7 +219,7 @@ def latest(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        c.primary_company_id,
+        c.id_primary_company,
         c.title,
         c.excerpt,
         c.published_at,
@@ -280,7 +280,7 @@ def get_item_curator(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        c.primary_company_id,
+        c.id_primary_company,
 
         c.title,
         c.excerpt,
@@ -525,8 +525,8 @@ def _map_feed_row(r: Dict) -> Dict:
 
         "type": r.get("type"),
 
-        "primary_company_id": r.get(
-            "primary_company_id"
+        "id_primary_company": r.get(
+            "id_primary_company"
         ),
 
         "title": r.get("title"),
