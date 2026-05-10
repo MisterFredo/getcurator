@@ -232,6 +232,7 @@ def raw_stock_route(
     status: Optional[str] = None,
     source_id: Optional[str] = None,
     import_type: Optional[str] = None,
+    content_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -240,6 +241,7 @@ def raw_stock_route(
             status=status,
             source_id=source_id,
             import_type=import_type,
+            content_type=content_type,
             limit=limit,
             offset=offset,
         )
