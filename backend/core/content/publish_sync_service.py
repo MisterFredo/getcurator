@@ -341,7 +341,7 @@ def rebuild_content_enriched_row(
                   ON cc.ID_COMPANY = co.ID_COMPANY
 
                 WHERE cc.ID_CONTENT = c.ID_CONTENT
-            ) AS companies
+            ) AS companies,
 
             -- ====================================================
             -- SOLUTIONS
