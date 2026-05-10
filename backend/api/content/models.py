@@ -24,8 +24,6 @@ class ContentSummaryRequest(BaseModel):
     source_id: Optional[str] = None
     source_text: str
     content_type: Literal["ANALYSIS", "NEWS"] = "ANALYSIS"
-    content_type: Optional[str] = "ANALYSIS"
-
 
 # ============================================================
 # RAW — STORE
@@ -79,10 +77,7 @@ class ContentRawOut(BaseModel):
 
 class ContentRawDestockRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    limit: Optional[int] = None
     id_raw: Optional[str] = None
-
     limit: int = 20
 
 
