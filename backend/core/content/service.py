@@ -841,6 +841,11 @@ def list_raw_stock(
     status: Optional[str] = None,
     source_id: Optional[str] = None,
     import_type: Optional[str] = None,
+
+    # 🔥 NEW
+    content_type: Optional[str] = None,
+    primary_company_id: Optional[str] = None,
+
     limit: int = 50,
     offset: int = 0,
 ):
@@ -860,7 +865,20 @@ def list_raw_stock(
         conditions.append("r.IMPORT_TYPE = @import_type")
         params["import_type"] = import_type
 
+    # 🔥 NEW
+    if content_type:
+        conditions.append("r.CONTENT_TYPE = @content_type")
+        params["content_type"] = content_type
+
+    # 🔥 NEW
+    if primary_company_id:
+        conditions.append(
+            "r.PRIMARY_COMPANY_ID = @primary_company_id"
+        )
+        params["primary_company_id"] = primary_company_id
+
     where_clause = ""
+
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
 
@@ -952,7 +970,6 @@ def list_raw_stock(
 
         "total": total,
     }
-
 def destock_all_raw_contents(batch_size: int = 50):
 
     total_processed = 0
