@@ -2024,6 +2024,25 @@ def publish_content(
     )
 
     # ============================================================
+    # 5️⃣ AFTER PUBLISH SYNC
+    # ============================================================
+
+    if status == "PUBLISHED":
+
+        try:
+
+            after_publish_sync(
+                id_content=id_content,
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ AFTER PUBLISH SYNC ERROR:",
+                str(e)
+            )
+
+    # ============================================================
     # 🔥 NEWS → PAS DE PIPELINE NUMBERS
     # ============================================================
 
@@ -2037,7 +2056,7 @@ def publish_content(
         return status
 
     # ============================================================
-    # 5️⃣ BACKLOG NUMBERS
+    # 6️⃣ BACKLOG NUMBERS
     # ============================================================
 
     if status == "PUBLISHED":
@@ -2113,7 +2132,6 @@ def publish_content(
             return status
 
     return status
-
 
 def mark_content_ready(id_content: str):
 
