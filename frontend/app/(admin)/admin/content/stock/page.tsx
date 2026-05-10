@@ -35,7 +35,7 @@ export default function ContentStockPage() {
     content_type: "",
 
     // 🔥 NEW
-    primary_company_id: "",
+    id_primary_company: "",
   });
 
   // =========================
@@ -66,10 +66,10 @@ export default function ContentStockPage() {
       }
 
       // 🔥 NEW
-      if (filters.primary_company_id) {
+      if (filters.id_primary_company) {
         queryParams.append(
-          "primary_company_id",
-          filters.primary_company_id
+          "id_primary_company",
+          filters.id_primary_company
         );
       }
 
@@ -337,7 +337,7 @@ export default function ContentStockPage() {
             contentType={filters.content_type}
 
             // 🔥 NEW
-            primaryCompanyId={filters.primary_company_id}
+            primaryCompanyId={filters.id_primary_company}
 
             total={total}
 
@@ -373,7 +373,7 @@ export default function ContentStockPage() {
             onPrimaryCompanyChange={(v) =>
               setFilters((prev) => ({
                 ...prev,
-                primary_company_id: v,
+                id_primary_company: v,
               }))
             }
           />
