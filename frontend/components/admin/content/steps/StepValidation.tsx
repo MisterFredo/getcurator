@@ -1,317 +1,322 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import EditableList from "@/components/admin/content/steps/EditableList";
+
+import MultiSelectTopics, {
+  Topic,
+} from "@/components/admin/content/steps/MultiSelectTopics";
+
+import MultiSelectConcepts, {
+  Concept,
+} from "@/components/admin/content/steps/MultiSelectConcepts";
+
+import CompanySelector, {
+  Company,
+} from "@/components/admin/CompanySelector";
+
+import SolutionSelector, {
+  Solution,
+} from "@/components/admin/SolutionSelector";
 
 type Props = {
-  sourceId: string | null;
-  sourceText: string;
+  topicsRaw: string[];
+  acteursRaw: string[];
+  conceptsRaw: string[];
+  solutionsRaw: string[];
 
-  // 🔥 NEW
-  contentType?: "ANALYSIS" | "NEWS";
-
-  // 🔥 NEW
-  primaryCompanyId?: string | null;
-
-  excerpt: string;
-  contentBody: string;
-
-  chiffres: string[];
-
-  acteurs: string[];
+  topics: string[];
+  companies: string[];
   concepts: string[];
   solutions: string[];
-  topics: string[];
 
-  mecanique: string;
-  enjeu: string;
-  friction: string;
-  signal: string;
+  // 🔥 NEW
+  primaryCompanyId: string | null;
 
-  onChange: (data: any) => void;
-  onNext: () => void;
+  // 🔥 NEW
+  onPrimaryCompanyChange: (
+    id: string | null
+  ) => void;
+
+  onChange: (data: {
+    topics?: string[];
+    companies?: string[];
+    concepts?: string[];
+    solutions?: string[];
+  }) => void;
+
+  onSave: () => void;
 };
 
-export default function StepSummary(props: Props) {
+export default function StepValidation({
+  topicsRaw,
+  acteursRaw,
+  conceptsRaw,
+  solutionsRaw,
+  topics,
+  companies,
+  concepts,
+  solutions,
 
-  const [loading, setLoading] = useState(false);
+  // 🔥 NEW
+  primaryCompanyId,
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
+  // 🔥 NEW
+  onPrimaryCompanyChange,
 
-  function normalizeList(input: any): string[] {
+  onChange,
+  onSave,
+}: Props) {
 
-    if (!input) return [];
+  const [allTopics, setAllTopics] = useState<Topic[]>([]);
+  const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+  const [allConcepts, setAllConcepts] = useState<Concept[]>([]);
+  const [allSolutions, setAllSolutions] = useState<Solution[]>([]);
 
-    if (Array.isArray(input)) {
-      return input
-        .flatMap((item) => {
-          if (typeof item === "string") {
-            return item.split(/[,;\n]/);
-          }
-          return [];
-        })
-        .map((x) => x.trim())
-        .filter(Boolean);
+  // ============================================================
+  // LOAD DATA
+  // ============================================================
+
+  useEffect(() => {
+
+    async function load() {
+      try {
+
+        const [
+          topicRes,
+          companyRes,
+          conceptRes,
+          solutionRes,
+        ] = await Promise.all([
+          api.get("/topic/list"),
+          api.get("/company/list"),
+          api.get("/concept/list"),
+          api.get("/solution/list"),
+        ]);
+
+        setAllTopics(
+          (topicRes?.topics || []).map((t: any) => ({
+            ID_TOPIC: t.id_topic,
+            LABEL: t.label,
+          }))
+        );
+
+        setAllCompanies(
+          (companyRes?.companies || []).map((c: any) => ({
+            id_company: c.id_company,
+            name: c.name,
+          }))
+        );
+
+        // 🔥 FORMAT ALIGNÉ MultiSelectConcepts
+        setAllConcepts(
+          (conceptRes?.concepts || []).map((c: any) => ({
+            ID_CONCEPT: c.id_concept,
+            LABEL: c.label || c.title,
+          }))
+        );
+
+        setAllSolutions(
+          (solutionRes?.solutions || []).map((s: any) => ({
+            id_solution: s.id_solution,
+            name: s.name,
+          }))
+        );
+
+      } catch (e) {
+        console.error("Erreur chargement validation", e);
+      }
     }
 
-    if (typeof input === "string") {
-      return input
-        .split(/[,;\n]/)
-        .map((x) => x.trim())
-        .filter(Boolean);
+    load();
+
+  }, []);
+
+  // ============================================================
+  // AUTO-INJECT LLM (TOPICS + CONCEPTS)
+  // ============================================================
+
+  const [autoInjected, setAutoInjected] = useState(false);
+
+  useEffect(() => {
+
+    if (!autoInjected) {
+
+      // 🔵 TOPICS
+      if (topicsRaw?.length > 0) {
+        onChange({ topics: topicsRaw });
+      }
+
+      // 🟣 CONCEPTS → mapping label → ID
+      if (conceptsRaw?.length > 0 && allConcepts.length > 0) {
+
+        const mapped = conceptsRaw
+          .map((label) => {
+            const match = allConcepts.find(
+              (c) =>
+                c.LABEL.toLowerCase() === label.toLowerCase()
+            );
+            return match?.ID_CONCEPT;
+          })
+          .filter(Boolean) as string[];
+
+        if (mapped.length > 0) {
+          onChange({ concepts: mapped });
+        }
+      }
+
+      setAutoInjected(true);
     }
 
-    return [];
-  }
+  }, [topicsRaw, conceptsRaw, allConcepts, autoInjected, onChange]);
 
-  function stripHtmlList(text: string): string {
-    if (!text) return "";
-    return text
-      .replace(/<\/?ul>/g, "")
-      .replace(/<\/?li>/g, "\n")
-      .trim();
-  }
+  // ============================================================
+  // MAPPING IDS → OBJECTS
+  // ============================================================
 
-  // =====================================================
-  // GENERATE (LLM)
-  // =====================================================
+  const selectedCompanies = allCompanies.filter((c) =>
+    companies.includes(c.id_company)
+  );
 
-  async function generate() {
+  const selectedSolutions = allSolutions.filter((s) =>
+    solutions.includes(s.id_solution)
+  );
 
-    if (!props.sourceText?.trim()) return;
-
-    setLoading(true);
-
-    try {
-
-      const res = await api.post("/content/ai/generate", {
-
-        // 🔥 NEW
-        content_type: props.contentType,
-
-        // 🔥 NEW
-        id_primary_company: props.primaryCompanyId,
-
-        source_text: props.sourceText,
-        source_id: props.sourceId,
-      });
-
-      props.onChange({
-
-        excerpt: res.excerpt || "",
-        contentBody: stripHtmlList(res.content_body || ""),
-
-        chiffres: normalizeList(res.chiffres),
-
-        acteurs: normalizeList(res.acteurs_cites),
-
-        // 🔥 ALIGNÉ
-        concepts: normalizeList(res.concepts),
-
-        solutions: normalizeList(res.solutions),
-        topics: res.topics || [],
-
-        mecanique: res.mecanique_expliquee || "",
-        enjeu: res.enjeu_strategique || "",
-        friction: res.point_de_friction || "",
-        signal: res.signal_analytique || "",
-
-      });
-
-    } catch (e) {
-
-      console.error(e);
-      alert("Erreur génération");
-
-    }
-
-    setLoading(false);
-  }
-
-  // =====================================================
-  // RENDER
-  // =====================================================
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
 
-    <div className="space-y-8">
+    <div className="space-y-6">
 
-      {/* HEADER */}
-
-      <div className="flex justify-between items-center border-b pb-3">
-        <h2 className="text-base font-semibold">
-          Synthèse & Analyse
-        </h2>
-
-        <button
-          onClick={generate}
-          disabled={loading}
-          className="px-3 py-1.5 bg-black text-white rounded text-sm"
-        >
-          {loading ? "Génération..." : "Générer"}
-        </button>
+      <div className="text-sm font-semibold text-gray-700">
+        Validation structurante
       </div>
 
-      {/* ================= ÉDITORIAL ================= */}
+      {/* RAW DISPLAY */}
 
-      <div className="space-y-4">
+      <div className="space-y-2 text-xs text-gray-500 border-b pb-3">
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Résumé exécutif
-          </label>
-          <textarea
-            value={props.excerpt}
-            onChange={(e) =>
-              props.onChange({ excerpt: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[90px] text-sm"
-          />
-        </div>
+        {topicsRaw?.length > 0 && (
+          <div>
+            <strong>Topics LLM :</strong> {topicsRaw.join(", ")}
+          </div>
+        )}
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Points clés
-          </label>
-          <textarea
-            value={props.contentBody}
-            onChange={(e) =>
-              props.onChange({ contentBody: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[170px] text-sm"
-          />
-        </div>
+        {acteursRaw?.length > 0 && (
+          <div>
+            <strong>Acteurs LLM :</strong> {acteursRaw.join(", ")}
+          </div>
+        )}
+
+        {conceptsRaw?.length > 0 && (
+          <div>
+            <strong>Concepts LLM :</strong> {conceptsRaw.join(", ")}
+          </div>
+        )}
+
+        {solutionsRaw?.length > 0 && (
+          <div>
+            <strong>Solutions LLM :</strong> {solutionsRaw.join(", ")}
+          </div>
+        )}
 
       </div>
 
-      {/* ================= EXTRACTIONS LLM ================= */}
+      {/* TOPICS */}
 
-      <div className="space-y-4 border-t pt-4">
+      <MultiSelectTopics
+        topics={allTopics}
+        selected={topics}
+        onChange={(ids: string[]) =>
+          onChange({ topics: ids })
+        }
+      />
 
-        <h3 className="text-sm font-semibold text-gray-700">
-          Extractions LLM
-        </h3>
+      {/* COMPANIES */}
 
-        <div className="bg-gray-50 border rounded p-4 space-y-4">
+      <CompanySelector
+        values={selectedCompanies}
+        onChange={(vals) =>
+          onChange({
+            companies: vals.map((v) => v.id_company),
+          })
+        }
+      />
 
-          <EditableList
-            label="Topics suggérés"
-            items={props.topics}
-            onChange={(items) =>
-              props.onChange({ topics: items })
-            }
-          />
+      {/* 🔥 PRIMARY COMPANY */}
 
-          <EditableList
-            label="Acteurs cités"
-            items={props.acteurs}
-            onChange={(items) =>
-              props.onChange({ acteurs: items })
-            }
-          />
+      {selectedCompanies.length > 0 && (
 
-          <EditableList
-            label="Concepts"
-            items={props.concepts}
-            onChange={(items) =>
-              props.onChange({ concepts: items })
-            }
-          />
+        <div className="space-y-2">
 
-          <EditableList
-            label="Solutions"
-            items={props.solutions}
-            onChange={(items) =>
-              props.onChange({ solutions: items })
-            }
-          />
+          <div className="text-xs font-medium text-gray-600">
+            Primary company
+          </div>
 
-          <EditableList
-            label="Chiffres clés"
-            items={props.chiffres}
-            onChange={(items) =>
-              props.onChange({ chiffres: items })
-            }
-          />
+          <div className="flex flex-wrap gap-2">
+
+            {selectedCompanies.map((company) => (
+
+              <button
+                key={company.id_company}
+                type="button"
+                onClick={() =>
+                  onPrimaryCompanyChange(
+                    company.id_company
+                  )
+                }
+                className={`px-3 py-1 rounded-full text-xs border ${
+                  primaryCompanyId === company.id_company
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-gray-700 border-gray-300"
+                }`}
+              >
+                {company.name}
+              </button>
+
+            ))}
+
+          </div>
 
         </div>
 
-      </div>
+      )}
 
-      {/* ================= ANALYSE ================= */}
+      {/* CONCEPTS */}
 
-      <div className="space-y-4 border-t pt-4">
+      <MultiSelectConcepts
+        concepts={allConcepts}
+        selected={concepts}
+        onChange={(ids: string[]) =>
+          onChange({ concepts: ids })
+        }
+      />
 
-        <h3 className="text-sm font-semibold text-gray-700">
-          Analyse stratégique
-        </h3>
+      {/* SOLUTIONS */}
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Mécanique expliquée
-          </label>
-          <textarea
-            value={props.mecanique}
-            onChange={(e) =>
-              props.onChange({ mecanique: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[110px] text-sm"
-          />
-        </div>
+      <SolutionSelector
+        values={selectedSolutions}
+        onChange={(vals) =>
+          onChange({
+            solutions: vals.map((v) => v.id_solution),
+          })
+        }
+      />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Enjeu stratégique
-          </label>
-          <textarea
-            value={props.enjeu}
-            onChange={(e) =>
-              props.onChange({ enjeu: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[110px] text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Point de friction
-          </label>
-          <textarea
-            value={props.friction}
-            onChange={(e) =>
-              props.onChange({ friction: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[90px] text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Signal analytique
-          </label>
-          <textarea
-            value={props.signal}
-            onChange={(e) =>
-              props.onChange({ signal: e.target.value })
-            }
-            className="w-full border rounded p-3 min-h-[110px] text-sm"
-          />
-        </div>
-
-      </div>
-
-      {/* ================= SAVE ================= */}
+      {/* SAVE */}
 
       <button
-        onClick={props.onNext}
-        className="px-4 py-2 bg-green-600 text-white rounded text-sm"
+        onClick={onSave}
+        className="w-full px-4 py-2 bg-black text-white rounded text-sm"
+        type="button"
       >
-        Sauvegarder l'éditorial
+        Sauvegarder la validation
       </button>
 
     </div>
+
   );
+
 }
