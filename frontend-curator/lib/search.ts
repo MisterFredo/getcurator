@@ -8,10 +8,10 @@ type Params = {
   limit?: number;
   offset?: number;
 
-  // 🔥 EXISTANT
-  type?: "news" | "analysis";
-
   // 🔥 NEW
+  content_type?: "NEWS" | "ANALYSIS";
+
+  // 🔥 EXISTANT
   user_id?: string;
   universe_id?: string | null;
 };
@@ -49,29 +49,54 @@ export async function searchCurator(
       query.append("q", params.query.trim());
     }
 
-    query.append("limit", String(params.limit ?? 20));
-    query.append("offset", String(params.offset ?? 0));
+    query.append(
+      "limit",
+      String(params.limit ?? 20)
+    );
 
-    // 🔥 TYPE
-    if (params.type) {
-      query.append("type", params.type);
+    query.append(
+      "offset",
+      String(params.offset ?? 0)
+    );
+
+    // 🔥 CONTENT TYPE
+    if (params.content_type) {
+      query.append(
+        "content_type",
+        params.content_type
+      );
     }
 
     // 🔥 USER
     if (params.user_id) {
-      query.append("user_id", params.user_id);
+      query.append(
+        "user_id",
+        params.user_id
+      );
     }
 
     // 🔥 UNIVERSE
     if (params.universe_id) {
-      query.append("universe_id", params.universe_id);
+      query.append(
+        "universe_id",
+        params.universe_id
+      );
     }
 
-    const res = await api.get(`/curator/search?${query.toString()}`);
+    const res = await api.get(
+      `/curator/search?${query.toString()}`
+    );
+
     const data = res?.data ?? res;
 
-    if (!data || !Array.isArray(data.items)) {
-      return { items: [], count: 0 };
+    if (
+      !data ||
+      !Array.isArray(data.items)
+    ) {
+      return {
+        items: [],
+        count: 0,
+      };
     }
 
     return {
@@ -80,8 +105,16 @@ export async function searchCurator(
     };
 
   } catch (e) {
-    console.error("❌ searchCurator error", e);
-    return { items: [], count: 0 };
+
+    console.error(
+      "❌ searchCurator error",
+      e
+    );
+
+    return {
+      items: [],
+      count: 0,
+    };
   }
 }
 
@@ -95,29 +128,54 @@ export async function getLatestCurator(
   try {
     const query = new URLSearchParams();
 
-    query.append("limit", String(params?.limit ?? 20));
-    query.append("offset", String(params?.offset ?? 0));
+    query.append(
+      "limit",
+      String(params?.limit ?? 20)
+    );
 
-    // 🔥 TYPE
-    if (params?.type) {
-      query.append("type", params.type);
+    query.append(
+      "offset",
+      String(params?.offset ?? 0)
+    );
+
+    // 🔥 CONTENT TYPE
+    if (params?.content_type) {
+      query.append(
+        "content_type",
+        params.content_type
+      );
     }
 
     // 🔥 USER
     if (params?.user_id) {
-      query.append("user_id", params.user_id);
+      query.append(
+        "user_id",
+        params.user_id
+      );
     }
 
     // 🔥 UNIVERSE
     if (params?.universe_id) {
-      query.append("universe_id", params.universe_id);
+      query.append(
+        "universe_id",
+        params.universe_id
+      );
     }
 
-    const res = await api.get(`/curator/latest?${query.toString()}`);
+    const res = await api.get(
+      `/curator/latest?${query.toString()}`
+    );
+
     const data = res?.data ?? res;
 
-    if (!data || !Array.isArray(data.items)) {
-      return { items: [], count: 0 };
+    if (
+      !data ||
+      !Array.isArray(data.items)
+    ) {
+      return {
+        items: [],
+        count: 0,
+      };
     }
 
     return {
@@ -126,7 +184,15 @@ export async function getLatestCurator(
     };
 
   } catch (e) {
-    console.error("❌ latestCurator error", e);
-    return { items: [], count: 0 };
+
+    console.error(
+      "❌ latestCurator error",
+      e
+    );
+
+    return {
+      items: [],
+      count: 0,
+    };
   }
 }
