@@ -1901,13 +1901,19 @@ def publish_content(
         f"""
         SELECT
             STATUS,
+
             SOURCE_DATE,
+
             NUMBERS_PARSED,
 
             -- 🔥 NEW
-            CONTENT_TYPE
+            CONTENT_TYPE,
+
+            -- 🔥 NEW
+            PRIMARY_COMPANY_ID
 
         FROM `{TABLE_CONTENT}`
+
         WHERE ID_CONTENT = @id_content
         """,
         {"id_content": id_content}
@@ -1928,6 +1934,11 @@ def publish_content(
         or "ANALYSIS"
     )
 
+    # 🔥 NEW
+    primary_company_id = rows[0].get(
+        "PRIMARY_COMPANY_ID"
+    )
+
     if current_status != "READY":
         raise ValueError("Content must be READY before publish")
 
@@ -1938,7 +1949,10 @@ def publish_content(
     if published_at is None:
         published_at = source_date or now_dt
 
-    if isinstance(published_at, date) and not isinstance(published_at, datetime):
+    if (
+        isinstance(published_at, date)
+        and not isinstance(published_at, datetime)
+    ):
 
         published_at = datetime.combine(
             published_at,
@@ -1946,7 +1960,10 @@ def publish_content(
             tzinfo=timezone.utc
         )
 
-    elif isinstance(published_at, datetime) and published_at.tzinfo is None:
+    elif (
+        isinstance(published_at, datetime)
+        and published_at.tzinfo is None
+    ):
 
         published_at = published_at.replace(
             tzinfo=timezone.utc
@@ -1976,9 +1993,18 @@ def publish_content(
         where={"ID_CONTENT": id_content},
     )
 
+    print(
+        "🚀 CONTENT PUBLISHED:",
+        {
+            "id_content": id_content,
+            "status": status,
+            "content_type": content_type,
+            "primary_company_id": primary_company_id,
+        }
+    )
+
     # ============================================================
-    # 🔥 NEW
-    # NEWS → PAS DE PIPELINE NUMBERS
+    # 🔥 NEWS → PAS DE PIPELINE NUMBERS
     # ============================================================
 
     if content_type == "NEWS":
