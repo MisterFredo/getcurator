@@ -26,6 +26,19 @@ def build_user_filter(alias: str = "c") -> str:
 
 
 # ============================================================
+# 🔥 CONTENT TYPE FILTER
+# ============================================================
+
+def build_content_type_filter() -> str:
+    return """
+    AND (
+        @content_type IS NULL
+        OR LOWER(c.content_type) = LOWER(@content_type)
+    )
+    """
+
+
+# ============================================================
 # SEARCH
 # ============================================================
 
@@ -35,6 +48,9 @@ def search(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
+
+    # 🔥 NEW
+    content_type: Optional[str] = None,
 ) -> List[Dict]:
 
     q = (q or "").strip()
@@ -59,10 +75,7 @@ def search(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        -- 🔥 NEW
         c.primary_company_id,
-
-        -- 🔥 NEW
         c.primary_company_name,
 
         c.title,
@@ -143,6 +156,8 @@ def search(
         )
     )
 
+    {build_content_type_filter()}
+
     {build_user_filter("c")}
 
     {universe_filter}
@@ -161,6 +176,9 @@ def search(
         "offset": offset,
         "user_id": user_id,
         "universe_id": universe_id,
+
+        # 🔥 NEW
+        "content_type": content_type,
     }
 
     rows = query_bq(sql, params)
@@ -177,6 +195,9 @@ def latest(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
+
+    # 🔥 NEW
+    content_type: Optional[str] = None,
 ) -> List[Dict]:
 
     universe_filter = ""
@@ -199,10 +220,7 @@ def latest(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        -- 🔥 NEW
         c.primary_company_id,
-
-        -- 🔥 NEW
         c.primary_company_name,
 
         c.title,
@@ -220,6 +238,8 @@ def latest(
 
     WHERE c.published_at IS NOT NULL
 
+    {build_content_type_filter()}
+
     {build_user_filter("c")}
 
     {universe_filter}
@@ -235,6 +255,9 @@ def latest(
         "offset": offset,
         "universe_id": universe_id,
         "user_id": user_id,
+
+        # 🔥 NEW
+        "content_type": content_type,
     }
 
     rows = query_bq(sql, params)
@@ -260,10 +283,7 @@ def get_item_curator(
             COALESCE(c.content_type, 'ANALYSIS')
         ) AS type,
 
-        -- 🔥 NEW
         c.primary_company_id,
-
-        -- 🔥 NEW
         c.primary_company_name,
 
         c.title,
@@ -446,10 +466,6 @@ def _map_feed_row(r: Dict) -> Dict:
 
     badges = []
 
-    # =====================================================
-    # TOPICS
-    # =====================================================
-
     for t in topics:
 
         if isinstance(t, dict):
@@ -466,10 +482,6 @@ def _map_feed_row(r: Dict) -> Dict:
                 "type": "topic",
                 "label": t,
             })
-
-    # =====================================================
-    # CONCEPTS
-    # =====================================================
 
     for c in concepts:
 
@@ -488,10 +500,6 @@ def _map_feed_row(r: Dict) -> Dict:
                 "label": c,
             })
 
-    # =====================================================
-    # COMPANIES
-    # =====================================================
-
     for c in companies:
 
         badges.append({
@@ -500,10 +508,6 @@ def _map_feed_row(r: Dict) -> Dict:
             "id": c.get("id_company"),
         })
 
-    # =====================================================
-    # SOLUTIONS
-    # =====================================================
-
     for s in solutions:
 
         badges.append({
@@ -511,10 +515,6 @@ def _map_feed_row(r: Dict) -> Dict:
             "label": s.get("name"),
             "id": s.get("id_solution"),
         })
-
-    # =====================================================
-    # UNIVERS
-    # =====================================================
 
     for u in universes:
 
@@ -529,12 +529,10 @@ def _map_feed_row(r: Dict) -> Dict:
 
         "type": r.get("type"),
 
-        # 🔥 NEW
         "primary_company_id": r.get(
             "primary_company_id"
         ),
 
-        # 🔥 NEW
         "primary_company_name": r.get(
             "primary_company_name"
         ),
