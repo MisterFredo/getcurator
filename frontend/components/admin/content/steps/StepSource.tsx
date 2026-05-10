@@ -9,6 +9,9 @@ type Source = {
 };
 
 type Props = {
+  // 🔥 NEW
+  contentType: "ANALYSIS" | "NEWS";
+
   onCreate: (data: {
     source_id: string;
     text: string;
@@ -16,7 +19,12 @@ type Props = {
   }) => void;
 };
 
-export default function StepSource({ onCreate }: Props) {
+export default function StepSource({
+  onCreate,
+
+  // 🔥 NEW
+  contentType,
+}: Props) {
 
   const [sources, setSources] = useState<Source[]>([]);
   const [sourceId, setSourceId] = useState("");
@@ -43,6 +51,7 @@ export default function StepSource({ onCreate }: Props) {
 
         if (list.length) {
           setSourceId(list[0].source_id);
+
           onCreate({
             source_id: list[0].source_id,
             text: "",
@@ -103,6 +112,9 @@ export default function StepSource({ onCreate }: Props) {
         source_title: sourceTitle,
         raw_text: sourceText,
         date_source: sourcePublishedAt || null,
+
+        // 🔥 NEW
+        content_type: contentType,
       });
 
       alert("Source stockée avec succès");
