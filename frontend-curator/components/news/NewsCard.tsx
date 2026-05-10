@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Check,
 } from "lucide-react";
 
 import type {
@@ -163,26 +162,14 @@ export default function NewsCard({
 
           {/* CHECKBOX */}
 
-          <button
-            onClick={() =>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() =>
               onToggleSelect(item)
             }
-            className={`
-              w-6
-              h-6
-              rounded
-              border
-              flex
-              items-center
-              justify-center
-              transition
-              ${
-                selected
-                  ? "bg-emerald-600 border-emerald-600 text-white"
-                  : "bg-white border-gray-300"
-              }
-            `}
-          >
+            className="mt-2"
+          />
 
             {selected && (
               <Check size={14} />
