@@ -20,6 +20,10 @@ export default function StockImportPanel({
   const [urlsText, setUrlsText] = useState("");
   const [sourceId, setSourceId] = useState("");
 
+  // 🔥 NEW
+  const [contentType, setContentType] =
+    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
+
   const [loadingFile, setLoadingFile] = useState(false);
   const [loadingUrl, setLoadingUrl] = useState(false);
 
@@ -77,6 +81,9 @@ export default function StockImportPanel({
       const res = await api.post("/content/raw/import", {
         id_source: sourceId,
         text,
+
+        // 🔥 NEW
+        content_type: contentType,
       });
 
       setMessage(`✅ ${res.imported} contenu(s) importé(s)`);
@@ -107,6 +114,9 @@ export default function StockImportPanel({
       const res = await api.post("/content/raw/import-urls", {
         id_source: sourceId,
         urls_text: urlsText,
+
+        // 🔥 NEW
+        content_type: contentType,
       });
 
       setMessage(`✅ ${res.inserted} importé(s) sur ${res.total}`);
@@ -141,6 +151,20 @@ export default function StockImportPanel({
             {s.label}
           </option>
         ))}
+      </select>
+
+      {/* 🔥 CONTENT TYPE */}
+      <select
+        value={contentType}
+        onChange={(e) =>
+          setContentType(
+            e.target.value as "ANALYSIS" | "NEWS"
+          )
+        }
+        className="border rounded px-3 py-2"
+      >
+        <option value="ANALYSIS">Analysis</option>
+        <option value="NEWS">News</option>
       </select>
 
       {/* FILE IMPORT */}
