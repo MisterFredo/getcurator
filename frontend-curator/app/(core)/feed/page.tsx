@@ -150,12 +150,14 @@ export default function FeedPage() {
             offset: currentOffset,
             universe_id:
               activeUniverse || undefined,
+            content_type: "ANALYSIS",
           })
         : await getLatestCurator({
             limit: LIMIT,
             offset: currentOffset,
             universe_id:
               activeUniverse || undefined,
+            content_type: "ANALYSIS",
           });
 
       if (reset) {
