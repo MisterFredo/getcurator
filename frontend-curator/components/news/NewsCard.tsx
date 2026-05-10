@@ -61,9 +61,15 @@ export default function NewsCard({
      LOGO
   ========================================================= */
 
+  const primaryCompany =
+    item.companies?.[0];
+
+  const logoPath =
+    primaryCompany?.media_logo_rectangle_id;
+
   const logoUrl =
-    item.primary_company_logo
-      ? `${GCS_BASE_URL}/${item.primary_company_logo}`
+    logoPath
+      ? `${GCS_BASE_URL}/${logoPath}`
       : null;
 
   /* =========================================================
@@ -93,50 +99,94 @@ export default function NewsCard({
         "
       >
 
-        {/* LOGO */}
+        {/* LEFT COLUMN */}
 
         <div
           className="
-            w-12
-            h-12
-            rounded-lg
-            border
-            bg-white
-            shrink-0
-            overflow-hidden
             flex
+            flex-col
             items-center
-            justify-center
+            gap-2
+            shrink-0
           "
         >
 
-          {logoUrl ? (
+          {/* LOGO */}
 
-            <img
-              src={logoUrl}
-              alt={
-                item.primary_company_name ||
-                ""
+          <div
+            className="
+              w-14
+              h-14
+              rounded-xl
+              border
+              bg-white
+              overflow-hidden
+              flex
+              items-center
+              justify-center
+            "
+          >
+
+            {logoUrl ? (
+
+              <img
+                src={logoUrl}
+                alt={
+                  primaryCompany?.name ||
+                  ""
+                }
+                className="
+                  w-full
+                  h-full
+                  object-contain
+                "
+              />
+
+            ) : (
+
+              <div
+                className="
+                  text-xs
+                  text-gray-400
+                "
+              >
+                —
+              </div>
+
+            )}
+
+          </div>
+
+          {/* SELECT */}
+
+          <button
+            onClick={() =>
+              onToggleSelect(item)
+            }
+            className={`
+              w-8
+              h-8
+              rounded-lg
+              border
+              flex
+              items-center
+              justify-center
+              transition
+              ${
+                selected
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
               }
-              className="
-                w-full
-                h-full
-                object-contain
-              "
-            />
+            `}
+          >
 
-          ) : (
+            {selected ? (
+              <Check size={16} />
+            ) : (
+              <Plus size={16} />
+            )}
 
-            <div
-              className="
-                text-xs
-                text-gray-400
-              "
-            >
-              —
-            </div>
-
-          )}
+          </button>
 
         </div>
 
@@ -177,79 +227,39 @@ export default function NewsCard({
                   mt-1
                 "
               >
-                {item.primary_company_name ||
+                {primaryCompany?.name ||
+                  item.primary_company_name ||
                   "Unknown company"}
               </div>
 
             </div>
 
-            {/* ACTIONS */}
+            {/* EXPAND */}
 
-            <div className="
-              flex
-              items-center
-              gap-2
-              shrink-0
-            ">
+            <button
+              onClick={() =>
+                setOpen(!open)
+              }
+              className="
+                w-8
+                h-8
+                rounded-lg
+                border
+                flex
+                items-center
+                justify-center
+                bg-white
+                shrink-0
+              "
+            >
 
-              {/* SELECT */}
+              {open ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
 
-              <button
-                onClick={() =>
-                  onToggleSelect(item)
-                }
-                className={`
-                  w-8
-                  h-8
-                  rounded-lg
-                  border
-                  flex
-                  items-center
-                  justify-center
-                  transition
-                  ${
-                    selected
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "bg-white text-gray-700"
-                  }
-                `}
-              >
-
-                {selected ? (
-                  <Check size={16} />
-                ) : (
-                  <Plus size={16} />
-                )}
-
-              </button>
-
-              {/* EXPAND */}
-
-              <button
-                onClick={() =>
-                  setOpen(!open)
-                }
-                className="
-                  w-8
-                  h-8
-                  rounded-lg
-                  border
-                  flex
-                  items-center
-                  justify-center
-                  bg-white
-                "
-              >
-
-                {open ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                )}
-
-              </button>
-
-            </div>
+            </button>
 
           </div>
 
