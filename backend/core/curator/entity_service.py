@@ -516,11 +516,11 @@ def _map_feed_row(r: Dict):
         "id": r.get("id"),
 
         # ========================================================
-        # TYPE
+        # CONTENT TYPE
         # ========================================================
 
         "type": (
-            r.get("type")
+            r.get("content_type")
             or "analysis"
         ).lower(),
 
