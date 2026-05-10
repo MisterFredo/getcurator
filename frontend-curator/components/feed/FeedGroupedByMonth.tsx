@@ -7,20 +7,30 @@ import FeedItemCard from "./FeedItemCard";
 
 type FeedItem = {
   id: string;
+
   type: "news" | "analysis";
+
   title: string;
+
   excerpt?: string | null;
+
   published_at?: string;
 
   topics?: any[];
+
   companies?: any[];
+
   solutions?: any[];
+
   news_type?: string | null;
 };
 
 type Props = {
   items: FeedItem[];
-  onClickItem: (item: FeedItem) => void;
+
+  onClickItem: (
+    item: FeedItem
+  ) => void;
 };
 
 /* =========================================================
@@ -28,16 +38,24 @@ type Props = {
 ========================================================= */
 
 function getMonthKey(date?: string) {
+
   if (!date) return "unknown";
 
   const d = new Date(date);
+
   return `${d.getFullYear()}-${d.getMonth()}`;
 }
 
 function formatMonthLabel(key: string) {
-  if (key === "unknown") return "Autres";
 
-  const [year, month] = key.split("-").map(Number);
+  if (key === "unknown") {
+    return "Autres";
+  }
+
+  const [year, month] = key
+    .split("-")
+    .map(Number);
+
   const date = new Date(year, month);
 
   return date
@@ -62,10 +80,17 @@ export default function FeedGroupedByMonth({
   ========================================================= */
 
   const grouped = useMemo(() => {
-    const map: Record<string, FeedItem[]> = {};
+
+    const map: Record<
+      string,
+      FeedItem[]
+    > = {};
 
     items.forEach((item) => {
-      const key = getMonthKey(item.published_at);
+
+      const key = getMonthKey(
+        item.published_at
+      );
 
       if (!map[key]) {
         map[key] = [];
@@ -74,11 +99,20 @@ export default function FeedGroupedByMonth({
       map[key].push(item);
     });
 
-    return Object.entries(map).sort((a, b) => {
-      if (a[0] === "unknown") return 1;
-      if (b[0] === "unknown") return -1;
-      return b[0].localeCompare(a[0]);
-    });
+    return Object
+      .entries(map)
+      .sort((a, b) => {
+
+        if (a[0] === "unknown") {
+          return 1;
+        }
+
+        if (b[0] === "unknown") {
+          return -1;
+        }
+
+        return b[0].localeCompare(a[0]);
+      });
 
   }, [items]);
 
@@ -86,12 +120,18 @@ export default function FeedGroupedByMonth({
      ACCORDION STATE
   ========================================================= */
 
-  const [openMonth, setOpenMonth] = useState<string | null>(
-    grouped.length > 0 ? grouped[0][0] : null
-  );
+  const [openMonth, setOpenMonth] =
+    useState<string | null>(
+      grouped.length > 0
+        ? grouped[0][0]
+        : null
+    );
 
   function toggleMonth(key: string) {
-    setOpenMonth((prev) => (prev === key ? null : key));
+
+    setOpenMonth((prev) =>
+      prev === key ? null : key
+    );
   }
 
   /* =========================================================
@@ -99,62 +139,115 @@ export default function FeedGroupedByMonth({
   ========================================================= */
 
   return (
+
     <div className="space-y-6">
 
-      {grouped.map(([monthKey, monthItems]) => {
-        const isOpen = openMonth === monthKey;
+      {grouped.map(
+        ([monthKey, monthItems]) => {
 
-        return (
-          <div key={monthKey} className="space-y-2">
+          const isOpen =
+            openMonth === monthKey;
 
-            {/* =====================================================
-                HEADER (ACCORDION)
-            ===================================================== */}
-            <button
-              onClick={() => toggleMonth(monthKey)}
-              className="
-                w-full flex items-center justify-between
-                text-left py-2
-                border-b border-gray-100
-                hover:opacity-80 transition
-              "
+          return (
+
+            <div
+              key={monthKey}
+              className="space-y-2"
             >
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                {formatMonthLabel(monthKey)}
-              </span>
 
-              <div className="flex items-center gap-3">
+              {/* =====================================================
+                  HEADER (ACCORDION)
+              ===================================================== */}
 
-                {/* 🔥 COUNT */}
-                <span className="text-xs text-gray-400">
-                  {monthItems.length}
+              <button
+                onClick={() =>
+                  toggleMonth(monthKey)
+                }
+                className="
+                  w-full
+                  flex
+                  items-center
+                  justify-between
+                  text-left
+                  py-2
+                  border-b
+                  border-gray-100
+                  hover:opacity-80
+                  transition
+                "
+              >
+
+                <span
+                  className="
+                    text-xs
+                    font-semibold
+                    text-gray-500
+                    uppercase
+                    tracking-wide
+                  "
+                >
+                  {formatMonthLabel(monthKey)}
                 </span>
 
-                {/* ARROW */}
-                <span className="text-xs text-gray-400">
-                  {isOpen ? "−" : "+"}
-                </span>
-              </div>
-            </button>
+                <div className="
+                  flex
+                  items-center
+                  gap-3
+                ">
 
-            {/* =====================================================
-                CONTENT
-            ===================================================== */}
-            {isOpen && (
-              <div className="space-y-3 pt-2">
-                {monthItems.map((item) => (
-                  <FeedItemCard
-                    key={item.id}
-                    item={item}
-                    onClick={() => onClickItem(item)}
-                  />
-                ))}
-              </div>
-            )}
+                  {/* COUNT */}
 
-          </div>
-        );
-      })}
+                  <span className="
+                    text-xs
+                    text-gray-400
+                  ">
+                    {monthItems.length}
+                  </span>
+
+                  {/* ARROW */}
+
+                  <span className="
+                    text-xs
+                    text-gray-400
+                  ">
+                    {isOpen ? "−" : "+"}
+                  </span>
+
+                </div>
+
+              </button>
+
+              {/* =====================================================
+                  CONTENT
+              ===================================================== */}
+
+              {isOpen && (
+
+                <div className="
+                  space-y-3
+                  pt-2
+                ">
+
+                  {monthItems.map((item) => (
+
+                    <FeedItemCard
+                      key={item.id}
+                      item={item}
+                      onClick={() =>
+                        onClickItem(item)
+                      }
+                    />
+
+                  ))}
+
+                </div>
+
+              )}
+
+            </div>
+          );
+        }
+      )}
 
     </div>
   );
