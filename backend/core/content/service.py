@@ -22,6 +22,9 @@ from utils.bigquery_utils import (
 from core.numbers.service import get_numbers_from_content
 from core.numbers.backlog_llm import process_backlog_row
 from core.numbers.backlog_insert_service import insert_backlog_batch
+from core.content.publish_sync_service import (
+    after_publish_sync,
+)
 
 # ============================================================
 # TABLES
