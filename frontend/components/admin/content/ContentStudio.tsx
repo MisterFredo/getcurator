@@ -442,6 +442,8 @@ export default function ContentStudio({ mode, contentId }: Props) {
               companies={companies}
               concepts={concepts}
               solutions={solutions}
+              primaryCompanyId={primaryCompanyId}
+              onPrimaryCompanyChange={setPrimaryCompanyId}
 
               onChange={(d) => {
                 if (d.topics !== undefined) setTopics(d.topics);
