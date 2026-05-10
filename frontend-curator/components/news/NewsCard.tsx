@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
-
-import {
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import type {
   FeedItem,
   FeedBadge,
 } from "@/types/feed";
+
+import { useDrawer } from "@/contexts/DrawerContext";
 
 /* ========================================================= */
 
@@ -43,8 +40,11 @@ export default function NewsCard({
   onClickBadge,
 }: Props) {
 
-  const [open, setOpen] =
-    useState(false);
+  const router = useRouter();
+
+  const {
+    openRightDrawer,
+  } = useDrawer();
 
   /* =========================================================
      TOPIC BADGES ONLY
@@ -71,15 +71,6 @@ export default function NewsCard({
       : null;
 
   /* =========================================================
-     COMPANY
-  ========================================================= */
-
-  const companyName =
-    primaryCompany?.name ||
-    item.primary_company_name ||
-    "Unknown company";
-
-  /* =========================================================
      DATE
   ========================================================= */
 
@@ -93,16 +84,33 @@ export default function NewsCard({
       : null;
 
   /* =========================================================
+     OPEN DRAWER
+  ========================================================= */
+
+  function handleOpen() {
+
+    openRightDrawer(
+      "analysis",
+      item.id,
+      "silent"
+    );
+  }
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
   return (
 
     <div
+      onClick={handleOpen}
       className="
         border-b
         border-gray-100
         py-5
+        cursor-pointer
+        hover:bg-gray-50
+        transition
       "
     >
 
@@ -149,7 +157,7 @@ export default function NewsCard({
 
               <img
                 src={logoUrl}
-                alt={companyName}
+                alt={item.title}
                 className="
                   w-full
                   h-full
@@ -177,9 +185,12 @@ export default function NewsCard({
           <input
             type="checkbox"
             checked={selected}
-            onChange={() =>
-              onToggleSelect(item)
-            }
+            onChange={(e) => {
+
+              e.stopPropagation();
+
+              onToggleSelect(item);
+            }}
             className="
               w-4
               h-4
@@ -199,196 +210,102 @@ export default function NewsCard({
         ">
 
           {/* ===================================================
-              TOP ROW
+              META
           =================================================== */}
 
           <div
             className="
               flex
-              items-start
-              justify-between
-              gap-4
+              flex-wrap
+              items-center
+              gap-2
+              mb-2
             "
           >
 
-            <div className="min-w-0">
+            {/* DATE */}
 
-              {/* META */}
+            {formattedDate && (
 
-              <div
+              <span
                 className="
-                  flex
-                  flex-wrap
-                  items-center
-                  gap-2
-                  mb-2
+                  text-[11px]
+                  text-gray-400
+                  shrink-0
                 "
               >
+                {formattedDate}
+              </span>
 
-                {/* DATE */}
+            )}
 
-                {formattedDate && (
+            {/* TOPICS */}
 
-                  <span
-                    className="
-                      text-[11px]
-                      text-gray-400
-                      shrink-0
-                    "
-                  >
-                    {formattedDate}
-                  </span>
+            {topicBadges.map(
+              (badge, idx) => (
 
-                )}
+                <button
+                  key={`${badge.label}-${idx}`}
+                  onClick={(e) => {
 
-                {/* TOPICS */}
+                    e.stopPropagation();
 
-                {topicBadges.map(
-                  (badge, idx) => (
+                    onClickBadge?.(
+                      badge
+                    );
+                  }}
+                  className="
+                    px-2
+                    py-[3px]
+                    rounded-full
+                    text-[10px]
+                    uppercase
+                    tracking-wide
+                    bg-gray-100
+                    text-gray-600
+                    hover:bg-gray-200
+                    transition
+                  "
+                >
+                  {badge.label}
+                </button>
 
-                    <button
-                      key={`${badge.label}-${idx}`}
-                      onClick={() =>
-                        onClickBadge?.(
-                          badge
-                        )
-                      }
-                      className="
-                        px-2
-                        py-[3px]
-                        rounded-full
-                        text-[10px]
-                        uppercase
-                        tracking-wide
-                        bg-gray-100
-                        text-gray-600
-                        hover:bg-gray-200
-                        transition
-                      "
-                    >
-                      {badge.label}
-                    </button>
-
-                  )
-                )}
-
-              </div>
-
-              {/* TITLE */}
-
-              <h2
-                className="
-                  text-[15px]
-                  font-semibold
-                  text-gray-900
-                  leading-snug
-                "
-              >
-                {item.title}
-              </h2>
-
-              {/* COMPANY */}
-
-              <div
-                className="
-                  text-sm
-                  text-gray-500
-                  mt-1
-                "
-              >
-                {companyName}
-              </div>
-
-            </div>
-
-            {/* =================================================
-                EXPAND
-            ================================================= */}
-
-            <button
-              onClick={() =>
-                setOpen(!open)
-              }
-              className="
-                w-8
-                h-8
-                rounded-lg
-                border
-                border-gray-200
-                flex
-                items-center
-                justify-center
-                bg-white
-                hover:bg-gray-50
-                transition
-                shrink-0
-              "
-            >
-
-              {open ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )}
-
-            </button>
+              )
+            )}
 
           </div>
 
           {/* ===================================================
-              EXCERPT PREVIEW
+              TITLE
+          =================================================== */}
+
+          <h2
+            className="
+              text-[15px]
+              font-semibold
+              text-gray-900
+              leading-snug
+            "
+          >
+            {item.title}
+          </h2>
+
+          {/* ===================================================
+              EXCERPT
           =================================================== */}
 
           {item.excerpt && (
 
             <p
-              className={`
+              className="
                 mt-3
                 text-sm
                 text-gray-600
                 leading-relaxed
-                transition-all
-
-                ${
-                  open
-                    ? ""
-                    : "line-clamp-2"
-                }
-              `}
+              "
             >
               {item.excerpt}
             </p>
-
-          )}
-
-          {/* ===================================================
-              EXPANDED BODY
-          =================================================== */}
-
-          {open &&
-            item.content_body && (
-
-            <div
-              className="
-                mt-4
-                pt-4
-                border-t
-                border-gray-100
-              "
-            >
-
-              <div
-                className="
-                  text-sm
-                  text-gray-700
-                  leading-7
-                  whitespace-pre-wrap
-                "
-              >
-                {item.content_body}
-              </div>
-
-            </div>
 
           )}
 
