@@ -199,7 +199,17 @@ def import_raw_route(payload: dict):
     text = payload.get("text")
     id_source = payload.get("id_source")
 
-    count = import_raw_content(text, id_source)
+    # 🔥 NEW
+    content_type = payload.get(
+        "content_type",
+        "ANALYSIS"
+    )
+
+    count = import_raw_content(
+        text=text,
+        id_source=id_source,
+        content_type=content_type,
+    )
 
     return {"imported": count}
 
