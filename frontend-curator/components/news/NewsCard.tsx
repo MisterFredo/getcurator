@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Plus,
   Check,
 } from "lucide-react";
 
@@ -58,11 +57,15 @@ export default function NewsCard({
     );
 
   /* =========================================================
-     LOGO
+     COMPANY
   ========================================================= */
 
   const primaryCompany =
     item.companies?.[0];
+
+  /* =========================================================
+     LOGO
+  ========================================================= */
 
   const logoPath =
     primaryCompany?.media_logo_rectangle_id;
@@ -115,8 +118,8 @@ export default function NewsCard({
 
           <div
             className="
-              w-14
-              h-14
+              w-16
+              h-16
               rounded-xl
               border
               bg-white
@@ -124,6 +127,7 @@ export default function NewsCard({
               flex
               items-center
               justify-center
+              p-2
             "
           >
 
@@ -136,8 +140,8 @@ export default function NewsCard({
                   ""
                 }
                 className="
-                  w-full
-                  h-full
+                  max-w-full
+                  max-h-full
                   object-contain
                 "
               />
@@ -157,16 +161,16 @@ export default function NewsCard({
 
           </div>
 
-          {/* SELECT */}
+          {/* CHECKBOX */}
 
           <button
             onClick={() =>
               onToggleSelect(item)
             }
             className={`
-              w-8
-              h-8
-              rounded-lg
+              w-6
+              h-6
+              rounded
               border
               flex
               items-center
@@ -174,16 +178,14 @@ export default function NewsCard({
               transition
               ${
                 selected
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-emerald-600 border-emerald-600 text-white"
+                  : "bg-white border-gray-300"
               }
             `}
           >
 
-            {selected ? (
-              <Check size={16} />
-            ) : (
-              <Plus size={16} />
+            {selected && (
+              <Check size={14} />
             )}
 
           </button>
