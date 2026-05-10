@@ -42,6 +42,10 @@ export default function StockTable({
         <thead>
           <tr className="bg-gray-100 border-b text-left text-gray-700 sticky top-0">
             <th className="p-2">Source</th>
+
+            {/* 🔥 NEW */}
+            <th className="p-2">Type</th>
+
             <th className="p-2">Titre</th>
             <th className="p-2">Date source</th>
             <th className="p-2">Créé</th>
@@ -61,6 +65,13 @@ export default function StockTable({
             >
               <td className="p-2 text-gray-600">
                 {r.source_name || r.source_id}
+              </td>
+
+              {/* 🔥 NEW */}
+              <td className="p-2">
+                <span className="text-xs px-2 py-1 rounded bg-gray-200">
+                  {r.content_type || "ANALYSIS"}
+                </span>
               </td>
 
               <td className="p-2 font-medium">
