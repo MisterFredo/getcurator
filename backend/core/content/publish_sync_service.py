@@ -214,20 +214,40 @@ def rebuild_content_enriched_row(
 
     query_bq(
         f"""
-        INSERT INTO `{TABLE_CONTENT_ENRICHED}`
+        INSERT INTO `{TABLE_CONTENT_ENRICHED}` (
+
+            id_content,
+            source_id,
+            title,
+            excerpt,
+            content_body,
+            signal_analytique,
+            mecanique_expliquee,
+            enjeu_strategique,
+            point_de_friction,
+            chiffres,
+            acteurs_cites,
+            concepts_llm,
+            solutions_llm,
+            topics_llm,
+            status,
+            is_active,
+            source_date,
+            published_at,
+            created_at,
+            updated_at,
+            universes,
+            topics,
+            companies,
+            solutions,
+            concepts,
+            content_type,
+            id_primary_company
+        )
 
         SELECT
 
             c.ID_CONTENT AS id_content,
-
-            LOWER(
-                COALESCE(
-                    c.CONTENT_TYPE,
-                    'ANALYSIS'
-                )
-            ) AS content_type,
-
-            c.ID_PRIMARY_COMPANY AS id_primary_company,
 
             c.SOURCE_ID AS source_id,
 
@@ -251,11 +271,41 @@ def rebuild_content_enriched_row(
 
             c.CONCEPTS_LLM AS concepts_llm,
 
+            c.SOLUTIONS_LLM AS solutions_llm,
+
+            c.TOPICS_LLM AS topics_llm,
+
+            c.STATUS AS status,
+
+            c.IS_ACTIVE AS is_active,
+
+            c.SOURCE_DATE AS source_date,
+
             c.PUBLISHED_AT AS published_at,
 
             c.CREATED_AT AS created_at,
 
             c.UPDATED_AT AS updated_at,
+
+            -- ====================================================
+            -- UNIVERSES
+            -- ====================================================
+
+            ARRAY(
+                SELECT DISTINCT AS STRUCT
+                    u.ID_UNIVERSE AS id_universe,
+                    u.LABEL AS label
+
+                FROM `{TABLE_CONTENT_COMPANY}` cc
+
+                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
+                  ON cc.ID_COMPANY = cu.ID_COMPANY
+
+                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
+                  ON cu.ID_UNIVERSE = u.ID_UNIVERSE
+
+                WHERE cc.ID_CONTENT = c.ID_CONTENT
+            ) AS universes,
 
             -- ====================================================
             -- TOPICS
@@ -282,7 +332,8 @@ def rebuild_content_enriched_row(
             ARRAY(
                 SELECT AS STRUCT
                     co.ID_COMPANY AS id_company,
-                    co.NAME AS name
+                    co.NAME AS name,
+                    co.MEDIA_LOGO_RECTANGLE_ID AS media_logo_rectangle_id
 
                 FROM `{TABLE_CONTENT_COMPANY}` cc
 
@@ -326,25 +377,14 @@ def rebuild_content_enriched_row(
                 WHERE cp.ID_CONTENT = c.ID_CONTENT
             ) AS concepts,
 
-            -- ====================================================
-            -- UNIVERSES
-            -- ====================================================
+            LOWER(
+                COALESCE(
+                    c.CONTENT_TYPE,
+                    'ANALYSIS'
+                )
+            ) AS content_type,
 
-            ARRAY(
-                SELECT DISTINCT AS STRUCT
-                    u.ID_UNIVERSE AS id_universe,
-                    u.LABEL AS label
-
-                FROM `{TABLE_CONTENT_COMPANY}` cc
-
-                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
-                  ON cc.ID_COMPANY = cu.ID_COMPANY
-
-                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
-                  ON cu.ID_UNIVERSE = u.ID_UNIVERSE
-
-                WHERE cc.ID_CONTENT = c.ID_CONTENT
-            ) AS universes
+            c.ID_PRIMARY_COMPANY AS id_primary_company
 
         FROM `{TABLE_CONTENT}` c
 
