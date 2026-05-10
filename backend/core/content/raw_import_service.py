@@ -297,7 +297,7 @@ def insert_raw_rows(
                 "CONTENT_TYPE": content_type,
 
                 # 🔥 NEW
-                "PRIMARY_COMPANY_ID": id_primary_company,
+                "ID_PRIMARY_COMPANY": id_primary_company,
 
                 "SOURCE_TITLE": r["TITLE"],
 
