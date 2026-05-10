@@ -9,6 +9,9 @@ type Source = {
 
   // 🔥 NEW
   CONTENT_TYPE?: string;
+
+  // 🔥 NEW
+  PRIMARY_COMPANY_NAME?: string;
 };
 
 export default function SourceMonitoringTable({
@@ -25,6 +28,11 @@ export default function SourceMonitoringTable({
           {/* 🔥 NEW */}
           <th className="text-left p-3">Type</th>
 
+          {/* 🔥 NEW */}
+          <th className="text-left p-3">
+            Primary company
+          </th>
+
           <th className="text-left p-3">Last article</th>
           <th className="text-left p-3">Date</th>
           <th className="text-left p-3">Imports (7j)</th>
@@ -34,7 +42,10 @@ export default function SourceMonitoringTable({
 
       <tbody>
         {sources.map((s) => (
-          <tr key={s.SOURCE_ID} className="border-b hover:bg-gray-50">
+          <tr
+            key={s.SOURCE_ID}
+            className="border-b hover:bg-gray-50"
+          >
             <td className="p-3 font-medium">
               {s.SOURCE_NAME}
             </td>
@@ -42,6 +53,11 @@ export default function SourceMonitoringTable({
             {/* 🔥 NEW */}
             <td className="p-3">
               {s.CONTENT_TYPE || "-"}
+            </td>
+
+            {/* 🔥 NEW */}
+            <td className="p-3">
+              {s.PRIMARY_COMPANY_NAME || "-"}
             </td>
 
             <td className="p-3">
