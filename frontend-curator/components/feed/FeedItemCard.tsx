@@ -4,6 +4,12 @@ import type { FeedBadge } from "@/types/feed";
 
 /* ========================================================= */
 
+const GCS_BASE_URL =
+  process.env
+    .NEXT_PUBLIC_GCS_BASE_URL || "";
+
+/* ========================================================= */
+
 type FeedItem = {
   id: string;
 
@@ -78,6 +84,8 @@ function getBadgeClass(type?: string) {
       `;
   }
 }
+
+/* ========================================================= */
 
 function buildBadges(
   item: FeedItem
@@ -155,13 +163,33 @@ export default function FeedItemCard({
   const isNews =
     item.type === "news";
 
+  /* =========================================================
+     LOGO
+  ========================================================= */
+
+  const primaryCompany =
+    item.companies?.[0];
+
+  const logoUrl =
+    isNews &&
+    primaryCompany
+      ?.media_logo_rectangle_id
+
+      ? `${GCS_BASE_URL}/companies/${primaryCompany.media_logo_rectangle_id}`
+
+      : null;
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
 
     <div
       onClick={onClick}
       className="
         cursor-pointer
-        py-3
+        py-4
         border-b
         border-gray-100
         hover:bg-gray-50
@@ -169,140 +197,217 @@ export default function FeedItemCard({
       "
     >
 
-      {/* =====================================================
-          TOP ROW
-      ===================================================== */}
-
       <div className="
         flex
-        items-center
-        gap-2
-        mb-1.5
+        items-start
+        gap-4
       ">
 
-        {/* DATE */}
+        {/* ===================================================
+            NEWS VISUAL
+        =================================================== */}
 
-        {formattedDate && (
+        {isNews && (
 
-          <span className="
-            text-[11px]
-            text-gray-400
+          <div className="
             shrink-0
+            pt-1
           ">
-            {formattedDate}
-          </span>
+
+            <div
+              className="
+                w-12
+                h-12
+                rounded-xl
+                border
+                border-gray-200
+                bg-white
+                overflow-hidden
+                flex
+                items-center
+                justify-center
+              "
+            >
+
+              {logoUrl ? (
+
+                <img
+                  src={logoUrl}
+                  alt={item.title}
+                  className="
+                    w-full
+                    h-full
+                    object-contain
+                  "
+                />
+
+              ) : (
+
+                <div
+                  className="
+                    text-[10px]
+                    text-gray-300
+                  "
+                >
+                  —
+                </div>
+
+              )}
+
+            </div>
+
+          </div>
 
         )}
 
-        {/* TYPE */}
-
-        <span
-          className={`
-            text-[10px]
-            uppercase
-            tracking-wide
-            px-2
-            py-[2px]
-            rounded-full
-            font-medium
-            shrink-0
-
-            ${
-              isNews
-                ? `
-                  bg-blue-50
-                  text-blue-700
-                `
-                : `
-                  bg-gray-100
-                  text-gray-700
-                `
-            }
-          `}
-        >
-          {isNews
-            ? "News"
-            : "Analysis"}
-        </span>
-
-      </div>
-
-      {/* =====================================================
-          TITLE
-      ===================================================== */}
-
-      <h3
-        className="
-          text-[14px]
-          font-medium
-          text-gray-900
-          leading-snug
-        "
-      >
-        {item.title}
-      </h3>
-
-      {/* =====================================================
-          EXCERPT
-      ===================================================== */}
-
-      {item.excerpt && (
-
-        <p className="
-          mt-1.5
-          text-sm
-          text-gray-600
-          leading-relaxed
-          line-clamp-2
-        ">
-          {item.excerpt}
-        </p>
-
-      )}
-
-      {/* =====================================================
-          BADGES
-      ===================================================== */}
-
-      {badges.length > 0 && (
+        {/* ===================================================
+            CONTENT
+        =================================================== */}
 
         <div className="
-          flex
-          flex-wrap
-          gap-1.5
-          mt-2
+          flex-1
+          min-w-0
         ">
 
-          {badges.map((b, i) => {
+          {/* =================================================
+              TOP ROW
+          ================================================= */}
 
-            const keyValue =
-              "id" in b && b.id
-                ? b.id
-                : b.label;
+          <div className="
+            flex
+            items-center
+            gap-2
+            mb-1.5
+            flex-wrap
+          ">
 
-            return (
+            {/* DATE */}
 
-              <span
-                key={`${b.type}-${keyValue}-${i}`}
-                className={`
-                  px-2
-                  py-[3px]
-                  text-[10px]
-                  rounded-full
-                  uppercase
-                  tracking-wide
-                  ${getBadgeClass(b.type)}
-                `}
-              >
-                {b.label}
+            {formattedDate && (
+
+              <span className="
+                text-[11px]
+                text-gray-400
+                shrink-0
+              ">
+                {formattedDate}
               </span>
 
-            );
-          })}
+            )}
+
+            {/* TYPE */}
+
+            <span
+              className={`
+                text-[10px]
+                uppercase
+                tracking-wide
+                px-2
+                py-[2px]
+                rounded-full
+                font-medium
+                shrink-0
+
+                ${
+                  isNews
+                    ? `
+                      bg-blue-50
+                      text-blue-700
+                    `
+                    : `
+                      bg-gray-100
+                      text-gray-700
+                    `
+                }
+              `}
+            >
+              {isNews
+                ? "News"
+                : "Analysis"}
+            </span>
+
+          </div>
+
+          {/* =================================================
+              TITLE
+          ================================================= */}
+
+          <h3
+            className="
+              text-[14px]
+              font-medium
+              text-gray-900
+              leading-snug
+            "
+          >
+            {item.title}
+          </h3>
+
+          {/* =================================================
+              EXCERPT
+          ================================================= */}
+
+          {item.excerpt && (
+
+            <p className="
+              mt-1.5
+              text-sm
+              text-gray-600
+              leading-relaxed
+              line-clamp-2
+            ">
+              {item.excerpt}
+            </p>
+
+          )}
+
+          {/* =================================================
+              BADGES
+          ================================================= */}
+
+          {badges.length > 0 && (
+
+            <div className="
+              flex
+              flex-wrap
+              gap-1.5
+              mt-2
+            ">
+
+              {badges.map((b, i) => {
+
+                const keyValue =
+                  "id" in b && b.id
+                    ? b.id
+                    : b.label;
+
+                return (
+
+                  <span
+                    key={`${b.type}-${keyValue}-${i}`}
+                    className={`
+                      px-2
+                      py-[3px]
+                      text-[10px]
+                      rounded-full
+                      uppercase
+                      tracking-wide
+                      ${getBadgeClass(b.type)}
+                    `}
+                  >
+                    {b.label}
+                  </span>
+
+                );
+              })}
+
+            </div>
+
+          )}
 
         </div>
 
-      )}
+      </div>
 
     </div>
   );
