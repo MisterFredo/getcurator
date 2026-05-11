@@ -38,6 +38,15 @@ from core.content.service import (
     bulk_ready,
 )
 
+# ============================================================
+# 🔥 NEW — SYNC SERVICES
+# ============================================================
+
+from core.content.sync_service import (
+    sync_content,
+    bulk_sync_contents,
+)
+
 from core.content.ai import generate_summary
 from core.content.news_ai import generate_news
 from core.content.raw_import_service import import_raw_content
@@ -54,97 +63,217 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # CREATE CONTENT
 # ============================================================
+
 @router.post("/create")
 def create_route(data: ContentCreate):
+
     try:
+
         content_id = create_content(data)
-        return {"status": "ok", "id_content": content_id}
+
+        return {
+            "status": "ok",
+            "id_content": content_id
+        }
+
     except Exception as e:
-        logger.exception("Erreur création content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur création content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # LIST CONTENTS (ADMIN)
 # ============================================================
+
 @router.get("/list")
 def list_route():
+
     try:
+
         contents = list_contents_admin()
-        return {"status": "ok", "contents": contents}
+
+        return {
+            "status": "ok",
+            "contents": contents
+        }
+
     except Exception as e:
-        logger.exception("Erreur liste content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur liste content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # CONTENT STATS (ADMIN)
 # ============================================================
+
 @router.get("/admin/stats")
 def stats_route():
+
     try:
+
         stats = get_content_stats()
-        return {"status": "ok", "stats": stats}
+
+        return {
+            "status": "ok",
+            "stats": stats
+        }
+
     except Exception as e:
-        logger.exception("Erreur stats content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur stats content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # LIST SOURCES
 # ============================================================
+
 @router.get("/source/list")
 def list_sources():
+
     try:
+
         rows = list_active_sources()
-        return {"status": "ok", "sources": rows}
+
+        return {
+            "status": "ok",
+            "sources": rows
+        }
+
     except Exception as e:
-        logger.exception("Erreur liste sources")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur liste sources"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # UPDATE CONTENT
 # ============================================================
+
 @router.put("/update/{id_content}")
-def update_route(id_content: str, data: ContentUpdate):
+def update_route(
+    id_content: str,
+    data: ContentUpdate
+):
+
     try:
-        update_content(id_content, data)
-        return {"status": "ok", "updated": True}
+
+        update_content(
+            id_content,
+            data
+        )
+
+        return {
+            "status": "ok",
+            "updated": True
+        }
+
     except Exception as e:
-        logger.exception("Erreur mise à jour content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur mise à jour content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # ARCHIVE CONTENT
 # ============================================================
+
 @router.post("/archive/{id_content}")
 def archive_route(id_content: str):
+
     try:
+
         archive_content(id_content)
-        return {"status": "ok", "archived": True}
+
+        return {
+            "status": "ok",
+            "archived": True
+        }
+
     except Exception as e:
-        logger.exception("Erreur archivage content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur archivage content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# DELETE CONTENT
+# ============================================================
 
 @router.delete("/delete/{id_content}")
 def delete_route(id_content: str):
+
     try:
-        from core.content.service import delete_content
+
         delete_content(id_content)
-        return {"status": "ok", "deleted": True}
+
+        return {
+            "status": "ok",
+            "deleted": True
+        }
+
     except Exception as e:
-        logger.exception("Erreur suppression content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur suppression content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # PUBLISH CONTENT
 # ============================================================
+
 @router.post("/publish/{id_content}")
-def publish_route(id_content: str, payload: ContentPublish):
+def publish_route(
+    id_content: str,
+    payload: ContentPublish
+):
+
     try:
+
         status = publish_content(
             id_content=id_content,
             published_at=payload.publish_at,
@@ -156,14 +285,92 @@ def publish_route(id_content: str, payload: ContentPublish):
         }
 
     except Exception as e:
-        logger.exception("Erreur publication content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur publication content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# 🔥 NEW — SYNC CONTENT
+# ============================================================
+
+@router.post("/sync/{id_content}")
+def sync_route(id_content: str):
+
+    try:
+
+        result = sync_content(
+            id_content=id_content,
+        )
+
+        return {
+            "status": "ok",
+            **result
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur sync content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# 🔥 NEW — BULK SYNC CONTENTS
+# ============================================================
+
+@router.post("/bulk/sync")
+def bulk_sync_route(payload: BulkIdsRequest):
+
+    try:
+
+        if not payload.ids:
+
+            raise ValueError(
+                "No ids provided"
+            )
+
+        result = bulk_sync_contents(
+            payload.ids
+        )
+
+        return {
+            "status": "ok",
+            **result
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur bulk sync"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # STORE RAW CONTENT
 # ============================================================
+
 @router.post("/store-raw")
-def store_raw_route(payload: ContentRawCreate):
+def store_raw_route(
+    payload: ContentRawCreate
+):
+
     try:
 
         raw_id = store_raw_content(
@@ -176,10 +383,8 @@ def store_raw_route(payload: ContentRawCreate):
 
             date_source=payload.date_source,
 
-            # 🔥 NEW
             content_type=payload.content_type,
 
-            # 🔥 NEW
             id_primary_company=payload.id_primary_company,
         )
 
@@ -189,8 +394,16 @@ def store_raw_route(payload: ContentRawCreate):
         }
 
     except Exception as e:
-        logger.exception("Erreur stockage raw content")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur stockage raw content"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # IMPORT RAW CONTENT
@@ -200,15 +413,14 @@ def store_raw_route(payload: ContentRawCreate):
 def import_raw_route(payload: dict):
 
     text = payload.get("text")
+
     id_source = payload.get("id_source")
 
-    # 🔥 NEW
     content_type = payload.get(
         "content_type",
         "ANALYSIS"
     )
 
-    # 🔥 NEW
     id_primary_company = payload.get(
         "id_primary_company"
     )
@@ -217,16 +429,18 @@ def import_raw_route(payload: dict):
         text=text,
         id_source=id_source,
         content_type=content_type,
-
-        # 🔥 NEW
         id_primary_company=id_primary_company,
     )
 
-    return {"imported": count}
+    return {
+        "imported": count
+    }
+
 
 # ============================================================
 # LIST RAW STOCK
 # ============================================================
+
 @router.get("/raw/stock")
 def raw_stock_route(
     status: Optional[str] = None,
@@ -236,7 +450,9 @@ def raw_stock_route(
     limit: int = 50,
     offset: int = 0,
 ):
+
     try:
+
         result = list_raw_stock(
             status=status,
             source_id=source_id,
@@ -253,8 +469,16 @@ def raw_stock_route(
         }
 
     except Exception as e:
-        logger.exception("Erreur stock raw")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur stock raw"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # RAW DETAIL
@@ -262,13 +486,17 @@ def raw_stock_route(
 
 @router.get("/raw/detail/{id_raw}")
 def raw_detail_route(id_raw: str):
+
     try:
-        from core.content.service import get_raw_detail
 
         raw = get_raw_detail(id_raw)
 
         if not raw:
-            raise HTTPException(404, "RAW introuvable")
+
+            raise HTTPException(
+                404,
+                "RAW introuvable"
+            )
 
         return {
             "status": "ok",
@@ -276,38 +504,69 @@ def raw_detail_route(id_raw: str):
         }
 
     except HTTPException:
+
         raise
+
     except Exception as e:
-        logger.exception("Erreur récupération RAW detail")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur récupération RAW detail"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # DESTOCK RAW (BATCH)
 # ============================================================
-@router.post("/raw/destock")
-def destock_raw_route(payload: ContentRawDestockRequest):
 
-    # 🔹 Si on destock un RAW précis → on garde le comportement actuel
+@router.post("/raw/destock")
+def destock_raw_route(
+    payload: ContentRawDestockRequest
+):
+
+    # ========================================================
+    # SINGLE RAW
+    # ========================================================
+
     if payload.id_raw:
+
         result = destock_raw_contents(
             limit=1,
             specific_id=payload.id_raw
         )
-        return {"status": "ok", "processed": result}
 
-    # 🔹 Sinon → on destock TOUT en batchs successifs
+        return {
+            "status": "ok",
+            "processed": result
+        }
+
+    # ========================================================
+    # FULL DESTOCK
+    # ========================================================
+
     result = destock_all_raw_contents(
         batch_size=payload.limit or 50
     )
 
-    return {"status": "ok", "processed": result}
+    return {
+        "status": "ok",
+        "processed": result
+    }
+
 
 # ============================================================
 # DELETE RAW CONTENT
 # ============================================================
+
 @router.delete("/raw/delete/{id_raw}")
 def delete_raw_route(id_raw: str):
+
     try:
+
         delete_raw_content(id_raw)
 
         return {
@@ -316,21 +575,39 @@ def delete_raw_route(id_raw: str):
         }
 
     except Exception as e:
-        logger.exception("Erreur suppression RAW")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur suppression RAW"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # IMPORT RAW CONTENT FROM URLS (BATCH)
 # ============================================================
 
 @router.post("/raw/import-urls")
-def import_urls_route(payload: ImportUrlsRequest):
+def import_urls_route(
+    payload: ImportUrlsRequest
+):
 
     if not payload.urls_text.strip():
-        raise HTTPException(400, "URLs manquantes")
+
+        raise HTTPException(
+            400,
+            "URLs manquantes"
+        )
 
     if not payload.id_source:
-        raise HTTPException(400, "Source obligatoire")
+
+        raise HTTPException(
+            400,
+            "Source obligatoire"
+        )
 
     try:
 
@@ -338,8 +615,6 @@ def import_urls_route(payload: ImportUrlsRequest):
             urls_text=payload.urls_text,
             id_source=payload.id_source,
             content_type=payload.content_type,
-
-            # 🔥 NEW
             id_primary_company=payload.id_primary_company,
         )
 
@@ -349,8 +624,20 @@ def import_urls_route(payload: ImportUrlsRequest):
         }
 
     except Exception as e:
-        logger.exception("Erreur import URLs")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur import URLs"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# UPDATE RAW
+# ============================================================
 
 @router.put("/raw/update/{id_raw}")
 def update_raw(
@@ -358,7 +645,9 @@ def update_raw(
     payload: ContentRawUpdate
 ):
 
-    from core.content.service import update_raw_content
+    from core.content.service import (
+        update_raw_content
+    )
 
     try:
 
@@ -372,37 +661,59 @@ def update_raw(
 
             raw_text=payload.raw_text,
 
-            # 🔥 NEW
             content_type=payload.content_type,
 
-            # 🔥 NEW
             id_primary_company=payload.id_primary_company,
         )
 
-        return {"status": "ok"}
+        return {
+            "status": "ok"
+        }
 
     except Exception as e:
-        raise HTTPException(400, str(e))
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # RAW STATS (ADMIN)
 # ============================================================
+
 @router.get("/raw/admin/stats")
 def raw_stats_route():
+
     try:
+
         stats = get_raw_stats()
-        return {"status": "ok", "stats": stats}
+
+        return {
+            "status": "ok",
+            "stats": stats
+        }
+
     except Exception as e:
-        logger.exception("Erreur stats raw")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur stats raw"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # SOURCE MONITORING
 # ============================================================
+
 @router.get("/source/monitoring")
 def source_monitoring_route():
+
     try:
-        from core.content.service import get_source_monitoring
 
         rows = get_source_monitoring()
 
@@ -412,24 +723,41 @@ def source_monitoring_route():
         }
 
     except Exception as e:
-        logger.exception("Erreur source monitoring")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur source monitoring"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # IA — GENERATE CONTENT
 # ============================================================
+
 @router.post("/ai/generate")
-def ai_generate(payload: ContentSummaryRequest):
+def ai_generate(
+    payload: ContentSummaryRequest
+):
 
     if not payload.source_text.strip():
-        raise HTTPException(400, "Source manquante")
+
+        raise HTTPException(
+            400,
+            "Source manquante"
+        )
 
     try:
 
-        # 🔥 NEW
         if (
-            getattr(payload, "content_type", "ANALYSIS")
+            getattr(
+                payload,
+                "content_type",
+                "ANALYSIS"
+            )
             == "NEWS"
         ):
 
@@ -445,8 +773,14 @@ def ai_generate(payload: ContentSummaryRequest):
                 source_text=payload.source_text,
             )
 
-        if not isinstance(result, dict):
-            raise ValueError("Réponse IA invalide")
+        if not isinstance(
+            result,
+            dict
+        ):
+
+            raise ValueError(
+                "Réponse IA invalide"
+            )
 
         return {
             "status": "ok",
@@ -454,30 +788,61 @@ def ai_generate(payload: ContentSummaryRequest):
         }
 
     except Exception as e:
-        logger.exception("Erreur génération contenu IA")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur génération contenu IA"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 
 # ============================================================
 # GET ONE CONTENT (ADMIN)
 # ============================================================
+
 @router.get("/{id_content}")
 def get_route(id_content: str):
 
     content = get_content(id_content)
 
     if not content:
-        raise HTTPException(404, "Content introuvable")
 
-    return {"status": "ok", "content": content}
+        raise HTTPException(
+            404,
+            "Content introuvable"
+        )
+
+    return {
+        "status": "ok",
+        "content": content
+    }
+
+
+# ============================================================
+# MARK READY
+# ============================================================
 
 @router.post("/ready/{id_content}")
 def mark_ready_route(id_content: str):
+
     try:
+
         mark_content_ready(id_content)
-        return {"status": "ok"}
+
+        return {
+            "status": "ok"
+        }
+
     except Exception as e:
-        raise HTTPException(400, str(e))
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # RETRY RAW CONTENT
@@ -485,20 +850,47 @@ def mark_ready_route(id_content: str):
 
 @router.post("/raw/retry/{id_raw}")
 def retry_raw_route(id_raw: str):
+
     try:
+
         retry_raw_content(id_raw)
-        return {"status": "ok"}
+
+        return {
+            "status": "ok"
+        }
+
     except Exception as e:
-        logger.exception("Erreur retry raw")
-        raise HTTPException(400, str(e))
+
+        logger.exception(
+            "Erreur retry raw"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# BULK READY
+# ============================================================
 
 @router.post("/bulk/ready")
-def bulk_ready_route(payload: BulkIdsRequest):
-    try:
-        if not payload.ids:
-            raise ValueError("No ids provided")
+def bulk_ready_route(
+    payload: BulkIdsRequest
+):
 
-        updated = bulk_ready(payload.ids)
+    try:
+
+        if not payload.ids:
+
+            raise ValueError(
+                "No ids provided"
+            )
+
+        updated = bulk_ready(
+            payload.ids
+        )
 
         return {
             "status": "ok",
@@ -506,16 +898,36 @@ def bulk_ready_route(payload: BulkIdsRequest):
         }
 
     except Exception as e:
-        raise HTTPException(400, str(e))
 
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+
+# ============================================================
+# BULK PUBLISH
+# ============================================================
 
 @router.post("/bulk/publish")
-def bulk_publish_route(payload: BulkIdsRequest):
+def bulk_publish_route(
+    payload: BulkIdsRequest
+):
+
     try:
-        result = bulk_publish(payload.ids)
+
+        result = bulk_publish(
+            payload.ids
+        )
+
         return {
             "status": "ok",
             **result
         }
+
     except Exception as e:
-        raise HTTPException(400, str(e))
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
