@@ -232,36 +232,36 @@ export default function FeedItemCard({
 
           {/* LOGO */}
 
-          {logoUrl && (
+            {isNews && logoUrl && (
 
-            <div
-              className="
-                w-12
-                h-12
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                overflow-hidden
-                flex
-                items-center
-                justify-center
-              "
-            >
-
-              <img
-                src={logoUrl}
-                alt={item.title}
+              <div
                 className="
-                  w-full
-                  h-full
-                  object-contain
+                  w-12
+                  h-12
+                  rounded-xl
+                  border
+                  border-gray-200
+                  bg-white
+                  overflow-hidden
+                  flex
+                  items-center
+                  justify-center
                 "
-              />
+              >
 
-            </div>
+                <img
+                  src={logoUrl}
+                  alt={item.title}
+                  className="
+                    w-full
+                    h-full
+                    object-contain
+                  "
+                />
 
-          )}
+              </div>
+
+            )}
 
         </div>
 
