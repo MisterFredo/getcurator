@@ -305,7 +305,12 @@ export default function FeedPage() {
       <div className="space-y-6">
 
         <div>
-          <h1 className="text-5xl font-semibold tracking-tight text-[#111827]">
+          <h1 className="
+            text-4xl
+            font-semibold
+            tracking-tight
+            text-[#111827]
+          ">
             Analysis
           </h1>
         </div>
