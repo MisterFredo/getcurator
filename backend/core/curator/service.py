@@ -42,6 +42,10 @@ def build_content_type_filter() -> str:
 # SEARCH
 # ============================================================
 
+# ============================================================
+# SEARCH
+# ============================================================
+
 def search(
     q: str,
     limit: int = 20,
@@ -128,6 +132,26 @@ def search(
 
                 ELSE 0
             END
+
+            +
+
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM UNNEST(c.topics) t
+                    WHERE LOWER(
+                        COALESCE(
+                            t.label,
+                            t.name
+                        )
+                    )
+                    LIKE LOWER(CONCAT('%', @query, '%'))
+                )
+                THEN 2
+
+                ELSE 0
+            END
+
         ) AS score
 
     FROM `{TABLE_CONTENT_ENRICHED}` c
@@ -152,6 +176,18 @@ def search(
             FROM UNNEST(c.solutions) s
             WHERE LOWER(s.name)
                 LIKE LOWER(CONCAT('%', @query, '%'))
+        )
+
+        OR EXISTS (
+            SELECT 1
+            FROM UNNEST(c.topics) t
+            WHERE LOWER(
+                COALESCE(
+                    t.label,
+                    t.name
+                )
+            )
+            LIKE LOWER(CONCAT('%', @query, '%'))
         )
     )
 
