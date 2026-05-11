@@ -174,9 +174,7 @@ export default function NewsCard({
   return (
 
     <div
-      onClick={handleOpen}
       className="
-        cursor-pointer
         py-4
         border-b
         border-gray-100
@@ -272,10 +270,14 @@ export default function NewsCard({
             CONTENT
         =================================================== */}
 
-        <div className="
-          flex-1
-          min-w-0
-        ">
+        <div
+          onClick={handleOpen}
+          className="
+            flex-1
+            min-w-0
+            cursor-pointer
+          "
+        >
 
           {/* =================================================
               DATE
