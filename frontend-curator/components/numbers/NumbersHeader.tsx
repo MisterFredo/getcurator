@@ -29,19 +29,6 @@ export default function NumbersHeader({
 
   return (
     <div className="space-y-3">
-
-      {/* TITLE */}
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">
-          Numbers
-        </h1>
-
-        <p className="text-sm text-gray-500">
-          Accédez aux indicateurs clés du marché.
-          Sélectionnez et structurez vos données.
-        </p>
-      </div>
-
       {/* SEARCH */}
       <div className="flex items-center gap-3">
         <input
