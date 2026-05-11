@@ -5,14 +5,25 @@ import re
 
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq, get_bigquery_client
-from api.matching.models import CompanyMatch, SolutionMatch
-from core.matching.service_solution import match_solution
 
+from api.matching.models import (
+    CompanyMatch,
+    SolutionMatch,
+)
+
+from core.matching.service_solution import (
+    match_solution,
+)
 
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-TABLE_ALIAS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
-TABLE_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 
+TABLE_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+)
 
 # ===============================================
 # NORMALISATION
@@ -33,11 +44,20 @@ def normalize(text: str) -> str:
 
     return text.strip()
 
-def find_match(name: str, company_map: Dict, solution_map: Dict):
+# ===============================================
+# FIND MATCH
+# ===============================================
+
+def find_match(
+    name: str,
+    company_map: Dict,
+    solution_map: Dict,
+):
 
     norm = normalize(name)
 
     if norm in company_map:
+
         return {
             "type_hint": "company",
             "suggested_id": company_map[norm]["id"],
@@ -45,6 +65,7 @@ def find_match(name: str, company_map: Dict, solution_map: Dict):
         }
 
     if norm in solution_map:
+
         return {
             "type_hint": "solution",
             "suggested_id": solution_map[norm]["id"],
@@ -56,7 +77,6 @@ def find_match(name: str, company_map: Dict, solution_map: Dict):
         "suggested_id": None,
         "suggested_label": None
     }
-
 
 # ===============================================
 # LIST UNMATCHED COMPANIES
@@ -72,10 +92,13 @@ def list_unmatched_companies() -> List[Dict]:
     SELECT
         company,
         COUNT(*) AS count
+
     FROM `{TABLE_CONTENT}`,
     UNNEST(ACTEURS_CITES) AS company
+
     WHERE company IS NOT NULL
     AND TRIM(company) != ""
+
     GROUP BY company
     """
 
@@ -102,7 +125,7 @@ def list_unmatched_companies() -> List[Dict]:
     }
 
     # =====================================================
-    # LOAD COMPANIES (MAP)
+    # LOAD COMPANIES
     # =====================================================
 
     company_rows = client.query(f"""
@@ -122,7 +145,7 @@ def list_unmatched_companies() -> List[Dict]:
     company_set = set(company_map.keys())
 
     # =====================================================
-    # LOAD SOLUTIONS (MAP)
+    # LOAD SOLUTIONS
     # =====================================================
 
     solution_rows = client.query(f"""
@@ -142,12 +165,13 @@ def list_unmatched_companies() -> List[Dict]:
     solution_set = set(solution_map.keys())
 
     # =====================================================
-    # HELPER MATCH
+    # LOCAL MATCH HELPER
     # =====================================================
 
-    def find_match(norm: str):
+    def local_find_match(norm: str):
 
         if norm in company_map:
+
             return {
                 "type_hint": "company",
                 "suggested_id": company_map[norm]["id"],
@@ -155,6 +179,7 @@ def list_unmatched_companies() -> List[Dict]:
             }
 
         if norm in solution_map:
+
             return {
                 "type_hint": "solution",
                 "suggested_id": solution_map[norm]["id"],
@@ -172,6 +197,7 @@ def list_unmatched_companies() -> List[Dict]:
     # =====================================================
 
     results = []
+
     seen = set()
 
     for r in rows:
@@ -187,20 +213,19 @@ def list_unmatched_companies() -> List[Dict]:
         if norm in alias_set:
             continue
 
-        # 🔴 déduplication
+        # 🔴 dédup
         if norm in seen:
             continue
 
         seen.add(norm)
 
-        # 🔥 suggestion AVANT filtrage
-        match = find_match(norm)
+        match = local_find_match(norm)
 
-        # 🔴 déjà une company existante
+        # 🔴 déjà company existante
         if norm in company_set:
             continue
 
-        # 🔴 fallback → en réalité une solution
+        # 🔴 déjà solution existante
         if norm in solution_set:
             continue
 
@@ -213,11 +238,14 @@ def list_unmatched_companies() -> List[Dict]:
         })
 
     # =====================================================
-    # TRI FINAL
+    # SORT
     # =====================================================
 
     results.sort(
-        key=lambda x: (-x["count"], x["value"].upper())
+        key=lambda x: (
+            -x["count"],
+            x["value"].upper()
+        )
     )
 
     return results
@@ -236,16 +264,29 @@ def match_company(data: CompanyMatch):
         raise ValueError("alias vide")
 
     def norm_expr(field: str) -> str:
-        return f"REGEXP_REPLACE(UPPER({field}), r'[^A-Z0-9 ]', '')"
+
+        return f"""
+        REGEXP_REPLACE(
+            UPPER({field}),
+            r'[^A-Z0-9 ]',
+            ''
+        )
+        """
 
     # =====================================================
-    # 🔥 STEP 0 — FALLBACK SOLUTION AUTO
+    # FALLBACK SOLUTION AUTO
     # =====================================================
 
     fallback_sql = f"""
     SELECT ID_SOLUTION
+
     FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION`
-    WHERE {norm_expr("NAME")} = {norm_expr("CAST(@alias AS STRING)")}
+
+    WHERE
+        {norm_expr("NAME")}
+        =
+        {norm_expr("CAST(@alias AS STRING)")}
+
     LIMIT 1
     """
 
@@ -253,26 +294,49 @@ def match_company(data: CompanyMatch):
         fallback_sql,
         job_config=bigquery.QueryJobConfig(
             query_parameters=[
-                bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                bigquery.ScalarQueryParameter(
+                    "alias",
+                    "STRING",
+                    alias
+                ),
             ]
         ),
     )
 
-    fallback_rows = list(fallback_job.result())
+    fallback_rows = list(
+        fallback_job.result()
+    )
 
     if fallback_rows and not data.id_company:
+
         solution_id = fallback_rows[0]["ID_SOLUTION"]
 
-        # 👉 1. NO_MATCH côté company (FIX ICI)
-        sql_ignore = f"""
-        INSERT INTO `{TABLE_ALIAS}` (ALIAS, MATCH_STATUS)
+        # =================================================
+        # COMPANY → NO_MATCH
+        # =================================================
 
-        SELECT @alias, 'NO_MATCH'
+        sql_ignore = f"""
+        INSERT INTO `{TABLE_ALIAS}` (
+            ALIAS,
+            MATCH_STATUS
+        )
+
+        SELECT
+            @alias,
+            'NO_MATCH'
+
         FROM UNNEST([1]) AS _
+
         WHERE NOT EXISTS (
+
             SELECT 1
+
             FROM `{TABLE_ALIAS}`
-            WHERE {norm_expr("ALIAS")} = {norm_expr("CAST(@alias AS STRING)")}
+
+            WHERE
+                {norm_expr("ALIAS")}
+                =
+                {norm_expr("CAST(@alias AS STRING)")}
         )
         """
 
@@ -280,12 +344,19 @@ def match_company(data: CompanyMatch):
             sql_ignore,
             job_config=bigquery.QueryJobConfig(
                 query_parameters=[
-                    bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias
+                    ),
                 ]
             ),
         ).result()
 
-        # 👉 2. MATCH côté solution
+        # =================================================
+        # AUTO MATCH SOLUTION
+        # =================================================
+
         match_solution(
             SolutionMatch(
                 alias=alias,
@@ -302,16 +373,28 @@ def match_company(data: CompanyMatch):
 
     if data.action == "IGNORE":
 
-        # FIX ICI AUSSI
         sql_ignore = f"""
-        INSERT INTO `{TABLE_ALIAS}` (ALIAS, MATCH_STATUS)
+        INSERT INTO `{TABLE_ALIAS}` (
+            ALIAS,
+            MATCH_STATUS
+        )
 
-        SELECT @alias, 'NO_MATCH'
+        SELECT
+            @alias,
+            'NO_MATCH'
+
         FROM UNNEST([1]) AS _
+
         WHERE NOT EXISTS (
+
             SELECT 1
+
             FROM `{TABLE_ALIAS}`
-            WHERE {norm_expr("ALIAS")} = {norm_expr("CAST(@alias AS STRING)")}
+
+            WHERE
+                {norm_expr("ALIAS")}
+                =
+                {norm_expr("CAST(@alias AS STRING)")}
         )
         """
 
@@ -319,7 +402,11 @@ def match_company(data: CompanyMatch):
             sql_ignore,
             job_config=bigquery.QueryJobConfig(
                 query_parameters=[
-                    bigquery.ScalarQueryParameter("alias", "STRING", alias),
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias
+                    ),
                 ]
             ),
         ).result()
@@ -327,7 +414,7 @@ def match_company(data: CompanyMatch):
         return
 
     # =====================================================
-    # MATCH NORMAL
+    # MATCH
     # =====================================================
 
     if data.action != "MATCH":
@@ -336,19 +423,30 @@ def match_company(data: CompanyMatch):
     if not data.id_company:
         raise ValueError("id_company obligatoire")
 
-    # ---------------------------------------
-    # ALIAS
-    # ---------------------------------------
-
     sql_alias = f"""
-    INSERT INTO `{TABLE_ALIAS}` (ALIAS, ID_COMPANY, MATCH_STATUS)
+    INSERT INTO `{TABLE_ALIAS}` (
+        ALIAS,
+        ID_COMPANY,
+        MATCH_STATUS
+    )
 
-    SELECT @alias, @id_company, 'MATCH'
+    SELECT
+        @alias,
+        @id_company,
+        'MATCH'
+
     FROM UNNEST([1]) AS _
+
     WHERE NOT EXISTS (
+
         SELECT 1
+
         FROM `{TABLE_ALIAS}`
-        WHERE {norm_expr("ALIAS")} = {norm_expr("CAST(@alias AS STRING)")}
+
+        WHERE
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@alias AS STRING)")}
     )
     """
 
@@ -356,45 +454,24 @@ def match_company(data: CompanyMatch):
         sql_alias,
         job_config=bigquery.QueryJobConfig(
             query_parameters=[
-                bigquery.ScalarQueryParameter("alias", "STRING", alias),
-                bigquery.ScalarQueryParameter("id_company", "STRING", data.id_company),
+                bigquery.ScalarQueryParameter(
+                    "alias",
+                    "STRING",
+                    alias
+                ),
+                bigquery.ScalarQueryParameter(
+                    "id_company",
+                    "STRING",
+                    data.id_company
+                ),
             ]
         ),
     ).result()
 
-    # ---------------------------------------
-    # RELATION
-    # ---------------------------------------
-
-    sql_relation = f"""
-    INSERT INTO `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY`
-    (ID_CONTENT, ID_COMPANY)
-
-    SELECT DISTINCT
-        c.ID_CONTENT,
-        @id_company
-
-    FROM `{TABLE_CONTENT}` c,
-    UNNEST(c.ACTEURS_CITES) AS company
-
-    WHERE company IS NOT NULL
-    AND TRIM(company) != ""
-    AND {norm_expr("company")} = {norm_expr("CAST(@alias AS STRING)")}
-
-    AND NOT EXISTS (
-        SELECT 1
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY` t
-        WHERE t.ID_CONTENT = c.ID_CONTENT
-        AND t.ID_COMPANY = @id_company
+    print(
+        "✅ COMPANY MATCHED:",
+        {
+            "alias": alias,
+            "id_company": data.id_company,
+        }
     )
-    """
-
-    client.query(
-        sql_relation,
-        job_config=bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("alias", "STRING", alias),
-                bigquery.ScalarQueryParameter("id_company", "STRING", data.id_company),
-            ]
-        ),
-    ).result()
