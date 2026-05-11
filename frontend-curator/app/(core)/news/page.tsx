@@ -262,70 +262,30 @@ export default function NewsPage() {
   return (
 
     <div className="
-      bg-[#F5F6F8]
-      rounded-2xl
-      border
-      border-gray-200
-      p-6
+      grid
+      grid-cols-1
+      gap-8
+      items-start
     ">
 
       <div className="
-        bg-white
-        rounded-2xl
-        border
-        border-gray-200
-        p-6
+        space-y-6
       ">
 
         {/* ===================================================
-            HEADER
+            TITLE
         =================================================== */}
 
-        <div className="
-          flex
-          items-start
-          justify-between
-          gap-6
-          mb-6
-        ">
+        <div>
 
-          <div>
-
-            <h1 className="
-              text-4xl
-              font-semibold
-              tracking-tight
-              text-[#111827]
-            ">
-              News
-            </h1>
-
-          </div>
-
-          <div className="
-            shrink-0
-            text-right
+          <h1 className="
+            text-2xl
+            font-semibold
+            tracking-tight
+            text-[#111827]
           ">
-
-            <div className="
-              text-3xl
-              font-semibold
-              text-gray-900
-            ">
-              {total}
-            </div>
-
-            <div className="
-              text-xs
-              uppercase
-              tracking-wide
-              text-gray-400
-              mt-1
-            ">
-              News tracked
-            </div>
-
-          </div>
+            News
+          </h1>
 
         </div>
 
@@ -339,7 +299,6 @@ export default function NewsPage() {
             flex
             flex-wrap
             gap-2
-            mb-5
           ">
 
             <button
@@ -368,7 +327,7 @@ export default function NewsPage() {
                 }
               `}
             >
-              All
+              Tous
             </button>
 
             {universes.map((u) => (
@@ -419,8 +378,9 @@ export default function NewsPage() {
         =================================================== */}
 
         <div className="
-          relative
-          mb-8
+          flex
+          items-center
+          gap-3
         ">
 
           <input
@@ -441,24 +401,68 @@ export default function NewsPage() {
               }
             }}
             placeholder="
-              Search companies, topics,
-              products, concepts...
+              Rechercher (Amazon, CTV, Retail media...)
             "
             className="
-              w-full
-              h-12
+              flex-1
+              h-11
               border
               border-gray-200
               rounded-xl
               px-4
               text-sm
               bg-white
-              shadow-sm
               focus:outline-none
               focus:ring-2
               focus:ring-gray-200
             "
           />
+
+          <button
+            onClick={() =>
+              load(true, query)
+            }
+            className="
+              h-11
+              px-5
+              rounded-xl
+              bg-black
+              text-white
+              text-sm
+              font-medium
+              hover:opacity-90
+              transition
+            "
+          >
+            Rechercher
+          </button>
+
+        </div>
+
+        {/* ===================================================
+            RESULTS
+        =================================================== */}
+
+        <div className="
+          flex
+          items-center
+          justify-between
+        ">
+
+          <div className="
+            text-sm
+            font-semibold
+            text-gray-700
+          ">
+            Results
+          </div>
+
+          <div className="
+            text-xs
+            text-gray-400
+          ">
+            {total} results
+          </div>
 
         </div>
 
