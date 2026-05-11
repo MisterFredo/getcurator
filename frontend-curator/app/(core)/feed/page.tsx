@@ -302,7 +302,13 @@ export default function FeedPage() {
   return (
     <div className="grid grid-cols-1 gap-8 items-start">
 
-      <div>
+      <div className="space-y-6">
+
+        <div>
+          <h1 className="text-5xl font-semibold tracking-tight text-[#111827]">
+            Analysis
+          </h1>
+        </div>
 
         <FeedExplorer
           query={query}
