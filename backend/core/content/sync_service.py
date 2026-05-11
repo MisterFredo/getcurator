@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import List, Dict, Optional
 
 from config import BQ_PROJECT, BQ_DATASET
 
