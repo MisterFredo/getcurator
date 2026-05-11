@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import type {
   FeedItem,
   FeedBadge,
@@ -29,91 +31,7 @@ type Props = {
   ) => void;
 };
 
-/* =========================================================
-   BADGES
-========================================================= */
-
-function getBadgeClass(
-  type?: string
-) {
-
-  switch (type) {
-
-    case "company":
-      return `
-        bg-blue-50
-        text-blue-600
-        border
-        border-blue-100
-      `;
-
-    case "solution":
-      return `
-        bg-purple-50
-        text-purple-600
-        border
-        border-purple-100
-      `;
-
-    case "topic":
-    default:
-      return `
-        bg-gray-100
-        text-gray-600
-      `;
-  }
-}
-
-function buildBadges(
-  item: FeedItem
-): FeedBadge[] {
-
-  const topics =
-    Array.isArray(item.topics)
-      ? item.topics
-      : [];
-
-  const companies =
-    Array.isArray(item.companies)
-      ? item.companies
-      : [];
-
-  const solutions =
-    Array.isArray(item.solutions)
-      ? item.solutions
-      : [];
-
-  return [
-
-    ...companies.map(
-      (c: any) => ({
-        id: c.id_company,
-        label: c.name,
-        type: "company" as const,
-      })
-    ),
-
-    ...topics.map(
-      (t: any) => ({
-        id: t.id_topic,
-        label: t.label,
-        type: "topic" as const,
-      })
-    ),
-
-    ...solutions.map(
-      (s: any) => ({
-        id: s.id_solution,
-        label: s.name,
-        type: "solution" as const,
-      })
-    ),
-  ];
-}
-
-/* =========================================================
-   COMPONENT
-========================================================= */
+/* ========================================================= */
 
 export default function NewsCard({
   item,
@@ -122,16 +40,20 @@ export default function NewsCard({
   onClickBadge,
 }: Props) {
 
+  const router = useRouter();
+
   const {
     openRightDrawer,
   } = useDrawer();
 
   /* =========================================================
-     BADGES
+     TOPIC BADGES ONLY
   ========================================================= */
 
-  const badges =
-    buildBadges(item);
+  const topicBadges =
+    (item.badges || []).filter(
+      (b) => b.type === "topic"
+    );
 
   /* =========================================================
      LOGO
@@ -195,7 +117,7 @@ export default function NewsCard({
       <div
         className="
           flex
-          items-center
+          items-start
           gap-4
         "
       >
@@ -209,29 +131,10 @@ export default function NewsCard({
             flex
             flex-col
             items-center
-            justify-center
-            gap-3
+            gap-2
             shrink-0
           "
         >
-
-          {/* SELECT */}
-
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(e) => {
-
-              e.stopPropagation();
-
-              onToggleSelect(item);
-            }}
-            className="
-              w-4
-              h-4
-              cursor-pointer
-            "
-          />
 
           {/* LOGO */}
 
@@ -277,6 +180,24 @@ export default function NewsCard({
 
           </div>
 
+          {/* SELECT */}
+
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => {
+
+              e.stopPropagation();
+
+              onToggleSelect(item);
+            }}
+            className="
+              w-4
+              h-4
+              cursor-pointer
+            "
+          />
+
         </div>
 
         {/* =====================================================
@@ -289,74 +210,70 @@ export default function NewsCard({
         ">
 
           {/* ===================================================
-              DATE
+              META
           =================================================== */}
 
-          {formattedDate && (
+          <div
+            className="
+              flex
+              flex-wrap
+              items-center
+              gap-2
+              mb-2
+            "
+          >
 
-            <div
-              className="
-                text-[11px]
-                text-gray-400
-                mb-2
-              "
-            >
-              {formattedDate}
-            </div>
+            {/* DATE */}
 
-          )}
+            {formattedDate && (
 
-          {/* ===================================================
-              BADGES
-          =================================================== */}
+              <span
+                className="
+                  text-[11px]
+                  text-gray-400
+                  shrink-0
+                "
+              >
+                {formattedDate}
+              </span>
 
-          {badges.length > 0 && (
+            )}
 
-            <div
-              className="
-                flex
-                flex-wrap
-                gap-2
-                mb-2
-              "
-            >
+            {/* TOPICS */}
 
-              {badges.map(
-                (badge, idx) => (
+            {topicBadges.map(
+              (badge, idx) => (
 
-                  <button
-                    key={`${badge.label}-${idx}`}
-                    onClick={(e) => {
+                <button
+                  key={`${badge.label}-${idx}`}
+                  onClick={(e) => {
 
-                      e.stopPropagation();
+                    e.stopPropagation();
 
-                      onClickBadge?.(
-                        badge
-                      );
-                    }}
-                    className={`
-                      px-2
-                      py-[3px]
-                      rounded-full
-                      text-[10px]
-                      uppercase
-                      tracking-wide
-                      transition
-                      hover:opacity-80
-                      ${getBadgeClass(
-                        badge.type
-                      )}
-                    `}
-                  >
-                    {badge.label}
-                  </button>
+                    onClickBadge?.(
+                      badge
+                    );
+                  }}
+                  className="
+                    px-2
+                    py-[3px]
+                    rounded-full
+                    text-[10px]
+                    uppercase
+                    tracking-wide
+                    bg-gray-100
+                    text-gray-600
+                    hover:bg-gray-200
+                    transition
+                  "
+                >
+                  {badge.label}
+                </button>
 
-                )
-              )}
+              )
+            )}
 
-            </div>
-
-          )}
+          </div>
 
           {/* ===================================================
               TITLE
@@ -364,7 +281,7 @@ export default function NewsCard({
 
           <h2
             className="
-              text-[18px]
+              text-[15px]
               font-semibold
               text-gray-900
               leading-snug
