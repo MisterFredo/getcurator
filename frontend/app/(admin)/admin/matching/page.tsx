@@ -475,7 +475,8 @@ export default function MatchingPage() {
       setSyncing(true);
 
       await api.post(
-        "/content/sync-all"
+        "/content/sync-all",
+        {}
       );
 
       alert("Sync terminé");
