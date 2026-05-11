@@ -1906,72 +1906,99 @@ def archive_content(id_content: str):
 # ============================================================
 
 
+from datetime import (
+    datetime,
+    timezone,
+    date,
+)
+from typing import Optional
+
+from utils.bigquery_utils import (
+    query_bq,
+    update_bq,
+)
+
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+# ============================================================
+# TABLE
+# ============================================================
+
+TABLE_CONTENT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+)
+
+
+# ============================================================
+# PUBLISH CONTENT
+# ============================================================
+
 def publish_content(
     id_content: str,
     published_at: Optional[datetime] = None,
 ):
 
-    now_dt = datetime.now(timezone.utc)
+    now_dt = datetime.now(
+        timezone.utc
+    )
 
-    # ============================================================
+    # ========================================================
     # 1️⃣ CHECK
-    # ============================================================
+    # ========================================================
 
     rows = query_bq(
         f"""
         SELECT
             STATUS,
-
-            SOURCE_DATE,
-
-            NUMBERS_PARSED,
-
-            -- 🔥 NEW
-            CONTENT_TYPE,
-
-            -- 🔥 NEW
-            ID_PRIMARY_COMPANY
-
+            SOURCE_DATE
         FROM `{TABLE_CONTENT}`
-
         WHERE ID_CONTENT = @id_content
         """,
-        {"id_content": id_content}
+        {
+            "id_content": id_content,
+        }
     )
 
     if not rows:
-        raise ValueError("Content introuvable")
+
+        raise ValueError(
+            "Content introuvable"
+        )
 
     current_status = rows[0]["STATUS"]
 
     source_date = rows[0]["SOURCE_DATE"]
 
-    numbers_parsed = rows[0].get("NUMBERS_PARSED")
-
-    # 🔥 NEW
-    content_type = (
-        rows[0].get("CONTENT_TYPE")
-        or "ANALYSIS"
-    )
-
-    # 🔥 NEW
-    id_primary_company = rows[0].get(
-        "ID_PRIMARY_COMPANY"
-    )
-
     if current_status != "READY":
-        raise ValueError("Content must be READY before publish")
 
-    # ============================================================
+        raise ValueError(
+            "Content must be READY before publish"
+        )
+
+    # ========================================================
     # 2️⃣ DATE
-    # ============================================================
+    # ========================================================
 
     if published_at is None:
-        published_at = source_date or now_dt
+
+        published_at = (
+            source_date
+            or now_dt
+        )
+
+    # ========================================================
+    # DATE → DATETIME
+    # ========================================================
 
     if (
         isinstance(published_at, date)
-        and not isinstance(published_at, datetime)
+        and not isinstance(
+            published_at,
+            datetime
+        )
     ):
 
         published_at = datetime.combine(
@@ -1980,8 +2007,15 @@ def publish_content(
             tzinfo=timezone.utc
         )
 
+    # ========================================================
+    # NAIVE DATETIME → UTC
+    # ========================================================
+
     elif (
-        isinstance(published_at, datetime)
+        isinstance(
+            published_at,
+            datetime
+        )
         and published_at.tzinfo is None
     ):
 
@@ -1989,9 +2023,9 @@ def publish_content(
             tzinfo=timezone.utc
         )
 
-    # ============================================================
+    # ========================================================
     # 3️⃣ STATUS
-    # ============================================================
+    # ========================================================
 
     status = (
         "PUBLISHED"
@@ -1999,9 +2033,9 @@ def publish_content(
         else "SCHEDULED"
     )
 
-    # ============================================================
+    # ========================================================
     # 4️⃣ UPDATE CONTENT
-    # ============================================================
+    # ========================================================
 
     update_bq(
         table=TABLE_CONTENT,
@@ -2010,7 +2044,9 @@ def publish_content(
             "PUBLISHED_AT": published_at,
             "UPDATED_AT": now_dt,
         },
-        where={"ID_CONTENT": id_content},
+        where={
+            "ID_CONTENT": id_content,
+        },
     )
 
     print(
@@ -2018,120 +2054,14 @@ def publish_content(
         {
             "id_content": id_content,
             "status": status,
-            "content_type": content_type,
-            "id_primary_company": id_primary_company,
+            "published_at": str(
+                published_at
+            ),
         }
     )
 
-    # ============================================================
-    # 5️⃣ AFTER PUBLISH SYNC
-    # ============================================================
-
-    if status == "PUBLISHED":
-
-        try:
-
-            after_publish_sync(
-                id_content=id_content,
-            )
-
-        except Exception as e:
-
-            print(
-                "❌ AFTER PUBLISH SYNC ERROR:",
-                str(e)
-            )
-
-    # ============================================================
-    # 🔥 NEWS → PAS DE PIPELINE NUMBERS
-    # ============================================================
-
-    if content_type == "NEWS":
-
-        print(
-            "ℹ️ NEWS CONTENT → SKIP NUMBERS BACKLOG:",
-            id_content
-        )
-
-        return status
-
-    # ============================================================
-    # 6️⃣ BACKLOG NUMBERS
-    # ============================================================
-
-    if status == "PUBLISHED":
-
-        if numbers_parsed:
-
-            print(
-                "⏭️ Skip parsing (already processed):",
-                id_content
-            )
-
-            return status
-
-        try:
-
-            print(
-                "📊 Parsing numbers for content:",
-                id_content
-            )
-
-            backlog_rows = get_numbers_from_content(
-                id_content
-            )
-
-            if not backlog_rows:
-
-                print("ℹ️ No valid numbers found")
-
-                return status
-
-            processed_results = []
-
-            for backlog_row in backlog_rows:
-
-                result = process_backlog_row(
-                    backlog_row
-                )
-
-                if result.get("status") == "ok":
-
-                    processed_results.append(result)
-
-            if processed_results:
-
-                insert_backlog_batch(
-                    processed_results
-                )
-
-                print(
-                    f"✅ {len(processed_results)} backlog numbers inserted"
-                )
-
-            else:
-
-                print("ℹ️ No valid backlog results")
-
-            update_bq(
-                table=TABLE_CONTENT,
-                fields={
-                    "NUMBERS_PARSED": True,
-                    "UPDATED_AT": now_dt,
-                },
-                where={"ID_CONTENT": id_content},
-            )
-
-        except Exception as e:
-
-            print(
-                "❌ BACKLOG ERROR:",
-                str(e)
-            )
-
-            return status
-
     return status
+
 
 def mark_content_ready(id_content: str):
 
