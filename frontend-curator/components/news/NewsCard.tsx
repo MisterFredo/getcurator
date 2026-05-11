@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import type {
   FeedItem,
   FeedBadge,
@@ -31,7 +29,90 @@ type Props = {
   ) => void;
 };
 
+/* =========================================================
+   BADGES
+========================================================= */
+
+function getBadgeClass(type?: string) {
+
+  switch (type) {
+
+    case "company":
+      return `
+        bg-blue-50
+        text-blue-600
+        border
+        border-blue-100
+      `;
+
+    case "solution":
+      return `
+        bg-purple-50
+        text-purple-600
+        border
+        border-purple-100
+      `;
+
+    case "universe":
+      return `
+        bg-emerald-50
+        text-emerald-600
+        border
+        border-emerald-100
+      `;
+
+    case "topic":
+    default:
+      return `
+        bg-gray-100
+        text-gray-600
+      `;
+  }
+}
+
 /* ========================================================= */
+
+function buildBadges(
+  item: FeedItem
+): FeedBadge[] {
+
+  const topics = Array.isArray(item.topics)
+    ? item.topics
+    : [];
+
+  const companies = Array.isArray(item.companies)
+    ? item.companies
+    : [];
+
+  const solutions = Array.isArray(item.solutions)
+    ? item.solutions
+    : [];
+
+  return [
+
+    ...companies.map((c: any) => ({
+      id: c.id_company,
+      label: c.name,
+      type: "company" as const,
+    })),
+
+    ...topics.map((t: any) => ({
+      id: t.id_topic,
+      label: t.label,
+      type: "topic" as const,
+    })),
+
+    ...solutions.map((s: any) => ({
+      id: s.id_solution,
+      label: s.name,
+      type: "solution" as const,
+    })),
+  ];
+}
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function NewsCard({
   item,
@@ -40,18 +121,12 @@ export default function NewsCard({
   onClickBadge,
 }: Props) {
 
-  const router = useRouter();
-
   const {
     openRightDrawer,
   } = useDrawer();
 
-  /* =========================================================
-     BADGES
-  ========================================================= */
-
   const badges =
-    item.badges || [];
+    buildBadges(item);
 
   /* =========================================================
      LOGO
@@ -76,55 +151,20 @@ export default function NewsCard({
     item.published_at
       ? new Date(
           item.published_at
-        ).toLocaleDateString(
-          "fr-FR"
-        )
+        ).toLocaleDateString("fr-FR")
       : null;
 
   /* =========================================================
-     OPEN DRAWER
+     OPEN
   ========================================================= */
 
   function handleOpen() {
 
     openRightDrawer(
-      "analysis",
+      "news",
       item.id,
       "silent"
     );
-  }
-
-  /* =========================================================
-     BADGE COLORS
-  ========================================================= */
-
-  function getBadgeClasses(
-    badge: FeedBadge
-  ) {
-
-    switch (badge.type) {
-
-      case "company":
-        return `
-          bg-blue-50
-          text-blue-600
-          hover:bg-blue-100
-        `;
-
-      case "solution":
-        return `
-          bg-violet-50
-          text-violet-600
-          hover:bg-violet-100
-        `;
-
-      default:
-        return `
-          bg-gray-100
-          text-gray-600
-          hover:bg-gray-200
-        `;
-    }
   }
 
   /* =========================================================
@@ -135,89 +175,59 @@ export default function NewsCard({
 
     <div
       onClick={handleOpen}
-      className={`
-        group
-        relative
-        rounded-2xl
-        border
-        transition-all
+      className="
         cursor-pointer
-        overflow-hidden
-
-        ${
-          selected
-            ? `
-              border-[#99C221]
-              bg-[#F7FAEF]
-            `
-            : `
-              border-gray-200
-              bg-white
-              hover:border-gray-300
-            `
-        }
-      `}
+        py-4
+        border-b
+        border-gray-100
+        hover:bg-gray-50
+        transition
+      "
     >
-
-      {/* =====================================================
-          SELECT
-      ===================================================== */}
-
-      <div className="
-        absolute
-        top-4
-        left-4
-        z-10
-      ">
-
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={(e) => {
-
-            e.stopPropagation();
-
-            onToggleSelect(item);
-          }}
-          className="
-            w-4
-            h-4
-            cursor-pointer
-          "
-        />
-
-      </div>
-
-      {/* =====================================================
-          MAIN
-      ===================================================== */}
 
       <div className="
         flex
-        items-stretch
+        items-start
+        gap-4
       ">
 
         {/* ===================================================
-            LOGO COLUMN
+            LEFT
         =================================================== */}
 
         <div className="
-          w-[88px]
-          shrink-0
-          bg-gray-50
-          border-r
-          border-gray-100
           flex
+          flex-col
           items-center
-          justify-center
-          px-4
-          py-6
+          gap-3
+          shrink-0
+          pt-1
         ">
+
+          {/* SELECT */}
+
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => {
+
+              e.stopPropagation();
+
+              onToggleSelect(item);
+            }}
+            className="
+              w-4
+              h-4
+              cursor-pointer
+            "
+          />
+
+          {/* LOGO */}
 
           <div
             className="
-              w-14
-              h-14
+              w-12
+              h-12
               rounded-xl
               border
               border-gray-200
@@ -265,8 +275,6 @@ export default function NewsCard({
         <div className="
           flex-1
           min-w-0
-          px-6
-          py-5
         ">
 
           {/* =================================================
@@ -278,7 +286,7 @@ export default function NewsCard({
             <div className="
               text-[11px]
               text-gray-400
-              mb-3
+              mb-2
             ">
               {formattedDate}
             </div>
@@ -294,43 +302,43 @@ export default function NewsCard({
             <div className="
               flex
               flex-wrap
-              gap-2
-              mb-4
+              gap-1.5
+              mb-2
             ">
 
-              {badges.map(
-                (badge, idx) => (
+              {badges.map((b, i) => {
+
+                const keyValue =
+                  "id" in b && b.id
+                    ? b.id
+                    : b.label;
+
+                return (
 
                   <button
-                    key={`${badge.label}-${idx}`}
+                    key={`${b.type}-${keyValue}-${i}`}
                     onClick={(e) => {
 
                       e.stopPropagation();
 
-                      onClickBadge?.(
-                        badge
-                      );
+                      onClickBadge?.(b);
                     }}
                     className={`
-                      px-2.5
-                      py-[5px]
-                      rounded-full
+                      px-2
+                      py-[3px]
                       text-[10px]
-                      font-medium
+                      rounded-full
                       uppercase
                       tracking-wide
                       transition
-
-                      ${getBadgeClasses(
-                        badge
-                      )}
+                      ${getBadgeClass(b.type)}
                     `}
                   >
-                    {badge.label}
+                    {b.label}
                   </button>
 
-                )
-              )}
+                );
+              })}
 
             </div>
 
@@ -340,16 +348,16 @@ export default function NewsCard({
               TITLE
           ================================================= */}
 
-          <h2
+          <h3
             className="
-              text-[17px]
-              font-semibold
+              text-[14px]
+              font-medium
               text-gray-900
               leading-snug
             "
           >
             {item.title}
-          </h2>
+          </h3>
 
           {/* =================================================
               EXCERPT
@@ -357,14 +365,12 @@ export default function NewsCard({
 
           {item.excerpt && (
 
-            <p
-              className="
-                mt-4
-                text-sm
-                text-gray-600
-                leading-relaxed
-              "
-            >
+            <p className="
+              mt-2
+              text-sm
+              text-gray-600
+              leading-relaxed
+            ">
               {item.excerpt}
             </p>
 
