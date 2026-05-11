@@ -290,21 +290,6 @@ export default function NewsPage() {
             ">
               News
             </h1>
-
-            <p className="
-              mt-2
-              text-sm
-              text-gray-500
-              max-w-2xl
-              leading-relaxed
-            ">
-              Latest market movements,
-              launches, partnerships,
-              product updates and strategic
-              signals across adtech,
-              retail media, AI and media.
-            </p>
-
           </div>
 
           <div className="
