@@ -47,13 +47,11 @@ export default function NewsCard({
   } = useDrawer();
 
   /* =========================================================
-     TOPIC BADGES ONLY
+     BADGES
   ========================================================= */
 
-  const topicBadges =
-    (item.badges || []).filter(
-      (b) => b.type === "topic"
-    );
+  const badges =
+    item.badges || [];
 
   /* =========================================================
      LOGO
@@ -97,6 +95,39 @@ export default function NewsCard({
   }
 
   /* =========================================================
+     BADGE COLORS
+  ========================================================= */
+
+  function getBadgeClasses(
+    badge: FeedBadge
+  ) {
+
+    switch (badge.type) {
+
+      case "company":
+        return `
+          bg-blue-50
+          text-blue-600
+          hover:bg-blue-100
+        `;
+
+      case "solution":
+        return `
+          bg-violet-50
+          text-violet-600
+          hover:bg-violet-100
+        `;
+
+      default:
+        return `
+          bg-gray-100
+          text-gray-600
+          hover:bg-gray-200
+        `;
+    }
+  }
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
@@ -104,44 +135,89 @@ export default function NewsCard({
 
     <div
       onClick={handleOpen}
-      className="
-        border-b
-        border-gray-100
-        py-5
+      className={`
+        group
+        relative
+        rounded-2xl
+        border
+        transition-all
         cursor-pointer
-        hover:bg-gray-50
-        transition
-      "
+        overflow-hidden
+
+        ${
+          selected
+            ? `
+              border-[#99C221]
+              bg-[#F7FAEF]
+            `
+            : `
+              border-gray-200
+              bg-white
+              hover:border-gray-300
+            `
+        }
+      `}
     >
 
-      <div
-        className="
-          flex
-          items-start
-          gap-4
-        "
-      >
+      {/* =====================================================
+          SELECT
+      ===================================================== */}
 
-        {/* =====================================================
-            LEFT COLUMN
-        ===================================================== */}
+      <div className="
+        absolute
+        top-4
+        left-4
+        z-10
+      ">
 
-        <div
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(e) => {
+
+            e.stopPropagation();
+
+            onToggleSelect(item);
+          }}
           className="
-            flex
-            flex-col
-            items-center
-            gap-2
-            shrink-0
+            w-4
+            h-4
+            cursor-pointer
           "
-        >
+        />
 
-          {/* LOGO */}
+      </div>
+
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
+
+      <div className="
+        flex
+        items-stretch
+      ">
+
+        {/* ===================================================
+            LOGO COLUMN
+        =================================================== */}
+
+        <div className="
+          w-[88px]
+          shrink-0
+          bg-gray-50
+          border-r
+          border-gray-100
+          flex
+          items-center
+          justify-center
+          px-4
+          py-6
+        ">
 
           <div
             className="
-              w-12
-              h-12
+              w-14
+              h-14
               rounded-xl
               border
               border-gray-200
@@ -180,108 +256,93 @@ export default function NewsCard({
 
           </div>
 
-          {/* SELECT */}
-
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(e) => {
-
-              e.stopPropagation();
-
-              onToggleSelect(item);
-            }}
-            className="
-              w-4
-              h-4
-              cursor-pointer
-            "
-          />
-
         </div>
 
-        {/* =====================================================
+        {/* ===================================================
             CONTENT
-        ===================================================== */}
+        =================================================== */}
 
         <div className="
           flex-1
           min-w-0
+          px-6
+          py-5
         ">
 
-          {/* ===================================================
-              META
-          =================================================== */}
+          {/* =================================================
+              DATE
+          ================================================= */}
 
-          <div
-            className="
+          {formattedDate && (
+
+            <div className="
+              text-[11px]
+              text-gray-400
+              mb-3
+            ">
+              {formattedDate}
+            </div>
+
+          )}
+
+          {/* =================================================
+              BADGES
+          ================================================= */}
+
+          {badges.length > 0 && (
+
+            <div className="
               flex
               flex-wrap
-              items-center
               gap-2
-              mb-2
-            "
-          >
+              mb-4
+            ">
 
-            {/* DATE */}
+              {badges.map(
+                (badge, idx) => (
 
-            {formattedDate && (
+                  <button
+                    key={`${badge.label}-${idx}`}
+                    onClick={(e) => {
 
-              <span
-                className="
-                  text-[11px]
-                  text-gray-400
-                  shrink-0
-                "
-              >
-                {formattedDate}
-              </span>
+                      e.stopPropagation();
 
-            )}
+                      onClickBadge?.(
+                        badge
+                      );
+                    }}
+                    className={`
+                      px-2.5
+                      py-[5px]
+                      rounded-full
+                      text-[10px]
+                      font-medium
+                      uppercase
+                      tracking-wide
+                      transition
 
-            {/* TOPICS */}
+                      ${getBadgeClasses(
+                        badge
+                      )}
+                    `}
+                  >
+                    {badge.label}
+                  </button>
 
-            {topicBadges.map(
-              (badge, idx) => (
+                )
+              )}
 
-                <button
-                  key={`${badge.label}-${idx}`}
-                  onClick={(e) => {
+            </div>
 
-                    e.stopPropagation();
+          )}
 
-                    onClickBadge?.(
-                      badge
-                    );
-                  }}
-                  className="
-                    px-2
-                    py-[3px]
-                    rounded-full
-                    text-[10px]
-                    uppercase
-                    tracking-wide
-                    bg-gray-100
-                    text-gray-600
-                    hover:bg-gray-200
-                    transition
-                  "
-                >
-                  {badge.label}
-                </button>
-
-              )
-            )}
-
-          </div>
-
-          {/* ===================================================
+          {/* =================================================
               TITLE
-          =================================================== */}
+          ================================================= */}
 
           <h2
             className="
-              text-[15px]
+              text-[17px]
               font-semibold
               text-gray-900
               leading-snug
@@ -290,15 +351,15 @@ export default function NewsCard({
             {item.title}
           </h2>
 
-          {/* ===================================================
+          {/* =================================================
               EXCERPT
-          =================================================== */}
+          ================================================= */}
 
           {item.excerpt && (
 
             <p
               className="
-                mt-3
+                mt-4
                 text-sm
                 text-gray-600
                 leading-relaxed
