@@ -332,6 +332,73 @@ def rebuild_content_enriched_row(id_content: str):
     )
 
 # ============================================================
+# NUMBERS BACKLOG
+# ============================================================
+
+def sync_content_numbers(id_content: str):
+
+    print(
+        "📊 NUMBERS SYNC START:",
+        id_content,
+    )
+
+    backlog_rows = get_numbers_from_content(
+        id_content
+    )
+
+    if not backlog_rows:
+
+        print(
+            "ℹ️ No valid numbers found:",
+            id_content,
+        )
+
+        return {
+            "id_content": id_content,
+            "numbers_found": 0,
+            "numbers_inserted": 0,
+        }
+
+    processed_results = []
+
+    for backlog_row in backlog_rows:
+
+        result = process_backlog_row(
+            backlog_row
+        )
+
+        if result.get("status") == "ok":
+
+            processed_results.append(
+                result
+            )
+
+    if processed_results:
+
+        insert_backlog_batch(
+            processed_results
+        )
+
+        print(
+            f"✅ {len(processed_results)} backlog numbers inserted:",
+            id_content,
+        )
+
+    else:
+
+        print(
+            "ℹ️ No valid backlog results:",
+            id_content,
+        )
+
+    return {
+        "id_content": id_content,
+        "numbers_found": len(backlog_rows),
+        "numbers_inserted": len(processed_results),
+    }
+
+
+# ============================================================
 # FULL CONTENT SYNC
 # ============================================================
 
@@ -434,68 +501,3 @@ def bulk_sync_contents(ids: list[str]):
         "results": results,
     }
 
-# ============================================================
-# NUMBERS BACKLOG
-# ============================================================
-
-def sync_content_numbers(id_content: str):
-
-    print(
-        "📊 NUMBERS SYNC START:",
-        id_content,
-    )
-
-    backlog_rows = get_numbers_from_content(
-        id_content
-    )
-
-    if not backlog_rows:
-
-        print(
-            "ℹ️ No valid numbers found:",
-            id_content,
-        )
-
-        return {
-            "id_content": id_content,
-            "numbers_found": 0,
-            "numbers_inserted": 0,
-        }
-
-    processed_results = []
-
-    for backlog_row in backlog_rows:
-
-        result = process_backlog_row(
-            backlog_row
-        )
-
-        if result.get("status") == "ok":
-
-            processed_results.append(
-                result
-            )
-
-    if processed_results:
-
-        insert_backlog_batch(
-            processed_results
-        )
-
-        print(
-            f"✅ {len(processed_results)} backlog numbers inserted:",
-            id_content,
-        )
-
-    else:
-
-        print(
-            "ℹ️ No valid backlog results:",
-            id_content,
-        )
-
-    return {
-        "id_content": id_content,
-        "numbers_found": len(backlog_rows),
-        "numbers_inserted": len(processed_results),
-    }
