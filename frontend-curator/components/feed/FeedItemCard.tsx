@@ -151,7 +151,8 @@ export default function FeedItemCard({
   onClick,
 }: Props) {
 
-  const badges = buildBadges(item);
+  const badges =
+    buildBadges(item);
 
   const formattedDate =
     item.published_at
@@ -171,7 +172,6 @@ export default function FeedItemCard({
     item.companies?.[0];
 
   const logoUrl =
-    isNews &&
     primaryCompany
       ?.media_logo_rectangle_id
 
@@ -190,29 +190,49 @@ export default function FeedItemCard({
       className="
         cursor-pointer
         py-4
-        border-b
-        border-gray-100
-        hover:bg-gray-50
         transition
+        hover:bg-gray-50
       "
     >
 
       <div className="
         flex
         items-start
-        gap-4
+        gap-5
       ">
 
         {/* ===================================================
-            NEWS VISUAL
+            LEFT COLUMN
         =================================================== */}
 
-        {isNews && (
+        <div className="
+          w-[72px]
+          shrink-0
+          flex
+          flex-col
+          items-center
+          gap-2
+          pt-0.5
+        ">
 
-          <div className="
-            shrink-0
-            pt-1
-          ">
+          {/* DATE */}
+
+          {formattedDate && (
+
+            <div className="
+              text-[11px]
+              text-gray-400
+              text-center
+              leading-none
+            ">
+              {formattedDate}
+            </div>
+
+          )}
+
+          {/* LOGO */}
+
+          {logoUrl && (
 
             <div
               className="
@@ -229,36 +249,21 @@ export default function FeedItemCard({
               "
             >
 
-              {logoUrl ? (
-
-                <img
-                  src={logoUrl}
-                  alt={item.title}
-                  className="
-                    w-full
-                    h-full
-                    object-contain
-                  "
-                />
-
-              ) : (
-
-                <div
-                  className="
-                    text-[10px]
-                    text-gray-300
-                  "
-                >
-                  —
-                </div>
-
-              )}
+              <img
+                src={logoUrl}
+                alt={item.title}
+                className="
+                  w-full
+                  h-full
+                  object-contain
+                "
+              />
 
             </div>
 
-          </div>
+          )}
 
-        )}
+        </div>
 
         {/* ===================================================
             CONTENT
@@ -270,43 +275,24 @@ export default function FeedItemCard({
         ">
 
           {/* =================================================
-              TOP ROW
+              TYPE
           ================================================= */}
 
           <div className="
-            flex
-            items-center
-            gap-2
-            mb-1.5
-            flex-wrap
+            mb-2
           ">
-
-            {/* DATE */}
-
-            {formattedDate && (
-
-              <span className="
-                text-[11px]
-                text-gray-400
-                shrink-0
-              ">
-                {formattedDate}
-              </span>
-
-            )}
-
-            {/* TYPE */}
 
             <span
               className={`
+                inline-flex
+                items-center
                 text-[10px]
                 uppercase
                 tracking-wide
                 px-2
-                py-[2px]
+                py-[3px]
                 rounded-full
                 font-medium
-                shrink-0
 
                 ${
                   isNews
@@ -350,11 +336,10 @@ export default function FeedItemCard({
           {item.excerpt && (
 
             <p className="
-              mt-1.5
+              mt-2
               text-sm
               text-gray-600
               leading-relaxed
-              line-clamp-2
             ">
               {item.excerpt}
             </p>
@@ -371,7 +356,7 @@ export default function FeedItemCard({
               flex
               flex-wrap
               gap-1.5
-              mt-2
+              mt-3
             ">
 
               {badges.map((b, i) => {
