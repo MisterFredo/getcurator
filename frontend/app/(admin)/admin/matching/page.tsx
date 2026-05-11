@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
 import MatchingTable from "@/components/admin/matching/MatchingTable";
-
 
 type LLMItem = {
   value: string;
@@ -24,12 +23,13 @@ type Company = {
   name: string;
 };
 
-
 export default function MatchingPage() {
 
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<"solutions" | "companies">("solutions");
+  const [tab, setTab] = useState<
+    "solutions" | "companies"
+  >("solutions");
 
   const [llmSolutions, setLLMSolutions] = useState<LLMItem[]>([]);
   const [llmCompanies, setLLMCompanies] = useState<LLMItem[]>([]);
@@ -37,362 +37,594 @@ export default function MatchingPage() {
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
 
-  const [selected, setSelected] = useState<{ [key: string]: string }>({});
-  const [processing, setProcessing] = useState<string | null>(null);
-  const [checked, setChecked] = useState<{ [key: string]: boolean }>({});
+  const [selected, setSelected] = useState<{
+    [key: string]: string;
+  }>({});
 
+  const [checked, setChecked] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-  /* ---------------------------------------------------------
-     LOAD DATA
-  --------------------------------------------------------- */
+  const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
+  const [syncing, setSyncing] = useState(false);
 
-    async function load() {
+  /* =========================================================
+     LOAD
+  ========================================================= */
 
-      try {
+  async function loadData() {
 
-        const [
-          llmSolRes,
-          llmCompRes,
-          solRes,
-          compRes
-        ] = await Promise.all([
-          api.get("/matching/solutions"),
-          api.get("/matching/companies"),
-          api.get("/solution/list"),
-          api.get("/company/list")
-        ]);
+    try {
 
-        setLLMSolutions(llmSolRes.solutions || []);
-        setLLMCompanies(llmCompRes.companies || []);
+      setLoading(true);
 
-        setSolutions(solRes.solutions || []);
-        setCompanies(compRes.companies || []);
+      const [
+        llmSolRes,
+        llmCompRes,
+        solRes,
+        compRes,
+      ] = await Promise.all([
+        api.get("/matching/solutions"),
+        api.get("/matching/companies"),
+        api.get("/solution/list"),
+        api.get("/company/list"),
+      ]);
 
-      } catch (e) {
+      setLLMSolutions(
+        llmSolRes.solutions || []
+      );
 
-        console.error("Erreur chargement matching", e);
+      setLLMCompanies(
+        llmCompRes.companies || []
+      );
 
-      } finally {
+      setSolutions(
+        solRes.solutions || []
+      );
 
-        setLoading(false);
+      setCompanies(
+        compRes.companies || []
+      );
 
-      }
+    } catch (e) {
+
+      console.error(
+        "Erreur chargement matching",
+        e
+      );
+
+    } finally {
+
+      setLoading(false);
 
     }
 
-    load();
-
-  }, []);
-
-
-  /* ---------------------------------------------------------
-     AUTO SELECT (🔥 clé UX)
-  --------------------------------------------------------- */
+  }
 
   useEffect(() => {
 
-    const auto: any = {};
+    loadData();
 
-    const data = tab === "solutions" ? llmSolutions : llmCompanies;
+  }, []);
 
-    data.forEach((i) => {
-      if (i.suggested_id) {
-        auto[i.value] = i.suggested_id;
+  /* =========================================================
+     CURRENT DATA
+  ========================================================= */
+
+  const items = useMemo(() => {
+
+    return tab === "solutions"
+      ? llmSolutions
+      : llmCompanies;
+
+  }, [
+    tab,
+    llmSolutions,
+    llmCompanies,
+  ]);
+
+  const list = useMemo(() => {
+
+    return tab === "solutions"
+      ? solutions
+      : companies;
+
+  }, [
+    tab,
+    solutions,
+    companies,
+  ]);
+
+  /* =========================================================
+     AUTO SELECT
+  ========================================================= */
+
+  useEffect(() => {
+
+    const auto: Record<string, string> = {};
+
+    items.forEach((item) => {
+
+      if (item.suggested_id) {
+
+        auto[item.value] =
+          item.suggested_id;
+
       }
+
     });
 
     setSelected(auto);
 
-  }, [llmSolutions, llmCompanies, tab]);
+  }, [items]);
 
+  /* =========================================================
+     HELPERS
+  ========================================================= */
 
-  /* ---------------------------------------------------------
-     MATCH
-  --------------------------------------------------------- */
+  function getCheckedValues() {
 
-  async function applyMatch(value: string) {
+    return Object.keys(checked)
+      .filter((k) => checked[k]);
+
+  }
+
+  /* =========================================================
+     BULK MATCH
+  ========================================================= */
+
+  async function matchBulk() {
+
+    const values = getCheckedValues();
+
+    if (values.length === 0) {
+
+      alert("Aucune sélection");
+
+      return;
+
+    }
+
+    try {
+
+      setProcessing(true);
+
+      if (tab === "solutions") {
+
+        const payload = {
+          items: values
+            .filter((value) => selected[value])
+            .map((value) => ({
+              alias: value,
+              id_solution: selected[value],
+              action: "MATCH",
+            })),
+        };
+
+        await api.post(
+          "/matching/solutions/bulk-match",
+          payload
+        );
+
+        setLLMSolutions((prev) =>
+          prev.filter(
+            (v) => !values.includes(v.value)
+          )
+        );
+
+      } else {
+
+        const payload = {
+          items: values
+            .filter((value) => selected[value])
+            .map((value) => ({
+              alias: value,
+              id_company: selected[value],
+              action: "MATCH",
+            })),
+        };
+
+        await api.post(
+          "/matching/companies/bulk-match",
+          payload
+        );
+
+        setLLMCompanies((prev) =>
+          prev.filter(
+            (v) => !values.includes(v.value)
+          )
+        );
+
+      }
+
+      setChecked({});
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Erreur bulk match");
+
+    } finally {
+
+      setProcessing(false);
+
+    }
+
+  }
+
+  /* =========================================================
+     BULK IGNORE
+  ========================================================= */
+
+  async function ignoreBulk() {
+
+    const values = getCheckedValues();
+
+    if (values.length === 0) {
+
+      alert("Aucune sélection");
+
+      return;
+
+    }
+
+    try {
+
+      setProcessing(true);
+
+      if (tab === "solutions") {
+
+        const payload = {
+          items: values.map((value) => ({
+            alias: value,
+            action: "IGNORE",
+          })),
+        };
+
+        await api.post(
+          "/matching/solutions/bulk-match",
+          payload
+        );
+
+        setLLMSolutions((prev) =>
+          prev.filter(
+            (v) => !values.includes(v.value)
+          )
+        );
+
+      } else {
+
+        const payload = {
+          items: values.map((value) => ({
+            alias: value,
+            action: "IGNORE",
+          })),
+        };
+
+        await api.post(
+          "/matching/companies/bulk-match",
+          payload
+        );
+
+        setLLMCompanies((prev) =>
+          prev.filter(
+            (v) => !values.includes(v.value)
+          )
+        );
+
+      }
+
+      setChecked({});
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Erreur bulk ignore");
+
+    } finally {
+
+      setProcessing(false);
+
+    }
+
+  }
+
+  /* =========================================================
+     SINGLE MATCH
+  ========================================================= */
+
+  async function applyMatch(
+    value: string
+  ) {
 
     const id = selected[value];
 
     if (!id) {
+
       alert("Sélectionner une valeur");
+
       return;
+
     }
 
     try {
 
-      setProcessing(value);
+      setProcessing(true);
 
       if (tab === "solutions") {
 
-        await api.post("/matching/solutions/match", {
-          alias: value,
-          id_solution: id,
-          action: "MATCH"
-        });
+        await api.post(
+          "/matching/solutions/match",
+          {
+            alias: value,
+            id_solution: id,
+            action: "MATCH",
+          }
+        );
 
-        setLLMSolutions(prev => prev.filter(v => v.value !== value));
+        setLLMSolutions((prev) =>
+          prev.filter(
+            (v) => v.value !== value
+          )
+        );
 
       } else {
 
-        await api.post("/matching/companies/match", {
-          alias: value,
-          id_company: id,
-          action: "MATCH"
-        });
+        await api.post(
+          "/matching/companies/match",
+          {
+            alias: value,
+            id_company: id,
+            action: "MATCH",
+          }
+        );
 
-        setLLMCompanies(prev => prev.filter(v => v.value !== value));
+        setLLMCompanies((prev) =>
+          prev.filter(
+            (v) => v.value !== value
+          )
+        );
 
       }
 
     } catch (e) {
 
       console.error(e);
+
       alert("Erreur matching");
 
     } finally {
 
-      setProcessing(null);
+      setProcessing(false);
 
     }
 
   }
 
+  /* =========================================================
+     SINGLE IGNORE
+  ========================================================= */
 
-  /* ---------------------------------------------------------
-     IGNORE
-  --------------------------------------------------------- */
-
-  async function ignore(value: string) {
+  async function ignore(
+    value: string
+  ) {
 
     try {
 
-      setProcessing(value);
+      setProcessing(true);
 
       if (tab === "solutions") {
 
-        await api.post("/matching/solutions/match", {
-          alias: value,
-          action: "IGNORE"
-        });
+        await api.post(
+          "/matching/solutions/match",
+          {
+            alias: value,
+            action: "IGNORE",
+          }
+        );
 
-        setLLMSolutions(prev => prev.filter(v => v.value !== value));
+        setLLMSolutions((prev) =>
+          prev.filter(
+            (v) => v.value !== value
+          )
+        );
 
       } else {
 
-        await api.post("/matching/companies/match", {
-          alias: value,
-          action: "IGNORE"
-        });
+        await api.post(
+          "/matching/companies/match",
+          {
+            alias: value,
+            action: "IGNORE",
+          }
+        );
 
-        setLLMCompanies(prev => prev.filter(v => v.value !== value));
+        setLLMCompanies((prev) =>
+          prev.filter(
+            (v) => v.value !== value
+          )
+        );
 
       }
 
     } catch (e) {
 
       console.error(e);
+
       alert("Erreur ignore");
 
     } finally {
 
-      setProcessing(null);
+      setProcessing(false);
 
     }
 
   }
 
+  /* =========================================================
+     SYNC
+  ========================================================= */
 
-  /* ---------------------------------------------------------
-     BULK IGNORE
-  --------------------------------------------------------- */
-
-  async function ignoreBulk() {
-
-    const values = Object.keys(checked).filter(k => checked[k]);
-
-    if (values.length === 0) {
-      alert("Aucune sélection");
-      return;
-    }
+  async function syncFeed() {
 
     try {
 
-      setProcessing("bulk");
+      setSyncing(true);
 
-      for (const value of values) {
+      await api.post(
+        "/content/sync-all"
+      );
 
-        if (tab === "solutions") {
-
-          await api.post("/matching/solutions/match", {
-            alias: value,
-            action: "IGNORE"
-          });
-
-        } else {
-
-          await api.post("/matching/companies/match", {
-            alias: value,
-            action: "IGNORE"
-          });
-
-        }
-
-      }
-
-      if (tab === "solutions") {
-        setLLMSolutions(prev =>
-          prev.filter(v => !values.includes(v.value))
-        );
-      } else {
-        setLLMCompanies(prev =>
-          prev.filter(v => !values.includes(v.value))
-        );
-      }
-
-      setChecked({});
+      alert("Sync terminé");
 
     } catch (e) {
 
       console.error(e);
-      alert("Erreur ignore bulk");
+
+      alert("Erreur sync");
 
     } finally {
 
-      setProcessing(null);
+      setSyncing(false);
 
     }
 
   }
 
-
-  /* ---------------------------------------------------------
-     BULK MATCH (🔥 nouveau)
-  --------------------------------------------------------- */
-
-  async function matchBulk() {
-
-    const values = Object.keys(checked).filter(k => checked[k]);
-
-    if (values.length === 0) {
-      alert("Aucune sélection");
-      return;
-    }
-
-    try {
-
-      setProcessing("bulk");
-
-      for (const value of values) {
-
-        const id = selected[value];
-        if (!id) continue;
-
-        await applyMatch(value);
-
-      }
-
-      setChecked({});
-
-    } catch (e) {
-
-      console.error(e);
-      alert("Erreur match bulk");
-
-    } finally {
-
-      setProcessing(null);
-
-    }
-
-  }
-
-
-  /* ---------------------------------------------------------
-     CURRENT DATA
-  --------------------------------------------------------- */
-
-  const items = tab === "solutions" ? llmSolutions : llmCompanies;
-  const list = tab === "solutions" ? solutions : companies;
-
-
-  /* ---------------------------------------------------------
+  /* =========================================================
      UI
-  --------------------------------------------------------- */
+  ========================================================= */
 
-  if (loading) return <p>Chargement…</p>;
+  if (loading) {
 
+    return (
+      <p>Chargement…</p>
+    );
+
+  }
 
   return (
 
     <div className="space-y-8">
 
-      <h1 className="text-3xl font-semibold">
-        Matching LLM
-      </h1>
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
+      <div className="flex items-center justify-between">
 
-      {/* ---------------------------------- */}
-      {/* TABS */}
-      {/* ---------------------------------- */}
+        <div>
+
+          <h1 className="text-3xl font-semibold">
+            Matching LLM
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Gestion des alias LLM et synchronisation feed
+          </p>
+
+        </div>
+
+        <button
+          onClick={syncFeed}
+          disabled={syncing}
+          className="
+            bg-black
+            text-white
+            px-4
+            py-2
+            rounded
+          "
+        >
+          {syncing
+            ? "Synchronisation..."
+            : "SYNC FEED"}
+        </button>
+
+      </div>
+
+      {/* =====================================================
+          TABS
+      ===================================================== */}
 
       <div className="flex gap-4">
 
         <button
-          onClick={() => setTab("solutions")}
-          className={`px-4 py-2 rounded ${
-            tab === "solutions"
-              ? "bg-ratecard-blue text-white"
-              : "bg-gray-200"
-          }`}
+          onClick={() =>
+            setTab("solutions")
+          }
+          className={`
+            px-4 py-2 rounded
+            ${
+              tab === "solutions"
+                ? "bg-ratecard-blue text-white"
+                : "bg-gray-200"
+            }
+          `}
         >
           Solutions
         </button>
 
         <button
-          onClick={() => setTab("companies")}
-          className={`px-4 py-2 rounded ${
-            tab === "companies"
-              ? "bg-ratecard-blue text-white"
-              : "bg-gray-200"
-          }`}
+          onClick={() =>
+            setTab("companies")
+          }
+          className={`
+            px-4 py-2 rounded
+            ${
+              tab === "companies"
+                ? "bg-ratecard-blue text-white"
+                : "bg-gray-200"
+            }
+          `}
         >
           Sociétés
         </button>
 
       </div>
 
-
-      {/* ---------------------------------- */}
-      {/* BULK ACTION */}
-      {/* ---------------------------------- */}
+      {/* =====================================================
+          ACTIONS
+      ===================================================== */}
 
       <div className="flex gap-2">
 
         <button
           onClick={matchBulk}
-          disabled={processing === "bulk"}
-          className="bg-green-700 text-white px-4 py-2 rounded"
+          disabled={processing}
+          className="
+            bg-green-700
+            text-white
+            px-4
+            py-2
+            rounded
+          "
         >
           MATCH sélection
         </button>
 
         <button
           onClick={ignoreBulk}
-          disabled={processing === "bulk"}
-          className="bg-red-600 text-white px-4 py-2 rounded"
+          disabled={processing}
+          className="
+            bg-red-600
+            text-white
+            px-4
+            py-2
+            rounded
+          "
         >
           IGNORE sélection
         </button>
 
       </div>
 
-
-      {/* ---------------------------------- */}
-      {/* TABLE */}
-      {/* ---------------------------------- */}
+      {/* =====================================================
+          TABLE
+      ===================================================== */}
 
       <MatchingTable
         items={items}
@@ -402,7 +634,11 @@ export default function MatchingPage() {
         setSelected={setSelected}
         checked={checked}
         setChecked={setChecked}
-        processing={processing}
+        processing={
+          processing
+            ? "processing"
+            : null
+        }
         applyMatch={applyMatch}
         ignore={ignore}
       />
