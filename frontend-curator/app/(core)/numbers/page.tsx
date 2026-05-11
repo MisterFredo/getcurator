@@ -17,9 +17,15 @@ type NumberItem = {
   [key: string]: any;
 };
 
+type Universe = {
+  id_universe: string;
+  label: string;
+};
+
 /* ========================================================= */
 
 export default function NumbersPage() {
+
   const LIMIT = 100;
 
   /* =========================================================
@@ -37,6 +43,16 @@ export default function NumbersPage() {
     );
 
   /* =========================================================
+     UNIVERSE
+  ========================================================= */
+
+  const [universes, setUniverses] =
+    useState<Universe[]>([]);
+
+  const [activeUniverse, setActiveUniverse] =
+    useState<string | null>(null);
+
+  /* =========================================================
      DATA
   ========================================================= */
 
@@ -48,6 +64,37 @@ export default function NumbersPage() {
 
   const [query, setQuery] =
     useState("");
+
+  /* =========================================================
+     LOAD UNIVERS
+  ========================================================= */
+
+  useEffect(() => {
+
+    async function loadUniverses() {
+
+      try {
+
+        const res = await api.get(
+          "/universe/list-for-user"
+        );
+
+        setUniverses(
+          res?.universes || []
+        );
+
+      } catch (e) {
+
+        console.error(
+          "❌ universe load error",
+          e
+        );
+      }
+    }
+
+    loadUniverses();
+
+  }, []);
 
   /* =========================================================
      LOAD
@@ -68,6 +115,10 @@ export default function NumbersPage() {
             ? `&query=${encodeURIComponent(
                 finalQuery
               )}`
+            : ""
+        }${
+          activeUniverse
+            ? `&universe_id=${activeUniverse}`
             : ""
         }`
       );
@@ -97,7 +148,7 @@ export default function NumbersPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [activeUniverse]);
 
   /* =========================================================
      SELECTION
@@ -163,128 +214,249 @@ export default function NumbersPage() {
   ========================================================= */
 
   return (
-    <div className="grid grid-cols-1 gap-8">
 
-      <div className="space-y-10">
+    <div className="
+      bg-[#F5F6F8]
+      rounded-2xl
+      border
+      border-gray-200
+      p-6
+    ">
 
-        {/* HEADER */}
-        <NumbersHeader
-          query={query}
-          setQuery={setQuery}
-          onSearch={(q) =>
-            load(q)
-          }
-        />
+      <div className="
+        bg-white
+        rounded-2xl
+        border
+        border-gray-200
+        p-6
+      ">
 
-        {/* COUNT */}
-        {!loading && (
-          <div className="text-xs text-gray-400">
-            {items.length} chiffres
+        <div className="space-y-8">
+
+          {/* =================================================
+              HEADER
+          ================================================= */}
+
+          <div>
+            <h1 className="
+              text-4xl
+              font-semibold
+              tracking-tight
+              text-[#111827]
+            ">
+              Numbers
+            </h1>
           </div>
-        )}
 
-        {/* LOADING */}
-        {loading && (
-          <p className="text-sm text-gray-400">
-            Chargement des chiffres...
-          </p>
-        )}
+          {/* =================================================
+              UNIVERSE FILTERS
+          ================================================= */}
 
-        {/* EMPTY */}
-        {!loading &&
-          !hasContent && (
+          {universes.length > 0 && (
+
+            <div className="
+              flex
+              flex-wrap
+              gap-2
+            ">
+
+              <button
+                onClick={() =>
+                  setActiveUniverse(null)
+                }
+                className={`
+                  px-3
+                  py-1.5
+                  rounded-full
+                  text-xs
+                  font-medium
+                  transition
+
+                  ${
+                    !activeUniverse
+                      ? `
+                        bg-gray-900
+                        text-white
+                      `
+                      : `
+                        bg-gray-100
+                        text-gray-600
+                        hover:bg-gray-200
+                      `
+                  }
+                `}
+              >
+                All
+              </button>
+
+              {universes.map((u) => (
+
+                <button
+                  key={u.id_universe}
+                  onClick={() =>
+                    setActiveUniverse(
+                      u.id_universe
+                    )
+                  }
+                  className={`
+                    px-3
+                    py-1.5
+                    rounded-full
+                    text-xs
+                    font-medium
+                    transition
+
+                    ${
+                      activeUniverse ===
+                      u.id_universe
+
+                        ? `
+                          bg-gray-900
+                          text-white
+                        `
+
+                        : `
+                          bg-gray-100
+                          text-gray-600
+                          hover:bg-gray-200
+                        `
+                    }
+                  `}
+                >
+                  {u.label}
+                </button>
+
+              ))}
+
+            </div>
+
+          )}
+
+          {/* =================================================
+              SEARCH
+          ================================================= */}
+
+          <NumbersHeader
+            query={query}
+            setQuery={setQuery}
+            onSearch={(q) =>
+              load(q)
+            }
+          />
+
+          {/* =================================================
+              LOADING
+          ================================================= */}
+
+          {loading && (
             <p className="text-sm text-gray-400">
-              Aucun chiffre
-              disponible.
+              Chargement des chiffres...
             </p>
           )}
 
-        {/* CONTENT */}
-        {!loading &&
-          hasContent &&
-          Object.entries(
-            grouped
-          ).map(
-            ([
-              type,
-              groupItems,
-            ]) => (
-              <section
-                key={type}
-                className="space-y-4"
-              >
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
-                <div className="
-                  flex
-                  items-center
-                  justify-between
-                ">
-                  <h2 className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wide
-                    text-gray-400
-                  ">
-                    {type}
-                  </h2>
+          {!loading &&
+            !hasContent && (
+              <p className="text-sm text-gray-400">
+                Aucun chiffre
+                disponible.
+              </p>
+            )}
 
-                  <span className="
-                    text-xs
-                    text-gray-300
-                  ">
-                    {
-                      groupItems.length
-                    }
-                  </span>
-                </div>
+          {/* =================================================
+              CONTENT
+          ================================================= */}
 
-                <div
-                  className="
-                    grid
-                    grid-cols-2
-                    sm:grid-cols-3
-                    md:grid-cols-4
-                    lg:grid-cols-5
-                    gap-3
-                  "
+          {!loading &&
+            hasContent &&
+            Object.entries(
+              grouped
+            ).map(
+              ([
+                type,
+                groupItems,
+              ]) => (
+                <section
+                  key={type}
+                  className="space-y-4"
                 >
 
-                  {groupItems.map(
-                    (item) => {
+                  <div className="
+                    flex
+                    items-center
+                    justify-between
+                  ">
+                    <h2 className="
+                      text-xs
+                      font-semibold
+                      uppercase
+                      tracking-wide
+                      text-gray-400
+                    ">
+                      {type}
+                    </h2>
 
-                      const selected =
-                        selectedIds.includes(
-                          item.ID_NUMBER
-                        );
+                    <span className="
+                      text-xs
+                      text-gray-300
+                    ">
+                      {
+                        groupItems.length
+                      }
+                    </span>
+                  </div>
 
-                      return (
-                        <NumberCard
-                          key={
+                  <div
+                    className="
+                      grid
+                      grid-cols-2
+                      sm:grid-cols-3
+                      md:grid-cols-4
+                      lg:grid-cols-5
+                      gap-3
+                    "
+                  >
+
+                    {groupItems.map(
+                      (item) => {
+
+                        const selected =
+                          selectedIds.includes(
                             item.ID_NUMBER
-                          }
+                          );
 
-                          item={item}
+                        return (
+                          <NumberCard
+                            key={
+                              item.ID_NUMBER
+                            }
 
-                          selected={
-                            selected
-                          }
+                            item={item}
 
-                          onClick={() =>
-                            toggleSelect(
-                              item
-                            )
-                          }
-                        />
-                      );
-                    }
-                  )}
+                            selected={
+                              selected
+                            }
 
-                </div>
+                            onClick={() =>
+                              toggleSelect(
+                                item
+                              )
+                            }
+                          />
+                        );
+                      }
+                    )}
 
-              </section>
-            )
-          )}
+                  </div>
+
+                </section>
+              )
+            )}
+
+        </div>
 
       </div>
 
