@@ -49,18 +49,110 @@ export default function NewsList({
 
     return (
 
-      <div
-        className="
-          bg-white
-          border
-          rounded-xl
-          p-10
-          text-center
+      <div className="
+        text-center
+        py-16
+      ">
+
+        <div className="
           text-sm
-          text-gray-500
-        "
-      >
-        No news found
+          text-gray-400
+        ">
+          No news found
+        </div>
+
+      </div>
+
+    );
+  }
+
+  /* =========================================================
+     SKELETON
+  ========================================================= */
+
+  function SkeletonRow() {
+
+    return (
+
+      <div className="
+        animate-pulse
+        py-4
+        border-b
+        border-gray-100
+      ">
+
+        <div className="
+          flex
+          items-start
+          gap-4
+        ">
+
+          <div className="
+            w-12
+            h-12
+            rounded-xl
+            bg-gray-200
+            shrink-0
+          " />
+
+          <div className="
+            flex-1
+            space-y-2
+          ">
+
+            <div className="
+              h-3
+              w-24
+              rounded
+              bg-gray-200
+            " />
+
+            <div className="
+              flex
+              gap-2
+            ">
+
+              <div className="
+                h-5
+                w-16
+                rounded-full
+                bg-gray-200
+              " />
+
+              <div className="
+                h-5
+                w-20
+                rounded-full
+                bg-gray-200
+              " />
+
+            </div>
+
+            <div className="
+              h-4
+              w-3/4
+              rounded
+              bg-gray-200
+            " />
+
+            <div className="
+              h-3
+              w-full
+              rounded
+              bg-gray-100
+            " />
+
+            <div className="
+              h-3
+              w-2/3
+              rounded
+              bg-gray-100
+            " />
+
+          </div>
+
+        </div>
+
       </div>
 
     );
@@ -74,56 +166,106 @@ export default function NewsList({
 
     <div className="space-y-4">
 
-      {/* LIST */}
+      {/* =====================================================
+          LIST
+      ===================================================== */}
 
-      {items.map((item) => (
+      <div className="
+        bg-white
+        border
+        border-gray-100
+        rounded-xl
+        overflow-hidden
+      ">
 
-        <NewsCard
-          key={item.id}
-          item={item}
-          selected={selectedIds.includes(item.id)}
-          onToggleSelect={onToggleSelect}
-          onClickBadge={onClickBadge}
-        />
+        {/* LOADING INITIAL */}
 
-      ))}
+        {loading &&
+          items.length === 0 && (
 
-      {/* LOADING */}
+            <div>
 
-      {loading && (
+              {[...Array(5)].map(
+                (_, i) => (
+                  <SkeletonRow
+                    key={i}
+                  />
+                )
+              )}
 
-        <div
-          className="
-            text-center
-            text-sm
-            text-gray-500
-            py-6
-          "
-        >
-          Loading...
-        </div>
+            </div>
 
-      )}
+          )}
 
-      {/* LOAD MORE */}
+        {/* ITEMS */}
 
-      {!loading && hasMore && (
+        {!(
+          loading &&
+          items.length === 0
+        ) && (
+          <div>
 
-        <div className="flex justify-center pt-4">
+            {items.map((item) => (
+
+              <NewsCard
+                key={item.id}
+                item={item}
+                selected={selectedIds.includes(item.id)}
+                onToggleSelect={onToggleSelect}
+                onClickBadge={onClickBadge}
+              />
+
+            ))}
+
+          </div>
+        )}
+
+      </div>
+
+      {/* =====================================================
+          LOAD MORE
+      ===================================================== */}
+
+      {hasMore && items.length > 0 && (
+
+        <div className="
+          flex
+          flex-col
+          items-center
+          gap-2
+          pt-6
+        ">
+
+          {loading && (
+
+            <div className="
+              text-xs
+              text-gray-400
+            ">
+              Loading more...
+            </div>
+
+          )}
 
           <button
             onClick={onLoadMore}
+            disabled={loading}
             className="
-              px-4
-              py-2
-              rounded-lg
-              border
-              bg-white
-              hover:bg-gray-50
               text-sm
+              px-5
+              py-2
+              rounded-full
+              bg-black
+              text-white
+              hover:opacity-90
+              transition
+              disabled:opacity-50
+              disabled:cursor-not-allowed
             "
           >
-            Load more
+            {loading
+              ? "Loading…"
+              : "Load more"}
           </button>
 
         </div>
