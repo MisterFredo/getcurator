@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import FeedExplorer from "@/components/feed/FeedExplorer";
 
 import AnalysisDrawer from "@/components/drawers/AnalysisDrawer";
-import NewsDrawer from "@/components/drawers/NewsDrawer";
 
 import { searchCurator, getLatestCurator } from "@/lib/search";
 
@@ -150,14 +149,12 @@ export default function FeedPage() {
             offset: currentOffset,
             universe_id:
               activeUniverse || undefined,
-            content_type: "ANALYSIS",
           })
         : await getLatestCurator({
             limit: LIMIT,
             offset: currentOffset,
             universe_id:
               activeUniverse || undefined,
-            content_type: "ANALYSIS",
           });
 
       if (reset) {
@@ -311,7 +308,7 @@ export default function FeedPage() {
             tracking-tight
             text-[#111827]
           ">
-            Analysis
+            Feed
           </h1>
         </div>
 
@@ -372,29 +369,12 @@ export default function FeedPage() {
       </div>
 
       {selectedItem && (
-        <>
-
-          {selectedItem.type ===
-            "analysis" && (
-            <AnalysisDrawer
-              id={selectedItem.id}
-              onClose={() =>
-                setSelectedItem(null)
-              }
-            />
-          )}
-
-          {selectedItem.type ===
-            "news" && (
-            <NewsDrawer
-              id={selectedItem.id}
-              onClose={() =>
-                setSelectedItem(null)
-              }
-            />
-          )}
-
-        </>
+        <AnalysisDrawer
+          id={selectedItem.id}
+          onClose={() =>
+            setSelectedItem(null)
+          }
+        />
       )}
 
     </div>
