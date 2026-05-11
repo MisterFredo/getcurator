@@ -501,3 +501,101 @@ def bulk_sync_contents(ids: list[str]):
         "results": results,
     }
 
+# ============================================================
+# FULL SYNC — ALL PUBLISHED CONTENTS
+# ============================================================
+
+def sync_all_published_contents(
+    sync_numbers: bool = False,
+):
+
+    started_at = datetime.now(
+        timezone.utc
+    )
+
+    print(
+        "🚀 FULL CONTENT SYNC START"
+    )
+
+    # ========================================================
+    # GET PUBLISHED CONTENTS
+    # ========================================================
+
+    rows = query_bq(
+        f"""
+        SELECT ID_CONTENT
+        FROM `{TABLE_CONTENT}`
+        WHERE STATUS = 'PUBLISHED'
+        ORDER BY PUBLISHED_AT DESC
+        """
+    )
+
+    ids = [
+        r["ID_CONTENT"]
+        for r in rows
+    ]
+
+    results = []
+
+    # ========================================================
+    # LOOP
+    # ========================================================
+
+    for id_content in ids:
+
+        try:
+
+            result = sync_content(
+                id_content=id_content,
+                sync_numbers=sync_numbers,
+            )
+
+            results.append({
+                "id_content": id_content,
+                "status": "ok",
+                **result,
+            })
+
+        except Exception as e:
+
+            results.append({
+                "id_content": id_content,
+                "status": "error",
+                "error": str(e),
+            })
+
+    # ========================================================
+    # STATS
+    # ========================================================
+
+    synced = len([
+        r for r in results
+        if r["status"] == "ok"
+    ])
+
+    errors = len([
+        r for r in results
+        if r["status"] == "error"
+    ])
+
+    duration = (
+        datetime.now(timezone.utc)
+        - started_at
+    ).total_seconds()
+
+    final_result = {
+        "total": len(ids),
+        "synced": synced,
+        "errors": errors,
+        "sync_numbers": sync_numbers,
+        "duration_seconds": duration,
+        "results": results,
+    }
+
+    print(
+        "✅ FULL CONTENT SYNC DONE:",
+        final_result,
+    )
+
+    return final_result
+
