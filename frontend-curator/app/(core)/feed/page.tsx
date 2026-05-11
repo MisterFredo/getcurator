@@ -7,9 +7,15 @@ import FeedExplorer from "@/components/feed/FeedExplorer";
 
 import AnalysisDrawer from "@/components/drawers/AnalysisDrawer";
 
-import { searchCurator, getLatestCurator } from "@/lib/search";
+import {
+  searchCurator,
+  getLatestCurator,
+} from "@/lib/search";
 
-import type { FeedItem, FeedBadge } from "@/types/feed";
+import type {
+  FeedItem,
+  FeedBadge,
+} from "@/types/feed";
 
 import { api } from "@/lib/api";
 
@@ -25,12 +31,17 @@ type Universe = {
 /* ========================================================= */
 
 export default function FeedPage() {
+
   const LIMIT = 20;
 
-  const searchParams = useSearchParams();
+  const searchParams =
+    useSearchParams();
 
-  const analysisId = searchParams.get("analysis_id");
-  const newsId = searchParams.get("news_id");
+  const analysisId =
+    searchParams.get("analysis_id");
+
+  const newsId =
+    searchParams.get("news_id");
 
   /* =========================================================
      WORKSPACE
@@ -42,7 +53,9 @@ export default function FeedPage() {
   } = useWorkspace();
 
   const selectedIds =
-    selectedContentItems.map((i) => i.id);
+    selectedContentItems.map(
+      (i) => i.id
+    );
 
   /* =========================================================
      UNIVERSE
@@ -51,8 +64,19 @@ export default function FeedPage() {
   const [universes, setUniverses] =
     useState<Universe[]>([]);
 
-  const [activeUniverse, setActiveUniverse] =
-    useState<string | null>(null);
+  const [
+    activeUniverse,
+    setActiveUniverse,
+  ] = useState<string | null>(
+    null
+  );
+
+  /* =========================================================
+     TYPE
+  ========================================================= */
+
+  const [activeType, setActiveType] =
+    useState("all");
 
   /* =========================================================
      DATA
@@ -80,11 +104,19 @@ export default function FeedPage() {
      DRAWER
   ========================================================= */
 
-  const [selectedItem, setSelectedItem] =
-    useState<FeedItem | null>(null);
+  const [
+    selectedItem,
+    setSelectedItem,
+  ] = useState<FeedItem | null>(
+    null
+  );
 
-  const [loadingItemId, setLoadingItemId] =
-    useState<string | null>(null);
+  const [
+    loadingItemId,
+    setLoadingItemId,
+  ] = useState<string | null>(
+    null
+  );
 
   /* =========================================================
      LOAD UNIVERS
@@ -93,14 +125,19 @@ export default function FeedPage() {
   useEffect(() => {
 
     async function loadUniverses() {
+
       try {
+
         const res = await api.get(
           "/universe/list-for-user"
         );
 
-        setUniverses(res?.universes || []);
+        setUniverses(
+          res?.universes || []
+        );
 
       } catch (e) {
+
         console.error(
           "❌ universe load error",
           e
@@ -120,6 +157,7 @@ export default function FeedPage() {
     reset = false,
     q?: string
   ) {
+
     if (loading && !reset) return;
 
     const finalQuery =
@@ -133,8 +171,11 @@ export default function FeedPage() {
         : offset;
 
     if (reset) {
+
       setItems([]);
+
       setOffset(0);
+
       setHasMore(true);
     }
 
@@ -143,24 +184,43 @@ export default function FeedPage() {
     try {
 
       const res = finalQuery
+
         ? await searchCurator({
             query: finalQuery,
             limit: LIMIT,
             offset: currentOffset,
+
             universe_id:
-              activeUniverse || undefined,
+              activeUniverse ||
+              undefined,
+
+            content_type:
+              activeType === "all"
+                ? undefined
+                : activeType.toUpperCase(),
           })
+
         : await getLatestCurator({
             limit: LIMIT,
             offset: currentOffset,
+
             universe_id:
-              activeUniverse || undefined,
+              activeUniverse ||
+              undefined,
+
+            content_type:
+              activeType === "all"
+                ? undefined
+                : activeType.toUpperCase(),
           });
 
       if (reset) {
 
         setItems(res.items);
-        setOffset(res.items.length);
+
+        setOffset(
+          res.items.length
+        );
 
       } else {
 
@@ -170,7 +230,8 @@ export default function FeedPage() {
         ]);
 
         setOffset(
-          (prev) => prev + res.items.length
+          (prev) =>
+            prev + res.items.length
         );
       }
 
@@ -199,8 +260,13 @@ export default function FeedPage() {
   ========================================================= */
 
   useEffect(() => {
+
     load(true);
-  }, [activeUniverse]);
+
+  }, [
+    activeUniverse,
+    activeType,
+  ]);
 
   /* =========================================================
      DRAWER FROM URL
@@ -208,10 +274,15 @@ export default function FeedPage() {
 
   useEffect(() => {
 
-    if (!analysisId && !newsId) return;
+    if (
+      !analysisId &&
+      !newsId
+    ) return;
+
     if (selectedItem) return;
 
     if (analysisId) {
+
       setSelectedItem({
         id: analysisId,
         type: "analysis",
@@ -219,13 +290,17 @@ export default function FeedPage() {
     }
 
     if (newsId) {
+
       setSelectedItem({
         id: newsId,
         type: "news",
       } as FeedItem);
     }
 
-  }, [analysisId, newsId]);
+  }, [
+    analysisId,
+    newsId,
+  ]);
 
   /* =========================================================
      BADGES
@@ -235,7 +310,9 @@ export default function FeedPage() {
     badge: FeedBadge
   ) {
 
-    if (badge.type === "universe") {
+    if (
+      badge.type === "universe"
+    ) {
 
       setActiveUniverse(
         badge.id || null
@@ -250,7 +327,8 @@ export default function FeedPage() {
       return;
     }
 
-    const value = badge.label;
+    const value =
+      badge.label;
 
     if (!value) return;
 
@@ -278,7 +356,9 @@ export default function FeedPage() {
     setSelectedItem(item);
 
     setTimeout(() => {
+
       setLoadingItemId(null);
+
     }, 300);
   }
 
@@ -289,6 +369,7 @@ export default function FeedPage() {
   function toggleSelect(
     item: FeedItem
   ) {
+
     toggleContent(item);
   }
 
@@ -297,11 +378,20 @@ export default function FeedPage() {
   ========================================================= */
 
   return (
-    <div className="grid grid-cols-1 gap-8 items-start">
 
-      <div className="space-y-6">
+    <div className="
+      grid
+      grid-cols-1
+      gap-8
+      items-start
+    ">
+
+      <div className="
+        space-y-6
+      ">
 
         <div>
+
           <h1 className="
             text-2xl
             font-semibold
@@ -310,10 +400,12 @@ export default function FeedPage() {
           ">
             Feed
           </h1>
+
         </div>
 
         <FeedExplorer
           query={query}
+
           setQuery={setQuery}
 
           onSearch={(q) => {
@@ -333,6 +425,14 @@ export default function FeedPage() {
 
           onSelectUniverse={(id) =>
             setActiveUniverse(id)
+          }
+
+          selectedType={
+            activeType
+          }
+
+          onSelectType={(type) =>
+            setActiveType(type)
           }
 
           items={items}
@@ -359,7 +459,9 @@ export default function FeedPage() {
             loadingItemId
           }
 
-          selectedIds={selectedIds}
+          selectedIds={
+            selectedIds
+          }
 
           onToggleSelect={
             toggleSelect
@@ -369,12 +471,14 @@ export default function FeedPage() {
       </div>
 
       {selectedItem && (
+
         <AnalysisDrawer
           id={selectedItem.id}
           onClose={() =>
             setSelectedItem(null)
           }
         />
+
       )}
 
     </div>
