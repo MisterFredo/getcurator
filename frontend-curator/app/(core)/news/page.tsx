@@ -261,35 +261,45 @@ export default function NewsPage() {
 
   return (
 
-    <div className="max-w-6xl mx-auto">
-
-      {/* =====================================================
-          HERO
-      ===================================================== */}
+    <div className="
+      bg-[#F5F6F8]
+      rounded-2xl
+      border
+      border-gray-200
+      p-6
+    ">
 
       <div className="
-        mb-8
-        pt-2
+        bg-white
+        rounded-2xl
+        border
+        border-gray-200
+        p-6
       ">
+
+        {/* ===================================================
+            HEADER
+        =================================================== */}
 
         <div className="
           flex
           items-start
           justify-between
           gap-6
-          mb-5
+          mb-6
         ">
 
           <div>
 
             <h1 className="
-              text-3xl
+              text-4xl
               font-semibold
-              text-gray-900
               tracking-tight
+              text-[#111827]
             ">
               News
             </h1>
+
           </div>
 
           <div className="
@@ -408,7 +418,10 @@ export default function NewsPage() {
             SEARCH
         =================================================== */}
 
-        <div className="relative">
+        <div className="
+          relative
+          mb-8
+        ">
 
           <input
             value={query}
@@ -449,27 +462,27 @@ export default function NewsPage() {
 
         </div>
 
+        {/* ===================================================
+            NEWS LIST
+        =================================================== */}
+
+        <NewsList
+          items={items}
+          loading={loading}
+          hasMore={hasMore}
+          selectedIds={selectedIds}
+          onToggleSelect={
+            toggleSelect
+          }
+          onClickBadge={
+            handleBadgeClick
+          }
+          onLoadMore={() =>
+            load(false)
+          }
+        />
+
       </div>
-
-      {/* =====================================================
-          NEWS LIST
-      ===================================================== */}
-
-      <NewsList
-        items={items}
-        loading={loading}
-        hasMore={hasMore}
-        selectedIds={selectedIds}
-        onToggleSelect={
-          toggleSelect
-        }
-        onClickBadge={
-          handleBadgeClick
-        }
-        onLoadMore={() =>
-          load(false)
-        }
-      />
 
     </div>
   );
