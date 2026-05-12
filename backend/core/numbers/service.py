@@ -504,14 +504,22 @@ def get_numbers_feed_service(
 ):
 
     where_clauses = ["TRUE"]
-    params = {"limit": limit}
+
+    params = {
+        "limit": limit,
+    }
 
     # ============================================================
     # 🔎 QUERY
     # ============================================================
 
     if query:
-        where_clauses.append("LOWER(n.LABEL) LIKE LOWER(@query)")
+
+        where_clauses.append("""
+        LOWER(IFNULL(n.LABEL, ''))
+        LIKE LOWER(@query)
+        """)
+
         params["query"] = f"%{query}%"
 
     # ============================================================
@@ -519,26 +527,51 @@ def get_numbers_feed_service(
     # ============================================================
 
     if universe_id:
+
         where_clauses.append(f"""
-        EXISTS (
-            SELECT 1
-            FROM UNNEST(n.ENTITIES) e2
+        (
 
-            LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION` sc2
-              ON e2.ENTITY_TYPE = 'solution'
-             AND sc2.ID_SOLUTION = e2.ENTITY_ID
+            EXISTS (
 
-            JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu2
-              ON (
-                (e2.ENTITY_TYPE = 'company' AND cu2.ID_COMPANY = e2.ENTITY_ID)
-                OR
-                (e2.ENTITY_TYPE = 'solution' AND cu2.ID_COMPANY = sc2.ID_COMPANY)
-              )
+                SELECT 1
 
-            WHERE cu2.ID_UNIVERSE = @universe_id
+                FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_COMPANY` nc
+
+                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
+                  ON nc.ID_COMPANY = cu.ID_COMPANY
+
+                WHERE
+                    nc.ID_NUMBER = n.ID_NUMBER
+                    AND cu.ID_UNIVERSE = @universe_id
+            )
+
+            OR
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS_SOLUTION` ns
+
+                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION` s
+                  ON ns.ID_SOLUTION = s.ID_SOLUTION
+
+                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
+                  ON s.ID_COMPANY = cu.ID_COMPANY
+
+                WHERE
+                    ns.ID_NUMBER = n.ID_NUMBER
+                    AND cu.ID_UNIVERSE = @universe_id
+            )
+
         )
         """)
+
         params["universe_id"] = universe_id
+
+    # ============================================================
+    # WHERE
+    # ============================================================
 
     where_sql = " AND ".join(where_clauses)
 
@@ -548,13 +581,21 @@ def get_numbers_feed_service(
 
     sql = f"""
     WITH solution_company AS (
-        SELECT ID_SOLUTION, ID_COMPANY
+
+        SELECT
+            ID_SOLUTION,
+            ID_COMPANY
+
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION`
     )
 
     SELECT
         n.*,
-        ARRAY_AGG(DISTINCT cu.ID_UNIVERSE IGNORE NULLS) AS universes
+
+        ARRAY_AGG(
+            DISTINCT cu.ID_UNIVERSE
+            IGNORE NULLS
+        ) AS universes
 
     FROM `{VIEW_NUMBERS_CARDS}` n
 
@@ -566,9 +607,17 @@ def get_numbers_feed_service(
 
     LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
       ON (
-        (e.ENTITY_TYPE = 'company' AND cu.ID_COMPANY = e.ENTITY_ID)
+        (
+            e.ENTITY_TYPE = 'company'
+            AND cu.ID_COMPANY = e.ENTITY_ID
+        )
+
         OR
-        (e.ENTITY_TYPE = 'solution' AND cu.ID_COMPANY = sc.ID_COMPANY)
+
+        (
+            e.ENTITY_TYPE = 'solution'
+            AND cu.ID_COMPANY = sc.ID_COMPANY
+        )
       )
 
     WHERE {where_sql}
@@ -587,10 +636,14 @@ def get_numbers_feed_service(
         n.ENTITIES
 
     ORDER BY n.CREATED_AT DESC
+
     LIMIT @limit
     """
 
-    return query_bq(sql, params)
+    return query_bq(
+        sql,
+        params,
+    )
 
 def search_numbers_service(
     id_number_type: Optional[str] = None,
