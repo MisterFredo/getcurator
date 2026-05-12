@@ -169,11 +169,17 @@ export default function FeedItemCard({
   ========================================================= */
 
   const primaryCompany =
-    item.companies?.[0];
+    item.id_primary_company
+
+      ? item.companies?.find(
+          (c: any) =>
+            c.id_company === item.id_primary_company
+        )
+
+      : null;
 
   const logoUrl =
-    primaryCompany
-      ?.media_logo_rectangle_id
+    primaryCompany?.media_logo_rectangle_id
 
       ? `${GCS_BASE_URL}/companies/${primaryCompany.media_logo_rectangle_id}`
 
