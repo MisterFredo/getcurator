@@ -14,6 +14,7 @@ type FeedItem = {
   id: string;
 
   type: "news" | "analysis";
+  id_primary_company?: string | null;
 
   title: string;
 
