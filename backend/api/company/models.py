@@ -25,7 +25,6 @@ class CompanyCreate(BaseModel):
 
     # 🔥 NEW → alias proposés lors de la création
     aliases: List[str] = Field(default_factory=list)
-    aliases: Optional[List[str]] = []
 
     class Config:
         extra = "forbid"
