@@ -11,6 +11,9 @@ from core.company.service import (
     get_company,
     update_company,
     delete_company,
+    get_company_aliases,
+    add_company_alias,
+    delete_company_alias,
 )
 
 from core.curator.entity_service import get_company_view
@@ -209,3 +212,96 @@ def delete_route(id_company: str):
         raise
     except Exception as e:
         raise HTTPException(400, f"Erreur suppression société : {e}")
+
+
+# ============================================================
+# ALIASES
+# ============================================================
+
+@router.get("/{id_company}/aliases")
+def get_aliases_route(id_company: str):
+
+    try:
+
+        aliases = get_company_aliases(
+            id_company=id_company
+        )
+
+        return {
+            "status": "ok",
+            "aliases": aliases,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur récupération aliases : {e}"
+        )
+
+
+@router.post("/{id_company}/aliases")
+def add_alias_route(
+    id_company: str,
+    data: dict,
+):
+
+    try:
+
+        alias = (
+            data.get("alias")
+            or ""
+        ).strip()
+
+        if not alias:
+
+            raise HTTPException(
+                400,
+                "alias required"
+            )
+
+        add_company_alias(
+            id_company=id_company,
+            alias=alias,
+        )
+
+        return {
+            "status": "ok",
+            "alias": alias,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur ajout alias : {e}"
+        )
+
+
+@router.delete("/{id_company}/aliases/{alias}")
+def delete_alias_route(
+    id_company: str,
+    alias: str,
+):
+
+    try:
+
+        deleted = delete_company_alias(
+            id_company=id_company,
+            alias=alias,
+        )
+
+        return {
+            "status": "ok",
+            "deleted": deleted,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur suppression alias : {e}"
+        )
