@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import Link from "next/link";
 
 import { api } from "@/lib/api";
@@ -28,6 +27,11 @@ type CompanyType = {
 type Universe = {
   id_universe: string;
   label: string;
+};
+
+type AliasItem = {
+  alias: string;
+  match_status?: string;
 };
 
 /* ========================================================= */
@@ -61,28 +65,20 @@ export default function EditCompany({
   const [description, setDescription] =
     useState("");
 
-  const [
-    linkedinUrl,
-    setLinkedinUrl
-  ] = useState("");
+  const [linkedinUrl, setLinkedinUrl] =
+    useState("");
 
-  const [
-    websiteUrl,
-    setWebsiteUrl
-  ] = useState("");
+  const [websiteUrl, setWebsiteUrl] =
+    useState("");
 
   const [isPartner, setIsPartner] =
     useState(false);
 
-  const [
-    wikiContent,
-    setWikiContent
-  ] = useState("");
+  const [wikiContent, setWikiContent] =
+    useState("");
 
-  const [
-    logoFilename,
-    setLogoFilename
-  ] = useState<string | null>(null);
+  const [logoFilename, setLogoFilename] =
+    useState<string | null>(null);
 
   const [
     insightFrequency,
@@ -92,7 +88,9 @@ export default function EditCompany({
   const [types, setTypes] =
     useState<CompanyType[]>([]);
 
-  // 🔥 UNIVERS
+  /* =========================================================
+     UNIVERS
+  ========================================================= */
 
   const [universes, setUniverses] =
     useState<string[]>([]);
@@ -102,12 +100,9 @@ export default function EditCompany({
     setAvailableUniverses
   ] = useState<Universe[]>([]);
 
-  // 🔥 ALIASES
-
-  type AliasItem = {
-    alias: string;
-    match_status?: string;
-  };
+  /* =========================================================
+     ALIASES
+  ========================================================= */
 
   const [aliases, setAliases] =
     useState<AliasItem[]>([]);
@@ -116,7 +111,7 @@ export default function EditCompany({
     useState("");
 
   /* =========================================================
-     LOAD TYPES + UNIVERS
+     LOAD META
   ========================================================= */
 
   useEffect(() => {
@@ -198,22 +193,16 @@ export default function EditCompany({
         );
 
         setLogoFilename(
-          c.media_logo_rectangle_id
-          || null
+          c.media_logo_rectangle_id || null
         );
 
         setInsightFrequency(
-          c.insight_frequency
-          || "QUARTERLY"
+          c.insight_frequency || "QUARTERLY"
         );
-
-        // 🔥 UNIVERS
 
         setUniverses(
           c.universes || []
         );
-
-        // 🔥 ALIASES
 
         const aliasesRes =
           await api.get(
@@ -283,11 +272,11 @@ export default function EditCompany({
       );
 
       setAliases((prev) => [
-
         ...prev,
-
-        value,
-
+        {
+          alias: value,
+          match_status: "MATCH",
+        },
       ]);
 
       setNewAlias("");
@@ -327,7 +316,7 @@ export default function EditCompany({
 
       setAliases((prev) =>
         prev.filter(
-          (a) => a !== alias
+          (a) => a.alias !== alias
         )
       );
 
@@ -357,28 +346,19 @@ export default function EditCompany({
         `/company/update/${id}`,
         {
           name,
-
-          type:
-            type || null,
-
+          type: type || null,
           description:
             description || null,
-
           linkedin_url:
             linkedinUrl || null,
-
           website_url:
             websiteUrl || null,
-
           is_partner:
             isPartner,
-
           wiki_content:
             wikiContent || null,
-
           insight_frequency:
             insightFrequency,
-
           universes,
         }
       );
@@ -404,7 +384,7 @@ export default function EditCompany({
   }
 
   /* =========================================================
-     URL LOGO
+     LOGO URL
   ========================================================= */
 
   const rectUrl =
@@ -430,16 +410,9 @@ export default function EditCompany({
 
       {/* HEADER */}
 
-      <div className="
-        flex
-        justify-between
-      ">
+      <div className="flex justify-between">
 
-        <h1 className="
-          text-3xl
-          font-semibold
-          text-ratecard-blue
-        ">
+        <h1 className="text-3xl font-semibold text-ratecard-blue">
           Modifier la société
         </h1>
 
@@ -471,10 +444,7 @@ export default function EditCompany({
 
       <div className="space-y-2">
 
-        <label className="
-          block
-          font-medium
-        ">
+        <label className="block font-medium">
           Type
         </label>
 
@@ -485,14 +455,7 @@ export default function EditCompany({
               e.target.value
             )
           }
-          className="
-            border
-            px-3
-            py-2
-            rounded
-            w-full
-            max-w-md
-          "
+          className="border px-3 py-2 rounded w-full max-w-md"
         >
 
           <option value="">
@@ -514,25 +477,17 @@ export default function EditCompany({
 
       </div>
 
-      {/* 🔥 ALIASES */}
+      {/* ALIASES */}
 
       <div className="space-y-4">
 
         <div>
 
-          <label className="
-            block
-            font-medium
-            mb-2
-          ">
+          <label className="block font-medium mb-2">
             Aliases
           </label>
 
-          <div className="
-            flex
-            gap-2
-            max-w-2xl
-          ">
+          <div className="flex gap-2 max-w-2xl">
 
             <input
               type="text"
@@ -542,28 +497,14 @@ export default function EditCompany({
                   e.target.value
                 )
               }
-              placeholder="
-Ajouter un alias
-              "
-              className="
-                border
-                px-3
-                py-2
-                rounded
-                flex-1
-              "
+              placeholder="Ajouter un alias"
+              className="border px-3 py-2 rounded flex-1"
             />
 
             <button
               type="button"
               onClick={addAlias}
-              className="
-                bg-ratecard-blue
-                text-white
-                px-4
-                py-2
-                rounded
-              "
+              className="bg-ratecard-blue text-white px-4 py-2 rounded"
             >
               Ajouter
             </button>
@@ -572,43 +513,27 @@ Ajouter un alias
 
         </div>
 
-        <div className="
-          flex
-          flex-wrap
-          gap-2
-        ">
+        <div className="flex flex-wrap gap-2">
 
-          {aliases.map((alias) => (
+          {aliases.map((item) => (
 
             <div
-              key={alias}
-              className="
-                flex
-                items-center
-                gap-2
-                bg-gray-100
-                px-3
-                py-1
-                rounded-full
-                text-sm
-              "
+              key={item.alias}
+              className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm"
             >
 
               <span>
-                {alias}
+                {item.alias}
               </span>
 
               <button
                 type="button"
                 onClick={() =>
                   deleteAlias(
-                    alias
+                    item.alias
                   )
                 }
-                className="
-                  text-red-500
-                  font-bold
-                "
+                className="text-red-500 font-bold"
               >
                 ×
               </button>
@@ -625,28 +550,17 @@ Ajouter un alias
 
       <div className="space-y-2">
 
-        <label className="
-          block
-          font-medium
-        ">
+        <label className="block font-medium">
           Univers
         </label>
 
-        <div className="
-          flex
-          flex-col
-          gap-2
-        ">
+        <div className="flex flex-col gap-2">
 
           {availableUniverses.map((u) => (
 
             <label
               key={u.id_universe}
-              className="
-                flex
-                items-center
-                gap-2
-              "
+              className="flex items-center gap-2"
             >
 
               <input
@@ -675,10 +589,7 @@ Ajouter un alias
 
       <div className="space-y-2">
 
-        <label className="
-          block
-          font-medium
-        ">
+        <label className="block font-medium">
           Fréquence des insights
         </label>
 
@@ -689,14 +600,7 @@ Ajouter un alias
               e.target.value
             )
           }
-          className="
-            border
-            px-3
-            py-2
-            rounded
-            w-full
-            max-w-md
-          "
+          className="border px-3 py-2 rounded w-full max-w-md"
         >
 
           <option value="WEEKLY">
@@ -719,10 +623,7 @@ Ajouter un alias
 
       <div className="space-y-2">
 
-        <label className="
-          block
-          font-medium
-        ">
+        <label className="block font-medium">
           Description (commerciale)
         </label>
 
@@ -735,16 +636,9 @@ Ajouter un alias
 
       {/* WIKI */}
 
-      <div className="
-        border-t
-        pt-6
-        space-y-2
-      ">
+      <div className="border-t pt-6 space-y-2">
 
-        <h2 className="
-          text-lg
-          font-semibold
-        ">
+        <h2 className="text-lg font-semibold">
           Wiki
         </h2>
 
@@ -757,11 +651,7 @@ Ajouter un alias
 
       {/* PARTNER */}
 
-      <div className="
-        flex
-        items-center
-        gap-2
-      ">
+      <div className="flex items-center gap-2">
 
         <input
           type="checkbox"
@@ -782,13 +672,7 @@ Ajouter un alias
       {/* SAVE */}
 
       <button
-        className="
-          bg-ratecard-blue
-          px-4
-          py-2
-          text-white
-          rounded
-        "
+        className="bg-ratecard-blue px-4 py-2 text-white rounded"
         onClick={save}
         disabled={saving}
       >
@@ -815,8 +699,7 @@ Ajouter un alias
               );
 
             setLogoFilename(
-              c.media_logo_rectangle_id
-              || null
+              c.media_logo_rectangle_id || null
             );
 
           } catch (e) {
