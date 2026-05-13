@@ -543,6 +543,65 @@ def create_company_alias(
 
     return True
 
+# ============================================================
+# ADD COMPANY ALIAS
+# ============================================================
+
+def add_company_alias(
+    id_company: str,
+    alias: str,
+):
+
+    alias = (alias or "").strip()
+
+    if not alias:
+        raise ValueError("alias vide")
+
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_COMPANY_ALIAS}`
+
+        WHERE
+            ID_COMPANY = @id_company
+            AND UPPER(TRIM(ALIAS))
+                =
+                UPPER(TRIM(@alias))
+
+        LIMIT 1
+        """,
+        {
+            "id_company": id_company,
+            "alias": alias,
+        }
+    )
+
+    if rows:
+        return False
+
+    query_bq(
+        f"""
+        INSERT INTO `{TABLE_COMPANY_ALIAS}` (
+            ALIAS,
+            ID_COMPANY,
+            MATCH_STATUS
+        )
+
+        VALUES (
+            @alias,
+            @id_company,
+            'MATCH'
+        )
+        """,
+        {
+            "alias": alias,
+            "id_company": id_company,
+        }
+    )
+
+    return True
+
 
 def delete_company_alias(
     id_company: str,
