@@ -286,3 +286,21 @@ def delete_alias_route(
     id_company: str,
     alias: str,
 ):
+    try:
+
+        delete_company_alias(
+            id_company=id_company,
+            alias=alias,
+        )
+
+        return {
+            "status": "ok",
+            "deleted": True,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur suppression alias : {e}"
+        )
