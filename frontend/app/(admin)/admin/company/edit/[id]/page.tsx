@@ -104,8 +104,13 @@ export default function EditCompany({
 
   // 🔥 ALIASES
 
+  type AliasItem = {
+    alias: string;
+    match_status?: string;
+  };
+
   const [aliases, setAliases] =
-    useState<string[]>([]);
+    useState<AliasItem[]>([]);
 
   const [newAlias, setNewAlias] =
     useState("");
