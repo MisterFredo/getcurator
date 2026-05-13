@@ -317,12 +317,7 @@ export default function EditCompany({
     try {
 
       await api.delete(
-        `/company/${id}/alias`,
-        {
-          data: {
-            alias,
-          },
-        }
+        `/company/${id}/alias?alias=${encodeURIComponent(alias)}`
       );
 
       setAliases((prev) =>
