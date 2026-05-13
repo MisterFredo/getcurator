@@ -49,6 +49,10 @@ TABLE_SOLUTION_ALIAS = (
 
 def sync_content_companies(id_content: str):
 
+    # ========================================================
+    # CLEAN EXISTING LINKS
+    # ========================================================
+
     query_bq(
         f"""
         DELETE FROM `{TABLE_CONTENT_COMPANY}`
@@ -58,6 +62,37 @@ def sync_content_companies(id_content: str):
             "id_content": id_content,
         }
     )
+
+    # ========================================================
+    # PRIMARY COMPANY (🔥 SOURCE OF TRUTH)
+    # ========================================================
+
+    query_bq(
+        f"""
+        INSERT INTO `{TABLE_CONTENT_COMPANY}` (
+            ID_CONTENT,
+            ID_COMPANY
+        )
+
+        SELECT DISTINCT
+            ID_CONTENT,
+            ID_PRIMARY_COMPANY
+
+        FROM `{TABLE_CONTENT}`
+
+        WHERE
+            ID_CONTENT = @id_content
+            AND ID_PRIMARY_COMPANY IS NOT NULL
+            AND TRIM(ID_PRIMARY_COMPANY) != ''
+        """,
+        {
+            "id_content": id_content,
+        }
+    )
+
+    # ========================================================
+    # SECONDARY ENRICHMENT VIA ACTEURS_CITES
+    # ========================================================
 
     query_bq(
         f"""
@@ -91,6 +126,17 @@ def sync_content_companies(id_content: str):
             AND a.MATCH_STATUS = 'MATCH'
             AND raw IS NOT NULL
             AND TRIM(raw) != ''
+
+            -- avoid duplicates with primary company
+            AND NOT EXISTS (
+                SELECT 1
+
+                FROM `{TABLE_CONTENT_COMPANY}` existing
+
+                WHERE
+                    existing.ID_CONTENT = c.ID_CONTENT
+                    AND existing.ID_COMPANY = a.ID_COMPANY
+            )
         """,
         {
             "id_content": id_content,
@@ -101,7 +147,6 @@ def sync_content_companies(id_content: str):
         "✅ COMPANY SYNC DONE:",
         id_content,
     )
-
 # ============================================================
 # SOLUTION MATCHING
 # ============================================================
