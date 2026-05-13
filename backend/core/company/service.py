@@ -348,6 +348,7 @@ def list_companies_for_user(user_id: str):
             "insight_frequency": r.get("INSIGHT_FREQUENCY"),
             "nb_analyses": r["NB_ANALYSES"],
             "delta_30d": r["DELTA_30D"],
+            "aliases": get_company_aliases(company_id),
             "universes": r.get("universes") or [],
         }
         for r in rows
