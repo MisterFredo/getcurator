@@ -327,24 +327,29 @@ def rebuild_content_enriched_row(id_content: str):
             c.CREATED_AT AS created_at,
             c.UPDATED_AT AS updated_at,
 
+            -- ====================================================
+            -- UNIVERSes (🔥 SOURCE BASED)
+            -- ====================================================
+
             ARRAY(
                 SELECT DISTINCT AS STRUCT
                     u.ID_UNIVERSE AS id_universe,
                     u.LABEL AS label
 
-                FROM `{TABLE_CONTENT_COMPANY}` cc
-
-                JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE` cu
-                    ON cc.ID_COMPANY = cu.ID_COMPANY
+                FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE` su
 
                 JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
-                    ON cu.ID_UNIVERSE = u.ID_UNIVERSE
+                    ON su.ID_UNIVERSE = u.ID_UNIVERSE
 
-                WHERE cc.ID_CONTENT = c.ID_CONTENT
+                WHERE su.ID_SOURCE = c.SOURCE_ID
             ) AS universes,
 
+            -- ====================================================
+            -- TOPICS
+            -- ====================================================
+
             ARRAY(
-                SELECT AS STRUCT
+                SELECT DISTINCT AS STRUCT
                     t.ID_TOPIC AS id_topic,
                     t.LABEL AS label,
                     t.TOPIC_AXIS AS topic_axis
@@ -357,8 +362,12 @@ def rebuild_content_enriched_row(id_content: str):
                 WHERE ct.ID_CONTENT = c.ID_CONTENT
             ) AS topics,
 
+            -- ====================================================
+            -- COMPANIES
+            -- ====================================================
+
             ARRAY(
-                SELECT AS STRUCT
+                SELECT DISTINCT AS STRUCT
                     co.ID_COMPANY AS id_company,
                     co.NAME AS name,
                     co.MEDIA_LOGO_RECTANGLE_ID AS media_logo_rectangle_id
@@ -371,8 +380,12 @@ def rebuild_content_enriched_row(id_content: str):
                 WHERE cc.ID_CONTENT = c.ID_CONTENT
             ) AS companies,
 
+            -- ====================================================
+            -- SOLUTIONS
+            -- ====================================================
+
             ARRAY(
-                SELECT AS STRUCT
+                SELECT DISTINCT AS STRUCT
                     s.ID_SOLUTION AS id_solution,
                     s.NAME AS name
 
@@ -384,8 +397,12 @@ def rebuild_content_enriched_row(id_content: str):
                 WHERE cs.ID_CONTENT = c.ID_CONTENT
             ) AS solutions,
 
+            -- ====================================================
+            -- CONCEPTS
+            -- ====================================================
+
             ARRAY(
-                SELECT AS STRUCT
+                SELECT DISTINCT AS STRUCT
                     cp.ID_CONCEPT AS id_concept,
                     cpt.LABEL AS label
 
@@ -421,7 +438,6 @@ def rebuild_content_enriched_row(id_content: str):
         "✅ CONTENT_ENRICHED REBUILT:",
         id_content,
     )
-
 # ============================================================
 # NUMBERS BACKLOG
 # ============================================================
