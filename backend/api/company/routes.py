@@ -281,27 +281,8 @@ def add_alias_route(
         )
 
 
-@router.delete("/{id_company}/aliases/{alias}")
+@router.delete("/{id_company}/alias")
 def delete_alias_route(
     id_company: str,
     alias: str,
 ):
-
-    try:
-
-        deleted = delete_company_alias(
-            id_company=id_company,
-            alias=alias,
-        )
-
-        return {
-            "status": "ok",
-            "deleted": deleted,
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            400,
-            f"Erreur suppression alias : {e}"
-        )
