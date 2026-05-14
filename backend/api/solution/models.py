@@ -15,7 +15,7 @@ class SolutionCreate(BaseModel):
 
     name: str = Field(..., min_length=1)
 
-    # 🔥 OBLIGATOIRE (sinon pas d'univers)
+    # 🔥 OBLIGATOIRE
     id_company: str
 
     description: Optional[str] = None
@@ -44,11 +44,12 @@ class SolutionUpdate(BaseModel):
 
     name: Optional[str] = None
 
-    # 🔥 autorisé en update (changement de rattachement)
+    # 🔥 autorisé en update
     id_company: Optional[str] = None
 
     description: Optional[str] = None
     insight_frequency: Optional[str] = None
+
     content: Optional[str] = None
 
     status: Optional[str] = None
@@ -74,13 +75,17 @@ class SolutionOut(BaseModel):
 
     description: Optional[str] = None
     insight_frequency: Optional[str] = None
+
     content: Optional[str] = None
 
     status: str
     vectorise: bool
 
-    # 🔥 NEW → visuel
+    # 🔥 VISUAL
     media_logo_rectangle_id: Optional[str] = None
+
+    # 🔥 NEW → aliases exposés au front
+    aliases: List[str] = Field(default_factory=list)
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
