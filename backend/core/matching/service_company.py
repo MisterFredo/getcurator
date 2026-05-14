@@ -12,7 +12,7 @@ from core.matching.service_solution import (
     match_solution,
 )
 
-from core.entity.resolver import (
+from core.matching.resolver import (
     normalize,
     insert_rejected_alias,
     TABLE_ALIAS_REJECTED,
