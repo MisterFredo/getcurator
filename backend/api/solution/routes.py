@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Request
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 
 from api.solution.models import (
     SolutionCreate,
@@ -13,15 +13,44 @@ from core.solution.service import (
     update_solution,
     delete_solution,
     list_solutions_for_user,
+    get_solution_aliases,
+    add_solution_alias,
+    delete_solution_alias,
 )
 
-from core.solution.ai import suggest_solution_aliases
+from core.solution.ai import (
+    suggest_solution_aliases,
+)
 
-# 🔥 CURATOR
-from core.curator.entity_service import get_solution_view
-from utils.auth import get_user_id_from_request
+from core.curator.entity_service import (
+    get_solution_view,
+)
+
+from utils.auth import (
+    get_user_id_from_request,
+)
 
 router = APIRouter()
+
+
+# ============================================================
+# AUTH HELPER (SAFE)
+# ============================================================
+
+def require_user(request: Request) -> str:
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    return user_id
 
 
 # ============================================================
@@ -30,11 +59,61 @@ router = APIRouter()
 
 @router.post("/create")
 def create_route(data: SolutionCreate):
+
     try:
-        solution_id = create_solution(data)
-        return {"status": "ok", "id_solution": solution_id}
+
+        solution_id = create_solution(
+            data
+        )
+
+        return {
+            "status": "ok",
+            "id_solution": solution_id,
+        }
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur création solution : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur création solution : {e}"
+        )
+
+
+# ============================================================
+# SUGGEST ALIAS
+# ============================================================
+
+@router.post("/suggest-alias")
+def suggest_alias_route(
+    data: Dict
+):
+
+    name = data.get("name")
+
+    if not name or not name.strip():
+
+        raise HTTPException(
+            400,
+            "name required"
+        )
+
+    try:
+
+        aliases = suggest_solution_aliases(
+            name
+        )
+
+        return {
+            "status": "ok",
+            "aliases": aliases,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            500,
+            f"Erreur génération alias : {e}"
+        )
 
 
 # ============================================================
@@ -43,45 +122,42 @@ def create_route(data: SolutionCreate):
 
 @router.get("/list")
 def list_route():
+
     try:
+
         solutions = list_solutions()
-        return {"status": "ok", "solutions": solutions}
-    except Exception as e:
-        raise HTTPException(400, f"Erreur liste solutions : {e}")
-
-@router.post("/suggest-alias")
-def suggest_alias_route(data: Dict):
-
-    name = data.get("name")
-
-    if not name or not name.strip():
-        raise HTTPException(400, "name required")
-
-    try:
-        aliases = suggest_solution_aliases(name)
 
         return {
             "status": "ok",
-            "aliases": aliases
+            "solutions": solutions,
         }
 
     except Exception as e:
-        raise HTTPException(500, f"Erreur génération alias : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur liste solutions : {e}"
+        )
 
 
 # ============================================================
-# LIST CURATOR (UNIVERSE ONLY)
+# LIST CURATOR
 # ============================================================
 
 @router.get("/list-curator")
-def list_solutions_curator(request: Request):
+def list_solutions_curator(
+    request: Request
+):
+
     try:
-        # 🔐 AUTH CENTRALISÉE (cohérente avec companies)
-        user_id = get_user_id_from_request(request)
 
-        print("🔥 SOLUTIONS CURATOR USER:", user_id)
+        user_id = require_user(
+            request
+        )
 
-        solutions = list_solutions_for_user(user_id)
+        solutions = list_solutions_for_user(
+            user_id
+        )
 
         return {
             "status": "ok",
@@ -92,30 +168,148 @@ def list_solutions_curator(request: Request):
         raise
 
     except Exception as e:
-        print(f"❌ Solutions curator error: {e}")
+
+        print(
+            f"❌ Solutions curator error: {e}"
+        )
 
         raise HTTPException(
             status_code=500,
             detail="Internal error"
         )
+
+
 # ============================================================
-# GET ONE (ADMIN)
+# ALIASES
 # ============================================================
 
-@router.get("/{id_solution}")
-def get_route(id_solution: str):
+@router.get("/{id_solution}/aliases")
+def get_aliases_route(
+    id_solution: str
+):
+
     try:
-        solution = get_solution(id_solution)
 
-        if not solution:
-            raise HTTPException(404, "Solution introuvable")
+        aliases = get_solution_aliases(
+            id_solution=id_solution
+        )
 
-        return {"status": "ok", "solution": solution}
+        return {
+            "status": "ok",
+            "aliases": aliases,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur récupération aliases : {e}"
+        )
+
+
+@router.post("/{id_solution}/alias")
+def add_alias_route(
+    id_solution: str,
+    data: dict,
+):
+
+    try:
+
+        alias = (
+            data.get("alias")
+            or ""
+        ).strip()
+
+        if not alias:
+
+            raise HTTPException(
+                400,
+                "alias required"
+            )
+
+        add_solution_alias(
+            id_solution=id_solution,
+            alias=alias,
+        )
+
+        return {
+            "status": "ok",
+            "alias": alias,
+        }
 
     except HTTPException:
         raise
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur récupération solution : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur ajout alias : {e}"
+        )
+
+
+@router.delete("/{id_solution}/alias")
+def delete_alias_route(
+    id_solution: str,
+    alias: str,
+):
+
+    try:
+
+        delete_solution_alias(
+            id_solution=id_solution,
+            alias=alias,
+        )
+
+        return {
+            "status": "ok",
+            "deleted": True,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur suppression alias : {e}"
+        )
+
+
+# ============================================================
+# GET ONE
+# ============================================================
+
+@router.get("/{id_solution}")
+def get_route(
+    id_solution: str
+):
+
+    try:
+
+        solution = get_solution(
+            id_solution
+        )
+
+        if not solution:
+
+            raise HTTPException(
+                404,
+                "Solution introuvable"
+            )
+
+        return {
+            "status": "ok",
+            "solution": solution,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur récupération solution : {e}"
+        )
 
 
 # ============================================================
@@ -127,24 +321,38 @@ def get_solution_view_route(
     id_solution: str,
     limit: int = 20,
     offset: int = 0,
-    universe_id: Optional[str] = Query(None),
+    universe_id: Optional[str] = Query(
+        None
+    ),
 ):
+
     try:
+
         solution = get_solution_view(
             solution_id=id_solution,
             limit=limit,
             offset=offset,
-            universe_id=universe_id if universe_id else None,
+            universe_id=(
+                universe_id
+                if universe_id
+                else None
+            ),
         )
 
         if not solution:
-            raise HTTPException(404, "Solution introuvable")
+
+            raise HTTPException(
+                404,
+                "Solution introuvable"
+            )
 
         return solution
 
     except HTTPException:
         raise
+
     except Exception as e:
+
         raise HTTPException(
             400,
             f"Erreur récupération solution view : {e}"
@@ -156,22 +364,39 @@ def get_solution_view_route(
 # ============================================================
 
 @router.put("/update/{id_solution}")
-def update_route(id_solution: str, data: SolutionUpdate):
+def update_route(
+    id_solution: str,
+    data: SolutionUpdate
+):
+
     try:
-        updated = update_solution(id_solution, data)
+
+        updated = update_solution(
+            id_solution,
+            data
+        )
 
         if not updated:
+
             raise HTTPException(
                 404,
                 "Solution introuvable ou aucune modification"
             )
 
-        return {"status": "ok", "updated": True}
+        return {
+            "status": "ok",
+            "updated": True,
+        }
 
     except HTTPException:
         raise
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur mise à jour solution : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur mise à jour solution : {e}"
+        )
 
 
 # ============================================================
@@ -179,16 +404,34 @@ def update_route(id_solution: str, data: SolutionUpdate):
 # ============================================================
 
 @router.delete("/{id_solution}")
-def delete_route(id_solution: str):
+def delete_route(
+    id_solution: str
+):
+
     try:
-        deleted = delete_solution(id_solution)
+
+        deleted = delete_solution(
+            id_solution
+        )
 
         if not deleted:
-            raise HTTPException(404, "Solution introuvable")
 
-        return {"status": "ok", "deleted": True}
+            raise HTTPException(
+                404,
+                "Solution introuvable"
+            )
+
+        return {
+            "status": "ok",
+            "deleted": True,
+        }
 
     except HTTPException:
         raise
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur suppression solution : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur suppression solution : {e}"
+        )
