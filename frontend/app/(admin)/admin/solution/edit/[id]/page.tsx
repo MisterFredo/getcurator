@@ -16,7 +16,6 @@ type Company = {
 
 type AliasItem = {
   alias: string;
-  match_status?: string;
 };
 
 export default function EditSolution({ params }: { params: { id: string } }) {
@@ -139,7 +138,6 @@ export default function EditSolution({ params }: { params: { id: string } }) {
         ...prev,
         {
           alias: value,
-          match_status: "MATCH",
         },
       ]);
 
