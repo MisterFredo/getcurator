@@ -1,10 +1,7 @@
 from typing import List, Dict
-from google.cloud import bigquery
-
-import re
-import uuid
 
 from config import BQ_PROJECT, BQ_DATASET
+
 from utils.bigquery_utils import (
     query_bq,
     get_bigquery_client,
@@ -12,6 +9,12 @@ from utils.bigquery_utils import (
 
 from api.matching.models import (
     SolutionMatch,
+)
+
+from core.entity.resolver import (
+    normalize,
+    insert_rejected_alias,
+    TABLE_ALIAS_REJECTED,
 )
 
 TABLE_CONTENT = (
@@ -26,30 +29,6 @@ TABLE_SOLUTION = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 )
 
-TABLE_ALIAS_REJECTED = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_ALIAS_REJECTED"
-)
-
-# ===============================================
-# NORMALISATION
-# ===============================================
-
-def normalize(text: str) -> str:
-
-    if not text:
-        return ""
-
-    text = text.upper()
-
-    text = re.sub(r"\(.*?\)", "", text)
-
-    text = text.replace("+", " PLUS ")
-
-    text = re.sub(r"[^A-Z0-9 ]", " ", text)
-
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
 
 # ===============================================
 # FIND MATCH
@@ -127,6 +106,11 @@ def list_unmatched_solutions() -> List[Dict]:
     alias_query = f"""
     SELECT ALIAS
     FROM `{TABLE_ALIAS}`
+
+    UNION DISTINCT
+
+    SELECT RAW_ALIAS AS ALIAS
+    FROM `{TABLE_ALIAS_REJECTED}`
     """
 
     alias_rows = client.query(
@@ -251,85 +235,6 @@ def list_unmatched_solutions() -> List[Dict]:
 
     return results
 
-# ===============================================
-# INSERT REJECTED
-# ===============================================
-
-def insert_rejected_alias(
-    alias: str,
-    entity_type: str,
-):
-
-    client = get_bigquery_client()
-
-    query = f"""
-    MERGE `{TABLE_ALIAS_REJECTED}` t
-
-    USING (
-        SELECT
-            @alias AS ALIAS,
-            @entity_type AS ENTITY_TYPE
-    ) s
-
-    ON
-        REGEXP_REPLACE(
-            UPPER(TRIM(t.ALIAS)),
-            r'[^A-Z0-9 ]',
-            ''
-        )
-        =
-        REGEXP_REPLACE(
-            UPPER(TRIM(s.ALIAS)),
-            r'[^A-Z0-9 ]',
-            ''
-        )
-
-    WHEN MATCHED THEN
-        UPDATE SET
-            LAST_SEEN_AT = CURRENT_TIMESTAMP(),
-            NB_OCCURRENCES = COALESCE(t.NB_OCCURRENCES, 1) + 1
-
-    WHEN NOT MATCHED THEN
-        INSERT (
-            ID_REJECTED,
-            ALIAS,
-            ENTITY_TYPE,
-            FIRST_SEEN_AT,
-            LAST_SEEN_AT,
-            NB_OCCURRENCES
-        )
-        VALUES (
-            @id_rejected,
-            s.ALIAS,
-            s.ENTITY_TYPE,
-            CURRENT_TIMESTAMP(),
-            CURRENT_TIMESTAMP(),
-            1
-        )
-    """
-
-    client.query(
-        query,
-        job_config=bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter(
-                    "alias",
-                    "STRING",
-                    alias
-                ),
-                bigquery.ScalarQueryParameter(
-                    "entity_type",
-                    "STRING",
-                    entity_type
-                ),
-                bigquery.ScalarQueryParameter(
-                    "id_rejected",
-                    "STRING",
-                    str(uuid.uuid4())
-                ),
-            ]
-        ),
-    ).result()
 
 # ===============================================
 # MATCH SOLUTION
