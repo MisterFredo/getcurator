@@ -20,6 +20,7 @@ from core.matching.service_solution import (
 from core.entity.resolver import (
     normalize,
     insert_rejected_alias,
+    TABLE_ALIAS_REJECTED,
 )
 
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
