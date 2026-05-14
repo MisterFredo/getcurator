@@ -105,6 +105,11 @@ def list_unmatched_companies() -> List[Dict]:
     alias_query = f"""
     SELECT ALIAS
     FROM `{TABLE_ALIAS}`
+
+    UNION DISTINCT
+
+    SELECT RAW_ALIAS AS ALIAS
+    FROM `{TABLE_ALIAS_REJECTED}`
     """
 
     alias_rows = client.query(alias_query).result()
