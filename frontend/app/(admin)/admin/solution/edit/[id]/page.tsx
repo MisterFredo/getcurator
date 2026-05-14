@@ -14,6 +14,11 @@ type Company = {
   name: string;
 };
 
+type AliasItem = {
+  alias: string;
+  match_status?: string;
+};
+
 export default function EditSolution({ params }: { params: { id: string } }) {
 
   const { id } = params;
@@ -24,6 +29,7 @@ export default function EditSolution({ params }: { params: { id: string } }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
+
   const [status, setStatus] =
     useState<"DRAFT" | "PUBLISHED">("DRAFT");
 
@@ -33,14 +39,23 @@ export default function EditSolution({ params }: { params: { id: string } }) {
   const [insightFrequency, setInsightFrequency] =
     useState("QUARTERLY");
 
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] =
+    useState<Company[]>([]);
 
   // 🔥 NEW → visuel
-  const [logoFilename, setLogoFilename] = useState<string | null>(null);
+  const [logoFilename, setLogoFilename] =
+    useState<string | null>(null);
+
+  const [aliases, setAliases] =
+    useState<AliasItem[]>([]);
+
+  const [newAlias, setNewAlias] =
+    useState("");
 
   /* ---------------------------------------------------------
      LOAD
   --------------------------------------------------------- */
+
   useEffect(() => {
 
     async function load() {
@@ -54,19 +69,43 @@ export default function EditSolution({ params }: { params: { id: string } }) {
         setDescription(sol?.description || "");
         setContent(sol?.content || "");
         setStatus(sol?.status || "DRAFT");
-        setIdCompany(sol?.id_company || null);
-        setInsightFrequency(sol?.insight_frequency || "QUARTERLY");
 
-        // 🔥 NEW
-        setLogoFilename(sol?.media_logo_rectangle_id || null);
+        setIdCompany(
+          sol?.id_company || null
+        );
 
-        const compRes = await api.get("/company/list");
-        setCompanies(compRes.companies || []);
+        setInsightFrequency(
+          sol?.insight_frequency || "QUARTERLY"
+        );
+
+        setLogoFilename(
+          sol?.media_logo_rectangle_id || null
+        );
+
+        const compRes =
+          await api.get("/company/list");
+
+        setCompanies(
+          compRes.companies || []
+        );
+
+        const aliasesRes =
+          await api.get(`/solution/${id}/aliases`);
+
+        setAliases(
+          aliasesRes.aliases || []
+        );
 
       } catch (e) {
 
-        console.error("Erreur chargement solution", e);
-        alert("❌ Erreur chargement solution");
+        console.error(
+          "Erreur chargement solution",
+          e
+        );
+
+        alert(
+          "❌ Erreur chargement solution"
+        );
 
       } finally {
 
@@ -81,8 +120,75 @@ export default function EditSolution({ params }: { params: { id: string } }) {
   }, [id]);
 
   /* ---------------------------------------------------------
+     ADD ALIAS
+  --------------------------------------------------------- */
+
+  async function addAlias() {
+
+    const value = newAlias.trim();
+
+    if (!value) return;
+
+    try {
+
+      await api.post(`/solution/${id}/alias`, {
+        alias: value,
+      });
+
+      setAliases((prev) => [
+        ...prev,
+        {
+          alias: value,
+          match_status: "MATCH",
+        },
+      ]);
+
+      setNewAlias("");
+
+    } catch (e) {
+
+      console.error(e);
+      alert("❌ Erreur ajout alias");
+
+    }
+
+  }
+
+  /* ---------------------------------------------------------
+     DELETE ALIAS
+  --------------------------------------------------------- */
+
+  async function deleteAlias(alias: string) {
+
+    const confirmed = window.confirm(
+      `Supprimer l'alias "${alias}" ?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+
+      await api.delete(
+        `/solution/${id}/alias?alias=${encodeURIComponent(alias)}`
+      );
+
+      setAliases((prev) =>
+        prev.filter((a) => a.alias !== alias)
+      );
+
+    } catch (e) {
+
+      console.error(e);
+      alert("❌ Erreur suppression alias");
+
+    }
+
+  }
+
+  /* ---------------------------------------------------------
      SAVE
   --------------------------------------------------------- */
+
   async function save() {
 
     try {
@@ -116,6 +222,7 @@ export default function EditSolution({ params }: { params: { id: string } }) {
   /* ---------------------------------------------------------
      RELOAD (après upload visuel)
   --------------------------------------------------------- */
+
   async function reloadSolution() {
 
     try {
@@ -123,7 +230,9 @@ export default function EditSolution({ params }: { params: { id: string } }) {
       const res = await api.get(`/solution/${id}`);
       const sol = res.solution;
 
-      setLogoFilename(sol?.media_logo_rectangle_id || null);
+      setLogoFilename(
+        sol?.media_logo_rectangle_id || null
+      );
 
       if (sol?.insight_frequency) {
         setInsightFrequency(sol.insight_frequency);
@@ -147,6 +256,7 @@ export default function EditSolution({ params }: { params: { id: string } }) {
   /* ---------------------------------------------------------
      UI
   --------------------------------------------------------- */
+
   return (
     <div className="space-y-8">
 
@@ -154,7 +264,11 @@ export default function EditSolution({ params }: { params: { id: string } }) {
         <h1 className="text-3xl font-semibold">
           Modifier solution
         </h1>
-        <Link href="/admin/solution" className="underline">
+
+        <Link
+          href="/admin/solution"
+          className="underline"
+        >
           ← Retour
         </Link>
       </div>
@@ -173,13 +287,80 @@ export default function EditSolution({ params }: { params: { id: string } }) {
           setIdCompany(e.target.value || null)
         }
       >
-        <option value="">— Aucune société —</option>
+        <option value="">
+          — Aucune société —
+        </option>
+
         {companies.map((c) => (
-          <option key={c.id_company} value={c.id_company}>
+          <option
+            key={c.id_company}
+            value={c.id_company}
+          >
             {c.name}
           </option>
         ))}
       </select>
+
+      <div className="space-y-4">
+
+        <div>
+
+          <label className="block font-medium mb-2">
+            Aliases
+          </label>
+
+          <div className="flex gap-2 max-w-2xl">
+
+            <input
+              type="text"
+              value={newAlias}
+              onChange={(e) =>
+                setNewAlias(e.target.value)
+              }
+              placeholder="Ajouter un alias"
+              className="border px-3 py-2 rounded flex-1"
+            />
+
+            <button
+              type="button"
+              onClick={addAlias}
+              className="bg-ratecard-blue text-white px-4 py-2 rounded"
+            >
+              Ajouter
+            </button>
+
+          </div>
+
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+
+          {aliases.map((item) => (
+
+            <div
+              key={item.alias}
+              className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm"
+            >
+
+              <span>{item.alias}</span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  deleteAlias(item.alias)
+                }
+                className="text-red-500 font-bold"
+              >
+                ×
+              </button>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      </div>
 
       <textarea
         className="border p-2 w-full rounded h-24"
@@ -190,22 +371,29 @@ export default function EditSolution({ params }: { params: { id: string } }) {
         placeholder="Description"
       />
 
-      <HtmlEditor value={content} onChange={setContent} />
+      <HtmlEditor
+        value={content}
+        onChange={setContent}
+      />
 
       <div className="space-y-2">
+
         <label className="block font-medium">
           Fréquence des insights
         </label>
 
         <select
           value={insightFrequency}
-          onChange={(e) => setInsightFrequency(e.target.value)}
+          onChange={(e) =>
+            setInsightFrequency(e.target.value)
+          }
           className="border px-3 py-2 rounded w-full max-w-xs"
         >
           <option value="WEEKLY">Weekly</option>
           <option value="MONTHLY">Monthly</option>
           <option value="QUARTERLY">Quarterly</option>
         </select>
+
       </div>
 
       <select
@@ -230,6 +418,7 @@ export default function EditSolution({ params }: { params: { id: string } }) {
       </button>
 
       {/* 🔥 VISUAL */}
+
       <VisualSection
         entityId={id}
         entityType="solution"
