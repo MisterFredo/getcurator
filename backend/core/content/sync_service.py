@@ -3,7 +3,10 @@ from typing import List, Dict, Optional
 
 from config import BQ_PROJECT, BQ_DATASET
 
-from utils.bigquery_utils import query_bq
+from utils.bigquery_utils import (
+    query_bq,
+    insert_bq,
+)
 
 from core.numbers.service import (
     get_numbers_from_content,
@@ -15,6 +18,12 @@ from core.numbers.backlog_llm import (
 
 from core.numbers.backlog_insert_service import (
     insert_backlog_batch,
+)
+
+from core.matching.resolver import (
+    normalize,
+    resolve_company_alias,
+    resolve_solution_alias,
 )
 
 # ============================================================
@@ -43,6 +52,7 @@ TABLE_SOLUTION_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION_ALIAS"
 )
 
+
 # ============================================================
 # COMPANY MATCHING
 # ============================================================
@@ -64,94 +74,109 @@ def sync_content_companies(id_content: str):
     )
 
     # ========================================================
-    # PRIMARY COMPANY (🔥 SOURCE OF TRUTH)
+    # LOAD CONTENT
     # ========================================================
 
-    query_bq(
+    rows = query_bq(
         f"""
-        INSERT INTO `{TABLE_CONTENT_COMPANY}` (
+        SELECT
             ID_CONTENT,
-            ID_COMPANY
-        )
-
-        SELECT DISTINCT
-            ID_CONTENT,
-            ID_PRIMARY_COMPANY
+            ID_PRIMARY_COMPANY,
+            ACTEURS_CITES
 
         FROM `{TABLE_CONTENT}`
 
-        WHERE
-            ID_CONTENT = @id_content
-            AND ID_PRIMARY_COMPANY IS NOT NULL
-            AND TRIM(ID_PRIMARY_COMPANY) != ''
+        WHERE ID_CONTENT = @id_content
+
+        LIMIT 1
         """,
         {
             "id_content": id_content,
         }
     )
 
+    if not rows:
+        return
+
+    row = rows[0]
+
+    inserts = []
+
+    seen = set()
+
     # ========================================================
-    # SECONDARY ENRICHMENT VIA ACTEURS_CITES
+    # PRIMARY COMPANY
     # ========================================================
 
-    query_bq(
-        f"""
-        INSERT INTO `{TABLE_CONTENT_COMPANY}` (
-            ID_CONTENT,
-            ID_COMPANY
+    primary_company = row.get(
+        "ID_PRIMARY_COMPANY"
+    )
+
+    if primary_company:
+
+        seen.add(primary_company)
+
+        inserts.append({
+            "ID_CONTENT": id_content,
+            "ID_COMPANY": primary_company,
+        })
+
+    # ========================================================
+    # SECONDARY MATCHING
+    # ========================================================
+
+    for raw in row.get("ACTEURS_CITES") or []:
+
+        if not raw:
+            continue
+
+        resolved = resolve_company_alias(raw)
+
+        if not resolved:
+            continue
+
+        company_id = resolved.get(
+            "id_company"
         )
 
-        SELECT DISTINCT
-            c.ID_CONTENT,
-            a.ID_COMPANY
+        if not company_id:
+            continue
 
-        FROM `{TABLE_CONTENT}` c,
-        UNNEST(c.ACTEURS_CITES) AS raw
+        if company_id in seen:
+            continue
 
-        JOIN `{TABLE_COMPANY_ALIAS}` a
-            ON REGEXP_REPLACE(
-                UPPER(TRIM(raw)),
-                r'[^A-Z0-9 ]',
-                ''
-            )
-            =
-            REGEXP_REPLACE(
-                UPPER(TRIM(a.ALIAS)),
-                r'[^A-Z0-9 ]',
-                ''
-            )
+        seen.add(company_id)
 
-        WHERE
-            c.ID_CONTENT = @id_content
-            AND a.MATCH_STATUS = 'MATCH'
-            AND raw IS NOT NULL
-            AND TRIM(raw) != ''
+        inserts.append({
+            "ID_CONTENT": id_content,
+            "ID_COMPANY": company_id,
+        })
 
-            -- avoid duplicates with primary company
-            AND NOT EXISTS (
-                SELECT 1
+    # ========================================================
+    # INSERT
+    # ========================================================
 
-                FROM `{TABLE_CONTENT_COMPANY}` existing
+    if inserts:
 
-                WHERE
-                    existing.ID_CONTENT = c.ID_CONTENT
-                    AND existing.ID_COMPANY = a.ID_COMPANY
-            )
-        """,
-        {
-            "id_content": id_content,
-        }
-    )
+        insert_bq(
+            TABLE_CONTENT_COMPANY,
+            inserts,
+        )
 
     print(
         "✅ COMPANY SYNC DONE:",
         id_content,
     )
+
 # ============================================================
 # SOLUTION MATCHING
 # ============================================================
 
 def sync_content_solutions(id_content: str):
+
+    # ========================================================
+    # CLEAN EXISTING LINKS
+    # ========================================================
 
     query_bq(
         f"""
@@ -163,48 +188,83 @@ def sync_content_solutions(id_content: str):
         }
     )
 
-    query_bq(
+    # ========================================================
+    # LOAD CONTENT
+    # ========================================================
+
+    rows = query_bq(
         f"""
-        INSERT INTO `{TABLE_CONTENT_SOLUTION}` (
-            ID_CONTENT,
-            ID_SOLUTION
-        )
+        SELECT
+            SOLUTIONS_LLM,
+            ACTEURS_CITES
 
-        SELECT DISTINCT
-            c.ID_CONTENT,
-            a.ID_SOLUTION
+        FROM `{TABLE_CONTENT}`
 
-        FROM `{TABLE_CONTENT}` c,
-        UNNEST(
-            ARRAY_CONCAT(
-                IFNULL(c.SOLUTIONS_LLM, []),
-                IFNULL(c.ACTEURS_CITES, [])
-            )
-        ) AS raw
+        WHERE ID_CONTENT = @id_content
 
-        JOIN `{TABLE_SOLUTION_ALIAS}` a
-            ON REGEXP_REPLACE(
-                UPPER(TRIM(raw)),
-                r'[^A-Z0-9 ]',
-                ''
-            )
-            =
-            REGEXP_REPLACE(
-                UPPER(TRIM(a.ALIAS)),
-                r'[^A-Z0-9 ]',
-                ''
-            )
-
-        WHERE
-            c.ID_CONTENT = @id_content
-            AND a.MATCH_STATUS = 'MATCH'
-            AND raw IS NOT NULL
-            AND TRIM(raw) != ''
+        LIMIT 1
         """,
         {
             "id_content": id_content,
         }
     )
+
+    if not rows:
+        return
+
+    row = rows[0]
+
+    raw_values = (
+        (row.get("SOLUTIONS_LLM") or [])
+        +
+        (row.get("ACTEURS_CITES") or [])
+    )
+
+    inserts = []
+
+    seen = set()
+
+    # ========================================================
+    # MATCHING
+    # ========================================================
+
+    for raw in raw_values:
+
+        if not raw:
+            continue
+
+        resolved = resolve_solution_alias(raw)
+
+        if not resolved:
+            continue
+
+        solution_id = resolved.get(
+            "id_solution"
+        )
+
+        if not solution_id:
+            continue
+
+        if solution_id in seen:
+            continue
+
+        seen.add(solution_id)
+
+        inserts.append({
+            "ID_CONTENT": id_content,
+            "ID_SOLUTION": solution_id,
+        })
+
+    # ========================================================
+    # INSERT
+    # ========================================================
+
+    if inserts:
+
+        insert_bq(
+            TABLE_CONTENT_SOLUTION,
+            inserts,
+        )
 
     print(
         "✅ SOLUTION SYNC DONE:",
@@ -220,10 +280,6 @@ def sync_all_numbers():
     print(
         "🚀 GLOBAL NUMBERS SYNC START"
     )
-
-    # ========================================================
-    # FETCH PUBLISHED CONTENTS
-    # ========================================================
 
     rows = query_bq(
         f"""
@@ -245,10 +301,6 @@ def sync_all_numbers():
         }
 
     results = []
-
-    # ========================================================
-    # LOOP
-    # ========================================================
 
     for row in rows:
 
@@ -274,10 +326,6 @@ def sync_all_numbers():
                 "error": str(e),
             })
 
-    # ========================================================
-    # SUMMARY
-    # ========================================================
-
     synced_count = len([
         r for r in results
         if r["status"] == "ok"
@@ -301,7 +349,6 @@ def sync_all_numbers():
     )
 
     return output
-
 # ============================================================
 # REBUILD ENRICHED ROW
 # ============================================================
