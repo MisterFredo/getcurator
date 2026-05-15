@@ -186,11 +186,38 @@ def list_unmatched_companies() -> List[Dict]:
         )
 
         # 🔴 déjà company existante
-        if norm in company_set:
+        # =====================================================
+        # EXISTING SOLUTION WITHOUT ALIAS
+        # =====================================================
+
+        if norm in solution_set:
+
+            existing = solution_map[norm]
+
+            results.append({
+                "value": raw,
+                "count": r["count"],
+                "type_hint": "solution",
+                "suggested_id": existing["id"],
+                "suggested_label": existing["label"],
+                "already_exists": True,
+            })
+
             continue
 
-        # 🔴 déjà solution existante
-        if norm in solution_set:
+        if norm in company_set:
+
+            existing = company_map[norm]
+
+            results.append({
+                "value": raw,
+                "count": r["count"],
+                "type_hint": "company",
+                "suggested_id": existing["id"],
+                "suggested_label": existing["label"],
+                "already_exists": True,
+            })
+
             continue
 
         results.append({
