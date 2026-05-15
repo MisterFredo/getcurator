@@ -100,7 +100,7 @@ def list_unmatched_companies() -> List[Dict]:
 
     UNION DISTINCT
 
-    SELECT RAW_ALIAS AS ALIAS
+    SELECT ALIAS
     FROM `{TABLE_ALIAS_REJECTED}`
     """
 
