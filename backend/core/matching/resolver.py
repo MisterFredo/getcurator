@@ -296,7 +296,7 @@ def insert_rejected_alias(
         )
         """,
         {
-            "raw_alias": alias,
+            "alias": alias,
             "entity_type": entity_type,
         }
     )
