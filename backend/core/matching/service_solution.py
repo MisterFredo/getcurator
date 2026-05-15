@@ -100,7 +100,7 @@ def list_unmatched_solutions() -> List[Dict]:
     client = get_bigquery_client()
 
     # =====================================================
-    # ALIAS DÉJÀ MATCHÉS
+    # ALIAS DÉJÀ MATCHÉS / REJETÉS
     # =====================================================
 
     alias_query = f"""
@@ -144,10 +144,6 @@ def list_unmatched_solutions() -> List[Dict]:
         if r["NAME"]
     }
 
-    solution_set = set(
-        solution_map.keys()
-    )
-
     # =====================================================
     # LOAD COMPANIES
     # =====================================================
@@ -168,10 +164,6 @@ def list_unmatched_solutions() -> List[Dict]:
         for r in company_rows
         if r["NAME"]
     }
-
-    company_set = set(
-        company_map.keys()
-    )
 
     # =====================================================
     # BUILD RESULTS
@@ -201,46 +193,10 @@ def list_unmatched_solutions() -> List[Dict]:
         seen.add(norm)
 
         match = find_match(
-            norm,
+            raw,
             company_map,
             solution_map,
         )
-
-        # 🔴 déjà solution existante
-        # =====================================================
-        # EXISTING SOLUTION WITHOUT ALIAS
-        # =====================================================
-
-        if norm in solution_set:
-
-            existing = solution_map[norm]
-
-            results.append({
-                "value": raw,
-                "count": r["count"],
-                "type_hint": "solution",
-                "suggested_id": existing["id"],
-                "suggested_label": existing["label"],
-                "already_exists": True,
-            })
-
-            continue
-
-        # 🔴 déjà company existante
-        if norm in company_set:
-
-            existing = company_map[norm]
-
-            results.append({
-                "value": raw,
-                "count": r["count"],
-                "type_hint": "company",
-                "suggested_id": existing["id"],
-                "suggested_label": existing["label"],
-                "already_exists": True,
-            })
-
-            continue
 
         results.append({
             "value": raw,
@@ -262,7 +218,6 @@ def list_unmatched_solutions() -> List[Dict]:
     )
 
     return results
-
 
 # ===============================================
 # MATCH SOLUTION
