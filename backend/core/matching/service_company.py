@@ -91,7 +91,7 @@ def list_unmatched_companies() -> List[Dict]:
     client = get_bigquery_client()
 
     # =====================================================
-    # ALIAS DÉJÀ MATCHÉS
+    # ALIAS DÉJÀ MATCHÉS / REJETÉS
     # =====================================================
 
     alias_query = f"""
@@ -104,7 +104,9 @@ def list_unmatched_companies() -> List[Dict]:
     FROM `{TABLE_ALIAS_REJECTED}`
     """
 
-    alias_rows = client.query(alias_query).result()
+    alias_rows = client.query(
+        alias_query
+    ).result()
 
     alias_set = {
         normalize(row["ALIAS"])
@@ -117,7 +119,10 @@ def list_unmatched_companies() -> List[Dict]:
     # =====================================================
 
     company_rows = client.query(f"""
-        SELECT ID_COMPANY, NAME
+        SELECT
+            ID_COMPANY,
+            NAME
+
         FROM `{TABLE_COMPANY}`
     """).result()
 
@@ -130,14 +135,15 @@ def list_unmatched_companies() -> List[Dict]:
         if r["NAME"]
     }
 
-    company_set = set(company_map.keys())
-
     # =====================================================
     # LOAD SOLUTIONS
     # =====================================================
 
     solution_rows = client.query(f"""
-        SELECT ID_SOLUTION, NAME
+        SELECT
+            ID_SOLUTION,
+            NAME
+
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION`
     """).result()
 
@@ -149,8 +155,6 @@ def list_unmatched_companies() -> List[Dict]:
         for r in solution_rows
         if r["NAME"]
     }
-
-    solution_set = set(solution_map.keys())
 
     # =====================================================
     # BUILD RESULTS
@@ -180,45 +184,10 @@ def list_unmatched_companies() -> List[Dict]:
         seen.add(norm)
 
         match = find_match(
-            norm,
+            raw,
             company_map,
             solution_map,
         )
-
-        # 🔴 déjà company existante
-        # =====================================================
-        # EXISTING SOLUTION WITHOUT ALIAS
-        # =====================================================
-
-        if norm in solution_set:
-
-            existing = solution_map[norm]
-
-            results.append({
-                "value": raw,
-                "count": r["count"],
-                "type_hint": "solution",
-                "suggested_id": existing["id"],
-                "suggested_label": existing["label"],
-                "already_exists": True,
-            })
-
-            continue
-
-        if norm in company_set:
-
-            existing = company_map[norm]
-
-            results.append({
-                "value": raw,
-                "count": r["count"],
-                "type_hint": "company",
-                "suggested_id": existing["id"],
-                "suggested_label": existing["label"],
-                "already_exists": True,
-            })
-
-            continue
 
         results.append({
             "value": raw,
@@ -240,7 +209,6 @@ def list_unmatched_companies() -> List[Dict]:
     )
 
     return results
-
 
 # ===============================================
 # MATCH COMPANY
