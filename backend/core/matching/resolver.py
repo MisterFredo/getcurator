@@ -144,22 +144,23 @@ def get_solution_alias_map() -> Dict:
 # ============================================================
 # REJECTED ALIAS SET
 # ============================================================
-
 def get_rejected_alias_set():
 
     rows = query_bq(
         f"""
         SELECT
-            NORMALIZED_ALIAS
+            RAW_ALIAS
 
         FROM `{TABLE_ALIAS_REJECTED}`
         """
     )
 
     return {
-        row["NORMALIZED_ALIAS"]
+        normalize(
+            row["RAW_ALIAS"]
+        )
         for row in rows
-        if row.get("NORMALIZED_ALIAS")
+        if row.get("RAW_ALIAS")
     }
 
 # ============================================================
@@ -260,7 +261,13 @@ def insert_rejected_alias(
 
         FROM `{TABLE_ALIAS_REJECTED}`
 
-        WHERE NORMALIZED_ALIAS = @normalized
+        WHERE UPPER(
+            REGEXP_REPLACE(
+                REPLACE(RAW_ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized
 
         LIMIT 1
         """,
@@ -277,7 +284,6 @@ def insert_rejected_alias(
         INSERT INTO `{TABLE_ALIAS_REJECTED}` (
             ID_REJECTED,
             RAW_ALIAS,
-            NORMALIZED_ALIAS,
             ENTITY_TYPE,
             CREATED_AT
         )
@@ -285,14 +291,12 @@ def insert_rejected_alias(
         VALUES (
             GENERATE_UUID(),
             @raw_alias,
-            @normalized_alias,
             @entity_type,
             CURRENT_TIMESTAMP()
         )
         """,
         {
             "raw_alias": alias,
-            "normalized_alias": normalized,
             "entity_type": entity_type,
         }
     )
