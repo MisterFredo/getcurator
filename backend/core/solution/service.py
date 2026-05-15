@@ -667,6 +667,10 @@ def delete_solution(
 # SOLUTION ALIASES
 # ============================================================
 
+# ============================================================
+# SOLUTION ALIASES
+# ============================================================
+
 def get_solution_aliases(
     id_solution: str
 ) -> List[Dict]:
@@ -674,8 +678,7 @@ def get_solution_aliases(
     rows = query_bq(
         f"""
         SELECT
-            ALIAS,
-            NORMALIZED_ALIAS
+            ALIAS
 
         FROM `{TABLE_SOLUTION_ALIAS}`
 
@@ -691,10 +694,6 @@ def get_solution_aliases(
     return [
         {
             "alias": r["ALIAS"],
-
-            "normalized_alias": r.get(
-                "NORMALIZED_ALIAS"
-            ),
         }
         for r in rows
     ]
@@ -719,46 +718,46 @@ def create_solution_alias(
         alias
     )
 
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_SOLUTION_ALIAS}`
+
+        WHERE UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
+
+        LIMIT 1
+        """,
+        {
+            "normalized_alias": (
+                normalized_alias
+            ),
+        }
+    )
+
+    if rows:
+        return False
+
     query_bq(
         f"""
-        MERGE `{TABLE_SOLUTION_ALIAS}` t
-
-        USING (
-            SELECT
-                @alias AS ALIAS,
-
-                @normalized_alias
-                    AS NORMALIZED_ALIAS,
-
-                @id_solution
-                    AS ID_SOLUTION
-        ) s
-
-        ON t.NORMALIZED_ALIAS
-           =
-           s.NORMALIZED_ALIAS
-
-        WHEN NOT MATCHED THEN
-
-        INSERT (
+        INSERT INTO `{TABLE_SOLUTION_ALIAS}` (
             ALIAS,
-            NORMALIZED_ALIAS,
             ID_SOLUTION
         )
 
         VALUES (
-            s.ALIAS,
-            s.NORMALIZED_ALIAS,
-            s.ID_SOLUTION
+            @alias,
+            @id_solution
         )
         """,
         {
             "alias": alias,
-
-            "normalized_alias": (
-                normalized_alias
-            ),
-
             "id_solution": id_solution,
         }
     )
@@ -794,9 +793,13 @@ def add_solution_alias(
         WHERE
             ID_SOLUTION = @id_solution
 
-            AND NORMALIZED_ALIAS
-                =
-                @normalized_alias
+        AND UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
 
         LIMIT 1
         """,
@@ -816,23 +819,16 @@ def add_solution_alias(
         f"""
         INSERT INTO `{TABLE_SOLUTION_ALIAS}` (
             ALIAS,
-            NORMALIZED_ALIAS,
             ID_SOLUTION
         )
 
         VALUES (
             @alias,
-            @normalized_alias,
             @id_solution
         )
         """,
         {
             "alias": alias,
-
-            "normalized_alias": (
-                normalized_alias
-            ),
-
             "id_solution": id_solution,
         }
     )
@@ -880,9 +876,13 @@ def delete_solution_alias(
 
         WHERE ID_SOLUTION = @id_solution
 
-        AND NORMALIZED_ALIAS
-            =
-            @normalized_alias
+        AND UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
         """,
         {
             "id_solution": id_solution,
