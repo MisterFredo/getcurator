@@ -613,6 +613,10 @@ def delete_company(id_company: str) -> bool:
 # COMPANY ALIASES
 # ============================================================
 
+# ============================================================
+# COMPANY ALIASES
+# ============================================================
+
 def get_company_aliases(
     id_company: str
 ) -> List[Dict]:
@@ -620,8 +624,7 @@ def get_company_aliases(
     rows = query_bq(
         f"""
         SELECT
-            ALIAS,
-            NORMALIZED_ALIAS
+            ALIAS
 
         FROM `{TABLE_COMPANY_ALIAS}`
 
@@ -637,12 +640,14 @@ def get_company_aliases(
     return [
         {
             "alias": r["ALIAS"],
-            "normalized_alias": r.get(
-                "NORMALIZED_ALIAS"
-            ),
         }
         for r in rows
     ]
+
+
+# ============================================================
+# CREATE COMPANY ALIAS
+# ============================================================
 
 def create_company_alias(
     id_company: str,
@@ -664,39 +669,44 @@ def create_company_alias(
         alias
     )
 
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_COMPANY_ALIAS}`
+
+        WHERE UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
+
+        LIMIT 1
+        """,
+        {
+            "normalized_alias": normalized_alias,
+        }
+    )
+
+    if rows:
+        return False
+
     query_bq(
         f"""
-        MERGE `{TABLE_COMPANY_ALIAS}` t
-
-        USING (
-            SELECT
-                @alias AS ALIAS,
-                @normalized_alias
-                    AS NORMALIZED_ALIAS,
-                @id_company AS ID_COMPANY
-        ) s
-
-        ON t.NORMALIZED_ALIAS
-           =
-           s.NORMALIZED_ALIAS
-
-        WHEN NOT MATCHED THEN
-
-        INSERT (
+        INSERT INTO `{TABLE_COMPANY_ALIAS}` (
             ALIAS,
-            NORMALIZED_ALIAS,
             ID_COMPANY
         )
 
         VALUES (
-            s.ALIAS,
-            s.NORMALIZED_ALIAS,
-            s.ID_COMPANY
+            @alias,
+            @id_company
         )
         """,
         {
             "alias": alias,
-            "normalized_alias": normalized_alias,
             "id_company": id_company,
         }
     )
@@ -735,9 +745,14 @@ def add_company_alias(
 
         WHERE
             ID_COMPANY = @id_company
-            AND NORMALIZED_ALIAS
-                =
-                @normalized_alias
+
+        AND UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
 
         LIMIT 1
         """,
@@ -754,19 +769,16 @@ def add_company_alias(
         f"""
         INSERT INTO `{TABLE_COMPANY_ALIAS}` (
             ALIAS,
-            NORMALIZED_ALIAS,
             ID_COMPANY
         )
 
         VALUES (
             @alias,
-            @normalized_alias,
             @id_company
         )
         """,
         {
             "alias": alias,
-            "normalized_alias": normalized_alias,
             "id_company": id_company,
         }
     )
@@ -818,9 +830,13 @@ def delete_company_alias(
 
         WHERE ID_COMPANY = @id_company
 
-        AND NORMALIZED_ALIAS
-            =
-            @normalized_alias
+        AND UPPER(
+            REGEXP_REPLACE(
+                REPLACE(ALIAS, '+', ' PLUS '),
+                r'[^A-Z0-9 ]',
+                ' '
+            )
+        ) = @normalized_alias
         """,
         {
             "id_company": id_company,
