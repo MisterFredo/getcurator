@@ -1340,6 +1340,7 @@ def get_raw_detail(id_raw: str):
 
             r.SOURCE_ID,
             r.SOURCE_TITLE,
+            r.SOURCE_URL,
 
             r.DATE_SOURCE,
 
@@ -1391,6 +1392,7 @@ def get_raw_detail(id_raw: str):
         "source_id": r["SOURCE_ID"],
 
         "source_title": r["SOURCE_TITLE"],
+        "source_url": r.get("SOURCE_URL"),
 
         "date_source": r.get("DATE_SOURCE"),
 
