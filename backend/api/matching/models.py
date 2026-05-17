@@ -1,66 +1,46 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-# ===============================================
-# LLM SOLUTION
-# ===============================================
+# ============================================================
+# UNMATCHED ENTITY
+# ============================================================
 
-class LLMSolution(BaseModel):
+class UnmatchedEntity(BaseModel):
+
     value: str
     count: int
 
-# ===============================================
-# LLM COMPANY
-# ===============================================
+    type_hint: Optional[str] = None
 
-class LLMCompany(BaseModel):
-    value: str
-    count: int
+    suggested_id: Optional[str] = None
+    suggested_label: Optional[str] = None
 
-# ===============================================
-# MATCH SOLUTION
-# ===============================================
+# ============================================================
+# MATCH ENTITY
+# ============================================================
 
-class SolutionMatch(BaseModel):
+class EntityMatch(BaseModel):
 
     alias: str
-    id_solution: Optional[str] = None
-    action: str  # MATCH | IGNORE | CREATE
 
-# ===============================================
-# MATCH COMPANY
-# ===============================================
+    target_type: str
+    # company | solution | ignore
 
-class CompanyMatch(BaseModel):
+    target_id: Optional[str] = None
 
-    alias: str
-    id_company: Optional[str] = None
-    action: str  # MATCH | IGNORE | CREATE
+# ============================================================
+# BULK MATCH ENTITY
+# ============================================================
 
-# ===============================================
-# BULK MATCH SOLUTION
-# ===============================================
-
-class BulkSolutionMatchItem(BaseModel):
+class BulkEntityMatchItem(BaseModel):
 
     alias: str
-    id_solution: Optional[str] = None
-    action: str = "MATCH"
 
-class BulkSolutionMatchRequest(BaseModel):
+    target_type: str
+    # company | solution | ignore
 
-    items: List[BulkSolutionMatchItem]
+    target_id: Optional[str] = None
 
-# ===============================================
-# BULK MATCH COMPANY
-# ===============================================
+class BulkEntityMatchRequest(BaseModel):
 
-class BulkCompanyMatchItem(BaseModel):
-
-    alias: str
-    id_company: Optional[str] = None
-    action: str = "MATCH"
-
-class BulkCompanyMatchRequest(BaseModel):
-
-    items: List[BulkCompanyMatchItem]
+    items: List[BulkEntityMatchItem]
