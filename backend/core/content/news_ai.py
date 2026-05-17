@@ -176,7 +176,20 @@ Choisir entre 1 et 3 concepts uniquement parmi cette liste.
 
 ================ TOPICS AUTORISÉS ================
 
-Choisir entre 1 et 3 topics uniquement parmi cette liste.
+TOPICS
+(Choisir 1 à 3 topics uniquement parmi la liste suivante.
+Ne jamais inventer.)
+
+RÈGLES TOPICS IMPORTANTES
+
+- "Ready-to-Drink (RTD)" :
+inclut RTD, Ready-to-Drink, canned cocktails,
+premix, premixed drinks, hard seltzers.
+
+- "Ready-to-Serve (RTS)" :
+inclut RTS, Ready-to-Serve,
+batched cocktails, bottled cocktails,
+pre-batched cocktails.
 
 {topics_list_text}
 
