@@ -37,6 +37,7 @@ export default function StepSource({
   const [sourceText, setSourceText] = useState("");
   const [sourcePublishedAt, setSourcePublishedAt] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
 
   const [storing, setStoring] = useState(false);
 
@@ -210,6 +211,22 @@ export default function StepSource({
           onChange={(e) => setSourceTitle(e.target.value)}
           className="border rounded p-2 w-full text-sm"
           placeholder="Ex : Amazon expands retail media strategy"
+        />
+      </div>
+
+      {/* URL SOURCE */}
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">
+          URL de la source
+        </label>
+
+        <input
+          type="url"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          className="border rounded p-2 w-full text-sm"
+          placeholder="https://..."
         />
       </div>
 
