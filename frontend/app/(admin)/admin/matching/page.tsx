@@ -84,7 +84,7 @@ export default function MatchingPage() {
         solRes,
         compRes,
       ] = await Promise.all([
-        api.get("/matching/entities")
+        api.get("/matching/entities"),
         api.get("/solution/list"),
         api.get("/company/list"),
       ]);
