@@ -31,6 +31,7 @@ type Concept = {
 type AnalysisData = {
   id_content: string;
   title: string;
+
   source_url?: string;
   source_title?: string;
 
@@ -95,6 +96,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
         const payload = res?.data ?? res;
 
         setData(payload);
+
         requestAnimationFrame(() => setIsOpen(true));
       } catch (e) {
         console.error("❌ AnalysisDrawer load error", e);
@@ -119,10 +121,12 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
       label: c.name,
       type: "company",
     })),
+
     ...(data.topics ?? []).map((t) => ({
       label: t.label,
       type: "topic",
     })),
+
     ...(data.solutions ?? []).map((s) => ({
       label: s.name,
       type: "solution",
@@ -133,10 +137,13 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
     switch (type) {
       case "company":
         return "bg-blue-50 text-blue-600 border border-blue-100";
+
       case "solution":
         return "bg-purple-50 text-purple-600 border border-purple-100";
+
       case "topic":
         return "bg-gray-100 text-gray-700 border border-gray-200";
+
       default:
         return "bg-gray-100 text-gray-600";
     }
@@ -144,7 +151,10 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[100] flex">
-      <div className="absolute inset-0 bg-black/40" onClick={close} />
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={close}
+      />
 
       <aside
         className={`
@@ -171,7 +181,8 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
                 <span
                   key={`${b.label}-${i}`}
                   className={`
-                    px-2 py-0.5 text-[10px] rounded-full uppercase tracking-wide
+                    px-2 py-0.5 text-[10px]
+                    rounded-full uppercase tracking-wide
                     ${getBadgeClass(b.type)}
                   `}
                 >
@@ -180,26 +191,27 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               ))}
             </div>
           )}
+
+          {data.source_url && (
+            <div className="flex items-center">
+              <a
+                href={data.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  inline-flex items-center gap-1
+                  text-xs text-blue-600
+                  hover:text-blue-800
+                  hover:underline
+                "
+              >
+                <ExternalLink size={12} />
+
+                {data.source_title || "Lire l’article source"}
+              </a>
+            </div>
+          )}
         </div>
-
-        {data.source_url && (
-          <div className="flex items-center gap-2 text-xs">
-            <a
-              href={data.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="
-                inline-flex items-center gap-1
-                text-blue-600 hover:text-blue-800
-                hover:underline
-              "
-            >
-              <ExternalLink size={12} />
-
-              {data.source_title || "Lire l’article source"}
-            </a>
-          </div>
-        )}
 
         <div className="px-5 py-6 space-y-8">
 
@@ -214,6 +226,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               <h3 className="text-xs uppercase text-teal-600 mb-1">
                 Signal
               </h3>
+
               <p className="text-sm text-teal-800">
                 {data.signal_analytique}
               </p>
@@ -231,7 +244,10 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
                 {data.concepts.map((c) => (
                   <span
                     key={c.id_concept}
-                    className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-800"
+                    className="
+                      px-2 py-1 text-xs rounded
+                      bg-gray-200 text-gray-800
+                    "
                   >
                     {c.label}
                   </span>
@@ -245,6 +261,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Mécanique expliquée
               </h3>
+
               <p className="text-sm text-gray-700">
                 {data.mecanique_expliquee}
               </p>
@@ -256,6 +273,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Enjeu stratégique
               </h3>
+
               <p className="text-sm text-gray-700">
                 {data.enjeu_strategique}
               </p>
@@ -267,6 +285,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Point de friction
               </h3>
+
               <p className="text-sm text-gray-700">
                 {data.point_de_friction}
               </p>
@@ -308,12 +327,17 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               {/* LIST */}
               <ul className="space-y-2">
                 {data.chiffres.map((c, i) => {
-                  const parts = c.split("|").map((p) => p.trim());
+                  const parts = c
+                    .split("|")
+                    .map((p) => p.trim());
 
                   return (
                     <li
                       key={i}
-                      className="border rounded p-3 text-sm bg-gray-50"
+                      className="
+                        border rounded p-3
+                        text-sm bg-gray-50
+                      "
                     >
                       {/* LIBELLÉ */}
                       <div className="font-medium text-gray-900">
