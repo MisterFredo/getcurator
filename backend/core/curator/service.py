@@ -375,6 +375,8 @@ def get_item_detail(
 
     return {
         **content,
+        "source_url": item.get("source_url"),
+        "source_title": item.get("source_title"),
         "topics": item.get("topics", []),
         "companies": item.get("companies", []),
         "solutions": item.get("solutions", []),
