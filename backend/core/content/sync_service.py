@@ -603,6 +603,7 @@ def sync_all_published_contents(
         FROM `{TABLE_CONTENT}`
         WHERE STATUS = 'PUBLISHED'
         ORDER BY PUBLISHED_AT DESC
+        LIMIT 20
         """
     )
 
