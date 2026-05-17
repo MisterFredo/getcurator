@@ -439,7 +439,7 @@ export default function MatchingPage() {
       setSyncingFeed(true);
 
       await api.post(
-        "/content/sync-all",
+        "/content/sync-all-published",
         {}
       );
 
