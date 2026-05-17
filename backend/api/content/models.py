@@ -41,6 +41,7 @@ class ContentRawCreate(BaseModel):
 
     source_id: str
     source_title: str
+    source_url: Optional[str] = None
     raw_text: str
 
     date_source: Optional[date] = None
@@ -60,6 +61,7 @@ class ContentRawUpdate(BaseModel):
     id_primary_company: Optional[str] = None
 
     source_title: Optional[str] = None
+    source_url: Optional[str] = None
     date_source: Optional[date] = None
     raw_text: Optional[str] = None
 
@@ -75,6 +77,7 @@ class ContentRawOut(BaseModel):
     ] = "ANALYSIS"
 
     source_id: str
+    source_url: Optional[str] = None
     source_title: str
 
     # 🔥 NEW
