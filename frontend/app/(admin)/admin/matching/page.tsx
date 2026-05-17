@@ -358,7 +358,7 @@ export default function MatchingPage() {
       setProcessing(true);
 
       await api.post(
-        "/matching/match",
+        "/matching/entities/match",
         {
           alias: value,
           target_id: id,
@@ -400,7 +400,7 @@ export default function MatchingPage() {
       setProcessing(true);
 
       await api.post(
-        "/matching/match",
+        "/matching/entities/match",
         {
           alias: value,
           target_type: "ignore",
