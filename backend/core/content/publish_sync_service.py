@@ -218,6 +218,9 @@ def rebuild_content_enriched_row(
 
             id_content,
             source_id,
+            id_raw,
+            source_url,
+            source_title,
             title,
             excerpt,
             content_body,
@@ -250,6 +253,11 @@ def rebuild_content_enriched_row(
             c.ID_CONTENT AS id_content,
 
             c.SOURCE_ID AS source_id,
+            c.ID_RAW AS id_raw,
+
+            c.SOURCE_URL AS source_url,
+
+            c.SOURCE_TITLE AS source_title,
 
             c.TITLE AS title,
 
