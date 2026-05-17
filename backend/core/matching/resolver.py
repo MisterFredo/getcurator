@@ -144,12 +144,13 @@ def get_solution_alias_map() -> Dict:
 # ============================================================
 # REJECTED ALIAS SET
 # ============================================================
+
 def get_rejected_alias_set():
 
     rows = query_bq(
         f"""
         SELECT
-            RAW_ALIAS
+            ALIAS
 
         FROM `{TABLE_ALIAS_REJECTED}`
         """
@@ -160,9 +161,8 @@ def get_rejected_alias_set():
             row["ALIAS"]
         )
         for row in rows
-        if row.get("RAW_ALIAS")
+        if row.get("ALIAS")
     }
-
 # ============================================================
 # IS REJECTED
 # ============================================================
@@ -285,14 +285,18 @@ def insert_rejected_alias(
             ID_REJECTED,
             ALIAS,
             ENTITY_TYPE,
-            CREATED_AT
+            FIRST_SEEN_AT,
+            LAST_SEEN_AT,
+            NB_OCCURRENCES
         )
 
         VALUES (
             GENERATE_UUID(),
-            @raw_alias,
+            @alias,
             @entity_type,
-            CURRENT_TIMESTAMP()
+            CURRENT_TIMESTAMP(),
+            CURRENT_TIMESTAMP(),
+            '1'
         )
         """,
         {
