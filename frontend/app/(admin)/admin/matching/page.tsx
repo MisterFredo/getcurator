@@ -8,7 +8,9 @@ import MatchingTable from "@/components/admin/matching/MatchingTable";
 type LLMItem = {
   value: string;
   count: number;
+
   type_hint?: "company" | "solution" | "unknown";
+
   suggested_id?: string | null;
   suggested_label?: string | null;
 };
@@ -23,33 +25,49 @@ type Company = {
   name: string;
 };
 
+type MatchOption = {
+  id: string;
+  label: string;
+  type: "company" | "solution";
+};
+
 export default function MatchingPage() {
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [tab, setTab] = useState<
-    "solutions" | "companies"
-  >("solutions");
+  const [entities, setEntities] =
+    useState<LLMItem[]>([]);
 
-  const [llmSolutions, setLLMSolutions] = useState<LLMItem[]>([]);
-  const [llmCompanies, setLLMCompanies] = useState<LLMItem[]>([]);
+  const [solutions, setSolutions] =
+    useState<Solution[]>([]);
 
-  const [solutions, setSolutions] = useState<Solution[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] =
+    useState<Company[]>([]);
 
-  const [selected, setSelected] = useState<{
-    [key: string]: string;
-  }>({});
+  const [selected, setSelected] =
+    useState<{
+      [key: string]: string;
+    }>({});
 
-  const [checked, setChecked] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [selectedType, setSelectedType] =
+    useState<{
+      [key: string]: "company" | "solution";
+    }>({});
 
-  const [processing, setProcessing] = useState(false);
+  const [checked, setChecked] =
+    useState<{
+      [key: string]: boolean;
+    }>({});
 
-  const [syncingFeed, setSyncingFeed] = useState(false);
+  const [processing, setProcessing] =
+    useState(false);
 
-  const [syncingNumbers, setSyncingNumbers] = useState(false);
+  const [syncingFeed, setSyncingFeed] =
+    useState(false);
+
+  const [syncingNumbers, setSyncingNumbers] =
+    useState(false);
 
   /* =========================================================
      LOAD
@@ -62,23 +80,17 @@ export default function MatchingPage() {
       setLoading(true);
 
       const [
-        llmSolRes,
-        llmCompRes,
+        entityRes,
         solRes,
         compRes,
       ] = await Promise.all([
-        api.get("/matching/solutions"),
-        api.get("/matching/companies"),
+        api.get("/matching"),
         api.get("/solution/list"),
         api.get("/company/list"),
       ]);
 
-      setLLMSolutions(
-        llmSolRes.solutions || []
-      );
-
-      setLLMCompanies(
-        llmCompRes.companies || []
+      setEntities(
+        entityRes.entities || []
       );
 
       setSolutions(
@@ -111,31 +123,35 @@ export default function MatchingPage() {
   }, []);
 
   /* =========================================================
-     CURRENT DATA
+     OPTIONS
   ========================================================= */
 
-  const items = useMemo(() => {
+  const options = useMemo(() => {
 
-    return tab === "solutions"
-      ? llmSolutions
-      : llmCompanies;
+    const companyOptions =
+      companies.map((c) => ({
+        id: c.id_company,
+        label: c.name,
+        type: "company" as const,
+      }));
+
+    const solutionOptions =
+      solutions.map((s) => ({
+        id: s.id_solution,
+        label: s.name,
+        type: "solution" as const,
+      }));
+
+    return [
+      ...companyOptions,
+      ...solutionOptions,
+    ].sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
 
   }, [
-    tab,
-    llmSolutions,
-    llmCompanies,
-  ]);
-
-  const list = useMemo(() => {
-
-    return tab === "solutions"
-      ? solutions
-      : companies;
-
-  }, [
-    tab,
-    solutions,
     companies,
+    solutions,
   ]);
 
   /* =========================================================
@@ -144,22 +160,40 @@ export default function MatchingPage() {
 
   useEffect(() => {
 
-    const auto: Record<string, string> = {};
+    const autoSelected:
+      Record<string, string> = {};
 
-    items.forEach((item) => {
+    const autoTypes:
+      Record<
+        string,
+        "company" | "solution"
+      > = {};
 
-      if (item.suggested_id) {
+    entities.forEach((item) => {
 
-        auto[item.value] =
+      if (
+        item.suggested_id
+        &&
+        item.type_hint
+        &&
+        item.type_hint !== "unknown"
+      ) {
+
+        autoSelected[item.value] =
           item.suggested_id;
+
+        autoTypes[item.value] =
+          item.type_hint;
 
       }
 
     });
 
-    setSelected(auto);
+    setSelected(autoSelected);
 
-  }, [items]);
+    setSelectedType(autoTypes);
+
+  }, [entities]);
 
   /* =========================================================
      HELPERS
@@ -178,7 +212,8 @@ export default function MatchingPage() {
 
   async function matchBulk() {
 
-    const values = getCheckedValues();
+    const values =
+      getCheckedValues();
 
     if (values.length === 0) {
 
@@ -192,53 +227,33 @@ export default function MatchingPage() {
 
       setProcessing(true);
 
-      if (tab === "solutions") {
-
-        const payload = {
-          items: values
-            .filter((value) => selected[value])
-            .map((value) => ({
-              alias: value,
-              id_solution: selected[value],
-              action: "MATCH",
-            })),
-        };
-
-        await api.post(
-          "/matching/solutions/bulk-match",
-          payload
-        );
-
-        setLLMSolutions((prev) =>
-          prev.filter(
-            (v) => !values.includes(v.value)
+      const payload = {
+        items: values
+          .filter((value) =>
+            selected[value]
+            &&
+            selectedType[value]
           )
-        );
+          .map((value) => ({
+            alias: value,
+            target_id:
+              selected[value],
+            target_type:
+              selectedType[value],
+          })),
+      };
 
-      } else {
+      await api.post(
+        "/matching/bulk-match",
+        payload
+      );
 
-        const payload = {
-          items: values
-            .filter((value) => selected[value])
-            .map((value) => ({
-              alias: value,
-              id_company: selected[value],
-              action: "MATCH",
-            })),
-        };
-
-        await api.post(
-          "/matching/companies/bulk-match",
-          payload
-        );
-
-        setLLMCompanies((prev) =>
-          prev.filter(
-            (v) => !values.includes(v.value)
-          )
-        );
-
-      }
+      setEntities((prev) =>
+        prev.filter(
+          (v) =>
+            !values.includes(v.value)
+        )
+      );
 
       setChecked({});
 
@@ -262,7 +277,8 @@ export default function MatchingPage() {
 
   async function ignoreBulk() {
 
-    const values = getCheckedValues();
+    const values =
+      getCheckedValues();
 
     if (values.length === 0) {
 
@@ -276,47 +292,26 @@ export default function MatchingPage() {
 
       setProcessing(true);
 
-      if (tab === "solutions") {
-
-        const payload = {
-          items: values.map((value) => ({
+      const payload = {
+        items: values.map(
+          (value) => ({
             alias: value,
-            action: "IGNORE",
-          })),
-        };
+            target_type: "ignore",
+          })
+        ),
+      };
 
-        await api.post(
-          "/matching/solutions/bulk-match",
-          payload
-        );
+      await api.post(
+        "/matching/bulk-match",
+        payload
+      );
 
-        setLLMSolutions((prev) =>
-          prev.filter(
-            (v) => !values.includes(v.value)
-          )
-        );
-
-      } else {
-
-        const payload = {
-          items: values.map((value) => ({
-            alias: value,
-            action: "IGNORE",
-          })),
-        };
-
-        await api.post(
-          "/matching/companies/bulk-match",
-          payload
-        );
-
-        setLLMCompanies((prev) =>
-          prev.filter(
-            (v) => !values.includes(v.value)
-          )
-        );
-
-      }
+      setEntities((prev) =>
+        prev.filter(
+          (v) =>
+            !values.includes(v.value)
+        )
+      );
 
       setChecked({});
 
@@ -342,11 +337,17 @@ export default function MatchingPage() {
     value: string
   ) {
 
-    const id = selected[value];
+    const id =
+      selected[value];
 
-    if (!id) {
+    const type =
+      selectedType[value];
 
-      alert("Sélectionner une valeur");
+    if (!id || !type) {
+
+      alert(
+        "Sélectionner une cible"
+      );
 
       return;
 
@@ -356,41 +357,21 @@ export default function MatchingPage() {
 
       setProcessing(true);
 
-      if (tab === "solutions") {
+      await api.post(
+        "/matching/match",
+        {
+          alias: value,
+          target_id: id,
+          target_type: type,
+        }
+      );
 
-        await api.post(
-          "/matching/solutions/match",
-          {
-            alias: value,
-            id_solution: id,
-            action: "MATCH",
-          }
-        );
-
-        setLLMSolutions((prev) =>
-          prev.filter(
-            (v) => v.value !== value
-          )
-        );
-
-      } else {
-
-        await api.post(
-          "/matching/companies/match",
-          {
-            alias: value,
-            id_company: id,
-            action: "MATCH",
-          }
-        );
-
-        setLLMCompanies((prev) =>
-          prev.filter(
-            (v) => v.value !== value
-          )
-        );
-
-      }
+      setEntities((prev) =>
+        prev.filter(
+          (v) =>
+            v.value !== value
+        )
+      );
 
     } catch (e) {
 
@@ -418,39 +399,20 @@ export default function MatchingPage() {
 
       setProcessing(true);
 
-      if (tab === "solutions") {
+      await api.post(
+        "/matching/match",
+        {
+          alias: value,
+          target_type: "ignore",
+        }
+      );
 
-        await api.post(
-          "/matching/solutions/match",
-          {
-            alias: value,
-            action: "IGNORE",
-          }
-        );
-
-        setLLMSolutions((prev) =>
-          prev.filter(
-            (v) => v.value !== value
-          )
-        );
-
-      } else {
-
-        await api.post(
-          "/matching/companies/match",
-          {
-            alias: value,
-            action: "IGNORE",
-          }
-        );
-
-        setLLMCompanies((prev) =>
-          prev.filter(
-            (v) => v.value !== value
-          )
-        );
-
-      }
+      setEntities((prev) =>
+        prev.filter(
+          (v) =>
+            v.value !== value
+        )
+      );
 
     } catch (e) {
 
@@ -481,13 +443,17 @@ export default function MatchingPage() {
         {}
       );
 
-      alert("SYNC FEED terminé");
+      alert(
+        "SYNC FEED terminé"
+      );
 
     } catch (e) {
 
       console.error(e);
 
-      alert("Erreur sync feed");
+      alert(
+        "Erreur sync feed"
+      );
 
     } finally {
 
@@ -512,13 +478,17 @@ export default function MatchingPage() {
         {}
       );
 
-      alert("SYNC NUMBERS terminé");
+      alert(
+        "SYNC NUMBERS terminé"
+      );
 
     } catch (e) {
 
       console.error(e);
 
-      alert("Erreur sync numbers");
+      alert(
+        "Erreur sync numbers"
+      );
 
     } finally {
 
@@ -548,16 +518,27 @@ export default function MatchingPage() {
           HEADER
       ===================================================== */}
 
-      <div className="flex items-center justify-between">
+      <div className="
+        flex
+        items-center
+        justify-between
+      ">
 
         <div>
 
-          <h1 className="text-3xl font-semibold">
+          <h1 className="
+            text-3xl
+            font-semibold
+          ">
             Matching & Sync
           </h1>
 
-          <p className="text-sm text-gray-500 mt-1">
-            Gestion des alias, projections feed et backlog KPI
+          <p className="
+            text-sm
+            text-gray-500
+            mt-1
+          ">
+            Gouvernance des entités extraites par LLM
           </p>
 
         </div>
@@ -581,9 +562,11 @@ export default function MatchingPage() {
             rounded
           "
         >
+
           {syncingFeed
             ? "SYNC FEED..."
             : "SYNC FEED"}
+
         </button>
 
         <button
@@ -597,55 +580,17 @@ export default function MatchingPage() {
             rounded
           "
         >
+
           {syncingNumbers
             ? "SYNC NUMBERS..."
             : "SYNC NUMBERS"}
+
         </button>
 
       </div>
 
       {/* =====================================================
-          TABS
-      ===================================================== */}
-
-      <div className="flex gap-4">
-
-        <button
-          onClick={() =>
-            setTab("solutions")
-          }
-          className={`
-            px-4 py-2 rounded
-            ${
-              tab === "solutions"
-                ? "bg-ratecard-blue text-white"
-                : "bg-gray-200"
-            }
-          `}
-        >
-          Solutions
-        </button>
-
-        <button
-          onClick={() =>
-            setTab("companies")
-          }
-          className={`
-            px-4 py-2 rounded
-            ${
-              tab === "companies"
-                ? "bg-ratecard-blue text-white"
-                : "bg-gray-200"
-            }
-          `}
-        >
-          Sociétés
-        </button>
-
-      </div>
-
-      {/* =====================================================
-          MATCHING ACTIONS
+          ACTIONS
       ===================================================== */}
 
       <div className="flex gap-2">
@@ -685,11 +630,12 @@ export default function MatchingPage() {
       ===================================================== */}
 
       <MatchingTable
-        items={items}
-        list={list}
-        tab={tab}
+        items={entities}
+        options={options}
         selected={selected}
         setSelected={setSelected}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
         checked={checked}
         setChecked={setChecked}
         processing={
