@@ -117,6 +117,7 @@ export default function StepSource({
       await api.post("/content/store-raw", {
         source_id: sourceId,
         source_title: sourceTitle,
+        source_url: sourceUrl,
         raw_text: sourceText,
         date_source: sourcePublishedAt || null,
 
@@ -133,6 +134,7 @@ export default function StepSource({
       setSourceText("");
       setSourcePublishedAt("");
       setSourceTitle("");
+      setSourceUrl("");
 
     } catch (e) {
       console.error(e);
