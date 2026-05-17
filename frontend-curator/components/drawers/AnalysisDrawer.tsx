@@ -182,6 +182,25 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
           )}
         </div>
 
+        {data.source_url && (
+          <div className="flex items-center gap-2 text-xs">
+            <a
+              href={data.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                inline-flex items-center gap-1
+                text-blue-600 hover:text-blue-800
+                hover:underline
+              "
+            >
+              <ExternalLink size={12} />
+
+              {data.source_title || "Lire l’article source"}
+            </a>
+          </div>
+        )}
+
         <div className="px-5 py-6 space-y-8">
 
           {data.excerpt && (
