@@ -244,7 +244,7 @@ export default function MatchingPage() {
       };
 
       await api.post(
-        "/matching/bulk-match",
+        "/matching/entities/bulk-match",
         payload
       );
 
@@ -302,7 +302,7 @@ export default function MatchingPage() {
       };
 
       await api.post(
-        "/matching/bulk-match",
+        "/matching/entities/bulk-match",
         payload
       );
 
