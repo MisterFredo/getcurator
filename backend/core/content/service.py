@@ -136,6 +136,11 @@ def create_content(data: ContentCreate) -> str:
             if data.source_date
             else None
         ),
+        "ID_RAW": data.id_raw,
+
+        "SOURCE_URL": data.source_url,
+
+        "SOURCE_TITLE": data.source_title,
 
         "UPDATED_AT": now,
     }]
@@ -385,6 +390,9 @@ def get_content(id_content: str):
 
           STATUS,
           SOURCE_ID,
+          ID_RAW,
+          SOURCE_URL,
+          SOURCE_TITLE,
           TITLE,
           EXCERPT,
           CONTENT_BODY,
@@ -427,6 +435,9 @@ def get_content(id_content: str):
 
         "status": row.get("STATUS"),
         "source_id": row.get("SOURCE_ID"),
+        "id_raw": row.get("ID_RAW"),
+        "source_url": row.get("SOURCE_URL"),
+        "source_title": row.get("SOURCE_TITLE"),
 
         "title": row.get("TITLE"),
         "excerpt": row.get("EXCERPT"),
@@ -603,7 +614,8 @@ def list_contents():
 
           c.TITLE,
           c.EXCERPT,
-
+          c.SOURCE_URL,
+          c.SOURCE_TITLE,
           c.PUBLISHED_AT
 
         FROM `{TABLE_CONTENT}` c
@@ -626,6 +638,8 @@ def list_contents():
     return [
         {
             "id_content": r["ID_CONTENT"],
+            "source_url": r.get("SOURCE_URL"),
+            "source_title": r.get("SOURCE_TITLE"),
 
             # 🔥 NEW
             "content_type": (
@@ -688,9 +702,9 @@ def list_contents_admin():
           c.STATUS,
 
           c.SOURCE_DATE,
-
+          c.SOURCE_URL,
+          c.SOURCE_TITLE,
           c.PUBLISHED_AT,
-
           c.UPDATED_AT
 
         FROM `{TABLE_CONTENT}` c
@@ -723,6 +737,9 @@ def list_contents_admin():
             "primary_company_name": r.get(
                 "PRIMARY_COMPANY_NAME"
             ),
+            "source_url": r.get("SOURCE_URL"),
+
+            "source_title": r.get("SOURCE_TITLE"),
 
             "title": r["TITLE"],
 
@@ -756,6 +773,7 @@ def list_contents_admin():
 def store_raw_content(
     source_id: str,
     source_title: str,
+    source_url: Optional[str] = None,
     raw_text: str,
     date_source: Optional[date] = None,
 
@@ -792,6 +810,7 @@ def store_raw_content(
         "SOURCE_ID": source_id,
 
         "SOURCE_TITLE": source_title.strip(),
+        "SOURCE_URL": source_url,
 
         "RAW_TEXT": raw_text.strip(),
 
@@ -1383,6 +1402,7 @@ def update_raw_content(
     id_raw: str,
     date_source: Optional[str],
     source_title: Optional[str],
+    source_url: Optional[str] = None,
     raw_text: Optional[str] = None,
 
     # 🔥 NEW
@@ -1402,6 +1422,7 @@ def update_raw_content(
             DATE_SOURCE = @date_source,
 
             SOURCE_TITLE = @source_title,
+            SOURCE_URL = @source_url,
 
             RAW_TEXT = @raw_text,
 
@@ -1427,6 +1448,12 @@ def update_raw_content(
                 "source_title",
                 "STRING",
                 source_title
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "source_url",
+                "STRING",
+                source_url
             ),
 
             bigquery.ScalarQueryParameter(
