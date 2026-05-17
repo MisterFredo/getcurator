@@ -133,13 +133,22 @@ class ContentCreate(BaseModel):
     # 🔥 NEW
     id_primary_company: Optional[str] = None
 
+    # 🔥 NEW
+    id_raw: Optional[str] = None
+
     # ========================================================
     # SOURCE
     # ========================================================
 
     source_id: Optional[str] = None
     source_text: Optional[str] = None
+
+    # 🔥 EXISTING
     source_url: Optional[str] = None
+
+    # 🔥 NEW
+    source_title: Optional[str] = None
+
     source_author: Optional[str] = None
 
     source_published_at: Optional[date] = None
@@ -212,7 +221,6 @@ class ContentCreate(BaseModel):
     # ========================================================
 
     author: Optional[str] = None
-
 
 # ============================================================
 # UPDATE
