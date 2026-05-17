@@ -16,7 +16,7 @@ router = APIRouter()
 # LIST UNMATCHED ENTITIES
 # ============================================================
 
-@router.get("/")
+@router.get("/entities")
 def list_entities():
 
     try:
@@ -39,7 +39,7 @@ def list_entities():
 # APPLY ENTITY MATCH
 # ============================================================
 
-@router.post("/match")
+@router.post("/entities/match")
 def apply_entity_match(
     data: EntityMatch
 ):
@@ -67,7 +67,7 @@ def apply_entity_match(
 # BULK ENTITY MATCH
 # ============================================================
 
-@router.post("/bulk-match")
+@router.post("/entities/bulk-match")
 def bulk_entity_match(
     payload: BulkEntityMatchRequest
 ):
