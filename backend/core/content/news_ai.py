@@ -164,6 +164,8 @@ Exemples :
 
 IMPORTANT :
 - Une entité ne doit apparaître QUE dans une seule catégorie.
+- Les acteurs ne doivent jamais être sur la même ligne mais toujours bien séparés
+- Les solutions ne doivent jamais être sur la même ligne mais toujours bien séparées 
 - Produit → SOLUTIONS.
 - Entreprise → ACTEURS.
 - Aucun doublon entre ACTEURS et SOLUTIONS.
