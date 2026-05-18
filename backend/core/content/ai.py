@@ -120,12 +120,12 @@ Source : {source_id}
 Tu dois impérativement distinguer deux types d’entités :
 
 1) ACTEURS = ENTREPRISES UNIQUEMENT
-- sociétés, groupes, organisations
-- exemples : Google, Amazon, LiveRamp, TF1 Pub, Meta
+- sociétés, groupes, organisations (Google, Amazon, TF1 Pub ...)
+- les acteurs ne doivent jamais être sur la même ligne mais toujours bien séparés 
 
 2) SOLUTIONS = PRODUITS / PLATEFORMES / OFFRES
-- produits commerciaux, marques, technologies, solutions marketing
-- exemples : DV360, RampID, Amazon DSP, TF1+, Johnnie Walker
+- produits commerciaux, marques, technologies, solutions marketing (DV360, Johnnie Walker, Alexa, ...)
+- les solutions ne doivent jamais être sur la même ligne mais toujours bien séparées 
 
 IMPORTANT :
 - Une entité ne doit apparaître QUE dans une seule catégorie
