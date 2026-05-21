@@ -87,6 +87,7 @@ def get_user_context(user_id: str):
 
     return {
         "user": user,
+        "lang": user.get("LANGUAGE", "fr"),
         "universes": universes,
         "sources": sources,
     }
