@@ -3,6 +3,10 @@ from typing import List, Dict, Optional
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
+from core.user.user_service import get_user_context
+from core.user.user_preferences_service import get_user_preferences_grouped
+from core.translation.service import translate_feed_items
+
 
 TABLE_NEWS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS"
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
@@ -286,17 +290,27 @@ def get_feed_for_user(
     limit: int = 20,
     offset: int = 0,
 ):
-    from core.user.user_service import get_user_context
-    from core.user.user_preferences_service import get_user_preferences_grouped
+
+    # --------------------------------------------------------
+    # USER CONTEXT
+    # --------------------------------------------------------
 
     context = get_user_context(user_id)
     prefs = get_user_preferences_grouped(user_id)
 
     lang = context["lang"]
 
+    # --------------------------------------------------------
+    # MERGE FILTERS
+    # --------------------------------------------------------
+
     final_topic_ids = topic_ids or prefs["TOPIC"]
     final_company_ids = company_ids or prefs["COMPANY"]
     final_solution_ids = solution_ids or prefs["SOLUTION"]
+
+    # --------------------------------------------------------
+    # FETCH DATA (EXISTING ENGINE)
+    # --------------------------------------------------------
 
     items = search_filters(
         topic_ids=final_topic_ids,
@@ -305,6 +319,10 @@ def get_feed_for_user(
         limit=limit,
         offset=offset,
     )
+
+    # --------------------------------------------------------
+    # TRANSLATION
+    # --------------------------------------------------------
 
     if lang != "fr":
         items = translate_feed_items(items, lang)
