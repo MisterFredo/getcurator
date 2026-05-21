@@ -5,6 +5,10 @@ from utils.bigquery_utils import query_bq
 
 from core.company.service import get_company
 
+from core.translation.service import translate_feed_items
+from core.user.user_service import get_user_context
+from core.user.user_preferences_service import get_user_preferences_grouped
+
 
 # ============================================================
 # TABLES / VIEWS
@@ -254,6 +258,47 @@ def get_company_view(
     )
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = get_user_context(user_id) if user_id else None
+    prefs = get_user_preferences_grouped(user_id) if user_id else None
+
+    lang = context["lang"] if context else "fr"
+
+    # ============================================================
+    # PRIORITIZATION (PREFERENCES)
+    # ============================================================
+
+    if prefs:
+
+        def score(item):
+            score = 0
+
+            for c in item.get("companies", []):
+                if c.get("id_company") in prefs["COMPANY"]:
+                    score += 2
+
+            for t in item.get("topics", []):
+                if t.get("id_topic") in prefs["TOPIC"]:
+                    score += 1
+
+            for s in item.get("solutions", []):
+                if s.get("id_solution") in prefs["SOLUTION"]:
+                    score += 1
+
+            return score
+
+        items = sorted(items, key=score, reverse=True)
+
+    # ============================================================
+    # TRANSLATION
+    # ============================================================
+
+    if lang != "fr":
+        items = translate_feed_items(items, lang)
+
+    # ============================================================
     # RETURN
     # ============================================================
 
@@ -266,7 +311,6 @@ def get_company_view(
 
         "items": items,
     }
-
 
 # ============================================================
 # TOPIC
@@ -363,22 +407,57 @@ def get_topic_view(
     )
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = get_user_context(user_id) if user_id else None
+    prefs = get_user_preferences_grouped(user_id) if user_id else None
+
+    lang = context["lang"] if context else "fr"
+
+    # ============================================================
+    # PRIORITIZATION
+    # ============================================================
+
+    if prefs:
+
+        def score(item):
+            score = 0
+
+            for c in item.get("companies", []):
+                if c.get("id_company") in prefs["COMPANY"]:
+                    score += 2
+
+            for t in item.get("topics", []):
+                if t.get("id_topic") in prefs["TOPIC"]:
+                    score += 1
+
+            for s in item.get("solutions", []):
+                if s.get("id_solution") in prefs["SOLUTION"]:
+                    score += 1
+
+            return score
+
+        items = sorted(items, key=score, reverse=True)
+
+    # ============================================================
+    # TRANSLATION
+    # ============================================================
+
+    if lang != "fr":
+        items = translate_feed_items(items, lang)
+
+    # ============================================================
     # RETURN
     # ============================================================
 
     return {
         "id_topic": topic_id,
-
         "label": topic.get("LABEL"),
-
         "topic_axis": topic.get("TOPIC_AXIS"),
-
         "description": topic.get("DESCRIPTION"),
-
         "nb_analyses": stats.get("NB_ANALYSES", 0),
-
         "delta_30d": stats.get("DELTA_30D", 0),
-
         "items": items
     }
 
@@ -481,30 +560,59 @@ def get_solution_view(
     )
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = get_user_context(user_id) if user_id else None
+    prefs = get_user_preferences_grouped(user_id) if user_id else None
+
+    lang = context["lang"] if context else "fr"
+
+    # ============================================================
+    # PRIORITIZATION
+    # ============================================================
+
+    if prefs:
+
+        def score(item):
+            score = 0
+
+            for c in item.get("companies", []):
+                if c.get("id_company") in prefs["COMPANY"]:
+                    score += 2
+
+            for t in item.get("topics", []):
+                if t.get("id_topic") in prefs["TOPIC"]:
+                    score += 1
+
+            for s in item.get("solutions", []):
+                if s.get("id_solution") in prefs["SOLUTION"]:
+                    score += 1
+
+            return score
+
+        items = sorted(items, key=score, reverse=True)
+
+    # ============================================================
+    # TRANSLATION
+    # ============================================================
+
+    if lang != "fr":
+        items = translate_feed_items(items, lang)
+
+    # ============================================================
     # RETURN
     # ============================================================
 
     return {
         "id_solution": solution_id,
-
         "name": solution.get("NAME"),
-
         "company_name": solution.get("COMPANY_NAME"),
-
-        "media_logo_rectangle_id": solution.get(
-            "MEDIA_LOGO_RECTANGLE_ID"
-        ),
-
+        "media_logo_rectangle_id": solution.get("MEDIA_LOGO_RECTANGLE_ID"),
         "nb_analyses": stats.get("NB_ANALYSES", 0),
-
         "delta_30d": stats.get("DELTA_30D", 0),
-
         "items": items
     }
-
-# ============================================================
-# DEDUPE HELPERS
-# ============================================================
 
 # ============================================================
 # DEDUPE HELPERS
