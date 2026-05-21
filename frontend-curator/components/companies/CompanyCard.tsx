@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useDrawer } from "@/contexts/DrawerContext";
+import { api } from "@/lib/api";
 
 const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 
@@ -22,8 +23,8 @@ type Props = {
     key_points: string[];
   };
 
-  // 🔥 NEW
   isLoading?: boolean;
+  isFavorite?: boolean; // 🔥 NEW
   onClick?: () => void;
 };
 
@@ -37,6 +38,7 @@ export default function CompanyCard({
   universes,
   lastRadar,
   isLoading,
+  isFavorite = false,
   onClick,
 }: Props) {
   const router = useRouter();
@@ -55,9 +57,9 @@ export default function CompanyCard({
   ===================================================== */
 
   function handleClick() {
-    if (isLoading) return; // 🔥 évite double click
+    if (isLoading) return;
 
-    if (onClick) onClick(); // 🔥 trigger loader parent
+    if (onClick) onClick();
 
     openLeftDrawer("company", id);
 
@@ -69,8 +71,34 @@ export default function CompanyCard({
 
   function handleRadarClick(e: React.MouseEvent) {
     e.stopPropagation();
+
     if (lastRadar?.id_insight) {
       openRightDrawer("radar", lastRadar.id_insight);
+    }
+  }
+
+  // 🔥 FOLLOW / UNFOLLOW
+  async function handleFavoriteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+
+    try {
+      if (isFavorite) {
+        await api.post("/user/preferences/remove", {
+          type: "COMPANY",
+          value_id: id,
+        });
+      } else {
+        await api.post("/user/preferences/add", {
+          type: "COMPANY",
+          value_id: id,
+        });
+      }
+
+      // 🔥 simple refresh (propre V1)
+      window.location.reload();
+
+    } catch (e) {
+      console.error("❌ favorite error", e);
     }
   }
 
@@ -91,6 +119,22 @@ export default function CompanyCard({
         relative
       "
     >
+
+      {/* 🔥 FAVORITE BUTTON */}
+      <button
+        onClick={handleFavoriteClick}
+        className="
+          absolute top-2 right-2 z-20
+          text-xs px-2 py-1 rounded
+          bg-white/90 backdrop-blur
+          border border-gray-200
+          hover:bg-gray-100
+          transition
+        "
+      >
+        {isFavorite ? "★" : "☆"}
+      </button>
+
       {/* 🔥 LOADING OVERLAY */}
       {isLoading && (
         <div className="
@@ -106,7 +150,7 @@ export default function CompanyCard({
 
       {/* DELTA */}
       {typeof delta30d === "number" && delta30d > 0 && (
-        <div className="absolute top-2 right-2 text-[9px] px-2 py-0.5 rounded bg-green-100 text-green-600 z-10">
+        <div className="absolute top-2 right-10 text-[9px] px-2 py-0.5 rounded bg-green-100 text-green-600 z-10">
           +{delta30d}
         </div>
       )}
@@ -136,7 +180,7 @@ export default function CompanyCard({
           </div>
         )}
 
-        {/* RADAR OVERLAY */}
+        {/* RADAR */}
         {lastRadar?.key_points?.[0] && (
           <div
             onClick={handleRadarClick}
