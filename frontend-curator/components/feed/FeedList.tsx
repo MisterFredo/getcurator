@@ -42,6 +42,14 @@ type Props = {
   onToggleSelect?: (
     item: FeedItem
   ) => void;
+
+  // 🔥 NEW
+  preferences?: string[];
+
+  onToggleFavorite?: (
+    companyId: string,
+    isFav: boolean
+  ) => void;
 };
 
 /* ========================================================= */
@@ -60,6 +68,11 @@ export default function FeedList({
 
   selectedIds = [],
   onToggleSelect,
+
+  // 🔥 NEW
+  preferences = [],
+  onToggleFavorite,
+
 }: Props) {
 
   const [isFetchingMore, setIsFetchingMore] =
@@ -267,6 +280,15 @@ export default function FeedList({
           const isSelected =
             selectedIds.includes(item.id);
 
+          // 🔥 FAVORITE LOGIC
+          const companyId =
+            item.id_primary_company;
+
+          const isFavorite =
+            companyId
+              ? preferences.includes(companyId)
+              : false;
+
           return (
 
             <div
@@ -312,6 +334,15 @@ export default function FeedList({
                   onClick={() =>
                     onSelectItem(item)
                   }
+
+                  // 🔥 NEW
+                  isFavorite={isFavorite}
+
+                  onToggleFavorite={() => {
+                    if (!companyId || !onToggleFavorite) return;
+
+                    onToggleFavorite(companyId, isFavorite);
+                  }}
                 />
 
               </div>
