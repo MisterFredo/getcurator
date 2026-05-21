@@ -1,5 +1,8 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List
+
+
+SUPPORTED_LANGS = ["fr", "en"]
 
 
 # =========================================================
@@ -14,11 +17,15 @@ class CreateUserPayload(BaseModel):
     company: Optional[str] = None
     language: Optional[str] = "fr"
 
-    # 🔥 important → éviter List = []
     universes: List[str] = Field(default_factory=list)
 
-    # 🔥 préparation future (admin / user)
     role: Optional[str] = "user"
+
+    @validator("language", pre=True, always=True)
+    def validate_language(cls, v):
+        if v not in SUPPORTED_LANGS:
+            return "fr"
+        return v
 
 
 # =========================================================
@@ -43,12 +50,17 @@ class UpdateUserPayload(BaseModel):
 
     universes: List[str] = Field(default_factory=list)
 
-    # 🔥 permet de gérer admin plus tard
     role: Optional[str] = None
+
+    @validator("language", pre=True, always=True)
+    def validate_language(cls, v):
+        if v not in SUPPORTED_LANGS:
+            return "fr"
+        return v
 
 
 # =========================================================
-# ASSIGN UNIVERS (optionnel / interne)
+# ASSIGN UNIVERS
 # =========================================================
 
 class AssignUniversePayload(BaseModel):
