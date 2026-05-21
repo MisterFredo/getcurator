@@ -1,5 +1,6 @@
 import json
 import logging
+import hashlib
 import re
 from typing import List, Dict
 
@@ -51,7 +52,7 @@ def _get_cached_translation(text: str, lang: str) -> Optional[str]:
         f"""
         SELECT TRANSLATED_TEXT
         FROM `{TABLE_TRANSLATION_CACHE}`
-        WHERE HASH = @hash
+        WHERE HASH_KEY = @hash
         LIMIT 1
         """,
         {"hash": hash_key}
@@ -62,7 +63,6 @@ def _get_cached_translation(text: str, lang: str) -> Optional[str]:
 
     return None
 
-
 def _store_translation(text: str, lang: str, translated: str):
 
     hash_key = _hash_text(text, lang)
@@ -70,7 +70,7 @@ def _store_translation(text: str, lang: str, translated: str):
     query_bq(
         f"""
         INSERT INTO `{TABLE_TRANSLATION_CACHE}` (
-            HASH,
+            HASH_KEY,
             SOURCE_TEXT,
             TARGET_LANG,
             TRANSLATED_TEXT,
