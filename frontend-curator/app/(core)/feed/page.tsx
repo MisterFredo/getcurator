@@ -101,6 +101,13 @@ export default function FeedPage() {
     useState(true);
 
   /* =========================================================
+     🔥 USER PREFERENCES
+  ========================================================= */
+
+  const [preferences, setPreferences] =
+    useState<string[]>([]);
+
+  /* =========================================================
      DRAWER
   ========================================================= */
 
@@ -146,6 +153,40 @@ export default function FeedPage() {
     }
 
     loadUniverses();
+
+  }, []);
+
+  /* =========================================================
+     🔥 LOAD USER PREFS
+  ========================================================= */
+
+  useEffect(() => {
+
+    async function loadPrefs() {
+
+      try {
+
+        const res = await api.get(
+          "/user/preferences"
+        );
+
+        const companyPrefs =
+          Array.isArray(res?.preferences?.COMPANY)
+            ? res.preferences.COMPANY
+            : [];
+
+        setPreferences(companyPrefs);
+
+      } catch (e) {
+
+        console.error(
+          "❌ prefs error",
+          e
+        );
+      }
+    }
+
+    loadPrefs();
 
   }, []);
 
@@ -378,6 +419,55 @@ export default function FeedPage() {
   }
 
   /* =========================================================
+     FAVORITES HANDLER
+  ========================================================= */
+
+  async function handleToggleFavorite(
+    companyId: string,
+    isFav: boolean
+  ) {
+
+    if (!companyId) return;
+
+    try {
+
+      if (isFav) {
+
+        await api.post(
+          "/user/preferences/remove",
+          {
+            type: "COMPANY",
+            value_id: companyId,
+          }
+        );
+
+      } else {
+
+        await api.post(
+          "/user/preferences/add",
+          {
+            type: "COMPANY",
+            value_id: companyId,
+          }
+        );
+      }
+
+      setPreferences((prev) =>
+        isFav
+          ? prev.filter((p) => p !== companyId)
+          : [...prev, companyId]
+      );
+
+    } catch (e) {
+
+      console.error(
+        "❌ favorite toggle error",
+        e
+      );
+    }
+  }
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
@@ -469,6 +559,13 @@ export default function FeedPage() {
 
           onToggleSelect={
             toggleSelect
+          }
+
+          // 🔥 NEW
+          preferences={preferences}
+
+          onToggleFavorite={
+            handleToggleFavorite
           }
         />
 
