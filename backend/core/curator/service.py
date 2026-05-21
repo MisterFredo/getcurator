@@ -49,20 +49,10 @@ def search(
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
     content_type: Optional[str] = None,
+    feed_mode: Optional[str] = None,  # 🔥 NEW
 ) -> List[Dict]:
 
     q = (q or "").strip()
-
-    universe_filter = ""
-
-    if universe_id:
-        universe_filter = """
-        AND EXISTS (
-            SELECT 1
-            FROM UNNEST(c.universes) u
-            WHERE u.id_universe = @universe_id
-        )
-        """
 
     sql = f"""
     SELECT
@@ -77,17 +67,7 @@ def search(
         c.companies,
         c.solutions,
         c.concepts,
-        c.source_id,
-
-        (
-            CASE
-                WHEN LOWER(c.title)
-                    LIKE LOWER(CONCAT('%', @query, '%')) THEN 3
-                WHEN LOWER(c.excerpt)
-                    LIKE LOWER(CONCAT('%', @query, '%')) THEN 2
-                ELSE 0
-            END
-        ) AS score
+        c.source_id
 
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
@@ -95,11 +75,7 @@ def search(
         LOWER(c.title) LIKE LOWER(CONCAT('%', @query, '%'))
         OR LOWER(c.excerpt) LIKE LOWER(CONCAT('%', @query, '%'))
 
-    {build_content_type_filter()}
-    {build_user_filter("c")}
-    {universe_filter}
-
-    ORDER BY score DESC, published_at DESC
+    ORDER BY published_at DESC
     LIMIT @limit
     OFFSET @offset
     """
@@ -109,8 +85,6 @@ def search(
         "limit": limit,
         "offset": offset,
         "user_id": user_id,
-        "universe_id": universe_id,
-        "content_type": content_type,
     }
 
     rows = query_bq(sql, params)
@@ -118,45 +92,44 @@ def search(
     items = [_map_feed_row(r) for r in rows]
 
     # ============================================================
-    # 🔥 USER PERSONALIZATION
+    # 🔥 PERSONALIZATION
     # ============================================================
 
     if user_id and items:
 
-        try:
-            from core.user.user_preferences_service import get_user_preferences_grouped
+        from core.user.user_preferences_service import get_user_preferences_grouped
 
-            prefs = get_user_preferences_grouped(user_id)
+        prefs = get_user_preferences_grouped(user_id)
 
-            fav_companies = set(prefs.get("COMPANY", []))
-            fav_topics = set(prefs.get("TOPIC", []))
-            fav_solutions = set(prefs.get("SOLUTION", []))
+        fav_companies = set(prefs.get("COMPANY", []))
+        fav_topics = set(prefs.get("TOPIC", []))
+        fav_solutions = set(prefs.get("SOLUTION", []))
 
-            def score(item):
+        def match(item):
 
-                for c in item.get("companies", []):
-                    if c.get("id_company") in fav_companies:
-                        return 0
+            for c in item.get("companies", []):
+                if c.get("id_company") in fav_companies:
+                    return True
 
-                for t in item.get("topics", []):
-                    if isinstance(t, dict) and t.get("id_topic") in fav_topics:
-                        return 1
+            for t in item.get("topics", []):
+                if isinstance(t, dict) and t.get("id_topic") in fav_topics:
+                    return True
 
-                for s in item.get("solutions", []):
-                    if s.get("id_solution") in fav_solutions:
-                        return 2
+            for s in item.get("solutions", []):
+                if s.get("id_solution") in fav_solutions:
+                    return True
 
-                return 3
+            return False
 
+        if feed_mode == "mine":
+            items = [i for i in items if match(i)]
+        else:
             items.sort(
                 key=lambda x: (
-                    score(x),
+                    0 if match(x) else 1,
                     x.get("published_at") or ""
                 )
             )
-
-        except Exception:
-            pass
 
     return items
 # ============================================================
@@ -169,6 +142,7 @@ def latest(
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
     content_type: Optional[str] = None,
+    feed_mode: Optional[str] = None,  # 🔥 NEW
 ) -> List[Dict]:
 
     universe_filter = ""
@@ -224,48 +198,46 @@ def latest(
     items = [_map_feed_row(r) for r in rows]
 
     # ============================================================
-    # 🔥 USER PERSONALIZATION
+    # 🔥 PERSONALIZATION
     # ============================================================
 
     if user_id and items:
 
-        try:
-            from core.user.user_preferences_service import get_user_preferences_grouped
+        from core.user.user_preferences_service import get_user_preferences_grouped
 
-            prefs = get_user_preferences_grouped(user_id)
+        prefs = get_user_preferences_grouped(user_id)
 
-            fav_companies = set(prefs.get("COMPANY", []))
-            fav_topics = set(prefs.get("TOPIC", []))
-            fav_solutions = set(prefs.get("SOLUTION", []))
+        fav_companies = set(prefs.get("COMPANY", []))
+        fav_topics = set(prefs.get("TOPIC", []))
+        fav_solutions = set(prefs.get("SOLUTION", []))
 
-            def score(item):
+        def match(item):
 
-                for c in item.get("companies", []):
-                    if c.get("id_company") in fav_companies:
-                        return 0
+            for c in item.get("companies", []):
+                if c.get("id_company") in fav_companies:
+                    return True
 
-                for t in item.get("topics", []):
-                    if isinstance(t, dict) and t.get("id_topic") in fav_topics:
-                        return 1
+            for t in item.get("topics", []):
+                if isinstance(t, dict) and t.get("id_topic") in fav_topics:
+                    return True
 
-                for s in item.get("solutions", []):
-                    if s.get("id_solution") in fav_solutions:
-                        return 2
+            for s in item.get("solutions", []):
+                if s.get("id_solution") in fav_solutions:
+                    return True
 
-                return 3
+            return False
 
+        if feed_mode == "mine":
+            items = [i for i in items if match(i)]
+        else:
             items.sort(
                 key=lambda x: (
-                    score(x),
+                    0 if match(x) else 1,
                     x.get("published_at") or ""
                 )
             )
 
-        except Exception:
-            pass
-
     return items
-
 # ============================================================
 # ITEM
 # ============================================================
