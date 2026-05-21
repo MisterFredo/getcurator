@@ -400,11 +400,15 @@ export default function CreateUser() {
           max-w-xs
         "
         value={language}
-        onChange={(e) =>
+        onChange={(e) => {
+          const value = e.target.value;
+
           setLanguage(
-            e.target.value
-          )
-        }
+            SUPPORTED_LANGS.includes(value)
+              ? value
+              : "fr"
+          );
+        }}
       >
 
         <option value="fr">
