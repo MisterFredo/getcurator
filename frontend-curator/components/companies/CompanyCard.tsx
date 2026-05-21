@@ -9,6 +9,7 @@ const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 type Props = {
   id: string;
   name: string;
+
   visualRectId?: string | null;
 
   totalAnalyses?: number;
@@ -24,9 +25,13 @@ type Props = {
   };
 
   isLoading?: boolean;
-  isFavorite?: boolean; // 🔥 NEW
+  isFavorite?: boolean;
+
   onClick?: () => void;
+
+  onToggleFavorite?: (id: string, isFavorite: boolean) => void; // 🔥 NEW
 };
+
 
 export default function CompanyCard({
   id,
