@@ -79,6 +79,13 @@ export default function FeedPage() {
     useState("all");
 
   /* =========================================================
+     🔥 FEED MODE
+  ========================================================= */
+
+  const [feedMode, setFeedMode] =
+    useState<"all" | "mine">("all");
+
+  /* =========================================================
      DATA
   ========================================================= */
 
@@ -101,7 +108,7 @@ export default function FeedPage() {
     useState(true);
 
   /* =========================================================
-     🔥 USER PREFERENCES
+     USER PREFERENCES
   ========================================================= */
 
   const [preferences, setPreferences] =
@@ -157,7 +164,7 @@ export default function FeedPage() {
   }, []);
 
   /* =========================================================
-     🔥 LOAD USER PREFS
+     LOAD USER PREFS
   ========================================================= */
 
   useEffect(() => {
@@ -241,6 +248,8 @@ export default function FeedPage() {
                 : activeType === "news"
                   ? "NEWS"
                   : "ANALYSIS",
+
+            feed_mode: feedMode, // 🔥 NEW
           })
 
         : await getLatestCurator({
@@ -257,6 +266,8 @@ export default function FeedPage() {
                 : activeType === "news"
                   ? "NEWS"
                   : "ANALYSIS",
+
+            feed_mode: feedMode, // 🔥 NEW
           });
 
       if (reset) {
@@ -311,6 +322,7 @@ export default function FeedPage() {
   }, [
     activeUniverse,
     activeType,
+    feedMode, // 🔥 NEW
   ]);
 
   /* =========================================================
@@ -484,6 +496,34 @@ export default function FeedPage() {
         space-y-6
       ">
 
+        {/* 🔥 SWITCH FEED MODE */}
+
+        <div className="flex gap-2 text-xs">
+
+          <button
+            onClick={() => setFeedMode("all")}
+            className={`px-3 py-1 rounded border ${
+              feedMode === "all"
+                ? "bg-black text-white"
+                : "bg-white text-gray-600"
+            }`}
+          >
+            All Feed
+          </button>
+
+          <button
+            onClick={() => setFeedMode("mine")}
+            className={`px-3 py-1 rounded border ${
+              feedMode === "mine"
+                ? "bg-black text-white"
+                : "bg-white text-gray-600"
+            }`}
+          >
+            My Feed
+          </button>
+
+        </div>
+
         <div>
 
           <h1 className="
@@ -561,7 +601,6 @@ export default function FeedPage() {
             toggleSelect
           }
 
-          // 🔥 NEW
           preferences={preferences}
 
           onToggleFavorite={
