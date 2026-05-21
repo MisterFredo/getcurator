@@ -21,9 +21,13 @@ type Props = {
     key_points: string[];
   };
 
-  // 🔥 NEW
+  // 🔥 EXISTANT
   isLoading?: boolean;
   onClick?: () => void;
+
+  // 🔥 NEW
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 };
 
 const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
@@ -40,6 +44,11 @@ export default function SolutionCard({
   lastRadar,
   isLoading,
   onClick,
+
+  // 🔥 NEW
+  isFavorite = false,
+  onToggleFavorite,
+
 }: Props) {
 
   const router = useRouter();
@@ -66,9 +75,9 @@ export default function SolutionCard({
   ===================================================== */
 
   function handleClick() {
-    if (isLoading) return; // 🔥 évite spam click
+    if (isLoading) return;
 
-    if (onClick) onClick(); // 🔥 trigger loader parent
+    if (onClick) onClick();
 
     openLeftDrawer("solution", id);
 
@@ -83,6 +92,15 @@ export default function SolutionCard({
 
     if (lastRadar?.id_insight) {
       openRightDrawer("radar", lastRadar.id_insight);
+    }
+  }
+
+  // 🔥 FAVORITE CLICK
+  function handleFavoriteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+
+    if (onToggleFavorite) {
+      onToggleFavorite();
     }
   }
 
@@ -102,6 +120,18 @@ export default function SolutionCard({
       "
     >
 
+      {/* 🔥 FAVORITE */}
+      <div
+        onClick={handleFavoriteClick}
+        className="
+          absolute top-2 left-2 z-20
+          cursor-pointer
+          text-[12px]
+        "
+      >
+        {isFavorite ? "⭐" : "☆"}
+      </div>
+
       {/* 🔥 LOADING OVERLAY */}
       {isLoading && (
         <div className="
@@ -118,7 +148,7 @@ export default function SolutionCard({
       {/* BADGE NUMBERS */}
       {hasNumbers && (
         <div className="
-          absolute top-2 left-2 z-10
+          absolute top-2 left-7 z-10
           text-[10px] px-2 py-0.5 rounded
           bg-blue-50 text-blue-600
           border border-blue-100
