@@ -48,8 +48,6 @@ def search(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
-
-    # 🔥 NEW
     content_type: Optional[str] = None,
 ) -> List[Dict]:
 
@@ -68,19 +66,12 @@ def search(
 
     sql = f"""
     SELECT
-
         c.id_content AS id,
-
-        LOWER(
-            COALESCE(c.content_type, 'ANALYSIS')
-        ) AS type,
-
+        LOWER(COALESCE(c.content_type, 'ANALYSIS')) AS type,
         c.id_primary_company,
-
         c.title,
         c.excerpt,
         c.published_at,
-
         c.topics,
         c.universes,
         c.companies,
@@ -91,102 +82,24 @@ def search(
         (
             CASE
                 WHEN LOWER(c.title)
-                    LIKE LOWER(CONCAT('%', @query, '%'))
-                THEN 3
-
+                    LIKE LOWER(CONCAT('%', @query, '%')) THEN 3
                 WHEN LOWER(c.excerpt)
-                    LIKE LOWER(CONCAT('%', @query, '%'))
-                THEN 2
-
+                    LIKE LOWER(CONCAT('%', @query, '%')) THEN 2
                 ELSE 0
             END
-
-            +
-
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM UNNEST(c.companies) co
-                    WHERE LOWER(co.name)
-                        LIKE LOWER(CONCAT('%', @query, '%'))
-                )
-                THEN 2
-
-                ELSE 0
-            END
-
-            +
-
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM UNNEST(c.solutions) s
-                    WHERE LOWER(s.name)
-                        LIKE LOWER(CONCAT('%', @query, '%'))
-                )
-                THEN 2
-
-                ELSE 0
-            END
-
-            +
-
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM UNNEST(c.topics) t
-                    WHERE LOWER(t.label)
-                        LIKE LOWER(CONCAT('%', @query, '%'))
-                )
-                THEN 2
-
-                ELSE 0
-            END
-
         ) AS score
 
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
     WHERE
-    (
-        LOWER(c.title)
-            LIKE LOWER(CONCAT('%', @query, '%'))
-
-        OR LOWER(c.excerpt)
-            LIKE LOWER(CONCAT('%', @query, '%'))
-
-        OR EXISTS (
-            SELECT 1
-            FROM UNNEST(c.companies) co
-            WHERE LOWER(co.name)
-                LIKE LOWER(CONCAT('%', @query, '%'))
-        )
-
-        OR EXISTS (
-            SELECT 1
-            FROM UNNEST(c.solutions) s
-            WHERE LOWER(s.name)
-                LIKE LOWER(CONCAT('%', @query, '%'))
-        )
-
-        OR EXISTS (
-            SELECT 1
-            FROM UNNEST(c.topics) t
-            WHERE LOWER(t.label)
-                LIKE LOWER(CONCAT('%', @query, '%'))
-        )
-    )
+        LOWER(c.title) LIKE LOWER(CONCAT('%', @query, '%'))
+        OR LOWER(c.excerpt) LIKE LOWER(CONCAT('%', @query, '%'))
 
     {build_content_type_filter()}
-
     {build_user_filter("c")}
-
     {universe_filter}
 
-    ORDER BY
-        score DESC,
-        published_at DESC
-
+    ORDER BY score DESC, published_at DESC
     LIMIT @limit
     OFFSET @offset
     """
@@ -197,14 +110,55 @@ def search(
         "offset": offset,
         "user_id": user_id,
         "universe_id": universe_id,
-
-        # 🔥 NEW
         "content_type": content_type,
     }
 
     rows = query_bq(sql, params)
 
-    return [_map_feed_row(r) for r in rows]
+    items = [_map_feed_row(r) for r in rows]
+
+    # ============================================================
+    # 🔥 USER PERSONALIZATION
+    # ============================================================
+
+    if user_id and items:
+
+        try:
+            from core.user.user_preferences_service import get_user_preferences_grouped
+
+            prefs = get_user_preferences_grouped(user_id)
+
+            fav_companies = set(prefs.get("COMPANY", []))
+            fav_topics = set(prefs.get("TOPIC", []))
+            fav_solutions = set(prefs.get("SOLUTION", []))
+
+            def score(item):
+
+                for c in item.get("companies", []):
+                    if c.get("id_company") in fav_companies:
+                        return 0
+
+                for t in item.get("topics", []):
+                    if isinstance(t, dict) and t.get("id_topic") in fav_topics:
+                        return 1
+
+                for s in item.get("solutions", []):
+                    if s.get("id_solution") in fav_solutions:
+                        return 2
+
+                return 3
+
+            items.sort(
+                key=lambda x: (
+                    score(x),
+                    x.get("published_at") or ""
+                )
+            )
+
+        except Exception:
+            pass
+
+    return items
 # ============================================================
 # LATEST
 # ============================================================
@@ -214,8 +168,6 @@ def latest(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
-
-    # 🔥 NEW
     content_type: Optional[str] = None,
 ) -> List[Dict]:
 
@@ -232,18 +184,12 @@ def latest(
 
     sql = f"""
     SELECT
-
         c.id_content AS id,
-
-        LOWER(
-            COALESCE(c.content_type, 'ANALYSIS')
-        ) AS type,
-
+        LOWER(COALESCE(c.content_type, 'ANALYSIS')) AS type,
         c.id_primary_company,
         c.title,
         c.excerpt,
         c.published_at,
-
         c.topics,
         c.universes,
         c.companies,
@@ -256,9 +202,7 @@ def latest(
     WHERE c.published_at IS NOT NULL
 
     {build_content_type_filter()}
-
     {build_user_filter("c")}
-
     {universe_filter}
 
     ORDER BY published_at DESC
@@ -270,17 +214,57 @@ def latest(
     params = {
         "limit": limit,
         "offset": offset,
-        "universe_id": universe_id,
         "user_id": user_id,
-
-        # 🔥 NEW
+        "universe_id": universe_id,
         "content_type": content_type,
     }
 
     rows = query_bq(sql, params)
 
-    return [_map_feed_row(r) for r in rows]
+    items = [_map_feed_row(r) for r in rows]
 
+    # ============================================================
+    # 🔥 USER PERSONALIZATION
+    # ============================================================
+
+    if user_id and items:
+
+        try:
+            from core.user.user_preferences_service import get_user_preferences_grouped
+
+            prefs = get_user_preferences_grouped(user_id)
+
+            fav_companies = set(prefs.get("COMPANY", []))
+            fav_topics = set(prefs.get("TOPIC", []))
+            fav_solutions = set(prefs.get("SOLUTION", []))
+
+            def score(item):
+
+                for c in item.get("companies", []):
+                    if c.get("id_company") in fav_companies:
+                        return 0
+
+                for t in item.get("topics", []):
+                    if isinstance(t, dict) and t.get("id_topic") in fav_topics:
+                        return 1
+
+                for s in item.get("solutions", []):
+                    if s.get("id_solution") in fav_solutions:
+                        return 2
+
+                return 3
+
+            items.sort(
+                key=lambda x: (
+                    score(x),
+                    x.get("published_at") or ""
+                )
+            )
+
+        except Exception:
+            pass
+
+    return items
 
 # ============================================================
 # ITEM
