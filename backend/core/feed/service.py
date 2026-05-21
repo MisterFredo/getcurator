@@ -277,3 +277,36 @@ def get_feed_meta() -> Dict:
             result["news_types"].append(item)
 
         return result
+
+def get_feed_for_user(
+    user_id: str,
+    topic_ids=None,
+    company_ids=None,
+    solution_ids=None,
+    limit: int = 20,
+    offset: int = 0,
+):
+    from core.user.user_service import get_user_context
+    from core.user.user_preferences_service import get_user_preferences_grouped
+
+    context = get_user_context(user_id)
+    prefs = get_user_preferences_grouped(user_id)
+
+    lang = context["lang"]
+
+    final_topic_ids = topic_ids or prefs["TOPIC"]
+    final_company_ids = company_ids or prefs["COMPANY"]
+    final_solution_ids = solution_ids or prefs["SOLUTION"]
+
+    items = search_filters(
+        topic_ids=final_topic_ids,
+        company_ids=final_company_ids,
+        solution_ids=final_solution_ids,
+        limit=limit,
+        offset=offset,
+    )
+
+    if lang != "fr":
+        items = translate_feed_items(items, lang)
+
+    return items
