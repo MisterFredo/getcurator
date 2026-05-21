@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Request
 from typing import Optional
 
 from api.user.models import (
@@ -18,6 +18,14 @@ from core.user.user_service import (
     get_user_universes,
     get_user_context,
 )
+
+from core.user.user_preferences_service import (
+    get_user_preferences,
+    add_user_preference,
+    remove_user_preference,
+)
+
+from utils.auth import get_user_id_from_request
 
 router = APIRouter()
 
@@ -52,8 +60,8 @@ def bootstrap_admin(secret: str):
         email="mister.fredo@gmail.com",
         password="felixmax55",
         name="Admin Fredo",
-        company="Curator",          # 🔥 AJOUT
-        language="fr",              # 🔥 AJOUT
+        company="Curator",
+        language="fr",
         role="admin",
         universes=[]
     )
@@ -64,6 +72,7 @@ def bootstrap_admin(secret: str):
         "status": "created",
         "user_id": user_id
     }
+
 # =========================================================
 # LIST USERS
 # =========================================================
@@ -88,7 +97,7 @@ def update_user_route(payload: UpdateUserPayload):
 
 
 # =========================================================
-# LOGIN (VERSION SIMPLE - SANS JWT)
+# LOGIN
 # =========================================================
 
 @router.post("/login")
@@ -105,14 +114,17 @@ def login(payload: LoginPayload):
     universes = get_user_universes(user["ID_USER"])
 
     return {
-        "token": user["ID_USER"],  # 👈 seule vraie modif utile
+        "token": user["ID_USER"],
         "user_id": user["ID_USER"],
         "email": user["EMAIL"],
         "role": user.get("ROLE", "user"),
+        "language": user.get("LANGUAGE", "fr"),  # 🔥 AJOUT
         "universes": universes,
     }
+
+
 # =========================================================
-# GET USER
+# GET USER (BY ID)
 # =========================================================
 
 @router.get("/{user_id}")
@@ -131,7 +143,29 @@ def get_user(user_id: str):
 
 
 # =========================================================
-# USER CONTEXT (🔥 PLUS DE COOKIES)
+# GET CURRENT USER (ME)
+# =========================================================
+
+@router.get("/me")
+def get_me(request: Request):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "user": user
+    }
+
+
+# =========================================================
+# USER CONTEXT
 # =========================================================
 
 @router.get("/context")
@@ -162,3 +196,56 @@ def assign_universes_route(payload: AssignUniversePayload):
         "status": "ok",
         "assigned": payload.universes,
     }
+
+
+# =========================================================
+# USER PREFERENCES
+# =========================================================
+
+@router.get("/preferences")
+def get_preferences(request: Request):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    prefs = get_user_preferences(user_id)
+
+    return {
+        "preferences": prefs
+    }
+
+
+@router.post("/preferences/add")
+def add_preference(
+    request: Request,
+    type: str,
+    value_id: str
+):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    add_user_preference(user_id, type, value_id)
+
+    return {"status": "ok"}
+
+
+@router.post("/preferences/remove")
+def remove_preference(
+    request: Request,
+    type: str,
+    value_id: str
+):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    remove_user_preference(user_id, type, value_id)
+
+    return {"status": "ok"}
