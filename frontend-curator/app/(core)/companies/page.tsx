@@ -72,27 +72,6 @@ function sortCompanies(companies: Company[], mode: SortMode): Company[] {
 }
 
 /* =========================================================
-   PRIORITIZE FAVORITES
-========================================================= */
-
-function prioritizeFavorites(
-  companies: Company[],
-  favorites: string[]
-): Company[] {
-
-  return [...companies].sort((a, b) => {
-
-    const aFav = favorites.includes(a.id_company);
-    const bFav = favorites.includes(b.id_company);
-
-    if (aFav && !bFav) return -1;
-    if (!aFav && bFav) return 1;
-
-    return 0;
-  });
-}
-
-/* =========================================================
    GROUP
 ========================================================= */
 
@@ -128,7 +107,7 @@ export default function CompaniesPage() {
 
   const searchParams = useSearchParams();
 
-  const { loadingId, setLoadingId } = useEntityDrawer(
+  const { loadingId } = useEntityDrawer(
     "company",
     "company_id"
   );
@@ -149,15 +128,14 @@ export default function CompaniesPage() {
   }, []);
 
   /* ---------------------------------------------------------
-     LOAD (FIX PRINCIPAL)
+     LOAD
   --------------------------------------------------------- */
 
   useEffect(() => {
     if (!ready) return;
 
     const userId = localStorage.getItem("user_id");
-
-    if (!userId) return; // 🔥 CRUCIAL
+    if (!userId) return;
 
     async function load() {
       setLoading(true);
@@ -179,7 +157,6 @@ export default function CompaniesPage() {
 
       } catch (e) {
         console.error("❌ load error:", e);
-
         setCompanies([]);
         setPreferences([]);
       }
@@ -222,12 +199,18 @@ export default function CompaniesPage() {
   }
 
   /* ---------------------------------------------------------
-     DATA
+     DATA (🔥 FIX UX)
   --------------------------------------------------------- */
 
-  const prioritized = prioritizeFavorites(companies, preferences);
+  const favorites = companies.filter(c =>
+    preferences.includes(c.id_company)
+  );
 
-  const grouped = groupByUniverse(prioritized, sortMode);
+  const others = companies.filter(c =>
+    !preferences.includes(c.id_company)
+  );
+
+  const groupedOthers = groupByUniverse(others, sortMode);
 
   const hasContent = companies.length > 0;
 
@@ -288,61 +271,76 @@ export default function CompaniesPage() {
         </p>
       )}
 
-      {/* CONTENT */}
+      {/* ⭐ FAVORITES */}
+      {!loading && favorites.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold uppercase text-gray-500">
+            Favoris
+          </h2>
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+            {sortCompanies(favorites, sortMode).map((c) => (
+              <CompanyCard
+                key={c.id_company}
+                id={c.id_company}
+                name={c.name}
+                visualRectId={c.media_logo_rectangle_id}
+                totalAnalyses={c.nb_analyses}
+                delta30d={c.delta_30d}
+                isLoading={loadingId === c.id_company}
+                isFavorite
+                onToggleFavorite={(id, isFav) => {
+                  setPreferences((prev) =>
+                    isFav
+                      ? prev.filter((p) => p !== id)
+                      : [...prev, id]
+                  );
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* AUTRES */}
       {!loading && hasContent &&
-        Object.entries(grouped)
+        Object.entries(groupedOthers)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([universe, items]) => (
             <section key={universe} className="space-y-2">
 
               <div
                 onClick={() => toggleUniverse(universe)}
-                className="
-                  flex items-center justify-between
-                  cursor-pointer
-                  py-2 px-1
-                  border-b border-gray-100
-                  hover:bg-gray-50
-                "
+                className="flex items-center justify-between cursor-pointer py-2 px-1 border-b border-gray-100 hover:bg-gray-50"
               >
                 <h2 className="text-xs font-semibold uppercase text-gray-500">
                   {universe}
                 </h2>
 
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span>{items.length}</span>
-                  <span className={`
-                    transition-transform
-                    ${openUniverses[universe] ? "rotate-90" : ""}
-                  `}>
-                    ▶
-                  </span>
-                </div>
+                <span>{items.length}</span>
               </div>
 
               {openUniverses[universe] && (
-                <div className="pt-2">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
-                    {items.map((c) => (
-                      <CompanyCard
-                        key={c.id_company}
-                        id={c.id_company}
-                        name={c.name}
-                        visualRectId={c.media_logo_rectangle_id}
-                        totalAnalyses={c.nb_analyses}
-                        delta30d={c.delta_30d}
-                        isLoading={loadingId === c.id_company}
-                        isFavorite={preferences.includes(c.id_company)}
-                        onToggleFavorite={(id, isFav) => {
-                          setPreferences((prev) =>
-                            isFav
-                              ? prev.filter((p) => p !== id)
-                              : [...prev, id]
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3 pt-2">
+                  {items.map((c) => (
+                    <CompanyCard
+                      key={c.id_company}
+                      id={c.id_company}
+                      name={c.name}
+                      visualRectId={c.media_logo_rectangle_id}
+                      totalAnalyses={c.nb_analyses}
+                      delta30d={c.delta_30d}
+                      isLoading={loadingId === c.id_company}
+                      isFavorite={preferences.includes(c.id_company)}
+                      onToggleFavorite={(id, isFav) => {
+                        setPreferences((prev) =>
+                          isFav
+                            ? prev.filter((p) => p !== id)
+                            : [...prev, id]
+                        );
+                      }}
+                    />
+                  ))}
                 </div>
               )}
 
