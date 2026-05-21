@@ -116,8 +116,11 @@ export default function EditUser() {
           user.COMPANY || ""
         );
 
+        const lang = user.LANGUAGE || "fr";
         setLanguage(
-          user.LANGUAGE || "fr"
+          SUPPORTED_LANGS.includes(lang)
+            ? lang
+            : "fr"
         );
 
         setRole(
