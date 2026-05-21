@@ -37,6 +37,10 @@ type Props = {
   item: FeedItem;
 
   onClick: () => void;
+
+  // 🔥 NEW
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: string, isFav: boolean) => void;
 };
 
 /* =========================================================
@@ -150,6 +154,8 @@ function buildBadges(
 export default function FeedItemCard({
   item,
   onClick,
+  isFavorite = false,
+  onToggleFavorite,
 }: Props) {
 
   const badges =
@@ -164,6 +170,18 @@ export default function FeedItemCard({
 
   const isNews =
     item.type === "news";
+
+  /* =========================================================
+     FAVORITE HANDLER
+  ========================================================= */
+
+  function handleFavoriteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+
+    if (!onToggleFavorite) return;
+
+    onToggleFavorite(item.id, isFavorite);
+  }
 
   /* =========================================================
      LOGO
@@ -195,12 +213,27 @@ export default function FeedItemCard({
     <div
       onClick={onClick}
       className="
+        relative
         cursor-pointer
         py-4
         transition
         hover:bg-gray-50
       "
     >
+
+      {/* ⭐ FAVORITE */}
+      <button
+        onClick={handleFavoriteClick}
+        className="
+          absolute
+          top-2
+          right-2
+          text-sm
+          z-10
+        "
+      >
+        {isFavorite ? "⭐" : "☆"}
+      </button>
 
       <div className="
         flex
