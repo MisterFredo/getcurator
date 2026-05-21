@@ -149,26 +149,40 @@ export default function CompaniesPage() {
   }, []);
 
   /* ---------------------------------------------------------
-     LOAD
+     LOAD (FIX PRINCIPAL)
   --------------------------------------------------------- */
 
   useEffect(() => {
     if (!ready) return;
 
+    const userId = localStorage.getItem("user_id");
+
+    if (!userId) return; // 🔥 CRUCIAL
+
     async function load() {
       setLoading(true);
 
-      const [data, prefsRes] = await Promise.all([
-        fetchCompanies(),
-        api.get("/user/preferences"),
-      ]);
+      try {
+        const [data, prefsRes] = await Promise.all([
+          fetchCompanies(),
+          api.get("/user/preferences"),
+        ]);
 
-      setCompanies(data);
+        setCompanies(data);
 
-      const companyPrefs =
-        prefsRes?.preferences?.COMPANY ?? [];
+        const companyPrefs =
+          Array.isArray(prefsRes?.preferences?.COMPANY)
+            ? prefsRes.preferences.COMPANY
+            : [];
 
-      setPreferences(companyPrefs);
+        setPreferences(companyPrefs);
+
+      } catch (e) {
+        console.error("❌ load error:", e);
+
+        setCompanies([]);
+        setPreferences([]);
+      }
 
       setLoading(false);
     }
@@ -271,13 +285,6 @@ export default function CompaniesPage() {
       {loading && (
         <p className="text-sm text-gray-400">
           Chargement des sociétés...
-        </p>
-      )}
-
-      {/* EMPTY */}
-      {!loading && !hasContent && (
-        <p className="text-sm text-gray-400">
-          Aucune société disponible pour votre profil.
         </p>
       )}
 
