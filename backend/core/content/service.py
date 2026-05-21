@@ -1757,6 +1757,9 @@ def update_content(id_content: str, data: ContentUpdate):
     if data.source_author is not None:
         fields["SOURCE_AUTHOR"] = data.source_author
 
+    if data.source_published_at is not None:
+        fields["SOURCE_PUBLISHED_AT"] = data.source_published_at
+
     # ============================================================
     # SUMMARY
     # ============================================================
