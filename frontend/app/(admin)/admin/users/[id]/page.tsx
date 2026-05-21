@@ -232,17 +232,13 @@ export default function EditUser() {
       setSaving(true);
 
       const payload: any = {
-
         user_id: userId,
-
         name,
-
         company,
-
-        language,
-
+        language: SUPPORTED_LANGS.includes(language)
+          ? language
+          : "fr",
         role,
-
         universes,
       };
 
