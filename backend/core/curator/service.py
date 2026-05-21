@@ -367,11 +367,82 @@ def get_item_detail(
         return None
 
     from core.content.public_service import get_content
+    from core.translation.service import translate_text
+    from core.user.user_service import get_user_context
 
     content = get_content(item_id)
 
     if not content:
         return None
+
+    # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = get_user_context(user_id) if user_id else None
+    lang = context["lang"] if context else "fr"
+
+    # ============================================================
+    # TRANSLATION (DRAWER)
+    # ============================================================
+
+    if lang != "fr":
+
+        try:
+            content = {
+                **content,
+
+                # --------------------------------------------------
+                # CORE FIELDS
+                # --------------------------------------------------
+
+                "TITLE": translate_text(
+                    content.get("TITLE", ""),
+                    lang
+                ),
+
+                "EXCERPT": translate_text(
+                    content.get("EXCERPT", ""),
+                    lang
+                ),
+
+                "CONTENT_BODY": translate_text(
+                    content.get("CONTENT_BODY", ""),
+                    lang
+                ),
+
+                # --------------------------------------------------
+                # ANALYTICS FIELDS
+                # --------------------------------------------------
+
+                "MECANIQUE_EXPLIQUEE": translate_text(
+                    content.get("MECANIQUE_EXPLIQUEE", ""),
+                    lang
+                ),
+
+                "ENJEU_STRATEGIQUE": translate_text(
+                    content.get("ENJEU_STRATEGIQUE", ""),
+                    lang
+                ),
+
+                "POINT_DE_FRICTION": translate_text(
+                    content.get("POINT_DE_FRICTION", ""),
+                    lang
+                ),
+
+                "SIGNAL_ANALYTIQUE": translate_text(
+                    content.get("SIGNAL_ANALYTIQUE", ""),
+                    lang
+                ),
+            }
+
+        except Exception:
+            # fallback silencieux → on garde le FR
+            pass
+
+    # ============================================================
+    # RETURN
+    # ============================================================
 
     return {
         **content,
@@ -381,7 +452,6 @@ def get_item_detail(
         "companies": item.get("companies", []),
         "solutions": item.get("solutions", []),
     }
-
 
 # ============================================================
 # STATS
