@@ -76,23 +76,65 @@ def get_sources_from_universes(universes: list[str]):
 # USER CONTEXT
 # =========================================================
 
-def get_user_context(user_id: str):
-    user = get_user_by_id(user_id)
+def get_user_context(user_id: str) -> Optional[Dict]:
 
-    if not user:
+    if not user_id:
         return None
 
-    universes = get_user_universes(user_id)
-    sources = get_sources_from_universes(universes)
+    # ============================================================
+    # USER
+    # ============================================================
+
+    rows = query_bq(
+        f"""
+        SELECT
+            ID_USER,
+            EMAIL,
+            NAME,
+            COMPANY,
+            LANGUAGE,
+            ROLE
+        FROM `{TABLE_USER}`
+        WHERE ID_USER = @user_id
+        LIMIT 1
+        """,
+        {"user_id": user_id}
+    )
+
+    if not rows:
+        # 🔥 USER INEXISTANT → on ne casse pas
+        return None
+
+    user = rows[0]
+
+    # ============================================================
+    # UNIVERS (OPTIONNEL)
+    # ============================================================
+
+    universes = query_bq(
+        f"""
+        SELECT ID_UNIVERSE
+        FROM `{TABLE_USER_UNIVERSE}`
+        WHERE ID_USER = @user_id
+        """,
+        {"user_id": user_id}
+    )
+
+    universe_ids = [u["ID_UNIVERSE"] for u in universes] if universes else []
+
+    # ============================================================
+    # RETURN SAFE
+    # ============================================================
 
     return {
-        "user": user,
-        "lang": user.get("LANGUAGE", "fr"),
-        "universes": universes,
-        "sources": sources,
+        "user_id": user.get("ID_USER"),
+        "email": user.get("EMAIL"),
+        "name": user.get("NAME"),
+        "company": user.get("COMPANY"),
+        "lang": user.get("LANGUAGE") or "fr",  # 🔥 fallback langue
+        "role": user.get("ROLE") or "user",
+        "universes": universe_ids,
     }
-
-
 # =========================================================
 # CREATE USER (SIMPLE)
 # =========================================================
