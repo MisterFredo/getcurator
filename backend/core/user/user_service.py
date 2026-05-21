@@ -12,6 +12,8 @@ TABLE_USER = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
 TABLE_USER_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
 TABLE_SOURCE_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE"
 
+SUPPORTED_LANGS = ["fr", "en"]
+
 
 # =========================================================
 # GET USER
@@ -111,6 +113,22 @@ def create_user(payload):
     if not payload.password:
         raise ValueError("Password is required")
 
+    # --------------------------------------------------------
+    # LANGUAGE HANDLING (SECURE)
+    # --------------------------------------------------------
+
+    SUPPORTED_LANGS = ["fr", "en"]
+
+    language = (
+        payload.language
+        if payload.language in SUPPORTED_LANGS
+        else "fr"
+    )
+
+    # --------------------------------------------------------
+    # CREATE USER
+    # --------------------------------------------------------
+
     user_id = str(uuid.uuid4())
 
     query_bq(
@@ -142,10 +160,14 @@ def create_user(payload):
             "password": payload.password,
             "name": payload.name,
             "company": payload.company,
-            "language": payload.language or "fr",
+            "language": language,
             "role": payload.role or "user",
         },
     )
+
+    # --------------------------------------------------------
+    # ASSIGN UNIVERS
+    # --------------------------------------------------------
 
     assign_universes(user_id, payload.universes)
 
