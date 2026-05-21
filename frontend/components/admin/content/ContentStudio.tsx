@@ -188,7 +188,7 @@ export default function ContentStudio({ mode, contentId }: Props) {
       source_text: sourceText,
       source_published_at: sourcePublishedAt,
 
-      title: excerpt.slice(0, 120),
+      title,
       excerpt,
       content_body: contentBody,
 
@@ -367,6 +367,50 @@ export default function ContentStudio({ mode, contentId }: Props) {
             }}
           />
         )}
+
+        <div className="bg-white border rounded p-4 space-y-4">
+
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+              Title
+            </label>
+
+              <input
+              type="text"
+              value={title}
+              onChange={(e) =>
+                setTitle(e.target.value)
+              }
+              className="border rounded px-3 py-2 w-full text-sm"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+              Source publication date
+            </label>
+
+            <input
+              type="date"
+              value={
+                sourcePublishedAt
+                  ? sourcePublishedAt.slice(0, 10)
+                  : ""
+              }
+              onChange={(e) =>
+                setSourcePublishedAt(
+                  e.target.value || null
+                )
+              }
+              className="border rounded px-3 py-2 w-full text-sm"
+            />
+
+          </div>
+
+        </div>
 
         <StepSummary
           sourceId={sourceId}
