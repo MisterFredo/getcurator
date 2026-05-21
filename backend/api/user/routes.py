@@ -29,6 +29,71 @@ from utils.auth import get_user_id_from_request
 
 router = APIRouter()
 
+
+# =========================================================
+# USER PREFERENCES
+# =========================================================
+
+@router.get("/preferences")
+def get_preferences(request: Request):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        return {
+            "preferences": {
+                "COMPANY": [],
+                "TOPIC": [],
+                "SOLUTION": [],
+            }
+        }
+
+    from core.user.user_preferences_service import get_user_preferences_grouped
+
+    prefs = get_user_preferences_grouped(user_id)
+
+    return {
+        "preferences": prefs or {
+            "COMPANY": [],
+            "TOPIC": [],
+            "SOLUTION": [],
+        }
+    }
+
+
+@router.post("/preferences/add")
+def add_preference(request: Request, payload: dict):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    add_user_preference(
+        user_id,
+        payload.get("type"),
+        payload.get("value_id")
+    )
+
+    return {"status": "ok"}
+
+
+@router.post("/preferences/remove")
+def remove_preference(request: Request, payload: dict):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    remove_user_preference(
+        user_id,
+        payload.get("type"),
+        payload.get("value_id")
+    )
+
+    return {"status": "ok"}
+
 # =========================================================
 # CREATE USER
 # =========================================================
@@ -198,66 +263,4 @@ def assign_universes_route(payload: AssignUniversePayload):
     }
 
 
-# =========================================================
-# USER PREFERENCES
-# =========================================================
 
-@router.get("/preferences")
-def get_preferences(request: Request):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        return {
-            "preferences": {
-                "COMPANY": [],
-                "TOPIC": [],
-                "SOLUTION": [],
-            }
-        }
-
-    from core.user.user_preferences_service import get_user_preferences_grouped
-
-    prefs = get_user_preferences_grouped(user_id)
-
-    return {
-        "preferences": prefs or {
-            "COMPANY": [],
-            "TOPIC": [],
-            "SOLUTION": [],
-        }
-    }
-
-
-@router.post("/preferences/add")
-def add_preference(request: Request, payload: dict):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    add_user_preference(
-        user_id,
-        payload.get("type"),
-        payload.get("value_id")
-    )
-
-    return {"status": "ok"}
-
-
-@router.post("/preferences/remove")
-def remove_preference(request: Request, payload: dict):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    remove_user_preference(
-        user_id,
-        payload.get("type"),
-        payload.get("value_id")
-    )
-
-    return {"status": "ok"}
