@@ -14,6 +14,9 @@ type Params = {
   // 🔥 EXISTANT
   user_id?: string;
   universe_id?: string | null;
+
+  // 🔥 NEW (FIX)
+  feed_mode?: "all" | "mine";
 };
 
 /* ========================================================= */
@@ -108,6 +111,14 @@ export async function searchCurator(
       );
     }
 
+    // 🔥 NEW (FIX)
+    if (params.feed_mode) {
+      query.append(
+        "feed_mode",
+        params.feed_mode
+      );
+    }
+
     const res = await api.get(
       `/curator/search?${query.toString()}`
     );
@@ -184,6 +195,14 @@ export async function getLatestCurator(
       query.append(
         "universe_id",
         params.universe_id
+      );
+    }
+
+    // 🔥 NEW (FIX)
+    if (params?.feed_mode) {
+      query.append(
+        "feed_mode",
+        params.feed_mode
       );
     }
 
