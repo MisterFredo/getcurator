@@ -4,7 +4,7 @@
 
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
-from typing import Optional, Dict, Any, List
+from typing import Dict, List
 
 
 # ============================================================
@@ -20,23 +20,25 @@ TABLE_USER_PREFERENCES = (
 # GET USER PREFERENCES
 # ============================================================
 
-def get_user_preferences(user_id: str):
+def get_user_preferences(user_id: str) -> List[Dict]:
     query = f"""
     SELECT TYPE, VALUE_ID
     FROM `{TABLE_USER_PREFERENCES}`
     WHERE USER_ID = @user_id
     """
 
-    rows = query_bq(query, {"user_id": user_id})
-
-    return rows
+    return query_bq(query, {"user_id": user_id}) or []
 
 
 # ============================================================
-# ADD PREFERENCE (IDEMPOTENT)
+# ADD PREFERENCE (IDEMPOTENT - BIGQUERY SAFE)
 # ============================================================
 
 def add_user_preference(user_id: str, pref_type: str, value_id: str):
+
+    if not user_id or not pref_type or not value_id:
+        return
+
     query = f"""
     INSERT INTO `{TABLE_USER_PREFERENCES}` (
         USER_ID,
@@ -53,8 +55,8 @@ def add_user_preference(user_id: str, pref_type: str, value_id: str):
         SELECT 1
         FROM `{TABLE_USER_PREFERENCES}`
         WHERE USER_ID = @user_id
-        AND TYPE = @type
-        AND VALUE_ID = @value_id
+          AND TYPE = @type
+          AND VALUE_ID = @value_id
     )
     """
 
@@ -70,11 +72,15 @@ def add_user_preference(user_id: str, pref_type: str, value_id: str):
 # ============================================================
 
 def remove_user_preference(user_id: str, pref_type: str, value_id: str):
+
+    if not user_id or not pref_type or not value_id:
+        return
+
     query = f"""
     DELETE FROM `{TABLE_USER_PREFERENCES}`
     WHERE USER_ID = @user_id
-    AND TYPE = @type
-    AND VALUE_ID = @value_id
+      AND TYPE = @type
+      AND VALUE_ID = @value_id
     """
 
     query_bq(query, {
@@ -85,10 +91,11 @@ def remove_user_preference(user_id: str, pref_type: str, value_id: str):
 
 
 # ============================================================
-# GET FORMATTED (OPTIONAL HELPER)
+# GET FORMATTED (GROUPED)
 # ============================================================
 
-def get_user_preferences_grouped(user_id: str):
+def get_user_preferences_grouped(user_id: str) -> Dict[str, List[str]]:
+
     rows = get_user_preferences(user_id)
 
     result = {
@@ -98,6 +105,11 @@ def get_user_preferences_grouped(user_id: str):
     }
 
     for row in rows:
-        result[row["TYPE"]].append(row["VALUE_ID"])
+        pref_type = row.get("TYPE")
+        value_id = row.get("VALUE_ID")
+
+        # 🔥 sécurité : ignore types inconnus
+        if pref_type in result and value_id:
+            result[pref_type].append(value_id)
 
     return result
