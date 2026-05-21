@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { api } from "@/lib/api";
+const SUPPORTED_LANGS = ["fr", "en"];
 
 /* ========================================================= */
 
