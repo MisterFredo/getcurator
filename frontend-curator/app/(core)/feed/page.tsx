@@ -221,15 +221,19 @@ export default function FeedPage() {
     if (reset) {
 
       setItems([]);
-
       setOffset(0);
-
       setHasMore(true);
     }
 
     setLoading(true);
 
     try {
+
+      // 🔥 CRITICAL FIX
+      const userId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("user_id")
+          : null;
 
       const res = finalQuery
 
@@ -238,6 +242,9 @@ export default function FeedPage() {
             limit: LIMIT,
             offset: currentOffset,
 
+            // 🔥 FIX
+            user_id: userId,
+
             universe_id:
               activeUniverse ||
               undefined,
@@ -249,13 +256,16 @@ export default function FeedPage() {
                   ? "NEWS"
                   : "ANALYSIS",
 
-            feed_mode: feedMode, // 🔥 NEW
+            feed_mode: feedMode,
           })
 
         : await getLatestCurator({
             limit: LIMIT,
             offset: currentOffset,
 
+            // 🔥 FIX
+            user_id: userId,
+
             universe_id:
               activeUniverse ||
               undefined,
@@ -267,7 +277,7 @@ export default function FeedPage() {
                   ? "NEWS"
                   : "ANALYSIS",
 
-            feed_mode: feedMode, // 🔥 NEW
+            feed_mode: feedMode,
           });
 
       if (reset) {
@@ -307,10 +317,8 @@ export default function FeedPage() {
     } finally {
 
       setLoading(false);
-
     }
   }
-
   /* =========================================================
      INIT
   ========================================================= */
