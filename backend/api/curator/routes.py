@@ -24,6 +24,10 @@ from core.curator.numbers_service import (
 
 from core.curator.concept_service import get_concepts
 
+from core.user.user_service import get_user_context
+from core.user.user_preferences_service import get_user_preferences_grouped
+from core.translation.service import translate_feed_items
+
 # 🔐 AUTH
 from utils.auth import get_user_id_from_request
 
@@ -52,14 +56,24 @@ def search_route(
     q: str = Query(...),
     limit: int = Query(50),
     offset: int = Query(0),
-
-    # 🔥 NEW
     content_type: Optional[str] = Query(None),
-
     universe_id: Optional[str] = Query(None),
 ):
     try:
         user_id = require_user(request)
+
+        # --------------------------------------------------------
+        # USER CONTEXT
+        # --------------------------------------------------------
+
+        context = get_user_context(user_id)
+        prefs = get_user_preferences_grouped(user_id)
+
+        lang = context["lang"]
+
+        # --------------------------------------------------------
+        # FETCH BASE DATA
+        # --------------------------------------------------------
 
         items = search(
             q=q,
@@ -67,17 +81,39 @@ def search_route(
             offset=offset,
             user_id=user_id,
             universe_id=universe_id,
-
-            # 🔥 NEW
             content_type=content_type,
         )
+
+        # --------------------------------------------------------
+        # SIMPLE PRIORITIZATION (V1)
+        # --------------------------------------------------------
+
+        if prefs:
+            def score(item):
+                score = 0
+
+                if item.get("ID_COMPANY") in prefs["COMPANY"]:
+                    score += 2
+
+                if item.get("ID_TOPIC") in prefs["TOPIC"]:
+                    score += 1
+
+                return score
+
+            items = sorted(items, key=score, reverse=True)
+
+        # --------------------------------------------------------
+        # TRANSLATION
+        # --------------------------------------------------------
+
+        if lang != "fr":
+            items = translate_feed_items(items, lang)
 
         return {"items": items, "count": len(items)}
 
     except Exception as e:
         print(f"❌ Search error: {e}")
         raise HTTPException(status_code=500, detail="Internal error")
-
 
 # ============================================================
 # 🆕 SEARCH NUMBERS (🔥 CORE V1)
@@ -223,32 +259,63 @@ def latest_route(
     request: Request,
     limit: int = Query(50),
     offset: int = Query(0),
-
-    # 🔥 NEW
     content_type: Optional[str] = Query(None),
-
     universe_id: Optional[str] = Query(None),
 ):
     try:
         user_id = require_user(request)
+
+        # --------------------------------------------------------
+        # USER CONTEXT
+        # --------------------------------------------------------
+
+        context = get_user_context(user_id)
+        prefs = get_user_preferences_grouped(user_id)
+
+        lang = context["lang"]
+
+        # --------------------------------------------------------
+        # FETCH BASE DATA
+        # --------------------------------------------------------
 
         items = latest(
             limit=limit,
             offset=offset,
             user_id=user_id,
             universe_id=universe_id,
-
-            # 🔥 NEW
             content_type=content_type,
         )
+
+        # --------------------------------------------------------
+        # SIMPLE PRIORITIZATION
+        # --------------------------------------------------------
+
+        if prefs:
+            def score(item):
+                score = 0
+
+                if item.get("ID_COMPANY") in prefs["COMPANY"]:
+                    score += 2
+
+                if item.get("ID_TOPIC") in prefs["TOPIC"]:
+                    score += 1
+
+                return score
+
+            items = sorted(items, key=score, reverse=True)
+
+        # --------------------------------------------------------
+        # TRANSLATION
+        # --------------------------------------------------------
+
+        if lang != "fr":
+            items = translate_feed_items(items, lang)
 
         return {"items": items, "count": len(items)}
 
     except Exception as e:
         print(f"❌ Latest error: {e}")
         raise HTTPException(status_code=500, detail="Internal error")
-
-
 # ============================================================
 # 📊 STATS
 # ============================================================
