@@ -19,6 +19,10 @@ type Props = {
 
   isLoading?: boolean;
   onClick?: () => void;
+
+  // 🔥 NEW
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 };
 
 export default function TopicCard({
@@ -30,7 +34,13 @@ export default function TopicCard({
   lastRadar,
   isLoading,
   onClick,
+
+  // 🔥 NEW
+  isFavorite = false,
+  onToggleFavorite,
+
 }: Props) {
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -55,6 +65,15 @@ export default function TopicCard({
     });
   }
 
+  // 🔥 FAVORITE CLICK
+  function handleFavoriteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+
+    if (onToggleFavorite) {
+      onToggleFavorite();
+    }
+  }
+
   /* ========================================================= */
 
   const isTrending =
@@ -75,6 +94,18 @@ export default function TopicCard({
         overflow-hidden relative
       "
     >
+
+      {/* 🔥 FAVORITE */}
+      <div
+        onClick={handleFavoriteClick}
+        className="
+          absolute top-2 left-2 z-20
+          cursor-pointer text-[12px]
+        "
+      >
+        {isFavorite ? "⭐" : "☆"}
+      </div>
+
       {/* =====================================================
           LOADING
       ===================================================== */}
@@ -100,13 +131,13 @@ export default function TopicCard({
       )}
 
       {hasNumbers && (
-        <div className="absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 z-10">
+        <div className="absolute top-2 left-7 text-[9px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 z-10">
           #
         </div>
       )}
 
       {/* =====================================================
-          VISUAL DATA BLOCK (🔥 REMPLACE "TOPIC")
+          VISUAL DATA BLOCK
       ===================================================== */}
       <div className="
         h-20 w-full
@@ -126,7 +157,6 @@ export default function TopicCard({
       ===================================================== */}
       <div className="p-3 text-center space-y-1">
 
-        {/* LABEL */}
         <h3 className="
           text-xs font-semibold text-gray-900
           line-clamp-2
@@ -135,7 +165,6 @@ export default function TopicCard({
           {label}
         </h3>
 
-        {/* DELTA */}
         {isTrending && (
           <div className="text-[11px] text-orange-600 font-medium">
             +{delta30d} (30j)
