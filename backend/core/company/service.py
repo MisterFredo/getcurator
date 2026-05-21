@@ -824,19 +824,34 @@ def delete_company_alias(
         alias
     )
 
+    # =====================================================
+    # NORMALIZATION SQL
+    # =====================================================
+
+    def norm_expr(field: str) -> str:
+
+        return f"""
+        REGEXP_REPLACE(
+            UPPER({field}),
+            r'[^A-Z0-9 ]',
+            ''
+        )
+        """
+
+    # =====================================================
+    # DELETE
+    # =====================================================
+
     query_bq(
         f"""
         DELETE FROM `{TABLE_COMPANY_ALIAS}`
 
         WHERE ID_COMPANY = @id_company
 
-        AND UPPER(
-            REGEXP_REPLACE(
-                REPLACE(ALIAS, '+', ' PLUS '),
-                r'[^A-Z0-9 ]',
-                ' '
-            )
-        ) = @normalized_alias
+        AND
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@normalized_alias AS STRING)")}
         """,
         {
             "id_company": id_company,
