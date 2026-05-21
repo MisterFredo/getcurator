@@ -280,9 +280,70 @@ def match_entity(
 
     if target_type == "ignore":
 
+        # ---------------------------------------------
+        # DELETE FROM COMPANY ALIAS
+        # ---------------------------------------------
+
+        sql_delete_company = f"""
+        DELETE FROM `{TABLE_COMPANY_ALIAS}`
+
+        WHERE
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@alias AS STRING)")}
+        """
+
+        client.query(
+            sql_delete_company,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias,
+                    ),
+                ]
+            ),
+        ).result()
+
+        # ---------------------------------------------
+        # DELETE FROM SOLUTION ALIAS
+        # ---------------------------------------------
+
+        sql_delete_solution = f"""
+        DELETE FROM `{TABLE_SOLUTION_ALIAS}`
+
+        WHERE
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@alias AS STRING)")}
+        """
+
+        client.query(
+            sql_delete_solution,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias,
+                    ),
+                ]
+            ),
+        ).result()
+
+        # ---------------------------------------------
+        # INSERT REJECTED
+        # ---------------------------------------------
+
         insert_rejected_alias(
             alias=alias,
             entity_type="unknown",
+        )
+
+        print(
+            "🚫 ENTITY IGNORED:",
+            alias,
         )
 
         return {
@@ -301,15 +362,51 @@ def match_entity(
                 "target_id obligatoire"
             )
 
+        # ---------------------------------------------
+        # REMOVE FROM REJECTED
+        # ---------------------------------------------
+
+        sql_delete_rejected = f"""
+        DELETE FROM `{TABLE_ALIAS_REJECTED}`
+
+        WHERE
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@alias AS STRING)")}
+        """
+
+        client.query(
+            sql_delete_rejected,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias,
+                    ),
+                ]
+            ),
+        ).result()
+
+        # ---------------------------------------------
+        # INSERT COMPANY ALIAS
+        # ---------------------------------------------
+
         sql_alias = f"""
         INSERT INTO `{TABLE_COMPANY_ALIAS}` (
             ALIAS,
-            ID_COMPANY
+            ID_COMPANY,
+            MATCH_STATUS,
+            CREATED_AT,
+            UPDATED_AT
         )
 
         SELECT
             @alias,
-            @target_id
+            @target_id,
+            'MATCH',
+            CURRENT_TIMESTAMP(),
+            CURRENT_TIMESTAMP()
 
         FROM UNNEST([1]) AS _
 
@@ -368,15 +465,51 @@ def match_entity(
                 "target_id obligatoire"
             )
 
+        # ---------------------------------------------
+        # REMOVE FROM REJECTED
+        # ---------------------------------------------
+
+        sql_delete_rejected = f"""
+        DELETE FROM `{TABLE_ALIAS_REJECTED}`
+
+        WHERE
+            {norm_expr("ALIAS")}
+            =
+            {norm_expr("CAST(@alias AS STRING)")}
+        """
+
+        client.query(
+            sql_delete_rejected,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "alias",
+                        "STRING",
+                        alias,
+                    ),
+                ]
+            ),
+        ).result()
+
+        # ---------------------------------------------
+        # INSERT SOLUTION ALIAS
+        # ---------------------------------------------
+
         sql_alias = f"""
         INSERT INTO `{TABLE_SOLUTION_ALIAS}` (
             ALIAS,
-            ID_SOLUTION
+            ID_SOLUTION,
+            MATCH_STATUS,
+            CREATED_AT,
+            UPDATED_AT
         )
 
         SELECT
             @alias,
-            @target_id
+            @target_id,
+            'MATCH',
+            CURRENT_TIMESTAMP(),
+            CURRENT_TIMESTAMP()
 
         FROM UNNEST([1]) AS _
 
