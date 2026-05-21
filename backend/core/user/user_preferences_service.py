@@ -40,24 +40,30 @@ def add_user_preference(user_id: str, pref_type: str, value_id: str):
         return
 
     query = f"""
-    INSERT INTO `{TABLE_USER_PREFERENCES}` (
+    MERGE `{TABLE_USER_PREFERENCES}` T
+    USING (
+        SELECT
+            @user_id AS USER_ID,
+            @type AS TYPE,
+            @value_id AS VALUE_ID
+    ) S
+    ON T.USER_ID = S.USER_ID
+       AND T.TYPE = S.TYPE
+       AND T.VALUE_ID = S.VALUE_ID
+
+    WHEN NOT MATCHED THEN
+      INSERT (
         USER_ID,
         TYPE,
         VALUE_ID,
         CREATED_AT
-    )
-    SELECT
-        @user_id,
-        @type,
-        @value_id,
+      )
+      VALUES (
+        S.USER_ID,
+        S.TYPE,
+        S.VALUE_ID,
         CURRENT_TIMESTAMP()
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM `{TABLE_USER_PREFERENCES}`
-        WHERE USER_ID = @user_id
-          AND TYPE = @type
-          AND VALUE_ID = @value_id
-    )
+      )
     """
 
     query_bq(query, {
