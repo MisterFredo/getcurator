@@ -49,7 +49,7 @@ def search(
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
     content_type: Optional[str] = None,
-    feed_mode: Optional[str] = None,  # 🔥 NEW
+    feed_mode: Optional[str] = None,
 ) -> List[Dict]:
 
     q = (q or "").strip()
@@ -99,7 +99,7 @@ def search(
 
         from core.user.user_preferences_service import get_user_preferences_grouped
 
-        prefs = get_user_preferences_grouped(user_id)
+        prefs = get_user_preferences_grouped(user_id) or {}
 
         fav_companies = set(prefs.get("COMPANY", []))
         fav_topics = set(prefs.get("TOPIC", []))
@@ -107,23 +107,31 @@ def search(
 
         def match(item):
 
-            for c in item.get("companies", []):
+            for c in (item.get("companies") or []):
                 if c.get("id_company") in fav_companies:
                     return True
 
-            for t in item.get("topics", []):
+            for t in (item.get("topics") or []):
                 if isinstance(t, dict) and t.get("id_topic") in fav_topics:
                     return True
 
-            for s in item.get("solutions", []):
+            for s in (item.get("solutions") or []):
                 if s.get("id_solution") in fav_solutions:
                     return True
 
             return False
 
+        # 🔥 FILTER MODE
         if feed_mode == "mine":
-            items = [i for i in items if match(i)]
+
+            items = [
+                i for i in items
+                if match(i)
+            ]
+
+        # 🔥 PRIORITIZATION MODE
         else:
+
             items.sort(
                 key=lambda x: (
                     0 if match(x) else 1,
@@ -142,7 +150,7 @@ def latest(
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
     content_type: Optional[str] = None,
-    feed_mode: Optional[str] = None,  # 🔥 NEW
+    feed_mode: Optional[str] = None,
 ) -> List[Dict]:
 
     universe_filter = ""
@@ -205,7 +213,7 @@ def latest(
 
         from core.user.user_preferences_service import get_user_preferences_grouped
 
-        prefs = get_user_preferences_grouped(user_id)
+        prefs = get_user_preferences_grouped(user_id) or {}
 
         fav_companies = set(prefs.get("COMPANY", []))
         fav_topics = set(prefs.get("TOPIC", []))
@@ -213,23 +221,31 @@ def latest(
 
         def match(item):
 
-            for c in item.get("companies", []):
+            for c in (item.get("companies") or []):
                 if c.get("id_company") in fav_companies:
                     return True
 
-            for t in item.get("topics", []):
+            for t in (item.get("topics") or []):
                 if isinstance(t, dict) and t.get("id_topic") in fav_topics:
                     return True
 
-            for s in item.get("solutions", []):
+            for s in (item.get("solutions") or []):
                 if s.get("id_solution") in fav_solutions:
                     return True
 
             return False
 
+        # 🔥 STRICT MODE (My Feed)
         if feed_mode == "mine":
-            items = [i for i in items if match(i)]
+
+            items = [
+                i for i in items
+                if match(i)
+            ]
+
+        # 🔥 PRIORITIZATION (All Feed)
         else:
+
             items.sort(
                 key=lambda x: (
                     0 if match(x) else 1,
