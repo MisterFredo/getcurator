@@ -100,7 +100,9 @@ export default function CompanyCard({
       }
 
       // 🔥 simple refresh (propre V1)
-      window.location.reload();
+      if (onToggleFavorite) {
+        onToggleFavorite(id, isFavorite);
+      }
 
     } catch (e) {
       console.error("❌ favorite error", e);
