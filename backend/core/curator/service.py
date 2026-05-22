@@ -534,20 +534,28 @@ def get_item_detail(
     )
 
     # ========================================================
-    # FEED FIELDS
+    # FRONT FIELDS
     # ========================================================
 
-    if lang == "en":
+    content["title"] = (
 
-        content["title"] = (
-            content.get("TITLE_EN")
-            or content.get("TITLE")
-        )
+        content.get("TITLE_EN")
 
-        content["excerpt"] = (
-            content.get("EXCERPT_EN")
-            or content.get("EXCERPT")
-        )
+        if lang == "en"
+
+        else None
+
+    ) or content.get("TITLE")
+
+    content["excerpt"] = (
+
+        content.get("EXCERPT_EN")
+
+        if lang == "en"
+
+        else None
+
+    ) or content.get("EXCERPT")
 
     # ========================================================
     # DRAWER DYNAMIC TRANSLATION
@@ -561,13 +569,16 @@ def get_item_detail(
                 **content,
 
                 "content_body": translate_text(
-                    content.get("content_body", ""),
+                    content.get(
+                        "CONTENT_BODY",
+                        ""
+                    ),
                     lang
                 ),
 
                 "mecanique_expliquee": translate_text(
                     content.get(
-                        "mecanique_expliquee",
+                        "MECANIQUE_EXPLIQUEE",
                         ""
                     ),
                     lang
@@ -575,7 +586,7 @@ def get_item_detail(
 
                 "enjeu_strategique": translate_text(
                     content.get(
-                        "enjeu_strategique",
+                        "ENJEU_STRATEGIQUE",
                         ""
                     ),
                     lang
@@ -583,7 +594,7 @@ def get_item_detail(
 
                 "point_de_friction": translate_text(
                     content.get(
-                        "point_de_friction",
+                        "POINT_DE_FRICTION",
                         ""
                     ),
                     lang
@@ -591,7 +602,7 @@ def get_item_detail(
 
                 "signal_analytique": translate_text(
                     content.get(
-                        "signal_analytique",
+                        "SIGNAL_ANALYTIQUE",
                         ""
                     ),
                     lang
@@ -602,18 +613,32 @@ def get_item_detail(
             pass
 
     return {
+
         **content,
 
-        "source_url": item.get("source_url"),
-        "source_title": item.get("source_title"),
+        "source_url": item.get(
+            "source_url"
+        ),
 
-        "topics": item.get("topics", []),
+        "source_title": item.get(
+            "source_title"
+        ),
 
-        "companies": item.get("companies", []),
+        "topics": item.get(
+            "topics",
+            []
+        ),
 
-        "solutions": item.get("solutions", []),
+        "companies": item.get(
+            "companies",
+            []
+        ),
+
+        "solutions": item.get(
+            "solutions",
+            []
+        ),
     }
-
 
 # ============================================================
 # STATS
