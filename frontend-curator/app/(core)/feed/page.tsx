@@ -181,12 +181,19 @@ export default function FeedPage() {
           "/user/preferences"
         );
 
-        const companyPrefs =
-          Array.isArray(res?.preferences?.COMPANY)
+        setPreferences({
+          COMPANY: Array.isArray(res?.preferences?.COMPANY)
             ? res.preferences.COMPANY
-            : [];
+            : [],
 
-        setPreferences(companyPrefs);
+          TOPIC: Array.isArray(res?.preferences?.TOPIC)
+            ? res.preferences.TOPIC
+            : [],
+
+          SOLUTION: Array.isArray(res?.preferences?.SOLUTION)
+            ? res.preferences.SOLUTION
+            : [],
+        });
 
       } catch (e) {
 
