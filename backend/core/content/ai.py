@@ -138,37 +138,16 @@ IMPORTANT :
 
 ================ FORMAT OBLIGATOIRE ================
 
-Tu dois IMPÉRATIVEMENT retourner TOUTES les sections suivantes.
-Aucune section ne doit être omise.
-Les headers doivent être EXACTEMENT respectés.
-
-FORMAT STRICT :
-
 TITLE
-(Titre factuel et informatif en français.)
-
-TITLE_EN
-(Traduction anglaise professionnelle et naturelle du TITLE.
-Ne pas résumer.
-Ne pas reformuler.)
+(Titre factuel et informatif.)
 
 EXCERPT
-(3 phrases synthétiques en français permettant de comprendre rapidement le sujet et son intérêt sans être général ou avec des formules clichés.)
+(3 phrases synthétiques permettant de comprendre rapidement le sujet et son intérêt.)
 
-EXCERPT_EN
-(Traduction anglaise professionnelle et naturelle du EXCERPT.
-Ne pas résumer.
-Ne pas reformuler.)
-
-IMPORTANT :
-- TITLE_EN doit toujours être rempli
-- EXCERPT_EN doit toujours être rempli
-- Même si le contenu source est déjà en anglais
-- Les headers doivent être exactement :
-  TITLE
-  TITLE_EN
-  EXCERPT
-  EXCERPT_EN
+POINTS CLES
+(Liste factuelle des éléments importants présents dans la source.
+Exhaustif mais strictement basé sur le texte.
+Une ligne = une information.)
 
 CHIFFRES
 Extraire uniquement les chiffres présents dans la source.
@@ -286,9 +265,7 @@ SIGNAL
 
     sections = {
         "TITLE": "",
-        "TITLE_EN": "",
         "EXCERPT": "",
-        "EXCERPT_EN": "",
         "POINTS CLES": "",
         "CHIFFRES": "",
         "ACTEURS": "",
@@ -413,9 +390,7 @@ SIGNAL
 
     return {
         "title": sections["TITLE"].strip(),
-        "title_en": sections["TITLE_EN"].strip(),
         "excerpt": sections["EXCERPT"].strip(),
-        "excerpt_en": sections["EXCERPT_EN"].strip(),
         "content_body": body,
         "chiffres": parse_list(sections["CHIFFRES"]),
         "acteurs_cites": parse_list(sections["ACTEURS"]),
