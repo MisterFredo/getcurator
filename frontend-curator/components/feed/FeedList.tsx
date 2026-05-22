@@ -44,7 +44,11 @@ type Props = {
   ) => void;
 
   // 🔥 NEW
-  preferences?: string[];
+  preferences?: {
+    COMPANY: string[];
+    TOPIC: string[];
+    SOLUTION: string[];
+  };
 
   onToggleFavorite?: (
     companyId: string,
