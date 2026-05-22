@@ -91,8 +91,9 @@ export type FeedItem = {
   primary_company_logo?: string | null;
 
   title: string;
-
+  title_en: string;
   excerpt?: string | null;
+  excerpt_en?: string | null;
 
   // 🔥 NEW
   content_body?: string | null;
