@@ -170,7 +170,11 @@ def search(
         c.id_primary_company,
 
         c.title,
+        c.title_en,
+
         c.excerpt,
+        c.excerpt_en,
+
         c.content_body,
 
         c.published_at,
@@ -186,10 +190,17 @@ def search(
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
     WHERE (
+
         LOWER(c.title)
             LIKE LOWER(CONCAT('%', @query, '%'))
 
+        OR LOWER(c.title_en)
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
         OR LOWER(c.excerpt)
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR LOWER(c.excerpt_en)
             LIKE LOWER(CONCAT('%', @query, '%'))
     )
 
@@ -232,10 +243,6 @@ def search(
         get_user_context
     )
 
-    from core.translation.service import (
-        translate_feed_items
-    )
-
     context = (
         get_user_context(user_id)
         if user_id else None
@@ -246,10 +253,19 @@ def search(
         if context else "fr"
     )
 
-    mapped = translate_feed_items(
-        mapped,
-        lang
-    )
+    if lang == "en":
+
+        for item in mapped:
+
+            item["title"] = (
+                item.get("title_en")
+                or item.get("title")
+            )
+
+            item["excerpt"] = (
+                item.get("excerpt_en")
+                or item.get("excerpt")
+            )
 
     return mapped
 
@@ -314,7 +330,11 @@ def latest(
         c.id_primary_company,
 
         c.title,
+        c.title_en,
+
         c.excerpt,
+        c.excerpt_en,
+
         c.content_body,
 
         c.published_at,
@@ -368,10 +388,6 @@ def latest(
         get_user_context
     )
 
-    from core.translation.service import (
-        translate_feed_items
-    )
-
     context = (
         get_user_context(user_id)
         if user_id else None
@@ -382,13 +398,21 @@ def latest(
         if context else "fr"
     )
 
-    mapped = translate_feed_items(
-        mapped,
-        lang
-    )
+    if lang == "en":
+
+        for item in mapped:
+
+            item["title"] = (
+                item.get("title_en")
+                or item.get("title")
+            )
+
+            item["excerpt"] = (
+                item.get("excerpt_en")
+                or item.get("excerpt")
+            )
 
     return mapped
-
 
 # ============================================================
 # ITEM
@@ -414,7 +438,9 @@ def get_item_curator(
         c.id_primary_company,
 
         c.title,
+        c.title_en,
         c.excerpt,
+        c.excerpt_en,
         c.published_at,
 
         source_url,
@@ -507,6 +533,26 @@ def get_item_detail(
         if context else "fr"
     )
 
+    # ========================================================
+    # FEED FIELDS
+    # ========================================================
+
+    if lang == "en":
+
+        content["title"] = (
+            content.get("title_en")
+            or content.get("title")
+        )
+
+        content["excerpt"] = (
+            content.get("excerpt_en")
+            or content.get("excerpt")
+        )
+
+    # ========================================================
+    # DRAWER DYNAMIC TRANSLATION
+    # ========================================================
+
     if lang != "fr":
 
         try:
@@ -514,48 +560,38 @@ def get_item_detail(
             content = {
                 **content,
 
-                "TITLE": translate_text(
-                    content.get("TITLE", ""),
+                "content_body": translate_text(
+                    content.get("content_body", ""),
                     lang
                 ),
 
-                "EXCERPT": translate_text(
-                    content.get("EXCERPT", ""),
-                    lang
-                ),
-
-                "CONTENT_BODY": translate_text(
-                    content.get("CONTENT_BODY", ""),
-                    lang
-                ),
-
-                "MECANIQUE_EXPLIQUEE": translate_text(
+                "mecanique_expliquee": translate_text(
                     content.get(
-                        "MECANIQUE_EXPLIQUEE",
+                        "mecanique_expliquee",
                         ""
                     ),
                     lang
                 ),
 
-                "ENJEU_STRATEGIQUE": translate_text(
+                "enjeu_strategique": translate_text(
                     content.get(
-                        "ENJEU_STRATEGIQUE",
+                        "enjeu_strategique",
                         ""
                     ),
                     lang
                 ),
 
-                "POINT_DE_FRICTION": translate_text(
+                "point_de_friction": translate_text(
                     content.get(
-                        "POINT_DE_FRICTION",
+                        "point_de_friction",
                         ""
                     ),
                     lang
                 ),
 
-                "SIGNAL_ANALYTIQUE": translate_text(
+                "signal_analytique": translate_text(
                     content.get(
-                        "SIGNAL_ANALYTIQUE",
+                        "signal_analytique",
                         ""
                     ),
                     lang
@@ -835,8 +871,10 @@ def _map_feed_row(r: Dict) -> Dict:
             r.get("id_primary_company"),
 
         "title": r.get("title"),
+        "title_en": r.get("title_en"),
 
         "excerpt": r.get("excerpt"),
+        "excerpt_en": r.get("excerpt_en"),
 
         "source_url":
             r.get("source_url"),
