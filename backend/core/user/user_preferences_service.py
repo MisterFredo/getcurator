@@ -14,7 +14,6 @@ from config import (
 
 from utils.bigquery_utils import (
     query_bq,
-    update_bq,
 )
 
 
@@ -106,7 +105,7 @@ def add_user_preference(
       )
     """
 
-    update_bq(
+    query_bq(
         query,
         {
             "user_id": user_id,
@@ -141,7 +140,7 @@ def remove_user_preference(
       AND VALUE_ID = @value_id
     """
 
-    update_bq(
+    query_bq(
         query,
         {
             "user_id": user_id,
