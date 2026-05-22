@@ -27,6 +27,15 @@ from core.content.publish_sync_service import (
 )
 
 # ============================================================
+# TABLE
+# ============================================================
+
+TABLE_CONTENT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+)
+
+
+# ============================================================
 # TABLES
 # ============================================================
 
@@ -109,7 +118,9 @@ def create_content(data: ContentCreate) -> str:
         ),
 
         "TITLE": data.title.strip(),
+        "TITLE_EN": data.title.strip(),
         "EXCERPT": data.excerpt,
+        "EXCERPT_EN": data.excerpt,
         "CONTENT_BODY": data.content_body,
 
         "CHIFFRES": normalize_array(data.chiffres),
@@ -394,7 +405,9 @@ def get_content(id_content: str):
           SOURCE_URL,
           SOURCE_TITLE,
           TITLE,
+          TITLE_EN,
           EXCERPT,
+          EXCERPT_EN,
           CONTENT_BODY,
           CHIFFRES,
           ACTEURS_CITES,
@@ -440,7 +453,9 @@ def get_content(id_content: str):
         "source_title": row.get("SOURCE_TITLE"),
 
         "title": row.get("TITLE"),
+        "title_en": row.get("TITLE_EN"),
         "excerpt": row.get("EXCERPT"),
+        "excerpt_en": row.get("EXCERPT_EN"),
         "content_body": row.get("CONTENT_BODY"),
 
         "chiffres": row.get("CHIFFRES") or [],
@@ -613,7 +628,9 @@ def list_contents():
           pc.NAME AS PRIMARY_COMPANY_NAME,
 
           c.TITLE,
+          c.TITLE_EN,
           c.EXCERPT,
+          c.EXCERPT_EN,
           c.SOURCE_URL,
           c.SOURCE_TITLE,
           c.PUBLISHED_AT
@@ -657,8 +674,10 @@ def list_contents():
             ),
 
             "title": r["TITLE"],
+            "title_en": r["TITLE_EN"],
 
             "excerpt": r.get("EXCERPT"),
+            "excerpt_en": r.get("EXCERPT_EN"),
 
             "published_at": map_dt(
                 r.get("PUBLISHED_AT")
@@ -698,6 +717,7 @@ def list_contents_admin():
           pc.NAME AS PRIMARY_COMPANY_NAME,
 
           c.TITLE,
+          c.TITLE_EN,
 
           c.STATUS,
 
@@ -742,6 +762,7 @@ def list_contents_admin():
             "source_title": r.get("SOURCE_TITLE"),
 
             "title": r["TITLE"],
+            "title_en": r["TITLE_EN"],
 
             "status": r["STATUS"],
 
@@ -1202,6 +1223,7 @@ def destock_raw_contents(
                 id_primary_company=id_primary_company,
 
                 title=summary.get("title"),
+                title_en=summary.get("title_en"),
                 id_raw=raw.get("ID_RAW"),
 
                 source_url=raw.get("SOURCE_URL"),
@@ -1209,6 +1231,7 @@ def destock_raw_contents(
                 source_title=raw.get("SOURCE_TITLE"),
 
                 excerpt=summary.get("excerpt"),
+                excerpt_en=summary.get("excerpt_en"),
 
                 content_body=summary.get("content_body"),
 
@@ -1767,8 +1790,14 @@ def update_content(id_content: str, data: ContentUpdate):
     if data.title is not None:
         fields["TITLE"] = data.title.strip()
 
+    if data.title_en is not None:
+        fields["TITLE_EN"] = data.title_en.strip()
+
     if data.excerpt is not None:
         fields["EXCERPT"] = data.excerpt
+
+    if data.excerpt_en is not None:
+        fields["EXCERPT_EN"] = data.excerpt_en
 
     if data.content_body is not None:
         fields["CONTENT_BODY"] = data.content_body
@@ -1940,37 +1969,6 @@ def archive_content(id_content: str):
     )
 
     return True
-
-
-# ============================================================
-# PUBLISH CONTENT
-# ============================================================
-
-
-from datetime import (
-    datetime,
-    timezone,
-    date,
-)
-from typing import Optional
-
-from utils.bigquery_utils import (
-    query_bq,
-    update_bq,
-)
-
-from config import (
-    BQ_PROJECT,
-    BQ_DATASET,
-)
-
-# ============================================================
-# TABLE
-# ============================================================
-
-TABLE_CONTENT = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-)
 
 
 # ============================================================
