@@ -117,7 +117,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
         );
 
         const lang =
-          res?.user?.lang
+          res?.lang
           || "fr";
 
         setUserLang(lang);
