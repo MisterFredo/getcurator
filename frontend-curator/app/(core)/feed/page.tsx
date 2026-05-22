@@ -193,6 +193,7 @@ export default function FeedPage() {
         );
 
         setPreferences({
+
           COMPANY: Array.isArray(
             res?.preferences?.COMPANY
           )
@@ -210,7 +211,12 @@ export default function FeedPage() {
           )
             ? res.preferences.SOLUTION
             : [],
+
         });
+
+        setUserLang(
+          res?.lang || "fr"
+        );
 
       } catch (e) {
 
