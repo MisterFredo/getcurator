@@ -217,16 +217,14 @@ def get_me(request: Request):
     user_id = get_user_id_from_request(request)
 
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        return {"user": None}
 
     user = get_user_by_id(user_id)
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {"user": None}
 
-    return {
-        "user": user
-    }
+    return {"user": user}
 
 
 # =========================================================
@@ -238,16 +236,23 @@ def get_context(request: Request):
 
     user_id = get_user_id_from_request(request)
 
+    # 🔥 MODE PUBLIC
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        return {
+            "universes": [],
+            "preferences": {
+                "COMPANY": [],
+                "TOPIC": [],
+                "SOLUTION": [],
+            }
+        }
 
     context = get_user_context(user_id)
 
     if not context:
-        raise HTTPException(status_code=404, detail="User not found or inactive")
+        return {}
 
     return context
-
 
 # =========================================================
 # ASSIGN UNIVERS
