@@ -281,13 +281,43 @@ export default function FeedList({
             selectedIds.includes(item.id);
 
           // 🔥 FAVORITE LOGIC
-          const companyId =
-            item.id_primary_company;
+          const companyIds =
+            Array.isArray(item.companies)
+              ? item.companies.map(
+                  (c: any) => c.id_company
+                )
+              : [];
+
+          const topicIds =
+            Array.isArray(item.topics)
+              ? item.topics.map(
+                  (t: any) => t.id_topic
+                )
+              : [];
+
+          const solutionIds =
+            Array.isArray(item.solutions)
+              ? item.solutions.map(
+                  (s: any) => s.id_solution
+                )
+              : [];
 
           const isFavorite =
-            companyId
-              ? preferences.includes(companyId)
-              : false;
+
+            companyIds.some(
+              (id: string) =>
+                preferences.includes(id)
+            )
+
+            || topicIds.some(
+              (id: string) =>
+                preferences.includes(id)
+            )
+
+            || solutionIds.some(
+              (id: string) =>
+                preferences.includes(id)
+            );
 
           return (
 
