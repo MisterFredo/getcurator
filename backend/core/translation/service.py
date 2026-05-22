@@ -282,12 +282,14 @@ Return STRICT JSON:
     except Exception:
         logger.exception("Batch translation parsing error")
         return items
-
 # ============================================================
 # BULK TRANSLATION (FEED)
 # ============================================================
 
-def translate_feed_items(items: List[Dict], lang: str) -> List[Dict]:
+def translate_feed_items(
+    items: List[Dict],
+    lang: str
+) -> List[Dict]:
 
     if lang == "fr":
         return items
@@ -297,25 +299,28 @@ def translate_feed_items(items: List[Dict], lang: str) -> List[Dict]:
     for item in items:
 
         try:
+
             translated_title = translate_text(
-                item.get("TITLE", ""),
+                item.get("title", ""),
                 lang
             )
 
             translated_excerpt = translate_text(
-                item.get("EXCERPT", ""),
+                item.get("excerpt", ""),
                 lang
             )
 
         except Exception:
+
             logger.exception("Translation error")
-            translated_title = item.get("TITLE", "")
-            translated_excerpt = item.get("EXCERPT", "")
+
+            translated_title = item.get("title", "")
+            translated_excerpt = item.get("excerpt", "")
 
         translated_items.append({
             **item,
-            "TITLE": translated_title,
-            "EXCERPT": translated_excerpt,
+            "title": translated_title,
+            "excerpt": translated_excerpt,
         })
 
     return translated_items
@@ -325,7 +330,10 @@ def translate_feed_items(items: List[Dict], lang: str) -> List[Dict]:
 # ADVANCED (OPTIONAL JSON MODE - FUTURE)
 # ============================================================
 
-def translate_feed_items_batch(items: List[Dict], lang: str) -> List[Dict]:
+def translate_feed_items_batch(
+    items: List[Dict],
+    lang: str
+) -> List[Dict]:
     """
     Version optimisée (1 appel LLM pour plusieurs items)
     À utiliser plus tard si besoin de perf / coût
@@ -337,8 +345,8 @@ def translate_feed_items_batch(items: List[Dict], lang: str) -> List[Dict]:
     payload = [
         {
             "id": item.get("id"),
-            "title": item.get("TITLE"),
-            "excerpt": item.get("EXCERPT"),
+            "title": item.get("title"),
+            "excerpt": item.get("excerpt"),
         }
         for item in items
     ]
@@ -375,17 +383,23 @@ Return STRICT JSON:
         return items
 
     try:
+
         match = re.search(r"\[[\s\S]*\]", raw)
+
         if not match:
             raise ValueError("JSON not found")
 
         translated = json.loads(match.group(0))
 
-        mapped = {item["id"]: item for item in items}
+        mapped = {
+            item["id"]: item
+            for item in items
+        }
 
         result = []
 
         for t in translated:
+
             original = mapped.get(t["id"])
 
             if not original:
@@ -393,12 +407,21 @@ Return STRICT JSON:
 
             result.append({
                 **original,
-                "TITLE": t.get("title") or original.get("TITLE"),
-                "EXCERPT": t.get("excerpt") or original.get("EXCERPT"),
+                "title":
+                    t.get("title")
+                    or original.get("title"),
+
+                "excerpt":
+                    t.get("excerpt")
+                    or original.get("excerpt"),
             })
 
         return result
 
     except Exception:
-        logger.exception("Batch translation parsing error")
+
+        logger.exception(
+            "Batch translation parsing error"
+        )
+
         return items
