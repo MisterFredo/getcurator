@@ -528,29 +528,14 @@ def _map_feed_row(r: Dict) -> Dict:
 
     badges = []
 
-    # ============================================================
-    # TOPICS
-    # ============================================================
-
-    normalized_topics = []
-
     for t in topics:
 
         if isinstance(t, dict):
 
-            tid = t.get("id_topic") or t.get("id")
-
-            label = t.get("label") or t.get("name")
-
-            normalized_topics.append({
-                "id_topic": tid,
-                "label": label,
-            })
-
             badges.append({
                 "type": "topic",
-                "label": label,
-                "id": tid,
+                "label": t.get("label") or t.get("name"),
+                "id": t.get("id_topic"),
             })
 
         else:
@@ -560,20 +545,9 @@ def _map_feed_row(r: Dict) -> Dict:
                 "label": t,
             })
 
-    # ============================================================
-    # CONCEPTS
-    # ============================================================
-
-    normalized_concepts = []
-
     for c in concepts:
 
         if isinstance(c, dict):
-
-            normalized_concepts.append({
-                "id_concept": c.get("id_concept") or c.get("id"),
-                "label": c.get("label"),
-            })
 
             badges.append({
                 "type": "concept",
@@ -588,114 +562,62 @@ def _map_feed_row(r: Dict) -> Dict:
                 "label": c,
             })
 
-    # ============================================================
-    # COMPANIES
-    # ============================================================
-
-    normalized_companies = []
-
     for c in companies:
 
-        if isinstance(c, dict):
-
-            cid = c.get("id_company") or c.get("id")
-
-            name = c.get("name")
-
-            normalized_companies.append({
-                "id_company": cid,
-                "name": name,
-            })
-
-            badges.append({
-                "type": "company",
-                "label": name,
-                "id": cid,
-            })
-
-    # ============================================================
-    # SOLUTIONS
-    # ============================================================
-
-    normalized_solutions = []
+        badges.append({
+            "type": "company",
+            "label": c.get("name"),
+            "id": c.get("id_company"),
+        })
 
     for s in solutions:
 
-        if isinstance(s, dict):
-
-            sid = s.get("id_solution") or s.get("id")
-
-            name = s.get("name")
-
-            normalized_solutions.append({
-                "id_solution": sid,
-                "name": name,
-            })
-
-            badges.append({
-                "type": "solution",
-                "label": name,
-                "id": sid,
-            })
-
-    # ============================================================
-    # UNIVERSES
-    # ============================================================
-
-    normalized_universes = []
+        badges.append({
+            "type": "solution",
+            "label": s.get("name"),
+            "id": s.get("id_solution"),
+        })
 
     for u in universes:
 
-        if isinstance(u, dict):
-
-            uid = u.get("id_universe") or u.get("id")
-
-            label = u.get("label")
-
-            normalized_universes.append({
-                "id_universe": uid,
-                "label": label,
-            })
-
-            badges.append({
-                "type": "universe",
-                "label": label,
-                "id": uid,
-            })
-
-    # ============================================================
-    # RETURN
-    # ============================================================
+        badges.append({
+            "type": "universe",
+            "label": u.get("label"),
+            "id": u.get("id_universe"),
+        })
 
     return {
         "id": r.get("id"),
 
         "type": r.get("type"),
 
-        "id_primary_company": r.get("id_primary_company"),
+        "id_primary_company": r.get(
+            "id_primary_company"
+        ),
 
         "title": r.get("title"),
 
         "excerpt": r.get("excerpt"),
-
         "source_url": r.get("source_url"),
 
         "source_title": r.get("source_title"),
 
-        "content_body": r.get("content_body"),
+        # 🔥 NEW
+        "content_body": r.get(
+            "content_body"
+        ),
 
         "published_at": r.get("published_at"),
 
-        # 🔥 NORMALIZED
-        "topics": normalized_topics,
+        "topics": topics,
 
-        "companies": normalized_companies,
+        "companies": companies,
 
-        "solutions": normalized_solutions,
+        "solutions": solutions,
 
-        "concepts": normalized_concepts,
+        "concepts": concepts,
 
-        "universes": normalized_universes,
+        "universes": universes,
 
         "badges": badges,
     }
