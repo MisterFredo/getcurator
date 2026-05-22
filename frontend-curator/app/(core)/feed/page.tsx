@@ -112,7 +112,11 @@ export default function FeedPage() {
   ========================================================= */
 
   const [preferences, setPreferences] =
-    useState<string[]>([]);
+    useState({
+      COMPANY: [],
+      TOPIC: [],
+      SOLUTION: [],
+    });
 
   /* =========================================================
      DRAWER
