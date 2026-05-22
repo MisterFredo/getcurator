@@ -167,7 +167,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 space-y-3">
           <div className="flex justify-between items-start">
             <h1 className="text-xl font-semibold text-gray-900 max-w-xl">
-              {data.title}
+              {title}
             </h1>
 
             <button onClick={close}>
@@ -217,7 +217,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
           {data.excerpt && (
             <p className="text-base font-medium text-gray-800 max-w-2xl">
-              {data.excerpt}
+              {excerpt}
             </p>
           )}
 
