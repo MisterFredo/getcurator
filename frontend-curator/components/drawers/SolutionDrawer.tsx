@@ -135,7 +135,10 @@ export default function SolutionDrawer({ id, onClose }: any) {
         </h2>
 
         <FeedGroupedByMonth
+          userLang="fr"
+
           items={items}
+
           onClickItem={(item) =>
             openRightDrawer(
               "analysis",
