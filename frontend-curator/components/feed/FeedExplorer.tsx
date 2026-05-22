@@ -16,6 +16,7 @@ type Universe = {
 };
 
 type Props = {
+
   query: string;
 
   setQuery: (
@@ -79,11 +80,15 @@ type Props = {
     companyId: string,
     isFav: boolean
   ) => void;
+
+  // 🔥 NEW
+  userLang: string;
 };
 
 /* ========================================================= */
 
 export default function FeedExplorer({
+
   query,
   setQuery,
   onSearch,
@@ -113,6 +118,9 @@ export default function FeedExplorer({
   preferences,
   onToggleFavorite,
 
+  // 🔥 NEW
+  userLang,
+
 }: Props) {
 
   return (
@@ -127,6 +135,7 @@ export default function FeedExplorer({
 
       <FeedHeader
         query={query}
+
         setQuery={setQuery}
 
         onSearch={(q) =>
@@ -159,6 +168,9 @@ export default function FeedExplorer({
       ===================================================== */}
 
       <FeedList
+
+        userLang={userLang}
+
         title="Results"
 
         items={items}
@@ -198,7 +210,9 @@ export default function FeedExplorer({
         // 🔥 NEW
         preferences={preferences}
 
-        onToggleFavorite={onToggleFavorite}
+        onToggleFavorite={
+          onToggleFavorite
+        }
       />
 
     </div>
