@@ -223,10 +223,35 @@ def search(
 
     rows = query_bq(sql, params)
 
-    return [
+    mapped = [
         _map_feed_row(r)
         for r in rows
     ]
+
+    from core.user.user_service import (
+        get_user_context
+    )
+
+    from core.translation.service import (
+        translate_feed_items
+    )
+
+    context = (
+        get_user_context(user_id)
+        if user_id else None
+    )
+
+    lang = (
+        context["lang"]
+        if context else "fr"
+    )
+
+    mapped = translate_feed_items(
+        mapped,
+        lang
+    )
+
+    return mapped
 
 
 # ============================================================
@@ -334,10 +359,35 @@ def latest(
 
     rows = query_bq(sql, params)
 
-    return [
+    mapped = [
         _map_feed_row(r)
         for r in rows
     ]
+
+    from core.user.user_service import (
+        get_user_context
+    )
+
+    from core.translation.service import (
+        translate_feed_items
+    )
+
+    context = (
+        get_user_context(user_id)
+        if user_id else None
+    )
+
+    lang = (
+        context["lang"]
+        if context else "fr"
+    )
+
+    mapped = translate_feed_items(
+        mapped,
+        lang
+    )
+
+    return mapped
 
 
 # ============================================================
