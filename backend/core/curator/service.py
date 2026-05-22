@@ -534,22 +534,6 @@ def get_item_detail(
     )
 
     # ========================================================
-    # FEED FIELDS
-    # ========================================================
-
-    if lang == "en":
-
-        content["title"] = (
-            content.get("title_en")
-            or content.get("title")
-        )
-
-        content["excerpt"] = (
-            content.get("excerpt_en")
-            or content.get("excerpt")
-        )
-
-    # ========================================================
     # DRAWER DYNAMIC TRANSLATION
     # ========================================================
 
@@ -559,6 +543,16 @@ def get_item_detail(
 
             content = {
                 **content,
+
+                "title": translate_text(
+                    content.get("TITLE", ""),
+                    lang
+                ),
+
+                "excerpt": translate_text(
+                    content.get("EXCERPT", ""),
+                    lang
+                ),
 
                 "content_body": translate_text(
                     content.get("content_body", ""),
@@ -601,6 +595,16 @@ def get_item_detail(
         except Exception:
             pass
 
+    else:
+
+        content["title"] = content.get(
+            "TITLE"
+        )
+
+        content["excerpt"] = content.get(
+            "EXCERPT"
+        )
+
     return {
         **content,
 
@@ -613,7 +617,6 @@ def get_item_detail(
 
         "solutions": item.get("solutions", []),
     }
-
 # ============================================================
 # STATS
 # ============================================================
