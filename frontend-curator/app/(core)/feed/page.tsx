@@ -126,6 +126,9 @@ export default function FeedPage() {
       SOLUTION: [],
     });
 
+  const [userLang, setUserLang] =
+    useState("fr");
+
   /* =========================================================
      DRAWER
   ========================================================= */
