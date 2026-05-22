@@ -14,6 +14,7 @@ from config import (
 
 from utils.bigquery_utils import (
     query_bq,
+    update_bq,
 )
 
 
