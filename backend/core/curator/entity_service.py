@@ -4,8 +4,6 @@ from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
 from core.company.service import get_company
-
-from core.translation.service import translate_feed_items
 from core.user.user_service import get_user_context
 from core.user.user_preferences_service import get_user_preferences_grouped
 
