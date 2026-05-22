@@ -104,8 +104,10 @@ def list_contents(
             c.ID_CONTENT,
 
             c.TITLE,
+            c.TITLE_EN,
 
             c.EXCERPT,
+            c.EXCERPT_EN,
 
             c.CONTENT_TYPE,
 
@@ -153,8 +155,10 @@ def list_contents(
             "id": r["ID_CONTENT"],
 
             "title": r["TITLE"],
+            "title_en": r["TITLE_EN"],
 
             "excerpt": r.get("EXCERPT"),
+            "excerpt_en": r.get("EXCERPT_EN"),
 
             "content_type": (
                 r.get("CONTENT_TYPE")
@@ -253,8 +257,10 @@ def get_content(id_content: str) -> Dict:
         "id_content": r.get("id_content"),
 
         "title": r.get("title"),
+        "title_en": r.get("title_en"),
 
         "excerpt": r.get("excerpt"),
+        "excerpt_en": r.get("excerpt_en"),
 
         "content_body": r.get("content_body"),
 
