@@ -523,6 +523,10 @@ def get_item_detail(
     if not content:
         return None
 
+    # ========================================================
+    # USER CONTEXT
+    # ========================================================
+
     context = (
         get_user_context(user_id)
         if user_id else None
@@ -534,10 +538,10 @@ def get_item_detail(
     )
 
     # ========================================================
-    # FRONT FIELDS
+    # TITLE / EXCERPT
     # ========================================================
 
-    content["title"] = (
+    title = (
 
         content.get("TITLE_EN")
 
@@ -547,7 +551,7 @@ def get_item_detail(
 
     ) or content.get("TITLE")
 
-    content["excerpt"] = (
+    excerpt = (
 
         content.get("EXCERPT_EN")
 
@@ -558,63 +562,112 @@ def get_item_detail(
     ) or content.get("EXCERPT")
 
     # ========================================================
-    # DRAWER DYNAMIC TRANSLATION
+    # DRAWER CONTENT
+    # ========================================================
+
+    content_body = content.get(
+        "CONTENT_BODY"
+    )
+
+    mecanique_expliquee = content.get(
+        "MECANIQUE_EXPLIQUEE"
+    )
+
+    enjeu_strategique = content.get(
+        "ENJEU_STRATEGIQUE"
+    )
+
+    point_de_friction = content.get(
+        "POINT_DE_FRICTION"
+    )
+
+    signal_analytique = content.get(
+        "SIGNAL_ANALYTIQUE"
+    )
+
+    # ========================================================
+    # RUNTIME TRANSLATION
     # ========================================================
 
     if lang != "fr":
 
         try:
 
-            content = {
-                **content,
+            content_body = translate_text(
+                content_body or "",
+                lang
+            )
 
-                "content_body": translate_text(
-                    content.get(
-                        "CONTENT_BODY",
-                        ""
-                    ),
-                    lang
-                ),
+            mecanique_expliquee = translate_text(
+                mecanique_expliquee or "",
+                lang
+            )
 
-                "mecanique_expliquee": translate_text(
-                    content.get(
-                        "MECANIQUE_EXPLIQUEE",
-                        ""
-                    ),
-                    lang
-                ),
+            enjeu_strategique = translate_text(
+                enjeu_strategique or "",
+                lang
+            )
 
-                "enjeu_strategique": translate_text(
-                    content.get(
-                        "ENJEU_STRATEGIQUE",
-                        ""
-                    ),
-                    lang
-                ),
+            point_de_friction = translate_text(
+                point_de_friction or "",
+                lang
+            )
 
-                "point_de_friction": translate_text(
-                    content.get(
-                        "POINT_DE_FRICTION",
-                        ""
-                    ),
-                    lang
-                ),
-
-                "signal_analytique": translate_text(
-                    content.get(
-                        "SIGNAL_ANALYTIQUE",
-                        ""
-                    ),
-                    lang
-                ),
-            }
+            signal_analytique = translate_text(
+                signal_analytique or "",
+                lang
+            )
 
         except Exception:
             pass
 
+    # ========================================================
+    # RETURN
+    # ========================================================
+
     return {
 
-        **content,
+        # ====================================================
+        # CORE
+        # ====================================================
+
+        "id_content": content.get(
+            "ID_CONTENT"
+        ),
+
+        "title": title,
+
+        "excerpt": excerpt,
+
+        # ====================================================
+        # DRAWER
+        # ====================================================
+
+        "content_body": content_body,
+
+        "mecanique_expliquee": (
+            mecanique_expliquee
+        ),
+
+        "enjeu_strategique": (
+            enjeu_strategique
+        ),
+
+        "point_de_friction": (
+            point_de_friction
+        ),
+
+        "signal_analytique": (
+            signal_analytique
+        ),
+
+        # ====================================================
+        # META
+        # ====================================================
+
+        "published_at": content.get(
+            "PUBLISHED_AT"
+        ),
 
         "source_url": item.get(
             "source_url"
@@ -623,6 +676,10 @@ def get_item_detail(
         "source_title": item.get(
             "source_title"
         ),
+
+        # ====================================================
+        # ENTITIES
+        # ====================================================
 
         "topics": item.get(
             "topics",
