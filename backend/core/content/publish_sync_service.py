@@ -260,8 +260,10 @@ def rebuild_content_enriched_row(
             c.SOURCE_TITLE AS source_title,
 
             c.TITLE AS title,
+            c.TITLE_EN AS title_en,
 
             c.EXCERPT AS excerpt,
+            c.EXCERPT_EN AS excerpt_en,
 
             c.CONTENT_BODY AS content_body,
 
