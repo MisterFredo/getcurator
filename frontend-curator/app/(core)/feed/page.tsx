@@ -30,6 +30,14 @@ type Universe = {
 
 /* ========================================================= */
 
+type Preferences = {
+  COMPANY: string[];
+  TOPIC: string[];
+  SOLUTION: string[];
+};
+
+/* ========================================================= */
+
 export default function FeedPage() {
 
   const LIMIT = 20;
@@ -79,7 +87,7 @@ export default function FeedPage() {
     useState("all");
 
   /* =========================================================
-     🔥 FEED MODE
+     FEED MODE
   ========================================================= */
 
   const [feedMode, setFeedMode] =
@@ -112,7 +120,7 @@ export default function FeedPage() {
   ========================================================= */
 
   const [preferences, setPreferences] =
-    useState({
+    useState<Preferences>({
       COMPANY: [],
       TOPIC: [],
       SOLUTION: [],
@@ -182,15 +190,21 @@ export default function FeedPage() {
         );
 
         setPreferences({
-          COMPANY: Array.isArray(res?.preferences?.COMPANY)
+          COMPANY: Array.isArray(
+            res?.preferences?.COMPANY
+          )
             ? res.preferences.COMPANY
             : [],
 
-          TOPIC: Array.isArray(res?.preferences?.TOPIC)
+          TOPIC: Array.isArray(
+            res?.preferences?.TOPIC
+          )
             ? res.preferences.TOPIC
             : [],
 
-          SOLUTION: Array.isArray(res?.preferences?.SOLUTION)
+          SOLUTION: Array.isArray(
+            res?.preferences?.SOLUTION
+          )
             ? res.preferences.SOLUTION
             : [],
         });
@@ -240,7 +254,6 @@ export default function FeedPage() {
 
     try {
 
-      // 🔥 CRITICAL FIX
       const userId =
         typeof window !== "undefined"
           ? localStorage.getItem("user_id")
@@ -253,7 +266,6 @@ export default function FeedPage() {
             limit: LIMIT,
             offset: currentOffset,
 
-            // 🔥 FIX
             user_id: userId,
 
             universe_id:
@@ -274,7 +286,6 @@ export default function FeedPage() {
             limit: LIMIT,
             offset: currentOffset,
 
-            // 🔥 FIX
             user_id: userId,
 
             universe_id:
@@ -330,6 +341,7 @@ export default function FeedPage() {
       setLoading(false);
     }
   }
+
   /* =========================================================
      INIT
   ========================================================= */
@@ -341,7 +353,7 @@ export default function FeedPage() {
   }, [
     activeUniverse,
     activeType,
-    feedMode, // 🔥 NEW
+    feedMode,
   ]);
 
   /* =========================================================
@@ -450,7 +462,7 @@ export default function FeedPage() {
   }
 
   /* =========================================================
-     FAVORITES HANDLER
+     FAVORITES
   ========================================================= */
 
   async function handleToggleFavorite(
@@ -499,6 +511,14 @@ export default function FeedPage() {
             ],
 
       }));
+
+    } catch (e) {
+
+      console.error(
+        "❌ favorite toggle error",
+        e
+      );
+    }
   }
 
   /* =========================================================
@@ -518,7 +538,7 @@ export default function FeedPage() {
         space-y-6
       ">
 
-        {/* 🔥 SWITCH FEED MODE */}
+        {/* FEED MODE */}
 
         <div className="flex gap-2 text-xs">
 
