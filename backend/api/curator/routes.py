@@ -98,21 +98,16 @@ def search_route(
 
     try:
 
-        user_id = require_user(request)
-
-        # --------------------------------------------------------
-        # USER CONTEXT
-        # --------------------------------------------------------
-
-        context = get_user_context(user_id)
-
-        lang = context["lang"]
+        user_id = require_user(
+            request
+        )
 
         # --------------------------------------------------------
         # FETCH
         # --------------------------------------------------------
 
         items = search(
+
             q=q,
 
             limit=limit,
@@ -128,32 +123,23 @@ def search_route(
             feed_mode=feed_mode,
         )
 
-        # --------------------------------------------------------
-        # TRANSLATION
-        # --------------------------------------------------------
-
-        if lang != "fr":
-
-            items = translate_feed_items(
-                items,
-                lang
-            )
-
         return {
+
             "items": items,
+
             "count": len(items),
         }
 
     except Exception as e:
 
-        print(f"❌ Search error: {e}")
+        print(
+            f"❌ Search error: {e}"
+        )
 
         raise HTTPException(
             status_code=500,
             detail="Internal error"
         )
-
-
 # ============================================================
 # 🆕 SEARCH NUMBERS (🔥 CORE V1)
 # ============================================================
