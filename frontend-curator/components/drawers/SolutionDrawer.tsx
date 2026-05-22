@@ -52,6 +52,7 @@ export default function SolutionDrawer({ id, onClose }: any) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [numbers, setNumbers] = useState<NumberCategory[]>([]);
   const [radar, setRadar] = useState<Radar | null>(null);
+  const [userLang, setUserLang] = useState("fr");
 
   function close() {
     onClose?.();
@@ -100,6 +101,33 @@ export default function SolutionDrawer({ id, onClose }: any) {
     loadNumbers();
   }, [id]);
 
+  useEffect(() => {
+
+    async function loadUserLang() {
+
+      try {
+
+        const res = await api.get(
+          "/user/preferences"
+        );
+
+        const lang =
+          res?.user?.lang
+          || "fr";
+
+        setUserLang(lang);
+
+      } catch {
+
+        setUserLang("fr");
+
+      }
+    }
+
+    loadUserLang();
+
+  }, []);
+
   if (!data) return null;
 
   return (
@@ -135,7 +163,7 @@ export default function SolutionDrawer({ id, onClose }: any) {
         </h2>
 
         <FeedGroupedByMonth
-          userLang="fr"
+          userLang={userLang}
 
           items={items}
 
