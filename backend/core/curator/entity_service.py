@@ -260,12 +260,8 @@ def get_company_view(
     # ============================================================
     # USER CONTEXT
     # ============================================================
-
-    context = get_user_context(user_id) if user_id else None
     prefs = get_user_preferences_grouped(user_id) if user_id else None
-
-    lang = context["lang"] if context else "fr"
-
+    
     # ============================================================
     # PRIORITIZATION (PREFERENCES)
     # ============================================================
@@ -290,13 +286,6 @@ def get_company_view(
             return score
 
         items = sorted(items, key=score, reverse=True)
-
-    # ============================================================
-    # TRANSLATION
-    # ============================================================
-
-    if lang != "fr":
-        items = translate_feed_items(items, lang)
 
     # ============================================================
     # RETURN
@@ -409,11 +398,7 @@ def get_topic_view(
     # ============================================================
     # USER CONTEXT
     # ============================================================
-
-    context = get_user_context(user_id) if user_id else None
     prefs = get_user_preferences_grouped(user_id) if user_id else None
-
-    lang = context["lang"] if context else "fr"
 
     # ============================================================
     # PRIORITIZATION
@@ -439,13 +424,6 @@ def get_topic_view(
             return score
 
         items = sorted(items, key=score, reverse=True)
-
-    # ============================================================
-    # TRANSLATION
-    # ============================================================
-
-    if lang != "fr":
-        items = translate_feed_items(items, lang)
 
     # ============================================================
     # RETURN
@@ -562,11 +540,7 @@ def get_solution_view(
     # ============================================================
     # USER CONTEXT
     # ============================================================
-
-    context = get_user_context(user_id) if user_id else None
     prefs = get_user_preferences_grouped(user_id) if user_id else None
-
-    lang = context["lang"] if context else "fr"
 
     # ============================================================
     # PRIORITIZATION
@@ -592,13 +566,6 @@ def get_solution_view(
             return score
 
         items = sorted(items, key=score, reverse=True)
-
-    # ============================================================
-    # TRANSLATION
-    # ============================================================
-
-    if lang != "fr":
-        items = translate_feed_items(items, lang)
 
     # ============================================================
     # RETURN
