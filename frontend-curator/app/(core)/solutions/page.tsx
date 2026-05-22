@@ -247,7 +247,15 @@ export default function SolutionsPage() {
      DATA
   --------------------------------------------------------- */
 
-  const grouped = groupByUniverse(solutions, sortMode, favorites);
+  const favoriteSolutions = solutions.filter((s) =>
+    favorites.includes(s.id_solution)
+  );
+
+  const otherSolutions = solutions.filter((s) =>
+    !favorites.includes(s.id_solution)
+  );
+
+  const grouped = groupByUniverse(otherSolutions, sortMode, favorites);
   const hasContent = solutions.length > 0;
 
   /* =========================================================
@@ -291,6 +299,57 @@ export default function SolutionsPage() {
           ))}
         </div>
       </div>
+
+      {/* ⭐ FAVORITES */}
+
+      {!loading && favoriteSolutions.length > 0 && (
+        <section className="space-y-2">
+
+          <h2 className="text-xs font-semibold uppercase text-gray-500">
+            Favoris
+          </h2>
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+
+            {sortSolutions(
+              favoriteSolutions,
+              sortMode,
+              favorites
+            ).map((s) => {
+
+              const isFav =
+                favorites.includes(s.id_solution);
+
+              return (
+                <SolutionCard
+                  key={s.id_solution}
+                  id={s.id_solution}
+                  name={s.name}
+                  visualRectId={s.media_logo_rectangle_id}
+                  nbAnalyses={s.nb_analyses}
+                  delta30d={s.delta_30d}
+                  isPartner={s.is_partner}
+                  isLoading={loadingId === s.id_solution}
+                  onClick={() =>
+                    setLoadingId(s.id_solution)
+                  }
+
+                  isFavorite={isFav}
+
+                  onToggleFavorite={() =>
+                    handleToggleFavorite(
+                      s.id_solution,
+                      isFav
+                    )
+                  }
+                />
+              );
+            })}
+
+          </div>
+
+        </section>
+      )}
 
       {/* CONTENT */}
       {!loading && hasContent &&
