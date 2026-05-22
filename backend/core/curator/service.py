@@ -523,10 +523,6 @@ def get_item_detail(
     if not content:
         return None
 
-    # ========================================================
-    # USER CONTEXT
-    # ========================================================
-
     context = (
         get_user_context(user_id)
         if user_id else None
@@ -538,152 +534,86 @@ def get_item_detail(
     )
 
     # ========================================================
-    # TITLE / EXCERPT
+    # FEED FIELDS
     # ========================================================
 
-    title = (
+    if lang == "en":
 
-        content.get("TITLE_EN")
+        content["title"] = (
+            content.get("TITLE_EN")
+            or content.get("TITLE")
+        )
 
-        if lang == "en"
-
-        else None
-
-    ) or content.get("TITLE")
-
-    excerpt = (
-
-        content.get("EXCERPT_EN")
-
-        if lang == "en"
-
-        else None
-
-    ) or content.get("EXCERPT")
+        content["excerpt"] = (
+            content.get("EXCERPT_EN")
+            or content.get("EXCERPT")
+        )
 
     # ========================================================
-    # DRAWER FIELDS
-    # ========================================================
-
-    content_body = content.get(
-        "CONTENT_BODY"
-    )
-
-    mecanique_expliquee = content.get(
-        "MECANIQUE_EXPLIQUEE"
-    )
-
-    enjeu_strategique = content.get(
-        "ENJEU_STRATEGIQUE"
-    )
-
-    point_de_friction = content.get(
-        "POINT_DE_FRICTION"
-    )
-
-    signal_analytique = content.get(
-        "SIGNAL_ANALYTIQUE"
-    )
-
-    # ========================================================
-    # RUNTIME TRANSLATION
+    # DRAWER DYNAMIC TRANSLATION
     # ========================================================
 
     if lang != "fr":
 
         try:
 
-            content_body = translate_text(
-                content_body or "",
-                lang
-            )
+            content = {
+                **content,
 
-            mecanique_expliquee = translate_text(
-                mecanique_expliquee or "",
-                lang
-            )
+                "content_body": translate_text(
+                    content.get("content_body", ""),
+                    lang
+                ),
 
-            enjeu_strategique = translate_text(
-                enjeu_strategique or "",
-                lang
-            )
+                "mecanique_expliquee": translate_text(
+                    content.get(
+                        "mecanique_expliquee",
+                        ""
+                    ),
+                    lang
+                ),
 
-            point_de_friction = translate_text(
-                point_de_friction or "",
-                lang
-            )
+                "enjeu_strategique": translate_text(
+                    content.get(
+                        "enjeu_strategique",
+                        ""
+                    ),
+                    lang
+                ),
 
-            signal_analytique = translate_text(
-                signal_analytique or "",
-                lang
-            )
+                "point_de_friction": translate_text(
+                    content.get(
+                        "point_de_friction",
+                        ""
+                    ),
+                    lang
+                ),
+
+                "signal_analytique": translate_text(
+                    content.get(
+                        "signal_analytique",
+                        ""
+                    ),
+                    lang
+                ),
+            }
 
         except Exception:
             pass
 
-    # ========================================================
-    # RETURN
-    # ========================================================
-
     return {
-
-        # 🔥 KEEP LEGACY FIELDS
         **content,
 
-        # 🔥 FRONT SAFE FIELDS
-        "title": title,
+        "source_url": item.get("source_url"),
+        "source_title": item.get("source_title"),
 
-        "excerpt": excerpt,
+        "topics": item.get("topics", []),
 
-        "content_body": content_body,
+        "companies": item.get("companies", []),
 
-        "mecanique_expliquee": (
-            mecanique_expliquee
-        ),
-
-        "enjeu_strategique": (
-            enjeu_strategique
-        ),
-
-        "point_de_friction": (
-            point_de_friction
-        ),
-
-        "signal_analytique": (
-            signal_analytique
-        ),
-
-        # ====================================================
-        # META
-        # ====================================================
-
-        "source_url": item.get(
-            "source_url"
-        ),
-
-        "source_title": item.get(
-            "source_title"
-        ),
-
-        # ====================================================
-        # ENTITIES
-        # ====================================================
-
-        "topics": item.get(
-            "topics",
-            []
-        ),
-
-        "companies": item.get(
-            "companies",
-            []
-        ),
-
-        "solutions": item.get(
-            "solutions",
-            []
-        ),
+        "solutions": item.get("solutions", []),
     }
+
 
 # ============================================================
 # STATS
