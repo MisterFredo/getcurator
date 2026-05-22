@@ -276,6 +276,46 @@ export default function TranslationPage() {
     setTranslating(false);
   }
 
+  async function translateVisible() {
+
+  try {
+
+    setTranslating(true);
+
+    await api.post(
+      "/translation/batch",
+      {
+        content_ids:
+          paginatedContents.map(
+            (c) => c.id_content
+          ),
+
+        target_lang: "en",
+
+        fields: [
+          "TITLE",
+          "EXCERPT",
+        ],
+
+        only_missing: false,
+      }
+    );
+
+    await load();
+
+  } catch (e) {
+
+    console.error(e);
+
+    alert(
+      "Erreur batch visible"
+    );
+
+  }
+
+  setTranslating(false);
+}
+
   async function translateMissing() {
 
     try {
