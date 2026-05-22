@@ -114,7 +114,9 @@ def search_filters(
         n.ID_NEWS as id,
         'news' as type,
         n.TITLE,
+        n.TITLE_EN,
         n.EXCERPT,
+        n.EXCERPT_EN,
         n.PUBLISHED_AT
     FROM `{TABLE_NEWS}` n
     WHERE n.STATUS = 'PUBLISHED'
@@ -329,7 +331,18 @@ def get_feed_for_user(
     # TRANSLATION
     # --------------------------------------------------------
 
-    if lang != "fr":
-        items = translate_feed_items(items, lang)
+    if lang == "en":
+
+        for item in items:
+
+            item["TITLE"] = (
+                item.get("TITLE_EN")
+                or item.get("TITLE")
+            )
+
+            item["EXCERPT"] = (
+                item.get("EXCERPT_EN")
+                or item.get("EXCERPT")
+            )
 
     return items
