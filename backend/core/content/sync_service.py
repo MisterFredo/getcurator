@@ -336,7 +336,9 @@ def rebuild_content_enriched_row(id_content: str):
             id_content,
             source_id,
             title,
+            title_en,
             excerpt,
+            excerpt_en,
             content_body,
             signal_analytique,
             mecanique_expliquee,
@@ -366,7 +368,9 @@ def rebuild_content_enriched_row(id_content: str):
             c.ID_CONTENT AS id_content,
             c.SOURCE_ID AS source_id,
             c.TITLE AS title,
+            c.TITLE_EN AS title_en,
             c.EXCERPT AS excerpt,
+            c.EXCERPT_EN AS excerpt_en,
             c.CONTENT_BODY AS content_body,
             c.SIGNAL_ANALYTIQUE AS signal_analytique,
             c.MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
@@ -475,9 +479,6 @@ def rebuild_content_enriched_row(id_content: str):
         "✅ CONTENT_ENRICHED REBUILT:",
         id_content,
     )
-# ============================================================
-# FULL CONTENT SYNC
-# ============================================================
 
 # ============================================================
 # FULL CONTENT SYNC
