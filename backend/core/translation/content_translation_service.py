@@ -179,7 +179,7 @@ def translate_contents_batch(
 
     fields: Optional[List[str]] = None,
 
-    limit: int = 1000,
+    limit: int = 10000,
 
     only_missing: bool = True,
 
