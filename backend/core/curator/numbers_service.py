@@ -71,7 +71,9 @@ def search_curator_numbers(
         AND (
             -- 🔵 TEXTE
             LOWER(c.title) LIKE LOWER(CONCAT('%', @query, '%'))
+            OR LOWER(c.title_en) LIKE LOWER(CONCAT('%', @query, '%'))
             OR LOWER(c.excerpt) LIKE LOWER(CONCAT('%', @query, '%'))
+            OR LOWER(c.excerpt_en) LIKE LOWER(CONCAT('%', @query, '%'))
 
             -- 🟢 COMPANY
             OR EXISTS (
