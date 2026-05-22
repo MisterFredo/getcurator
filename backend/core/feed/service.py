@@ -5,7 +5,6 @@ from utils.bigquery_utils import query_bq
 
 from core.user.user_service import get_user_context
 from core.user.user_preferences_service import get_user_preferences_grouped
-from core.translation.service import translate_feed_items
 
 
 TABLE_NEWS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS"
@@ -40,7 +39,9 @@ def search_text(
         n.ID_NEWS as id,
         'news' as type,
         n.TITLE,
+        n.TITLE_EN,
         n.EXCERPT,
+        n.EXCERPT_EN,
         n.PUBLISHED_AT
     FROM `{TABLE_NEWS}` n
     WHERE n.STATUS = 'PUBLISHED'
@@ -52,7 +53,9 @@ def search_text(
         c.ID_CONTENT as id,
         'analysis' as type,
         c.TITLE,
+        c.TITLE_EN,
         c.EXCERPT,
+        c.EXCERPT_EN,
         c.PUBLISHED_AT
     FROM `{TABLE_CONTENT}` c
     WHERE c.STATUS = 'PUBLISHED'
@@ -143,7 +146,9 @@ def search_filters(
         c.ID_CONTENT as id,
         'analysis' as type,
         c.TITLE,
+        c.TITLE_EN,
         c.EXCERPT,
+        c.EXCERPT_EN,
         c.PUBLISHED_AT
     FROM `{TABLE_CONTENT}` c
     WHERE c.STATUS = 'PUBLISHED'
