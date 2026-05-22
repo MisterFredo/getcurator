@@ -63,7 +63,11 @@ def _get_cached_translation(text: str, lang: str) -> Optional[str]:
 
     return None
 
-def _store_translation(text: str, lang: str, translated: str):
+def _store_translation(
+    text: str,
+    lang: str,
+    translated: str
+):
 
     hash_key = _hash_text(text, lang)
 
@@ -76,12 +80,17 @@ def _store_translation(text: str, lang: str, translated: str):
             TRANSLATED_TEXT,
             CREATED_AT
         )
-        SELECT
-            @hash,
-            @text,
-            @lang,
-            @translated,
-            CURRENT_TIMESTAMP()
+
+        SELECT *
+        FROM (
+            SELECT
+                @hash AS HASH_KEY,
+                @text AS SOURCE_TEXT,
+                @lang AS TARGET_LANG,
+                @translated AS TRANSLATED_TEXT,
+                CURRENT_TIMESTAMP() AS CREATED_AT
+        )
+
         WHERE NOT EXISTS (
             SELECT 1
             FROM `{TABLE_TRANSLATION_CACHE}`
@@ -95,8 +104,6 @@ def _store_translation(text: str, lang: str, translated: str):
             "translated": translated,
         }
     )
-
-
 # ============================================================
 # CORE TRANSLATION (TEXT)
 # ============================================================
