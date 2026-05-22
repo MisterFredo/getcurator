@@ -31,13 +31,11 @@ type Concept = {
 type AnalysisData = {
   id_content: string;
   title: string;
-  title_en: string;
 
   source_url?: string;
   source_title?: string;
 
   excerpt?: string;
-  excerpt_en?: string;
   content_body?: string;
 
   mecanique_expliquee?: string;
@@ -118,14 +116,6 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
     );
   }
 
-  const title =
-    data.title_en ||
-    data.title;
-
-  const excerpt =
-    data.excerpt_en ||
-    data.excerpt;
-
   const badges = [
     ...(data.companies ?? []).map((c) => ({
       label: c.name,
@@ -177,7 +167,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 space-y-3">
           <div className="flex justify-between items-start">
             <h1 className="text-xl font-semibold text-gray-900 max-w-xl">
-              {title}
+              {data.title}
             </h1>
 
             <button onClick={close}>
@@ -227,7 +217,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
           {data.excerpt && (
             <p className="text-base font-medium text-gray-800 max-w-2xl">
-              {excerpt}
+              {data.excerpt}
             </p>
           )}
 
