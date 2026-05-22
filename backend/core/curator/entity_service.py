@@ -56,6 +56,7 @@ def _get_entity_feed(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
+    lang: str = "fr",
 ) -> List[Dict]:
 
     # ============================================================
@@ -176,7 +177,12 @@ def _get_entity_feed(
 
     rows = query_bq(sql, query_params)
 
-    return [_map_feed_row(r) for r in rows]
+    return [
+        _map_feed_row(r, lang)
+        for r in rows
+    ]
+
+
 # ============================================================
 # COMPANY
 # ============================================================
@@ -186,7 +192,8 @@ def get_company_feed(
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
-    universe_id: Optional[str] = None
+    universe_id: Optional[str] = None,
+    lang: str = "fr",
 ) -> List[Dict]:
 
     return _get_entity_feed(
@@ -205,7 +212,8 @@ def get_company_feed(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
 
@@ -246,6 +254,20 @@ def get_company_view(
     stats = stats_rows[0] if stats_rows else {}
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = (
+        get_user_context(user_id)
+        if user_id else None
+    )
+
+    lang = (
+        context["lang"]
+        if context else "fr"
+    )
+
+    # ============================================================
     # ITEMS
     # ============================================================
 
@@ -254,14 +276,19 @@ def get_company_view(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
     # ============================================================
     # USER CONTEXT
     # ============================================================
-    prefs = get_user_preferences_grouped(user_id) if user_id else None
-    
+
+    prefs = (
+        get_user_preferences_grouped(user_id)
+        if user_id else None
+    )
+
     # ============================================================
     # PRIORITIZATION (PREFERENCES)
     # ============================================================
@@ -301,6 +328,7 @@ def get_company_view(
         "items": items,
     }
 
+
 # ============================================================
 # TOPIC
 # ============================================================
@@ -310,7 +338,8 @@ def get_topic_feed(
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
-    universe_id: Optional[str] = None
+    universe_id: Optional[str] = None,
+    lang: str = "fr",
 ) -> List[Dict]:
 
     return _get_entity_feed(
@@ -327,7 +356,8 @@ def get_topic_feed(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
 
@@ -384,6 +414,20 @@ def get_topic_view(
     stats = stats_rows[0] if stats_rows else {}
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = (
+        get_user_context(user_id)
+        if user_id else None
+    )
+
+    lang = (
+        context["lang"]
+        if context else "fr"
+    )
+
+    # ============================================================
     # ITEMS
     # ============================================================
 
@@ -392,13 +436,18 @@ def get_topic_view(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
     # ============================================================
     # USER CONTEXT
     # ============================================================
-    prefs = get_user_preferences_grouped(user_id) if user_id else None
+
+    prefs = (
+        get_user_preferences_grouped(user_id)
+        if user_id else None
+    )
 
     # ============================================================
     # PRIORITIZATION
@@ -439,6 +488,7 @@ def get_topic_view(
         "items": items
     }
 
+
 # ============================================================
 # SOLUTION
 # ============================================================
@@ -448,7 +498,8 @@ def get_solution_feed(
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
-    universe_id: Optional[str] = None
+    universe_id: Optional[str] = None,
+    lang: str = "fr",
 ) -> List[Dict]:
 
     return _get_entity_feed(
@@ -465,7 +516,8 @@ def get_solution_feed(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
 
@@ -526,6 +578,20 @@ def get_solution_view(
     stats = stats_rows[0] if stats_rows else {}
 
     # ============================================================
+    # USER CONTEXT
+    # ============================================================
+
+    context = (
+        get_user_context(user_id)
+        if user_id else None
+    )
+
+    lang = (
+        context["lang"]
+        if context else "fr"
+    )
+
+    # ============================================================
     # ITEMS
     # ============================================================
 
@@ -534,13 +600,18 @@ def get_solution_view(
         limit=limit,
         offset=offset,
         user_id=user_id,
-        universe_id=universe_id
+        universe_id=universe_id,
+        lang=lang,
     )
 
     # ============================================================
     # USER CONTEXT
     # ============================================================
-    prefs = get_user_preferences_grouped(user_id) if user_id else None
+
+    prefs = (
+        get_user_preferences_grouped(user_id)
+        if user_id else None
+    )
 
     # ============================================================
     # PRIORITIZATION
@@ -580,6 +651,7 @@ def get_solution_view(
         "delta_30d": stats.get("DELTA_30D", 0),
         "items": items
     }
+
 
 # ============================================================
 # DEDUPE HELPERS
@@ -631,7 +703,10 @@ def _dedupe_entities(
 # MAPPER
 # ============================================================
 
-def _map_feed_row(r: Dict):
+def _map_feed_row(
+    r: Dict,
+    lang: str = "fr"
+):
 
     def fmt(dt):
         return dt.isoformat() if dt else None
@@ -653,10 +728,28 @@ def _map_feed_row(r: Dict):
         # CONTENT
         # ========================================================
 
-        "title": r.get("title"),
+        "title": (
+
+            r.get("title_en")
+
+            if lang == "en"
+
+            else None
+
+        ) or r.get("title"),
+
         "title_en": r.get("title_en"),
 
-        "excerpt": r.get("excerpt"),
+        "excerpt": (
+
+            r.get("excerpt_en")
+
+            if lang == "en"
+
+            else None
+
+        ) or r.get("excerpt"),
+
         "excerpt_en": r.get("excerpt_en"),
 
         "published_at": fmt(
