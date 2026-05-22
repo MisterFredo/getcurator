@@ -336,12 +336,20 @@ export default function FeedList({
                   }
 
                   // 🔥 NEW
-                  isFavorite={isFavorite}
-
                   onToggleFavorite={() => {
-                    if (!companyId || !onToggleFavorite) return;
+                    if (!onToggleFavorite) return;
 
-                    onToggleFavorite(companyId, isFavorite);
+                    const targetId =
+                      companyIds[0]
+                      || topicIds[0]
+                      || solutionIds[0];
+
+                    if (!targetId) return;
+
+                    onToggleFavorite(
+                      targetId,
+                      isFavorite
+                    );
                   }}
                 />
 
