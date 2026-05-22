@@ -44,10 +44,6 @@ from core.user.user_service import (
     get_user_context
 )
 
-from core.translation.service import (
-    translate_feed_items
-)
-
 # ============================================================
 # 🔐 AUTH
 # ============================================================
