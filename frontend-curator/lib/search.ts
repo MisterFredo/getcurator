@@ -38,8 +38,10 @@ function mapItem(row: any): FeedItem {
       row.primary_company_logo,
 
     title: row.title,
+    title_en: row.title_en,
 
     excerpt: row.excerpt,
+    excerpt_en: row.excerpt_en,
 
     // 🔥 NEW
     content_body:
