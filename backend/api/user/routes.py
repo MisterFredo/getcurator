@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import Optional
 
 from api.user.models import (
@@ -19,80 +19,7 @@ from core.user.user_service import (
     get_user_context,
 )
 
-from core.user.user_preferences_service import (
-    get_user_preferences,
-    add_user_preference,
-    remove_user_preference,
-)
-
-from utils.auth import get_user_id_from_request
-
 router = APIRouter()
-
-
-# =========================================================
-# USER PREFERENCES
-# =========================================================
-
-@router.get("/preferences")
-def get_preferences(request: Request):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        return {
-            "preferences": {
-                "COMPANY": [],
-                "TOPIC": [],
-                "SOLUTION": [],
-            }
-        }
-
-    from core.user.user_preferences_service import get_user_preferences_grouped
-
-    prefs = get_user_preferences_grouped(user_id)
-
-    return {
-        "preferences": prefs or {
-            "COMPANY": [],
-            "TOPIC": [],
-            "SOLUTION": [],
-        }
-    }
-
-
-@router.post("/preferences/add")
-def add_preference(request: Request, payload: dict):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    add_user_preference(
-        user_id,
-        payload.get("type"),
-        payload.get("value_id")
-    )
-
-    return {"status": "ok"}
-
-
-@router.post("/preferences/remove")
-def remove_preference(request: Request, payload: dict):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    remove_user_preference(
-        user_id,
-        payload.get("type"),
-        payload.get("value_id")
-    )
-
-    return {"status": "ok"}
 
 # =========================================================
 # CREATE USER
@@ -125,8 +52,8 @@ def bootstrap_admin(secret: str):
         email="mister.fredo@gmail.com",
         password="felixmax55",
         name="Admin Fredo",
-        company="Curator",
-        language="fr",
+        company="Curator",          # 🔥 AJOUT
+        language="fr",              # 🔥 AJOUT
         role="admin",
         universes=[]
     )
@@ -137,7 +64,6 @@ def bootstrap_admin(secret: str):
         "status": "created",
         "user_id": user_id
     }
-
 # =========================================================
 # LIST USERS
 # =========================================================
@@ -162,7 +88,7 @@ def update_user_route(payload: UpdateUserPayload):
 
 
 # =========================================================
-# LOGIN
+# LOGIN (VERSION SIMPLE - SANS JWT)
 # =========================================================
 
 @router.post("/login")
@@ -179,17 +105,14 @@ def login(payload: LoginPayload):
     universes = get_user_universes(user["ID_USER"])
 
     return {
-        "token": user["ID_USER"],
+        "token": user["ID_USER"],  # 👈 seule vraie modif utile
         "user_id": user["ID_USER"],
         "email": user["EMAIL"],
         "role": user.get("ROLE", "user"),
-        "language": user.get("LANGUAGE", "fr"),  # 🔥 AJOUT
         "universes": universes,
     }
-
-
 # =========================================================
-# GET USER (BY ID)
+# GET USER
 # =========================================================
 
 @router.get("/{user_id}")
@@ -208,27 +131,7 @@ def get_user(user_id: str):
 
 
 # =========================================================
-# GET CURRENT USER (ME)
-# =========================================================
-
-@router.get("/me")
-def get_me(request: Request):
-
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        return {"user": None}
-
-    user = get_user_by_id(user_id)
-
-    if not user:
-        return {"user": None}
-
-    return {"user": user}
-
-
-# =========================================================
-# USER CONTEXT
+# USER CONTEXT (🔥 PLUS DE COOKIES)
 # =========================================================
 
 @router.get("/context")
@@ -236,23 +139,16 @@ def get_context(request: Request):
 
     user_id = get_user_id_from_request(request)
 
-    # 🔥 MODE PUBLIC
     if not user_id:
-        return {
-            "universes": [],
-            "preferences": {
-                "COMPANY": [],
-                "TOPIC": [],
-                "SOLUTION": [],
-            }
-        }
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     context = get_user_context(user_id)
 
     if not context:
-        return {}
+        raise HTTPException(status_code=404, detail="User not found or inactive")
 
     return context
+
 
 # =========================================================
 # ASSIGN UNIVERS
@@ -266,6 +162,3 @@ def assign_universes_route(payload: AssignUniversePayload):
         "status": "ok",
         "assigned": payload.universes,
     }
-
-
-
