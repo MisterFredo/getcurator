@@ -69,9 +69,12 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
   const [title, setTitle] = useState("");
   const [title_en, setTitle_en] = useState("");
+
   const [excerpt, setExcerpt] = useState("");
   const [excerpt_en, setExcerpt_en] = useState("");
+
   const [contentBody, setContentBody] = useState("");
+
   const [chiffres, setChiffres] = useState<string[]>([]);
 
   const [mecanique, setMecanique] = useState("");
@@ -84,7 +87,9 @@ export default function ContentStudio({ mode, contentId }: Props) {
   // =========================
 
   const [status, setStatus] = useState("DRAFT");
-  const [publishing, setPublishing] = useState(false);
+
+  const [publishing, setPublishing] =
+    useState(false);
 
   const [publishMode, setPublishMode] =
     useState<"NOW" | "SCHEDULE">("NOW");
@@ -131,7 +136,10 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
     async function load() {
 
-      const res = await api.get(`/content/${contentId}`);
+      const res = await api.get(
+        `/content/${contentId}`
+      );
+
       const c = res.content;
 
       setContentType(
@@ -145,30 +153,71 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
       setTitle(c.title || "");
       setTitle_en(c.title_en || "");
+
       setExcerpt(c.excerpt || "");
       setExcerpt_en(c.excerpt_en || "");
+
       setContentBody(c.content_body || "");
+
       setChiffres(c.chiffres || []);
 
       setActeursRaw(c.acteurs_cites || []);
+
       setTopicsRaw(c.topics_llm || []);
+
       setConceptsRaw(c.concepts_llm || []);
+
       setSolutionsRaw(c.solutions_llm || []);
 
-      setMecanique(c.mecanique_expliquee || "");
-      setEnjeu(c.enjeu_strategique || "");
-      setFriction(c.point_de_friction || "");
-      setSignal(c.signal_analytique || "");
+      setMecanique(
+        c.mecanique_expliquee || ""
+      );
 
-      setSourcePublishedAt(c.source_published_at || null);
+      setEnjeu(
+        c.enjeu_strategique || ""
+      );
+
+      setFriction(
+        c.point_de_friction || ""
+      );
+
+      setSignal(
+        c.signal_analytique || ""
+      );
+
+      setSourcePublishedAt(
+        c.source_published_at || null
+      );
 
       // STRUCTURED IDS
-      setTopics((c.topics || []).map((x: any) => x.id_topic));
-      setCompanies((c.companies || []).map((x: any) => x.id_company));
-      setSolutions((c.solutions || []).map((x: any) => x.id_solution));
-      setConcepts((c.concepts || []).map((x: any) => x.id_concept));
 
-      setStatus(c.status || "DRAFT");
+      setTopics(
+        (c.topics || []).map(
+          (x: any) => x.id_topic
+        )
+      );
+
+      setCompanies(
+        (c.companies || []).map(
+          (x: any) => x.id_company
+        )
+      );
+
+      setSolutions(
+        (c.solutions || []).map(
+          (x: any) => x.id_solution
+        )
+      );
+
+      setConcepts(
+        (c.concepts || []).map(
+          (x: any) => x.id_concept
+        )
+      );
+
+      setStatus(
+        c.status || "DRAFT"
+      );
     }
 
     load();
@@ -189,36 +238,56 @@ export default function ContentStudio({ mode, contentId }: Props) {
       id_primary_company: primaryCompanyId,
 
       source_id: sourceId,
+
       source_text: sourceText,
-      source_published_at: sourcePublishedAt,
+
+      source_published_at:
+        sourcePublishedAt,
 
       title,
       title_en,
+
       excerpt,
       excerpt_en,
+
       content_body: contentBody,
 
       chiffres,
+
       acteurs_cites: acteursRaw,
 
       topics_llm: topicsRaw,
+
       concepts_llm: conceptsRaw,
+
       solutions_llm: solutionsRaw,
 
       mecanique_expliquee: mecanique,
+
       enjeu_strategique: enjeu,
+
       point_de_friction: friction,
+
       signal_analytique: signal,
     };
 
     if (!internalContentId) {
 
-      const res = await api.post("/content/create", payload);
-      setInternalContentId(res.id_content);
+      const res = await api.post(
+        "/content/create",
+        payload
+      );
+
+      setInternalContentId(
+        res.id_content
+      );
 
     } else {
 
-      await api.put(`/content/update/${internalContentId}`, payload);
+      await api.put(
+        `/content/update/${internalContentId}`,
+        payload
+      );
 
     }
 
@@ -233,18 +302,22 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
     if (!internalContentId) return;
 
-    await api.put(`/content/update/${internalContentId}`, {
+    await api.put(
+      `/content/update/${internalContentId}`,
+      {
 
-      content_type: contentType,
+        content_type: contentType,
 
-      // 🔥 NEW
-      id_primary_company: primaryCompanyId,
+        // 🔥 NEW
+        id_primary_company:
+          primaryCompanyId,
 
-      topics,
-      companies,
-      concepts,
-      solutions,
-    });
+        topics,
+        companies,
+        concepts,
+        solutions,
+      }
+    );
 
     alert("Validation sauvegardée");
   }
@@ -267,15 +340,20 @@ export default function ContentStudio({ mode, contentId }: Props) {
           publish_at:
             publishMode === "NOW"
               ? null
-              : new Date(publishAt).toISOString(),
+              : new Date(
+                  publishAt
+                ).toISOString(),
         }
       );
 
-      setStatus(res.published_status);
+      setStatus(
+        res.published_status
+      );
 
     } catch (e) {
 
       console.error(e);
+
       alert("Erreur publication");
 
     }
@@ -304,21 +382,35 @@ export default function ContentStudio({ mode, contentId }: Props) {
           <div className="flex gap-6">
 
             <label className="flex items-center gap-2 text-sm">
+
               <input
                 type="radio"
-                checked={contentType === "ANALYSIS"}
-                onChange={() => setContentType("ANALYSIS")}
+                checked={
+                  contentType === "ANALYSIS"
+                }
+                onChange={() =>
+                  setContentType("ANALYSIS")
+                }
               />
+
               Analysis
+
             </label>
 
             <label className="flex items-center gap-2 text-sm">
+
               <input
                 type="radio"
-                checked={contentType === "NEWS"}
-                onChange={() => setContentType("NEWS")}
+                checked={
+                  contentType === "NEWS"
+                }
+                onChange={() =>
+                  setContentType("NEWS")
+                }
               />
+
               News
+
             </label>
 
           </div>
@@ -363,15 +455,27 @@ export default function ContentStudio({ mode, contentId }: Props) {
         </div>
 
         {!internalContentId && (
+
           <StepSource
             contentType={contentType}
             primaryCompanyId={primaryCompanyId}
-            onCreate={({ source_id, text, date_source }) => {
+
+            onCreate={({
+              source_id,
+              text,
+              date_source
+            }) => {
+
               setSourceId(source_id);
+
               setSourceText(text);
-              setSourcePublishedAt(date_source || null);
+
+              setSourcePublishedAt(
+                date_source || null
+              );
             }}
           />
+
         )}
 
         <div className="bg-white border rounded p-4 space-y-4">
@@ -382,11 +486,28 @@ export default function ContentStudio({ mode, contentId }: Props) {
               Title
             </label>
 
-              <input
+            <input
               type="text"
               value={title}
               onChange={(e) =>
                 setTitle(e.target.value)
+              }
+              className="border rounded px-3 py-2 w-full text-sm"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+              Title EN
+            </label>
+
+            <input
+              type="text"
+              value={title_en}
+              onChange={(e) =>
+                setTitle_en(e.target.value)
               }
               className="border rounded px-3 py-2 w-full text-sm"
             />
@@ -419,33 +540,68 @@ export default function ContentStudio({ mode, contentId }: Props) {
         </div>
 
         <StepSummary
+
           sourceId={sourceId}
+
           sourceText={sourceText}
+
           contentType={contentType}
+
+          title={title}
+          title_en={title_en}
 
           excerpt={excerpt}
           excerpt_en={excerpt_en}
+
           contentBody={contentBody}
 
           chiffres={chiffres}
 
           acteurs={acteursRaw}
+
           concepts={conceptsRaw}
+
           solutions={solutionsRaw}
+
           topics={topicsRaw}
 
           mecanique={mecanique}
+
           enjeu={enjeu}
+
           friction={friction}
+
           signal={signal}
 
           onChange={(d) => {
 
-            if (d.excerpt !== undefined) setExcerpt(d.excerpt);
-            if (d.excerpt_en !== undefined) setExcerpt(d.excerpt_en);
-            if (d.contentBody !== undefined) setContentBody(d.contentBody);
-            if (d.chiffres !== undefined) setChiffres(d.chiffres);
-            if (d.acteurs !== undefined) setActeursRaw(d.acteurs);
+            if (d.title !== undefined) {
+              setTitle(d.title);
+            }
+
+            if (d.title_en !== undefined) {
+              setTitle_en(d.title_en);
+            }
+
+            if (d.excerpt !== undefined) {
+              setExcerpt(d.excerpt);
+            }
+
+            if (d.excerpt_en !== undefined) {
+              setExcerpt_en(d.excerpt_en);
+            }
+
+            if (d.contentBody !== undefined) {
+              setContentBody(d.contentBody);
+            }
+
+            if (d.chiffres !== undefined) {
+              setChiffres(d.chiffres);
+            }
+
+            if (d.acteurs !== undefined) {
+              setActeursRaw(d.acteurs);
+            }
 
             if (d.concepts !== undefined) {
               setConceptsRaw(d.concepts);
@@ -456,26 +612,44 @@ export default function ContentStudio({ mode, contentId }: Props) {
             }
 
             if (d.topics !== undefined) {
+
               setTopicsRaw(d.topics);
+
               setTopics(d.topics);
+
             }
 
-            if (d.mecanique !== undefined) setMecanique(d.mecanique);
-            if (d.enjeu !== undefined) setEnjeu(d.enjeu);
-            if (d.friction !== undefined) setFriction(d.friction);
-            if (d.signal !== undefined) setSignal(d.signal);
+            if (d.mecanique !== undefined) {
+              setMecanique(d.mecanique);
+            }
+
+            if (d.enjeu !== undefined) {
+              setEnjeu(d.enjeu);
+            }
+
+            if (d.friction !== undefined) {
+              setFriction(d.friction);
+            }
+
+            if (d.signal !== undefined) {
+              setSignal(d.signal);
+            }
           }}
 
           onNext={saveEditorial}
         />
 
         {internalContentId && (
+
           <button
-            onClick={() => setPreviewOpen(true)}
+            onClick={() =>
+              setPreviewOpen(true)
+            }
             className="px-4 py-2 bg-gray-800 text-white rounded text-sm"
           >
             Aperçu
           </button>
+
         )}
 
       </div>
@@ -489,23 +663,46 @@ export default function ContentStudio({ mode, contentId }: Props) {
           <div className="bg-white border rounded p-5 shadow-sm space-y-6">
 
             <StepValidation
+
               topicsRaw={topicsRaw}
+
               acteursRaw={acteursRaw}
+
               conceptsRaw={conceptsRaw}
+
               solutionsRaw={solutionsRaw}
 
               topics={topics}
+
               companies={companies}
+
               concepts={concepts}
+
               solutions={solutions}
+
               primaryCompanyId={primaryCompanyId}
-              onPrimaryCompanyChange={setPrimaryCompanyId}
+
+              onPrimaryCompanyChange={
+                setPrimaryCompanyId
+              }
 
               onChange={(d) => {
-                if (d.topics !== undefined) setTopics(d.topics);
-                if (d.companies !== undefined) setCompanies(d.companies);
-                if (d.concepts !== undefined) setConcepts(d.concepts);
-                if (d.solutions !== undefined) setSolutions(d.solutions);
+
+                if (d.topics !== undefined) {
+                  setTopics(d.topics);
+                }
+
+                if (d.companies !== undefined) {
+                  setCompanies(d.companies);
+                }
+
+                if (d.concepts !== undefined) {
+                  setConcepts(d.concepts);
+                }
+
+                if (d.solutions !== undefined) {
+                  setSolutions(d.solutions);
+                }
               }}
 
               onSave={saveValidation}
@@ -514,38 +711,60 @@ export default function ContentStudio({ mode, contentId }: Props) {
             <div className="border-t pt-4 space-y-4">
 
               <div className="text-sm">
-                Statut : <strong>{status}</strong>
+                Statut :
+                {" "}
+                <strong>{status}</strong>
               </div>
 
               <div className="space-y-2 text-sm">
 
                 <label className="flex gap-2">
+
                   <input
                     type="radio"
-                    checked={publishMode === "NOW"}
-                    onChange={() => setPublishMode("NOW")}
+                    checked={
+                      publishMode === "NOW"
+                    }
+                    onChange={() =>
+                      setPublishMode("NOW")
+                    }
                   />
+
                   Publier maintenant
+
                 </label>
 
                 <label className="flex gap-2">
+
                   <input
                     type="radio"
-                    checked={publishMode === "SCHEDULE"}
-                    onChange={() => setPublishMode("SCHEDULE")}
+                    checked={
+                      publishMode === "SCHEDULE"
+                    }
+                    onChange={() =>
+                      setPublishMode("SCHEDULE")
+                    }
                   />
+
                   Planifier
+
                 </label>
 
               </div>
 
               {publishMode === "SCHEDULE" && (
+
                 <input
                   type="datetime-local"
                   value={publishAt}
-                  onChange={(e) => setPublishAt(e.target.value)}
+                  onChange={(e) =>
+                    setPublishAt(
+                      e.target.value
+                    )
+                  }
                   className="border rounded p-2 w-full text-sm"
                 />
+
               )}
 
               <button
@@ -553,7 +772,9 @@ export default function ContentStudio({ mode, contentId }: Props) {
                 disabled={publishing}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded text-sm"
               >
-                {publishing ? "Publication..." : "Publier"}
+                {publishing
+                  ? "Publication..."
+                  : "Publier"}
               </button>
 
             </div>
@@ -567,10 +788,14 @@ export default function ContentStudio({ mode, contentId }: Props) {
       {/* PREVIEW */}
 
       {previewOpen && internalContentId && (
+
         <StepPreview
           contentId={internalContentId}
-          onClose={() => setPreviewOpen(false)}
+          onClose={() =>
+            setPreviewOpen(false)
+          }
         />
+
       )}
 
     </div>
