@@ -85,7 +85,7 @@ def _store_translation(text: str, lang: str, translated: str):
         WHERE NOT EXISTS (
             SELECT 1
             FROM `{TABLE_TRANSLATION_CACHE}`
-            WHERE HASH = @hash
+            WHERE HASH_KEY = @hash
         )
         """,
         {
