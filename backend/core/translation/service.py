@@ -83,18 +83,22 @@ def _store_translation(
 
         SELECT *
         FROM (
+
             SELECT
                 @hash AS HASH_KEY,
                 @text AS SOURCE_TEXT,
                 @lang AS TARGET_LANG,
                 @translated AS TRANSLATED_TEXT,
                 CURRENT_TIMESTAMP() AS CREATED_AT
+
         )
 
         WHERE NOT EXISTS (
+
             SELECT 1
             FROM `{TABLE_TRANSLATION_CACHE}`
             WHERE HASH_KEY = @hash
+
         )
         """,
         {
@@ -104,6 +108,8 @@ def _store_translation(
             "translated": translated,
         }
     )
+
+
 # ============================================================
 # CORE TRANSLATION (TEXT)
 # ============================================================
@@ -169,126 +175,6 @@ Return ONLY the translated text.
         logger.exception("Translation error")
         return text
 
-
-# ============================================================
-# BULK TRANSLATION (FEED)
-# ============================================================
-
-def translate_feed_items(items: List[Dict], lang: str) -> List[Dict]:
-
-    if lang == "fr":
-        return items
-
-    translated_items = []
-
-    for item in items:
-
-        try:
-            translated_title = translate_text(
-                item.get("TITLE", ""),
-                lang
-            )
-
-            translated_excerpt = translate_text(
-                item.get("EXCERPT", ""),
-                lang
-            )
-
-        except Exception:
-            logger.exception("Translation error")
-            translated_title = item.get("TITLE", "")
-            translated_excerpt = item.get("EXCERPT", "")
-
-        translated_items.append({
-            **item,
-            "TITLE": translated_title,
-            "EXCERPT": translated_excerpt,
-        })
-
-    return translated_items
-
-
-# ============================================================
-# ADVANCED (OPTIONAL JSON MODE - FUTURE)
-# ============================================================
-
-def translate_feed_items_batch(items: List[Dict], lang: str) -> List[Dict]:
-    """
-    Version optimisée (1 appel LLM pour plusieurs items)
-    À utiliser plus tard si besoin de perf / coût
-    """
-
-    if lang == "fr" or not items:
-        return items
-
-    payload = [
-        {
-            "id": item.get("id"),
-            "title": item.get("TITLE"),
-            "excerpt": item.get("EXCERPT"),
-        }
-        for item in items
-    ]
-
-    prompt = f"""
-You are a professional translator.
-
-Translate all items into {lang}.
-
-STRICT RULES:
-- Do NOT summarize
-- Keep meaning EXACT
-- Keep formatting
-- Keep IDs unchanged
-- Do NOT invent content
-
-INPUT:
-{json.dumps(payload, ensure_ascii=False)}
-
-OUTPUT:
-Return STRICT JSON:
-[
-  {{
-    "id": "...",
-    "title": "...",
-    "excerpt": "..."
-  }}
-]
-"""
-
-    raw = run_llm(prompt)
-
-    if not raw:
-        return items
-
-    try:
-        match = re.search(r"\[[\s\S]*\]", raw)
-        if not match:
-            raise ValueError("JSON not found")
-
-        translated = json.loads(match.group(0))
-
-        mapped = {item["id"]: item for item in items}
-
-        result = []
-
-        for t in translated:
-            original = mapped.get(t["id"])
-
-            if not original:
-                continue
-
-            result.append({
-                **original,
-                "TITLE": t.get("title") or original.get("TITLE"),
-                "EXCERPT": t.get("excerpt") or original.get("EXCERPT"),
-            })
-
-        return result
-
-    except Exception:
-        logger.exception("Batch translation parsing error")
-        return items
 # ============================================================
 # BULK TRANSLATION (FEED)
 # ============================================================
