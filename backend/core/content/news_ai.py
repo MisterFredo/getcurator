@@ -218,34 +218,39 @@ FORMAT STRICT :
   "chiffres": []
 }}
 
-================ CONTRAINTES ================
+================ FORMAT OBLIGATOIRE ================
+
+Tu dois IMPÉRATIVEMENT retourner TOUTES les sections suivantes.
+Aucune section ne doit être omise.
+Les headers doivent être EXACTEMENT respectés.
+
+FORMAT STRICT :
 
 TITLE
-- 70 à 120 caractères
-- Informatif et factuel
-- Sans point d’exclamation
-- Sans superlatif
-- Refléter le signal principal
+(Titre factuel et informatif en français.)
 
 TITLE_EN
-- Traduction anglaise professionnelle du TITLE
-- Naturelle et fluide
-- Sans résumé
-- Même niveau d’information
+(Traduction anglaise professionnelle et naturelle du TITLE.
+Ne pas résumer.
+Ne pas reformuler.)
 
 EXCERPT
-- 3 à 4 phrases
-- 300 à 500 caractères
-- Ne pas répéter le titre
-- Chaque phrase doit apporter une information nouvelle
-- Aucun adjectif promotionnel
-- Aucun remplissage vide
+(3 phrases synthétiques en français permettant de comprendre rapidement le sujet et son intérêt sans être général ou avec des formules clichés.)
 
 EXCERPT_EN
-- Traduction anglaise professionnelle du EXCERPT
-- Naturelle et fluide
-- Sans résumé
-- Même niveau d’information
+(Traduction anglaise professionnelle et naturelle du EXCERPT.
+Ne pas résumer.
+Ne pas reformuler.)
+
+IMPORTANT :
+- TITLE_EN doit toujours être rempli
+- EXCERPT_EN doit toujours être rempli
+- Même si le contenu source est déjà en anglais
+- Les headers doivent être exactement :
+  TITLE
+  TITLE_EN
+  EXCERPT
+  EXCERPT_EN
 
 BODY_HTML
 - Liste de 4 à 6 points clés
