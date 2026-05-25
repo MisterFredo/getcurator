@@ -540,12 +540,14 @@ def get_item_detail(
     if lang == "en":
 
         content["title"] = (
-            content.get("title_en")
+            item.get("title_en")
+            or item.get("title")
             or content.get("title")
         )
 
         content["excerpt"] = (
-            content.get("excerpt_en")
+            item.get("excerpt_en")
+            or item.get("excerpt")
             or content.get("excerpt")
         )
 
