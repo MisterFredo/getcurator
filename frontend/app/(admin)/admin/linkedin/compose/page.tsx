@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import NewsletterSelector from "@/components/newsletter/NewsletterSelector";
+import NewsletterSelector from "@/components/newsletter/NewsletterSelectors";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
