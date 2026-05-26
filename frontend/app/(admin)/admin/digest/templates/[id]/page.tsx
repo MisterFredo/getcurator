@@ -7,7 +7,7 @@ import SearchableMultiSelect, {
   SelectOption,
 } from "@/components/ui/SearchableMultiSelect";
 
-import DigestHeaderConfig from "@/components/digest/DigestHeaderConfig";
+import DigestHeaderConfig from "@/components/delivery/DeliveryHeaderConfig";
 import type { HeaderConfig } from "@/types/newsletter";
 
 export default function TemplateEditPage() {
