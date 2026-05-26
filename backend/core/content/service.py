@@ -1246,7 +1246,6 @@ def destock_raw_contents(
                 id_primary_company=id_primary_company,
 
                 title=summary.get("title"),
-                title_en=summary.get("title_en"),
                 id_raw=raw.get("ID_RAW"),
 
                 source_url=raw.get("SOURCE_URL"),
@@ -1254,7 +1253,6 @@ def destock_raw_contents(
                 source_title=raw.get("SOURCE_TITLE"),
 
                 excerpt=summary.get("excerpt"),
-                excerpt_en=summary.get("excerpt_en"),
 
                 content_body=summary.get("content_body"),
 
