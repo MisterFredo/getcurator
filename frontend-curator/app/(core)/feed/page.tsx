@@ -561,7 +561,9 @@ export default function FeedPage() {
         </div>
 
         <FeedExplorer
+
           userLang={userLang}
+
           query={query}
 
           setQuery={setQuery}
@@ -591,6 +593,12 @@ export default function FeedPage() {
 
           onSelectType={(type) =>
             setActiveType(type)
+          }
+
+          feedMode={feedMode}
+
+          onSelectFeedMode={
+            setFeedMode
           }
 
           items={items}
