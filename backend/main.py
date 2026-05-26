@@ -57,6 +57,7 @@ include_router("api.health", "/api/health", "HEALTH")
 # --- ADMIN / PRODUCTION
 include_router("api.content", "/api/content", "CONTENT")
 include_router("api.news", "/api/news", "NEWS")
+include_router("api.newsletter", "/api/newsletter", "NEWSLETTER")
 include_router("api.company", "/api/company", "COMPANY")
 include_router("api.person", "/api/person", "PERSON")
 include_router("api.topic", "/api/topic", "TOPIC")
