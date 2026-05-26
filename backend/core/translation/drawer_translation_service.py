@@ -1,5 +1,4 @@
 import logging
-import hashlib
 import json
 
 from typing import (
@@ -9,126 +8,7 @@ from typing import (
 
 from utils.llm import run_llm
 
-from utils.bigquery_utils import (
-    query_bq,
-    update_bq,
-)
-
-from config import (
-    BQ_PROJECT,
-    BQ_DATASET,
-)
-
 logger = logging.getLogger(__name__)
-
-
-# ============================================================
-# TABLE
-# ============================================================
-
-TABLE_TRANSLATION_CACHE = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TRANSLATION_CACHE"
-)
-
-
-# ============================================================
-# HELPERS
-# ============================================================
-
-def _hash_text(
-    text: str,
-    lang: str
-) -> str:
-
-    raw = f"{text.strip()}_{lang}"
-
-    return hashlib.md5(
-        raw.encode("utf-8")
-    ).hexdigest()
-
-
-def _get_cached_translation(
-    text: str,
-    lang: str
-) -> Optional[str]:
-
-    hash_key = _hash_text(
-        text,
-        lang
-    )
-
-    rows = query_bq(
-        f"""
-        SELECT
-            TRANSLATED_TEXT
-
-        FROM `{TABLE_TRANSLATION_CACHE}`
-
-        WHERE HASH_KEY = @hash
-
-        LIMIT 1
-        """,
-        {
-            "hash": hash_key
-        }
-    )
-
-    if rows:
-        return rows[0]["TRANSLATED_TEXT"]
-
-    return None
-
-
-def _store_translation(
-    text: str,
-    lang: str,
-    translated: str
-):
-
-    hash_key = _hash_text(
-        text,
-        lang
-    )
-
-    update_bq(
-        f"""
-        INSERT INTO `{TABLE_TRANSLATION_CACHE}` (
-            HASH_KEY,
-            SOURCE_TEXT,
-            TARGET_LANG,
-            TRANSLATED_TEXT,
-            CREATED_AT
-        )
-
-        SELECT *
-        FROM (
-
-            SELECT
-                @hash AS HASH_KEY,
-                @text AS SOURCE_TEXT,
-                @lang AS TARGET_LANG,
-                @translated AS TRANSLATED_TEXT,
-                CURRENT_TIMESTAMP() AS CREATED_AT
-
-        )
-
-        WHERE NOT EXISTS (
-
-            SELECT 1
-
-            FROM `{TABLE_TRANSLATION_CACHE}`
-
-            WHERE HASH_KEY = @hash
-
-        )
-        """,
-        {
-            "hash": hash_key,
-            "text": text,
-            "lang": lang,
-            "translated": translated,
-        }
-    )
 
 
 # ============================================================
@@ -167,46 +47,18 @@ def translate_fields(
             cleaned_fields[key] = value.strip()
 
         # =====================================================
-        # CACHE
-        # =====================================================
-
-        results = {}
-        missing = {}
-
-        for key, value in cleaned_fields.items():
-
-            if not value:
-                results[key] = value
-                continue
-
-            cached = _get_cached_translation(
-                value,
-                target_lang
-            )
-
-            if cached:
-
-                results[key] = cached
-
-            else:
-
-                missing[key] = value
-
-        # =====================================================
-        # EVERYTHING CACHED
-        # =====================================================
-
-        if not missing:
-            return results
-
-        # =====================================================
-        # LLM
+        # PAYLOAD
         # =====================================================
 
         payload = json.dumps(
-            missing,
-            ensure_ascii=False
+            cleaned_fields,
+            ensure_ascii=False,
+            indent=2
         )
+
+        # =====================================================
+        # PROMPT
+        # =====================================================
 
         prompt = f"""
 You are a professional translator specialized in:
@@ -216,7 +68,8 @@ You are a professional translator specialized in:
 - AdTech
 - analytics
 
-Translate ALL values into {target_lang}.
+MISSION:
+Translate all JSON values into {target_lang}.
 
 STRICT RULES:
 - Keep EXACT same JSON keys
@@ -225,10 +78,20 @@ STRICT RULES:
 - No explanation
 - No intro
 - No code block
+- Do NOT summarize
+- Do NOT rewrite
+- Preserve exact meaning
+- Preserve formatting
+- Preserve numbers exactly
+- Preserve company / product names exactly
 
 JSON:
 {payload}
 """
+
+        # =====================================================
+        # LLM
+        # =====================================================
 
         raw = run_llm(prompt)
 
@@ -247,7 +110,7 @@ JSON:
         )
 
         # =====================================================
-        # JSON PARSE
+        # PARSE JSON
         # =====================================================
 
         translated_payload = json.loads(
@@ -255,41 +118,23 @@ JSON:
         )
 
         # =====================================================
-        # STORE CACHE
-        # =====================================================
-
-        for key, translated in translated_payload.items():
-
-            source = missing.get(key)
-
-            if (
-                source
-                and translated
-                and isinstance(translated, str)
-            ):
-
-                translated = translated.strip()
-
-                if translated != source:
-
-                    _store_translation(
-                        source,
-                        target_lang,
-                        translated
-                    )
-
-                results[key] = translated
-
-        # =====================================================
         # SAFETY
         # =====================================================
 
-        for key, value in cleaned_fields.items():
+        if not isinstance(
+            translated_payload,
+            dict
+        ):
+            return cleaned_fields
 
-            if key not in results:
-                results[key] = value
+        # =====================================================
+        # RETURN
+        # =====================================================
 
-        return results
+        return {
+            **cleaned_fields,
+            **translated_payload
+        }
 
     except Exception:
 
