@@ -511,7 +511,7 @@ def get_item_detail(
     )
 
     from core.translation.service import (
-        translate_text
+        translate_fields
     )
 
     from core.user.user_service import (
@@ -559,45 +559,39 @@ def get_item_detail(
 
         try:
 
-            content = {
-                **content,
+            translated = translate_fields(
+                {
+                    "content_body": content.get(
+                        "content_body",
+                        ""
+                    ),
 
-                "content_body": translate_text(
-                    content.get("content_body", ""),
-                    lang
-                ),
-
-                "mecanique_expliquee": translate_text(
-                    content.get(
+                    "mecanique_expliquee": content.get(
                         "mecanique_expliquee",
                         ""
                     ),
-                    lang
-                ),
 
-                "enjeu_strategique": translate_text(
-                    content.get(
+                    "enjeu_strategique": content.get(
                         "enjeu_strategique",
                         ""
                     ),
-                    lang
-                ),
 
-                "point_de_friction": translate_text(
-                    content.get(
+                    "point_de_friction": content.get(
                         "point_de_friction",
                         ""
                     ),
-                    lang
-                ),
 
-                "signal_analytique": translate_text(
-                    content.get(
+                    "signal_analytique": content.get(
                         "signal_analytique",
                         ""
                     ),
-                    lang
-                ),
+                },
+                lang
+            )
+
+            content = {
+                **content,
+                **translated
             }
 
         except Exception:
