@@ -194,11 +194,17 @@ export default function SolutionCard({
 
       <div
         onClick={handleFavoriteClick}
-        className="
+        className={`
           absolute top-2 left-2 z-20
           cursor-pointer
-          text-[12px]
-        "
+          leading-none
+          transition
+          ${
+            isFavorite
+              ? "text-[20px]"
+              : "text-[20px] text-gray-700 hover:text-black"
+          }
+        `}
       >
         {isFavorite ? "⭐" : "☆"}
       </div>
