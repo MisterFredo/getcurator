@@ -348,6 +348,12 @@ export default function FeedItemCard({
 
       </button>
 
+      <div className="
+        flex
+        items-start
+        gap-5
+      ">
+
         {/* ===================================================
             LEFT COLUMN
         =================================================== */}
