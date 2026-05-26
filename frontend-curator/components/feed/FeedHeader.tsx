@@ -35,6 +35,76 @@ type Props = {
 
 /* ========================================================= */
 
+function PillButton({
+  active,
+  disabled,
+  children,
+  onClick,
+}: any) {
+
+  return (
+
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`
+        whitespace-nowrap
+        px-4
+        py-2
+        rounded-full
+        text-sm
+        border
+        transition-all
+
+        ${
+          active
+            ? `
+              bg-black
+              text-white
+              border-black
+            `
+            : `
+              bg-white
+              text-gray-600
+              border-gray-200
+              hover:bg-gray-50
+            `
+        }
+
+        ${
+          disabled
+            ? `
+              opacity-50
+              cursor-not-allowed
+            `
+            : ""
+        }
+      `}
+    >
+      {children}
+    </button>
+
+  );
+}
+
+/* ========================================================= */
+
+function Separator() {
+
+  return (
+
+    <div className="
+      h-6
+      w-px
+      bg-gray-200
+      shrink-0
+    " />
+
+  );
+}
+
+/* ========================================================= */
+
 export default function FeedHeader({
   query,
   setQuery,
@@ -80,241 +150,192 @@ export default function FeedHeader({
       sticky
       top-0
       z-20
-      bg-white/80
+      bg-white/90
       backdrop-blur
       border-b
       border-gray-100
-      pb-4
-      pt-2
-      space-y-3
+      py-4
+      space-y-4
     ">
 
       {/* =====================================================
-          TYPE
+          FILTER BAR
       ===================================================== */}
 
       <div className="
         flex
-        gap-2
+        items-center
+        gap-3
         overflow-x-auto
         scrollbar-none
         px-1
       ">
 
-        {[
-          {
-            value: "all",
-            label: "All",
-          },
-          {
-            value: "news",
-            label: "News",
-          },
-          {
-            value: "analysis",
-            label: "Analysis",
-          },
-        ].map((t) => {
+        {/* =================================================
+            FEED MODE
+        ================================================= */}
 
-          const active =
-            selectedType === t.value;
+        <div className="
+          flex
+          items-center
+          gap-2
+          shrink-0
+        ">
 
-          return (
+          <PillButton
+            active={true}
+            disabled={loading}
+          >
+            All Feed
+          </PillButton>
 
-            <button
-              key={t.value}
-              onClick={() =>
-                !loading &&
-                onSelectType(t.value)
-              }
-              className={`
-                whitespace-nowrap
-                px-3
-                py-1.5
-                rounded-full
-                text-xs
-                border
-                transition-all
+          <PillButton
+            active={false}
+            disabled={loading}
+          >
+            My Feed
+          </PillButton>
 
-                ${
-                  active
-                    ? `
-                      bg-black
-                      text-white
-                      border-black
-                      shadow-sm
-                    `
-                    : `
-                      bg-white
-                      text-gray-600
-                      border-gray-200
-                      hover:bg-gray-50
-                    `
+        </div>
+
+        <Separator />
+
+        {/* =================================================
+            TYPE
+        ================================================= */}
+
+        <div className="
+          flex
+          items-center
+          gap-2
+          shrink-0
+        ">
+
+          {[
+            {
+              value: "all",
+              label: "All",
+            },
+            {
+              value: "news",
+              label: "News",
+            },
+            {
+              value: "analysis",
+              label: "Analysis",
+            },
+          ].map((t) => {
+
+            const active =
+              selectedType === t.value;
+
+            return (
+
+              <PillButton
+                key={t.value}
+                active={active}
+                disabled={loading}
+                onClick={() =>
+                  !loading &&
+                  onSelectType(t.value)
                 }
+              >
+                {t.label}
+              </PillButton>
 
-                ${
-                  loading
-                    ? `
-                      opacity-50
-                      cursor-not-allowed
-                    `
-                    : ""
-                }
-              `}
-            >
-              {t.label}
-            </button>
+            );
+          })}
 
-          );
-        })}
+        </div>
 
-      </div>
+        <Separator />
 
-      {/* =====================================================
-          UNIVERS
-      ===================================================== */}
+        {/* =================================================
+            UNIVERS
+        ================================================= */}
 
-      <div className="
-        flex
-        gap-2
-        overflow-x-auto
-        scrollbar-none
-        px-1
-      ">
+        <div className="
+          flex
+          items-center
+          gap-2
+          shrink-0
+        ">
 
-        <button
-          onClick={() =>
-            !loading &&
-            onSelectUniverse(null)
-          }
-          className={`
-            flex
-            items-center
-            gap-1
-            whitespace-nowrap
-            px-3
-            py-1.5
-            rounded-full
-            text-xs
-            border
-            transition-all
-
-            ${
+          <PillButton
+            active={
               selectedUniverse === null
-                ? `
-                  bg-black
-                  text-white
-                  border-black
-                  shadow-sm
-                `
-                : `
-                  bg-white
-                  text-gray-600
-                  border-gray-200
-                  hover:bg-gray-50
-                `
             }
-
-            ${
-              loading
-                ? `
-                  opacity-50
-                  cursor-not-allowed
-                `
-                : ""
+            disabled={loading}
+            onClick={() =>
+              !loading &&
+              onSelectUniverse(null)
             }
-          `}
-        >
-          Tous
-        </button>
+          >
+            All Topics
+          </PillButton>
 
-        {universes.map((u) => {
+          {universes.map((u) => {
 
-          const active =
-            selectedUniverse === u.id;
+            const active =
+              selectedUniverse === u.id;
 
-          return (
+            return (
 
-            <button
-              key={u.id}
-              onClick={() =>
-                !loading &&
-                onSelectUniverse(u.id)
-              }
-              className={`
-                flex
-                items-center
-                gap-1
-                whitespace-nowrap
-                px-3
-                py-1.5
-                rounded-full
-                text-xs
-                border
-                transition-all
-
-                ${
-                  active
-                    ? `
-                      bg-black
-                      text-white
-                      border-black
-                      shadow-sm
-                      scale-[1.02]
-                    `
-                    : `
-                      bg-white
-                      text-gray-600
-                      border-gray-200
-                      hover:bg-gray-50
-                    `
+              <PillButton
+                key={u.id}
+                active={active}
+                disabled={loading}
+                onClick={() =>
+                  !loading &&
+                  onSelectUniverse(u.id)
                 }
+              >
 
-                ${
-                  loading
-                    ? `
-                      opacity-50
-                      cursor-not-allowed
-                    `
-                    : ""
-                }
-              `}
-            >
+                <div className="
+                  flex
+                  items-center
+                  gap-2
+                ">
 
-              {u.label}
+                  <span>
+                    {u.label}
+                  </span>
 
-              {u.count !== undefined && (
+                  {u.count !== undefined && (
 
-                <span
-                  className={`
-                    ml-1
-                    text-[10px]
-                    px-1.5
-                    py-0.5
-                    rounded-full
+                    <span
+                      className={`
+                        text-[10px]
+                        px-1.5
+                        py-0.5
+                        rounded-full
 
-                    ${
-                      active
-                        ? `
-                          bg-white/20
-                          text-white
-                        `
-                        : `
-                          bg-gray-100
-                          text-gray-500
-                        `
-                    }
-                  `}
-                >
-                  {u.count}
-                </span>
+                        ${
+                          active
+                            ? `
+                              bg-white/20
+                              text-white
+                            `
+                            : `
+                              bg-gray-100
+                              text-gray-500
+                            `
+                        }
+                      `}
+                    >
+                      {u.count}
+                    </span>
 
-              )}
+                  )}
 
-            </button>
+                </div>
 
-          );
-        })}
+              </PillButton>
+
+            );
+          })}
+
+        </div>
 
       </div>
 
@@ -350,9 +371,9 @@ export default function FeedHeader({
             flex-1
             border
             border-gray-200
-            rounded-lg
+            rounded-xl
             px-4
-            py-2
+            py-3
             text-sm
             bg-white
             focus:outline-none
@@ -366,9 +387,9 @@ export default function FeedHeader({
           onClick={triggerSearch}
           disabled={loading}
           className="
-            px-4
-            py-2
-            rounded-lg
+            px-5
+            py-3
+            rounded-xl
             bg-black
             text-white
             text-sm
@@ -376,6 +397,7 @@ export default function FeedHeader({
             transition
             disabled:opacity-50
             disabled:cursor-not-allowed
+            whitespace-nowrap
           "
         >
           {loading
