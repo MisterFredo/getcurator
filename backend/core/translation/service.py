@@ -1,17 +1,9 @@
 import logging
 import hashlib
-import json
-
-from typing import (
-    Optional,
-    Dict,
-)
+from typing import Optional
 
 from utils.llm import run_llm
-from utils.bigquery_utils import (
-    query_bq,
-    update_bq,
-)
+from utils.bigquery_utils import query_bq
 
 from config import (
     BQ_PROJECT,
@@ -89,7 +81,7 @@ def _store_translation(
         lang
     )
 
-    update_bq(
+    query_bq(
         f"""
         INSERT INTO `{TABLE_TRANSLATION_CACHE}` (
             HASH_KEY,
@@ -131,7 +123,7 @@ def _store_translation(
 
 
 # ============================================================
-# SINGLE TEXT TRANSLATION
+# CORE TRANSLATION
 # ============================================================
 
 def translate_text(
@@ -143,11 +135,6 @@ def translate_text(
         return text
 
     if target_lang == "fr":
-        return text
-
-    text = text.strip()
-
-    if not text:
         return text
 
     try:
@@ -223,166 +210,3 @@ Return ONLY the translated text.
         )
 
         return text
-
-
-# ============================================================
-# MULTI FIELDS TRANSLATION
-# ============================================================
-
-def translate_fields(
-    fields: Dict[str, Optional[str]],
-    target_lang: str
-) -> Dict[str, Optional[str]]:
-
-    if not fields:
-        return fields
-
-    if target_lang == "fr":
-        return fields
-
-    try:
-
-        # =====================================================
-        # CLEAN INPUT
-        # =====================================================
-
-        cleaned_fields = {}
-
-        for key, value in fields.items():
-
-            if value is None:
-                cleaned_fields[key] = value
-                continue
-
-            if not isinstance(value, str):
-                cleaned_fields[key] = value
-                continue
-
-            cleaned_fields[key] = value.strip()
-
-        # =====================================================
-        # CACHE CHECK
-        # =====================================================
-
-        results = {}
-        missing = {}
-
-        for key, value in cleaned_fields.items():
-
-            if not value:
-                results[key] = value
-                continue
-
-            cached = _get_cached_translation(
-                value,
-                target_lang
-            )
-
-            if cached:
-
-                results[key] = cached
-
-            else:
-
-                missing[key] = value
-
-        # =====================================================
-        # EVERYTHING CACHED
-        # =====================================================
-
-        if not missing:
-            return results
-
-        # =====================================================
-        # SINGLE LLM CALL
-        # =====================================================
-
-        payload = json.dumps(
-            missing,
-            ensure_ascii=False,
-            indent=2
-        )
-
-        prompt = f"""
-You are a professional translator specialized in:
-- business
-- media
-- marketing
-- AdTech
-- analytics
-
-MISSION:
-Translate the JSON fields below into {target_lang}.
-
-STRICT RULES:
-- Keep EXACT same JSON structure
-- Keep EXACT same keys
-- Do NOT summarize
-- Do NOT rewrite
-- Do NOT add information
-- Do NOT remove information
-- Preserve exact meaning
-- Preserve formatting
-- Preserve numbers exactly
-- Preserve company / product names exactly
-
-IMPORTANT:
-Return ONLY valid JSON.
-
-JSON:
-{payload}
-"""
-
-        raw = run_llm(prompt)
-
-        if not raw:
-            return cleaned_fields
-
-        # =====================================================
-        # PARSE JSON
-        # =====================================================
-
-        translated_payload = json.loads(
-            raw.strip()
-        )
-
-        # =====================================================
-        # STORE CACHE
-        # =====================================================
-
-        for key, translated in translated_payload.items():
-
-            source = missing.get(key)
-
-            if (
-                source
-                and translated
-                and isinstance(translated, str)
-            ):
-
-                _store_translation(
-                    source,
-                    target_lang,
-                    translated
-                )
-
-                results[key] = translated
-
-        # =====================================================
-        # FALLBACK SAFETY
-        # =====================================================
-
-        for key, value in cleaned_fields.items():
-
-            if key not in results:
-                results[key] = value
-
-        return results
-
-    except Exception:
-
-        logger.exception(
-            "Multi fields translation error"
-        )
-
-        return fields
