@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 
-URL = "https://www.adweek.com/brand-marketing/ai-battle-microsoft-yusuf-mehdi/"
+URL = "https://drinksretailingnews.co.uk/rtd-sales-grow-17-in-value/"
 
 with sync_playwright() as p:
 
@@ -10,24 +10,32 @@ with sync_playwright() as p:
 
     page = browser.new_page()
 
-    page.goto(
-        URL,
-        wait_until="networkidle",
-        timeout=60000
+    # BLOCK HEAVY ASSETS
+    page.route(
+        "**/*",
+        lambda route: (
+            route.abort()
+            if route.request.resource_type in [
+                "image",
+                "media",
+                "font"
+            ]
+            else route.continue_()
+        )
     )
 
-    print("\n====================")
-    print("TITLE")
-    print("====================")
+    page.goto(
+        URL,
+        wait_until="domcontentloaded",
+        timeout=30000
+    )
 
-    print(page.title())
+    article = page.locator(
+        "article"
+    ).inner_text()
 
-    print("\n====================")
-    print("CONTENT")
-    print("====================")
+    print(article[:10000])
 
-    text = page.locator("body").inner_text()
-
-    print(text[:15000])
+    page.close()
 
     browser.close()
