@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import DigestEngine from "@/components/digest/DigestEngine";
-import DigestSelectors from "@/components/digest/DigestSelectors";
-import DigestEditorialFlow from "@/components/digest/DigestEditorialFlow";
-import DigestHeaderConfig from "@/components/digest/DigestHeaderConfig";
-import DigestPreviewPanel from "@/components/digest/DigestPreviewPanel";
-import DigestTopicStats from "@/components/digest/DigestTopicStats";
+
+import DeliveryHeaderConfig from "@/components/delivery/DeliveryHeaderConfig";
+import DeliveryEditorialFlow from "@/components/delivery/DeliveryEditorialFlow";
+import DeliveryPreviewPanel from "@/components/delivery/DeliveryPreviewPanel";
+
+import NewsletterEngine from "@/components/newsletter/NewsletterEngine";
+import NewsletterSelectors from "@/components/newsletter/NewsletterSelectors";
+import NewsletterTopicStats from "@/components/newsletter/NewsletterTopicStats";
+
 import { api } from "@/lib/api";
 
 import type {
@@ -17,7 +20,9 @@ import type {
   TopicStat,
 } from "@/types/newsletter";
 
-import type { SelectOption } from "@/components/ui/SearchableMultiSelect";
+import type {
+  SelectOption,
+} from "@/components/ui/SearchableMultiSelect";
 
 /* ========================================================= */
 
