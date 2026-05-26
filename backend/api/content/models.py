@@ -162,7 +162,7 @@ class ContentCreate(BaseModel):
     # ========================================================
 
     title: str
-    title_en: str
+    title_en: Optional[str] = None
 
     excerpt: Optional[str] = None
     excerpt_en: Optional[str] = None
