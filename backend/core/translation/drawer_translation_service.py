@@ -132,7 +132,7 @@ def _store_translation(
 
 
 # ============================================================
-# MULTI FIELDS TRANSLATION
+# DRAWER TRANSLATION
 # ============================================================
 
 def translate_fields(
@@ -167,7 +167,7 @@ def translate_fields(
             cleaned_fields[key] = value.strip()
 
         # =====================================================
-        # CACHE CHECK
+        # CACHE
         # =====================================================
 
         results = {}
@@ -200,13 +200,12 @@ def translate_fields(
             return results
 
         # =====================================================
-        # SINGLE LLM CALL
+        # LLM
         # =====================================================
 
         payload = json.dumps(
             missing,
-            ensure_ascii=False,
-            indent=2
+            ensure_ascii=False
         )
 
         prompt = f"""
@@ -217,23 +216,15 @@ You are a professional translator specialized in:
 - AdTech
 - analytics
 
-MISSION:
-Translate the JSON fields below into {target_lang}.
+Translate ALL values into {target_lang}.
 
 STRICT RULES:
-- Keep EXACT same JSON structure
-- Keep EXACT same keys
-- Do NOT summarize
-- Do NOT rewrite
-- Do NOT add information
-- Do NOT remove information
-- Preserve exact meaning
-- Preserve formatting
-- Preserve numbers exactly
-- Preserve company / product names exactly
-
-IMPORTANT:
-Return ONLY valid JSON.
+- Keep EXACT same JSON keys
+- Return ONLY valid JSON
+- No markdown
+- No explanation
+- No intro
+- No code block
 
 JSON:
 {payload}
@@ -256,7 +247,7 @@ JSON:
         )
 
         # =====================================================
-        # PARSE JSON
+        # JSON PARSE
         # =====================================================
 
         translated_payload = json.loads(
@@ -271,50 +262,26 @@ JSON:
 
             source = missing.get(key)
 
-            if not source:
-                continue
-
-            if not translated:
-                results[key] = source
-                continue
-
-            if not isinstance(translated, str):
-                results[key] = source
-                continue
-
-            translated = translated.strip()
-
-            # =================================================
-            # SAFETY
-            # =================================================
-
             if (
-                target_lang == "en"
-                and translated == source
+                source
+                and translated
+                and isinstance(translated, str)
             ):
 
-                logger.warning(
-                    f"Translation identical to source for field: {key}"
-                )
+                translated = translated.strip()
 
-                results[key] = source
+                if translated != source:
 
-                continue
+                    _store_translation(
+                        source,
+                        target_lang,
+                        translated
+                    )
 
-            # =================================================
-            # STORE CACHE
-            # =================================================
-
-            _store_translation(
-                source,
-                target_lang,
-                translated
-            )
-
-            results[key] = translated
+                results[key] = translated
 
         # =====================================================
-        # FALLBACK SAFETY
+        # SAFETY
         # =====================================================
 
         for key, value in cleaned_fields.items():
