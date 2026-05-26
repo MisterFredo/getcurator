@@ -1,4 +1,8 @@
-from typing import Optional, List, Dict, Any
+from typing import (
+    Optional,
+    List,
+    Dict,
+)
 
 from config import (
     BQ_PROJECT,
@@ -30,85 +34,31 @@ def search_newsletter_content(
     period: Optional[str] = "total",
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    blocks_config: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+) -> Dict:
 
-    use_period = period
+    news = _search_newsletter_items(
+        topics=topics,
+        companies=companies,
+        news_types=news_types,
+        limit=limit,
+        cursor=cursor,
+        news_kind="NEWS",
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
-    if date_from or date_to:
-        use_period = None
-
-    # =========================================================
-    # BLOCK CONFIG
-    # =========================================================
-
-    def get_block(name):
-        if not blocks_config:
-            return None
-        return blocks_config.get(name, {})
-
-    def resolve_limit(block):
-        if not block:
-            return limit
-        return block.get("limit", limit)
-
-    def resolve_topics(block):
-        return block.get("topics") if block else topics
-
-    def resolve_companies(block):
-        return block.get("companies") if block else companies
-
-    def resolve_types(block):
-        return block.get("news_types") if block else news_types
-
-    def resolve_period(block):
-        if not block:
-            return use_period
-        return block.get("period", use_period)
-
-    # =========================================================
-    # NEWS
-    # =========================================================
-
-    news_block = get_block("news")
-
-    news = []
-
-    if not news_block or resolve_limit(news_block) > 0:
-
-        news = _search_newsletter_items(
-            topics=resolve_topics(news_block),
-            companies=resolve_companies(news_block),
-            news_types=resolve_types(news_block),
-            limit=resolve_limit(news_block),
-            cursor=cursor,
-            news_kind="NEWS",
-            period=resolve_period(news_block),
-            date_from=date_from,
-            date_to=date_to,
-        )
-
-    # =========================================================
-    # BRÈVES
-    # =========================================================
-
-    breves_block = get_block("breves")
-
-    breves = []
-
-    if not breves_block or resolve_limit(breves_block) > 0:
-
-        breves = _search_newsletter_items(
-            topics=resolve_topics(breves_block),
-            companies=resolve_companies(breves_block),
-            news_types=resolve_types(breves_block),
-            limit=resolve_limit(breves_block),
-            cursor=cursor,
-            news_kind="BRIEF",
-            period=resolve_period(breves_block),
-            date_from=date_from,
-            date_to=date_to,
-        )
+    breves = _search_newsletter_items(
+        topics=topics,
+        companies=companies,
+        news_types=news_types,
+        limit=limit,
+        cursor=cursor,
+        news_kind="BRIEF",
+        period=period,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
     return {
         "news": news,
