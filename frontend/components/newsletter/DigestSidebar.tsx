@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import NewsletterSelector from "delivery/DeliverySelector";
-
+import NewsletterSelector from "@/components/newsletter/NewsletterSelector";
 /* =========================================================
    TYPES
 ========================================================= */
