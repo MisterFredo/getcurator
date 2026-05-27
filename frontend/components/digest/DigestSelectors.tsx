@@ -1,6 +1,6 @@
 "use client";
 
-import NewsletterSelector from "@/components/newsletter/NewsletterSelector";
+import DeliverySelector from "@/components/delivery/DeliverySelector";
 
 import type {
   NewsletterNewsItem,
@@ -114,7 +114,7 @@ export default function DigestSelectors({
           </span>
         </div>
 
-        <NewsletterSelector
+        <DeliverySelector
           title=""
           items={breves.map(b => ({
             ...b,
