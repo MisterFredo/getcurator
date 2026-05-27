@@ -29,6 +29,10 @@ TABLE_USER_PREFERENCES = f"""
 {BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES
 """
 
+TABLE_DIGEST_SEND = f"""
+{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND
+"""
+
 # ============================================================
 # LOAD USER PREFERENCES
 # ============================================================
@@ -115,6 +119,40 @@ def load_user_preferences(
         "topics":
             topic_ids,
     }
+
+# ============================================================
+# LAST DIGEST SENT
+# ============================================================
+
+def get_last_digest_sent(
+    user_id: str,
+):
+
+    sql = f"""
+
+    SELECT
+        MAX(SENT_AT) AS LAST_SENT_AT
+
+    FROM `{TABLE_DIGEST_SEND}`
+
+    WHERE ID_USER = @user_id
+
+    """
+
+    rows = query_bq(
+        sql,
+
+        params={
+            "user_id": user_id,
+        },
+    )
+
+    if not rows:
+        return None
+
+    return rows[0].get(
+        "LAST_SENT_AT"
+    )
 
 # ============================================================
 # DIGEST CONTENTS
@@ -262,15 +300,7 @@ def get_digest_contents(
         if not content_id:
             continue
 
-        existing = deduped.get(
-            content_id
-        )
-
-        # ====================================================
-        # KEEP MOST RECENT
-        # ====================================================
-
-        if not existing:
+        if content_id not in deduped:
 
             deduped[
                 content_id
@@ -301,6 +331,16 @@ def get_digest_contents(
     )
 
     # ========================================================
+    # LAST SENT
+    # ========================================================
+
+    last_sent_at = (
+        get_last_digest_sent(
+            user_id
+        )
+    )
+
+    # ========================================================
     # RESPONSE
     # ========================================================
 
@@ -318,4 +358,7 @@ def get_digest_contents(
             "topics":
                 topic_ids,
         },
+
+        "last_sent_at":
+            last_sent_at,
     }
