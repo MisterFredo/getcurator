@@ -150,22 +150,6 @@ export default function HeaderBranding({
       ===================================================== */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
 
-        {/* BAROMÈTRE */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={headerConfig.showTopicStats ?? false}
-            onChange={(e) =>
-              setHeaderConfig((prev) => ({
-                ...prev,
-                showTopicStats: e.target.checked,
-              }))
-            }
-            className="h-3 w-3"
-          />
-          <span>Afficher baromètre</span>
-        </label>
-
         {/* TOP BAR */}
         <label className="flex items-center gap-2 cursor-pointer">
           <input
