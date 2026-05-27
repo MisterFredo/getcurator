@@ -2,7 +2,15 @@
 
 "use client";
 
-import NewsletterPreview from "@/components/newsletter/delivery/NewsletterPreview";
+import { useMemo, useRef, useState } from "react";
+
+import {
+  buildDigestEmail,
+} from "./email/buildDigestEmail";
+
+import {
+  buildDigestEmailGmail,
+} from "./email/buildDigestEmailGmail";
 
 import type {
   DigestContentItem,
@@ -10,7 +18,6 @@ import type {
 
 import type {
   HeaderConfig,
-  NewsletterNewsItem,
 } from "@/types/newsletter";
 
 /* ========================================================= */
@@ -23,49 +30,6 @@ type Props = {
   contents: DigestContentItem[];
 };
 
-/* =========================================================
-   MAP DIGEST → NEWSLETTER
-========================================================= */
-
-function mapDigestToNewsletter(
-  item: DigestContentItem
-): NewsletterNewsItem {
-
-  return {
-    id: item.id,
-
-    title:
-      item.title,
-
-    excerpt:
-      item.excerpt,
-
-    published_at:
-      item.published_at,
-
-    url:
-      item.url,
-
-    media_id:
-      item.media_id,
-
-    primary_company_logo:
-      item.primary_company_logo,
-
-    companies:
-      item.companies,
-
-    topics:
-      item.topics,
-
-    styles:
-      item.styles,
-
-    content_type:
-      item.content_type,
-  } as NewsletterNewsItem;
-}
-
 /* ========================================================= */
 
 export default function DigestPreview({
@@ -76,55 +40,220 @@ export default function DigestPreview({
   contents,
 }: Props) {
 
+  const [mode, setMode] = useState<
+    "brevo" | "gmail"
+  >("brevo");
+
   /* =======================================================
-     SPLIT CONTENTS
+     HTML
   ======================================================= */
 
-  const news =
-    contents
-      .filter(
-        (c) =>
-          c.content_type ===
-          "news"
-      )
-      .map(
-        mapDigestToNewsletter
-      );
+  const html = useMemo(() => {
 
-  const breves =
-    contents
-      .filter(
-        (c) =>
-          c.content_type !==
-          "news"
-      )
-      .map(
-        mapDigestToNewsletter
-      );
+    if (mode === "gmail") {
+
+      return buildDigestEmailGmail({
+        headerConfig,
+
+        editorialHtml,
+
+        contents,
+      });
+    }
+
+    return buildDigestEmail({
+      headerConfig,
+
+      editorialHtml,
+
+      contents,
+    });
+
+  }, [
+    mode,
+
+    headerConfig,
+
+    editorialHtml,
+
+    contents,
+  ]);
 
   /* =======================================================
-     RENDER
+     COPY
+  ======================================================= */
+
+  const hiddenRef =
+    useRef<HTMLDivElement>(
+      null
+    );
+
+  function copyHtml() {
+
+    navigator.clipboard.writeText(
+      html
+    );
+
+    alert(
+      mode === "gmail"
+        ? "HTML Gmail copié."
+        : "HTML Digest copié."
+    );
+  }
+
+  function copyForGmail() {
+
+    if (!hiddenRef.current) {
+      return;
+    }
+
+    const container =
+      hiddenRef.current;
+
+    container.innerHTML =
+      html;
+
+    const range =
+      document.createRange();
+
+    range.selectNodeContents(
+      container
+    );
+
+    const selection =
+      window.getSelection();
+
+    selection?.removeAllRanges();
+
+    selection?.addRange(
+      range
+    );
+
+    document.execCommand(
+      "copy"
+    );
+
+    selection?.removeAllRanges();
+
+    container.innerHTML =
+      "";
+
+    alert(
+      "Version collable Gmail copiée."
+    );
+  }
+
+  /* =======================================================
+     UI
   ======================================================= */
 
   return (
 
-    <NewsletterPreview
-      headerConfig={
-        headerConfig
-      }
+    <section className="space-y-4">
 
-      editorialHtml={
-        editorialHtml
-      }
+      {/* HEADER */}
 
-      news={
-        news
-      }
+      <div className="flex items-center justify-between">
 
-      breves={
-        breves
-      }
-    />
+        <h2 className="text-sm font-semibold">
+          Preview Digest
+        </h2>
 
+        <div className="flex items-center gap-3">
+
+          {/* MODE SWITCH */}
+
+          <div className="flex border rounded overflow-hidden text-xs">
+
+            <button
+              onClick={() =>
+                setMode(
+                  "brevo"
+                )
+              }
+              className={`px-3 py-1.5 ${
+                mode ===
+                "brevo"
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-600"
+              }`}
+            >
+              Digest
+            </button>
+
+            <button
+              onClick={() =>
+                setMode(
+                  "gmail"
+                )
+              }
+              className={`px-3 py-1.5 border-l ${
+                mode ===
+                "gmail"
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-600"
+              }`}
+            >
+              Gmail
+            </button>
+
+          </div>
+
+          {/* ACTIONS */}
+
+          <button
+            onClick={
+              copyHtml
+            }
+            className="px-3 py-1.5 rounded bg-gray-900 text-white text-xs"
+          >
+            Copier HTML
+          </button>
+
+          {mode ===
+            "gmail" && (
+
+            <button
+              onClick={
+                copyForGmail
+              }
+              className="px-3 py-1.5 rounded bg-white border border-gray-300 text-xs"
+            >
+              Copier pour Gmail
+            </button>
+
+          )}
+
+        </div>
+
+      </div>
+
+      {/* PREVIEW */}
+
+      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+
+        <iframe
+          title="Digest preview"
+          srcDoc={html}
+          className="w-full h-[760px]"
+        />
+
+      </div>
+
+      {/* HIDDEN COPY CONTAINER */}
+
+      <div
+        ref={hiddenRef}
+        style={{
+          position:
+            "absolute",
+
+          left: "-9999px",
+
+          top: 0,
+        }}
+      />
+
+    </section>
   );
 }
