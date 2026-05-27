@@ -166,4 +166,3 @@ def search_digest_content(
     return {
         "contents": contents,
     }
-}
