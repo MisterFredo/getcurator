@@ -198,7 +198,7 @@ export default function NewsletterPage() {
     try {
 
       const json = await api.post(
-        "/admin/newsletter/search",
+        "/newsletter/search",
         {
           ...filters,
           limit: 20,
