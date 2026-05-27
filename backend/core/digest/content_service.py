@@ -15,19 +15,63 @@ from config import (
     BQ_DATASET,
 )
 
-from core.curator.entity_service import (
-    get_company_feed,
-    get_solution_feed,
-    get_topic_feed,
-)
-
 # ============================================================
 # TABLES
 # ============================================================
 
-TABLE_USER_PREFERENCES = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+TABLE_USER = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
+)
 
-TABLE_DIGEST_SEND = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
+TABLE_USER_PREFERENCES = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+)
+
+TABLE_DIGEST_SEND = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
+)
+
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
+# ============================================================
+# LOAD USER
+# ============================================================
+
+def load_user(
+    user_id: str,
+) -> Dict[str, Any]:
+
+    sql = f"""
+
+    SELECT
+        ID_USER,
+        EMAIL,
+        NAME,
+        COMPANY,
+        LANGUAGE
+
+    FROM `{TABLE_USER}`
+
+    WHERE ID_USER = @user_id
+
+    LIMIT 1
+
+    """
+
+    rows = query_bq(
+        sql,
+
+        params={
+            "user_id": user_id,
+        },
+    )
+
+    if not rows:
+        return {}
+
+    return rows[0]
 
 # ============================================================
 # LOAD USER PREFERENCES
@@ -151,6 +195,123 @@ def get_last_digest_sent(
     )
 
 # ============================================================
+# BUILD FILTERS
+# ============================================================
+
+def build_filters(
+    company_ids: List[str],
+    solution_ids: List[str],
+    topic_ids: List[str],
+) -> str:
+
+    filters = []
+
+    # ========================================================
+    # COMPANIES
+    # ========================================================
+
+    if company_ids:
+
+        company_list = ",".join(
+            [
+                f"'{x}'"
+                for x in company_ids
+            ]
+        )
+
+        filters.append(
+            f"""
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM UNNEST(companies) c
+
+                WHERE c.id_company IN (
+                    {company_list}
+                )
+
+            )
+
+            """
+        )
+
+    # ========================================================
+    # SOLUTIONS
+    # ========================================================
+
+    if solution_ids:
+
+        solution_list = ",".join(
+            [
+                f"'{x}'"
+                for x in solution_ids
+            ]
+        )
+
+        filters.append(
+            f"""
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM UNNEST(solutions) s
+
+                WHERE s.id_solution IN (
+                    {solution_list}
+                )
+
+            )
+
+            """
+        )
+
+    # ========================================================
+    # TOPICS
+    # ========================================================
+
+    if topic_ids:
+
+        topic_list = ",".join(
+            [
+                f"'{x}'"
+                for x in topic_ids
+            ]
+        )
+
+        filters.append(
+            f"""
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM UNNEST(topics) t
+
+                WHERE t.id_topic IN (
+                    {topic_list}
+                )
+
+            )
+
+            """
+        )
+
+    # ========================================================
+    # EMPTY
+    # ========================================================
+
+    if not filters:
+
+        return "1 = 0"
+
+    return " OR ".join(
+        filters
+    )
+
+# ============================================================
 # DIGEST CONTENTS
 # ============================================================
 
@@ -161,7 +322,24 @@ def get_digest_contents(
 ) -> Dict[str, Any]:
 
     # ========================================================
-    # LOAD USER PREFS
+    # USER
+    # ========================================================
+
+    user = load_user(
+        user_id
+    )
+
+    language = (
+        user.get("LANGUAGE")
+        or "fr"
+    ).lower()
+
+    is_en = (
+        language == "en"
+    )
+
+    # ========================================================
+    # USER PREFS
     # ========================================================
 
     prefs = load_user_preferences(
@@ -181,150 +359,225 @@ def get_digest_contents(
     ]
 
     # ========================================================
-    # LOAD FEEDS
+    # FILTERS
     # ========================================================
 
-    all_contents = []
+    filters_sql = build_filters(
+        company_ids=
+            company_ids,
+
+        solution_ids=
+            solution_ids,
+
+        topic_ids=
+            topic_ids,
+    )
 
     # ========================================================
-    # COMPANY FEEDS
+    # TITLE / EXCERPT
     # ========================================================
 
-    for company_id in company_ids:
+    if is_en:
 
-        try:
+        title_sql = """
 
-            items = (
-                get_company_feed(
-                    company_id=
-                        company_id,
+        COALESCE(
+            TITLE_EN,
+            title
+        ) AS title
 
-                    limit=limit,
-                )
-            )
+        """
 
-            if items:
+        excerpt_sql = """
 
-                all_contents.extend(
-                    items
-                )
+        COALESCE(
+            EXCERPT_EN,
+            excerpt
+        ) AS excerpt
 
-        except Exception as e:
+        """
 
-            print(
-                "Digest company feed error:",
-                company_id,
-                e,
-            )
+    else:
 
-    # ========================================================
-    # SOLUTION FEEDS
-    # ========================================================
+        title_sql = """
+        title AS title
+        """
 
-    for solution_id in solution_ids:
-
-        try:
-
-            items = (
-                get_solution_feed(
-                    solution_id=
-                        solution_id,
-
-                    limit=limit,
-                )
-            )
-
-            if items:
-
-                all_contents.extend(
-                    items
-                )
-
-        except Exception as e:
-
-            print(
-                "Digest solution feed error:",
-                solution_id,
-                e,
-            )
+        excerpt_sql = """
+        excerpt AS excerpt
+        """
 
     # ========================================================
-    # TOPIC FEEDS
+    # QUERY
     # ========================================================
 
-    for topic_id in topic_ids:
+    sql = f"""
 
-        try:
+    SELECT
 
-            items = (
-                get_topic_feed(
-                    topic_id=
-                        topic_id,
+        id_content AS id,
 
-                    limit=limit,
-                )
-            )
+        CONTENT_TYPE AS content_type,
 
-            if items:
+        {title_sql},
 
-                all_contents.extend(
-                    items
-                )
+        {excerpt_sql},
 
-        except Exception as e:
+        published_at,
 
-            print(
-                "Digest topic feed error:",
-                topic_id,
-                e,
-            )
+        source_url,
 
-    # ========================================================
-    # DEDUPE
-    # ========================================================
+        source_title,
 
-    deduped = {}
+        source_id,
 
-    for item in all_contents:
+        ID_PRIMARY_COMPANY,
 
-        content_id = (
-            item.get("id")
-            or item.get("ID_CONTENT")
-            or item.get("id_content")
+        companies,
+
+        solutions,
+
+        topics,
+
+        universes,
+
+        concepts,
+
+        media_id,
+
+        TITLE_EN,
+        EXCERPT_EN
+
+    FROM `{TABLE_CONTENT_ENRICHED}`
+
+    WHERE
+        is_active = TRUE
+
+        AND status = "published"
+
+        AND (
+            {filters_sql}
         )
 
-        if not content_id:
-            continue
+    ORDER BY
+        published_at DESC
 
-        if content_id not in deduped:
+    LIMIT {limit}
 
-            deduped[
-                content_id
-            ] = item
+    """
+
+    rows = query_bq(
+        sql
+    )
 
     # ========================================================
-    # SORT
+    # NORMALIZE
     # ========================================================
 
-    final_contents = sorted(
-        deduped.values(),
+    contents = []
 
-        key=lambda x:
-            x.get(
-                "published_at"
+    for row in rows:
+
+        companies = (
+            row.get("companies")
+            or []
+        )
+
+        primary_logo = None
+
+        if companies:
+
+            first_company = (
+                companies[0]
             )
-            or "",
 
-        reverse=True,
-    )
+            primary_logo = (
+                first_company.get(
+                    "media_logo_rectangle_id"
+                )
+            )
 
-    # ========================================================
-    # LIMIT
-    # ========================================================
+        content = {
+            "id":
+                row.get("id"),
 
-    final_contents = (
-        final_contents[:limit]
-    )
+            "content_type":
+                (
+                    row.get(
+                        "content_type"
+                    )
+                    or "analysis"
+                ).lower(),
+
+            "title":
+                row.get(
+                    "title"
+                ),
+
+            "excerpt":
+                row.get(
+                    "excerpt"
+                ),
+
+            "published_at":
+                row.get(
+                    "published_at"
+                ),
+
+            # =================================================
+            # GETCURATOR URL
+            # =================================================
+
+            "url":
+                f"https://www.getcurator.ai/content/{row.get('id')}",
+
+            # =================================================
+            # VISUALS
+            # =================================================
+
+            "media_id":
+                row.get(
+                    "media_id"
+                ),
+
+            "primary_company_logo":
+                primary_logo,
+
+            # =================================================
+            # ENTITIES
+            # =================================================
+
+            "companies":
+                companies,
+
+            "solutions":
+                row.get(
+                    "solutions"
+                )
+                or [],
+
+            "topics":
+                row.get(
+                    "topics"
+                )
+                or [],
+
+            "universes":
+                row.get(
+                    "universes"
+                )
+                or [],
+
+            "concepts":
+                row.get(
+                    "concepts"
+                )
+                or [],
+        }
+
+        contents.append(
+            content
+        )
 
     # ========================================================
     # LAST SENT
@@ -342,7 +595,7 @@ def get_digest_contents(
 
     return {
         "contents":
-            final_contents,
+            contents,
 
         "preferences": {
             "companies":
@@ -354,6 +607,9 @@ def get_digest_contents(
             "topics":
                 topic_ids,
         },
+
+        "language":
+            language,
 
         "last_sent_at":
             last_sent_at,
