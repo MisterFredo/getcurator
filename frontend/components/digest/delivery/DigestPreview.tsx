@@ -2,11 +2,7 @@
 
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-
-import { buildDigestEmail } from "./email/buildDigestEmail";
-
-import { buildDigestEmailGmail } from "./email/buildDigestEmailGmail";
+import NewsletterPreview from "@/components/newsletter/delivery/NewsletterPreview";
 
 import type {
   DigestContentItem,
@@ -14,6 +10,7 @@ import type {
 
 import type {
   HeaderConfig,
+  NewsletterNewsItem,
 } from "@/types/newsletter";
 
 /* ========================================================= */
@@ -21,21 +18,53 @@ import type {
 type Props = {
   headerConfig: HeaderConfig;
 
-  /* =======================================================
-     EDITORIAL
-  ======================================================= */
-
   editorialHtml?: string;
-
-  /* fallback legacy */
-  introText?: string;
-
-  /* =======================================================
-     CONTENT
-  ======================================================= */
 
   contents: DigestContentItem[];
 };
+
+/* =========================================================
+   MAP DIGEST → NEWSLETTER
+========================================================= */
+
+function mapDigestToNewsletter(
+  item: DigestContentItem
+): NewsletterNewsItem {
+
+  return {
+    id: item.id,
+
+    title:
+      item.title,
+
+    excerpt:
+      item.excerpt,
+
+    published_at:
+      item.published_at,
+
+    url:
+      item.url,
+
+    media_id:
+      item.media_id,
+
+    primary_company_logo:
+      item.primary_company_logo,
+
+    companies:
+      item.companies,
+
+    topics:
+      item.topics,
+
+    styles:
+      item.styles,
+
+    content_type:
+      item.content_type,
+  } as NewsletterNewsItem;
+}
 
 /* ========================================================= */
 
@@ -44,237 +73,58 @@ export default function DigestPreview({
 
   editorialHtml,
 
-  introText,
-
   contents,
-
 }: Props) {
 
-  const [mode, setMode] = useState<
-    "brevo" | "gmail"
-  >("brevo");
-
   /* =======================================================
-     SOURCE UNIQUE ÉDITORIALE
+     SPLIT CONTENTS
   ======================================================= */
 
-  const editorial =
-    editorialHtml ||
-    introText ||
-    "";
+  const news =
+    contents
+      .filter(
+        (c) =>
+          c.content_type ===
+          "news"
+      )
+      .map(
+        mapDigestToNewsletter
+      );
+
+  const breves =
+    contents
+      .filter(
+        (c) =>
+          c.content_type !==
+          "news"
+      )
+      .map(
+        mapDigestToNewsletter
+      );
 
   /* =======================================================
-     HTML
-  ======================================================= */
-
-  const html = useMemo(() => {
-
-    if (mode === "gmail") {
-
-      return buildDigestEmailGmail({
-        headerConfig,
-
-        editorialHtml:
-          editorial,
-
-        contents,
-      });
-    }
-
-    return buildDigestEmail({
-      headerConfig,
-
-      editorialHtml:
-        editorial,
-
-      contents,
-    });
-
-  }, [
-    mode,
-
-    headerConfig,
-
-    editorial,
-
-    contents,
-  ]);
-
-  /* =======================================================
-     COPY
-  ======================================================= */
-
-  const hiddenRef =
-    useRef<HTMLDivElement>(
-      null
-    );
-
-  function copyHtml() {
-
-    navigator.clipboard.writeText(
-      html
-    );
-
-    alert(
-      mode === "gmail"
-        ? "HTML Gmail copié."
-        : "HTML Brevo copié."
-    );
-  }
-
-  function copyForGmail() {
-
-    if (!hiddenRef.current) {
-      return;
-    }
-
-    const container =
-      hiddenRef.current;
-
-    container.innerHTML =
-      html;
-
-    const range =
-      document.createRange();
-
-    range.selectNodeContents(
-      container
-    );
-
-    const selection =
-      window.getSelection();
-
-    selection?.removeAllRanges();
-
-    selection?.addRange(
-      range
-    );
-
-    document.execCommand(
-      "copy"
-    );
-
-    selection?.removeAllRanges();
-
-    container.innerHTML =
-      "";
-
-    alert(
-      "Version collable Gmail copiée."
-    );
-  }
-
-  /* =======================================================
-     UI
+     RENDER
   ======================================================= */
 
   return (
 
-    <section className="space-y-4">
+    <NewsletterPreview
+      headerConfig={
+        headerConfig
+      }
 
-      {/* HEADER */}
+      editorialHtml={
+        editorialHtml
+      }
 
-      <div className="flex items-center justify-between">
+      news={
+        news
+      }
 
-        <h2 className="text-sm font-semibold">
-          Preview digest
-        </h2>
+      breves={
+        breves
+      }
+    />
 
-        <div className="flex items-center gap-3">
-
-          {/* MODE SWITCH */}
-
-          <div className="flex border rounded overflow-hidden text-xs">
-
-            <button
-              onClick={() =>
-                setMode(
-                  "brevo"
-                )
-              }
-              className={`px-3 py-1.5 ${
-                mode ===
-                "brevo"
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600"
-              }`}
-            >
-              Brevo
-            </button>
-
-            <button
-              onClick={() =>
-                setMode(
-                  "gmail"
-                )
-              }
-              className={`px-3 py-1.5 border-l ${
-                mode ===
-                "gmail"
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600"
-              }`}
-            >
-              Gmail
-            </button>
-
-          </div>
-
-          {/* ACTIONS */}
-
-          <button
-            onClick={
-              copyHtml
-            }
-            className="px-3 py-1.5 rounded bg-gray-900 text-white text-xs"
-          >
-            Copier HTML
-          </button>
-
-          {mode ===
-            "gmail" && (
-
-            <button
-              onClick={
-                copyForGmail
-              }
-              className="px-3 py-1.5 rounded bg-white border border-gray-300 text-xs"
-            >
-              Copier pour Gmail
-            </button>
-
-          )}
-
-        </div>
-
-      </div>
-
-      {/* PREVIEW */}
-
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-
-        <iframe
-          title="Digest preview"
-          srcDoc={html}
-          className="w-full h-[720px]"
-        />
-
-      </div>
-
-      {/* HIDDEN COPY CONTAINER */}
-
-      <div
-        ref={hiddenRef}
-        style={{
-          position:
-            "absolute",
-
-          left: "-9999px",
-
-          top: 0,
-        }}
-      />
-
-    </section>
   );
 }
