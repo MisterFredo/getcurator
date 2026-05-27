@@ -1,21 +1,21 @@
-
+// frontend/components/newsletter/delivery/email/buildNewsletterEmailGmail.ts
 
 import type {
   NewsletterNewsItem,
   HeaderConfig,
 } from "@/types/newsletter";
 
-import { EmailLayoutGmail } from "./EmailLayoutGmail";
+import { EmailLayoutGmail } from "@/components/delivery/email/EmailLayoutGmail";
 
-import { EmailHeaderGmail } from "./EmailHeaderGmail";
+import { EmailHeaderGmail } from "@/components/delivery/email/EmailHeaderGmail";
+
+import { EmailEditorialBlockGmail } from "@/components/delivery/email/EmailEditorialBlockGmail";
+
+import { EmailSignatureGmail } from "@/components/delivery/email/EmailSignatureGmail";
 
 import { EmailNewsBlockGmail } from "./EmailNewsBlockGmail";
 
 import { EmailBrevesBlockGmail } from "./EmailBrevesBlockGmail";
-
-import { EmailSignatureGmail } from "./EmailSignatureGmail";
-
-import { EmailEditorialBlockGmail } from "./EmailEditorialBlockGmail";
 
 /* ========================================================= */
 
@@ -42,7 +42,7 @@ type Props = {
 
 /* ========================================================= */
 
-export function buildEmailGmail({
+export function buildNewsletterEmailGmail({
   headerConfig,
 
   editorialHtml,
