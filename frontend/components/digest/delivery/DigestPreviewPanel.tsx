@@ -2,7 +2,7 @@
 
 "use client";
 
-import DigestPreview from "@/components/digest/delivery/DigestPreview";
+import DeliveryPreview from "@/components/digest/delivery/DigestPreview";
 
 import type {
   DigestContentItem,
@@ -30,11 +30,10 @@ export default function DigestPreviewPanel({
   editorialHtml,
 
   contents,
-
 }: Props) {
 
   const totalItems =
-    contents.length +
+    contents.length;
 
   const isEmpty =
     totalItems === 0;
@@ -52,10 +51,7 @@ export default function DigestPreviewPanel({
         </h2>
 
         <div className="text-xs text-gray-400">
-          {totalItems} élément
-          {totalItems > 1
-            ? "s"
-            : ""}
+          {totalItems} élément{totalItems > 1 ? "s" : ""}
         </div>
 
       </div>
@@ -71,11 +67,11 @@ export default function DigestPreviewPanel({
             <div className="space-y-1">
 
               <div className="font-medium text-gray-500">
-                Aucune sélection
+                Aucun contenu
               </div>
 
               <div>
-                Sélectionnez des contenus à gauche.
+                Sélectionnez un utilisateur.
               </div>
 
             </div>
@@ -86,7 +82,7 @@ export default function DigestPreviewPanel({
 
           <div className="mx-auto w-full max-w-[820px]">
 
-            <DigestPreview
+            <DeliveryPreview
               headerConfig={
                 headerConfig
               }
