@@ -1,17 +1,19 @@
+// frontend/components/newsletter/delivery/NewsletterPreview.tsx
+
 "use client";
 
 import { useMemo, useRef, useState } from "react";
 
-import { buildEmail } from "./email/buildEmail";
-import { buildEmailGmail } from "./email/buildEmailGmail";
+import { buildNewsletterEmail } from "./email/buildNewsletterEmail";
+
+import { buildNewsletterEmailGmail } from "./email/buildNewsletterEmailGmail";
 
 import type {
   NewsletterNewsItem,
-  NewsletterAnalysisItem,
-  NewsletterNumberItem,
   HeaderConfig,
-  TopicStat,
 } from "@/types/newsletter";
+
+/* ========================================================= */
 
 type Props = {
   headerConfig: HeaderConfig;
@@ -22,7 +24,7 @@ type Props = {
 
   editorialHtml?: string;
 
-  /* legacy fallback */
+  /* fallback legacy */
   introText?: string;
 
   /* =======================================================
@@ -30,23 +32,22 @@ type Props = {
   ======================================================= */
 
   news: NewsletterNewsItem[];
+
   breves: NewsletterNewsItem[];
-  analyses: NewsletterAnalysisItem[];
-
-  numbers?: NewsletterNumberItem[];
-
-  topicStats?: TopicStat[];
 };
 
-export default function DeliveryPreview({
+/* ========================================================= */
+
+export default function NewsletterPreview({
   headerConfig,
+
   editorialHtml,
+
   introText,
+
   news,
+
   breves,
-  analyses,
-  numbers = [],
-  topicStats = [],
 }: Props) {
 
   const [mode, setMode] = useState<
@@ -70,43 +71,39 @@ export default function DeliveryPreview({
 
     if (mode === "gmail") {
 
-      return buildEmailGmail({
+      return buildNewsletterEmailGmail({
         headerConfig,
-        editorialHtml: editorial,
+
+        editorialHtml:
+          editorial,
 
         news,
-        breves,
-        analyses,
 
-        numbers,
-        topicStats,
+        breves,
       });
     }
 
-    return buildEmail({
+    return buildNewsletterEmail({
       headerConfig,
-      editorialHtml: editorial,
+
+      editorialHtml:
+        editorial,
 
       news,
-      breves,
-      analyses,
 
-      numbers,
-      topicStats,
+      breves,
     });
 
   }, [
     mode,
 
     headerConfig,
+
     editorial,
 
     news,
-    breves,
-    analyses,
 
-    numbers,
-    topicStats,
+    breves,
   ]);
 
   /* =======================================================
@@ -114,11 +111,15 @@ export default function DeliveryPreview({
   ======================================================= */
 
   const hiddenRef =
-    useRef<HTMLDivElement>(null);
+    useRef<HTMLDivElement>(
+      null
+    );
 
   function copyHtml() {
 
-    navigator.clipboard.writeText(html);
+    navigator.clipboard.writeText(
+      html
+    );
 
     alert(
       mode === "gmail"
@@ -129,12 +130,15 @@ export default function DeliveryPreview({
 
   function copyForGmail() {
 
-    if (!hiddenRef.current) return;
+    if (!hiddenRef.current) {
+      return;
+    }
 
     const container =
       hiddenRef.current;
 
-    container.innerHTML = html;
+    container.innerHTML =
+      html;
 
     const range =
       document.createRange();
@@ -148,13 +152,18 @@ export default function DeliveryPreview({
 
     selection?.removeAllRanges();
 
-    selection?.addRange(range);
+    selection?.addRange(
+      range
+    );
 
-    document.execCommand("copy");
+    document.execCommand(
+      "copy"
+    );
 
     selection?.removeAllRanges();
 
-    container.innerHTML = "";
+    container.innerHTML =
+      "";
 
     alert(
       "Version collable Gmail copiée."
@@ -185,10 +194,13 @@ export default function DeliveryPreview({
 
             <button
               onClick={() =>
-                setMode("brevo")
+                setMode(
+                  "brevo"
+                )
               }
               className={`px-3 py-1.5 ${
-                mode === "brevo"
+                mode ===
+                "brevo"
                   ? "bg-gray-900 text-white"
                   : "bg-white text-gray-600"
               }`}
@@ -198,10 +210,13 @@ export default function DeliveryPreview({
 
             <button
               onClick={() =>
-                setMode("gmail")
+                setMode(
+                  "gmail"
+                )
               }
               className={`px-3 py-1.5 border-l ${
-                mode === "gmail"
+                mode ===
+                "gmail"
                   ? "bg-gray-900 text-white"
                   : "bg-white text-gray-600"
               }`}
@@ -214,16 +229,21 @@ export default function DeliveryPreview({
           {/* ACTIONS */}
 
           <button
-            onClick={copyHtml}
+            onClick={
+              copyHtml
+            }
             className="px-3 py-1.5 rounded bg-gray-900 text-white text-xs"
           >
             Copier HTML
           </button>
 
-          {mode === "gmail" && (
+          {mode ===
+            "gmail" && (
 
             <button
-              onClick={copyForGmail}
+              onClick={
+                copyForGmail
+              }
               className="px-3 py-1.5 rounded bg-white border border-gray-300 text-xs"
             >
               Copier pour Gmail
@@ -252,8 +272,11 @@ export default function DeliveryPreview({
       <div
         ref={hiddenRef}
         style={{
-          position: "absolute",
+          position:
+            "absolute",
+
           left: "-9999px",
+
           top: 0,
         }}
       />
