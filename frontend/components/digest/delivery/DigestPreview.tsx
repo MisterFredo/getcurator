@@ -10,7 +10,6 @@ import { buildDigestEmailGmail } from "./email/buildDigestEmailGmail";
 
 import type {
   DigestContentItem,
-  DigestNumberItem,
 } from "@/types/digest";
 
 import type {
