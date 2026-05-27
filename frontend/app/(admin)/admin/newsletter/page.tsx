@@ -1,15 +1,20 @@
+// app/(admin)/admin/newsletter/page.tsx
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
 
 import NewsletterEngine from "@/components/newsletter/NewsletterEngine";
+
 import NewsletterSelectors from "@/components/newsletter/NewsletterSelectors";
+
 import NewsletterTopicStats from "@/components/newsletter/NewsletterTopicStats";
 
-import DigestHeaderConfig from "@/components/delivery/DeliveryHeaderConfig";
-import DigestPreviewPanel from "@/components/delivery/DeliveryPreviewPanel";
+import DeliveryHeaderConfig from "@/components/delivery/core/DeliveryHeaderConfig";
 
-import DeliveryEditorialFlow from "@/components/delivery/DeliveryEditorialFlow";
+import NewsletterPreviewPanel from "@/components/newsletter/delivery/NewsletterPreviewPanel";
+
+import DeliveryEditorialFlow from "@/components/delivery/core/DeliveryEditorialFlow";
 
 import { api } from "@/lib/api";
 
@@ -29,13 +34,19 @@ import type {
 
 type EditorialItem = {
   id: string;
-  type: "news" | "breve";
+
+  type:
+    | "news"
+    | "breve";
 };
 
 type DeliveryEditorialItem = {
   id: string;
+
   type: string;
+
   label: string;
+
   title: string;
 };
 
@@ -45,33 +56,45 @@ type DeliveryEditorialItem = {
 
 export default function NewsletterPage() {
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
   /* =======================================================
      DATA
   ======================================================= */
 
-  const [news, setNews] = useState<
-    NewsletterNewsItem[]
-  >([]);
+  const [news, setNews] =
+    useState<
+      NewsletterNewsItem[]
+    >([]);
 
-  const [breves, setBreves] = useState<
-    NewsletterNewsItem[]
-  >([]);
+  const [breves, setBreves] =
+    useState<
+      NewsletterNewsItem[]
+    >([]);
 
   /* =======================================================
      FILTERS
   ======================================================= */
 
-  const [selectedTopics, setSelectedTopics] = useState<
+  const [
+    selectedTopics,
+    setSelectedTopics,
+  ] = useState<
     SelectOption[]
   >([]);
 
-  const [selectedCompanies, setSelectedCompanies] = useState<
+  const [
+    selectedCompanies,
+    setSelectedCompanies,
+  ] = useState<
     SelectOption[]
   >([]);
 
-  const [selectedTypes, setSelectedTypes] = useState<
+  const [
+    selectedTypes,
+    setSelectedTypes,
+  ] = useState<
     SelectOption[]
   >([]);
 
@@ -79,53 +102,82 @@ export default function NewsletterPage() {
      STORE GLOBAL DES ITEMS
   ======================================================= */
 
-  const [selectedItemsMap, setSelectedItemsMap] = useState<{
+  const [
+    selectedItemsMap,
+    setSelectedItemsMap,
+  ] = useState<{
     [id: string]: any;
   }>({});
 
-  function storeItems(items: any[]) {
+  function storeItems(
+    items: any[]
+  ) {
 
-    setSelectedItemsMap((prev) => {
+    setSelectedItemsMap(
+      (prev) => {
 
-      const next = {
-        ...prev,
-      };
+        const next = {
+          ...prev,
+        };
 
-      items.forEach((i) => {
+        items.forEach(
+          (i) => {
 
-        if (i?.id) {
-          next[i.id] = i;
-        }
+            if (i?.id) {
+              next[i.id] = i;
+            }
 
-      });
+          }
+        );
 
-      return next;
-    });
+        return next;
+      }
+    );
   }
 
   /* =======================================================
      HEADER CONFIG
   ======================================================= */
 
-  const [headerConfig, setHeaderConfig] = useState<HeaderConfig>({
-    title: "Newsletter Ratecard",
+  const [
+    headerConfig,
+    setHeaderConfig,
+  ] = useState<HeaderConfig>({
+    title:
+      "Newsletter Ratecard",
+
     subtitle: "",
+
     period: "",
-    headerCompany: undefined,
-    showTopicStats: false,
-    topBarEnabled: true,
-    topBarColor: "#84CC16",
-    periodColor: "#84CC16",
+
+    headerCompany:
+      undefined,
+
+    topBarEnabled:
+      true,
+
+    topBarColor:
+      "#84CC16",
+
+    periodColor:
+      "#84CC16",
+
     introHtml: "",
   });
 
-  const [introText, setIntroText] = useState("");
+  const [
+    introText,
+    setIntroText,
+  ] = useState("");
 
   /* =======================================================
      EDITORIAL FLOW
   ======================================================= */
 
-  const [editorialOrder, setEditorialOrder] = useState<
+  const [
+    editorialOrder,
+    setEditorialOrder,
+  ] = useState<
     EditorialItem[]
   >([]);
 
@@ -133,7 +185,10 @@ export default function NewsletterPage() {
      TOPIC STATS
   ======================================================= */
 
-  const [topicStats, setTopicStats] = useState<
+  const [
+    topicStats,
+    setTopicStats,
+  ] = useState<
     TopicStat[]
   >([]);
 
@@ -147,26 +202,44 @@ export default function NewsletterPage() {
 
       try {
 
-        const res = await api.get(
-          "/news/breves/stats"
-        );
-
-        const data = res.result || res;
-
-        const topics: TopicStat[] = (
-          data.topics_stats || []
-        )
-          .map((t: any) => ({
-            label: t.label,
-            last_30_days: t.last_30_days ?? 0,
-            total: t.total ?? 0,
-          }))
-          .sort(
-            (a, b) =>
-              b.last_30_days - a.last_30_days
+        const res =
+          await api.get(
+            "/news/breves/stats"
           );
 
-        setTopicStats(topics);
+        const data =
+          res.result ||
+          res;
+
+        const topics:
+          TopicStat[] =
+            (
+              data.topics_stats ||
+              []
+            )
+              .map(
+                (t: any) => ({
+                  label:
+                    t.label,
+
+                  last_30_days:
+                    t.last_30_days ??
+                    0,
+
+                  total:
+                    t.total ??
+                    0,
+                })
+              )
+              .sort(
+                (a, b) =>
+                  b.last_30_days -
+                  a.last_30_days
+              );
+
+        setTopicStats(
+          topics
+        );
 
       } catch (e) {
 
@@ -186,33 +259,53 @@ export default function NewsletterPage() {
      SEARCH
   ======================================================= */
 
-  async function handleSearch(filters: {
-    topics: string[];
-    companies: string[];
-    news_types: string[];
-    period: "total" | "30d" | "7d";
-  }) {
+  async function handleSearch(
+    filters: {
+      topics: string[];
+
+      companies: string[];
+
+      news_types: string[];
+
+      period:
+        | "total"
+        | "30d"
+        | "7d";
+    }
+  ) {
 
     setLoading(true);
 
     try {
 
-      const json = await api.post(
-        "/newsletter/search",
-        {
-          ...filters,
-          limit: 20,
-        }
+      const json =
+        await api.post(
+          "/newsletter/search",
+          {
+            ...filters,
+            limit: 20,
+          }
+        );
+
+      const data =
+        json.result ||
+        json ||
+        {};
+
+      setNews(
+        data.news || []
       );
 
-      const data = json.result || json || {};
-
-      setNews(data.news || []);
-      setBreves(data.breves || []);
+      setBreves(
+        data.breves || []
+      );
 
       storeItems([
-        ...(data.news || []),
-        ...(data.breves || []),
+        ...(data.news ||
+          []),
+
+        ...(data.breves ||
+          []),
       ]);
 
     } catch (e) {
@@ -233,59 +326,104 @@ export default function NewsletterPage() {
      MAP ORDER → DATA
   ======================================================= */
 
-  const editorialNews = useMemo(
-    () =>
-      editorialOrder
-        .filter((i) => i.type === "news")
-        .map((i) => selectedItemsMap[i.id])
-        .filter(Boolean) as NewsletterNewsItem[],
-    [editorialOrder, selectedItemsMap]
-  );
+  const editorialNews =
+    useMemo(
+      () =>
+        editorialOrder
+          .filter(
+            (i) =>
+              i.type ===
+              "news"
+          )
+          .map(
+            (i) =>
+              selectedItemsMap[
+                i.id
+              ]
+          )
+          .filter(
+            Boolean
+          ) as NewsletterNewsItem[],
 
-  const editorialBreves = useMemo(
-    () =>
-      editorialOrder
-        .filter((i) => i.type === "breve")
-        .map((i) => selectedItemsMap[i.id])
-        .filter(Boolean) as NewsletterNewsItem[],
-    [editorialOrder, selectedItemsMap]
-  );
+      [
+        editorialOrder,
+        selectedItemsMap,
+      ]
+    );
+
+  const editorialBreves =
+    useMemo(
+      () =>
+        editorialOrder
+          .filter(
+            (i) =>
+              i.type ===
+              "breve"
+          )
+          .map(
+            (i) =>
+              selectedItemsMap[
+                i.id
+              ]
+          )
+          .filter(
+            Boolean
+          ) as NewsletterNewsItem[],
+
+      [
+        editorialOrder,
+        selectedItemsMap,
+      ]
+    );
 
   /* =======================================================
      DELIVERY FLOW ITEMS
   ======================================================= */
 
-  const editorialItems = useMemo<
-    DeliveryEditorialItem[]
-  >(() => {
+  const editorialItems =
+    useMemo<
+      DeliveryEditorialItem[]
+    >(() => {
 
-    return editorialOrder
-      .map((item) => {
+      return editorialOrder
+        .map(
+          (item) => {
 
-        const data =
-          selectedItemsMap[item.id];
+            const data =
+              selectedItemsMap[
+                item.id
+              ];
 
-        if (!data) return null;
+            if (!data) {
+              return null;
+            }
 
-        return {
-          id: item.id,
-          type: item.type,
+            return {
+              id: item.id,
 
-          label:
-            item.type === "news"
-              ? "NEWS"
-              : "BRÈVE",
+              type:
+                item.type,
 
-          title:
-            data.title || "Sans titre",
-        };
-      })
-      .filter(Boolean) as DeliveryEditorialItem[];
+              label:
+                item.type ===
+                "news"
+                  ? "NEWS"
+                  : "BRÈVE",
 
-  }, [
-    editorialOrder,
-    selectedItemsMap,
-  ]);
+              title:
+                data.title ||
+                "Sans titre",
+            };
+          }
+        )
+        .filter(
+          Boolean
+        ) as DeliveryEditorialItem[];
+
+    }, [
+      editorialOrder,
+      selectedItemsMap,
+    ]);
 
   /* =======================================================
      UPDATE FLOW
@@ -295,20 +433,31 @@ export default function NewsletterPage() {
     items:
       | DeliveryEditorialItem[]
       | ((
-          prev: DeliveryEditorialItem[]
-        ) => DeliveryEditorialItem[])
+          prev:
+            DeliveryEditorialItem[]
+        ) =>
+          DeliveryEditorialItem[])
   ) {
 
     const resolved =
-      typeof items === "function"
-        ? items(editorialItems)
+      typeof items ===
+      "function"
+        ? items(
+            editorialItems
+          )
         : items;
 
     setEditorialOrder(
-      resolved.map((i) => ({
-        id: i.id,
-        type: i.type as "news" | "breve",
-      }))
+      resolved.map(
+        (i) => ({
+          id: i.id,
+
+          type:
+            i.type as
+              | "news"
+              | "breve",
+        })
+      )
     );
   }
 
@@ -334,35 +483,67 @@ export default function NewsletterPage() {
 
         <div className="space-y-5">
 
-          <DigestHeaderConfig
-            headerConfig={headerConfig}
-            setHeaderConfig={setHeaderConfig}
-            introText={introText}
-            setIntroText={setIntroText}
+          <DeliveryHeaderConfig
+            headerConfig={
+              headerConfig
+            }
+            setHeaderConfig={
+              setHeaderConfig
+            }
+            introText={
+              introText
+            }
+            setIntroText={
+              setIntroText
+            }
           />
 
-          <NewsletterTopicStats period={30} />
+          <NewsletterTopicStats
+            period={30}
+          />
 
           <NewsletterEngine
-            selectedTopics={selectedTopics}
-            setSelectedTopics={setSelectedTopics}
-            selectedCompanies={selectedCompanies}
-            setSelectedCompanies={setSelectedCompanies}
-            selectedTypes={selectedTypes}
-            setSelectedTypes={setSelectedTypes}
-            onSearch={handleSearch}
+            selectedTopics={
+              selectedTopics
+            }
+            setSelectedTopics={
+              setSelectedTopics
+            }
+            selectedCompanies={
+              selectedCompanies
+            }
+            setSelectedCompanies={
+              setSelectedCompanies
+            }
+            selectedTypes={
+              selectedTypes
+            }
+            setSelectedTypes={
+              setSelectedTypes
+            }
+            onSearch={
+              handleSearch
+            }
           />
 
           <NewsletterSelectors
             news={news}
             breves={breves}
-            editorialOrder={editorialOrder}
-            setEditorialOrder={setEditorialOrder}
+            editorialOrder={
+              editorialOrder
+            }
+            setEditorialOrder={
+              setEditorialOrder
+            }
           />
 
           <DeliveryEditorialFlow
-            items={editorialItems}
-            setItems={updateEditorialItems}
+            items={
+              editorialItems
+            }
+            setItems={
+              updateEditorialItems
+            }
           />
 
         </div>
@@ -371,14 +552,22 @@ export default function NewsletterPage() {
 
         <div className="sticky top-6 h-[calc(100vh-4rem)] overflow-y-auto pr-2">
 
-          <DigestPreviewPanel
-            headerConfig={headerConfig}
-            editorialHtml={introText}
-            news={editorialNews}
-            breves={editorialBreves}
-            analyses={[]}
-            numbers={[]}
-            topicStats={topicStats}
+          <NewsletterPreviewPanel
+            headerConfig={
+              headerConfig
+            }
+
+            editorialHtml={
+              introText
+            }
+
+            news={
+              editorialNews
+            }
+
+            breves={
+              editorialBreves
+            }
           />
 
         </div>
