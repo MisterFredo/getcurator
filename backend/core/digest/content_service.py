@@ -129,7 +129,17 @@ def search_digest_content(
     # SEARCH MODE
     # ========================================================
 
-    if query and query.strip():
+    has_search_filters = any([
+        query and query.strip(),
+
+        topics,
+
+        companies,
+
+        solutions,
+    ])
+
+    if has_search_filters:
 
         contents = search(
             q=query,
@@ -173,14 +183,6 @@ def search_digest_content(
             content_type=contents_type,
 
             feed_mode=contents_feed_mode,
-
-            topics=topics or [],
-
-            companies=companies or [],
-
-            solutions=solutions or [],
-
-            period=period,
         )
 
     # ========================================================
