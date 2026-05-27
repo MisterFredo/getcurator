@@ -1,5 +1,5 @@
 import type { HeaderConfig } from "@/types/newsletter";
-import { escapeHtml } from "./EmailHelpers";
+import { escapeHtml } from "@/components/delivery/email/EmailHelpers"
 
 export function EmailHeaderMedia(
   headerConfig: HeaderConfig
