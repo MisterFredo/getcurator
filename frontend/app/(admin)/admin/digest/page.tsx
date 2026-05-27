@@ -12,7 +12,9 @@ import { api } from "@/lib/api";
 
 import DeliveryHeaderConfig from "@/components/delivery/core/DeliveryHeaderConfig";
 
-import DigestEngine from "@/components/digest/DigestEngine";
+import DigestUserSelector, {
+  DigestUser,
+} from "@/components/digest/DigestUserSelector";
 
 import DigestSelectors from "@/components/digest/DigestSelectors";
 
@@ -22,7 +24,6 @@ import DigestPreviewPanel from "@/components/digest/delivery/DigestPreviewPanel"
 
 import type {
   DigestContentItem,
-  DigestNumberItem,
   DigestEditorialItem,
 } from "@/types/digest";
 
@@ -30,13 +31,20 @@ import type {
   HeaderConfig,
 } from "@/types/newsletter";
 
-import type {
-  SelectOption,
-} from "@/components/ui/SearchableMultiSelect";
-
 /* ========================================================= */
 
 export default function DigestPage() {
+
+  /* =======================================================
+     USER
+  ======================================================= */
+
+  const [
+    selectedUser,
+    setSelectedUser,
+  ] = useState<
+    DigestUser | null
+  >(null);
 
   /* =======================================================
      HEADER CONFIG
@@ -73,39 +81,13 @@ export default function DigestPage() {
   ] = useState("");
 
   /* =======================================================
-     ENGINE
+     UI
   ======================================================= */
-
-  const [
-    query,
-    setQuery,
-  ] = useState("");
 
   const [
     loading,
     setLoading,
   ] = useState(false);
-
-  const [
-    selectedTopics,
-    setSelectedTopics,
-  ] = useState<
-    SelectOption[]
-  >([]);
-
-  const [
-    selectedCompanies,
-    setSelectedCompanies,
-  ] = useState<
-    SelectOption[]
-  >([]);
-
-  const [
-    selectedSolutions,
-    setSelectedSolutions,
-  ] = useState<
-    SelectOption[]
-  >([]);
 
   /* =======================================================
      DIGEST DATA
@@ -119,10 +101,11 @@ export default function DigestPage() {
   >([]);
 
   const [
-    numbers,
+    lastSentAt,
+    setLastSentAt,
   ] = useState<
-    DigestNumberItem[]
-  >([]);
+    string | null
+  >(null);
 
   /* =======================================================
      FLOW
@@ -136,59 +119,55 @@ export default function DigestPage() {
   >([]);
 
   /* =======================================================
-     SEARCH
+     LOAD DIGEST
   ======================================================= */
 
-  async function handleSearch({
-    query,
-
-    topics,
-
-    companies,
-
-    solutions,
-
-    period,
-  }: {
-    query: string;
-
-    topics: string[];
-
-    companies: string[];
-
-    solutions: string[];
-
-    period: string;
-  }) {
+  async function loadDigest(
+    userId: string
+  ) {
 
     try {
 
       setLoading(true);
 
       const data =
-        await api.post(
-          "/digest/search",
-          {
-            query,
-
-            topics,
-
-            companies,
-
-            solutions,
-
-            period,
-
-            limit: 30,
-          }
+        await api.get(
+          `/digest/my-feed?user_id=${userId}`
         );
 
-      const results =
-        data?.result
-          ?.contents || [];
+      const result =
+        data?.result ||
+        {};
+
+      const digestContents =
+        result?.contents ||
+        [];
 
       setContents(
-        results
+        digestContents
+      );
+
+      setLastSentAt(
+        result?.last_sent_at ||
+        null
+      );
+
+      /* ===============================================
+         AUTO SELECT ALL
+      =============================================== */
+
+      setEditorialOrder(
+
+        digestContents.map(
+          (
+            item: DigestContentItem
+          ) => ({
+            id: item.id,
+
+            type:
+              "content",
+          })
+        )
       );
 
     } catch (
@@ -196,7 +175,7 @@ export default function DigestPage() {
     ) {
 
       console.error(
-        "Digest search error",
+        "Digest load error",
         error
       );
 
@@ -207,24 +186,21 @@ export default function DigestPage() {
   }
 
   /* =======================================================
-     INITIAL LOAD
+     USER SELECT
   ======================================================= */
 
-  useEffect(() => {
+  async function handleSelectUser(
+    user: DigestUser
+  ) {
 
-    handleSearch({
-      query: "",
+    setSelectedUser(
+      user
+    );
 
-      topics: [],
-
-      companies: [],
-
-      solutions: [],
-
-      period: "total",
-    });
-
-  }, []);
+    await loadDigest(
+      user.id_user
+    );
+  }
 
   /* =======================================================
      SELECTED CONTENTS
@@ -257,6 +233,37 @@ export default function DigestPage() {
     ]);
 
   /* =======================================================
+     FORMAT DATE
+  ======================================================= */
+
+  function formatDate(
+    value?: string | null
+  ) {
+
+    if (!value) {
+      return "Jamais";
+    }
+
+    try {
+
+      return new Date(
+        value
+      ).toLocaleDateString(
+        "fr-FR",
+        {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }
+      );
+
+    } catch {
+
+      return "—";
+    }
+  }
+
+  /* =======================================================
      UI
   ======================================================= */
 
@@ -265,75 +272,78 @@ export default function DigestPage() {
     <div className="space-y-4">
 
       {/* ===================================================
-         PAGE HEADER
+         HEADER
       =================================================== */}
 
       <div className="flex items-center justify-between">
 
-        <h1 className="text-lg font-semibold tracking-tight">
-          Digest
-        </h1>
+        <div>
+
+          <h1 className="text-lg font-semibold tracking-tight">
+            Digest
+          </h1>
+
+          <div className="text-sm text-gray-500 mt-1">
+
+            Digest automatique basé sur
+            les USER_PREFERENCES.
+
+          </div>
+
+        </div>
+
+        {/* LAST SENT */}
+
+        {selectedUser && (
+
+          <div className="text-right">
+
+            <div className="text-xs uppercase tracking-wide text-gray-400">
+              Dernier envoi
+            </div>
+
+            <div className="text-sm text-gray-700 mt-1">
+              {formatDate(
+                lastSentAt
+              )}
+            </div>
+
+          </div>
+
+        )}
 
       </div>
-
-      {/* ===================================================
-         ENGINE
-      =================================================== */}
-
-      <DigestEngine
-        query={query}
-        setQuery={setQuery}
-
-        selectedTopics={
-          selectedTopics
-        }
-
-        setSelectedTopics={
-          setSelectedTopics
-        }
-
-        selectedCompanies={
-          selectedCompanies
-        }
-
-        setSelectedCompanies={
-          setSelectedCompanies
-        }
-
-        selectedSolutions={
-          selectedSolutions
-        }
-
-        setSelectedSolutions={
-          setSelectedSolutions
-        }
-
-        onSearch={
-          handleSearch
-        }
-      />
 
       {/* ===================================================
          MAIN LAYOUT
       =================================================== */}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1.2fr] gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr_1.2fr] gap-6 items-start">
 
         {/* =================================================
-           LEFT COLUMN
+           LEFT
         ================================================= */}
 
         <div className="space-y-5">
 
-          {/* RESULTS */}
+          {/* USER SELECTOR */}
+
+          <DigestUserSelector
+            selectedUserId={
+              selectedUser
+                ?.id_user
+            }
+
+            onSelectUser={
+              handleSelectUser
+            }
+          />
+
+          {/* CONTENTS */}
 
           <DigestSelectors
             contents={
               contents
-            }
-
-            numbers={
-              numbers
             }
 
             editorialOrder={
@@ -348,7 +358,7 @@ export default function DigestPage() {
         </div>
 
         {/* =================================================
-           CENTER COLUMN
+           CENTER
         ================================================= */}
 
         <div className="space-y-5">
@@ -358,10 +368,6 @@ export default function DigestPage() {
           <DigestEditorialFlow
             contents={
               contents
-            }
-
-            numbers={
-              numbers
             }
 
             editorialOrder={
@@ -396,7 +402,7 @@ export default function DigestPage() {
         </div>
 
         {/* =================================================
-           RIGHT COLUMN
+           RIGHT
         ================================================= */}
 
         <div className="sticky top-6 h-[calc(100vh-4rem)] overflow-y-auto pr-2">
@@ -412,10 +418,6 @@ export default function DigestPage() {
 
             contents={
               selectedContents
-            }
-
-            numbers={
-              numbers
             }
           />
 
