@@ -77,7 +77,7 @@ export default function DigestUserSelector({
 
         const data =
           await api.get(
-            "/user/list"
+            "/user/digest-users"
           );
 
         const rows =
