@@ -36,8 +36,6 @@ type Props = {
   ======================================================= */
 
   contents: DigestContentItem[];
-
-  numbers: DigestNumberItem[];
 };
 
 /* ========================================================= */
@@ -51,7 +49,6 @@ export default function DigestPreview({
 
   contents,
 
-  numbers,
 }: Props) {
 
   const [mode, setMode] = useState<
@@ -82,8 +79,6 @@ export default function DigestPreview({
           editorial,
 
         contents,
-
-        numbers,
       });
     }
 
@@ -94,8 +89,6 @@ export default function DigestPreview({
         editorial,
 
       contents,
-
-      numbers,
     });
 
   }, [
@@ -106,8 +99,6 @@ export default function DigestPreview({
     editorial,
 
     contents,
-
-    numbers,
   ]);
 
   /* =======================================================
