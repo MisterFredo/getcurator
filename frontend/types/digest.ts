@@ -11,7 +11,7 @@ export type DigestContentItem = {
      CONTENT TYPE
   =============================== */
 
-  content_type:
+  content_type?:
     | "news"
     | "analysis";
 
@@ -47,6 +47,12 @@ export type DigestContentItem = {
     is_partner?: boolean;
   }[];
 
+  solutions?: {
+    id_solution: string;
+
+    name: string;
+  }[];
+
   topics?: {
     id_topic?: string;
 
@@ -56,45 +62,10 @@ export type DigestContentItem = {
   }[];
 
   /* ===============================
-     BADGES
+     OPTIONAL UI
   =============================== */
 
   styles?: string[];
-};
-
-/* =========================================================
-   NUMBERS
-========================================================= */
-
-export type DigestNumberItem = {
-  id: string;
-
-  label: string;
-
-  value?: number;
-
-  unit?: string;
-
-  scale?: string;
-
-  type?: string;
-
-  category?: string;
-
-  zone?: string;
-
-  period?: string;
-
-  entity?: {
-    type:
-      | "company"
-      | "topic"
-      | "solution";
-
-    id: string;
-
-    label: string;
-  };
 };
 
 /* =========================================================
@@ -105,6 +76,5 @@ export type DigestEditorialItem = {
   id: string;
 
   type:
-    | "content"
-    | "number";
+    | "content";
 };
