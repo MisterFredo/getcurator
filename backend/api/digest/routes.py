@@ -1,34 +1,37 @@
-from fastapi import APIRouter
+# backend/api/digest/routes.py
+
+from fastapi import (
+    APIRouter,
+    Query,
+)
 
 from core.digest.content_service import (
-    search_digest_content,
+    get_digest_contents,
 )
 
 router = APIRouter()
 
+# ============================================================
+# MY FEED
+# ============================================================
 
-@router.post("/search")
-def digest_search(payload: dict):
+@router.get("/my-feed")
+def digest_my_feed(
+    user_id: str = Query(...),
 
-    result = search_digest_content(
-        query=payload.get("query"),
+    limit: int = Query(
+        50
+    ),
+):
 
-        limit=payload.get("limit", 20),
+    result = get_digest_contents(
+        user_id=user_id,
 
-        offset=payload.get("offset", 0),
-
-        user_id=payload.get("user_id"),
-
-        universe_id=payload.get("universe_id"),
-
-        content_type=payload.get("content_type"),
-
-        feed_mode=payload.get("feed_mode"),
-
-        blocks_config=payload.get("blocks_config"),
+        limit=limit,
     )
 
     return {
         "status": "ok",
+
         "result": result,
     }
