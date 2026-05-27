@@ -1,19 +1,19 @@
-
+// frontend/components/newsletter/delivery/email/buildNewsletterEmail.ts
 
 import type {
   NewsletterNewsItem,
   HeaderConfig,
 } from "@/types/newsletter";
 
-import { EmailLayout } from "./EmailLayout";
+import { EmailLayout } from "@/components/delivery/email/EmailLayout";
 
-import { EmailHeader } from "./EmailHeader";
+import { EmailHeader } from "@/components/delivery/email/EmailHeader";
+
+import { EmailEditorialBlock } from "@/components/delivery/email/EmailEditorialBlock";
 
 import { EmailNewsBlock } from "./EmailNewsBlock";
 
 import { EmailBrevesBlock } from "./EmailBrevesBlock";
-
-import { EmailEditorialBlock } from "./EmailEditorialBlock";
 
 /* ========================================================= */
 
@@ -40,7 +40,7 @@ type Props = {
 
 /* ========================================================= */
 
-export function buildEmail({
+export function buildNewsletterEmail({
   headerConfig,
 
   editorialHtml,
