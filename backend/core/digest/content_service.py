@@ -1,194 +1,321 @@
+# backend/core/digest/content_service.py
+
 from typing import (
-    Optional,
-    List,
     Dict,
     Any,
+    List,
 )
 
-from core.curator.service import (
-    latest,
-    search,
+from utils.bigquery_utils import (
+    query_bq,
+)
+
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from core.curator.entity_service import (
+    get_company_feed,
+    get_solution_feed,
+    get_topic_feed,
 )
 
 # ============================================================
-# CONTENTS
+# TABLES
 # ============================================================
 
-def search_digest_content(
-    query: Optional[str] = None,
+TABLE_USER_PREFERENCES = f"""
+{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES
+"""
 
-    limit: int = 20,
-    offset: int = 0,
+# ============================================================
+# LOAD USER PREFERENCES
+# ============================================================
 
-    user_id: Optional[str] = None,
+def load_user_preferences(
+    user_id: str,
+) -> Dict[str, List[str]]:
 
-    universe_id: Optional[str] = None,
+    sql = f"""
 
-    content_type: Optional[str] = None,
+    SELECT
+        TYPE,
+        VALUE_ID
 
-    feed_mode: Optional[str] = None,
+    FROM `{TABLE_USER_PREFERENCES}`
 
-    topics: Optional[List[str]] = None,
+    WHERE ID_USER = @user_id
 
-    companies: Optional[List[str]] = None,
+    """
 
-    solutions: Optional[List[str]] = None,
+    rows = query_bq(
+        sql,
 
-    period: Optional[str] = "total",
+        params={
+            "user_id": user_id,
+        },
+    )
 
-    blocks_config: Optional[
-        Dict[str, Any]
-    ] = None,
+    company_ids = []
+    solution_ids = []
+    topic_ids = []
+
+    for row in rows:
+
+        pref_type = (
+            row.get("TYPE")
+            or ""
+        ).upper()
+
+        value_id = row.get(
+            "VALUE_ID"
+        )
+
+        if not value_id:
+            continue
+
+        # ====================================================
+        # COMPANY
+        # ====================================================
+
+        if pref_type == "COMPANY":
+
+            company_ids.append(
+                value_id
+            )
+
+        # ====================================================
+        # SOLUTION
+        # ====================================================
+
+        elif pref_type == "SOLUTION":
+
+            solution_ids.append(
+                value_id
+            )
+
+        # ====================================================
+        # TOPIC
+        # ====================================================
+
+        elif pref_type == "TOPIC":
+
+            topic_ids.append(
+                value_id
+            )
+
+    return {
+        "companies":
+            company_ids,
+
+        "solutions":
+            solution_ids,
+
+        "topics":
+            topic_ids,
+    }
+
+# ============================================================
+# DIGEST CONTENTS
+# ============================================================
+
+def get_digest_contents(
+    user_id: str,
+
+    limit: int = 50,
 ) -> Dict[str, Any]:
 
     # ========================================================
-    # BLOCK CONFIG
+    # LOAD USER PREFS
     # ========================================================
 
-    def get_block(name: str):
-
-        if not blocks_config:
-            return None
-
-        return (
-            blocks_config.get(name)
-            or {}
-        )
-
-    def resolve_limit(block):
-
-        if not block:
-            return limit
-
-        return block.get(
-            "limit",
-            limit,
-        )
-
-    def resolve_content_type(block):
-
-        if not block:
-            return content_type
-
-        return block.get(
-            "content_type",
-            content_type,
-        )
-
-    def resolve_feed_mode(block):
-
-        if not block:
-            return feed_mode
-
-        return block.get(
-            "feed_mode",
-            feed_mode,
-        )
-
-    def resolve_universe(block):
-
-        if not block:
-            return universe_id
-
-        return block.get(
-            "universe_id",
-            universe_id,
-        )
-
-    # ========================================================
-    # MAIN CONTENTS BLOCK
-    # ========================================================
-
-    contents_block = get_block(
-        "contents"
+    prefs = load_user_preferences(
+        user_id
     )
 
-    contents_limit = resolve_limit(
-        contents_block
-    )
+    company_ids = prefs[
+        "companies"
+    ]
 
-    contents_type = (
-        resolve_content_type(
-            contents_block
-        )
-    )
+    solution_ids = prefs[
+        "solutions"
+    ]
 
-    contents_feed_mode = (
-        resolve_feed_mode(
-            contents_block
-        )
-    )
+    topic_ids = prefs[
+        "topics"
+    ]
 
-    contents_universe = (
-        resolve_universe(
-            contents_block
+    # ========================================================
+    # LOAD FEEDS
+    # ========================================================
+
+    all_contents = []
+
+    # ========================================================
+    # COMPANY FEEDS
+    # ========================================================
+
+    for company_id in company_ids:
+
+        try:
+
+            items = (
+                get_company_feed(
+                    company_id=
+                        company_id,
+
+                    limit=limit,
+                )
+            )
+
+            if items:
+
+                all_contents.extend(
+                    items
+                )
+
+        except Exception as e:
+
+            print(
+                "Digest company feed error:",
+                company_id,
+                e,
+            )
+
+    # ========================================================
+    # SOLUTION FEEDS
+    # ========================================================
+
+    for solution_id in solution_ids:
+
+        try:
+
+            items = (
+                get_solution_feed(
+                    solution_id=
+                        solution_id,
+
+                    limit=limit,
+                )
+            )
+
+            if items:
+
+                all_contents.extend(
+                    items
+                )
+
+        except Exception as e:
+
+            print(
+                "Digest solution feed error:",
+                solution_id,
+                e,
+            )
+
+    # ========================================================
+    # TOPIC FEEDS
+    # ========================================================
+
+    for topic_id in topic_ids:
+
+        try:
+
+            items = (
+                get_topic_feed(
+                    topic_id=
+                        topic_id,
+
+                    limit=limit,
+                )
+            )
+
+            if items:
+
+                all_contents.extend(
+                    items
+                )
+
+        except Exception as e:
+
+            print(
+                "Digest topic feed error:",
+                topic_id,
+                e,
+            )
+
+    # ========================================================
+    # DEDUPE
+    # ========================================================
+
+    deduped = {}
+
+    for item in all_contents:
+
+        content_id = (
+            item.get("id")
+            or item.get("ID_CONTENT")
+            or item.get("id_content")
         )
+
+        if not content_id:
+            continue
+
+        existing = deduped.get(
+            content_id
+        )
+
+        # ====================================================
+        # KEEP MOST RECENT
+        # ====================================================
+
+        if not existing:
+
+            deduped[
+                content_id
+            ] = item
+
+    # ========================================================
+    # SORT
+    # ========================================================
+
+    final_contents = sorted(
+        deduped.values(),
+
+        key=lambda x:
+            x.get(
+                "published_at"
+            )
+            or "",
+
+        reverse=True,
     )
 
     # ========================================================
-    # SEARCH MODE
+    # LIMIT
     # ========================================================
 
-    has_search_filters = any([
-        query and query.strip(),
-
-        topics,
-
-        companies,
-
-        solutions,
-    ])
-
-    if has_search_filters:
-
-        contents = search(
-            q=query,
-
-            limit=contents_limit,
-
-            offset=offset,
-
-            user_id=user_id,
-
-            universe_id=contents_universe,
-
-            content_type=contents_type,
-
-            feed_mode=contents_feed_mode,
-
-            topics=topics or [],
-
-            companies=companies or [],
-
-            solutions=solutions or [],
-
-            period=period,
-        )
-
-    # ========================================================
-    # LATEST MODE
-    # ========================================================
-
-    else:
-
-        contents = latest(
-            limit=contents_limit,
-
-            offset=offset,
-
-            user_id=user_id,
-
-            universe_id=contents_universe,
-
-            content_type=contents_type,
-
-            feed_mode=contents_feed_mode,
-        )
+    final_contents = (
+        final_contents[:limit]
+    )
 
     # ========================================================
     # RESPONSE
     # ========================================================
 
     return {
-        "contents": contents,
+        "contents":
+            final_contents,
+
+        "preferences": {
+            "companies":
+                company_ids,
+
+            "solutions":
+                solution_ids,
+
+            "topics":
+                topic_ids,
+        },
     }
