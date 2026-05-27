@@ -1,114 +1,136 @@
+// frontend/components/delivery/email/buildEmailGmail.ts
+
 import type {
   NewsletterNewsItem,
-  NewsletterAnalysisItem,
-  NewsletterNumberItem,
   HeaderConfig,
-  TopicStat,
 } from "@/types/newsletter";
 
 import { EmailLayoutGmail } from "./EmailLayoutGmail";
+
 import { EmailHeaderGmail } from "./EmailHeaderGmail";
+
 import { EmailNewsBlockGmail } from "./EmailNewsBlockGmail";
-import { EmailStatsBlockGmail } from "./EmailStatsBlockGmail";
+
 import { EmailBrevesBlockGmail } from "./EmailBrevesBlockGmail";
-import { EmailAnalysesBlockGmail } from "./EmailAnalysesBlockGmail";
-import { EmailNumbersBlockGmail } from "./EmailNumbersBlockGmail";
+
 import { EmailSignatureGmail } from "./EmailSignatureGmail";
 
-/* 🔥 NEW */
 import { EmailEditorialBlockGmail } from "./EmailEditorialBlockGmail";
+
+/* ========================================================= */
 
 type Props = {
   headerConfig: HeaderConfig;
 
-  /* 🔥 NEW */
+  /* =======================================================
+     EDITORIAL
+  ======================================================= */
+
   editorialHtml?: string;
 
-  /* 🔁 fallback temporaire */
+  /* fallback legacy */
   introText?: string;
 
+  /* =======================================================
+     CONTENT
+  ======================================================= */
+
   news: NewsletterNewsItem[];
+
   breves: NewsletterNewsItem[];
-  analyses: NewsletterAnalysisItem[];
-  numbers?: NewsletterNumberItem[];
-  topicStats?: TopicStat[];
 };
+
+/* ========================================================= */
 
 export function buildEmailGmail({
   headerConfig,
+
   editorialHtml,
+
   introText,
+
   news,
+
   breves,
-  analyses,
-  numbers = [],
-  topicStats = [],
 }: Props) {
 
-  /* 🔥 source unique */
-  const editorial = editorialHtml || introText || "";
+  /* =======================================================
+     SOURCE UNIQUE ÉDITORIALE
+  ======================================================= */
+
+  const editorial =
+    editorialHtml ||
+    introText ||
+    "";
+
+  /* =======================================================
+     BLOCKS
+  ======================================================= */
 
   const blocks = [
 
-    /* =========================
-        HEADER
-    ========================== */
-    EmailHeaderGmail(headerConfig),
+    /* ===================================================
+       HEADER
+    =================================================== */
 
-    /* =========================
-        EDITORIAL (🔥 NEW)
-    ========================== */
+    EmailHeaderGmail(
+      headerConfig
+    ),
+
+    /* ===================================================
+       EDITORIAL
+    =================================================== */
+
     editorial.trim()
-      ? EmailEditorialBlockGmail(editorial)
+      ? EmailEditorialBlockGmail(
+          editorial
+        )
       : "",
 
-    /* =========================
-        NUMBERS
-    ========================== */
-    numbers.length > 0
-      ? EmailNumbersBlockGmail(numbers)
-      : "",
+    /* ===================================================
+       NEWS
+    =================================================== */
 
-    /* =========================
-        NEWS
-    ========================== */
     news.length > 0
-      ? EmailNewsBlockGmail(news)
+      ? EmailNewsBlockGmail(
+          news
+        )
       : "",
 
-    /* =========================
-        BRÈVES
-    ========================== */
+    /* ===================================================
+       BRÈVES
+    =================================================== */
+
     breves.length > 0
-      ? EmailBrevesBlockGmail(breves)
+      ? EmailBrevesBlockGmail(
+          breves
+        )
       : "",
 
-    /* =========================
-        ANALYSES
-    ========================== */
-    analyses.length > 0
-      ? EmailAnalysesBlockGmail(analyses)
-      : "",
+    /* ===================================================
+       SIGNATURE
+    =================================================== */
 
-    /* =========================
-        STATS (FIN)
-    ========================== */
-    headerConfig.showTopicStats && topicStats.length > 0
-      ? EmailStatsBlockGmail(topicStats)
-      : "",
-
-    /* =========================
-        SIGNATURE
-    ========================== */
     EmailSignatureGmail(),
 
   ].join("");
 
+  /* =======================================================
+     FINAL HTML
+  ======================================================= */
+
   const content = `
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+  <table
+    width="100%"
+    cellpadding="0"
+    cellspacing="0"
+    role="presentation"
+  >
     ${blocks}
   </table>
   `;
 
-  return EmailLayoutGmail(content);
+  return EmailLayoutGmail(
+    content
+  );
 }
