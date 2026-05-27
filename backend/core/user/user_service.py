@@ -254,22 +254,55 @@ def update_user(payload):
 # LIST USERS
 # =========================================================
 
+# =========================================================
+# LIST USERS
+# =========================================================
+
 def list_users():
+
+    table_digest_send = (
+        f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
+    )
+
     query = f"""
+
     SELECT
-        ID_USER,
-        EMAIL,
-        NAME,
-        COMPANY,
-        LANGUAGE,
-        ROLE,
-        CREATED_AT
-    FROM `{TABLE_USER}`
-    ORDER BY CREATED_AT DESC
+        u.ID_USER,
+        u.EMAIL,
+        u.NAME,
+        u.COMPANY,
+        u.LANGUAGE,
+        u.ROLE,
+        u.CREATED_AT,
+
+        ds.LAST_SENT_AT
+
+    FROM `{TABLE_USER}` u
+
+    LEFT JOIN (
+
+        SELECT
+            ID_USER,
+
+            MAX(SENT_AT) AS LAST_SENT_AT
+
+        FROM `{table_digest_send}`
+
+        GROUP BY ID_USER
+
+    ) ds
+
+    ON u.ID_USER = ds.ID_USER
+
+    ORDER BY
+        ds.LAST_SENT_AT DESC NULLS LAST,
+        u.CREATED_AT DESC
+
     """
 
-    return query_bq(query)
-
+    return query_bq(
+        query
+    )
 
 # =========================================================
 # ASSIGN UNIVERS
