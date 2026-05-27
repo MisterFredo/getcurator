@@ -1,6 +1,6 @@
 "use client";
 
-import NewsletterSelector from "@/components/delivery/DeliverySelector";
+import NewsletterSelector from "@/components/delivery/core/DeliverySelector";
 
 import type {
   NewsletterNewsItem,
