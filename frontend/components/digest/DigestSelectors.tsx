@@ -166,38 +166,66 @@ export default function DigestSelectors({
 
         </div>
 
-        <DeliverySelector
-          title=""
+        {/* =================================================
+           SELECTOR WRAPPER
+        ================================================= */}
 
-          items={contents.map(
-            (c) => ({
-              ...c,
+        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
 
-              label: `${c.title} · ${formatDate(
-                c.published_at
-              )}`,
-            })
-          )}
+          {/* HEADER */}
 
-          selectedIds={editorialOrder
-            .filter(
-              (i) =>
-                i.type ===
-                "content"
-            )
-            .map(
-              (i) => i.id
-            )}
+          <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
 
-          onChange={(ids) =>
-            updateTypeSelection(
-              ids,
-              "content"
-            )
-          }
+            <div className="text-xs font-medium text-gray-600">
+              Sélection des contenus
+            </div>
 
-          labelKey="label"
-        />
+            <div className="text-[11px] text-gray-400">
+              Scroll indépendant
+            </div>
+
+          </div>
+
+          {/* SCROLL AREA */}
+
+          <div className="h-[72vh] overflow-y-auto p-2">
+
+            <DeliverySelector
+              title=""
+
+              items={contents.map(
+                (c) => ({
+                  ...c,
+
+                  label: `${c.title} · ${formatDate(
+                    c.published_at
+                  )}`,
+                })
+              )}
+
+              selectedIds={editorialOrder
+                .filter(
+                  (i) =>
+                    i.type ===
+                    "content"
+                )
+                .map(
+                  (i) => i.id
+                )}
+
+              onChange={(ids) =>
+                updateTypeSelection(
+                  ids,
+                  "content"
+                )
+              }
+
+              labelKey="label"
+            />
+
+          </div>
+
+        </div>
 
       </section>
 
