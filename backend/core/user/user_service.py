@@ -254,19 +254,40 @@ def update_user(payload):
 # LIST USERS
 # =========================================================
 
+def list_users():
+    query = f"""
+    SELECT
+        ID_USER,
+        EMAIL,
+        NAME,
+        COMPANY,
+        LANGUAGE,
+        ROLE,
+        CREATED_AT
+    FROM `{TABLE_USER}`
+    ORDER BY CREATED_AT DESC
+    """
+
+    return query_bq(query)
+
 # =========================================================
-# LIST USERS
+# LIST DIGEST USERS
 # =========================================================
 
-def list_users():
+def list_digest_users():
 
     table_digest_send = (
         f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
     )
 
+    table_user_preferences = (
+        f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+    )
+
     query = f"""
 
-    SELECT
+    SELECT DISTINCT
+
         u.ID_USER,
         u.EMAIL,
         u.NAME,
@@ -278,6 +299,18 @@ def list_users():
         ds.LAST_SENT_AT
 
     FROM `{TABLE_USER}` u
+
+    # =====================================================
+    # ONLY USERS WITH PREFERENCES
+    # =====================================================
+
+    INNER JOIN `{table_user_preferences}` p
+
+    ON u.ID_USER = p.ID_USER
+
+    # =====================================================
+    # LAST DIGEST SENT
+    # =====================================================
 
     LEFT JOIN (
 
@@ -294,6 +327,10 @@ def list_users():
 
     ON u.ID_USER = ds.ID_USER
 
+    # =====================================================
+    # ORDER
+    # =====================================================
+
     ORDER BY
         ds.LAST_SENT_AT DESC NULLS LAST,
         u.CREATED_AT DESC
@@ -303,6 +340,7 @@ def list_users():
     return query_bq(
         query
     )
+
 
 # =========================================================
 # ASSIGN UNIVERS
