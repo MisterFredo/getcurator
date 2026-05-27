@@ -17,6 +17,7 @@ from core.user.user_service import (
     get_user_by_id,
     get_user_universes,
     get_user_context,
+    list_digest_users,
 )
 
 from core.user.user_preferences_service import (
@@ -146,6 +147,15 @@ def bootstrap_admin(secret: str):
 def list_users_route():
     users = list_users()
     return {"users": users}
+
+@router.get("/digest-users")
+def list_digest_users_route():
+
+    users = list_digest_users()
+
+    return {
+        "users": users
+    }
 
 
 # =========================================================
