@@ -1,4 +1,4 @@
-// frontend/components/delivery/email/buildEmailGmail.ts
+
 
 import type {
   NewsletterNewsItem,
