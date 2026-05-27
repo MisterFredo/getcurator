@@ -1,5 +1,5 @@
 import type { HeaderConfig } from "@/types/newsletter";
-import { escapeHtml } from "@/components/delivery/email/EmailHelpers"
+import { escapeHtml } from "./EmailHelpers";
 
 export function EmailHeaderGmail(
   headerConfig: HeaderConfig
