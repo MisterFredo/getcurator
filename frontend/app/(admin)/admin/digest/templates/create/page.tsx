@@ -30,7 +30,6 @@ export default function AdminDigestTemplateCreatePage() {
     subtitle: "",
     period: "",
     headerCompany: undefined,
-    showTopicStats: false,
     topBarEnabled: true,
     topBarColor: "#84CC16",
     periodColor: "#84CC16",
