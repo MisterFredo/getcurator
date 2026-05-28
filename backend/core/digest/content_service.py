@@ -443,8 +443,6 @@ def get_digest_contents(
 
         concepts,
 
-        media_id,
-
         TITLE_EN,
         EXCERPT_EN
 
@@ -550,11 +548,6 @@ def get_digest_contents(
             # =================================================
             # VISUALS
             # =================================================
-
-            "media_id":
-                row.get(
-                    "media_id"
-                ),
 
             "primary_company_logo":
                 primary_logo,
