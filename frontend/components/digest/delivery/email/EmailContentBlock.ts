@@ -13,14 +13,16 @@ const GCS_BASE_URL =
   process.env
     .NEXT_PUBLIC_GCS_BASE_URL || "";
 
-/* ========================================================= */
+/* =========================================================
+   CURATOR BADGE STYLES
+========================================================= */
 
 const BADGE_STYLES = {
 
   company: {
-    bg: "#EFF6FF",
-    text: "#2563EB",
-    border: "#DBEAFE",
+    bg: "#F0F7FF",
+    text: "#3B82F6",
+    border: "#E0ECFF",
   },
 
   solution: {
@@ -30,15 +32,15 @@ const BADGE_STYLES = {
   },
 
   universe: {
-    bg: "#ECFDF5",
+    bg: "#F0FDF4",
     text: "#059669",
-    border: "#D1FAE5",
+    border: "#DCFCE7",
   },
 
   topic: {
-    bg: "#F3F4F6",
-    text: "#4B5563",
-    border: "#F3F4F6",
+    bg: "#F5F5F5",
+    text: "#6B7280",
+    border: "#E5E7EB",
   },
 
   concept: {
@@ -48,7 +50,9 @@ const BADGE_STYLES = {
   },
 };
 
-/* ========================================================= */
+/* =========================================================
+   BADGES
+========================================================= */
 
 function renderBadges(
   items: any[],
@@ -83,16 +87,22 @@ function renderBadges(
       return `
 <span style="
   display:inline-block;
-  padding:5px 10px;
+  padding:3px 8px;
   margin-right:6px;
   margin-bottom:6px;
   border-radius:999px;
+
   background:${style.bg};
   color:${style.text};
   border:1px solid ${style.border};
-  font-size:11px;
-  line-height:1;
-  font-weight:600;
+
+  font-size:10px;
+  line-height:1.2;
+  font-weight:500;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+
+  font-family:Arial,Helvetica,sans-serif;
 ">
   ${escapeHtml(label)}
 </span>
@@ -101,7 +111,9 @@ function renderBadges(
     .join("");
 }
 
-/* ========================================================= */
+/* =========================================================
+   CONTENT BLOCK
+========================================================= */
 
 export function EmailContentBlock(
   contents: DigestContentItem[]
@@ -112,23 +124,6 @@ export function EmailContentBlock(
   }
 
   return `
-<tr>
-<td style="padding-top:28px;">
-
-  <div style="
-    font-size:11px;
-    font-weight:600;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:#9CA3AF;
-    margin-bottom:14px;
-    font-family:Arial,Helvetica,sans-serif;
-  ">
-    Contenus
-  </div>
-
-</td>
-</tr>
 
 ${contents.map((content) => {
 
@@ -140,7 +135,7 @@ ${contents.map((content) => {
   return `
 <tr>
 <td style="
-  padding:20px 0;
+  padding:28px 0;
   border-bottom:1px solid #F3F4F6;
   font-family:Arial,Helvetica,sans-serif;
 ">
@@ -148,28 +143,31 @@ ${contents.map((content) => {
   ${
     logoUrl
       ? `
-<div style="margin-bottom:14px;">
+<div style="margin-bottom:16px;">
+
   <img
     src="${logoUrl}"
     alt=""
     style="
-      max-height:28px;
+      max-height:26px;
       max-width:140px;
       display:block;
     "
   />
+
 </div>
 `
       : ""
   }
 
   <div style="
-    font-size:18px;
-    font-weight:700;
+    font-size:22px;
     line-height:1.3;
+    font-weight:700;
     color:#111827;
-    margin-bottom:6px;
+    margin-bottom:8px;
   ">
+
     <a
       href="${content.url || "#"}"
       target="_blank"
@@ -180,6 +178,7 @@ ${contents.map((content) => {
     >
       ${escapeHtml(content.title)}
     </a>
+
   </div>
 
   ${
@@ -188,7 +187,8 @@ ${contents.map((content) => {
 <div style="
   font-size:12px;
   color:#9CA3AF;
-  margin-bottom:10px;
+  margin-bottom:14px;
+  letter-spacing:0.02em;
 ">
   ${formatDate(content.published_at)}
 </div>
@@ -200,10 +200,10 @@ ${contents.map((content) => {
     content.excerpt
       ? `
 <div style="
-  font-size:14px;
-  line-height:1.6;
+  font-size:15px;
+  line-height:1.75;
   color:#374151;
-  margin-bottom:14px;
+  margin-bottom:18px;
 ">
   ${escapeHtml(content.excerpt)}
 </div>
@@ -211,7 +211,7 @@ ${contents.map((content) => {
       : ""
   }
 
-  <div style="margin-bottom:6px;">
+  <div>
 
     ${renderBadges(
       content.companies,
