@@ -585,7 +585,7 @@ def get_digest_contents(
                     ),
 
                 "url":
-                    f"https://www.getcurator.ai/content/{row.get('id')}",
+                    f"https://www.getcurator.ai/feed?content={row.get('id')}",
 
                 "primary_company_logo":
                     primary_logo,
