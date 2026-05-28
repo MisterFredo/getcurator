@@ -75,3 +75,17 @@ def digest_log_send(
 
         "result": result,
     }
+
+@router.post("/generate-editorial")
+def generate_editorial(
+    payload: dict,
+):
+
+    ids = payload.get("ids", [])
+
+    result = run_insight_pipeline(ids)
+
+    return {
+        "status": "ok",
+        **result,
+    }
