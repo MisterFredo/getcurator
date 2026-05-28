@@ -45,6 +45,8 @@ export type DigestContentItem = {
     name: string;
 
     is_partner?: boolean;
+
+    media_logo_rectangle_id?: string;
   }[];
 
   solutions?: {
@@ -59,6 +61,18 @@ export type DigestContentItem = {
     label?: string;
 
     LABEL?: string;
+  }[];
+
+  universes?: {
+    id_universe?: string;
+
+    label?: string;
+  }[];
+
+  concepts?: {
+    id_concept?: string;
+
+    label?: string;
   }[];
 
   /* ===============================
