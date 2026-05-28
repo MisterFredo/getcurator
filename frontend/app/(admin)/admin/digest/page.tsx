@@ -118,6 +118,11 @@ export default function DigestPage() {
     DigestEditorialItem[]
   >([]);
 
+  const [
+    editorialHtml,
+    setEditorialHtml,
+  ] = useState("");
+
   /* =======================================================
      LOAD DIGEST
   ======================================================= */
