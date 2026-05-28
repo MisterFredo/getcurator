@@ -470,6 +470,12 @@ def get_digest_contents(
 
     rows = query_bq(
         sql
+    print("ROWS COUNT")
+    print(len(rows))
+
+    if rows:
+        print("FIRST ROW")
+        print(rows[0])
     )
 
     # ========================================================
