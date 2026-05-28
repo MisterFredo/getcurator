@@ -1,5 +1,3 @@
-# backend/core/digest/content_service.py
-
 from typing import (
     Dict,
     Any,
@@ -68,6 +66,9 @@ def load_user(
         },
     )
 
+    print("LOAD USER")
+    print(rows)
+
     if not rows:
         return {}
 
@@ -101,6 +102,9 @@ def load_user_preferences(
         },
     )
 
+    print("USER PREFS ROWS")
+    print(rows)
+
     company_ids = []
     solution_ids = []
     topic_ids = []
@@ -115,6 +119,10 @@ def load_user_preferences(
         value_id = row.get(
             "VALUE_ID"
         )
+
+        print("PREF ROW")
+        print(pref_type)
+        print(value_id)
 
         if not value_id:
             continue
@@ -149,7 +157,7 @@ def load_user_preferences(
                 value_id
             )
 
-    return {
+    result = {
         "companies":
             company_ids,
 
@@ -159,6 +167,11 @@ def load_user_preferences(
         "topics":
             topic_ids,
     }
+
+    print("USER PREFS RESULT")
+    print(result)
+
+    return result
 
 # ============================================================
 # LAST DIGEST SENT
@@ -186,6 +199,9 @@ def get_last_digest_sent(
             "user_id": user_id,
         },
     )
+
+    print("LAST SENT")
+    print(rows)
 
     if not rows:
         return None
@@ -299,17 +315,19 @@ def build_filters(
             """
         )
 
-    # ========================================================
-    # EMPTY
-    # ========================================================
-
     if not filters:
 
+        print("NO FILTERS")
         return "1 = 0"
 
-    return " OR ".join(
+    result = " OR ".join(
         filters
     )
+
+    print("FILTER SQL")
+    print(result)
+
+    return result
 
 # ============================================================
 # DIGEST CONTENTS
@@ -320,6 +338,11 @@ def get_digest_contents(
 
     limit: int = 50,
 ) -> Dict[str, Any]:
+
+    print("===================================")
+    print("DIGEST START")
+    print(user_id)
+    print("===================================")
 
     # ========================================================
     # USER
@@ -337,6 +360,9 @@ def get_digest_contents(
     is_en = (
         language == "en"
     )
+
+    print("LANGUAGE")
+    print(language)
 
     # ========================================================
     # USER PREFS
@@ -357,6 +383,15 @@ def get_digest_contents(
     topic_ids = prefs[
         "topics"
     ]
+
+    print("COMPANY IDS")
+    print(company_ids)
+
+    print("SOLUTION IDS")
+    print(solution_ids)
+
+    print("TOPIC IDS")
+    print(topic_ids)
 
     # ========================================================
     # FILTERS
@@ -487,117 +522,116 @@ def get_digest_contents(
 
     for row in rows:
 
-        companies = (
-            row.get("companies")
-            or []
-        )
+        try:
 
-        primary_logo = None
-
-        primary_company_id = (
-            row.get(
-                "ID_PRIMARY_COMPANY"
+            companies = (
+                row.get("companies")
+                or []
             )
-        )
 
-        if (
-            primary_company_id
-            and companies
-        ):
+            primary_logo = None
 
-            for company in companies:
+            primary_company_id = (
+                row.get(
+                    "ID_PRIMARY_COMPANY"
+                )
+            )
 
-                if (
-                    company.get(
-                        "id_company"
-                    )
-                    == primary_company_id
-                ):
+            if (
+                primary_company_id
+                and companies
+            ):
 
-                    primary_logo = (
+                for company in companies:
+
+                    if (
                         company.get(
-                            "media_logo_rectangle_id"
+                            "id_company"
                         )
-                    )
+                        == primary_company_id
+                    ):
 
-            break
+                        primary_logo = (
+                            company.get(
+                                "media_logo_rectangle_id"
+                            )
+                        )
 
-        content = {
-            "id":
-                row.get("id"),
+            content = {
+                "id":
+                    row.get("id"),
 
-            "content_type":
-                (
+                "content_type":
+                    (
+                        row.get(
+                            "content_type"
+                        )
+                        or "analysis"
+                    ).lower(),
+
+                "title":
                     row.get(
-                        "content_type"
+                        "title"
+                    ),
+
+                "excerpt":
+                    row.get(
+                        "excerpt"
+                    ),
+
+                "published_at":
+                    row.get(
+                        "published_at"
+                    ),
+
+                "url":
+                    f"https://www.getcurator.ai/content/{row.get('id')}",
+
+                "primary_company_logo":
+                    primary_logo,
+
+                "companies":
+                    companies,
+
+                "solutions":
+                    row.get(
+                        "solutions"
                     )
-                    or "analysis"
-                ).lower(),
+                    or [],
 
-            "title":
-                row.get(
-                    "title"
-                ),
+                "topics":
+                    row.get(
+                        "topics"
+                    )
+                    or [],
 
-            "excerpt":
-                row.get(
-                    "excerpt"
-                ),
+                "universes":
+                    row.get(
+                        "universes"
+                    )
+                    or [],
 
-            "published_at":
-                row.get(
-                    "published_at"
-                ),
+                "concepts":
+                    row.get(
+                        "concepts"
+                    )
+                    or [],
+            }
 
-            # =================================================
-            # GETCURATOR URL
-            # =================================================
+            print("CONTENT BUILT")
+            print(content)
 
-            "url":
-                f"https://www.getcurator.ai/content/{row.get('id')}",
+            contents.append(
+                content
+            )
 
-            # =================================================
-            # VISUALS
-            # =================================================
+        except Exception as e:
 
-            "primary_company_logo":
-                primary_logo,
+            print("CONTENT BUILD ERROR")
+            print(e)
 
-            # =================================================
-            # ENTITIES
-            # =================================================
-
-            "companies":
-                companies,
-
-            "solutions":
-                row.get(
-                    "solutions"
-                )
-                or [],
-
-            "topics":
-                row.get(
-                    "topics"
-                )
-                or [],
-
-            "universes":
-                row.get(
-                    "universes"
-                )
-                or [],
-
-            "concepts":
-                row.get(
-                    "concepts"
-                )
-                or [],
-        }
-
-        contents.append(
-            content
-        )
+    print("FINAL CONTENTS COUNT")
+    print(len(contents))
 
     # ========================================================
     # LAST SENT
@@ -608,6 +642,13 @@ def get_digest_contents(
             user_id
         )
     )
+
+    print("FINAL RESPONSE")
+    print({
+        "contents_count": len(contents),
+        "language": language,
+        "last_sent_at": last_sent_at,
+    })
 
     # ========================================================
     # RESPONSE
