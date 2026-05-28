@@ -13,6 +13,10 @@ from core.digest.send_service import (
     log_digest_send,
 )
 
+from core.insight.service import (
+    run_insight_pipeline,
+)
+
 router = APIRouter()
 
 # ============================================================
