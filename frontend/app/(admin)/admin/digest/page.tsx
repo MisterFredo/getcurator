@@ -130,18 +130,34 @@ export default function DigestPage() {
 
       setLoading(true);
 
-      const data =
+      const response =
         await api.get(
           `/digest/my-feed?user_id=${userId}`
         );
 
+      console.log(
+        "DIGEST RESPONSE",
+        response
+      );
+
       const result =
-        data?.result ||
-        {};
+        response?.result
+          ? response.result
+          : response || {};
+
+      console.log(
+        "DIGEST RESULT",
+        result
+      );
 
       const digestContents =
         result?.contents ||
         [];
+
+      console.log(
+        "DIGEST CONTENTS",
+        digestContents
+      );
 
       setContents(
         digestContents
