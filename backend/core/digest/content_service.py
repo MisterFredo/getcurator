@@ -451,7 +451,7 @@ def get_digest_contents(
     WHERE
         is_active = TRUE
 
-        AND status = "published"
+        AND status = "PUBLISHED"
 
         AND (
             {filters_sql}
