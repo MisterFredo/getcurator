@@ -52,7 +52,7 @@ export default function NewsletterSelector<
 
       <div
         className="
-          max-h-[260px]
+          h-[calc(100vh-320px)]
           overflow-y-auto
           border border-gray-200
           rounded-lg
