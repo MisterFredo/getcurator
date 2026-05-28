@@ -391,12 +391,14 @@ export default function DigestPage() {
           {/* FLOW */}
 
           <DigestEditorialFlow
-            contents={
-              contents
-            }
+            contents={contents}
 
-            editorialOrder={
-              editorialOrder
+            editorialOrder={editorialOrder}
+
+            editorialHtml={editorialHtml}
+
+            setEditorialHtml={
+              setEditorialHtml
             }
 
             setEditorialOrder={
