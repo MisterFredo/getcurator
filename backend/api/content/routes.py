@@ -381,6 +381,8 @@ def store_raw_route(
 
             source_title=payload.source_title,
 
+            source_url=payload.source_url,
+
             raw_text=payload.raw_text,
 
             date_source=payload.date_source,
@@ -405,7 +407,6 @@ def store_raw_route(
             400,
             str(e)
         )
-
 
 # ============================================================
 # IMPORT RAW CONTENT
