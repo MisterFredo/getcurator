@@ -36,7 +36,6 @@ def newsletter_search(payload: dict):
         period=period,
         date_from=payload.get("date_from"),
         date_to=payload.get("date_to"),
-        blocks_config=payload.get("blocks_config"),
     )
 
     return {
