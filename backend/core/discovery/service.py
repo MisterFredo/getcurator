@@ -49,48 +49,6 @@ HEADERS = {
 
 
 # ============================================================
-# DISCOVERY EXISTS
-# ============================================================
-
-def discovery_url_exists(url: str) -> bool:
-
-    sql = f"""
-        SELECT 1
-        FROM `{TABLE_DISCOVERY}`
-        WHERE URL = @url
-        LIMIT 1
-    """
-
-    rows = query_bq(
-        sql,
-        {"url": url},
-    )
-
-    return len(rows) > 0
-
-
-# ============================================================
-# RAW EXISTS
-# ============================================================
-
-def raw_url_exists(url: str) -> bool:
-
-    sql = f"""
-        SELECT 1
-        FROM `{TABLE_RAW}`
-        WHERE SOURCE_URL = @url
-        LIMIT 1
-    """
-
-    rows = query_bq(
-        sql,
-        {"url": url},
-    )
-
-    return len(rows) > 0
-
-
-# ============================================================
 # INSERT DISCOVERY
 # ============================================================
 
