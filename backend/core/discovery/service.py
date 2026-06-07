@@ -618,3 +618,48 @@ def mark_discovery_manual(
         "status": "ok",
         "manual": len(discovery_ids),
     }
+
+# ============================================================
+# MANUAL DISCOVERY LIST
+# ============================================================
+
+def list_manual_discovery():
+
+    sql = f"""
+        SELECT
+            d.ID_DISCOVERY,
+            d.SOURCE_ID,
+
+            s.NAME AS SOURCE_NAME,
+
+            d.URL,
+            d.TITLE,
+            d.DATE_FOUND
+
+        FROM `{TABLE_DISCOVERY}` d
+
+        LEFT JOIN `{TABLE_SOURCE}` s
+          ON d.SOURCE_ID = s.SOURCE_ID
+
+        WHERE d.STATUS = 'MANUAL_REVIEW'
+
+        ORDER BY d.DATE_FOUND DESC
+    """
+
+    rows = query_bq(sql)
+
+    return [
+        {
+            "id_discovery": r["ID_DISCOVERY"],
+            "source_id": r["SOURCE_ID"],
+            "source_name": r.get(
+                "SOURCE_NAME"
+            ),
+            "url": r["URL"],
+            "title": r.get("TITLE"),
+            "date_found": r.get(
+                "DATE_FOUND"
+            ),
+        }
+        for r in rows
+    ]
