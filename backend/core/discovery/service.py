@@ -309,16 +309,29 @@ def scan_source(
         domain
     )
 
+    # ============================================================
+    # 🔥 PERFORMANCE
+    # Charge une seule fois les URLs existantes
+    # ============================================================
+
+    existing_discovery = (
+        get_existing_discovery_urls()
+    )
+
+    existing_raw = (
+        get_existing_raw_urls()
+    )
+
     discovered = 0
 
     for item in urls:
 
         url = item["url"]
 
-        if discovery_url_exists(url):
+        if url in existing_discovery:
             continue
 
-        if raw_url_exists(url):
+        if url in existing_raw:
             continue
 
         insert_discovery_url(
@@ -327,6 +340,9 @@ def scan_source(
             title=item["title"],
         )
 
+        # évite les doublons dans le même scan
+        existing_discovery.add(url)
+
         discovered += 1
 
     return {
@@ -334,7 +350,6 @@ def scan_source(
         "scanned_sources": 1,
         "discovered_urls": discovered,
     }
-
 
 # ============================================================
 # SCAN ALL SOURCES
@@ -348,6 +363,7 @@ def scan_all_sources():
         FROM `{TABLE_SOURCE}`
         WHERE DOMAIN IS NOT NULL
           AND DOMAIN != ''
+          AND ACQUISITION_MODE IS NOT NULL
     """
 
     rows = query_bq(sql)
@@ -379,7 +395,6 @@ def scan_all_sources():
         "scanned_sources": len(rows),
         "discovered_urls": total_discovered,
     }
-
 
 # ============================================================
 # LIST DISCOVERY
