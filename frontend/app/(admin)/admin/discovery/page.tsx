@@ -259,6 +259,41 @@ export default function DiscoveryPage() {
     }
   }
 
+  async function sendToStudio() {
+
+    if (
+      selectedIds.length === 0
+    ) {
+      return;
+    }
+
+    try {
+
+      const res = await api.post(
+        "/discovery/manual",
+        {
+          discovery_ids: selectedIds,
+        }
+      );
+
+      alert(
+        `${res.manual || 0} URL(s) envoyée(s) au Studio`
+      );
+
+      setSelectedIds([]);
+
+      await loadData();
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert(
+        "❌ Erreur Studio"
+      );
+    }
+  }
+
   // =========================================================
   // FILTER
   // =========================================================
@@ -334,6 +369,7 @@ export default function DiscoveryPage() {
           selectedIds.length
         }
         onStore={storeSelected}
+        onManual={sendToStudio}
         onDismiss={dismissSelected}
       />
 
