@@ -15,8 +15,6 @@ from core.discovery.service import (
     list_discovery_items,
     store_discovery_urls,
     ignore_discovery_urls,
-
-    # 🔥 NEW
     dismiss_discovery,
 )
 
@@ -157,7 +155,9 @@ def ignore_route(data: IgnoreRequest):
 @router.post(
     "/dismiss/{id_discovery}",
 )
-def dismiss_route(id_discovery: str):
+def dismiss_route(
+    id_discovery: str
+):
 
     try:
 
