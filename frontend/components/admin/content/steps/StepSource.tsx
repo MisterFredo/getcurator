@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import DiscoveryQueue from "./DiscoveryQueue";
 
 type Source = {
   source_id: string;
@@ -161,6 +162,29 @@ export default function StepSource({
           {charCount} caractères
         </div>
       </div>
+
+      <DiscoveryQueue
+        onSelect={(item) => {
+
+          setSourceId(
+            item.source_id
+          );
+
+          setSourceTitle(
+            item.title || ""
+          );
+
+          setSourceUrl(
+            item.url || ""
+          );
+
+          setSourcePublishedAt(
+            item.date_found
+              ? item.date_found.slice(0, 10)
+              : ""
+          );
+        }}
+      />
 
       {/* SELECT SOURCE */}
 
