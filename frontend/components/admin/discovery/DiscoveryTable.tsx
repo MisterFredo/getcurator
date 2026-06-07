@@ -8,17 +8,26 @@ type DiscoveryItem = {
 
 type Props = {
   items: DiscoveryItem[];
+
   selectedIds: string[];
+
   onToggle: (
     idDiscovery: string
   ) => void;
+
+  onToggleAll: () => void;
 };
 
 export default function DiscoveryTable({
   items,
   selectedIds,
   onToggle,
+  onToggleAll,
 }: Props) {
+
+  const allSelected =
+    items.length > 0 &&
+    selectedIds.length === items.length;
 
   return (
 
@@ -30,7 +39,15 @@ export default function DiscoveryTable({
 
           <tr className="bg-gray-50 border-b">
 
-            <th className="p-3"></th>
+            <th className="p-3">
+
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={onToggleAll}
+              />
+
+            </th>
 
             <th className="p-3 text-left">
               Source
