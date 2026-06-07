@@ -127,6 +127,7 @@ export default function StepSource({
 
         // 🔥 NEW
         id_primary_company: primaryCompanyId,
+        discovery_id: discoveryId,
       });
 
       alert("Source stockée avec succès");
