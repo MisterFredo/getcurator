@@ -79,7 +79,8 @@ export default function DiscoveryPage() {
       setScanning(true);
 
       const res = await api.post(
-        "/discovery/scan-all"
+        "/discovery/scan-all",
+        {}
       );
 
       alert(
