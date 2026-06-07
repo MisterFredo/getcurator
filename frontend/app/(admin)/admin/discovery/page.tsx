@@ -181,6 +181,24 @@ export default function DiscoveryPage() {
     );
   }
 
+  function toggleAllSelections() {
+
+    if (
+      selectedIds.length === items.length
+    ) {
+
+      setSelectedIds([]);
+
+      return;
+    }
+
+    setSelectedIds(
+      items.map(
+        (item) => item.id_discovery
+      )
+    );
+  }
+
   // =========================================================
   // STORE SELECTED
   // =========================================================
@@ -435,9 +453,10 @@ export default function DiscoveryPage() {
       ) : (
 
         <DiscoveryTable
-          items={filteredItems}
+          items={items}
           selectedIds={selectedIds}
           onToggle={toggleSelection}
+          onToggleAll={toggleAllSelections}
         />
 
       )}
