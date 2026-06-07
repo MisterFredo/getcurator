@@ -34,6 +34,7 @@ def create_source(data: SourceCreate) -> str:
         "AUTHOR": data.author,
         "AUTHOR_PROFILE": data.author_profile,
         "LOGO": None,
+        "ACQUISITION_MODE": data.acquisition_mode,
         "CREATED_AT": now,
     }]
 
@@ -85,6 +86,7 @@ def list_sources():
             s.AUTHOR,
             s.AUTHOR_PROFILE,
             s.LOGO,
+            s.ACQUISITION_MODE,
             s.CREATED_AT,
             su.ID_UNIVERSE
         FROM `{TABLE_SOURCE}` s
@@ -105,6 +107,7 @@ def list_sources():
             "author": r["AUTHOR"],
             "author_profile": r["AUTHOR_PROFILE"],
             "logo": r.get("LOGO"),
+            "acquisition_mode": r.get("ACQUISITION_MODE"),
             "created_at": r["CREATED_AT"],
             "universe_id": r.get("ID_UNIVERSE"),
         }
@@ -126,6 +129,7 @@ def get_source(source_id: str):
             s.AUTHOR,
             s.AUTHOR_PROFILE,
             s.LOGO,
+            s.ACQUISITION_MODE,
             s.CREATED_AT,
             su.ID_UNIVERSE
         FROM `{TABLE_SOURCE}` s
@@ -151,6 +155,7 @@ def get_source(source_id: str):
         "author": r["AUTHOR"],
         "author_profile": r["AUTHOR_PROFILE"],
         "logo": r.get("LOGO"),
+        "acquisition_mode": r.get("ACQUISITION_MODE"),
         "created_at": r["CREATED_AT"],
         "universe_id": r.get("ID_UNIVERSE"),
     }
@@ -171,6 +176,7 @@ def update_source(source_id: str, data: SourceUpdate) -> bool:
         "domain": "DOMAIN",
         "author": "AUTHOR",
         "author_profile": "AUTHOR_PROFILE",
+        "acquisition_mode": "ACQUISITION_MODE",
         "logo": "LOGO",
     }
 
