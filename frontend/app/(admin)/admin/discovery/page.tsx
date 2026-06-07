@@ -39,6 +39,10 @@ export default function DiscoveryPage() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  const [statusFilter, setStatusFilter] = useState<
+    "NEW" | "STORED" | "ALL"
+  >("NEW");
+
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
 
@@ -256,6 +260,25 @@ export default function DiscoveryPage() {
   }
 
   // =========================================================
+  // FILTER
+  // =========================================================
+
+  const filteredItems = items.filter(
+    (item) => {
+
+      if (
+        statusFilter === "ALL"
+      ) {
+        return true;
+      }
+
+      return (
+        item.status === statusFilter
+      );
+    }
+  );
+
+  // =========================================================
   // UI
   // =========================================================
 
@@ -314,6 +337,51 @@ export default function DiscoveryPage() {
         onDismiss={dismissSelected}
       />
 
+      {/* FILTERS */}
+
+      <div className="flex gap-2">
+
+        <button
+          onClick={() =>
+            setStatusFilter("NEW")
+          }
+          className={
+            statusFilter === "NEW"
+              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
+              : "bg-gray-100 px-3 py-1 rounded"
+          }
+        >
+          NEW
+        </button>
+
+        <button
+          onClick={() =>
+            setStatusFilter("STORED")
+          }
+          className={
+            statusFilter === "STORED"
+              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
+              : "bg-gray-100 px-3 py-1 rounded"
+          }
+        >
+          STORED
+        </button>
+
+        <button
+          onClick={() =>
+            setStatusFilter("ALL")
+          }
+          className={
+            statusFilter === "ALL"
+              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
+              : "bg-gray-100 px-3 py-1 rounded"
+          }
+        >
+          ALL
+        </button>
+
+      </div>
+
       {/* TABLE */}
 
       {loading ? (
@@ -322,7 +390,7 @@ export default function DiscoveryPage() {
           Chargement...
         </div>
 
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
 
         <div className="bg-white border rounded p-8 text-center text-gray-500">
           Aucune URL découverte.
@@ -331,7 +399,7 @@ export default function DiscoveryPage() {
       ) : (
 
         <DiscoveryTable
-          items={items}
+          items={filteredItems}
           selectedIds={selectedIds}
           onToggle={toggleSelection}
         />
