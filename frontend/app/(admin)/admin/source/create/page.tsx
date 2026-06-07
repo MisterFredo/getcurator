@@ -17,6 +17,8 @@ export default function CreateSource() {
   const [author, setAuthor] = useState("");
   const [authorProfile, setAuthorProfile] = useState("");
 
+  const [acquisitionMode, setAcquisitionMode] = useState("MANUAL");
+
   const [universeId, setUniverseId] = useState("");
   const [universes, setUniverses] = useState<any[]>([]);
 
@@ -65,6 +67,7 @@ export default function CreateSource() {
         author: author || null,
         author_profile: authorProfile || null,
         universe_id: universeId || null,
+        acquisition_mode: acquisitionMode,
       });
 
       if (!res.source_id) {
@@ -149,7 +152,28 @@ export default function CreateSource() {
         />
       </div>
 
-      {/* 🔥 UNIVERSE */}
+      {/* ACQUISITION MODE */}
+      <div className="space-y-2 max-w-md">
+        <label className="block text-sm font-medium">
+          Mode d'acquisition
+        </label>
+
+        <select
+          className="border p-2 w-full rounded"
+          value={acquisitionMode}
+          onChange={(e) => setAcquisitionMode(e.target.value)}
+        >
+          <option value="MANUAL">
+            MANUAL - Copie / colle
+          </option>
+
+          <option value="AUTO">
+            AUTO - Parse automatique
+          </option>
+        </select>
+      </div>
+
+      {/* UNIVERSE */}
       <div className="space-y-2 max-w-md">
         <label className="block text-sm font-medium">
           Univers
@@ -160,10 +184,15 @@ export default function CreateSource() {
           value={universeId}
           onChange={(e) => setUniverseId(e.target.value)}
         >
-          <option value="">-- Sélectionner un univers --</option>
+          <option value="">
+            -- Sélectionner un univers --
+          </option>
 
           {universes.map((u) => (
-            <option key={u.id_universe} value={u.id_universe}>
+            <option
+              key={u.id_universe}
+              value={u.id_universe}
+            >
               {u.label}
             </option>
           ))}
