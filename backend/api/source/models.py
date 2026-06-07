@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 
 
@@ -12,6 +12,7 @@ class SourceCreate(BaseModel):
     Création d'une source éditoriale.
     Contrat API 100% snake_case.
     """
+
     name: str = Field(..., min_length=1)
 
     type_source: Optional[str] = None
@@ -23,8 +24,14 @@ class SourceCreate(BaseModel):
 
     logo: Optional[str] = None
 
-    # 🔥 NEW
+    # Univers
     universe_id: Optional[str] = None
+
+    # Acquisition
+    acquisition_mode: Literal[
+        "AUTO",
+        "MANUAL"
+    ] = "MANUAL"
 
     class Config:
         extra = "forbid"
@@ -50,8 +57,16 @@ class SourceUpdate(BaseModel):
 
     logo: Optional[str] = None
 
-    # 🔥 NEW
+    # Univers
     universe_id: Optional[str] = None
+
+    # Acquisition
+    acquisition_mode: Optional[
+        Literal[
+            "AUTO",
+            "MANUAL"
+        ]
+    ] = None
 
     class Config:
         extra = "forbid"
@@ -81,11 +96,24 @@ class SourceOut(BaseModel):
 
     created_at: Optional[datetime] = None
 
-    # 🔥 NEW
+    # Univers
     universe_id: Optional[str] = None
+
+    # Acquisition
+    acquisition_mode: Optional[
+        Literal[
+            "AUTO",
+            "MANUAL"
+        ]
+    ] = None
 
     class Config:
         extra = "forbid"
+
+
+# ============================================================
+# LIST OUT
+# ============================================================
 
 class SourceListOut(BaseModel):
     status: str
