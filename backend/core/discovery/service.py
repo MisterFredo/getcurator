@@ -121,6 +121,39 @@ def insert_discovery_url(
     ).result()
 
 
+def get_existing_discovery_urls():
+
+    sql = f"""
+        SELECT URL
+        FROM `{TABLE_DISCOVERY}`
+    """
+
+    rows = query_bq(sql)
+
+    return {
+        r["URL"]
+        for r in rows
+        if r.get("URL")
+    }
+
+
+def get_existing_raw_urls():
+
+    sql = f"""
+        SELECT SOURCE_URL
+        FROM `{TABLE_RAW}`
+        WHERE SOURCE_URL IS NOT NULL
+    """
+
+    rows = query_bq(sql)
+
+    return {
+        r["SOURCE_URL"]
+        for r in rows
+        if r.get("SOURCE_URL")
+    }
+
+
 # ============================================================
 # EXTRACT URLS FROM PAGE
 # ============================================================
@@ -425,3 +458,22 @@ def ignore_discovery_urls(
         "status": "not_implemented",
         "ignored": 0,
     }
+
+def dismiss_discovery(
+    id_discovery: str,
+):
+
+    sql = f"""
+        UPDATE `{TABLE_DISCOVERY}`
+        SET STATUS = 'DISMISSED'
+        WHERE ID_DISCOVERY = @id
+    """
+
+    query_bq(
+        sql,
+        {
+            "id": id_discovery,
+        },
+    )
+
+    return True
