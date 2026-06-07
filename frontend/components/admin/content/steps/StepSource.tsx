@@ -39,6 +39,9 @@ export default function StepSource({
   const [sourcePublishedAt, setSourcePublishedAt] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [discoveryId, setDiscoveryId] = useState<string | null>(
+    null
+  );
 
   const [storing, setStoring] = useState(false);
 
@@ -169,6 +172,10 @@ export default function StepSource({
 
           setSourceId(
             item.source_id
+          );
+
+          setDiscoveryId(
+            item.id_discovery
           );
 
           setSourceTitle(
