@@ -15,8 +15,9 @@ type SourceRow = {
   author?: string | null;
   logo?: string | null;
 
-  // 🔥 NEW
   universe_id?: string | null;
+
+  acquisition_mode?: "AUTO" | "MANUAL" | null;
 };
 
 type Universe = {
@@ -156,6 +157,7 @@ export default function SourceList() {
               <th className="p-2">Domaine</th>
               <th className="p-2">Auteur</th>
               <th className="p-2">Univers</th>
+              <th className="p-2">Acquisition</th>
               <th className="p-2">Logo</th>
               <th className="p-2 text-right">Actions</th>
             </tr>
@@ -202,10 +204,23 @@ export default function SourceList() {
                     )}
                   </td>
 
-                  {/* 🔥 UNIVERSE */}
+                  {/* UNIVERSE */}
                   <td className="p-2">
                     {getUniverseLabel(s.universe_id) || (
                       <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+
+                  {/* ACQUISITION */}
+                  <td className="p-2">
+                    {s.acquisition_mode === "AUTO" ? (
+                      <span className="text-green-600 font-medium">
+                        AUTO
+                      </span>
+                    ) : (
+                      <span className="text-orange-600 font-medium">
+                        MANUAL
+                      </span>
                     )}
                   </td>
 
