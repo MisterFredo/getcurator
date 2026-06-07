@@ -21,6 +21,8 @@ export default function EditSource() {
   const [author, setAuthor] = useState("");
   const [authorProfile, setAuthorProfile] = useState("");
 
+  const [acquisitionMode, setAcquisitionMode] = useState("MANUAL");
+
   const [universeId, setUniverseId] = useState("");
   const [universes, setUniverses] = useState<any[]>([]);
 
@@ -63,8 +65,10 @@ export default function EditSource() {
         setAuthorProfile(res.author_profile || "");
         setLogoFilename(res.logo || null);
 
-        // 🔥 universe
         setUniverseId(res.universe_id || "");
+        setAcquisitionMode(
+          res.acquisition_mode || "MANUAL"
+        );
 
       } catch (e) {
         console.error(e);
@@ -101,9 +105,8 @@ export default function EditSource() {
         domain: domain || null,
         author: author || null,
         author_profile: authorProfile || null,
-
-        // 🔥 NEW
         universe_id: universeId || null,
+        acquisition_mode: acquisitionMode,
       });
 
       alert("Source mise à jour");
@@ -202,7 +205,28 @@ export default function EditSource() {
         />
       </div>
 
-      {/* 🔥 UNIVERSE */}
+      {/* ACQUISITION MODE */}
+      <div className="space-y-2 max-w-md">
+        <label className="block text-sm font-medium">
+          Mode d'acquisition
+        </label>
+
+        <select
+          className="border p-2 w-full rounded"
+          value={acquisitionMode}
+          onChange={(e) => setAcquisitionMode(e.target.value)}
+        >
+          <option value="MANUAL">
+            MANUAL - Copie / colle
+          </option>
+
+          <option value="AUTO">
+            AUTO - Parse automatique
+          </option>
+        </select>
+      </div>
+
+      {/* UNIVERSE */}
       <div className="space-y-2 max-w-md">
         <label className="block text-sm font-medium">Univers</label>
 
