@@ -54,7 +54,14 @@ from core.content.news_ai import generate_news
 from core.content.raw_import_service import import_raw_content
 from core.content.raw_import_service import import_urls_batch
 
-from utils.bigquery_utils import query_bq
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    query_bq,
+)
 
 import logging
 
@@ -392,6 +399,25 @@ def store_raw_route(
             id_primary_company=payload.id_primary_company,
         )
 
+        # =====================================================
+        # DISCOVERY -> STORED
+        # =====================================================
+
+        if payload.discovery_id:
+
+            sql = f"""
+                UPDATE `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_DISCOVERY`
+                SET STATUS = 'STORED'
+                WHERE ID_DISCOVERY = @id
+            """
+
+            query_bq(
+                sql,
+                {
+                    "id": payload.discovery_id,
+                },
+            )
+
         return {
             "status": "ok",
             "id_raw": raw_id
@@ -407,7 +433,6 @@ def store_raw_route(
             400,
             str(e)
         )
-
 # ============================================================
 # IMPORT RAW CONTENT
 # ============================================================
