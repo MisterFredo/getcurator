@@ -15,6 +15,9 @@ from core.discovery.service import (
     list_discovery_items,
     store_discovery_urls,
     ignore_discovery_urls,
+
+    # 🔥 NEW
+    dismiss_discovery,
 )
 
 router = APIRouter()
@@ -144,4 +147,32 @@ def ignore_route(data: IgnoreRequest):
         raise HTTPException(
             400,
             f"Erreur ignore URLs : {e}"
+        )
+
+
+# ============================================================
+# DISMISS ONE URL
+# ============================================================
+
+@router.post(
+    "/dismiss/{id_discovery}",
+)
+def dismiss_route(id_discovery: str):
+
+    try:
+
+        dismiss_discovery(
+            id_discovery
+        )
+
+        return {
+            "status": "ok",
+            "id_discovery": id_discovery,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur dismiss URL : {e}"
         )
