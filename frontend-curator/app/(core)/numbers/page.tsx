@@ -281,7 +281,7 @@ export default function NumbersPage() {
                 }
               `}
             >
-              Tous
+              All
             </button>
 
             {universes.map((u) => (
