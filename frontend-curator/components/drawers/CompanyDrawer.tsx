@@ -216,7 +216,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
       {/* FEED */}
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
-          Contenus liés
+          Key Contents
         </h2>
 
         <FeedGroupedByMonth
