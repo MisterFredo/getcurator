@@ -288,7 +288,6 @@ export default function ContentStockPage() {
 
           <StockImportPanel
             sources={sources}
-            companies={companies}
             onImported={load}
           />
 
