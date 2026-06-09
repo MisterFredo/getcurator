@@ -94,7 +94,7 @@ export default function SelectionPanelCore({
           disabled={loading || selectedCount === 0}
           className="w-full py-2 text-xs rounded bg-black text-white disabled:opacity-50"
         >
-          {labels?.generate || "Générer analyse"}
+          {labels?.generate || "Generate Analysis"}
         </button>
       </div>
 
