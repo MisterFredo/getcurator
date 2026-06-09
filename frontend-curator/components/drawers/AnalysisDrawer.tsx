@@ -207,7 +207,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               >
                 <ExternalLink size={12} />
 
-                {data.source_title || "Lire l’article source"}
+                {data.source_title || "Read source article"}
               </a>
             </div>
           )}
@@ -221,10 +221,19 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </p>
           )}
 
+          {data.content_body && (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: data.content_body,
+              }}
+            />
+          )}
+
           {data.signal_analytique && (
             <div className="bg-teal-50 border border-teal-100 p-4 rounded">
               <h3 className="text-xs uppercase text-teal-600 mb-1">
-                Signal
+                Insight
               </h3>
 
               <p className="text-sm text-teal-800">
@@ -237,7 +246,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
           {data.concepts?.length > 0 && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
-                Concepts clés
+                Key Concepts
               </h3>
 
               <div className="flex flex-wrap gap-2">
@@ -259,7 +268,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
           {data.mecanique_expliquee && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
-                Mécanique expliquée
+                Mechanism Explained
               </h3>
 
               <p className="text-sm text-gray-700">
@@ -271,7 +280,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
           {data.enjeu_strategique && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
-                Enjeu stratégique
+                Strategic Implication
               </h3>
 
               <p className="text-sm text-gray-700">
@@ -283,7 +292,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
           {data.point_de_friction && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
-                Point de friction
+                Friction Point
               </h3>
 
               <p className="text-sm text-gray-700">
@@ -292,35 +301,26 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </div>
           )}
 
-          {data.content_body && (
-            <div
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: data.content_body,
-              }}
-            />
-          )}
-
           {data.chiffres?.length > 0 && (
             <div>
               {/* HEADER + LEGEND */}
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xs uppercase text-gray-500">
-                  Chiffres clés
+                  Key Figures
                 </h2>
 
                 <div className="text-[10px] text-gray-400 hidden md:flex gap-2">
-                  <span>Libellé</span>
+                  <span>Label</span>
                   <span>•</span>
-                  <span>Valeur</span>
+                  <span>Value</span>
                   <span>•</span>
-                  <span>Unité</span>
+                  <span>Unit</span>
                   <span>•</span>
-                  <span>Acteur</span>
+                  <span>Actor</span>
                   <span>•</span>
-                  <span>Marché</span>
+                  <span>Market</span>
                   <span>•</span>
-                  <span>Période</span>
+                  <span>Period</span>
                 </div>
               </div>
 
@@ -339,12 +339,12 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
                         text-sm bg-gray-50
                       "
                     >
-                      {/* LIBELLÉ */}
+                      {/* LABEL */}
                       <div className="font-medium text-gray-900">
                         {parts[0]}
                       </div>
 
-                      {/* MÉTA */}
+                      {/* META */}
                       {parts.length > 1 && (
                         <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
                           {parts.slice(1).map((p, idx) => (
@@ -364,15 +364,15 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
           {data.acteurs_cites?.length > 0 && (
             <div className="text-sm text-gray-600">
-              <strong>Acteurs :</strong>{" "}
+              <strong>Actors:</strong>{" "}
               {data.acteurs_cites.join(", ")}
             </div>
           )}
 
           {data.published_at && (
             <div className="pt-4 border-t text-xs text-gray-400">
-              Publié le{" "}
-              {new Date(data.published_at).toLocaleDateString("fr-FR")}
+              Published on{" "}
+              {new Date(data.published_at).toLocaleDateString("en-GB")}
             </div>
           )}
         </div>
