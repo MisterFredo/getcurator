@@ -8,67 +8,49 @@ type SourceItem = {
   label: string;
 };
 
-type CompanyItem = {
-  id_company: string;
-  name: string;
-};
-
 type Props = {
   sources: SourceItem[];
-
-  // 🔥 NEW
-  companies: CompanyItem[];
-
   onImported: () => void;
 };
 
 export default function StockImportPanel({
   sources,
-  companies,
   onImported,
 }: Props) {
 
-  const [file, setFile] = useState<File | null>(null);
-  const [urlsText, setUrlsText] = useState("");
-  const [sourceId, setSourceId] = useState("");
+  const [csvFile, setCsvFile] =
+    useState<File | null>(null);
 
-  // 🔥 NEW
+  const [urlsText, setUrlsText] =
+    useState("");
+
+  const [sourceId, setSourceId] =
+    useState("");
+
   const [contentType, setContentType] =
-    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
+    useState<"ANALYSIS" | "NEWS">(
+      "ANALYSIS"
+    );
 
-  // 🔥 NEW
-  const [primaryCompanyId, setPrimaryCompanyId] = useState("");
+  const [loadingCsv, setLoadingCsv] =
+    useState(false);
 
-  const [loadingFile, setLoadingFile] = useState(false);
-  const [loadingUrl, setLoadingUrl] = useState(false);
+  const [loadingUrl, setLoadingUrl] =
+    useState(false);
 
-  const [previewCount, setPreviewCount] = useState<number | null>(null);
-  const [urlCount, setUrlCount] = useState<number | null>(null);
+  const [urlCount, setUrlCount] =
+    useState<number | null>(null);
 
-  const [message, setMessage] = useState("");
-
-  // =========================
-  // FILE CHANGE
-  // =========================
-
-  async function handleFileChange(f: File | null) {
-    setFile(f);
-    setPreviewCount(null);
-    setMessage("");
-
-    if (!f) return;
-
-    const text = await f.text();
-    const matches = text.match(/TITLE\s*:/g);
-
-    setPreviewCount(matches ? matches.length : 0);
-  }
+  const [message, setMessage] =
+    useState("");
 
   // =========================
   // URL CHANGE
   // =========================
 
-  function handleUrlChange(value: string) {
+  function handleUrlChange(
+    value: string
+  ) {
 
     setUrlsText(value);
     setMessage("");
@@ -82,46 +64,49 @@ export default function StockImportPanel({
   }
 
   // =========================
-  // FILE IMPORT
+  // CSV IMPORT
   // =========================
 
-  async function handleFileImport() {
+  async function handleCsvImport() {
 
-    if (!file) {
-      return alert("Choisissez un fichier");
+    if (!csvFile) {
+      return alert(
+        "Choisissez un fichier CSV"
+      );
     }
 
     if (!sourceId) {
-      return alert("Choisissez une source");
+      return alert(
+        "Choisissez une source"
+      );
     }
 
-    setLoadingFile(true);
+    setLoadingCsv(true);
     setMessage("");
 
     try {
 
-      const text = await file.text();
+      const csvText =
+        await csvFile.text();
 
-      const res = await api.post("/content/raw/import", {
+      const res = await api.post(
+        "/content/raw/import-csv",
+        {
+          id_source: sourceId,
 
-        id_source: sourceId,
+          content_type:
+            contentType,
 
-        text,
-
-        // 🔥 NEW
-        content_type: contentType,
-
-        // 🔥 NEW
-        id_primary_company:
-          primaryCompanyId || null,
-      });
-
-      setMessage(
-        `✅ ${res.imported} contenu(s) importé(s)`
+          csv_text:
+            csvText,
+        }
       );
 
-      setFile(null);
-      setPreviewCount(null);
+      setMessage(
+        `✅ ${res.inserted} importé(s) sur ${res.total}`
+      );
+
+      setCsvFile(null);
 
       onImported();
 
@@ -129,10 +114,12 @@ export default function StockImportPanel({
 
       console.error(e);
 
-      setMessage("❌ Erreur import fichier");
+      setMessage(
+        "❌ Erreur import CSV"
+      );
     }
 
-    setLoadingFile(false);
+    setLoadingCsv(false);
   }
 
   // =========================
@@ -142,11 +129,15 @@ export default function StockImportPanel({
   async function handleUrlImport() {
 
     if (!urlsText.trim()) {
-      return alert("URLs manquantes");
+      return alert(
+        "URLs manquantes"
+      );
     }
 
     if (!sourceId) {
-      return alert("Choisissez une source");
+      return alert(
+        "Choisissez une source"
+      );
     }
 
     setLoadingUrl(true);
@@ -157,17 +148,14 @@ export default function StockImportPanel({
       const res = await api.post(
         "/content/raw/import-urls",
         {
+          id_source:
+            sourceId,
 
-          id_source: sourceId,
+          urls_text:
+            urlsText,
 
-          urls_text: urlsText,
-
-          // 🔥 NEW
-          content_type: contentType,
-
-          // 🔥 NEW
-          id_primary_company:
-            primaryCompanyId || null,
+          content_type:
+            contentType,
         }
       );
 
@@ -184,7 +172,9 @@ export default function StockImportPanel({
 
       console.error(e);
 
-      setMessage("❌ Erreur import URLs");
+      setMessage(
+        "❌ Erreur import URLs"
+      );
     }
 
     setLoadingUrl(false);
@@ -202,10 +192,16 @@ export default function StockImportPanel({
 
       <select
         value={sourceId}
-        onChange={(e) => setSourceId(e.target.value)}
+        onChange={(e) =>
+          setSourceId(
+            e.target.value
+          )
+        }
         className="border rounded px-3 py-2"
       >
-        <option value="">Source</option>
+        <option value="">
+          Source
+        </option>
 
         {sources.map((s) => (
           <option
@@ -217,13 +213,16 @@ export default function StockImportPanel({
         ))}
       </select>
 
-      {/* 🔥 CONTENT TYPE */}
+      {/* CONTENT TYPE */}
 
       <select
         value={contentType}
         onChange={(e) =>
           setContentType(
-            e.target.value as "ANALYSIS" | "NEWS"
+            e.target
+              .value as
+              | "ANALYSIS"
+              | "NEWS"
           )
         }
         className="border rounded px-3 py-2"
@@ -237,84 +236,87 @@ export default function StockImportPanel({
         </option>
       </select>
 
-      {/* 🔥 PRIMARY COMPANY */}
+      {/* CSV IMPORT */}
 
-      <select
-        value={primaryCompanyId}
-        onChange={(e) =>
-          setPrimaryCompanyId(e.target.value)
-        }
-        className="border rounded px-3 py-2"
-      >
-        <option value="">
-          Primary company (optionnel)
-        </option>
+      <div className="space-y-3 border rounded p-4 bg-white">
 
-        {companies.map((c) => (
-          <option
-            key={c.id_company}
-            value={c.id_company}
-          >
-            {c.name}
-          </option>
-        ))}
-      </select>
+        <h3 className="font-medium">
+          Import CSV
+        </h3>
 
-      {/* FILE IMPORT */}
-
-      <div className="flex flex-wrap gap-4 items-center">
+        <div className="text-xs text-gray-500">
+          Format attendu :
+          <br />
+          URL,ID_PRIMARY_COMPANY
+        </div>
 
         <input
           type="file"
-          accept=".txt"
+          accept=".csv"
           onChange={(e) =>
-            handleFileChange(
-              e.target.files?.[0] || null
+            setCsvFile(
+              e.target.files?.[0]
+                || null
             )
           }
         />
 
-        {previewCount !== null && (
-          <span className="text-xs text-gray-600">
-            {previewCount} bloc(s) détecté(s)
-          </span>
+        {csvFile && (
+          <div className="text-xs text-gray-600">
+            {csvFile.name}
+          </div>
         )}
 
         <button
-          onClick={handleFileImport}
-          disabled={loadingFile}
+          onClick={
+            handleCsvImport
+          }
+          disabled={
+            loadingCsv
+          }
           className="bg-black text-white px-4 py-2 rounded"
         >
-          {loadingFile
+          {loadingCsv
             ? "Import..."
-            : "Importer fichier"}
+            : "Importer CSV"}
         </button>
 
       </div>
 
       {/* URL IMPORT */}
 
-      <div className="space-y-2">
+      <div className="space-y-3 border rounded p-4 bg-white">
+
+        <h3 className="font-medium">
+          Import URLs
+        </h3>
 
         <textarea
           value={urlsText}
           onChange={(e) =>
-            handleUrlChange(e.target.value)
+            handleUrlChange(
+              e.target.value
+            )
           }
           placeholder="Une URL par ligne"
-          rows={4}
+          rows={5}
           className="w-full border rounded p-2 text-sm"
         />
 
         {urlCount !== null && (
           <div className="text-xs text-gray-600">
-            {urlCount} URL(s) détectée(s)
+            {urlCount} URL(s)
+            détectée(s)
           </div>
         )}
 
         <button
-          onClick={handleUrlImport}
-          disabled={loadingUrl}
+          onClick={
+            handleUrlImport
+          }
+          disabled={
+            loadingUrl
+          }
           className="bg-ratecard-blue text-white px-4 py-2 rounded"
         >
           {loadingUrl
