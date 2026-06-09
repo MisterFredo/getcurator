@@ -58,7 +58,7 @@ export default function NumbersHeader({
             hover:opacity-90 transition
           "
         >
-          Rechercher
+          Search
         </button>
       </div>
 
