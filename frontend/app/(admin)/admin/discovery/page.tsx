@@ -39,9 +39,9 @@ export default function DiscoveryPage() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const [statusFilter, setStatusFilter] = useState<
-    "NEW" | "STORED" | "ALL"
-  >("NEW");
+  const [sourceMode, setSourceMode] = useState<
+    "AUTO" | "MANUAL"
+  >("AUTO");
 
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -313,22 +313,13 @@ export default function DiscoveryPage() {
   }
 
   // =========================================================
-  // FILTER
+  // SOURCE FILTER
   // =========================================================
 
-  const filteredItems = items.filter(
-    (item) => {
-
-      if (
-        statusFilter === "ALL"
-      ) {
-        return true;
-      }
-
-      return (
-        item.status === statusFilter
-      );
-    }
+  const filteredSources = sources.filter(
+    (source) =>
+      (source.acquisition_mode || "")
+        .toUpperCase() === sourceMode
   );
 
   // =========================================================
@@ -367,10 +358,42 @@ export default function DiscoveryPage() {
 
       </div>
 
+      {/* SOURCE MODE */}
+
+      <div className="flex gap-2">
+
+        <button
+          onClick={() =>
+            setSourceMode("AUTO")
+          }
+          className={
+            sourceMode === "AUTO"
+              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
+              : "bg-gray-100 px-3 py-1 rounded"
+          }
+        >
+          AUTO
+        </button>
+
+        <button
+          onClick={() =>
+            setSourceMode("MANUAL")
+          }
+          className={
+            sourceMode === "MANUAL"
+              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
+              : "bg-gray-100 px-3 py-1 rounded"
+          }
+        >
+          MANUAL
+        </button>
+
+      </div>
+
       {/* SOURCES */}
 
       <DiscoverySources
-        sources={sources}
+        sources={filteredSources}
         onScan={scanSource}
       />
 
@@ -391,51 +414,6 @@ export default function DiscoveryPage() {
         onDismiss={dismissSelected}
       />
 
-      {/* FILTERS */}
-
-      <div className="flex gap-2">
-
-        <button
-          onClick={() =>
-            setStatusFilter("NEW")
-          }
-          className={
-            statusFilter === "NEW"
-              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
-              : "bg-gray-100 px-3 py-1 rounded"
-          }
-        >
-          NEW
-        </button>
-
-        <button
-          onClick={() =>
-            setStatusFilter("STORED")
-          }
-          className={
-            statusFilter === "STORED"
-              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
-              : "bg-gray-100 px-3 py-1 rounded"
-          }
-        >
-          STORED
-        </button>
-
-        <button
-          onClick={() =>
-            setStatusFilter("ALL")
-          }
-          className={
-            statusFilter === "ALL"
-              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
-              : "bg-gray-100 px-3 py-1 rounded"
-          }
-        >
-          ALL
-        </button>
-
-      </div>
-
       {/* TABLE */}
 
       {loading ? (
@@ -444,7 +422,7 @@ export default function DiscoveryPage() {
           Chargement...
         </div>
 
-      ) : filteredItems.length === 0 ? (
+      ) : items.length === 0 ? (
 
         <div className="bg-white border rounded p-8 text-center text-gray-500">
           Aucune URL découverte.
