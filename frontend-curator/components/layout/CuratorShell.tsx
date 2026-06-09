@@ -79,12 +79,12 @@ export default function CuratorShell({
   const navEntities = [
     {
       href: "/companies",
-      label: "Sociétés",
+      label: "Companies",
       icon: Building2,
     },
     {
       href: "/solutions",
-      label: "Produits",
+      label: "Solutions",
       icon: Box,
     },
 
