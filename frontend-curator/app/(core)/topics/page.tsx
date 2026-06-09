@@ -371,11 +371,6 @@ export default function TopicsPage() {
           <h1 className="text-lg font-semibold text-gray-900">
             Topics
           </h1>
-
-          <p className="text-sm text-gray-500">
-            Cartographie des dynamiques du marché
-          </p>
-
         </div>
 
         <div className="flex gap-2 text-xs">
