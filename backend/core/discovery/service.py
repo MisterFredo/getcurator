@@ -382,7 +382,7 @@ def list_discovery_items():
         LEFT JOIN `{TABLE_SOURCE}` s
           ON d.SOURCE_ID = s.SOURCE_ID
 
-        WHERE d.STATUS != 'DISMISSED'
+        WHERE d.STATUS = 'NEW'
 
         ORDER BY d.DATE_FOUND DESC
     """
