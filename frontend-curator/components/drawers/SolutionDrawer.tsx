@@ -159,7 +159,7 @@ export default function SolutionDrawer({ id, onClose }: any) {
 
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
-          Contenus liés
+          Key Contents
         </h2>
 
         <FeedGroupedByMonth
