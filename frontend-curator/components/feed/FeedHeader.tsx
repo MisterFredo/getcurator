@@ -401,7 +401,7 @@ export default function FeedHeader({
             }
           }}
           placeholder="
-            Rechercher
+            Search
             (Amazon, CTV,
             Retail media…)
           "
@@ -440,7 +440,7 @@ export default function FeedHeader({
         >
           {loading
             ? "..."
-            : "Rechercher"}
+            : "Search"}
         </button>
 
       </div>
