@@ -20,14 +20,14 @@ export default function NumbersExplorer({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un chiffre..."
+          placeholder="Search..."
           className="w-full px-3 py-2 border rounded text-sm"
         />
         <button
           onClick={onSearch}
           className="px-4 py-2 border rounded text-sm"
         >
-          Rechercher
+          Search
         </button>
       </div>
 
