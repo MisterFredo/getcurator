@@ -464,6 +464,49 @@ def import_raw_route(payload: dict):
         "imported": count
     }
 
+@router.post("/raw/import-csv")
+def import_csv_route(
+    payload: ImportCsvRequest
+):
+
+    if not payload.csv_text.strip():
+
+        raise HTTPException(
+            400,
+            "CSV manquant"
+        )
+
+    if not payload.id_source:
+
+        raise HTTPException(
+            400,
+            "Source obligatoire"
+        )
+
+    try:
+
+        result = import_urls_csv(
+            csv_text=payload.csv_text,
+            id_source=payload.id_source,
+            content_type=payload.content_type,
+        )
+
+        return {
+            "status": "ok",
+            **result
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur import CSV"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
 
 # ============================================================
 # LIST RAW STOCK
