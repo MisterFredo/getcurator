@@ -53,6 +53,7 @@ from core.content.ai import generate_summary
 from core.content.news_ai import generate_news
 from core.content.raw_import_service import import_raw_content
 from core.content.raw_import_service import import_urls_batch
+from core.content.raw_import_service import import_urls_csv
 
 from config import (
     BQ_PROJECT,
