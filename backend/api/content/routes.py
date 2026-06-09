@@ -11,6 +11,7 @@ from api.content.models import (
     ContentRawUpdate,
     ContentRawDestockRequest,
     ImportUrlsRequest,
+    ImportCsvRequest,
     BulkIdsRequest,
 )
 
