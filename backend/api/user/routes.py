@@ -6,6 +6,8 @@ from api.user.models import (
     AssignUniversePayload,
     LoginPayload,
     UpdateUserPayload,
+    UserKeywordPayload,
+    UserKeywordPayload,
 )
 
 from core.user.user_service import (
