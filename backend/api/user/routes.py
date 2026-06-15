@@ -26,6 +26,7 @@ from core.user.user_preferences_service import (
     get_user_preferences,
     add_user_preference,
     remove_user_preference,
+    get_user_preferences_detailed,
 )
 
 from core.user.user_keyword_service import (
@@ -107,6 +108,23 @@ def remove_preference(request: Request, payload: dict):
     )
 
     return {"status": "ok"}
+
+# =========================================================
+# USER PREFERENCES (ADMIN)
+# =========================================================
+
+@router.get("/preferences/{user_id}")
+def get_preferences_by_user(
+    user_id: str
+):
+
+    prefs = get_user_preferences_detailed(
+        user_id
+    )
+
+    return {
+        "preferences": prefs
+    }
 
 
 # =========================================================
