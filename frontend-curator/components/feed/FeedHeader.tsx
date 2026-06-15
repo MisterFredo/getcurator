@@ -48,6 +48,9 @@ type Props = {
       | "keywords"
   ) => void;
 
+  loading?: boolean;
+};
+
 /* ========================================================= */
 
 function PillButton({
