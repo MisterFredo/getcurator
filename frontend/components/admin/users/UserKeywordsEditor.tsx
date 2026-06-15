@@ -41,7 +41,7 @@ export default function UserKeywordsEditor({
         setLoading(true);
 
         const res = await api.get(
-          "/user/keywords"
+          `/user/keywords/${userId}`
         );
 
         setKeywords(
@@ -88,6 +88,7 @@ export default function UserKeywordsEditor({
       await api.post(
         "/user/keywords/add",
         {
+          user_id: userId,
           keyword,
         }
       );
@@ -151,6 +152,7 @@ export default function UserKeywordsEditor({
       await api.post(
         "/user/keywords/remove",
         {
+          user_id: userId,
           keyword,
         }
       );
