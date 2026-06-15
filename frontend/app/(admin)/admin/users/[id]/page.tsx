@@ -15,6 +15,16 @@ import {
 } from "lucide-react";
 
 import { api } from "@/lib/api";
+
+import UserKeywordsEditor
+  from "@/components/admin/users/UserKeywordsEditor";
+
+import UserGeographyEditor
+  from "@/components/admin/users/UserGeographyEditor";
+
+import UserProfileEditor
+  from "@/components/admin/users/UserProfileEditor";
+
 const SUPPORTED_LANGS = ["fr", "en"];
 
 /* ========================================================= */
@@ -659,6 +669,30 @@ export default function EditUser() {
         </div>
 
       </div>
+
+      {/* =====================================================
+          KEYWORDS
+      ===================================================== */}
+
+      <UserKeywordsEditor
+        userId={userId}
+      />
+
+      {/* =====================================================
+          GEOGRAPHIES
+      ===================================================== */}
+
+      <UserGeographyEditor
+        userId={userId}
+      />
+
+      {/* =====================================================
+          AI PROFILE
+      ===================================================== */}
+
+      <UserProfileEditor
+        userId={userId}
+      />
 
       {/* CTA */}
 
