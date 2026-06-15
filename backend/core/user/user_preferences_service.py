@@ -186,3 +186,135 @@ def get_user_preferences_grouped(
             )
 
     return result
+
+
+# =========================================================
+# USER PREFERENCES DETAILED
+# =========================================================
+
+def get_user_preferences_detailed(
+    user_id: str
+):
+
+    rows = query_bq(
+        f"""
+        SELECT
+            TYPE,
+            VALUE_ID
+        FROM `{TABLE_USER_PREFERENCES}`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id
+        }
+    )
+
+    result = {
+        "COMPANY": [],
+        "SOLUTION": [],
+        "TOPIC": [],
+    }
+
+    if not rows:
+        return result
+
+    company_ids = [
+        r["VALUE_ID"]
+        for r in rows
+        if r["TYPE"] == "COMPANY"
+    ]
+
+    solution_ids = [
+        r["VALUE_ID"]
+        for r in rows
+        if r["TYPE"] == "SOLUTION"
+    ]
+
+    topic_ids = [
+        r["VALUE_ID"]
+        for r in rows
+        if r["TYPE"] == "TOPIC"
+    ]
+
+    # =====================================================
+    # COMPANIES
+    # =====================================================
+
+    if company_ids:
+
+        companies = query_bq(
+            f"""
+            SELECT
+                ID_COMPANY,
+                NAME
+            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY`
+            WHERE ID_COMPANY IN UNNEST(@ids)
+            """,
+            {
+                "ids": company_ids
+            }
+        )
+
+        result["COMPANY"] = [
+            {
+                "id": c["ID_COMPANY"],
+                "label": c["NAME"],
+            }
+            for c in companies
+        ]
+
+    # =====================================================
+    # SOLUTIONS
+    # =====================================================
+
+    if solution_ids:
+
+        solutions = query_bq(
+            f"""
+            SELECT
+                ID_SOLUTION,
+                NAME
+            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION`
+            WHERE ID_SOLUTION IN UNNEST(@ids)
+            """,
+            {
+                "ids": solution_ids
+            }
+        )
+
+        result["SOLUTION"] = [
+            {
+                "id": s["ID_SOLUTION"],
+                "label": s["NAME"],
+            }
+            for s in solutions
+        ]
+
+    # =====================================================
+    # TOPICS
+    # =====================================================
+
+    if topic_ids:
+
+        topics = query_bq(
+            f"""
+            SELECT
+                ID_TOPIC,
+                LABEL
+            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC`
+            WHERE ID_TOPIC IN UNNEST(@ids)
+            """,
+            {
+                "ids": topic_ids
+            }
+        )
+
+        result["TOPIC"] = [
+            {
+                "id": t["ID_TOPIC"],
+                "label": t["LABEL"],
+            }
+            for t in topics
+        ]
+
+    return result
