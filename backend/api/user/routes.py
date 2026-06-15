@@ -28,6 +28,17 @@ from core.user.user_preferences_service import (
     remove_user_preference,
 )
 
+from core.user.user_keyword_service import (
+    get_user_keywords,
+    add_user_keyword,
+    remove_user_keyword,
+)
+
+from core.user.user_profile_service import (
+    get_user_profile,
+    update_user_profile,
+)
+
 from utils.auth import get_user_id_from_request
 
 router = APIRouter()
@@ -96,6 +107,123 @@ def remove_preference(request: Request, payload: dict):
     )
 
     return {"status": "ok"}
+
+
+# =========================================================
+# USER KEYWORDS
+# =========================================================
+
+@router.get("/keywords")
+def get_keywords(request: Request):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        return {
+            "keywords": []
+        }
+
+    keywords = get_user_keywords(user_id)
+
+    return {
+        "keywords": keywords
+    }
+
+
+@router.post("/keywords/add")
+def add_keyword(
+    request: Request,
+    payload: UserKeywordPayload
+):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    add_user_keyword(
+        user_id=user_id,
+        keyword=payload.keyword,
+    )
+
+    return {
+        "status": "ok"
+    }
+
+
+@router.post("/keywords/remove")
+def remove_keyword(
+    request: Request,
+    payload: UserKeywordPayload
+):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    remove_user_keyword(
+        user_id=user_id,
+        keyword=payload.keyword,
+    )
+
+    return {
+        "status": "ok"
+    }
+
+
+# =========================================================
+# USER PROFILE
+# =========================================================
+
+@router.get("/profile")
+def get_profile(request: Request):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        return {
+            "profile": None
+        }
+
+    profile = get_user_profile(user_id)
+
+    return {
+        "profile": profile
+    }
+
+
+@router.post("/profile/update")
+def update_profile(
+    request: Request,
+    payload: UserProfilePayload
+):
+
+    user_id = get_user_id_from_request(request)
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    update_user_profile(
+        user_id=user_id,
+        geography_1=payload.geography_1,
+        geography_2=payload.geography_2,
+        geography_3=payload.geography_3,
+        profile_text=payload.profile_text,
+    )
+
+    return {
+        "status": "ok"
+    }
 
 # =========================================================
 # CREATE USER
