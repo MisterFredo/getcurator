@@ -273,6 +273,54 @@ def update_profile(
     }
 
 # =========================================================
+# USER LANGUAGE
+# =========================================================
+
+@router.post("/language")
+def update_language(
+    request: Request,
+    payload: dict
+):
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    language = (
+        payload.get("language")
+        or "fr"
+    )
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    update_user(
+        UpdateUserPayload(
+            user_id=user_id,
+            name=user.get("NAME"),
+            company=user.get("COMPANY"),
+            language=language,
+            role=user.get("ROLE"),
+            universes=None,
+        )
+    )
+
+    return {
+        "status": "ok"
+    }
+
+# =========================================================
 # CREATE USER
 # =========================================================
 
