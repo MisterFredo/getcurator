@@ -13,6 +13,10 @@ type User = {
   ROLE?: string;
   IS_ACTIVE?: boolean;
   CREATED_AT?: string;
+
+  KEYWORDS_COUNT?: number;
+  GEOGRAPHY_1?: string;
+  HAS_PROFILE?: boolean;
 };
 
 export default function UsersPage() {
@@ -45,8 +49,8 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-
       {/* HEADER */}
+
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">
           Users
@@ -61,6 +65,7 @@ export default function UsersPage() {
       </div>
 
       {/* TABLE */}
+
       <div className="bg-white border rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-6 text-sm text-gray-500">
@@ -80,20 +85,37 @@ export default function UsersPage() {
                 <th className="text-left p-3">Language</th>
                 <th className="text-left p-3">Role</th>
                 <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Keywords</th>
+                <th className="text-left p-3">Geo</th>
+                <th className="text-left p-3">Profile</th>
                 <th className="text-left p-3">Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {users.map((u) => (
-                <tr key={u.ID_USER} className="border-b hover:bg-gray-50">
+                <tr
+                  key={u.ID_USER}
+                  className="border-b hover:bg-gray-50"
+                >
+                  <td className="p-3">
+                    {u.EMAIL}
+                  </td>
 
-                  <td className="p-3">{u.EMAIL}</td>
-                  <td className="p-3">{u.NAME || "-"}</td>
-                  <td className="p-3">{u.COMPANY || "-"}</td>
-                  <td className="p-3">{u.LANGUAGE || "fr"}</td>
+                  <td className="p-3">
+                    {u.NAME || "-"}
+                  </td>
+
+                  <td className="p-3">
+                    {u.COMPANY || "-"}
+                  </td>
+
+                  <td className="p-3">
+                    {u.LANGUAGE || "fr"}
+                  </td>
 
                   {/* ROLE */}
+
                   <td className="p-3">
                     {u.ROLE === "admin" ? (
                       <span className="text-blue-600 font-medium">
@@ -107,6 +129,7 @@ export default function UsersPage() {
                   </td>
 
                   {/* STATUS */}
+
                   <td className="p-3">
                     {u.IS_ACTIVE ? (
                       <span className="text-green-600 font-medium">
@@ -119,7 +142,50 @@ export default function UsersPage() {
                     )}
                   </td>
 
+                  {/* KEYWORDS */}
+
+                  <td className="p-3">
+                    {u.KEYWORDS_COUNT ? (
+                      <span className="font-medium">
+                        {u.KEYWORDS_COUNT}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">
+                        0
+                      </span>
+                    )}
+                  </td>
+
+                  {/* GEO */}
+
+                  <td className="p-3">
+                    {u.GEOGRAPHY_1 ? (
+                      <span>
+                        {u.GEOGRAPHY_1}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">
+                        -
+                      </span>
+                    )}
+                  </td>
+
+                  {/* PROFILE */}
+
+                  <td className="p-3">
+                    {u.HAS_PROFILE ? (
+                      <span className="text-green-600 font-medium">
+                        ✓
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">
+                        -
+                      </span>
+                    )}
+                  </td>
+
                   {/* ACTIONS */}
+
                   <td className="p-3">
                     <Link
                       href={`/admin/users/${u.ID_USER}`}
@@ -128,7 +194,6 @@ export default function UsersPage() {
                       Edit
                     </Link>
                   </td>
-
                 </tr>
               ))}
             </tbody>
