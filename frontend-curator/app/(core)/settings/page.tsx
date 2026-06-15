@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { api } from "@/lib/api";
 
 /* ========================================================= */
@@ -12,16 +11,12 @@ type Profile = {
   geography_3?: string | null;
 };
 
+/* ========================================================= */
+
 export default function SettingsPage() {
 
   const [loading, setLoading] =
     useState(true);
-
-  const [savingGeo, setSavingGeo] =
-    useState(false);
-
-  const [savingKeyword, setSavingKeyword] =
-    useState(false);
 
   const [language, setLanguage] =
     useState("fr");
@@ -106,124 +101,6 @@ export default function SettingsPage() {
   }, []);
 
   /* =====================================================
-     KEYWORDS
-  ===================================================== */
-
-  async function addKeyword() {
-
-    const value =
-      keywordInput.trim();
-
-    if (!value) return;
-
-    try {
-
-      setSavingKeyword(true);
-
-      await api.post(
-        "/user/keywords/add",
-        {
-          keyword: value,
-        }
-      );
-
-      setKeywords((prev) => [
-        ...prev,
-        value,
-      ]);
-
-      setKeywordInput("");
-
-    } catch (e) {
-
-      console.error(
-        "keyword add error",
-        e
-      );
-
-    } finally {
-
-      setSavingKeyword(false);
-
-    }
-  }
-
-  async function removeKeyword(
-    keyword: string
-  ) {
-
-    try {
-
-      await api.post(
-        "/user/keywords/remove",
-        {
-          keyword,
-        }
-      );
-
-      setKeywords((prev) =>
-        prev.filter(
-          (k) => k !== keyword
-        )
-      );
-
-    } catch (e) {
-
-      console.error(
-        "keyword remove error",
-        e
-      );
-
-    }
-  }
-
-  /* =====================================================
-     GEO
-  ===================================================== */
-
-  async function saveGeographies() {
-
-    try {
-
-      setSavingGeo(true);
-
-      await api.post(
-        "/user/profile/update",
-        {
-          geography_1:
-            geo1 || null,
-
-          geography_2:
-            geo2 || null,
-
-          geography_3:
-            geo3 || null,
-        }
-      );
-
-      alert(
-        "Geographies saved"
-      );
-
-    } catch (e) {
-
-      console.error(
-        "geo save error",
-        e
-      );
-
-      alert(
-        "Error saving geographies"
-      );
-
-    } finally {
-
-      setSavingGeo(false);
-
-    }
-  }
-
-  /* =====================================================
      LANGUAGE
   ===================================================== */
 
@@ -273,265 +150,374 @@ export default function SettingsPage() {
   }
 
   /* =====================================================
-     RENDER
+     KEYWORDS
+  ===================================================== */
+
+  async function addKeyword() {
+
+    const value =
+      keywordInput.trim();
+
+    if (!value) return;
+
+    try {
+
+      await api.post(
+        "/user/keywords/add",
+        {
+          keyword: value,
+        }
+      );
+
+      setKeywords((prev) => [
+        ...prev,
+        value,
+      ]);
+
+      setKeywordInput("");
+
+    } catch (e) {
+
+      console.error(
+        "keyword add error",
+        e
+      );
+    }
+  }
+
+  async function removeKeyword(
+    keyword: string
+  ) {
+
+    try {
+
+      await api.post(
+        "/user/keywords/remove",
+        {
+          keyword,
+        }
+      );
+
+      setKeywords((prev) =>
+        prev.filter(
+          (k) => k !== keyword
+        )
+      );
+
+    } catch (e) {
+
+      console.error(
+        "keyword remove error",
+        e
+      );
+    }
+  }
+
+  /* =====================================================
+     GEO
+  ===================================================== */
+
+  async function saveGeographies() {
+
+    try {
+
+      await api.post(
+        "/user/profile/update",
+        {
+          geography_1:
+            geo1 || null,
+
+          geography_2:
+            geo2 || null,
+
+          geography_3:
+            geo3 || null,
+        }
+      );
+
+    } catch (e) {
+
+      console.error(
+        "geo save error",
+        e
+      );
+    }
+  }
+
+  /* =====================================================
+     LOADING
   ===================================================== */
 
   if (loading) {
 
     return (
-      <div>
+      <div className="text-sm text-gray-500">
         Loading...
       </div>
     );
   }
 
+  /* =====================================================
+     RENDER
+  ===================================================== */
+
   return (
 
-    <div className="
-      max-w-4xl
-      space-y-8
-    ">
+    <div className="max-w-3xl">
 
       <h1 className="
         text-xl
         font-semibold
+        mb-6
       ">
         Settings
       </h1>
 
-      {/* =====================================================
-          LANGUAGE
-      ===================================================== */}
-
       <div className="
         bg-white
         border
         rounded-xl
         p-6
-        space-y-4
+        space-y-8
       ">
 
-        <h2 className="
-          font-semibold
-        ">
-          Language
-        </h2>
+        {/* =====================================================
+            LANGUAGE
+        ===================================================== */}
 
-        <div className="
-          flex
-          gap-2
-        ">
+        <div>
 
-          <button
-            onClick={() =>
-              saveLanguage("fr")
-            }
-            className={`
-              px-4 py-2 rounded border
-              ${
-                language === "fr"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white"
-              }
-            `}
-          >
-            Français
-          </button>
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
+            Language
+          </div>
 
-          <button
-            onClick={() =>
-              saveLanguage("en")
-            }
-            className={`
-              px-4 py-2 rounded border
-              ${
-                language === "en"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white"
-              }
-            `}
-          >
-            English
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* =====================================================
-          KEYWORDS
-      ===================================================== */}
-
-      <div className="
-        bg-white
-        border
-        rounded-xl
-        p-6
-        space-y-4
-      ">
-
-        <h2 className="
-          font-semibold
-        ">
-          Keywords
-        </h2>
-
-        <div className="
-          flex gap-2
-        ">
-
-          <input
-            value={keywordInput}
-            onChange={(e) =>
-              setKeywordInput(
-                e.target.value
-              )
-            }
-            placeholder="premiumization"
-            className="
-              flex-1
-              border
-              rounded
-              px-3
-              py-2
-            "
-          />
-
-          <button
-            onClick={addKeyword}
-            disabled={savingKeyword}
-            className="
-              px-4
-              py-2
-              bg-emerald-600
-              text-white
-              rounded
-            "
-          >
-            Add
-          </button>
-
-        </div>
-
-        <div className="
-          flex
-          flex-wrap
-          gap-2
-        ">
-
-          {keywords.map((keyword) => (
+          <div className="
+            flex
+            gap-2
+          ">
 
             <button
-              key={keyword}
               onClick={() =>
-                removeKeyword(
-                  keyword
+                saveLanguage("fr")
+              }
+              className={`
+                px-3 py-1.5
+                rounded-full
+                border
+                text-sm
+                ${
+                  language === "fr"
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white hover:bg-gray-50"
+                }
+              `}
+            >
+              FR
+            </button>
+
+            <button
+              onClick={() =>
+                saveLanguage("en")
+              }
+              className={`
+                px-3 py-1.5
+                rounded-full
+                border
+                text-sm
+                ${
+                  language === "en"
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white hover:bg-gray-50"
+                }
+              `}
+            >
+              EN
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* =====================================================
+            KEYWORDS
+        ===================================================== */}
+
+        <div>
+
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
+            Keywords
+          </div>
+
+          <div className="
+            flex
+            gap-2
+            mb-3
+          ">
+
+            <input
+              value={keywordInput}
+              onChange={(e) =>
+                setKeywordInput(
+                  e.target.value
                 )
               }
+              placeholder="premiumization"
               className="
+                flex-1
+                border
+                rounded-lg
                 px-3
-                py-1
-                rounded-full
-                bg-gray-100
+                py-2
+                text-sm
+              "
+            />
+
+            <button
+              onClick={addKeyword}
+              className="
+                px-4
+                rounded-lg
+                bg-emerald-600
+                text-white
                 text-sm
               "
             >
-              {keyword} ×
+              Add
             </button>
 
-          ))}
+          </div>
+
+          <div className="
+            flex
+            flex-wrap
+            gap-2
+          ">
+
+            {keywords.map((keyword) => (
+
+              <button
+                key={keyword}
+                onClick={() =>
+                  removeKeyword(
+                    keyword
+                  )
+                }
+                className="
+                  px-3
+                  py-1
+                  rounded-full
+                  bg-gray-100
+                  hover:bg-gray-200
+                  text-sm
+                "
+              >
+                {keyword} ×
+              </button>
+
+            ))}
+
+          </div>
 
         </div>
 
-      </div>
+        {/* =====================================================
+            GEOGRAPHIES
+        ===================================================== */}
 
-      {/* =====================================================
-          GEOGRAPHIES
-      ===================================================== */}
+        <div>
 
-      <div className="
-        bg-white
-        border
-        rounded-xl
-        p-6
-        space-y-4
-      ">
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
+            Geographies
+          </div>
 
-        <h2 className="
-          font-semibold
-        ">
-          Geographies
-        </h2>
+          <div className="
+            space-y-2
+          ">
 
-        <div className="
-          grid
-          md:grid-cols-3
-          gap-4
-        ">
+            <input
+              value={geo1}
+              onChange={(e) =>
+                setGeo1(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 1"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
 
-          <input
-            value={geo1}
-            onChange={(e) =>
-              setGeo1(
-                e.target.value
-              )
-            }
-            placeholder="Priority 1"
+            <input
+              value={geo2}
+              onChange={(e) =>
+                setGeo2(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 2"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
+
+            <input
+              value={geo3}
+              onChange={(e) =>
+                setGeo3(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 3"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
+
+          </div>
+
+          <button
+            onClick={saveGeographies}
             className="
-              border
-              rounded
-              px-3
+              mt-3
+              px-4
               py-2
+              rounded-lg
+              bg-emerald-600
+              text-white
+              text-sm
             "
-          />
-
-          <input
-            value={geo2}
-            onChange={(e) =>
-              setGeo2(
-                e.target.value
-              )
-            }
-            placeholder="Priority 2"
-            className="
-              border
-              rounded
-              px-3
-              py-2
-            "
-          />
-
-          <input
-            value={geo3}
-            onChange={(e) =>
-              setGeo3(
-                e.target.value
-              )
-            }
-            placeholder="Priority 3"
-            className="
-              border
-              rounded
-              px-3
-              py-2
-            "
-          />
+          >
+            Save
+          </button>
 
         </div>
-
-        <button
-          onClick={saveGeographies}
-          disabled={savingGeo}
-          className="
-            px-4
-            py-2
-            bg-emerald-600
-            text-white
-            rounded
-          "
-        >
-          Save
-        </button>
 
       </div>
 
