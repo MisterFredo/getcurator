@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from config import (
     BQ_PROJECT,
