@@ -72,6 +72,8 @@ class UserKeywordPayload(BaseModel):
 
 class UserProfilePayload(BaseModel):
 
+    user_id: str
+
     geography_1: Optional[str] = None
     geography_2: Optional[str] = None
     geography_3: Optional[str] = None
