@@ -105,11 +105,6 @@ export default function UserGeographyEditor({
 
       setSaving(true);
 
-      const current =
-        await api.get(
-          `/user/profile/${userId}`
-        );
-
       await api.post(
         "/user/profile/update",
         {
@@ -123,10 +118,6 @@ export default function UserGeographyEditor({
 
           geography_3:
             geography3 || null,
-
-          profile_text:
-            current?.profile
-              ?.profile_text || null,
         }
       );
 
