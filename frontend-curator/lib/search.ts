@@ -16,7 +16,10 @@ type Params = {
   universe_id?: string | null;
 
   // 🔥 NEW (FIX)
-  feed_mode?: "all" | "mine";
+  feed_mode?:
+    | "all"
+    | "mine"
+    | "keywords";
 };
 
 /* ========================================================= */
