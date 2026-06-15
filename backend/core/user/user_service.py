@@ -77,6 +77,10 @@ def get_sources_from_universes(universes: list[str]):
 # USER CONTEXT
 # =========================================================
 
+# =========================================================
+# USER CONTEXT
+# =========================================================
+
 def get_user_context(user_id: str) -> Optional[Dict]:
 
     if not user_id:
@@ -121,7 +125,29 @@ def get_user_context(user_id: str) -> Optional[Dict]:
         {"user_id": user_id}
     )
 
-    universe_ids = [u["ID_UNIVERSE"] for u in universes] if universes else []
+    universe_ids = (
+        [u["ID_UNIVERSE"] for u in universes]
+        if universes
+        else []
+    )
+
+    # ============================================================
+    # KEYWORDS
+    # ============================================================
+
+    try:
+        keywords = get_user_keywords(user_id)
+    except Exception:
+        keywords = []
+
+    # ============================================================
+    # PROFILE
+    # ============================================================
+
+    try:
+        profile = get_user_profile(user_id)
+    except Exception:
+        profile = None
 
     # ============================================================
     # RETURN SAFE
@@ -132,10 +158,25 @@ def get_user_context(user_id: str) -> Optional[Dict]:
         "email": user.get("EMAIL"),
         "name": user.get("NAME"),
         "company": user.get("COMPANY"),
-        "lang": user.get("LANGUAGE") or "fr",  # 🔥 fallback langue
+
+        "lang": user.get("LANGUAGE") or "fr",
         "role": user.get("ROLE") or "user",
+
         "universes": universe_ids,
+
+        # NEW
+        "keywords": keywords or [],
+
+        # NEW
+        "profile": profile or {
+            "geography_1": None,
+            "geography_2": None,
+            "geography_3": None,
+            "profile_text": None,
+        },
     }
+
+
 # =========================================================
 # CREATE USER (SIMPLE)
 # =========================================================
