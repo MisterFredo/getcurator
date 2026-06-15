@@ -1,4 +1,5 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict
+from datetime import datetime
 
 from config import (
     BQ_PROJECT,
@@ -7,6 +8,8 @@ from config import (
 
 from utils.bigquery_utils import (
     query_bq,
+    insert_bq,
+    update_bq,
 )
 
 TABLE_USER_PROFILE = (
@@ -50,7 +53,7 @@ def get_user_profile(
     }
 
 # =========================================================
-# UPSERT USER PROFILE
+# UPDATE USER PROFILE
 # =========================================================
 
 def update_user_profile(
@@ -61,53 +64,50 @@ def update_user_profile(
     profile_text: Optional[str] = None,
 ):
 
-    query_bq(
-        f"""
-        MERGE `{TABLE_USER_PROFILE}` T
-        USING (
-            SELECT
-                @user_id AS ID_USER,
-                @geography_1 AS GEOGRAPHY_1,
-                @geography_2 AS GEOGRAPHY_2,
-                @geography_3 AS GEOGRAPHY_3,
-                @profile_text AS PROFILE_TEXT
-        ) S
+    existing = get_user_profile(user_id)
 
-        ON T.ID_USER = S.ID_USER
+    now = datetime.utcnow()
 
-        WHEN MATCHED THEN
-          UPDATE SET
-            GEOGRAPHY_1 = S.GEOGRAPHY_1,
-            GEOGRAPHY_2 = S.GEOGRAPHY_2,
-            GEOGRAPHY_3 = S.GEOGRAPHY_3,
-            PROFILE_TEXT = S.PROFILE_TEXT,
-            UPDATED_AT = CURRENT_TIMESTAMP()
+    # =====================================================
+    # UPDATE
+    # =====================================================
 
-        WHEN NOT MATCHED THEN
-          INSERT (
-            ID_USER,
-            GEOGRAPHY_1,
-            GEOGRAPHY_2,
-            GEOGRAPHY_3,
-            PROFILE_TEXT,
-            CREATED_AT,
-            UPDATED_AT
-          )
-          VALUES (
-            S.ID_USER,
-            S.GEOGRAPHY_1,
-            S.GEOGRAPHY_2,
-            S.GEOGRAPHY_3,
-            S.PROFILE_TEXT,
-            CURRENT_TIMESTAMP(),
-            CURRENT_TIMESTAMP()
-          )
-        """,
-        {
-            "user_id": user_id,
-            "geography_1": geography_1,
-            "geography_2": geography_2,
-            "geography_3": geography_3,
-            "profile_text": profile_text,
-        }
+    if existing:
+
+        update_bq(
+            TABLE_USER_PROFILE,
+            {
+                "GEOGRAPHY_1": geography_1,
+                "GEOGRAPHY_2": geography_2,
+                "GEOGRAPHY_3": geography_3,
+                "PROFILE_TEXT": profile_text,
+                "UPDATED_AT": now,
+            },
+            {
+                "ID_USER": user_id,
+            }
+        )
+
+        return
+
+    # =====================================================
+    # INSERT
+    # =====================================================
+
+    insert_bq(
+        TABLE_USER_PROFILE,
+        [
+            {
+                "ID_USER": user_id,
+
+                "GEOGRAPHY_1": geography_1,
+                "GEOGRAPHY_2": geography_2,
+                "GEOGRAPHY_3": geography_3,
+
+                "PROFILE_TEXT": profile_text,
+
+                "CREATED_AT": now,
+                "UPDATED_AT": now,
+            }
+        ]
     )
