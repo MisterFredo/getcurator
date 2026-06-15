@@ -11,6 +11,7 @@ import {
   Building2,
   Box,
   Hash,
+  Settings,
   Sparkles,
 } from "lucide-react";
 
@@ -72,6 +73,12 @@ export default function CuratorShell({
       label: "Numbers",
       icon: Hash,
     },
+    {
+      href: "/settings",
+      label: "Settings",
+      icon: Settings,
+    },
+    
   ];
 
   /* ========================================================= */
