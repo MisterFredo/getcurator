@@ -414,6 +414,45 @@ def latest(
 
     return mapped
 
+
+# ============================================================
+# KEYWORDS FILTER
+# ============================================================
+
+def build_keywords_filter(
+    keywords: list[str]
+) -> str:
+
+    if not keywords:
+        return ""
+
+    conditions = []
+
+    for i, _ in enumerate(keywords):
+
+        conditions.append(
+            f"""
+            LOWER(COALESCE(c.title,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            OR LOWER(COALESCE(c.title_en,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+
+            OR LOWER(COALESCE(c.excerpt,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            OR LOWER(COALESCE(c.excerpt_en,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+
+            OR LOWER(COALESCE(c.content_body,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+
+            OR LOWER(COALESCE(c.signal_analytique,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            OR LOWER(COALESCE(c.mecanique_expliquee,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            OR LOWER(COALESCE(c.enjeu_strategique,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            OR LOWER(COALESCE(c.point_de_friction,'')) LIKE LOWER(CONCAT('%', @keyword_{i}, '%'))
+            """
+        )
+
+    return (
+        "AND (" +
+        " OR ".join(conditions) +
+        ")"
+    )
+
 # ============================================================
 # ITEM
 # ============================================================
