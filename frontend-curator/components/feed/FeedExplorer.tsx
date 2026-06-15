@@ -43,12 +43,12 @@ type Props = {
   ) => void;
 
   feedMode:
-    "all" | "favorites" | "keywords";
+    "all" | "mine" | "keywords";
 
   onSelectFeedMode: (
     mode:
       | "all"
-      | "favorites"
+      | "mine"
       | "keywords"
   ) => void;
 
