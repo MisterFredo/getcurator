@@ -4,6 +4,10 @@ from config import BQ_PROJECT, BQ_DATASET
 
 from utils.bigquery_utils import query_bq
 
+from core.user.user_keyword_service import (
+    get_user_keywords,
+)
+
 
 TABLE_CONTENT_ENRICHED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
