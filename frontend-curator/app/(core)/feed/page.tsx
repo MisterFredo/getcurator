@@ -91,7 +91,9 @@ export default function FeedPage() {
   ========================================================= */
 
   const [feedMode, setFeedMode] =
-    useState<"all" | "mine">("all");
+    useState<
+      "all" | "mine" | "keywords"
+    >("all");
 
   /* =========================================================
      DATA
