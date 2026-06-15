@@ -74,15 +74,25 @@ def update_user_profile(
 
     if existing:
 
+        fields = {
+            "UPDATED_AT": now,
+        }
+
+        if geography_1 is not None:
+            fields["GEOGRAPHY_1"] = geography_1
+
+        if geography_2 is not None:
+            fields["GEOGRAPHY_2"] = geography_2
+
+        if geography_3 is not None:
+            fields["GEOGRAPHY_3"] = geography_3
+
+        if profile_text is not None:
+            fields["PROFILE_TEXT"] = profile_text
+
         update_bq(
             TABLE_USER_PROFILE,
-            {
-                "GEOGRAPHY_1": geography_1,
-                "GEOGRAPHY_2": geography_2,
-                "GEOGRAPHY_3": geography_3,
-                "PROFILE_TEXT": profile_text,
-                "UPDATED_AT": now,
-            },
+            fields,
             {
                 "ID_USER": user_id,
             }
