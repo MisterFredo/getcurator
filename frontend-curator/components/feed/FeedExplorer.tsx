@@ -42,13 +42,14 @@ type Props = {
     type: string
   ) => void;
 
-  // 🔥 NEW
   feedMode:
-    "all" | "mine";
+    "all" | "favorites" | "keywords";
 
-  // 🔥 NEW
   onSelectFeedMode: (
-    mode: "all" | "mine"
+    mode:
+      | "all"
+      | "favorites"
+      | "keywords"
   ) => void;
 
   items: FeedItem[];
