@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import UserFavoritesSummary
-from "@/components/settings/UserFavoritesSummary";
+import UserFavoritesSummary from "@/components/settings/UserFavoritesSummary";
 
 /* ========================================================= */
 
@@ -410,6 +409,8 @@ export default function SettingsPage() {
 
         </div>
 
+        <UserFavoritesSummary />
+
         {/* =====================================================
             GEOGRAPHIES
         ===================================================== */}
@@ -500,8 +501,6 @@ export default function SettingsPage() {
           </button>
 
         </div>
-
-        <UserFavoritesSummary />
 
       </div>
 
