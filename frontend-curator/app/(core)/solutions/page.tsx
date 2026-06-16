@@ -301,7 +301,7 @@ export default function SolutionsPage() {
       {/* ⭐ FAVORITES */}
 
       {!loading && favoriteSolutions.length > 0 && (
-        <section className="space-y-2">
+        <FavoritesStrip>
 
           <h2 className="text-xs font-semibold uppercase text-gray-500">
             Favoris
@@ -346,7 +346,7 @@ export default function SolutionsPage() {
 
           </div>
 
-        </section>
+        </FavoritesStrip>
       )}
 
       {/* CONTENT */}
