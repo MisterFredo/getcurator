@@ -5,56 +5,100 @@ import { api } from "@/lib/api";
 
 /* ========================================================= */
 
-type FavoriteItem = {
+const GCS_BASE_URL =
+  process.env.NEXT_PUBLIC_GCS_BASE_URL || "";
+
+/* ========================================================= */
+
+type Entity = {
   id: string;
   label: string;
+  logo?: string | null;
 };
 
 type Preferences = {
-  COMPANY: FavoriteItem[];
-  SOLUTION: FavoriteItem[];
-  TOPIC: FavoriteItem[];
+  COMPANY: Entity[];
+  SOLUTION: Entity[];
+  TOPIC: Entity[];
 };
 
 /* ========================================================= */
 
-function Section({
-  title,
-  items,
+function EntityCard({
+  item,
 }: {
-  title: string;
-  items: FavoriteItem[];
+  item: Entity;
 }) {
-  if (!items.length) return null;
+
+  const logoUrl =
+    item.logo
+      ? `${GCS_BASE_URL}/companies/${item.logo}`
+      : null;
 
   return (
-    <div className="space-y-2">
 
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {title}
-      </div>
+    <div
+      className="
+        bg-white
+        border
+        rounded-xl
+        overflow-hidden
+        text-center
+      "
+    >
 
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="
+          h-20
+          flex
+          items-center
+          justify-center
+          bg-gray-50
+        "
+      >
 
-        {items.map((item) => (
-          <div
-            key={item.id}
+        {logoUrl ? (
+
+          <img
+            src={logoUrl}
+            alt={item.label}
             className="
-              px-3
-              py-1.5
-              rounded-full
-              bg-gray-100
-              text-sm
-              text-gray-700
+              max-h-12
+              max-w-[80%]
+              object-contain
+            "
+          />
+
+        ) : (
+
+          <div
+            className="
+              text-xs
+              text-gray-400
+              px-2
             "
           >
             {item.label}
           </div>
-        ))}
+
+        )}
 
       </div>
 
+      <div
+        className="
+          p-2
+          text-xs
+          font-medium
+          text-gray-700
+          line-clamp-2
+        "
+      >
+        {item.label}
+      </div>
+
     </div>
+
   );
 }
 
@@ -101,7 +145,7 @@ export default function UserFavoritesSummary() {
       } catch (e) {
 
         console.error(
-          "favorites summary error",
+          "favorites load error",
           e
         );
 
@@ -131,49 +175,146 @@ export default function UserFavoritesSummary() {
 
   return (
 
-    <div className="
-      bg-white
-      border
-      rounded-xl
-      p-5
-      space-y-5
-    ">
+    <div className="space-y-6">
 
-      <div>
+      {/* =====================================================
+          COMPANIES
+      ===================================================== */}
 
-        <h2 className="
-          text-sm
-          font-semibold
-          text-gray-900
-        ">
-          Favorites
-        </h2>
+      {preferences.COMPANY.length > 0 && (
 
-        <p className="
-          text-xs
-          text-gray-500
-          mt-1
-        ">
-          Content sources you follow
-        </p>
+        <div>
 
-      </div>
+          <h3
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
+            Companies
+          </h3>
 
-      <Section
-        title="Companies"
-        items={preferences.COMPANY}
-      />
+          <div
+            className="
+              grid
+              grid-cols-2
+              sm:grid-cols-3
+              md:grid-cols-4
+              gap-3
+            "
+          >
 
-      <Section
-        title="Solutions"
-        items={preferences.SOLUTION}
-      />
+            {preferences.COMPANY.map(
+              (item) => (
+                <EntityCard
+                  key={item.id}
+                  item={item}
+                />
+              )
+            )}
 
-      <Section
-        title="Topics"
-        items={preferences.TOPIC}
-      />
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          SOLUTIONS
+      ===================================================== */}
+
+      {preferences.SOLUTION.length > 0 && (
+
+        <div>
+
+          <h3
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
+            Solutions
+          </h3>
+
+          <div
+            className="
+              grid
+              grid-cols-2
+              sm:grid-cols-3
+              md:grid-cols-4
+              gap-3
+            "
+          >
+
+            {preferences.SOLUTION.map(
+              (item) => (
+                <EntityCard
+                  key={item.id}
+                  item={item}
+                />
+              )
+            )}
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          TOPICS
+      ===================================================== */}
+
+      {preferences.TOPIC.length > 0 && (
+
+        <div>
+
+          <h3
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
+            Topics
+          </h3>
+
+          <div
+            className="
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
+
+            {preferences.TOPIC.map(
+              (item) => (
+
+                <div
+                  key={item.id}
+                  className="
+                    px-3
+                    py-1
+                    rounded-full
+                    bg-gray-100
+                    text-sm
+                  "
+                >
+                  {item.label}
+                </div>
+
+              )
+            )}
+
+          </div>
+
+        </div>
+
+      )}
 
     </div>
+
   );
 }
