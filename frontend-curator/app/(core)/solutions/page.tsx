@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useEntityDrawer } from "@/hooks/useEntityDrawer";
 import SolutionCard from "@/components/solutions/SolutionCard";
+import FavoritesStrip from "@/components/favorites/FavoritesStrip";
 import { api } from "@/lib/api"; // 🔥 NEW
 
 export const dynamic = "force-dynamic";
