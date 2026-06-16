@@ -141,6 +141,12 @@ def search(
     ):
         keywords = get_user_keywords(user_id)
 
+    if (
+        feed_mode == "keywords"
+        and not keywords
+    ):
+        return []
+
     universe_filter = ""
 
     if universe_id:
@@ -339,6 +345,12 @@ def latest(
         and user_id
     ):
         keywords = get_user_keywords(user_id)
+
+    if (
+        feed_mode == "keywords"
+        and not keywords
+    ):
+        return []
 
     universe_filter = ""
 
