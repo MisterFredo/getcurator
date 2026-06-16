@@ -271,7 +271,7 @@ export default function CompaniesPage() {
 
       {/* ⭐ FAVORITES */}
       {!loading && favorites.length > 0 && (
-        <section className="space-y-2">
+        <FavoritesStrip>
           <h2 className="text-xs font-semibold uppercase text-gray-500">
             Favoris
           </h2>
@@ -297,7 +297,7 @@ export default function CompaniesPage() {
               />
             ))}
           </div>
-        </section>
+        </FavoritesStrip>
       )}
 
       {/* AUTRES */}
