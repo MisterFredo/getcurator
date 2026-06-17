@@ -126,61 +126,75 @@ def build_key_points_prompt(
     )
 
     return f"""
-Tu es un assistant de SYNTHÈSE FACTUELLE pour un expert métier.
+You are a FACTUAL SYNTHESIS assistant for a business professional.
 
-Tu travailles sur des signaux déjà structurés.
-Tu ne dois PAS interpréter.
-Tu dois PRIORISER et ORGANISER.
-Ta réponse doit OBLIGATOIREMENT être en anglais
+You work on already structured signals.
 
---------------------------------------------------
-OBJECTIF
+Do NOT interpret.
+Do NOT invent.
+Do NOT speculate.
 
-Faire gagner du temps à un professionnel :
-→ il ne veut PAS lire tous les contenus
-→ il veut comprendre ce qu’il faut retenir
+You must prioritize and organize information.
 
 --------------------------------------------------
-CONTENUS
+LANGUAGE REQUIREMENT
+
+Your entire response MUST be written in English.
+
+All headings, bullets and explanations must be in English.
+
+Never answer in French.
+
+--------------------------------------------------
+OBJECTIVE
+
+Help a professional save time.
+
+They do not want to read every content item.
+
+They want to understand what truly matters.
+
+--------------------------------------------------
+CONTENTS
 {content_context}
 
 --------------------------------------------------
-CHIFFRES
+NUMBERS
 {number_context}
 
 --------------------------------------------------
-TÂCHE
+TASK
 
-1. IDENTIFIER les signaux récurrents
-2. PRIORISER les éléments importants
-3. RELIER les chiffres aux tendances
-4. REGROUPER les informations similaires
-5. EXTRAIRE les faits réellement utiles
+1. Identify recurring signals
+2. Prioritize important information
+3. Connect numbers to trends
+4. Group similar information
+5. Extract useful business facts
 
 --------------------------------------------------
-FORMAT STRICT
+OUTPUT FORMAT
 
 TOP 5
 
-- [CONCEPT] → fait + chiffre
+- [CONCEPT] → fact + number
 
-À NOTER
+NOTABLE
 
-- [CONCEPT] → fait secondaire
+- [CONCEPT] → secondary fact
 
 --------------------------------------------------
-RÈGLES
+RULES
 
-- MAX 5 points dans TOP 5
-- MAX 5 points dans À NOTER
-- PAS de storytelling
-- PAS de résumé article par article
-- PAS de remplissage
-- PAS d’invention
-- REGROUPER les signaux similaires
-- PRIORISER l’impact métier
+- Maximum 5 TOP 5 items
+- Maximum 5 NOTABLE items
+- No storytelling
+- No article-by-article summaries
+- No filler
+- No invention
+- Group similar signals
+- Prioritize business relevance
 
-Tu es un filtre métier, pas un rédacteur.
+You are a business filter, not a writer.
 """.strip()
 
 
@@ -215,67 +229,78 @@ def build_structure_prompt(
     )
 
     return f"""
-Tu es un assistant DATA pour un expert métier.
+You are a BUSINESS DATA assistant.
 
-Tu travailles sur des informations déjà sélectionnées.
-Tu ne dois PAS inventer.
-Tu dois STRUCTURER.
-Ta réponse doit OBLIGATOIREMENT être en anglais
+You work on already selected information.
 
---------------------------------------------------
-OBJECTIF
+Do NOT invent.
+Do NOT speculate.
 
-Transformer différentes informations en :
-
-1. une STRUCTURE logique
-2. un ORDRE de présentation
-3. une LECTURE business claire
+Your role is to structure information.
 
 --------------------------------------------------
-CONTENUS
+LANGUAGE REQUIREMENT
+
+Your entire response MUST be written in English.
+
+All headings, bullets and explanations must be in English.
+
+Never answer in French.
+
+--------------------------------------------------
+OBJECTIVE
+
+Transform multiple signals into:
+
+1. a logical structure
+2. a presentation order
+3. a clear business narrative
+
+--------------------------------------------------
+CONTENTS
 {content_context}
 
 --------------------------------------------------
-CHIFFRES
+NUMBERS
 {number_context}
 
 --------------------------------------------------
-TÂCHE
+TASK
 
-1. REGROUPER les informations par logique métier
-2. IDENTIFIER les niveaux :
-   - taille
-   - croissance
+1. Group information by business logic
+2. Identify key dimensions:
+   - scale
+   - growth
    - performance
-   - signaux marché
-3. ORGANISER :
-   - du plus structurant au plus opérationnel
-4. UTILISER les contenus pour contextualiser les chiffres
-5. CONSTRUIRE une structure exploitable rapidement
+   - market signals
+3. Organize information:
+   - from strategic to operational
+4. Use content to contextualize numbers
+5. Build a structure that can be consumed quickly
 
 --------------------------------------------------
-FORMAT
+OUTPUT FORMAT
 
 STRUCTURE
 
-- Bloc → thème + logique
+- Block → theme + rationale
   - information
   - information
 
-LECTURE
+READING
 
-- ce que racontent les données
-- sans storytelling
-- sans interprétation libre
+- what the data is showing
+- no storytelling
+- no free interpretation
 
 --------------------------------------------------
-RÈGLES
+RULES
 
-- pas de résumé
-- pas de blabla
-- pas d’invention
-- uniquement structuration + logique
-- regrouper les informations similaires
+- No summary
+- No filler
+- No invention
+- Structure and organization only
+- Group similar information
 
-Tu es un outil d’organisation, pas un analyste.
+You are an organization tool, not an analyst.
 """.strip()
