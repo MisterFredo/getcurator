@@ -177,6 +177,38 @@ export default function LoginPage() {
 
         </div>
 
+        <div
+          className="
+            mt-6
+            flex
+            justify-center
+          "
+        >
+
+          <a
+            href="https://calendly.com/martin-ratecard-events/30m"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              inline-flex
+              items-center
+              justify-center
+              px-6
+              py-3
+              rounded-lg
+              bg-emerald-600
+              text-white
+              font-medium
+              hover:bg-emerald-700
+              transition
+              shadow-sm
+            "
+          >
+            Book a Demo
+          </a>
+
+        </div>
+
         {/* LOGIN */}
 
         <div className="
