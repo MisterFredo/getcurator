@@ -13,6 +13,7 @@ import {
   Hash,
   Settings,
   Sparkles,
+  PlayCircle,
 } from "lucide-react";
 
 import Header from "./Header";
@@ -100,6 +101,14 @@ export default function CuratorShell({
       href: "/topics",
       label: "Topics",
       icon: Hash,
+    },
+  ];
+
+  const navLearn = [
+    {
+      href: "/walkthrough",
+      label: "Product Tour",
+      icon: PlayCircle,
     },
   ];
 
@@ -216,6 +225,33 @@ export default function CuratorShell({
           text-sm
         ">
           {renderNav(navEntities)}
+        </nav>
+
+      </div>
+
+      {/* LEARN */}
+      <div className="mt-8">
+
+        <div
+          className="
+            text-xs
+            font-semibold
+            text-gray-400
+            uppercase
+            mb-2
+            px-3
+          "
+        >
+          Learn
+        </div>
+
+        <nav
+          className="
+            space-y-2
+            text-sm
+          "
+        >
+          {renderNav(navLearn)}
         </nav>
 
       </div>
