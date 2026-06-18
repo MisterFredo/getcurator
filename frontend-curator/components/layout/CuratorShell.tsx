@@ -38,6 +38,9 @@ export default function CuratorShell({
   const pathname =
     usePathname();
 
+  const isProductTour =
+    pathname === "/product-tour";
+
   const {
     user,
     loading,
