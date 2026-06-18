@@ -34,7 +34,8 @@ export default function ProductTourPage() {
           "
         >
           Discover how to monitor companies, topics, solutions and strategic
-          signals with GetCurator.
+          signals with GetCurator. Watch the product tour below and book a
+          personalized demo if you'd like to learn more.
         </p>
 
       </div>
@@ -70,6 +71,39 @@ export default function ProductTourPage() {
           Your browser does not support video playback.
 
         </video>
+
+      </div>
+
+      {/* CTA */}
+
+      <div
+        className="
+          mt-6
+          flex
+          justify-center
+        "
+      >
+
+        <a
+          href="https://calendly.com/martin-ratecard-events/30m"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            inline-flex
+            items-center
+            justify-center
+            px-6
+            py-3
+            rounded-lg
+            bg-emerald-600
+            text-white
+            font-medium
+            hover:bg-emerald-700
+            transition
+          "
+        >
+          Book a Demo
+        </a>
 
       </div>
 
