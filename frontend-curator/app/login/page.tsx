@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 
 const GCS_BASE_URL =
@@ -11,8 +11,6 @@ const VIDEO_URL =
   `${GCS_BASE_URL}/product/getcurator-tour-v1.mp4`;
 
 export default function LoginPage() {
-
-  const router = useRouter();
 
   const searchParams =
     useSearchParams();
@@ -32,12 +30,12 @@ export default function LoginPage() {
   async function handleLogin() {
 
     if (!email.trim()) {
-      alert("Email requis");
+      alert("Email required");
       return;
     }
 
     if (!password.trim()) {
-      alert("Mot de passe requis");
+      alert("Password required");
       return;
     }
 
@@ -55,9 +53,7 @@ export default function LoginPage() {
         );
 
       if (!res || !res.user_id) {
-        throw new Error(
-          "Login failed"
-        );
+        throw new Error("Login failed");
       }
 
       localStorage.setItem(
@@ -70,11 +66,6 @@ export default function LoginPage() {
         res.role || "user"
       );
 
-      console.log(
-        "✅ LOGIN SUCCESS",
-        res
-      );
-
       window.location.href =
         redirect;
 
@@ -82,9 +73,7 @@ export default function LoginPage() {
 
       console.error(e);
 
-      alert(
-        "Accès non autorisé"
-      );
+      alert("Access denied");
 
     } finally {
 
@@ -107,7 +96,7 @@ export default function LoginPage() {
         lg:flex-row
       ">
 
-        {/* VIDEO */}
+        {/* LEFT SIDE */}
 
         <div className="
           flex-1
@@ -120,11 +109,11 @@ export default function LoginPage() {
 
           <div className="
             w-full
-            max-w-5xl
+            max-w-4xl
           ">
 
             <h1 className="
-              text-3xl
+              text-4xl
               font-bold
               text-gray-900
               mb-3
@@ -133,8 +122,8 @@ export default function LoginPage() {
             </h1>
 
             <p className="
-              text-gray-600
               text-lg
+              text-gray-600
               mb-6
             ">
               Discover how to monitor companies,
@@ -160,7 +149,6 @@ export default function LoginPage() {
                   bg-black
                 "
               >
-
                 <source
                   src={VIDEO_URL}
                   type="video/mp4"
@@ -177,39 +165,7 @@ export default function LoginPage() {
 
         </div>
 
-        <div
-          className="
-            mt-6
-            flex
-            justify-center
-          "
-        >
-
-          <a
-            href="https://calendly.com/martin-ratecard-events/30m"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="
-              inline-flex
-              items-center
-              justify-center
-              px-6
-              py-3
-              rounded-lg
-              bg-emerald-600
-              text-white
-              font-medium
-              hover:bg-emerald-700
-              transition
-              shadow-sm
-            "
-          >
-            Book a Demo
-          </a>
-
-        </div>
-
-        {/* LOGIN */}
+        {/* RIGHT SIDE */}
 
         <div className="
           w-full
@@ -226,73 +182,99 @@ export default function LoginPage() {
             border
             rounded-xl
             p-6
-            space-y-4
             shadow-sm
           ">
 
             <h2 className="
-              text-lg
+              text-xl
               font-semibold
               text-gray-900
+              mb-6
             ">
               Access Curator
             </h2>
 
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) =>
-                setEmail(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                border
-                rounded-lg
-                px-3
-                py-2
-                text-sm
-              "
-            />
+            <div className="space-y-4">
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                border
-                rounded-lg
-                px-3
-                py-2
-                text-sm
-              "
-            />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) =>
+                  setEmail(
+                    e.target.value
+                  )
+                }
+                className="
+                  w-full
+                  border
+                  rounded-lg
+                  px-3
+                  py-2
+                  text-sm
+                "
+              />
 
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="
-                w-full
-                bg-black
-                text-white
-                rounded-lg
-                py-2
-                text-sm
-                font-medium
-              "
-            >
-              {loading
-                ? "Connecting..."
-                : "Sign In"}
-            </button>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(
+                    e.target.value
+                  )
+                }
+                className="
+                  w-full
+                  border
+                  rounded-lg
+                  px-3
+                  py-2
+                  text-sm
+                "
+              />
+
+              <a
+                href="https://calendly.com/martin-ratecard-events/30m"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  block
+                  w-full
+                  text-center
+                  rounded-lg
+                  border
+                  border-emerald-600
+                  text-emerald-700
+                  py-2
+                  text-sm
+                  font-medium
+                  hover:bg-emerald-50
+                  transition
+                "
+              >
+                Book a Demo
+              </a>
+
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="
+                  w-full
+                  bg-black
+                  text-white
+                  rounded-lg
+                  py-2
+                  text-sm
+                  font-medium
+                "
+              >
+                {loading
+                  ? "Connecting..."
+                  : "Sign In"}
+              </button>
+
+            </div>
 
           </div>
 
