@@ -106,7 +106,7 @@ export default function CuratorShell({
 
   const navLearn = [
     {
-      href: "/walkthrough",
+      href: "/product-tour",
       label: "Product Tour",
       icon: PlayCircle,
     },
