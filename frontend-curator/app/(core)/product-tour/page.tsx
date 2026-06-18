@@ -10,7 +10,7 @@ export default function ProductTourPage() {
 
   return (
 
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
 
       {/* HEADER */}
 
@@ -49,6 +49,8 @@ export default function ProductTourPage() {
           rounded-xl
           overflow-hidden
           shadow-sm
+          max-w-4xl
+          mx-auto
         "
       >
 
