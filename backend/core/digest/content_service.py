@@ -21,10 +21,6 @@ from core.user.user_profile_service import (
     get_user_profile,
 )
 
-from core.digest.analysis_service import (
-    generate_digest_analysis,
-)
-
 # ============================================================
 # TABLES
 # ============================================================
