@@ -602,6 +602,10 @@ def get_digest_contents(
         topic_ids=topic_ids,
     )
 
+    keywords_sql = build_keywords_filter(
+        keywords
+    )
+
     # ========================================================
     # TITLE / EXCERPT
     # ========================================================
@@ -683,7 +687,17 @@ def get_digest_contents(
         AND status = "PUBLISHED"
 
         AND (
-            {filters_sql}
+
+            (
+                {filters_sql}
+            )
+
+            OR
+
+            (
+                {keywords_sql}
+            )
+
         )
 
     ORDER BY
