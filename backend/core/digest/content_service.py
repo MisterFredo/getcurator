@@ -606,6 +606,9 @@ def get_digest_contents(
         keywords
     )
 
+    if not keywords_sql:
+        keywords_sql = "FALSE"
+
     # ========================================================
     # TITLE / EXCERPT
     # ========================================================
