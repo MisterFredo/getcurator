@@ -48,6 +48,11 @@ def build_prompt(
             context
         )
 
+    if output_type == OUTPUT_IMPLICATIONS:
+        return build_implications_prompt(
+            context
+        )
+
     # ========================================================
     # UNKNOWN
     # ========================================================
