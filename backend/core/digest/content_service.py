@@ -918,6 +918,12 @@ def get_digest_contents(
         "contents":
             contents,
 
+        "summary":
+            summary,
+
+        "implications":
+            implications,
+
         "preferences": {
 
             "companies":
