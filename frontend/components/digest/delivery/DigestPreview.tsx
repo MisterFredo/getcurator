@@ -56,22 +56,29 @@ export default function DigestPreview({
 
     if (mode === "gmail") {
 
-      return buildDigestEmailGmail({
+      return buildDigestEmail({
         headerConfig,
 
         editorialHtml,
 
+        summary,
+
+        implications,
+
         contents,
       });
-    }
 
-    return buildDigestEmail({
-      headerConfig,
+    return buildDigestEmailGmail({
+        headerConfig,
 
-      editorialHtml,
+        editorialHtml,
 
-      contents,
-    });
+        summary,
+
+        implications,
+
+        contents,
+      });
 
   }, [
     mode,
