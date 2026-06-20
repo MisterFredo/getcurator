@@ -12,7 +12,7 @@ from core.insight.service import (
 )
 
 from core.user.user_service import (
-    load_user_context,
+    get_user_context,
 )
 
 
@@ -113,7 +113,7 @@ def generate_digest_analysis_from_ids(
             "implications": "",
         }
 
-    context = load_user_context(
+    context = get_user_context(
         user_id
     )
 
