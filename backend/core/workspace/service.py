@@ -75,6 +75,8 @@ def generate_workspace_output(
 
     content_ids: List[str] = None,
     number_ids: List[str] = None,
+
+    user_id: str = None,
 ) -> str:
 
     content_ids = content_ids or []
@@ -95,6 +97,34 @@ def generate_workspace_output(
         content_ids=content_ids,
         number_ids=number_ids,
     )
+
+    # ========================================================
+    # PROFILE TEXT (IMPLICATIONS ONLY)
+    # ========================================================
+
+    if (
+        output_type == OUTPUT_IMPLICATIONS
+        and user_id
+    ):
+
+        profile = get_user_profile(
+            user_id
+        )
+
+        context["profile_text"] = (
+            profile.get(
+                "profile_text"
+            )
+            if profile
+            else ""
+        )
+
+        print("WORKSPACE PROFILE")
+        print(
+            context.get(
+                "profile_text"
+            )
+        )
 
     # ========================================================
     # SAFETY
