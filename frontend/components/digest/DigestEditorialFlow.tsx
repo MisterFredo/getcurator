@@ -17,6 +17,8 @@ import type {
 /* ========================================================= */
 
 type Props = {
+  selectedUserId?: string;
+
   editorialOrder: DigestEditorialItem[];
 
   contents: DigestContentItem[];
@@ -24,6 +26,18 @@ type Props = {
   editorialHtml: string;
 
   setEditorialHtml: React.Dispatch<
+    React.SetStateAction<string>
+  >;
+
+  summary: string;
+
+  setSummary: React.Dispatch<
+    React.SetStateAction<string>
+  >;
+
+  implications: string;
+
+  setImplications: React.Dispatch<
     React.SetStateAction<string>
   >;
 
@@ -37,6 +51,8 @@ type Props = {
 /* ========================================================= */
 
 export default function DigestEditorialFlow({
+  selectedUserId,
+
   editorialOrder,
 
   contents,
@@ -44,6 +60,14 @@ export default function DigestEditorialFlow({
   editorialHtml,
 
   setEditorialHtml,
+
+  summary,
+
+  setSummary,
+
+  implications,
+
+  setImplications,
 
   setEditorialOrder,
 }: Props) {
@@ -69,7 +93,6 @@ export default function DigestEditorialFlow({
             (c) => [c.id, c]
           )
         ),
-
       [contents]
     );
 
@@ -109,7 +132,7 @@ export default function DigestEditorialFlow({
     ) {
 
       case "content":
-        return "contenu";
+        return "content";
 
       default:
         return type;
@@ -135,10 +158,10 @@ export default function DigestEditorialFlow({
   }
 
   /* =======================================================
-     GENERATE EDITORIAL
+     GENERATE ANALYSIS
   ======================================================= */
 
-  async function generateEditorial() {
+  async function generateAnalysis() {
 
     try {
 
@@ -146,7 +169,7 @@ export default function DigestEditorialFlow({
         true
       );
 
-      const ids =
+      const contentIds =
         editorialOrder
 
           .filter(
@@ -160,11 +183,22 @@ export default function DigestEditorialFlow({
           );
 
       if (
-        ids.length === 0
+        !selectedUserId
       ) {
 
         alert(
-          "Aucun contenu sélectionné."
+          "No user selected."
+        );
+
+        return;
+      }
+
+      if (
+        contentIds.length === 0
+      ) {
+
+        alert(
+          "No content selected."
         );
 
         return;
@@ -172,25 +206,38 @@ export default function DigestEditorialFlow({
 
       const res =
         await api.post(
-          "/digest/generate-editorial",
+          "/digest/generate-analysis",
           {
-            ids,
+            user_id:
+              selectedUserId,
+
+            content_ids:
+              contentIds,
           }
         );
 
-      setEditorialHtml(
-        res?.insight || ""
+      const result =
+        res?.result || {};
+
+      setSummary(
+        result.summary ||
+        ""
+      );
+
+      setImplications(
+        result.implications ||
+        ""
       );
 
     } catch (e) {
 
       console.error(
-        "❌ editorial generation error",
+        "Digest analysis error",
         e
       );
 
       alert(
-        "Impossible de générer les points clés."
+        "Unable to generate analysis."
       );
 
     } finally {
@@ -247,8 +294,7 @@ export default function DigestEditorialFlow({
 
     if (
       index ===
-      editorialOrder.length -
-        1
+      editorialOrder.length - 1
     ) {
       return;
     }
@@ -297,8 +343,7 @@ export default function DigestEditorialFlow({
   ======================================================= */
 
   if (
-    editorialOrder.length ===
-    0
+    editorialOrder.length === 0
   ) {
 
     return (
@@ -308,14 +353,14 @@ export default function DigestEditorialFlow({
         <div className="flex items-center justify-between">
 
           <h2 className="text-sm font-semibold tracking-tight">
-            Flux éditorial
+            Editorial Flow
           </h2>
 
         </div>
 
         <div className="border border-gray-200 rounded-lg bg-white px-4 py-4 text-xs text-gray-400 text-center">
 
-          Aucun élément sélectionné
+          No content selected
 
         </div>
 
@@ -336,12 +381,12 @@ export default function DigestEditorialFlow({
       <div className="flex items-center justify-between">
 
         <h2 className="text-sm font-semibold tracking-tight">
-          Flux éditorial
+          Editorial Flow
         </h2>
 
         <button
           onClick={
-            generateEditorial
+            generateAnalysis
           }
           disabled={
             generating
@@ -360,14 +405,88 @@ export default function DigestEditorialFlow({
         >
 
           {generating
-            ? "Génération..."
-            : "Générer les points clés"}
+            ? "Generating..."
+            : "Generate Analysis"}
 
         </button>
 
       </div>
 
-      {/* EDITORIAL */}
+      {/* SUMMARY */}
+
+      {summary && (
+
+        <div className="
+          border border-gray-200
+          rounded-xl
+          bg-white
+          p-4
+        ">
+
+          <div className="
+            text-[11px]
+            uppercase
+            tracking-[0.14em]
+            text-gray-400
+            font-semibold
+            mb-3
+          ">
+            Executive Summary
+          </div>
+
+          <div className="
+            text-[14px]
+            leading-7
+            text-gray-800
+            whitespace-pre-wrap
+          ">
+
+            {summary}
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* IMPLICATIONS */}
+
+      {implications && (
+
+        <div className="
+          border border-gray-200
+          rounded-xl
+          bg-white
+          p-4
+        ">
+
+          <div className="
+            text-[11px]
+            uppercase
+            tracking-[0.14em]
+            text-gray-400
+            font-semibold
+            mb-3
+          ">
+            Key Implications
+          </div>
+
+          <div className="
+            text-[14px]
+            leading-7
+            text-gray-800
+            whitespace-pre-wrap
+          ">
+
+            {implications}
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* LEGACY EDITORIAL */}
 
       {editorialHtml && (
 
@@ -386,7 +505,7 @@ export default function DigestEditorialFlow({
             font-semibold
             mb-3
           ">
-            Points à retenir
+            Editorial
           </div>
 
           <div className="
