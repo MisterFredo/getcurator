@@ -10,6 +10,7 @@ from pydantic import BaseModel
 OutputType = Literal[
     "key_points",
     "structure",
+    "implications",
 ]
 
 
