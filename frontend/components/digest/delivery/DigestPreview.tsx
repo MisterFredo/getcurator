@@ -27,6 +27,10 @@ type Props = {
 
   editorialHtml?: string;
 
+  summary?: string;
+
+  implications?: string;
+
   contents: DigestContentItem[];
 };
 
@@ -34,11 +38,11 @@ type Props = {
 
 export default function DigestPreview({
   headerConfig,
-
   editorialHtml,
-
+  summary,
+  implications,
   contents,
-}: Props) {
+}: Props)
 
   const [mode, setMode] = useState<
     "brevo" | "gmail"
