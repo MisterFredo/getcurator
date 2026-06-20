@@ -855,6 +855,42 @@ def get_digest_contents(
     print(len(contents))
 
     # ========================================================
+    # ANALYSIS
+    # ========================================================
+
+    summary = ""
+    implications = ""
+
+    try:
+
+        analysis = generate_digest_analysis(
+            contents=contents,
+            profile_text=profile_text,
+        )
+
+        summary = (
+            analysis.get(
+                "summary"
+            )
+            or ""
+        )
+
+        implications = (
+            analysis.get(
+                "implications"
+            )
+            or ""
+        )
+
+    except Exception as e:
+
+        print(
+            "DIGEST ANALYSIS ERROR"
+        )
+
+        print(e)
+
+    # ========================================================
     # LAST SENT
     # ========================================================
 
