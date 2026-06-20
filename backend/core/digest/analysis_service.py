@@ -92,3 +92,8 @@ def generate_digest_analysis(
         "summary": summary,
         "implications": implications,
     }
+
+def generate_digest_analysis_from_ids(
+    user_id: str,
+    content_ids: List[str],
+) -> Dict:
