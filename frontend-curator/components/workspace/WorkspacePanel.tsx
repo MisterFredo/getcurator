@@ -66,6 +66,7 @@ export default function WorkspacePanel() {
     outputType:
       | "key_points"
       | "structure"
+      | "implications"
   ) {
 
     if (
