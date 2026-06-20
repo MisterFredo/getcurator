@@ -409,7 +409,6 @@ def build_filters(
 
 def get_digest_contents(
     user_id: str,
-
     limit: int = 50,
 ) -> Dict[str, Any]:
 
@@ -419,11 +418,16 @@ def get_digest_contents(
     print("===================================")
 
     # ========================================================
-    # USER
+    # USER CONTEXT
     # ========================================================
 
-    user = load_user(
+    context = load_user_context(
         user_id
+    )
+
+    user = (
+        context.get("user")
+        or {}
     )
 
     language = (
@@ -442,21 +446,53 @@ def get_digest_contents(
     # USER PREFS
     # ========================================================
 
-    prefs = load_user_preferences(
-        user_id
+    prefs = (
+        context.get(
+            "preferences"
+        )
+        or {}
     )
 
-    company_ids = prefs[
-        "companies"
-    ]
+    company_ids = (
+        prefs.get(
+            "companies"
+        )
+        or []
+    )
 
-    solution_ids = prefs[
-        "solutions"
-    ]
+    solution_ids = (
+        prefs.get(
+            "solutions"
+        )
+        or []
+    )
 
-    topic_ids = prefs[
-        "topics"
-    ]
+    topic_ids = (
+        prefs.get(
+            "topics"
+        )
+        or []
+    )
+
+    keywords = (
+        context.get(
+            "keywords"
+        )
+        or []
+    )
+
+    geographies = (
+        context.get(
+            "geographies"
+        )
+        or []
+    )
+
+    profile_text = (
+        context.get(
+            "profile_text"
+        )
+    )
 
     print("COMPANY IDS")
     print(company_ids)
@@ -467,19 +503,23 @@ def get_digest_contents(
     print("TOPIC IDS")
     print(topic_ids)
 
+    print("KEYWORDS")
+    print(keywords)
+
+    print("GEOGRAPHIES")
+    print(geographies)
+
+    print("PROFILE TEXT")
+    print(profile_text)
+
     # ========================================================
     # FILTERS
     # ========================================================
 
     filters_sql = build_filters(
-        company_ids=
-            company_ids,
-
-        solution_ids=
-            solution_ids,
-
-        topic_ids=
-            topic_ids,
+        company_ids=company_ids,
+        solution_ids=solution_ids,
+        topic_ids=topic_ids,
     )
 
     # ========================================================
@@ -585,6 +625,7 @@ def get_digest_contents(
     print(len(rows))
 
     if rows:
+
         print("FIRST ROW")
         print(rows[0])
 
@@ -632,6 +673,7 @@ def get_digest_contents(
                         )
 
             content = {
+
                 "id":
                     row.get("id"),
 
@@ -730,6 +772,8 @@ def get_digest_contents(
         "contents_count": len(contents),
         "language": language,
         "last_sent_at": last_sent_at,
+        "keywords": len(keywords),
+        "geographies": len(geographies),
     })
 
     # ========================================================
@@ -737,10 +781,12 @@ def get_digest_contents(
     # ========================================================
 
     return {
+
         "contents":
             contents,
 
         "preferences": {
+
             "companies":
                 company_ids,
 
@@ -749,6 +795,18 @@ def get_digest_contents(
 
             "topics":
                 topic_ids,
+        },
+
+        "user_context": {
+
+            "keywords":
+                keywords,
+
+            "geographies":
+                geographies,
+
+            "profile_text":
+                profile_text,
         },
 
         "language":
