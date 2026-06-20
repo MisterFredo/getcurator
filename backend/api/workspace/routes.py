@@ -17,8 +17,13 @@ router = APIRouter()
 
 @router.post("/generate")
 def generate_workspace(
+    request: Request,
     payload: WorkspaceGenerateRequest,
 ):
+
+    user_id = get_user_id_from_request(
+        request
+    )
 
     result = generate_workspace_output(
         output_type=payload.output_type,
@@ -26,6 +31,8 @@ def generate_workspace(
         content_ids=payload.content_ids,
 
         number_ids=payload.number_ids,
+
+        user_id=user_id,
     )
 
     return {
