@@ -33,6 +33,10 @@ export default function DigestPreviewPanel({
 
   editorialHtml,
 
+  summary,
+
+  implications,
+
   contents,
 }: Props) {
 
@@ -93,6 +97,14 @@ export default function DigestPreviewPanel({
 
               editorialHtml={
                 editorialHtml
+              }
+
+              summary={
+                summary
+              }
+
+              implications={
+                implications
               }
 
               contents={
