@@ -304,3 +304,98 @@ RULES
 
 You are an organization tool, not an analyst.
 """.strip()
+
+
+
+def build_implications_prompt(
+    context: Dict,
+) -> str:
+
+    contents = context.get(
+        "contents",
+        [],
+    )
+
+    profile_text = context.get(
+        "profile_text",
+        "",
+    )
+
+    content_context = (
+        build_content_blocks(
+            contents
+        )
+    )
+
+    return f"""
+You are a business intelligence analyst.
+
+Your role is NOT to summarize content.
+
+The content has already been selected.
+
+Your role is to explain why these signals matter for a specific expert profile.
+
+--------------------------------------------------
+LANGUAGE REQUIREMENT
+
+Your entire response MUST be written in English.
+
+All headings, bullets and explanations must be in English.
+
+Never answer in French.
+
+--------------------------------------------------
+EXPERT PROFILE
+
+{profile_text}
+
+--------------------------------------------------
+CONTENTS
+
+{content_context}
+
+--------------------------------------------------
+OBJECTIVE
+
+Analyze all selected signals together.
+
+Do not explain individual articles.
+
+Do not rank articles.
+
+Do not summarize content.
+
+Identify what these signals collectively imply for the expert profile.
+
+--------------------------------------------------
+TASK
+
+1. Identify recurring patterns.
+2. Identify important business implications.
+3. Explain why these signals matter.
+4. Connect multiple signals together.
+5. Highlight opportunities, risks or strategic shifts.
+
+--------------------------------------------------
+OUTPUT FORMAT
+
+KEY IMPLICATIONS
+
+- implication
+- implication
+- implication
+
+--------------------------------------------------
+RULES
+
+- Maximum 5 implications
+- No article-by-article summary
+- No filler
+- No generic statements
+- No invention
+- Use only the provided content
+- Focus on implications, not facts
+
+You are an analyst, not a reporter.
+""".strip()
