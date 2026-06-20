@@ -101,6 +101,11 @@ def generate_digest_analysis(
         "implications": implications,
     }
 
+
+# ============================================================
+# ANALYSIS FROM IDS
+# ============================================================
+
 def generate_digest_analysis_from_ids(
     user_id: str,
     content_ids: List[str],
@@ -113,28 +118,62 @@ def generate_digest_analysis_from_ids(
             "implications": "",
         }
 
-    context = get_user_context(
-        user_id
+    # ========================================================
+    # USER CONTEXT
+    # ========================================================
+
+    user_context = (
+        get_user_context(
+            user_id
+        )
+        or {}
+    )
+
+    profile = (
+        user_context.get(
+            "profile"
+        )
+        or {}
     )
 
     profile_text = (
-        context.get(
+        profile.get(
             "profile_text"
         )
         or ""
     )
 
+    # ========================================================
+    # CONTENTS
+    # ========================================================
+
     contents = (
         get_analysis_details_by_ids(
             content_ids
         )
+        or []
     )
+
+    if not contents:
+
+        return {
+            "summary": "",
+            "implications": "",
+        }
+
+    # ========================================================
+    # SUMMARY
+    # ========================================================
 
     summary = (
         generate_digest_summary(
             contents
         )
     )
+
+    # ========================================================
+    # IMPLICATIONS
+    # ========================================================
 
     implications = (
         generate_digest_implications(
@@ -143,11 +182,11 @@ def generate_digest_analysis_from_ids(
         )
     )
 
+    # ========================================================
+    # OUTPUT
+    # ========================================================
+
     return {
-
-        "summary":
-            summary,
-
-        "implications":
-            implications,
+        "summary": summary,
+        "implications": implications,
     }
