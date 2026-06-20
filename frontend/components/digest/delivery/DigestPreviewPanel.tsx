@@ -19,6 +19,10 @@ type Props = {
 
   editorialHtml?: string;
 
+  summary?: string;
+
+  implications?: string;
+
   contents: DigestContentItem[];
 };
 
