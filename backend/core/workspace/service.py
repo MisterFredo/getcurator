@@ -12,6 +12,10 @@ from core.workspace.prompt_service import (
     build_implications_prompt,
 )
 
+from core.user.user_profile_service import (
+    get_user_profile,
+)
+
 # ============================================================
 # OUTPUT TYPES
 # ============================================================
