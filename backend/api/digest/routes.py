@@ -93,3 +93,33 @@ def generate_editorial(
         "status": "ok",
         **result,
     }
+
+# ============================================================
+# GENERATE ANALYSIS
+# ============================================================
+
+@router.post("/generate-analysis")
+def generate_digest_analysis_route(
+    payload: dict,
+):
+
+    from core.digest.analysis_service import (
+        generate_digest_analysis_from_ids,
+    )
+
+    result = generate_digest_analysis_from_ids(
+
+        user_id=payload.get(
+            "user_id"
+        ),
+
+        content_ids=payload.get(
+            "content_ids",
+            [],
+        ),
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
