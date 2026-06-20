@@ -7,6 +7,14 @@ from core.workspace.prompt_service import (
     build_implications_prompt,
 )
 
+from core.insight.service import (
+    get_analysis_details_by_ids,
+)
+
+from core.user.user_service import (
+    load_user_context,
+)
+
 
 # ============================================================
 # SUMMARY
@@ -97,3 +105,49 @@ def generate_digest_analysis_from_ids(
     user_id: str,
     content_ids: List[str],
 ) -> Dict:
+
+    if not content_ids:
+
+        return {
+            "summary": "",
+            "implications": "",
+        }
+
+    context = load_user_context(
+        user_id
+    )
+
+    profile_text = (
+        context.get(
+            "profile_text"
+        )
+        or ""
+    )
+
+    contents = (
+        get_analysis_details_by_ids(
+            content_ids
+        )
+    )
+
+    summary = (
+        generate_digest_summary(
+            contents
+        )
+    )
+
+    implications = (
+        generate_digest_implications(
+            contents=contents,
+            profile_text=profile_text,
+        )
+    )
+
+    return {
+
+        "summary":
+            summary,
+
+        "implications":
+            implications,
+    }
