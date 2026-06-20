@@ -101,6 +101,16 @@ export default function DigestPage() {
   >([]);
 
   const [
+    summary,
+    setSummary,
+  ] = useState("");
+
+  const [
+    implications,
+    setImplications,
+  ] = useState("");
+
+  const [
     lastSentAt,
     setLastSentAt,
   ] = useState<
@@ -175,6 +185,14 @@ export default function DigestPage() {
 
       setContents(
         digestContents
+      );
+
+      setSummary(
+        result?.summary || ""
+      );
+
+      setImplications(
+        result?.implications || ""
       );
 
       setLastSentAt(
@@ -446,6 +464,14 @@ export default function DigestPage() {
 
             editorialHtml={
               introText
+            }
+
+            summary={
+              summary
+            }
+
+            implications={
+              implications
             }
 
             contents={
