@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    Request,
+)
 
 from api.workspace.models import (
     WorkspaceGenerateRequest,
@@ -6,6 +9,10 @@ from api.workspace.models import (
 
 from core.workspace.service import (
     generate_workspace_output,
+)
+
+from utils.auth import (
+    get_user_id_from_request,
 )
 
 router = APIRouter()
