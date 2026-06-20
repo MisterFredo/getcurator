@@ -12,6 +12,7 @@ type Props = {
     outputType:
       | "key_points"
       | "structure"
+      | "implications"
   ) => void;
 };
 
@@ -24,7 +25,12 @@ export default function WorkspaceActions({
   onGenerate,
 }: Props) {
 
+  const disabled =
+    loading ||
+    (!hasContent && !hasNumbers);
+
   return (
+
     <div
       className="
         p-3
@@ -38,10 +44,7 @@ export default function WorkspaceActions({
         onClick={() =>
           onGenerate("key_points")
         }
-        disabled={
-          loading ||
-          (!hasContent && !hasNumbers)
-        }
+        disabled={disabled}
         className="
           w-full
           py-2
@@ -60,10 +63,7 @@ export default function WorkspaceActions({
         onClick={() =>
           onGenerate("structure")
         }
-        disabled={
-          loading ||
-          (!hasContent && !hasNumbers)
-        }
+        disabled={disabled}
         className="
           w-full
           py-2
@@ -75,6 +75,25 @@ export default function WorkspaceActions({
         "
       >
         Structure Data
+      </button>
+
+      {/* IMPLICATIONS */}
+      <button
+        onClick={() =>
+          onGenerate("implications")
+        }
+        disabled={disabled}
+        className="
+          w-full
+          py-2
+          text-xs
+          rounded-lg
+          bg-blue-600
+          text-white
+          disabled:opacity-50
+        "
+      >
+        Key Implications
       </button>
 
     </div>
