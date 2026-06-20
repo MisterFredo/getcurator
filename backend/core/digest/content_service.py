@@ -489,7 +489,7 @@ def build_keywords_filter(
 
 def get_digest_contents(
     user_id: str,
-    limit: int = 50,
+    limit: int = 20,
 ) -> Dict[str, Any]:
 
     print("===================================")
