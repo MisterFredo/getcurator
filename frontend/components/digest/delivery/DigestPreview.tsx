@@ -38,11 +38,15 @@ type Props = {
 
 export default function DigestPreview({
   headerConfig,
+
   editorialHtml,
+
   summary,
+
   implications,
+
   contents,
-}: Props)
+}: Props) {
 
   const [mode, setMode] = useState<
     "brevo" | "gmail"
@@ -56,7 +60,7 @@ export default function DigestPreview({
 
     if (mode === "gmail") {
 
-      return buildDigestEmail({
+      return buildDigestEmailGmail({
         headerConfig,
 
         editorialHtml,
@@ -67,18 +71,19 @@ export default function DigestPreview({
 
         contents,
       });
+    }
 
-    return buildDigestEmailGmail({
-        headerConfig,
+    return buildDigestEmail({
+      headerConfig,
 
-        editorialHtml,
+      editorialHtml,
 
-        summary,
+      summary,
 
-        implications,
+      implications,
 
-        contents,
-      });
+      contents,
+    });
 
   }, [
     mode,
@@ -86,6 +91,10 @@ export default function DigestPreview({
     headerConfig,
 
     editorialHtml,
+
+    summary,
+
+    implications,
 
     contents,
   ]);
@@ -183,8 +192,7 @@ export default function DigestPreview({
                 )
               }
               className={`px-3 py-1.5 ${
-                mode ===
-                "brevo"
+                mode === "brevo"
                   ? "bg-gray-900 text-white"
                   : "bg-white text-gray-600"
               }`}
@@ -199,8 +207,7 @@ export default function DigestPreview({
                 )
               }
               className={`px-3 py-1.5 border-l ${
-                mode ===
-                "gmail"
+                mode === "gmail"
                   ? "bg-gray-900 text-white"
                   : "bg-white text-gray-600"
               }`}
@@ -213,21 +220,16 @@ export default function DigestPreview({
           {/* ACTIONS */}
 
           <button
-            onClick={
-              copyHtml
-            }
+            onClick={copyHtml}
             className="px-3 py-1.5 rounded bg-gray-900 text-white text-xs"
           >
             Copier HTML
           </button>
 
-          {mode ===
-            "gmail" && (
+          {mode === "gmail" && (
 
             <button
-              onClick={
-                copyForGmail
-              }
+              onClick={copyForGmail}
               className="px-3 py-1.5 rounded bg-white border border-gray-300 text-xs"
             >
               Copier pour Gmail
@@ -256,11 +258,8 @@ export default function DigestPreview({
       <div
         ref={hiddenRef}
         style={{
-          position:
-            "absolute",
-
+          position: "absolute",
           left: "-9999px",
-
           top: 0,
         }}
       />
