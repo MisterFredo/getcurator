@@ -255,10 +255,10 @@ def create_digest(
         timezone.utc
     ).isoformat()
 
-    digest_data = (
-        get_digest_contents(
-            user_id=user_id,
-        )
+    digest_data = get_digest_contents(
+        user_id=user_id,
+        period_start=period_start,
+        period_end=period_end,
     )
 
     contents = (
