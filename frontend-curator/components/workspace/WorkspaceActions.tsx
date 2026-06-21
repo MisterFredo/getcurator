@@ -55,7 +55,7 @@ export default function WorkspaceActions({
           disabled:opacity-50
         "
       >
-        Key Points
+        Summary
       </button>
 
       {/* STRUCTURE */}
@@ -93,7 +93,7 @@ export default function WorkspaceActions({
           disabled:opacity-50
         "
       >
-        Key Implications
+        What matters for me
       </button>
 
     </div>
