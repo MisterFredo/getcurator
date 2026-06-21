@@ -29,9 +29,9 @@ export default function SettingsPage() {
     useState<string[]>([]);
 
   const [
-    profileText,
-    setProfileText,
-  ] = useState("");
+    profileSaved,
+    setProfileSaved,
+  ] = useState(false);
 
   /* =====================================================
      LOAD
@@ -200,11 +200,22 @@ export default function SettingsPage() {
         }
       );
 
+      setProfileSaved(true);
+
+      setTimeout(
+        () => setProfileSaved(false),
+        2000
+      );
+
     } catch (e) {
 
       console.error(
         "profile save error",
         e
+      );
+
+      alert(
+        "Unable to save profile."
       );
     }
   }
@@ -489,6 +500,10 @@ Key competitors:
               text-sm
             "
           >
+            {profileSaved
+              ? "✓ Saved"
+              : "Save"}
+          </button>
             Save
           </button>
 
