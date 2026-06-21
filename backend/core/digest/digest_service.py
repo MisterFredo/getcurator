@@ -423,6 +423,32 @@ def list_digests(
         },
     )
 
+# ============================================================
+# LIST ALL DIGESTS
+# ============================================================
+
+def list_all_digests() -> List[Dict]:
+
+    rows = query_bq(
+        f"""
+        SELECT
+            ID_DIGEST,
+            ID_USER,
+            DIGEST_NAME,
+            LANGUAGE,
+            STATUS,
+            PERIOD_START,
+            PERIOD_END,
+            GENERATED_AT,
+            SENT_AT,
+            NB_CONTENTS
+        FROM `{TABLE_DIGEST}`
+        ORDER BY GENERATED_AT DESC
+        """
+    )
+
+    return rows
+
 
 # ============================================================
 # GET
