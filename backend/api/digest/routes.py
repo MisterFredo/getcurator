@@ -80,6 +80,24 @@ def list_digests_route(
         "result": result,
     }
 
+# ============================================================
+# LIST ALL DIGESTS
+# ============================================================
+
+@router.get("/list-all")
+def list_all_digests_route():
+
+    from core.digest.digest_service import (
+        list_all_digests,
+    )
+
+    result = list_all_digests()
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
 
 # ============================================================
 # MY FEED
@@ -87,15 +105,29 @@ def list_digests_route(
 
 @router.get("/my-feed")
 def digest_my_feed(
+
     user_id: str = Query(...),
 
-    limit: int = Query(
-        20
+    period_start: str | None = Query(
+        None
+    ),
+
+    period_end: str | None = Query(
+        None
+    ),
+
+    limit: int | None = Query(
+        None
     ),
 ):
 
     result = get_digest_contents(
+
         user_id=user_id,
+
+        period_start=period_start,
+
+        period_end=period_end,
 
         limit=limit,
     )
@@ -105,7 +137,6 @@ def digest_my_feed(
 
         "result": result,
     }
-
 
 # ============================================================
 # LOG SEND (LEGACY)
