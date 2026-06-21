@@ -28,16 +28,7 @@ export default function SettingsPage() {
 
   const [keywords, setKeywords] =
     useState<string[]>([]);
-
-  const [geo1, setGeo1] =
-    useState("");
-
-  const [geo2, setGeo2] =
-    useState("");
-
-  const [geo3, setGeo3] =
-    useState("");
-
+  
   const [
     profileText,
     setProfileText,
@@ -75,18 +66,6 @@ export default function SettingsPage() {
 
         setKeywords(
           keywordsRes?.keywords || []
-        );
-
-        setGeo1(
-          profile.geography_1 || ""
-        );
-
-        setGeo2(
-          profile.geography_2 || ""
-        );
-
-        setGeo3(
-          profile.geography_3 || ""
         );
 
         setProfileText(
@@ -199,6 +178,27 @@ export default function SettingsPage() {
 
       console.error(
         "keyword remove error",
+        e
+      );
+    }
+  }
+
+  async function saveProfile() {
+
+    try {
+
+      await api.post(
+        "/user/profile/update",
+        {
+          profile_text:
+            profileText || null,
+        }
+      );
+
+    } catch (e) {
+
+      console.error(
+        "profile save error",
         e
       );
     }
