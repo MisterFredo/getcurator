@@ -246,6 +246,9 @@ def create_digest(
     period_start: str,
     period_end: str,
 ) -> Dict:
+    now = datetime.now(
+        timezone.utc
+    ).isoformat()
 
     digest_data = (
         get_digest_contents(
@@ -334,7 +337,7 @@ def create_digest(
                     period_end,
 
                 "GENERATED_AT":
-                    datetime.utcnow(),
+                     now,
 
                 "NB_CONTENTS":
                     len(contents),
@@ -576,6 +579,9 @@ def regenerate_analysis(
 def send_digest(
     digest_id: str,
 ) -> Dict:
+    now = datetime.now(
+        timezone.utc
+    ).isoformat()
 
     update_bq(
         TABLE_DIGEST,
@@ -585,7 +591,7 @@ def send_digest(
                 "SENT",
 
             "SENT_AT":
-                datetime.utcnow(),
+                now,
         },
 
         {
