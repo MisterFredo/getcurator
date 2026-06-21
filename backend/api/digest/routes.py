@@ -19,6 +19,159 @@ from core.insight.service import (
 
 router = APIRouter()
 
+
+# ============================================================
+# CREATE DIGEST
+# ============================================================
+
+@router.post("/create")
+def create_digest_route(
+    payload: dict,
+):
+
+    from core.digest.digest_service import (
+        create_digest,
+    )
+
+    result = create_digest(
+
+        user_id=payload.get(
+            "user_id"
+        ),
+
+        digest_name=payload.get(
+            "digest_name"
+        ),
+
+        period_start=payload.get(
+            "period_start"
+        ),
+
+        period_end=payload.get(
+            "period_end"
+        ),
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
+
+# ============================================================
+# LIST DIGESTS
+# ============================================================
+
+@router.get("/list")
+def list_digests_route(
+    user_id: str,
+):
+
+    from core.digest.digest_service import (
+        list_digests,
+    )
+
+    result = list_digests(
+        user_id=user_id,
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
+
+# ============================================================
+# GET DIGEST
+# ============================================================
+
+@router.get("/{digest_id}")
+def get_digest_route(
+    digest_id: str,
+):
+
+    from core.digest.digest_service import (
+        get_digest,
+    )
+
+    result = get_digest(
+        digest_id=digest_id,
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
+
+# ============================================================
+# DELETE DIGEST
+# ============================================================
+
+@router.delete("/{digest_id}")
+def delete_digest_route(
+    digest_id: str,
+):
+
+    from core.digest.digest_service import (
+        delete_digest,
+    )
+
+    result = delete_digest(
+        digest_id=digest_id,
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
+
+# ============================================================
+# GENERATE SUMMARY
+# ============================================================
+
+@router.post("/{digest_id}/generate-summary")
+def generate_summary_route(
+    digest_id: str,
+):
+
+    from core.digest.digest_service import (
+        generate_summary,
+    )
+
+    result = generate_summary(
+        digest_id=digest_id,
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
+
+# ============================================================
+# SEND DIGEST
+# ============================================================
+
+@router.post("/{digest_id}/send")
+def send_digest_route(
+    digest_id: str,
+):
+
+    from core.digest.digest_service import (
+        send_digest,
+    )
+
+    result = send_digest(
+        digest_id=digest_id,
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }
+
 # ============================================================
 # MY FEED
 # ============================================================
