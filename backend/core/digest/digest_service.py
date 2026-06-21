@@ -383,7 +383,7 @@ def create_digest(
                     ),
 
                 "CREATED_AT":
-                    datetime.utcnow(),
+                    now,
             }
         )
 
