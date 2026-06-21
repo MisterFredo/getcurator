@@ -16,7 +16,6 @@ type Profile = {
 /* ========================================================= */
 
 export default function SettingsPage() {
-
   const [loading, setLoading] =
     useState(true);
 
@@ -28,7 +27,7 @@ export default function SettingsPage() {
 
   const [keywords, setKeywords] =
     useState<string[]>([]);
-  
+
   const [
     profileText,
     setProfileText,
@@ -44,11 +43,8 @@ export default function SettingsPage() {
   ===================================================== */
 
   useEffect(() => {
-
     async function load() {
-
       try {
-
         const [
           meRes,
           keywordsRes,
@@ -76,23 +72,17 @@ export default function SettingsPage() {
         setProfileText(
           profile.profile_text || ""
         );
-
       } catch (e) {
-
         console.error(
           "settings load error",
           e
         );
-
       } finally {
-
         setLoading(false);
-
       }
     }
 
     load();
-
   }, []);
 
   /* =====================================================
@@ -102,9 +92,7 @@ export default function SettingsPage() {
   async function saveLanguage(
     value: string
   ) {
-
     try {
-
       await api.post(
         "/user/language",
         {
@@ -113,14 +101,11 @@ export default function SettingsPage() {
       );
 
       setLanguage(value);
-
     } catch (e) {
-
       console.error(
         "language update error",
         e
       );
-
     }
   }
 
@@ -129,14 +114,12 @@ export default function SettingsPage() {
   ===================================================== */
 
   async function addKeyword() {
-
     const value =
       keywordInput.trim();
 
     if (!value) return;
 
     try {
-
       await api.post(
         "/user/keywords/add",
         {
@@ -150,9 +133,7 @@ export default function SettingsPage() {
       ]);
 
       setKeywordInput("");
-
     } catch (e) {
-
       console.error(
         "keyword add error",
         e
@@ -163,9 +144,7 @@ export default function SettingsPage() {
   async function removeKeyword(
     keyword: string
   ) {
-
     try {
-
       await api.post(
         "/user/keywords/remove",
         {
@@ -178,9 +157,7 @@ export default function SettingsPage() {
           (k) => k !== keyword
         )
       );
-
     } catch (e) {
-
       console.error(
         "keyword remove error",
         e
@@ -188,10 +165,12 @@ export default function SettingsPage() {
     }
   }
 
+  /* =====================================================
+     PROFILE
+  ===================================================== */
+
   async function saveProfile() {
-
     try {
-
       await api.post(
         "/user/profile/update",
         {
@@ -203,13 +182,9 @@ export default function SettingsPage() {
       setProfileSaved(true);
 
       setTimeout(() => {
-
         setProfileSaved(false);
-
       }, 2000);
-
     } catch (e) {
-
       console.error(
         "profile save error",
         e
@@ -222,7 +197,6 @@ export default function SettingsPage() {
   ===================================================== */
 
   if (loading) {
-
     return (
       <div className="text-sm text-gray-500">
         Loading...
@@ -235,10 +209,11 @@ export default function SettingsPage() {
   ===================================================== */
 
   return (
-
     <div className="grid grid-cols-[1fr_1fr] gap-6">
+      {/* =====================================================
+          SETTINGS
+      ===================================================== */}
 
-      {/* SETTINGS */}
       <div
         className="
           bg-white
@@ -248,34 +223,25 @@ export default function SettingsPage() {
           space-y-8
         "
       >
-
-      <div className="
-        bg-white
-        border
-        rounded-xl
-        p-6
-        space-y-8
-      ">
-
-        {/* =====================================================
-            LANGUAGE
-        ===================================================== */}
+        {/* LANGUAGE */}
 
         <div>
-
-          <div className="
-            text-sm
-            font-medium
-            mb-3
-          ">
+          <div
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
             Language
           </div>
 
-          <div className="
-            flex
-            gap-2
-          ">
-
+          <div
+            className="
+              flex
+              gap-2
+            "
+          >
             <button
               onClick={() =>
                 saveLanguage("fr")
@@ -313,31 +279,29 @@ export default function SettingsPage() {
             >
               EN
             </button>
-
           </div>
-
         </div>
 
-        {/* =====================================================
-            KEYWORDS
-        ===================================================== */}
+        {/* KEYWORDS */}
 
         <div>
-
-          <div className="
-            text-sm
-            font-medium
-            mb-3
-          ">
+          <div
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
             Keywords
           </div>
 
-          <div className="
-            flex
-            gap-2
-            mb-3
-          ">
-
+          <div
+            className="
+              flex
+              gap-2
+              mb-3
+            "
+          >
             <input
               value={keywordInput}
               onChange={(e) =>
@@ -368,48 +332,43 @@ export default function SettingsPage() {
             >
               Add
             </button>
-
           </div>
 
-          <div className="
-            flex
-            flex-wrap
-            gap-2
-          ">
-
-            {keywords.map((keyword) => (
-
-              <button
-                key={keyword}
-                onClick={() =>
-                  removeKeyword(
-                    keyword
-                  )
-                }
-                className="
-                  px-3
-                  py-1
-                  rounded-full
-                  bg-gray-100
-                  hover:bg-gray-200
-                  text-sm
-                "
-              >
-                {keyword} ×
-              </button>
-
-            ))}
-
+          <div
+            className="
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
+            {keywords.map(
+              (keyword) => (
+                <button
+                  key={keyword}
+                  onClick={() =>
+                    removeKeyword(
+                      keyword
+                    )
+                  }
+                  className="
+                    px-3
+                    py-1
+                    rounded-full
+                    bg-gray-100
+                    hover:bg-gray-200
+                    text-sm
+                  "
+                >
+                  {keyword} ×
+                </button>
+              )
+            )}
           </div>
-
         </div>
 
-        {/* =====================================================
-            PROFESSIONAL PROFILE
-        ===================================================== */}
+        {/* PROFESSIONAL PROFILE */}
 
         <div>
-
           <div
             className="
               text-sm
@@ -450,20 +409,20 @@ export default function SettingsPage() {
             "
             placeholder={`Senior Director Retail Media
 
-        Focus:
-        - Commerce Media
-        - Walmart Connect
-        - Instacart
+Focus:
+- Commerce Media
+- Walmart Connect
+- Instacart
 
-        Strategic priorities:
-        - Measurement
-        - Attribution
-        - Retail media monetization
+Strategic priorities:
+- Measurement
+- Attribution
+- Retail media monetization
 
-        Key competitors:
-        - Amazon
-        - Walmart
-        - Kroger`}
+Key competitors:
+- Amazon
+- Walmart
+- Kroger`}
           />
 
           <button
@@ -483,24 +442,22 @@ export default function SettingsPage() {
               : "Save"}
           </button>
         </div>
-
-        {/* FAVRORITES */}
-        <div
-          className="
-            bg-white
-            border
-            rounded-xl
-            p-6
-            space-y-8
-          "
-        >
-
-        <UserFavoritesSummary />
-
-        </div>
-
       </div>
 
+      {/* =====================================================
+          FAVORITES
+      ===================================================== */}
+
+      <div
+        className="
+          bg-white
+          border
+          rounded-xl
+          p-6
+        "
+      >
+        <UserFavoritesSummary />
+      </div>
     </div>
   );
 }
