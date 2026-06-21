@@ -1,5 +1,3 @@
-// frontend-curator/app/(core)/settings/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,7 +7,9 @@ import UserFavoritesSummary from "@/components/settings/UserFavoritesSummary";
 /* ========================================================= */
 
 type Profile = {
-  profile_text?: string | null;
+  geography_1?: string | null;
+  geography_2?: string | null;
+  geography_3?: string | null;
 };
 
 /* ========================================================= */
@@ -28,10 +28,14 @@ export default function SettingsPage() {
   const [keywords, setKeywords] =
     useState<string[]>([]);
 
-  const [
-    profileSaved,
-    setProfileSaved,
-  ] = useState(false);
+  const [geo1, setGeo1] =
+    useState("");
+
+  const [geo2, setGeo2] =
+    useState("");
+
+  const [geo3, setGeo3] =
+    useState("");
 
   /* =====================================================
      LOAD
@@ -67,8 +71,16 @@ export default function SettingsPage() {
           keywordsRes?.keywords || []
         );
 
-        setProfileText(
-          profile.profile_text || ""
+        setGeo1(
+          profile.geography_1 || ""
+        );
+
+        setGeo2(
+          profile.geography_2 || ""
+        );
+
+        setGeo3(
+          profile.geography_3 || ""
         );
 
       } catch (e) {
@@ -127,9 +139,7 @@ export default function SettingsPage() {
     const value =
       keywordInput.trim();
 
-    if (!value) {
-      return;
-    }
+    if (!value) return;
 
     try {
 
@@ -185,37 +195,32 @@ export default function SettingsPage() {
   }
 
   /* =====================================================
-     PROFILE
+     GEO
   ===================================================== */
 
-  async function saveProfile() {
+  async function saveGeographies() {
 
     try {
 
       await api.post(
         "/user/profile/update",
         {
-          profile_text:
-            profileText || null,
+          geography_1:
+            geo1 || null,
+
+          geography_2:
+            geo2 || null,
+
+          geography_3:
+            geo3 || null,
         }
-      );
-
-      setProfileSaved(true);
-
-      setTimeout(
-        () => setProfileSaved(false),
-        2000
       );
 
     } catch (e) {
 
       console.error(
-        "profile save error",
+        "geo save error",
         e
-      );
-
-      alert(
-        "Unable to save profile."
       );
     }
   }
@@ -241,25 +246,21 @@ export default function SettingsPage() {
 
     <div className="max-w-3xl">
 
-      <h1
-        className="
-          text-xl
-          font-semibold
-          mb-6
-        "
-      >
+      <h1 className="
+        text-xl
+        font-semibold
+        mb-6
+      ">
         Settings
       </h1>
 
-      <div
-        className="
-          bg-white
-          border
-          rounded-xl
-          p-6
-          space-y-8
-        "
-      >
+      <div className="
+        bg-white
+        border
+        rounded-xl
+        p-6
+        space-y-8
+      ">
 
         {/* =====================================================
             LANGUAGE
@@ -267,22 +268,18 @@ export default function SettingsPage() {
 
         <div>
 
-          <div
-            className="
-              text-sm
-              font-medium
-              mb-3
-            "
-          >
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
             Language
           </div>
 
-          <div
-            className="
-              flex
-              gap-2
-            "
-          >
+          <div className="
+            flex
+            gap-2
+          ">
 
             <button
               onClick={() =>
@@ -332,23 +329,19 @@ export default function SettingsPage() {
 
         <div>
 
-          <div
-            className="
-              text-sm
-              font-medium
-              mb-3
-            "
-          >
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
             Keywords
           </div>
 
-          <div
-            className="
-              flex
-              gap-2
-              mb-3
-            "
-          >
+          <div className="
+            flex
+            gap-2
+            mb-3
+          ">
 
             <input
               value={keywordInput}
@@ -383,13 +376,11 @@ export default function SettingsPage() {
 
           </div>
 
-          <div
-            className="
-              flex
-              flex-wrap
-              gap-2
-            "
-          >
+          <div className="
+            flex
+            flex-wrap
+            gap-2
+          ">
 
             {keywords.map((keyword) => (
 
@@ -418,78 +409,84 @@ export default function SettingsPage() {
 
         </div>
 
-        {/* =====================================================
-            FAVORITES
-        ===================================================== */}
-
         <UserFavoritesSummary />
 
         {/* =====================================================
-            PROFESSIONAL PROFILE
+            GEOGRAPHIES
         ===================================================== */}
 
         <div>
 
-          <div
-            className="
-              text-sm
-              font-medium
-              mb-3
-            "
-          >
-            Professional Profile
+          <div className="
+            text-sm
+            font-medium
+            mb-3
+          ">
+            Geographies
           </div>
 
-          <div
-            className="
-              text-sm
-              text-gray-500
-              mb-3
-            "
-          >
-            This profile is used to generate
-            personalized insights and digest
-            analysis based on your role,
-            expertise and strategic priorities.
+          <div className="
+            space-y-2
+          ">
+
+            <input
+              value={geo1}
+              onChange={(e) =>
+                setGeo1(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 1"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
+
+            <input
+              value={geo2}
+              onChange={(e) =>
+                setGeo2(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 2"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
+
+            <input
+              value={geo3}
+              onChange={(e) =>
+                setGeo3(
+                  e.target.value
+                )
+              }
+              placeholder="Priority 3"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+                text-sm
+              "
+            />
+
           </div>
-
-          <textarea
-            value={profileText}
-            onChange={(e) =>
-              setProfileText(
-                e.target.value
-              )
-            }
-            rows={12}
-            className="
-              w-full
-              border
-              rounded-lg
-              p-3
-              text-sm
-            "
-            placeholder={`
-Senior Director Retail Media
-
-Focus:
-- Commerce Media
-- Walmart Connect
-- Instacart
-
-Strategic priorities:
-- Measurement
-- Attribution
-- Retail media monetization
-
-Key competitors:
-- Amazon
-- Walmart
-- Kroger
-            `}
-          />
 
           <button
-            onClick={saveProfile}
+            onClick={saveGeographies}
             className="
               mt-3
               px-4
@@ -500,10 +497,6 @@ Key competitors:
               text-sm
             "
           >
-            {profileSaved
-              ? "✓ Saved"
-              : "Save"}
-          </button>
             Save
           </button>
 
