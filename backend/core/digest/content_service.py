@@ -487,9 +487,15 @@ def build_keywords_filter(
 # DIGEST CONTENTS
 # ============================================================
 
+# ============================================================
+# DIGEST CONTENTS
+# ============================================================
+
 def get_digest_contents(
     user_id: str,
-    limit: int = 20,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    limit: int | None = None,
 ) -> Dict[str, Any]:
 
     print("===================================")
@@ -610,6 +616,52 @@ def get_digest_contents(
         keywords_sql = "FALSE"
 
     # ========================================================
+    # DATE FILTERS
+    # ========================================================
+
+    date_filter_sql = ""
+
+    params = {}
+
+    if period_start:
+
+        date_filter_sql += """
+
+        AND published_at >= @period_start
+
+        """
+
+        params["period_start"] = (
+            period_start
+        )
+
+    if period_end:
+
+        date_filter_sql += """
+
+        AND published_at < @period_end
+
+        """
+
+        params["period_end"] = (
+            period_end
+        )
+
+    # ========================================================
+    # LIMIT
+    # ========================================================
+
+    limit_sql = ""
+
+    if limit:
+
+        limit_sql = f"""
+
+        LIMIT {limit}
+
+        """
+
+    # ========================================================
     # TITLE / EXCERPT
     # ========================================================
 
@@ -636,11 +688,15 @@ def get_digest_contents(
     else:
 
         title_sql = """
+
         title AS title
+
         """
 
         excerpt_sql = """
+
         excerpt AS excerpt
+
         """
 
     # ========================================================
@@ -689,6 +745,8 @@ def get_digest_contents(
 
         AND status = "PUBLISHED"
 
+        {date_filter_sql}
+
         AND (
 
             (
@@ -706,7 +764,7 @@ def get_digest_contents(
     ORDER BY
         published_at DESC
 
-    LIMIT {limit}
+    {limit_sql}
 
     """
 
@@ -714,8 +772,12 @@ def get_digest_contents(
     print(sql)
     print("================================")
 
+    print("DIGEST PARAMS")
+    print(params)
+
     rows = query_bq(
-        sql
+        sql,
+        params,
     )
 
     print("ROWS COUNT")
@@ -839,9 +901,6 @@ def get_digest_contents(
                     or [],
             }
 
-            print("CONTENT BUILT")
-            print(content)
-
             contents.append(
                 content
             )
@@ -853,7 +912,6 @@ def get_digest_contents(
 
     print("FINAL CONTENTS COUNT")
     print(len(contents))
-
 
     # ========================================================
     # LAST SENT
