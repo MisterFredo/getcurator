@@ -205,37 +205,6 @@ export default function SettingsPage() {
   }
 
   /* =====================================================
-     GEO
-  ===================================================== */
-
-  async function saveGeographies() {
-
-    try {
-
-      await api.post(
-        "/user/profile/update",
-        {
-          geography_1:
-            geo1 || null,
-
-          geography_2:
-            geo2 || null,
-
-          geography_3:
-            geo3 || null,
-        }
-      );
-
-    } catch (e) {
-
-      console.error(
-        "geo save error",
-        e
-      );
-    }
-  }
-
-  /* =====================================================
      LOADING
   ===================================================== */
 
@@ -422,81 +391,69 @@ export default function SettingsPage() {
         <UserFavoritesSummary />
 
         {/* =====================================================
-            GEOGRAPHIES
+            PROFESSIONAL PROFILE
         ===================================================== */}
 
         <div>
 
-          <div className="
-            text-sm
-            font-medium
-            mb-3
-          ">
-            Geographies
+          <div
+            className="
+              text-sm
+              font-medium
+              mb-3
+            "
+          >
+            Professional Profile
           </div>
 
-          <div className="
-            space-y-2
-          ">
-
-            <input
-              value={geo1}
-              onChange={(e) =>
-                setGeo1(
-                  e.target.value
-                )
-              }
-              placeholder="Priority 1"
-              className="
-                w-full
-                border
-                rounded-lg
-                px-3
-                py-2
-                text-sm
-              "
-            />
-
-            <input
-              value={geo2}
-              onChange={(e) =>
-                setGeo2(
-                  e.target.value
-                )
-              }
-              placeholder="Priority 2"
-              className="
-                w-full
-                border
-                rounded-lg
-                px-3
-                py-2
-                text-sm
-              "
-            />
-
-            <input
-              value={geo3}
-              onChange={(e) =>
-                setGeo3(
-                  e.target.value
-                )
-              }
-              placeholder="Priority 3"
-              className="
-                w-full
-                border
-                rounded-lg
-                px-3
-                py-2
-                text-sm
-              "
-            />
-
+          <div
+            className="
+              text-sm
+              text-gray-500
+              mb-3
+            "
+          >
+            This profile is used to generate
+            personalized insights and digest
+            analysis based on your role,
+            expertise and strategic priorities.
           </div>
+
+          <textarea
+            value={profileText}
+            onChange={(e) =>
+              setProfileText(
+                e.target.value
+              )
+            }
+            rows={12}
+            className="
+              w-full
+              border
+              rounded-lg
+              p-3
+              text-sm
+            "
+            placeholder={`Senior Director Retail Media
+
+        Focus:
+        - Commerce Media
+        - Walmart Connect
+        - Instacart
+
+        Strategic priorities:
+        - Measurement
+        - Attribution
+        - Retail media monetization
+
+        Key competitors:
+        - Amazon
+        - Walmart
+        - Kroger`}
+          />
 
           <button
-            onClick={saveGeographies}
+            onClick={saveProfile}
             className="
               mt-3
               px-4
