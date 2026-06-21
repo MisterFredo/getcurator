@@ -236,15 +236,18 @@ export default function SettingsPage() {
 
   return (
 
-    <div className="max-w-3xl">
+    <div className="grid grid-cols-[1fr_1fr] gap-6">
 
-      <h1 className="
-        text-xl
-        font-semibold
-        mb-6
-      ">
-        Settings
-      </h1>
+      {/* SETTINGS */}
+      <div
+        className="
+          bg-white
+          border
+          rounded-xl
+          p-6
+          space-y-8
+        "
+      >
 
       <div className="
         bg-white
@@ -401,8 +404,6 @@ export default function SettingsPage() {
 
         </div>
 
-        <UserFavoritesSummary />
-
         {/* =====================================================
             PROFESSIONAL PROFILE
         ===================================================== */}
@@ -481,6 +482,21 @@ export default function SettingsPage() {
               ? "✓ Saved"
               : "Save"}
           </button>
+        </div>
+
+        {/* FAVRORITES */}
+        <div
+          className="
+            bg-white
+            border
+            rounded-xl
+            p-6
+            space-y-8
+          "
+        >
+
+        <UserFavoritesSummary />
+
         </div>
 
       </div>
