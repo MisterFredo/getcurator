@@ -11,15 +11,20 @@ from datetime import (
 )
 import json
 
+from utils.bigquery_utils import (
+    query_bq,
+    insert_bq,
+    update_bq,
+    get_bigquery_client,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
 
-from utils.bigquery_utils import (
-    query_bq,
-    insert_bq,
-    update_bq,
+from google.cloud import (
+    bigquery,
 )
 
 from core.digest.content_service import (
@@ -461,33 +466,49 @@ def delete_digest(
     digest_id: str,
 ) -> Dict:
 
-    query_bq(
-        f"""
-        DELETE FROM `{TABLE_DIGEST_CONTENT}`
-        WHERE ID_DIGEST = @digest_id
-        """,
-        {
-            "digest_id":
-                digest_id,
-        },
-    )
+    client = get_bigquery_client()
 
-    query_bq(
+    tables = [
+        TABLE_DIGEST_CONTENT,
+    ]
+
+    for table in tables:
+
+        client.query(
+            f"""
+            DELETE FROM `{table}`
+            WHERE ID_DIGEST = @id
+            """,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "id",
+                        "STRING",
+                        digest_id,
+                    ),
+                ]
+            ),
+        ).result()
+
+    client.query(
         f"""
         DELETE FROM `{TABLE_DIGEST}`
-        WHERE ID_DIGEST = @digest_id
+        WHERE ID_DIGEST = @id
         """,
-        {
-            "digest_id":
-                digest_id,
-        },
-    )
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter(
+                    "id",
+                    "STRING",
+                    digest_id,
+                ),
+            ]
+        ),
+    ).result()
 
     return {
         "status": "ok",
     }
-
-
 # ============================================================
 # REGENERATE ANALYSIS
 # ============================================================
