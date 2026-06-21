@@ -4,162 +4,398 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
-type Run = {
-  id_run: string;
-  id_template: string;
-  period: string;
-  status: string;
-  created_at: string;
+/* ========================================================= */
+
+type Digest = {
+ID_DIGEST: string;
+
+ID_USER: string;
+
+DIGEST_NAME: string;
+
+LANGUAGE: string;
+
+STATUS: string;
+
+PERIOD_START: string;
+
+PERIOD_END: string;
+
+GENERATED_AT: string;
+
+SENT_AT?: string | null;
+
+NB_CONTENTS: number;
 };
 
+/* ========================================================= */
+
 export default function DigestRunsPage() {
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  const router = useRouter();
+const [digests, setDigests] =
+useState<Digest[]>([]);
 
-  /* =========================================================
-     LOAD RUNS
-  ========================================================= */
+const [loading, setLoading] =
+useState(false);
 
-  async function loadRuns() {
-    try {
-      const res = await api.get("/admin/digest/run");
-      setRuns(res.runs || []);
-    } catch (e) {
-      console.error("Erreur load runs", e);
-    }
-  }
+const router = useRouter();
 
-  useEffect(() => {
-    loadRuns();
-  }, []);
+/* =========================================================
+LOAD DIGESTS
+========================================================= */
 
-  /* =========================================================
-     GENERATE RUNS
-  ========================================================= */
+async function loadDigests() {
 
-  async function handleGenerate() {
-    const period = prompt("Période (ex: 2026-03)");
+```
+try {
 
-    if (!period) return;
-
-    setLoading(true);
-
-    try {
-      await api.post("/admin/digest/run/generate", {
-        period,
-      });
-
-      await loadRuns();
-
-      alert("Runs générés");
-    } catch (e) {
-      console.error(e);
-      alert("Erreur génération");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /* =========================================================
-     OPEN RUN
-  ========================================================= */
-
-  function openRun(id: string) {
-    router.push(`/admin/digest?run=${id}`);
-  }
-
-  /* =========================================================
-     STATUS BADGE
-  ========================================================= */
-
-  function StatusBadge({ status }: { status: string }) {
-    const styles =
-      status === "draft"
-        ? "bg-gray-200 text-gray-700"
-        : status === "ready"
-        ? "bg-green-100 text-green-700"
-        : status === "sent"
-        ? "bg-blue-100 text-blue-700"
-        : "bg-gray-100 text-gray-500";
-
-    return (
-      <span className={`px-2 py-1 text-xs rounded ${styles}`}>
-        {status}
-      </span>
+  const res =
+    await api.get(
+      "/digest/list-all"
     );
-  }
 
-  /* =========================================================
-     UI
-  ========================================================= */
+  setDigests(
+    res?.result || []
+  );
 
-  return (
-    <div className="space-y-6">
+} catch (e) {
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">
-          Runs Digest
-        </h1>
+  console.error(
+    "Erreur load digests",
+    e
+  );
 
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="px-3 py-2 bg-black text-white text-xs rounded"
-        >
-          Générer (mois)
-        </button>
+}
+```
+
+}
+
+useEffect(() => {
+
+```
+loadDigests();
+```
+
+}, []);
+
+/* =========================================================
+CREATE DIGEST
+========================================================= */
+
+function createDigest() {
+
+```
+router.push(
+  "/admin/digest"
+);
+```
+
+}
+
+/* =========================================================
+OPEN DIGEST
+========================================================= */
+
+function openDigest(
+id: string
+) {
+
+```
+router.push(
+  `/admin/digest?id_digest=${id}`
+);
+```
+
+}
+
+/* =========================================================
+FORMAT DATE
+========================================================= */
+
+function formatDate(
+value?: string | null
+) {
+
+```
+if (!value) {
+  return "—";
+}
+
+try {
+
+  return new Date(
+    value
+  ).toLocaleDateString(
+    "fr-FR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }
+  );
+
+} catch {
+
+  return "—";
+
+}
+```
+
+}
+
+/* =========================================================
+STATUS BADGE
+========================================================= */
+
+function StatusBadge(
+{
+status,
+}: {
+status: string;
+}
+) {
+
+```
+const value =
+  (
+    status || ""
+  ).toUpperCase();
+
+const styles =
+
+  value === "GENERATED"
+
+    ? "bg-green-100 text-green-700"
+
+  : value === "SENT"
+
+    ? "bg-blue-100 text-blue-700"
+
+  : value === "DRAFT"
+
+    ? "bg-gray-200 text-gray-700"
+
+  : "bg-gray-100 text-gray-500";
+
+return (
+
+  <span
+    className={`
+      px-2
+      py-1
+      text-xs
+      rounded
+      ${styles}
+    `}
+  >
+    {value}
+  </span>
+
+);
+```
+
+}
+
+/* =========================================================
+UI
+========================================================= */
+
+return (
+
+```
+<div className="space-y-6">
+
+  {/* HEADER */}
+
+  <div className="flex items-center justify-between">
+
+    <div>
+
+      <h1 className="text-lg font-semibold">
+        Digests
+      </h1>
+
+      <div className="text-sm text-gray-500 mt-1">
+
+        Manage generated digests
+        and create new ones.
+
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white border rounded">
+    </div>
 
-        <div className="grid grid-cols-5 px-4 py-2 text-xs text-gray-500 border-b">
-          <div>Période</div>
-          <div>Template</div>
-          <div>Status</div>
-          <div>Date</div>
-          <div></div>
+    <button
+      onClick={createDigest}
+      disabled={loading}
+      className="
+        px-3
+        py-2
+        bg-black
+        text-white
+        text-xs
+        rounded
+      "
+    >
+      Create Digest
+    </button>
+
+  </div>
+
+  {/* TABLE */}
+
+  <div className="bg-white border rounded">
+
+    <div
+      className="
+        grid
+        grid-cols-[2fr_1.5fr_100px_120px_120px_100px]
+        px-4
+        py-2
+        text-xs
+        text-gray-500
+        border-b
+      "
+    >
+
+      <div>
+        Digest
+      </div>
+
+      <div>
+        Period
+      </div>
+
+      <div>
+        Contents
+      </div>
+
+      <div>
+        Status
+      </div>
+
+      <div>
+        Generated
+      </div>
+
+      <div>
+      </div>
+
+    </div>
+
+    {digests.length === 0 && (
+
+      <div className="p-4 text-sm text-gray-500">
+
+        Aucun digest
+
+      </div>
+
+    )}
+
+    {digests.map(
+      (d) => (
+
+        <div
+          key={
+            d.ID_DIGEST
+          }
+          className="
+            grid
+            grid-cols-[2fr_1.5fr_100px_120px_120px_100px]
+            px-4
+            py-3
+            text-sm
+            border-b
+            items-center
+            hover:bg-gray-50
+          "
+        >
+
+          <div>
+
+            <div className="font-medium">
+
+              {d.DIGEST_NAME}
+
+            </div>
+
+            <div className="text-xs text-gray-500">
+
+              {d.ID_USER}
+
+            </div>
+
+          </div>
+
+          <div className="text-xs">
+
+            {formatDate(
+              d.PERIOD_START
+            )}
+
+            {" → "}
+
+            {formatDate(
+              d.PERIOD_END
+            )}
+
+          </div>
+
+          <div>
+
+            {d.NB_CONTENTS}
+
+          </div>
+
+          <div>
+
+            <StatusBadge
+              status={
+                d.STATUS
+              }
+            />
+
+          </div>
+
+          <div className="text-xs text-gray-500">
+
+            {formatDate(
+              d.GENERATED_AT
+            )}
+
+          </div>
+
+          <div className="text-right">
+
+            <button
+              onClick={() =>
+                openDigest(
+                  d.ID_DIGEST
+                )
+              }
+              className="
+                text-xs
+                px-2
+                py-1
+                border
+                rounded
+                hover:bg-gray-100
+              "
+            >
+              View
+            </button>
+
+          </div>
+
         </div>
 
-        {runs.length === 0 && (
-          <div className="p-4 text-sm text-gray-500">
-            Aucun run
-          </div>
-        )}
+      )
+    )}
 
-        {runs.map((r) => (
-          <div
-            key={r.id_run}
-            className="grid grid-cols-5 px-4 py-3 text-sm border-b items-center hover:bg-gray-50"
-          >
-            <div>{r.period}</div>
+  </div>
 
-            <div className="text-xs text-gray-500">
-              {r.id_template}
-            </div>
+</div>
+```
 
-            <div>
-              <StatusBadge status={r.status} />
-            </div>
-
-            <div className="text-xs text-gray-500">
-              {new Date(r.created_at).toLocaleDateString()}
-            </div>
-
-            <div className="text-right">
-              <button
-                onClick={() => openRun(r.id_run)}
-                className="text-xs px-2 py-1 border rounded hover:bg-gray-100"
-              >
-                Ouvrir
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+);
 }
