@@ -252,9 +252,24 @@ def create_digest(
     digest_name: str,
     frequency: str = "WEEKLY",
 ) -> Dict:
+
     now = datetime.now(
         timezone.utc
     ).isoformat()
+
+    # ========================================================
+    # PERIOD
+    # ========================================================
+
+    period_start, period_end = (
+        get_digest_period(
+            frequency
+        )
+    )
+
+    # ========================================================
+    # DIGEST CONTENTS
+    # ========================================================
 
     digest_data = get_digest_contents(
         user_id=user_id,
@@ -276,6 +291,10 @@ def create_digest(
             "message":
                 "No contents found",
         }
+
+    # ========================================================
+    # USER CONTEXT
+    # ========================================================
 
     user_context = (
         digest_data.get(
@@ -305,12 +324,20 @@ def create_digest(
         or "fr"
     )
 
+    # ========================================================
+    # ANALYSIS
+    # ========================================================
+
     analysis = (
         generate_digest_analysis(
             contents=contents,
             profile_text=profile_text,
         )
     )
+
+    # ========================================================
+    # DIGEST
+    # ========================================================
 
     digest_id = str(
         uuid4()
@@ -329,6 +356,9 @@ def create_digest(
                 "DIGEST_NAME":
                     digest_name,
 
+                "DIGEST_FREQUENCY":
+                    frequency,
+
                 "LANGUAGE":
                     language,
 
@@ -342,7 +372,7 @@ def create_digest(
                     period_end,
 
                 "GENERATED_AT":
-                     now,
+                    now,
 
                 "NB_CONTENTS":
                     len(contents),
@@ -367,6 +397,10 @@ def create_digest(
             }
         ],
     )
+
+    # ========================================================
+    # CONTENTS
+    # ========================================================
 
     rows = []
 
@@ -394,15 +428,28 @@ def create_digest(
             rows,
         )
 
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
     return {
         "status": "ok",
+
         "id_digest":
             digest_id,
+
+        "frequency":
+            frequency,
+
+        "period_start":
+            period_start,
+
+        "period_end":
+            period_end,
 
         "nb_contents":
             len(contents),
     }
-
 
 # ============================================================
 # PERIODS
