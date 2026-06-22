@@ -43,6 +43,14 @@ from "@/components/digest/studio/DigestStudioHeader";
 
 export default function DigestPage() {
 
+  const searchParams =
+    useSearchParams();
+
+  const idDigest =
+    searchParams.get(
+      "id_digest"
+    );
+
   /* =======================================================
      USER
   ======================================================= */
@@ -53,6 +61,18 @@ export default function DigestPage() {
   ] = useState<
     DigestUser | null
   >(null);
+
+  const [
+    digestId,
+    setDigestId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    digestName,
+    setDigestName,
+  ] = useState("");
 
   /* =======================================================
      HEADER CONFIG
@@ -241,6 +261,74 @@ export default function DigestPage() {
     }
   }
 
+  async function loadStoredDigest(
+    digestId: string
+  ) {
+
+    try {
+
+      setLoading(true);
+
+      const response =
+        await api.get(
+          `/digest/${digestId}`
+        );
+
+      const result =
+        response?.result || {};
+
+      const digest =
+        result?.digest || {};
+
+      const digestContents =
+        result?.contents || [];
+
+      setDigestId(
+        digest.ID_DIGEST
+      );
+
+      setDigestName(
+        digest.DIGEST_NAME || ""
+      );
+
+      setSummary(
+        digest.SUMMARY || ""
+      );
+
+      setImplications(
+        digest.IMPLICATIONS || ""
+      );
+
+      setContents(
+        digestContents
+      );
+
+      setEditorialOrder(
+
+        digestContents.map(
+          (
+            item: DigestContentItem
+          ) => ({
+            id: item.id,
+            type: "content",
+          })
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Digest load error",
+        error
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  }
+
   /* =======================================================
      USER SELECT
   ======================================================= */
@@ -257,6 +345,20 @@ export default function DigestPage() {
       user.id_user
     );
   }
+
+    useEffect(() => {
+
+      if (!idDigest) {
+        return;
+      }
+
+      loadStoredDigest(
+        idDigest
+      );
+
+    }, [
+      idDigest,
+    ]);
 
   /* =======================================================
      SELECTED CONTENTS
