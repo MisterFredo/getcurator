@@ -214,13 +214,13 @@ export default function DigestRunsPage() {
         <div>
 
           <h1 className="text-lg font-semibold">
-            Digests
+            Digest Manager
           </h1>
 
           <div className="text-sm text-gray-500 mt-1">
 
-            Manage generated digests
-            and create new ones.
+            Create, manage and edit
+            saved digests.
 
           </div>
 
