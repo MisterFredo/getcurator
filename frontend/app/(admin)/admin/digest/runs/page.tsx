@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import DigestCreateModal from "@/components/digest/DigestCreateModal";
 
 /* ========================================================= */
 
@@ -98,8 +99,8 @@ export default function DigestRunsPage() {
 
   function createDigest() {
 
-    router.push(
-      "/admin/digest"
+    setCreateOpen(
+      true
     );
 
   }
