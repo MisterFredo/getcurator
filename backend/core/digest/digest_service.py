@@ -402,6 +402,93 @@ def create_digest(
             len(contents),
     }
 
+# ============================================================
+# UPDATE DIGEST
+# ============================================================
+
+def update_digest(
+    digest_id: str,
+    digest_name: str,
+    summary: str,
+    implications: str,
+) -> bool:
+
+    update_bq(
+        TABLE_DIGEST,
+        fields={
+            "DIGEST_NAME": digest_name,
+            "SUMMARY": summary,
+            "IMPLICATIONS": implications,
+        },
+        where={
+            "ID_DIGEST": digest_id,
+        },
+    )
+
+    return True
+
+# ============================================================
+# UPDATE DIGEST CONTENTS
+# ============================================================
+
+def update_digest_contents(
+    digest_id: str,
+    content_ids: List[str],
+) -> bool:
+
+    client = get_bigquery_client()
+
+    client.query(
+        f"""
+        DELETE FROM `{TABLE_DIGEST_CONTENT}`
+        WHERE ID_DIGEST = @digest_id
+        """,
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter(
+                    "digest_id",
+                    "STRING",
+                    digest_id,
+                )
+            ]
+        ),
+    ).result()
+
+    now = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    rows = []
+
+    for content_id in content_ids:
+
+        rows.append(
+            {
+                "ID_DIGEST": digest_id,
+                "ID_CONTENT": content_id,
+                "CREATED_AT": now,
+            }
+        )
+
+    if rows:
+
+        insert_bq(
+            TABLE_DIGEST_CONTENT,
+            rows,
+        )
+
+    update_bq(
+        TABLE_DIGEST,
+        fields={
+            "NB_CONTENTS": len(content_ids),
+        },
+        where={
+            "ID_DIGEST": digest_id,
+        },
+    )
+
+    return True
+
 
 # ============================================================
 # LIST
