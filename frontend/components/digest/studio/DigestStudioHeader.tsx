@@ -11,8 +11,6 @@ type Props = {
   lastSentAt?: string | null;
 
   onSave?: () => void;
-
-  isExistingDigest?: boolean;
 };
 
 export default function DigestStudioHeader({
@@ -24,8 +22,6 @@ export default function DigestStudioHeader({
   lastSentAt,
 
   onSave,
-
-  isExistingDigest,
 }: Props) {
 
   return (
@@ -76,30 +72,28 @@ export default function DigestStudioHeader({
 
               {new Date(
                 lastSentAt
-              ).toLocaleDateString()}
+              ).toLocaleDateString()
+              }
+
             </div>
 
           </div>
 
         )}
 
-        {isExistingDigest && (
-
-          <button
-            onClick={onSave}
-            className="
-              px-3
-              py-2
-              rounded
-              bg-black
-              text-white
-              text-xs
-            "
-          >
-            Save Digest
-          </button>
-
-        )}
+        <button
+          onClick={onSave}
+          className="
+            px-3
+            py-2
+            rounded
+            bg-black
+            text-white
+            text-xs
+          "
+        >
+          Save Digest
+        </button>
 
       </div>
 
