@@ -325,6 +325,55 @@ export default function DigestPage() {
     }
   }
 
+  async function handleSaveDigest() {
+
+    if (!digestId) {
+      return;
+    }
+
+    try {
+
+      await api.post(
+        `/digest/${digestId}/save`,
+        {
+
+          digest_name:
+            digestName,
+
+          summary,
+
+          implications,
+
+          content_ids:
+
+            editorialOrder
+              .filter(
+                (i) =>
+                  i.type ===
+                  "content"
+              )
+              .map(
+                (i) => i.id
+              ),
+        }
+      );
+
+      alert(
+        "Digest saved"
+      );
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+      alert(
+        "Save failed"
+      );
+    }
+  }
+
   /* =======================================================
      USER SELECT
   ======================================================= */
