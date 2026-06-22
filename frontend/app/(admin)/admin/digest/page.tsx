@@ -351,20 +351,21 @@ export default function DigestPage() {
 
       if (!digestId) {
 
+        alert("ENTER CREATE");
+
         if (!selectedUser) {
 
-          alert(
-            "Select a user first"
-          );
+          alert("NO USER");
 
           return;
         }
+
+        alert("BEFORE API");
 
         const res =
           await api.post(
             "/digest/create",
             {
-
               user_id:
                 selectedUser.id_user,
 
@@ -374,56 +375,36 @@ export default function DigestPage() {
               frequency:
                 "WEEKLY",
             }
-          );
+            );
+
+        alert("AFTER API");
+
+        console.log(
+          "CREATE RESPONSE",
+          res
+        );
 
         const newDigestId =
           res?.result?.id_digest;
 
         if (!newDigestId) {
+
+          alert(
+            "NO DIGEST ID"
+          );
+
           return;
         }
+
+        alert(
+          `DIGEST CREATED ${newDigestId}`
+        );
 
         window.location.href =
           `/admin/digest?id_digest=${newDigestId}`;
 
         return;
       }
-
-      // =====================================
-      // UPDATE
-      // =====================================
-
-      await api.post(
-        `/digest/${digestId}/save`,
-        {
-
-          digest_name:
-            digestName,
-
-          summary,
-
-          implications,
-
-          content_ids:
-            contentIds,
-        }
-      );
-
-      alert(
-        "Digest saved"
-      );
-
-    } catch (error) {
-
-      console.error(
-        error
-      );
-
-      alert(
-        "Save failed"
-      );
-    }
-  }
 
   /* =======================================================
      USER SELECT
