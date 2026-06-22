@@ -327,7 +327,9 @@ export default function DigestPage() {
 
   async function handleSaveDigest() {
     alert(
-      "SAVE CLICKED"
+      `SAVE CLICKED
+    digestId=${digestId}
+    selectedUser=${selectedUser?.id_user}`
     );
 
     try {
