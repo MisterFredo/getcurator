@@ -33,12 +33,8 @@ import type {
 
 import { useSearchParams } from "next/navigation";
 
-import { useDigestStudio }
-from "@/hooks/useDigestStudio";
-
-import DigestStudioHeader
-from "@/components/digest/studio/DigestStudioHeader";
-
+import DigestStudioHeader from
+  "@/components/digest/studio/DigestStudioHeader";
 /* ========================================================= */
 
 export default function DigestPage() {
@@ -435,33 +431,22 @@ export default function DigestPage() {
 
       <div className="flex items-center justify-between">
 
-        <div>
+        <DigestStudioHeader
 
-          <DigestStudioHeader
+          digestName={digestName}
 
-            digestName={digestName}
+          setDigestName={
+            setDigestName
+          }
 
-            setDigestName={
-              setDigestName
-            }
+          lastSentAt={
+            lastSentAt
+          }
 
-            lastSentAt={
-              lastSentAt
-            }
-
-            isExistingDigest={
-              !!digestId
-            }
-          />
-
-          <div className="text-sm text-gray-500 mt-1">
-
-            Digest automatique basé sur
-            les USER_PREFERENCES.
-
-          </div>
-
-        </div>
+          isExistingDigest={
+            !!digestId
+          }
+        />
 
         {/* LAST SENT */}
 
