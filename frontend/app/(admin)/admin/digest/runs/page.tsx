@@ -39,21 +39,6 @@ export default function DigestRunsPage() {
 
   const router = useRouter();
 
-  const [
-    createOpen,
-    setCreateOpen,
-  ] = useState(false);
-
-  const [
-    digestName,
-    setDigestName,
-  ] = useState("");
-
-  const [
-    frequency,
-    setFrequency,
-  ] = useState("WEEKLY");
-
   /* =========================================================
      LOAD DIGESTS
   ========================================================= */
@@ -106,42 +91,6 @@ export default function DigestRunsPage() {
     loadDigests();
 
   }, []);
-
-  async function handleCreateDigest() {
-
-    try {
-
-      const res =
-        await api.post(
-          "/digest/create",
-          {
-            user_id:
-              "TODO",
-
-            digest_name:
-              digestName,
-
-            frequency,
-          }
-        );
-
-      const digestId =
-        res?.result?.id_digest;
-
-      if (!digestId) {
-        return;
-      }
-
-      router.push(
-        `/admin/digest?id_digest=${digestId}`
-      );
-
-    } catch (e) {
-
-      console.error(e);
-
-    }
-  }
 
   /* =========================================================
      CREATE DIGEST
@@ -258,8 +207,6 @@ export default function DigestRunsPage() {
 
     <div className="space-y-6">
 
-      {/* HEADER */}
-
       <div className="flex items-center justify-between">
 
         <div>
@@ -293,8 +240,6 @@ export default function DigestRunsPage() {
 
       </div>
 
-      {/* TABLE */}
-
       <div className="bg-white border rounded-lg overflow-hidden">
 
         <div
@@ -310,32 +255,19 @@ export default function DigestRunsPage() {
           "
         >
 
-          <div>
-            Digest
-          </div>
+          <div>Digest</div>
 
-          <div>
-            Frequency
-          </div>
+          <div>Frequency</div>
 
-          <div>
-            Period
-          </div>
+          <div>Period</div>
 
-          <div>
-            Contents
-          </div>
+          <div>Contents</div>
 
-          <div>
-            Status
-          </div>
+          <div>Status</div>
 
-          <div>
-            Generated
-          </div>
+          <div>Generated</div>
 
-          <div>
-          </div>
+          <div></div>
 
         </div>
 
@@ -461,6 +393,7 @@ export default function DigestRunsPage() {
         )}
 
       </div>
+
     </div>
 
   );
