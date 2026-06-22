@@ -40,6 +40,21 @@ export default function DigestRunsPage() {
 
   const router = useRouter();
 
+  const [
+    createOpen,
+    setCreateOpen,
+  ] = useState(false);
+
+  const [
+    digestName,
+    setDigestName,
+  ] = useState("");
+
+  const [
+    frequency,
+    setFrequency,
+  ] = useState("WEEKLY");
+
   /* =========================================================
      LOAD DIGESTS
   ========================================================= */
@@ -92,6 +107,42 @@ export default function DigestRunsPage() {
     loadDigests();
 
   }, []);
+
+  async function handleCreateDigest() {
+
+    try {
+
+      const res =
+        await api.post(
+          "/digest/create",
+          {
+            user_id:
+              "TODO",
+
+            digest_name:
+              digestName,
+
+            frequency,
+          }
+        );
+
+      const digestId =
+        res?.result?.id_digest;
+
+      if (!digestId) {
+        return;
+      }
+
+      router.push(
+        `/admin/digest?id_digest=${digestId}`
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+    }
+  }
 
   /* =========================================================
      CREATE DIGEST
@@ -374,6 +425,25 @@ export default function DigestRunsPage() {
                 />
 
               </div>
+
+              <DigestCreateModal
+
+                open={createOpen}
+
+                digestName={digestName}
+                setDigestName={setDigestName}
+
+                frequency={frequency}
+                setFrequency={setFrequency}
+
+                onClose={() =>
+                  setCreateOpen(false)
+                }
+
+                onCreate={
+                  handleCreateDigest
+                }
+              />
 
               <div className="text-xs text-gray-500">
 
