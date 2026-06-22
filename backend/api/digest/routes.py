@@ -47,13 +47,27 @@ def create_digest_route(
             "frequency",
             "WEEKLY",
         ),
+
+        content_ids=payload.get(
+            "content_ids",
+            [],
+        ),
+
+        summary=payload.get(
+            "summary",
+            "",
+        ),
+
+        implications=payload.get(
+            "implications",
+            "",
+        ),
     )
 
     return {
         "status": "ok",
         "result": result,
     }
-
 
 # ============================================================
 # LIST DIGESTS
