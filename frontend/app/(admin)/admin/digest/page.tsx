@@ -326,6 +326,9 @@ export default function DigestPage() {
   }
 
   async function handleSaveDigest() {
+    alert(
+      "SAVE CLICKED"
+    );
 
     try {
 
