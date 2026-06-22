@@ -198,6 +198,55 @@ def generate_editorial(
         **result,
     }
 
+# ============================================================
+# SAVE DIGEST
+# ============================================================
+
+@router.post("/{digest_id}/save")
+def save_digest_route(
+    digest_id: str,
+    payload: dict,
+):
+
+    from core.digest.digest_service import (
+        update_digest,
+        update_digest_contents,
+    )
+
+    update_digest(
+
+        digest_id=digest_id,
+
+        digest_name=payload.get(
+            "digest_name",
+            "",
+        ),
+
+        summary=payload.get(
+            "summary",
+            "",
+        ),
+
+        implications=payload.get(
+            "implications",
+            "",
+        ),
+    )
+
+    update_digest_contents(
+
+        digest_id=digest_id,
+
+        content_ids=payload.get(
+            "content_ids",
+            [],
+        ),
+    )
+
+    return {
+        "status": "ok",
+    }
+
 
 # ============================================================
 # GENERATE ANALYSIS (PREVIEW)
