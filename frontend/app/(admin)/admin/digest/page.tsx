@@ -327,11 +327,66 @@ export default function DigestPage() {
 
   async function handleSaveDigest() {
 
-    if (!digestId) {
-      return;
-    }
-
     try {
+
+      const contentIds =
+
+        editorialOrder
+          .filter(
+            (i) =>
+              i.type === "content"
+          )
+          .map(
+            (i) => i.id
+          );
+
+      // =====================================
+      // CREATE
+      // =====================================
+
+      if (!digestId) {
+
+        if (!selectedUser) {
+
+          alert(
+            "Select a user first"
+          );
+
+          return;
+        }
+
+        const res =
+          await api.post(
+            "/digest/create",
+            {
+
+              user_id:
+                selectedUser.id_user,
+
+              digest_name:
+                digestName,
+
+              frequency:
+                "WEEKLY",
+            }
+          );
+
+        const newDigestId =
+          res?.result?.id_digest;
+
+        if (!newDigestId) {
+          return;
+        }
+
+        window.location.href =
+          `/admin/digest?id_digest=${newDigestId}`;
+
+        return;
+      }
+
+      // =====================================
+      // UPDATE
+      // =====================================
 
       await api.post(
         `/digest/${digestId}/save`,
@@ -345,16 +400,7 @@ export default function DigestPage() {
           implications,
 
           content_ids:
-
-            editorialOrder
-              .filter(
-                (i) =>
-                  i.type ===
-                  "content"
-              )
-              .map(
-                (i) => i.id
-              ),
+            contentIds,
         }
       );
 
