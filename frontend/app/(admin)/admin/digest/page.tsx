@@ -437,9 +437,22 @@ export default function DigestPage() {
 
         <div>
 
-          <h1 className="text-lg font-semibold tracking-tight">
-            Digest
-          </h1>
+          <DigestStudioHeader
+
+            digestName={digestName}
+
+            setDigestName={
+              setDigestName
+            }
+
+            lastSentAt={
+              lastSentAt
+            }
+
+            isExistingDigest={
+              !!digestId
+            }
+          />
 
           <div className="text-sm text-gray-500 mt-1">
 
