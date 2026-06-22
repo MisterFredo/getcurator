@@ -426,25 +426,6 @@ export default function DigestRunsPage() {
 
               </div>
 
-              <DigestCreateModal
-
-                open={createOpen}
-
-                digestName={digestName}
-                setDigestName={setDigestName}
-
-                frequency={frequency}
-                setFrequency={setFrequency}
-
-                onClose={() =>
-                  setCreateOpen(false)
-                }
-
-                onCreate={
-                  handleCreateDigest
-                }
-              />
-
               <div className="text-xs text-gray-500">
 
                 {formatDate(
@@ -481,6 +462,25 @@ export default function DigestRunsPage() {
         )}
 
       </div>
+
+      <DigestCreateModal
+
+        open={createOpen}
+
+        digestName={digestName}
+        setDigestName={setDigestName}
+
+        frequency={frequency}
+        setFrequency={setFrequency}
+
+        onClose={() =>
+          setCreateOpen(false)
+        }
+
+        onCreate={
+           handleCreateDigest
+        }
+      />
 
     </div>
 
