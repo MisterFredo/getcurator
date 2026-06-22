@@ -54,8 +54,22 @@ export default function DigestRunsPage() {
           "/digest/list-all"
         );
 
+      const items =
+        res?.result || [];
+
+      items.sort(
+        (a, b) =>
+          new Date(
+            b.GENERATED_AT
+          ).getTime()
+          -
+          new Date(
+            a.GENERATED_AT
+          ).getTime()
+      );
+
       setDigests(
-        res?.result || []
+        items
       );
 
     } catch (e) {
