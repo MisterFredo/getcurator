@@ -5,8 +5,10 @@ from typing import (
 )
 
 from uuid import uuid4
+
 from datetime import (
     datetime,
+    timedelta,
     timezone,
 )
 import json
@@ -248,8 +250,7 @@ def _load_digest_contents(
 def create_digest(
     user_id: str,
     digest_name: str,
-    period_start: str,
-    period_end: str,
+    frequency: str = "WEEKLY",
 ) -> Dict:
     now = datetime.now(
         timezone.utc
@@ -401,6 +402,48 @@ def create_digest(
         "nb_contents":
             len(contents),
     }
+
+
+# ============================================================
+# PERIODS
+# ============================================================
+
+def get_digest_period(
+    frequency: str,
+) -> tuple[str, str]:
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    frequency = (
+        frequency or "WEEKLY"
+    ).upper()
+
+    if frequency == "QUARTERLY":
+
+        period_start = (
+            now - timedelta(days=90)
+        )
+
+    elif frequency == "MONTHLY":
+
+        period_start = (
+            now - timedelta(days=30)
+        )
+
+    else:
+
+        frequency = "WEEKLY"
+
+        period_start = (
+            now - timedelta(days=7)
+        )
+
+    return (
+        period_start.isoformat(),
+        now.isoformat(),
+    )
 
 # ============================================================
 # UPDATE DIGEST
