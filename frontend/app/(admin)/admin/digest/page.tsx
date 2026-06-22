@@ -530,16 +530,14 @@ export default function DigestPage() {
 
           digestName={digestName}
 
-          setDigestName={
+            setDigestName={
             setDigestName
           }
 
           lastSentAt={
-            lastSentAt
-          }
-
-          isExistingDigest={
-            !!digestId
+              digestId
+              ? lastSentAt
+              : null
           }
 
           onSave={
