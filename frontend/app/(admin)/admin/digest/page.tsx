@@ -446,10 +446,11 @@ export default function DigestPage() {
           isExistingDigest={
             !!digestId
           }
-        />
-        )}
 
-      </div>
+          onSave={
+            handleSaveDigest
+          }
+        />
 
       {/* ===================================================
          MAIN LAYOUT
