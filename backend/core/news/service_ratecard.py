@@ -33,19 +33,6 @@ TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 
 
 # ============================================================
-# SERIALIZATION
-# ============================================================
-def serialize_row(row: dict) -> dict:
-    clean = {}
-    for k, v in row.items():
-        if hasattr(v, "isoformat"):
-            clean[k] = v.isoformat()
-        else:
-            clean[k] = v
-    return clean
-
-
-# ============================================================
 # CREATE NEWS / BRÈVE
 # ============================================================
 
