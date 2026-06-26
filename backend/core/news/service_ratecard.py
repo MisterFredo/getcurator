@@ -36,98 +36,75 @@ TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 # CREATE NEWS / BRÈVE
 # ============================================================
 
-def create_news(data: NewsCreate) -> str:
-
-    if not data.id_company:
-        raise ValueError("id_company obligatoire")
-
-    if not data.title or not data.title.strip():
-        raise ValueError("title obligatoire")
-
-    if data.news_kind not in ("NEWS", "BRIEF"):
-        raise ValueError("news_kind invalide (NEWS | BRIEF)")
-
-    news_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
-
-    client = get_bigquery_client()
+def create_news(
+    data: NewsCreate,
+) -> str:
 
     # ============================================================
-    # 1️⃣ INSERT NEWS
+    # VALIDATION
+    # ============================================================
+
+    if not data.id_company:
+        raise ValueError(
+            "id_company obligatoire"
+        )
+
+    if not data.title or not data.title.strip():
+        raise ValueError(
+            "title obligatoire"
+        )
+
+    # ============================================================
+    # PREPARE
+    # ============================================================
+
+    news_id = str(uuid.uuid4())
+
+    now = datetime.utcnow().isoformat()
+
+    # ============================================================
+    # INSERT
     # ============================================================
 
     row = [{
+
         "ID_NEWS": news_id,
+
         "STATUS": "DRAFT",
+
         "IS_ACTIVE": True,
-        "NEWS_KIND": data.news_kind,
+
         "NEWS_TYPE": data.news_type,
+
         "ID_COMPANY": data.id_company,
+
         "TITLE": data.title.strip(),
+
         "EXCERPT": data.excerpt,
-        "BODY": data.body if data.news_kind == "NEWS" else None,
-        "MEDIA_RECTANGLE_ID": None,
-        "HAS_VISUAL": False,
+
+        "BODY": data.body,
+
         "SOURCE_URL": data.source_url,
+
         "AUTHOR": data.author,
+
         "PUBLISHED_AT": None,
+
         "CREATED_AT": now,
+
         "UPDATED_AT": now,
-        "IS_VECTORIZED": False,  # 🔥 important
+
     }]
+
+    client = get_bigquery_client()
 
     client.load_table_from_json(
         row,
         TABLE_NEWS,
-        job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND"),
+        job_config=bigquery.LoadJobConfig(
+            write_disposition="WRITE_APPEND",
+        ),
     ).result()
-
-    # ============================================================
-    # 2️⃣ LOGO SOCIÉTÉ
-    # ============================================================
-
-    logo_rows = query_bq(
-        f"""
-        SELECT MEDIA_LOGO_RECTANGLE_ID
-        FROM `{TABLE_COMPANY}`
-        WHERE ID_COMPANY = @company_id
-        LIMIT 1
-        """,
-        {"company_id": data.id_company},
-    )
-
-    if logo_rows:
-        logo = logo_rows[0].get("MEDIA_LOGO_RECTANGLE_ID")
-        if logo:
-            duplicate_company_visual_for_news(news_id, logo)
-
-    # ============================================================
-    # 3️⃣ RELATIONS
-    # ============================================================
-
-    if data.topics:
-        insert_bq(
-            TABLE_NEWS_TOPIC,
-            [{"ID_NEWS": news_id, "ID_TOPIC": tid} for tid in data.topics],
-        )
-
-    if data.persons:
-        insert_bq(
-            TABLE_NEWS_PERSON,
-            [{"ID_NEWS": news_id, "ID_PERSON": pid} for pid in data.persons],
-        )
-
-    if data.concepts:
-        insert_bq(
-            TABLE_NEWS_CONCEPT,
-            [{"ID_NEWS": news_id, "ID_CONCEPT": cid} for cid in data.concepts],
-        )
-
-    if data.solutions:
-        insert_bq(
-            TABLE_NEWS_SOLUTION,
-            [{"ID_NEWS": news_id, "ID_SOLUTION": sid} for sid in data.solutions],
-        )
 
     # ============================================================
     # DONE
@@ -135,86 +112,42 @@ def create_news(data: NewsCreate) -> str:
 
     return news_id
 
-
-# ============================================================
-# DUPLICATE COMPANY VISUAL FOR NEWS
-# ============================================================
-
-def duplicate_company_visual_for_news(id_news: str, company_media_id: str) -> str:
-    from google.cloud import storage
-    from google.oauth2 import service_account
-    import os
-    import json
-
-    if not company_media_id or not company_media_id.startswith("COMPANY_"):
-        raise ValueError("MEDIA société invalide")
-
-    credentials_path = os.environ.get("GOOGLE_CREDENTIALS_FILE")
-    if not credentials_path:
-        raise ValueError("GOOGLE_CREDENTIALS_FILE non défini")
-
-    with open(credentials_path, "r") as f:
-        info = json.load(f)
-
-    credentials = service_account.Credentials.from_service_account_info(info)
-
-    storage_client = storage.Client(
-        credentials=credentials,
-        project=info.get("project_id"),
-    )
-
-    bucket = storage_client.bucket("ratecard-media")
-
-    source_blob = bucket.blob(f"companies/{company_media_id}")
-
-    if not source_blob.exists():
-        raise ValueError("Fichier société introuvable")
-
-    new_filename = f"NEWS_{id_news}_rect.jpg"
-    destination_blob = bucket.blob(f"news/{new_filename}")
-
-    destination_blob.rewrite(source_blob)
-
-    # Update BQ
-    update_bq(
-        TABLE_NEWS,
-        fields={
-            "MEDIA_RECTANGLE_ID": new_filename,
-            "HAS_VISUAL": True,
-        },
-        where={"ID_NEWS": id_news},
-    )
-
-    return new_filename
-# ============================================================
-# GET ONE NEWS / BRÈVE
-# ============================================================
-def get_news(id_news: str):
+def get_news(
+    id_news: str,
+):
 
     rows = query_bq(
         f"""
         SELECT
+
             n.ID_NEWS,
+
             n.STATUS,
-            n.NEWS_KIND,
+
             n.NEWS_TYPE,
+
             n.TITLE,
             n.EXCERPT,
             n.BODY,
-            n.MEDIA_RECTANGLE_ID,
-            n.HAS_VISUAL,
+
             n.SOURCE_URL,
             n.AUTHOR,
+
             n.PUBLISHED_AT,
             n.CREATED_AT,
             n.UPDATED_AT,
+
             c.ID_COMPANY,
             c.NAME AS COMPANY_NAME,
             c.IS_PARTNER
+
         FROM `{TABLE_NEWS}` n
+
         JOIN `{TABLE_COMPANY}` c
           ON n.ID_COMPANY = c.ID_COMPANY
+
         WHERE n.ID_NEWS = @id
+
         LIMIT 1
         """,
         {"id": id_news},
@@ -225,139 +158,55 @@ def get_news(id_news: str):
 
     r = rows[0]
 
-    news = {
+    return {
+
         "id_news": r["ID_NEWS"],
-        "status": r.get("STATUS"),
-        "news_kind": r.get("NEWS_KIND"),
-        "news_type": r.get("NEWS_TYPE"),
 
-        "title": r.get("TITLE"),
-        "excerpt": r.get("EXCERPT"),
-        "body": r.get("BODY"),
+        "status": r["STATUS"],
 
-        "media_rectangle_id": r.get("MEDIA_RECTANGLE_ID"),
-        "has_visual": bool(r.get("HAS_VISUAL")),
+        "news_type": r["NEWS_TYPE"],
 
-        "source_url": r.get("SOURCE_URL"),
-        "author": r.get("AUTHOR"),
+        "title": r["TITLE"],
+
+        "excerpt": r["EXCERPT"],
+
+        "body": r["BODY"],
+
+        "source_url": r["SOURCE_URL"],
+
+        "author": r["AUTHOR"],
 
         "published_at": (
             r["PUBLISHED_AT"].isoformat()
-            if r.get("PUBLISHED_AT")
+            if r["PUBLISHED_AT"]
             else None
         ),
+
         "created_at": (
             r["CREATED_AT"].isoformat()
-            if r.get("CREATED_AT")
+            if r["CREATED_AT"]
             else None
         ),
+
         "updated_at": (
             r["UPDATED_AT"].isoformat()
-            if r.get("UPDATED_AT")
+            if r["UPDATED_AT"]
             else None
         ),
 
         "company": {
-            "id_company": r.get("ID_COMPANY"),
-            "name": r.get("COMPANY_NAME"),
-            "is_partner": bool(r.get("IS_PARTNER")),
+
+            "id_company": r["ID_COMPANY"],
+
+            "name": r["COMPANY_NAME"],
+
+            "is_partner": bool(
+                r["IS_PARTNER"]
+            ),
+
         },
+
     }
-
-    # ------------------------------------------------------------
-    # TOPICS
-    # ------------------------------------------------------------
-
-    topic_rows = query_bq(
-        f"""
-        SELECT T.ID_TOPIC, T.LABEL
-        FROM `{TABLE_NEWS_TOPIC}` NT
-        JOIN `{TABLE_TOPIC}` T
-          ON NT.ID_TOPIC = T.ID_TOPIC
-        WHERE NT.ID_NEWS = @id
-        """,
-        {"id": id_news},
-    )
-
-    news["topics"] = [
-        {
-            "id_topic": t["ID_TOPIC"],
-            "label": t["LABEL"],
-        }
-        for t in topic_rows
-    ]
-
-    # ------------------------------------------------------------
-    # PERSONS
-    # ------------------------------------------------------------
-
-    person_rows = query_bq(
-        f"""
-        SELECT P.ID_PERSON, P.NAME
-        FROM `{TABLE_NEWS_PERSON}` NP
-        JOIN `{TABLE_PERSON}` P
-          ON NP.ID_PERSON = P.ID_PERSON
-        WHERE NP.ID_NEWS = @id
-        """,
-        {"id": id_news},
-    )
-
-    news["persons"] = [
-        {
-            "id_person": p["ID_PERSON"],
-            "name": p["NAME"],
-        }
-        for p in person_rows
-    ]
-
-    # ------------------------------------------------------------
-    # CONCEPTS
-    # ------------------------------------------------------------
-
-    concept_rows = query_bq(
-        f"""
-        SELECT C.ID_CONCEPT, C.LABEL
-        FROM `{TABLE_NEWS_CONCEPT}` NC
-        JOIN `{TABLE_CONCEPT}` C
-          ON NC.ID_CONCEPT = C.ID_CONCEPT
-        WHERE NC.ID_NEWS = @id
-        """,
-        {"id": id_news},
-    )
-
-    news["concepts"] = [
-        {
-            "id_concept": c["ID_CONCEPT"],
-            "label": r["LABEL"],
-        }
-        for c in concept_rows
-    ]
-
-    # ------------------------------------------------------------
-    # SOLUTIONS
-    # ------------------------------------------------------------
-
-    solution_rows = query_bq(
-        f"""
-        SELECT S.ID_SOLUTION, S.NAME
-        FROM `{TABLE_NEWS_SOLUTION}` NS
-        JOIN `{TABLE_SOLUTION}` S
-          ON NS.ID_SOLUTION = S.ID_SOLUTION
-        WHERE NS.ID_NEWS = @id
-        """,
-        {"id": id_news},
-    )
-
-    news["solutions"] = [
-        {
-            "id_solution": s["ID_SOLUTION"],
-            "name": s["NAME"],
-        }
-        for s in solution_rows
-    ]
-
-    return news
-
 
 # ============================================================
 # LIST NEWS / BRÈVES (PUBLIC)
