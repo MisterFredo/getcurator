@@ -457,328 +457,138 @@ def publish_news(
 
     return status
 
-
 # ============================================================
-# SEARCH SIGNAUX — FLUX UNIQUEMENT
+# SEARCH NEWS (PUBLIC)
 # ============================================================
 
 def search_breves_public(
-    topics: Optional[List[str]] = None,
     news_types: Optional[List[str]] = None,
     companies: Optional[List[str]] = None,
     limit: int = 20,
     cursor: Optional[str] = None,
 ):
-    """
-    Retourne uniquement :
-    - le flux principal (items)
-    - les actualités partenaires (sponsorised)
 
-    Aucun calcul de stats ici.
-    """
+    params = {
+        "limit": limit,
+    }
 
-    params = {"limit": limit}
-    where_clauses = ["status = 'PUBLISHED'"]
-
-    # =====================================================
-    # FILTRES
-    # =====================================================
-
-    if topics:
-        where_clauses.append(
-            """
-            EXISTS (
-                SELECT 1
-                FROM UNNEST(topics) t
-                WHERE t.id_topic IN UNNEST(@topics)
-            )
-            """
-        )
-        params["topics"] = topics
+    where = [
+        "n.STATUS = 'PUBLISHED'",
+    ]
 
     if news_types:
-        where_clauses.append("news_type IN UNNEST(@news_types)")
+        where.append(
+            "n.NEWS_TYPE IN UNNEST(@news_types)"
+        )
         params["news_types"] = news_types
 
     if companies:
-        where_clauses.append("id_company IN UNNEST(@companies)")
+        where.append(
+            "n.ID_COMPANY IN UNNEST(@companies)"
+        )
         params["companies"] = companies
 
     if cursor:
-        where_clauses.append("published_at < @cursor")
+        where.append(
+            "n.PUBLISHED_AT < @cursor"
+        )
         params["cursor"] = cursor
 
-    where_sql = " AND ".join(where_clauses)
-
-    # =====================================================
-    # ITEMS
-    # =====================================================
-
-    sql_items = f"""
+    sql = f"""
         SELECT
-            id_news,
-            title,
-            excerpt,
-            published_at,
-            news_type,
-            news_kind,
-            id_company,
-            company_name,
-            is_partner,
-            topics
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_ENRICHED`
-        WHERE {where_sql}
-        ORDER BY published_at DESC
+
+            n.ID_NEWS,
+            n.TITLE,
+            n.EXCERPT,
+            n.PUBLISHED_AT,
+            n.NEWS_TYPE,
+
+            c.ID_COMPANY,
+            c.NAME,
+            c.IS_PARTNER,
+            c.MEDIA_LOGO_RECTANGLE_ID
+
+        FROM `{TABLE_NEWS}` n
+
+        JOIN `{TABLE_COMPANY}` c
+          ON n.ID_COMPANY = c.ID_COMPANY
+
+        WHERE {" AND ".join(where)}
+
+        ORDER BY
+            n.PUBLISHED_AT DESC
+
         LIMIT @limit
     """
 
-    rows = query_bq(sql_items, params)
+    rows = query_bq(
+        sql,
+        params,
+    )
 
     items = [
         {
-            "id": r.get("id_news"),
-            "title": r.get("title"),
-            "excerpt": r.get("excerpt"),
-            "published_at": r.get("published_at"),
-            "news_type": r.get("news_type"),
-            "news_kind": r.get("news_kind"),  # 🔑 IMPORTANT
+            "id": r["ID_NEWS"],
+            "title": r["TITLE"],
+            "excerpt": r["EXCERPT"],
+            "published_at": r["PUBLISHED_AT"],
+            "news_type": r["NEWS_TYPE"],
             "company": {
-                "id_company": r.get("id_company"),
-                "name": r.get("company_name"),
-                "is_partner": bool(r.get("is_partner")),
+                "id_company": r["ID_COMPANY"],
+                "name": r["NAME"],
+                "is_partner": bool(
+                    r["IS_PARTNER"]
+                ),
+                "logo": r["MEDIA_LOGO_RECTANGLE_ID"],
             },
-            "topics": r.get("topics", []) or [],
         }
         for r in rows
     ]
 
-    # =====================================================
-    # SPONSORISED (PARTENAIRES UNIQUEMENT)
-    # =====================================================
-
-    sql_sponsorised = f"""
-        SELECT
-            id_news,
-            title,
-            excerpt,
-            published_at,
-            news_type,
-            news_kind,
-            id_company,
-            company_name,
-            is_partner,
-            topics
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_ENRICHED`
-        WHERE {where_sql}
-          AND is_partner = TRUE
-        ORDER BY published_at DESC
-        LIMIT 3
-    """
-
-    sponsor_rows = query_bq(sql_sponsorised, params)
-
-    sponsorised = [
-        {
-            "id": r.get("id_news"),
-            "title": r.get("title"),
-            "excerpt": r.get("excerpt"),
-            "published_at": r.get("published_at"),
-            "news_type": r.get("news_type"),
-            "news_kind": r.get("news_kind"),  # 🔑 IMPORTANT
-            "company": {
-                "id_company": r.get("id_company"),
-                "name": r.get("company_name"),
-                "is_partner": True,
-            },
-            "topics": r.get("topics", []) or [],
-        }
-        for r in sponsor_rows
-    ]
-
     return {
         "items": items,
-        "sponsorised": sponsorised,
+        "sponsorised": [
+            item
+            for item in items
+            if item["company"]["is_partner"]
+        ][:3],
     }
-
-
 
 # ============================================================
-# SIGNAUX STATS — STATS UNIQUEMENT
-# ============================================================
-
-def get_breves_stats_public():
-
-    # =====================================================
-    # GLOBAL
-    # =====================================================
-
-    global_rows = query_bq(f"""
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_STATS_GLOBAL`
-    """)
-
-    if global_rows:
-        g = global_rows[0]
-        total_count = g.get("TOTAL", 0) or 0
-        last_7 = g.get("LAST_7_DAYS", 0) or 0
-        last_30 = g.get("LAST_30_DAYS", 0) or 0
-    else:
-        total_count = 0
-        last_7 = 0
-        last_30 = 0
-
-    # =====================================================
-    # TYPES
-    # =====================================================
-
-    types_rows = query_bq(f"""
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_STATS_TYPE`
-        ORDER BY TOTAL DESC
-    """)
-
-    types_stats = [
-        {
-            "news_type": r.get("NEWS_TYPE"),
-            "total": r.get("TOTAL", 0) or 0,
-            "last_7_days": r.get("LAST_7_DAYS", 0) or 0,
-            "last_30_days": r.get("LAST_30_DAYS", 0) or 0,
-        }
-        for r in types_rows
-    ]
-
-    # =====================================================
-    # TOPICS
-    # =====================================================
-
-    topics_rows = query_bq(f"""
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_STATS_TOPIC`
-        ORDER BY TOTAL DESC
-    """)
-
-    topics_stats = [
-        {
-            "id_topic": r.get("ID_TOPIC"),
-            "label": r.get("LABEL"),
-            "total": r.get("TOTAL", 0) or 0,
-            "last_7_days": r.get("LAST_7_DAYS", 0) or 0,
-            "last_30_days": r.get("LAST_30_DAYS", 0) or 0,
-        }
-        for r in topics_rows
-        if r.get("ID_TOPIC") and r.get("LABEL")
-    ]
-
-    # =====================================================
-    # COMPANIES (NEWS + CONTENT MERGE)
-    # =====================================================
-
-    # --- NEWS ---
-    news_rows = query_bq(f"""
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_NEWS_STATS_COMPANY`
-    """)
-
-    # --- CONTENT (analyses) ---
-    content_rows = query_bq(f"""
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_COMPANY`
-    """)
-
-    # --- index ---
-    news_map = {
-        r.get("ID_COMPANY"): r
-        for r in news_rows
-        if r.get("ID_COMPANY")
-    }
-
-    content_map = {
-        r.get("ID_COMPANY"): r
-        for r in content_rows
-        if r.get("ID_COMPANY")
-    }
-
-    # --- union des companies ---
-    all_company_ids = set(news_map.keys()) | set(content_map.keys())
-
-    top_companies = []
-
-    for company_id in all_company_ids:
-
-        news = news_map.get(company_id, {})
-        content = content_map.get(company_id, {})
-
-        name = news.get("NAME") or content.get("NAME")
-
-        if not name:
-            continue
-
-        total_news = news.get("TOTAL", 0) or 0
-        total_content = content.get("TOTAL", 0) or 0
-
-        last7_news = news.get("LAST_7_DAYS", 0) or 0
-        last7_content = content.get("LAST_7_DAYS", 0) or 0
-
-        last30_news = news.get("LAST_30_DAYS", 0) or 0
-        last30_content = content.get("LAST_30_DAYS", 0) or 0
-
-        top_companies.append({
-            "id_company": company_id,
-            "name": name,
-            "is_partner": bool(news.get("IS_PARTNER")),
-
-            # 🔹 SPLIT (pour ton front)
-            "total_news": total_news,
-            "total_analyses": total_content,
-
-            # 🔹 AGRÉGÉ
-            "total": total_news + total_content,
-            "last_7_days": last7_news + last7_content,
-            "last_30_days": last30_news + last30_content,
-        })
-
-    # --- tri final ---
-    top_companies.sort(
-        key=lambda x: x["total"],
-        reverse=True
-    )
-
-    # =====================================================
-    # RETURN
-    # =====================================================
-
-    return {
-        "total_count": total_count,
-        "last_7_days": last_7,
-        "last_30_days": last_30,
-        "topics_stats": topics_stats,
-        "types_stats": types_stats,
-        "top_companies": top_companies,
-    }
-
-
-# ============================================================
-# LIST ALL COMPANIES — PUBLIC (FOR FILTER PANEL)
+# LIST COMPANIES (PUBLIC FILTER)
 # ============================================================
 
 def list_companies_public():
-    sql = f"""
+
+    rows = query_bq(
+        f"""
         SELECT
+
             c.ID_COMPANY,
             c.NAME,
             c.IS_PARTNER,
-            COUNT(n.ID_NEWS) AS TOTAL_COUNT
+
+            COUNT(*) AS TOTAL_COUNT
+
         FROM `{TABLE_NEWS}` n
+
         JOIN `{TABLE_COMPANY}` c
           ON n.ID_COMPANY = c.ID_COMPANY
+
         WHERE
             n.STATUS = 'PUBLISHED'
             AND n.PUBLISHED_AT IS NOT NULL
-        GROUP BY c.ID_COMPANY, c.NAME, c.IS_PARTNER
-        ORDER BY TOTAL_COUNT DESC
-    """
 
-    rows = query_bq(sql)
+        GROUP BY
+
+            c.ID_COMPANY,
+            c.NAME,
+            c.IS_PARTNER
+
+        ORDER BY
+            TOTAL_COUNT DESC
+        """
+    )
 
     return [
         {
@@ -789,8 +599,6 @@ def list_companies_public():
         }
         for r in rows
     ]
-
-
 
 # ============================================================
 # LIST BRÈVES — PUBLIC (PAGINÉ / PAR ANNÉE)
