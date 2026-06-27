@@ -261,133 +261,76 @@ def list_news():
 # ============================================================
 
 def list_news_types():
-    rows = query_bq(
+
+    return query_bq(
         f"""
-        SELECT CODE, LABEL
+        SELECT
+            CODE,
+            LABEL
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS_TYPE`
         WHERE IS_ACTIVE = TRUE
         ORDER BY LABEL
         """
     )
 
-    return [
-        {
-            "code": r["CODE"],
-            "label": r["LABEL"],
-        }
-        for r in rows
-    ]
-
 
 # ============================================================
 # UPDATE NEWS / BRÈVE
 # ============================================================
 
-def update_news(id_news: str, data: NewsUpdate):
+def update_news(
+    id_news: str,
+    data: NewsUpdate,
+):
 
-    values = data.dict(exclude_unset=True)
+    values = data.dict(
+        exclude_unset=True,
+    )
+
     if not values:
         return True
 
     field_map = {
-        "news_kind": "NEWS_KIND",
+
         "news_type": "NEWS_TYPE",
+
         "id_company": "ID_COMPANY",
+
         "title": "TITLE",
+
         "excerpt": "EXCERPT",
+
         "body": "BODY",
-        "media_rectangle_id": "MEDIA_RECTANGLE_ID",
+
         "source_url": "SOURCE_URL",
+
         "author": "AUTHOR",
+
     }
 
     fields = {}
 
-    for k, v in values.items():
-        if k in field_map:
-            fields[field_map[k]] = v
+    for key, value in values.items():
 
-    if "media_rectangle_id" in values:
-        fields["HAS_VISUAL"] = bool(values["media_rectangle_id"])
+        column = field_map.get(key)
 
-    fields["UPDATED_AT"] = datetime.utcnow().isoformat()
+        if column:
+            fields[column] = value
 
-    if fields:
-        update_bq(
-            table=TABLE_NEWS,
-            fields=fields,
-            where={"ID_NEWS": id_news},
-        )
+    if not fields:
+        return True
 
-    client = get_bigquery_client()
+    fields["UPDATED_AT"] = (
+        datetime.utcnow().isoformat()
+    )
 
-    # TOPICS
-    if data.topics is not None:
-        client.query(
-            f"DELETE FROM `{TABLE_NEWS_TOPIC}` WHERE ID_NEWS = @id",
-            job_config=bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("id", "STRING", id_news)
-                ]
-            ),
-        ).result()
-
-        if data.topics:
-            insert_bq(
-                TABLE_NEWS_TOPIC,
-                [{"ID_NEWS": id_news, "ID_TOPIC": tid} for tid in data.topics],
-            )
-
-    # PERSONS
-    if data.persons is not None:
-        client.query(
-            f"DELETE FROM `{TABLE_NEWS_PERSON}` WHERE ID_NEWS = @id",
-            job_config=bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("id", "STRING", id_news)
-                ]
-            ),
-        ).result()
-
-        if data.persons:
-            insert_bq(
-                TABLE_NEWS_PERSON,
-                [{"ID_NEWS": id_news, "ID_PERSON": pid} for pid in data.persons],
-            )
-
-    # CONCEPTS
-    if data.concepts is not None:
-        client.query(
-            f"DELETE FROM `{TABLE_NEWS_CONCEPT}` WHERE ID_NEWS = @id",
-            job_config=bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("id", "STRING", id_news)
-                ]
-            ),
-        ).result()
-
-        if data.concepts:
-            insert_bq(
-                TABLE_NEWS_CONCEPT,
-                [{"ID_NEWS": id_news, "ID_CONCEPT": cid} for cid in data.concepts],
-            )
-
-    # SOLUTIONS
-    if data.solutions is not None:
-        client.query(
-            f"DELETE FROM `{TABLE_NEWS_SOLUTION}` WHERE ID_NEWS = @id",
-            job_config=bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("id", "STRING", id_news)
-                ]
-            ),
-        ).result()
-
-        if data.solutions:
-            insert_bq(
-                TABLE_NEWS_SOLUTION,
-                [{"ID_NEWS": id_news, "ID_SOLUTION": sid} for sid in data.solutions],
-            )
+    update_bq(
+        table=TABLE_NEWS,
+        fields=fields,
+        where={
+            "ID_NEWS": id_news,
+        },
+    )
 
     return True
 
@@ -403,132 +346,102 @@ def archive_news(id_news: str):
     )
     return True
 
+def delete_news(
+    news_id: str,
+):
 
-def delete_news(news_id: str):
     client = get_bigquery_client()
 
-    queries = [
-        f"DELETE FROM `{TABLE_NEWS}` WHERE ID_NEWS = @id",
-        f"DELETE FROM `{TABLE_NEWS_TOPIC}` WHERE ID_NEWS = @id",
-        f"DELETE FROM `{TABLE_NEWS_PERSON}` WHERE ID_NEWS = @id",
-        f"DELETE FROM `{TABLE_NEWS_CONCEPT}` WHERE ID_NEWS = @id",
-        f"DELETE FROM `{TABLE_NEWS_SOLUTION}` WHERE ID_NEWS = @id",
-        f"DELETE FROM `{TABLE_NEWS_LINKEDIN_POST}` WHERE ID_NEWS = @id",
-    ]
-
     job_config = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ScalarQueryParameter("id", "STRING", news_id)]
+        query_parameters=[
+            bigquery.ScalarQueryParameter(
+                "id",
+                "STRING",
+                news_id,
+            )
+        ]
     )
 
-    for q in queries:
-        client.query(q, job_config=job_config).result()
+    client.query(
+        f"""
+        DELETE FROM `{TABLE_NEWS_LINKEDIN_POST}`
+        WHERE ID_NEWS = @id
+        """,
+        job_config=job_config,
+    ).result()
+
+    client.query(
+        f"""
+        DELETE FROM `{TABLE_NEWS}`
+        WHERE ID_NEWS = @id
+        """,
+        job_config=job_config,
+    ).result()
+
+    return True
+
+
 # ============================================================
 # PUBLISH
 # ============================================================
-def publish_news(id_news: str, published_at: Optional[str] = None):
+
+def publish_news(
+    id_news: str,
+    published_at: Optional[str] = None,
+):
 
     rows = query_bq(
         f"""
         SELECT
-            n.ID_COMPANY,
-            n.NEWS_KIND,
-            n.EXCERPT,
-            n.MEDIA_RECTANGLE_ID,
-            c.MEDIA_LOGO_RECTANGLE_ID AS COMPANY_RECT
-        FROM `{TABLE_NEWS}` n
-        JOIN `{TABLE_COMPANY}` c
-          ON n.ID_COMPANY = c.ID_COMPANY
-        WHERE n.ID_NEWS = @id
+            EXCERPT
+        FROM `{TABLE_NEWS}`
+        WHERE ID_NEWS = @id
+        LIMIT 1
         """,
         {"id": id_news},
     )
 
     if not rows:
-        raise ValueError("News introuvable")
-
-    row = rows[0]
-
-    # ============================================================
-    # VALIDATION MINIMALE
-    # ============================================================
-
-    if not row["EXCERPT"]:
-        raise ValueError("Un excerpt est requis pour publier")
-
-    media_id = row["MEDIA_RECTANGLE_ID"]
-    company_rect = row["COMPANY_RECT"]
-
-    # ============================================================
-    # 🔥 NORMALISATION VISUEL (NEWS + BRÈVES)
-    # ============================================================
-
-    if not media_id:
-        if not company_rect:
-            raise ValueError("Un visuel est requis pour publier")
-        media_id = company_rect
-
-    if media_id.startswith("COMPANY_"):
-
-        from google.cloud import storage
-        from google.oauth2 import service_account
-        import os
-        import json
-
-        credentials_path = os.environ.get("GOOGLE_CREDENTIALS_FILE")
-        if not credentials_path:
-            raise ValueError("GOOGLE_CREDENTIALS_FILE non défini")
-
-        with open(credentials_path, "r") as f:
-            info = json.load(f)
-
-        credentials = service_account.Credentials.from_service_account_info(info)
-
-        storage_client = storage.Client(
-            credentials=credentials,
-            project=info.get("project_id"),
+        raise ValueError(
+            "News introuvable"
         )
 
-        bucket = storage_client.bucket("ratecard-media")
-
-        source_blob = bucket.blob(f"companies/{media_id}")
-
-        if not source_blob.exists():
-            raise ValueError("Logo société introuvable dans GCS")
-
-        new_filename = f"NEWS_{id_news}_rect.jpg"
-        destination_blob = bucket.blob(f"news/{new_filename}")
-
-        destination_blob.rewrite(source_blob)
-
-        update_bq(
-            table=TABLE_NEWS,
-            fields={
-                "MEDIA_RECTANGLE_ID": new_filename,
-                "HAS_VISUAL": True,
-            },
-            where={"ID_NEWS": id_news},
+    if not rows[0]["EXCERPT"]:
+        raise ValueError(
+            "Un excerpt est requis pour publier"
         )
 
-        media_id = new_filename
-
-    # ============================================================
-    # DATE & STATUS
-    # ============================================================
-
-    now = datetime.now(timezone.utc)
+    now = datetime.now(
+        timezone.utc
+    )
 
     if published_at:
-        if isinstance(published_at, str):
-            publish_date = datetime.fromisoformat(published_at)
-        else:
-            publish_date = published_at
+
+        publish_date = (
+            datetime.fromisoformat(
+                published_at
+            )
+            if isinstance(
+                published_at,
+                str,
+            )
+            else published_at
+        )
 
         if publish_date.tzinfo is None:
-            publish_date = publish_date.replace(tzinfo=timezone.utc)
+            publish_date = publish_date.replace(
+                tzinfo=timezone.utc,
+            )
+
     else:
+
         publish_date = now
 
-    status = "PUBLISHED" if publish_date <= now else "SCHEDULED"
+    status = (
+        "PUBLISHED"
+        if publish_date <= now
+        else "SCHEDULED"
+    )
 
     update_bq(
         table=TABLE_NEWS,
@@ -537,25 +450,14 @@ def publish_news(id_news: str, published_at: Optional[str] = None):
             "PUBLISHED_AT": publish_date.isoformat(),
             "UPDATED_AT": now.isoformat(),
         },
-        where={"ID_NEWS": id_news},
+        where={
+            "ID_NEWS": id_news,
+        },
     )
 
-    # ============================================================
-    # 🚀 AUTO VECTORISATION (ONLY IF PUBLISHED)
-    # ============================================================
-
-    if status == "PUBLISHED":
-        try:
-            from core.vectorization.vector_service import vectorize_news
-
-            print("🚀 AUTO VECTORIZE NEWS (PUBLISH):", id_news)
-
-            vectorize_news(id_news)
-
-        except Exception as e:
-            print("❌ VECTORISATION ERROR:", str(e))
-
     return status
+
+
 # ============================================================
 # SEARCH SIGNAUX — FLUX UNIQUEMENT
 # ============================================================
