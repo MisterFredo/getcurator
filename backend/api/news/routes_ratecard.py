@@ -87,7 +87,6 @@ def list_admin_route(
     limit: int = 50,
     offset: int = 0,
     news_type: str | None = None,
-    news_kind: str | None = None,
     company: str | None = None,
 ):
     try:
