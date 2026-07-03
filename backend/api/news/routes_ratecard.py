@@ -7,8 +7,6 @@ from api.news.models import (
     NewsLinkedInPost,
     NewsPublish,
     NewsLinkedInPostResponse,
-    BrevesSearchResponse,
-    BrevesStatsResponse,
 )
 
 from core.news.service import (
@@ -17,10 +15,7 @@ from core.news.service import (
     list_news_types,
     list_news_admin,
     list_companies_public,
-    list_breves_public,
-    duplicate_company_visual_for_news,
     search_breves_public,
-    get_breves_stats_public,
     get_news,
     update_news,
     archive_news,
@@ -60,32 +55,7 @@ def create_route(data: NewsCreate):
         logger.exception("Erreur création news")
         raise HTTPException(400, str(e))
 
-# ============================================================
-# DUPLICATE COMPANY VISUAL
-# ============================================================
 
-@router.post("/visual/duplicate-company")
-def duplicate_company_visual_route(payload: dict):
-    try:
-        id_news = payload.get("id_news")
-        company_media_id = payload.get("company_media_id")
-
-        if not id_news or not company_media_id:
-            raise HTTPException(400, "Paramètres manquants")
-
-        filename = duplicate_company_visual_for_news(
-            id_news=id_news,
-            company_media_id=company_media_id,
-        )
-
-        return {
-            "status": "ok",
-            "filename": filename,
-        }
-
-    except Exception as e:
-        logger.exception("Erreur duplication visuel société")
-        raise HTTPException(400, str(e))
 
 
 # ============================================================
@@ -93,29 +63,19 @@ def duplicate_company_visual_route(payload: dict):
 # ============================================================
 
 @router.get("/list")
-def list_route(kind: str | None = None):
+def list_route():
+
     try:
-        # Sécurité minimale : on autorise seulement NEWS ou BRIEF
-        if kind and kind not in ["NEWS", "BRIEF"]:
-            raise HTTPException(400, "Invalid news kind")
 
-        rows = list_news(kind)
+        rows = list_news()
 
-        news = [
-            {
-                **n,
-                "COMPANY_MEDIA_LOGO_RECTANGLE_ID": n.get(
-                    "MEDIA_LOGO_RECTANGLE_ID"
-                )
-            }
-            for n in rows
-        ]
-
-        return {"status": "ok", "news": news}
+        return {
+            "status": "ok",
+            "news": rows,
+        }
 
     except Exception:
-        logger.exception("Erreur liste news")
-        raise HTTPException(400, "Erreur liste news")
+        ...
 
 
 # ============================================================
@@ -135,7 +95,6 @@ def list_admin_route(
             limit=limit,
             offset=offset,
             news_type=news_type,
-            news_kind=news_kind,
             company=company,
         )
         return {"status": "ok", "news": rows}
@@ -176,76 +135,7 @@ def list_companies_route():
         logger.exception("Erreur liste sociétés public")
         raise HTTPException(400, "Erreur liste sociétés")
 
-# ============================================================
-# SEARCH BREVES — FLUX UNIQUEMENT
-# ============================================================
 
-@router.get("/breves/search")
-def search_breves_route(
-    topics: Optional[List[str]] = Query(default=None),
-    news_types: Optional[List[str]] = Query(default=None),
-    companies: Optional[List[str]] = Query(default=None),
-    limit: int = Query(20, ge=1, le=50),
-    cursor: Optional[str] = None,
-):
-    try:
-        data = search_breves_public(
-            topics=topics,
-            news_types=news_types,
-            companies=companies,
-            limit=limit,
-            cursor=cursor,
-        )
-
-        return {
-            "status": "ok",
-            "total_count": data.get("total_count", 0),
-            "sponsorised": data.get("sponsorised", []),
-            "items": data.get("items", []),
-        }
-
-    except Exception as e:
-        logger.exception("Erreur search signaux")
-        raise HTTPException(400, str(e))
-
-# ============================================================
-# STATS BRÈVES — FILTRES UNIQUEMENT
-# ============================================================
-
-@router.get("/breves/stats")
-def breves_stats_route():
-    try:
-        data = get_breves_stats_public()
-        return {
-            "status": "ok",
-            **data
-        }
-    except Exception as e:
-        logger.exception("Erreur stats brèves")
-        raise HTTPException(400, str(e))
-
-
-# ============================================================
-# LIST BRÈVES LEGACY (SI CONSERVÉ)
-# ============================================================
-
-@router.get("/breves")
-def list_breves(
-    year: int = Query(..., ge=2022, le=2030),
-    limit: int = Query(20, ge=1, le=50),
-    cursor: Optional[str] = None,
-):
-    items = list_breves_public(
-        year=year,
-        limit=limit,
-        cursor=cursor,
-    )
-
-    return {
-        "status": "ok",
-        "items": items,
-        "next_cursor": items[-1]["published_at"] if items else None,
-    }
 
 # ============================================================
 # UPDATE
