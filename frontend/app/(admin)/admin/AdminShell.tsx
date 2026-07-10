@@ -65,12 +65,6 @@ export default function AdminShell({
     },
 
     {
-      href: "/admin/news",
-      label: "News",
-      icon: Newspaper,
-    },
-
-    {
       href: "/admin/search",
       label: "Search",
       icon: Search,
@@ -104,26 +98,6 @@ export default function AdminShell({
       icon: Languages,
     },
 
-    // =====================================================
-    // DISTRIBUTION
-    // =====================================================
-
-    {
-      href: "/admin/linkedin/compose",
-      label: "LinkedIn",
-      icon: Share2,
-    },
-
-    // -----------------------------------------------------
-    // RATECARD
-    // -----------------------------------------------------
-
-    {
-      href: "/admin/newsletter",
-      label: "Newsletter",
-      icon: Mail,
-    },
-
     // -----------------------------------------------------
     // CURATOR
     // -----------------------------------------------------
@@ -144,12 +118,6 @@ export default function AdminShell({
       href: "/admin/digest/templates",
       label: "Templates Digest",
       icon: LayoutTemplate,
-    },
-
-    {
-      href: "/admin/event",
-      label: "Events (assets)",
-      icon: Image,
     },
 
     // =====================================================
