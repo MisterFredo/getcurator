@@ -4,8 +4,6 @@ from core.feed.service import search_text
 from core.mcp.suggestions import build_suggestions
 from utils.bigquery_utils import query_bq
 
-
-TABLE_NEWS = "adex-5555.RATECARD_PROD.RATECARD_NEWS"
 TABLE_CONTENT = "adex-5555.RATECARD_PROD.RATECARD_CONTENT"
 
 
@@ -16,18 +14,6 @@ TABLE_CONTENT = "adex-5555.RATECARD_PROD.RATECARD_CONTENT"
 def _get_latest_items(limit: int = 10) -> List[Dict]:
 
     sql = f"""
-    SELECT
-        n.ID_NEWS as id,
-        'news' as type,
-        n.TITLE,
-        n.EXCERPT,
-        n.PUBLISHED_AT,
-        n.SOURCE_URL as url
-    FROM `{TABLE_NEWS}` n
-    WHERE n.STATUS = 'PUBLISHED'
-
-    UNION ALL
-
     SELECT
         c.ID_CONTENT as id,
         'analysis' as type,
