@@ -270,21 +270,6 @@ def create_content(data: ContentCreate) -> str:
             ],
         )
 
-    if data.persons:
-
-        insert_bq(
-            TABLE_CONTENT_PERSON,
-            [
-                {
-                    "ID_CONTENT": content_id,
-                    "ID_PERSON": p.id_person,
-                    "ROLE": p.role,
-                    "CREATED_AT": now,
-                }
-                for p in data.persons
-            ],
-        )
-
     # ============================================================
     # CONCEPTS
     # ============================================================
@@ -1842,28 +1827,6 @@ def update_content(id_content: str, data: ContentUpdate):
         id_content,
         data.solutions if data.solutions is not None else [],
     )
-
-    # ============================================================
-    # PERSONS (gestion spécifique car rôle)
-    # ============================================================
-
-    client = get_bigquery_client()
-
-    client.query(
-        f"""
-        DELETE FROM `{TABLE_CONTENT_PERSON}`
-        WHERE ID_CONTENT = @id
-        """,
-        job_config=bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter(
-                    "id",
-                    "STRING",
-                    id_content
-                )
-            ]
-        ),
-    ).result()
     
     return True
 
