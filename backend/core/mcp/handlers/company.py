@@ -6,6 +6,7 @@ from core.feed.service import search_text
 from core.numbers.insight_service import get_numbers_by_ids
 from core.radar.insight_service import get_latest_radar
 from core.mcp.suggestions import build_suggestions
+from config import BQ_PROJECT, BQ_DATASET
 
 TABLE_COMPANY_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
