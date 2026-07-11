@@ -8,6 +8,7 @@ from core.numbers.insight_service import (
 )
 
 from core.mcp.suggestions import build_suggestions
+from config import BQ_PROJECT, BQ_DATASET
 
 
 TABLE_COMPANY_ALIAS = (
