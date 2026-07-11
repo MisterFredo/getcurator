@@ -6,12 +6,7 @@ from utils.bigquery_utils import query_bq
 from core.user.user_service import get_user_context
 from core.user.user_preferences_service import get_user_preferences_grouped
 
-
-TABLE_NEWS = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS"
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-
-TABLE_NEWS_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS_TOPIC"
-TABLE_NEWS_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NEWS_SOLUTION"
 
 TABLE_CONTENT_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
 TABLE_CONTENT_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
@@ -35,20 +30,7 @@ def search_text(
     query = query.strip()
 
     sql = f"""
-    SELECT
-        n.ID_NEWS as id,
-        'news' as type,
-        n.TITLE,
-        n.TITLE_EN,
-        n.EXCERPT,
-        n.EXCERPT_EN,
-        n.PUBLISHED_AT
-    FROM `{TABLE_NEWS}` n
-    WHERE n.STATUS = 'PUBLISHED'
-      AND SEARCH(n, @query)
-
-    UNION ALL
-
+    
     SELECT
         c.ID_CONTENT as id,
         'analysis' as type,
@@ -110,40 +92,7 @@ def search_filters(
     news_types = clean(news_types)
 
     sql = f"""
-    SELECT
-        n.ID_NEWS as id,
-        'news' as type,
-        n.TITLE,
-        n.TITLE_EN,
-        n.EXCERPT,
-        n.EXCERPT_EN,
-        n.PUBLISHED_AT
-    FROM `{TABLE_NEWS}` n
-    WHERE n.STATUS = 'PUBLISHED'
-
-    AND (@news_types IS NULL OR n.NEWS_TYPE IN UNNEST(@news_types))
-    AND (@company_ids IS NULL OR n.ID_COMPANY IN UNNEST(@company_ids))
-
-    AND (
-        @topic_ids IS NULL OR EXISTS (
-            SELECT 1
-            FROM `{TABLE_NEWS_TOPIC}` nt
-            WHERE nt.ID_NEWS = n.ID_NEWS
-              AND nt.ID_TOPIC IN UNNEST(@topic_ids)
-        )
-    )
-
-    AND (
-        @solution_ids IS NULL OR EXISTS (
-            SELECT 1
-            FROM `{TABLE_NEWS_SOLUTION}` ns
-            WHERE ns.ID_NEWS = n.ID_NEWS
-              AND ns.ID_SOLUTION IN UNNEST(@solution_ids)
-        )
-    )
-
-    UNION ALL
-
+   
     SELECT
         c.ID_CONTENT as id,
         'analysis' as type,
