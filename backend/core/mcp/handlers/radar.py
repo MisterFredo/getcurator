@@ -5,6 +5,7 @@ from utils.bigquery_utils import query_bq
 from core.radar.insight_service import (
     generate_radar_insight,
 )
+from config import BQ_PROJECT, BQ_DATASET
 
 # ============================================================
 # CONSTANTE
