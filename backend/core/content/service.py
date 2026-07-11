@@ -247,20 +247,6 @@ def create_content(data: ContentCreate) -> str:
             ],
         )
 
-    if data.events:
-
-        insert_bq(
-            TABLE_CONTENT_EVENT,
-            [
-                {
-                    "ID_CONTENT": content_id,
-                    "ID_EVENT": eid,
-                    "CREATED_AT": now,
-                }
-                for eid in data.events
-            ],
-        )
-
     # ============================================================
     # COMPANIES
     # ============================================================
@@ -462,25 +448,6 @@ def get_content(id_content: str):
         for r in topic_rows
     ]
 
-    event_rows = query_bq(
-        f"""
-        SELECT E.ID_EVENT, E.LABEL
-        FROM `{TABLE_CONTENT_EVENT}` CE
-        JOIN `{TABLE_EVENT}` E
-          ON CE.ID_EVENT = E.ID_EVENT
-        WHERE CE.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    content["events"] = [
-        {
-            "id_event": r["ID_EVENT"],
-            "label": r["LABEL"],
-        }
-        for r in event_rows
-    ]
-
     company_rows = query_bq(
         f"""
         SELECT C.ID_COMPANY, C.NAME
@@ -513,26 +480,6 @@ def get_content(id_content: str):
     )
 
     content["primary_company"] = primary_company
-
-    person_rows = query_bq(
-        f"""
-        SELECT P.ID_PERSON, P.NAME, CP.ROLE
-        FROM `{TABLE_CONTENT_PERSON}` CP
-        JOIN `{TABLE_PERSON}` P
-          ON CP.ID_PERSON = P.ID_PERSON
-        WHERE CP.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    content["persons"] = [
-        {
-            "id_person": r["ID_PERSON"],
-            "name": r["NAME"],
-            "role": r.get("ROLE"),
-        }
-        for r in person_rows
-    ]
 
     concept_rows = query_bq(
         f"""
@@ -1866,13 +1813,6 @@ def update_content(id_content: str, data: ContentUpdate):
         data.topics if data.topics is not None else [],
     )
 
-    reset_and_insert(
-        TABLE_CONTENT_EVENT,
-        "ID_EVENT",
-        id_content,
-        data.events if data.events is not None else [],
-    )
-
     # ============================================================
     # 🔥 COMPANIES
     # ============================================================
@@ -1924,22 +1864,7 @@ def update_content(id_content: str, data: ContentUpdate):
             ]
         ),
     ).result()
-
-    if data.persons:
-
-        insert_bq(
-            TABLE_CONTENT_PERSON,
-            [
-                {
-                    "ID_CONTENT": id_content,
-                    "ID_PERSON": p.id_person,
-                    "ROLE": p.role,
-                    "CREATED_AT": now,
-                }
-                for p in data.persons
-            ],
-        )
-
+    
     return True
 
 # ============================================================
