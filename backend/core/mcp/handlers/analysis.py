@@ -5,7 +5,7 @@ from core.insight.service import run_insight_pipeline
 from utils.bigquery_utils import query_bq
 
 
-TABLE_CONTENT = "adex-5555.RATECARD_PROD.RATECARD_CONTENT"
+TABLE_CONTENT = "getcurator.GETCURATOR_PROD.RATECARD_CONTENT"
 
 
 # ============================================================
