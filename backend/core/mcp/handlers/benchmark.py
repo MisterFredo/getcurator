@@ -3,6 +3,7 @@ from typing import Dict
 from core.curator.service import search
 from core.insight.service import run_insight_pipeline
 from core.mcp.suggestions import build_suggestions
+from config import BQ_PROJECT, BQ_DATASET
 
 
 # ============================================================
