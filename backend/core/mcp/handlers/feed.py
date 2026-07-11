@@ -4,7 +4,9 @@ from core.feed.service import search_text
 from core.mcp.suggestions import build_suggestions
 from utils.bigquery_utils import query_bq
 
-TABLE_CONTENT = "adex-5555.RATECARD_PROD.RATECARD_CONTENT"
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+)
 
 
 # ============================================================
