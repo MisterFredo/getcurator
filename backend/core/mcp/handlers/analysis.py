@@ -3,6 +3,7 @@ from typing import Dict, List
 from core.feed.service import search_text
 from core.insight.service import run_insight_pipeline
 from utils.bigquery_utils import query_bq
+from config import BQ_PROJECT, BQ_DATASET
 
 
 TABLE_COMPANY_ALIAS = (
