@@ -14,7 +14,6 @@ from api.public.models import (
     NewsletterSubscribeResponse,
 )
 
-from core.news.service import list_news
 from core.content.service import list_contents, get_content
 
 logger = logging.getLogger(__name__)
