@@ -10,7 +10,9 @@ from core.numbers.insight_service import (
 from core.mcp.suggestions import build_suggestions
 
 
-TABLE_NUMBERS = "adex-5555.RATECARD_PROD.V_NUMBERS_ENRICHED"
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.V_NUMBERS_ENRICHED"
+)
 
 
 # ============================================================
