@@ -5,7 +5,9 @@ from core.insight.service import run_insight_pipeline
 from utils.bigquery_utils import query_bq
 
 
-TABLE_CONTENT = "getcurator.GETCURATOR_PROD.RATECARD_CONTENT"
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+)
 
 
 # ============================================================
