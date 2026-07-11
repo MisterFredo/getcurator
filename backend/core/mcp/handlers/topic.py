@@ -14,8 +14,14 @@ from core.mcp.suggestions import build_suggestions
 # CONSTANTES
 # ============================================================
 
-TABLE_TOPIC = "getcurator.GETCURATOR_PROD.RATECARD_TOPIC"
-TABLE_NUMBERS = "getcurator.GETCURATOR_PROD.V_NUMBERS_ENRICHED"
+
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+)
+
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.V_NUMBERS_ENRICHED"
+)
 
 
 # ============================================================
