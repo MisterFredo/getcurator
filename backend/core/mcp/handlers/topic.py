@@ -14,8 +14,8 @@ from core.mcp.suggestions import build_suggestions
 # CONSTANTES
 # ============================================================
 
-TABLE_TOPIC = "adex-5555.RATECARD_PROD.RATECARD_TOPIC"
-TABLE_NUMBERS = "adex-5555.RATECARD_PROD.V_NUMBERS_ENRICHED"
+TABLE_TOPIC = "getcurator.GETCURATOR_PROD.RATECARD_TOPIC"
+TABLE_NUMBERS = "getcurator.GETCURATOR_PROD.V_NUMBERS_ENRICHED"
 
 
 # ============================================================
