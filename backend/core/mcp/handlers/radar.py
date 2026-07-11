@@ -10,7 +10,9 @@ from core.radar.insight_service import (
 # CONSTANTE
 # ============================================================
 
-TABLE_RADAR = "getcurator.GETCURATOR_PROD.V_RADAR_ENRICHED"
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.V_RADARD_ENRICHED"
+)
 
 
 # ============================================================
