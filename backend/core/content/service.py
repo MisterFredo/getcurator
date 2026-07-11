@@ -151,35 +151,6 @@ def create_content(data: ContentCreate) -> str:
     }]
 
     # ============================================================
-    # DEBUG AVANT INSERT
-    # ============================================================
-
-    print("\n========== DEBUG CREATE_CONTENT ==========")
-    print("ID_CONTENT:", content_id)
-
-    debug_row = row[0]
-
-    for field in ["CONCEPTS_LLM", "SOLUTIONS_LLM", "TOPICS_LLM"]:
-
-        value = debug_row.get(field)
-
-        print(f"\nFIELD: {field}")
-        print("TYPE:", type(value))
-        print("VALUE:", value)
-
-        if isinstance(value, list):
-
-            for i, v in enumerate(value):
-                print(f"  [{i}] -> ({type(v)}) {v}")
-
-    print("\nFULL ROW TYPES:")
-
-    for k, v in debug_row.items():
-        print(k, "=>", type(v))
-
-    print("==========================================\n")
-
-    # ============================================================
     # INSERT CONTENT
     # ============================================================
 
