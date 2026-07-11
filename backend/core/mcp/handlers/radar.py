@@ -10,7 +10,7 @@ from core.radar.insight_service import (
 # CONSTANTE
 # ============================================================
 
-TABLE_RADAR = "adex-5555.RATECARD_PROD.V_RADAR_ENRICHED"
+TABLE_RADAR = "getcurator.GETCURATOR_PROD.V_RADAR_ENRICHED"
 
 
 # ============================================================
