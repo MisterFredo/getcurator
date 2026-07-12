@@ -22,14 +22,18 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://ratecard-frontend.onrender.com",
-        "https://ratecard-frontend-prod.onrender.com",
-        "https://ratecard.fr",
-
         "https://curator-frontend-zayd.onrender.com",
         "https://curator-frontend-prod.onrender.com",
         "https://getcurator.ai",
         "https://www.getcurator.ai",  # 👈 IMPORTANT
+
+        # Render
+        "https://getcurator-admin.onrender.com",
+        "https://getcurator-frontend.onrender.com",
+
+        # Local
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
