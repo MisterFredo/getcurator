@@ -22,30 +22,12 @@ type ContentStats = {
   total_published_this_month: number;
 };
 
-type NewsAdminStats = {
-  total: number;
-  total_published: number;
-  total_draft: number;
-  total_news: number;
-  total_briefs: number;
-  total_published_this_year: number;
-};
-
-type BrevesPublicStats = {
-  total_count: number;
-  last_7_days: number;
-  last_30_days: number;
-};
-
 /* ================= COMPONENT ================= */
 
 export default function AdminHome() {
 
   const [rawStats, setRawStats] = useState<RawStats | null>(null);
   const [contentStats, setContentStats] = useState<ContentStats | null>(null);
-  const [newsAdminStats, setNewsAdminStats] = useState<NewsAdminStats | null>(null);
-  const [brevesStats, setBrevesStats] = useState<BrevesPublicStats | null>(null);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,18 +42,10 @@ export default function AdminHome() {
         ] = await Promise.all([
           api.get("/content/raw/admin/stats"),
           api.get("/content/admin/stats"),
-          api.get("/news/admin/stats"),
-          api.get("/news/breves/stats"),
         ]);
 
         setRawStats(rawRes.stats);
         setContentStats(contentRes.stats);
-        setNewsAdminStats(newsAdminRes.stats);
-
-        setBrevesStats({
-          total_count: brevesRes.total_count,
-          last_7_days: brevesRes.last_7_days,
-          last_30_days: brevesRes.last_30_days,
         });
 
       } catch (e) {
@@ -118,33 +92,6 @@ export default function AdminHome() {
             <StatCard label="Scheduled" value={contentStats.total_scheduled} />
             <StatCard label="Publié cette année" value={contentStats.total_published_this_year} />
             <StatCard label="Publié ce mois" value={contentStats.total_published_this_month} />
-          </StatGrid>
-        </Section>
-      )}
-
-      {/* ================= NEWS ADMIN ================= */}
-
-      {newsAdminStats && (
-        <Section title="News & Brèves (Admin)">
-          <StatGrid>
-            <StatCard label="Total" value={newsAdminStats.total} />
-            <StatCard label="Published" value={newsAdminStats.total_published} green />
-            <StatCard label="Draft" value={newsAdminStats.total_draft} yellow />
-            <StatCard label="News" value={newsAdminStats.total_news} />
-            <StatCard label="Brèves" value={newsAdminStats.total_briefs} />
-            <StatCard label="Publié cette année" value={newsAdminStats.total_published_this_year} />
-          </StatGrid>
-        </Section>
-      )}
-
-      {/* ================= NEWS ACTIVITY ================= */}
-
-      {brevesStats && (
-        <Section title="Activité News (Public)">
-          <StatGrid>
-            <StatCard label="Total publié" value={brevesStats.total_count} />
-            <StatCard label="7 derniers jours" value={brevesStats.last_7_days} />
-            <StatCard label="30 derniers jours" value={brevesStats.last_30_days} />
           </StatGrid>
         </Section>
       )}
