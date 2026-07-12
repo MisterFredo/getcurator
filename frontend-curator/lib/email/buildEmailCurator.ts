@@ -8,31 +8,6 @@ export function buildEmailCurator({ news, analyses }: any) {
   `;
 
   // =========================
-  // NEWS
-  // =========================
-  if (news.length > 0) {
-    html += `<h3>📰 News</h3>`;
-
-    news.forEach((n: any) => {
-      html += `
-        <div style="margin-bottom:16px;">
-          <div style="font-weight:600;">
-            ${n.title}
-          </div>
-
-          <div style="margin:6px 0;">
-            ${renderBadges(n)}
-          </div>
-
-          <div style="color:#555;">
-            ${n.excerpt || ""}
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  // =========================
   // ANALYSES
   // =========================
   if (analyses.length > 0) {
