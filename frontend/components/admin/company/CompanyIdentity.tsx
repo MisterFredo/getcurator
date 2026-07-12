@@ -2,161 +2,167 @@
 
 "use client";
 
-type Universe = {
-  id_universe: string;
-  label: string;
-};
+import {
+  CompanyFormData,
+  CompanyType,
+  Universe,
+} from "@/types/company";
+
+/* ========================================================= */
 
 type Props = {
-  name: string;
-  setName: (value: string) => void;
+  company: CompanyFormData;
 
-  type: string;
-  setType: (value: string) => void;
+  setCompany: React.Dispatch<
+    React.SetStateAction<CompanyFormData>
+  >;
+
+  companyTypes: CompanyType[];
 
   universes: Universe[];
-
-  selectedUniverses: string[];
-  setSelectedUniverses: (
-    values: string[]
-  ) => void;
-
-  isPartner: boolean;
-  setIsPartner: (
-    value: boolean
-  ) => void;
-
-  websiteUrl: string;
-  setWebsiteUrl: (
-    value: string
-  ) => void;
-
-  linkedinUrl: string;
-  setLinkedinUrl: (
-    value: string
-  ) => void;
 };
+
+/* ========================================================= */
 
 export default function CompanyIdentity({
 
-  name,
-  setName,
+  company,
 
-  type,
-  setType,
+  setCompany,
+
+  companyTypes,
 
   universes,
 
-  selectedUniverses,
-  setSelectedUniverses,
-
-  isPartner,
-  setIsPartner,
-
-  websiteUrl,
-  setWebsiteUrl,
-
-  linkedinUrl,
-  setLinkedinUrl,
-
 }: Props) {
+
+  /* =======================================================
+     TOGGLE UNIVERSE
+  ======================================================= */
 
   function toggleUniverse(
     id: string,
   ) {
 
-    if (
-      selectedUniverses.includes(id)
-    ) {
+    const selected =
+      company.universes.includes(id);
 
-      setSelectedUniverses(
-        selectedUniverses.filter(
-          (u) => u !== id
-        )
-      );
+    setCompany((prev) => ({
 
-      return;
+      ...prev,
 
-    }
+      universes: selected
 
-    setSelectedUniverses([
-      ...selectedUniverses,
-      id,
-    ]);
+        ? prev.universes.filter(
+            (u) => u !== id
+          )
+
+        : [
+            ...prev.universes,
+            id,
+          ],
+
+    }));
 
   }
 
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
 
-    <div className="space-y-8">
+    <section className="space-y-8">
 
-      {/* ===================================================== */}
+      {/* =================================================== */}
       {/* IDENTITY */}
-      {/* ===================================================== */}
+      {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div>
 
-        <div>
+        <h2 className="text-lg font-semibold">
+          Identity
+        </h2>
 
-          <h2 className="text-lg font-semibold">
-            Identity
-          </h2>
+        <p className="text-sm text-gray-500">
+          Main information describing the company.
+        </p>
 
-          <p className="text-sm text-gray-500">
-            Main information describing the company.
-          </p>
+      </div>
 
-        </div>
+      {/* NAME */}
 
-        {/* NAME */}
+      <div className="space-y-2">
 
-        <div className="space-y-2">
+        <label className="text-sm font-medium">
+          Name
+        </label>
 
-          <label className="text-sm font-medium">
-            Name
-          </label>
+        <input
+          value={company.name}
+          onChange={(e) =>
+            setCompany((prev) => ({
 
-          <input
-            value={name}
-            onChange={(e) =>
-              setName(
-                e.target.value
-              )
-            }
-            className="w-full border rounded px-3 py-2"
-            placeholder="Company name"
-          />
+              ...prev,
 
-        </div>
+              name:
+                e.target.value,
 
-        {/* TYPE */}
+            }))
+          }
+          className="w-full border rounded px-3 py-2"
+          placeholder="Company name"
+        />
 
-        <div className="space-y-2">
+      </div>
 
-          <label className="text-sm font-medium">
-            Type
-          </label>
+      {/* TYPE */}
 
-          <input
-            value={type}
-            onChange={(e) =>
-              setType(
-                e.target.value
-              )
-            }
-            className="w-full border rounded px-3 py-2"
-            placeholder="Retailer, Brand, Agency..."
-          />
+      <div className="space-y-2">
 
-        </div>
+        <label className="text-sm font-medium">
+          Type
+        </label>
 
-      </section>
+        <select
+          value={company.type}
+          onChange={(e) =>
+            setCompany((prev) => ({
 
-      {/* ===================================================== */}
+              ...prev,
+
+              type:
+                e.target.value,
+
+            }))
+          }
+          className="w-full border rounded px-3 py-2"
+        >
+
+          <option value="">
+            —
+          </option>
+
+          {companyTypes.map((type) => (
+
+            <option
+              key={type.id_type}
+              value={type.id_type}
+            >
+              {type.label}
+            </option>
+
+          ))}
+
+        </select>
+
+      </div>
+
+      {/* =================================================== */}
       {/* CLASSIFICATION */}
-      {/* ===================================================== */}
+      {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div className="space-y-4">
 
         <div>
 
@@ -175,7 +181,7 @@ export default function CompanyIdentity({
           {universes.map((u) => {
 
             const selected =
-              selectedUniverses.includes(
+              company.universes.includes(
                 u.id_universe
               );
 
@@ -190,11 +196,7 @@ export default function CompanyIdentity({
                   )
                 }
                 className={`
-                  px-3
-                  py-1
-                  rounded
-                  border
-                  transition
+                  px-3 py-1 rounded border transition
                   ${
                     selected
                       ? "bg-ratecard-blue text-white border-ratecard-blue"
@@ -211,13 +213,13 @@ export default function CompanyIdentity({
 
         </div>
 
-      </section>
+      </div>
 
-      {/* ===================================================== */}
+      {/* =================================================== */}
       {/* LINKS */}
-      {/* ===================================================== */}
+      {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div className="space-y-4">
 
         <div>
 
@@ -231,8 +233,6 @@ export default function CompanyIdentity({
 
         </div>
 
-        {/* WEBSITE */}
-
         <div className="space-y-2">
 
           <label className="text-sm font-medium">
@@ -240,19 +240,22 @@ export default function CompanyIdentity({
           </label>
 
           <input
-            value={websiteUrl}
+            value={company.website_url}
             onChange={(e) =>
-              setWebsiteUrl(
-                e.target.value
-              )
+              setCompany((prev) => ({
+
+                ...prev,
+
+                website_url:
+                  e.target.value,
+
+              }))
             }
             className="w-full border rounded px-3 py-2"
             placeholder="https://..."
           />
 
         </div>
-
-        {/* LINKEDIN */}
 
         <div className="space-y-2">
 
@@ -261,11 +264,16 @@ export default function CompanyIdentity({
           </label>
 
           <input
-            value={linkedinUrl}
+            value={company.linkedin_url}
             onChange={(e) =>
-              setLinkedinUrl(
-                e.target.value
-              )
+              setCompany((prev) => ({
+
+                ...prev,
+
+                linkedin_url:
+                  e.target.value,
+
+              }))
             }
             className="w-full border rounded px-3 py-2"
             placeholder="https://linkedin.com/company/..."
@@ -273,31 +281,32 @@ export default function CompanyIdentity({
 
         </div>
 
-      </section>
+      </div>
 
-      {/* ===================================================== */}
+      {/* =================================================== */}
       {/* SETTINGS */}
-      {/* ===================================================== */}
+      {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div className="space-y-4">
 
-        <div>
-
-          <h2 className="text-lg font-semibold">
-            Settings
-          </h2>
-
-        </div>
+        <h2 className="text-lg font-semibold">
+          Settings
+        </h2>
 
         <label className="flex items-center gap-3">
 
           <input
             type="checkbox"
-            checked={isPartner}
+            checked={company.is_partner}
             onChange={(e) =>
-              setIsPartner(
-                e.target.checked
-              )
+              setCompany((prev) => ({
+
+                ...prev,
+
+                is_partner:
+                  e.target.checked,
+
+              }))
             }
           />
 
@@ -307,9 +316,9 @@ export default function CompanyIdentity({
 
         </label>
 
-      </section>
+      </div>
 
-    </div>
+    </section>
 
   );
 
