@@ -297,11 +297,18 @@ function getUpdatePayload() {
   async function handleCreate(): Promise<string> {
 
     const payload =
+      getCreatePayload();
+
+    console.log(
+      "Company payload",
+      payload,
+    );
+
     const res =
       await api.post(
         "/company/create",
-        getCreatePayload(),
-    );
+        payload,
+      );
 
     if (!res.id_company) {
 
