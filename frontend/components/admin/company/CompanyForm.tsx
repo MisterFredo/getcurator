@@ -132,11 +132,8 @@ export default function CompanyForm({
 
   async function loadCompany() {
 
-    if (
-      !isEdit ||
-      !companyId
-    ) {
-      return;
+    if (!companyId) {
+        return;
     }
 
     const c =
