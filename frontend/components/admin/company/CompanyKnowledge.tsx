@@ -4,37 +4,39 @@
 
 import HtmlEditor from "@/components/admin/HtmlEditor";
 
+import {
+  CompanyFormData,
+} from "@/types/company";
+
 /* ========================================================= */
 
 type Props = {
-  description: string;
-  setDescription: (value: string) => void;
+  company: CompanyFormData;
 
-  wikiContent: string;
-  setWikiContent: (value: string) => void;
+  setCompany: React.Dispatch<
+    React.SetStateAction<CompanyFormData>
+  >;
 };
 
 /* ========================================================= */
 
 export default function CompanyKnowledge({
 
-  description,
-  setDescription,
+  company,
 
-  wikiContent,
-  setWikiContent,
+  setCompany,
 
 }: Props) {
 
   return (
 
-    <div className="space-y-8">
+    <section className="space-y-8">
 
       {/* =================================================== */}
       {/* DESCRIPTION */}
       {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div className="space-y-6">
 
         <div>
 
@@ -43,30 +45,35 @@ export default function CompanyKnowledge({
           </h2>
 
           <p className="text-sm text-gray-500">
-            Short summary describing the company.
+            Short editorial summary describing the company.
           </p>
 
         </div>
 
         <textarea
-          value={description}
-          onChange={(e) =>
-            setDescription(
-              e.target.value
-            )
-          }
           rows={4}
+          value={company.description}
+          onChange={(e) =>
+            setCompany((prev) => ({
+
+              ...prev,
+
+              description:
+                e.target.value,
+
+            }))
+          }
           className="w-full border rounded px-3 py-2"
           placeholder="Short editorial description..."
         />
 
-      </section>
+      </div>
 
       {/* =================================================== */}
       {/* KNOWLEDGE */}
       {/* =================================================== */}
 
-      <section className="space-y-6">
+      <div className="space-y-6">
 
         <div>
 
@@ -75,19 +82,27 @@ export default function CompanyKnowledge({
           </h2>
 
           <p className="text-sm text-gray-500">
-            Reference content describing the company in detail.
+            Long-form reference content describing the company.
           </p>
 
         </div>
 
         <HtmlEditor
-          value={wikiContent}
-          onChange={setWikiContent}
+          value={company.wiki_content}
+          onChange={(value) =>
+            setCompany((prev) => ({
+
+              ...prev,
+
+              wiki_content: value,
+
+            }))
+          }
         />
 
-      </section>
+      </div>
 
-    </div>
+    </section>
 
   );
 
