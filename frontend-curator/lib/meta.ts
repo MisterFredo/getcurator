@@ -32,7 +32,6 @@ export async function getFeedMeta(): Promise<FeedMetaResponse> {
         topics: [],
         companies: [],
         solutions: [],
-        news_types: [],
       };
     }
 
@@ -40,7 +39,6 @@ export async function getFeedMeta(): Promise<FeedMetaResponse> {
       topics: safeArray(data.topics),
       companies: safeArray(data.companies),
       solutions: safeArray(data.solutions),
-      news_types: safeArray(data.news_types),
     };
 
   } catch (e) {
@@ -50,7 +48,6 @@ export async function getFeedMeta(): Promise<FeedMetaResponse> {
       topics: [],
       companies: [],
       solutions: [],
-      news_types: [],
     };
   }
 }
