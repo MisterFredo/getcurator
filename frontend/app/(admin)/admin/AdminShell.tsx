@@ -4,26 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  Building2,
-  Tags,
-  Layers,
-  Newspaper,
-  Mail,
-  Share2,
-  BookOpen,
-  Puzzle,
-  Link as LinkIcon,
   Archive,
-  Search,
-  Link2,
-  Database,
-  Calendar,
   BarChart3,
-  Image,
-  LayoutTemplate,
-  Users,
-  Languages,
+  BookOpen,
+  Building2,
+  Database,
   Globe,
+  Languages,
+  Layers,
+  Link as LinkIcon,
+  Link2,
+  Puzzle,
+  Tags,
+  Users,
+  Calendar,
+  LayoutTemplate,
 } from "lucide-react";
 
 export default function AdminShell({
@@ -31,232 +26,189 @@ export default function AdminShell({
 }: {
   children: React.ReactNode;
 }) {
-
   const pathname = usePathname();
 
   function isActive(href: string) {
-
     if (!pathname) return false;
 
     return (
-      pathname === href
-      || pathname.startsWith(
-        href + "/"
-      )
+      pathname === href ||
+      pathname.startsWith(href + "/")
     );
   }
 
-  const navItems = [
-
-    // =====================================================
-    // CONTENT
-    // =====================================================
-
+  const sections = [
     {
-      href: "/admin/content",
-      label: "Contenus",
-      icon: Layers,
+      title: "Production",
+      items: [
+        {
+          href: "/admin/discovery",
+          label: "Discovery",
+          icon: Globe,
+        },
+        {
+          href: "/admin/content/stock",
+          label: "Stock",
+          icon: Archive,
+        },
+        {
+          href: "/admin/matching",
+          label: "Matching",
+          icon: Link2,
+        },
+        {
+          href: "/admin/translation",
+          label: "Translation",
+          icon: Languages,
+        },
+        {
+          href: "/admin/content",
+          label: "Contents",
+          icon: Layers,
+        },
+      ],
     },
 
     {
-      href: "/admin/content/stock",
-      label: "Stock",
-      icon: Archive,
+      title: "Knowledge",
+      items: [
+        {
+          href: "/admin/source",
+          label: "Sources",
+          icon: LinkIcon,
+        },
+        {
+          href: "/admin/company",
+          label: "Companies",
+          icon: Building2,
+        },
+        {
+          href: "/admin/solution",
+          label: "Solutions",
+          icon: Puzzle,
+        },
+        {
+          href: "/admin/topic",
+          label: "Topics",
+          icon: Tags,
+        },
+        {
+          href: "/admin/concept",
+          label: "Concepts",
+          icon: BookOpen,
+        },
+        {
+          href: "/admin/numbers",
+          label: "Numbers",
+          icon: BarChart3,
+        },
+        {
+          href: "/admin/users",
+          label: "Users",
+          icon: Users,
+        },
+      ],
     },
 
     {
-      href: "/admin/search",
-      label: "Search",
-      icon: Search,
-    },
-
-    // =====================================================
-    // DATA LAYER
-    // =====================================================
-
-    {
-      href: "/admin/vector",
-      label: "Vectorisation",
-      icon: Database,
+      title: "Intelligence",
+      items: [
+        {
+          href: "/admin/digest",
+          label: "Digest",
+          icon: LayoutTemplate,
+        },
+      ],
     },
 
     {
-      href: "/admin/radar",
-      label: "Radar",
-      icon: Calendar,
-    },
-
-    {
-      href: "/admin/numbers",
-      label: "Numbers",
-      icon: BarChart3,
-    },
-
-    {
-      href: "/admin/translation",
-      label: "Translations",
-      icon: Languages,
-    },
-
-    // -----------------------------------------------------
-    // CURATOR
-    // -----------------------------------------------------
-
-    {
-      href: "/admin/digest",
-      label: "Digest",
-      icon: LayoutTemplate,
-    },
-
-    {
-      href: "/admin/digest/runs",
-      label: "Runs Digest",
-      icon: Calendar,
-    },
-
-    {
-      href: "/admin/digest/templates",
-      label: "Templates Digest",
-      icon: LayoutTemplate,
-    },
-
-    // =====================================================
-    // ENTITIES
-    // =====================================================
-
-    {
-      href: "/admin/company",
-      label: "Sociétés",
-      icon: Building2,
-    },
-
-    {
-      href: "/admin/solution",
-      label: "Solutions",
-      icon: Puzzle,
-    },
-
-    {
-      href: "/admin/matching",
-      label: "Matching",
-      icon: Link2,
-    },
-
-    {
-      href: "/admin/topic",
-      label: "Topics",
-      icon: Tags,
-    },
-
-    {
-      href: "/admin/concept",
-      label: "Concepts",
-      icon: BookOpen,
-    },
-
-    {
-      href: "/admin/source",
-      label: "Sources",
-      icon: LinkIcon,
-    },
-
-    {
-      href: "/admin/discovery",
-      label: "Discovery",
-      icon: Globe,
-    },
-
-    // =====================================================
-    // USERS
-    // =====================================================
-
-    {
-      href: "/admin/users",
-      label: "Users",
-      icon: Users,
+      title: "System",
+      items: [
+        {
+          href: "/admin/vector",
+          label: "Vectorization",
+          icon: Database,
+        },
+        {
+          href: "/admin/radar",
+          label: "Radar",
+          icon: Calendar,
+        },
+      ],
     },
   ];
 
   return (
-
     <div className="min-h-screen flex">
-
       {/* SIDEBAR */}
 
-      <aside className="w-64 bg-ratecard-blue text-white p-6 space-y-10 flex flex-col">
-
+      <aside className="w-64 bg-ratecard-blue text-white p-6 flex flex-col">
         {/* HEADER */}
 
-        <div>
-
+        <div className="mb-8">
           <h1 className="text-xl font-semibold">
-            Ratecard Admin
+            Curator Admin
           </h1>
 
           <p className="text-xs opacity-80 mt-1">
-            Gestion éditoriale
+            Knowledge Platform
           </p>
-
         </div>
 
-        {/* NAV */}
+        {/* NAVIGATION */}
 
-        <nav className="space-y-1 text-sm flex-1">
+        <nav className="flex-1 overflow-y-auto space-y-8">
+          {sections.map((section) => (
+            <div key={section.title}>
+              <div className="text-xs uppercase tracking-wider opacity-50 mb-2 px-3">
+                {section.title}
+              </div>
 
-          {navItems.map((item) => {
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
 
-            const Icon = item.icon;
+                  const active =
+                    isActive(item.href);
 
-            const active = isActive(
-              item.href
-            );
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`
+                        flex items-center gap-3 px-3 py-2 rounded transition
+                        ${
+                          active
+                            ? "bg-white text-ratecard-blue font-semibold"
+                            : "hover:bg-ratecard-green/20"
+                        }
+                      `}
+                    >
+                      <Icon size={18} />
 
-            return (
-
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`
-                  flex items-center gap-2 px-3 py-2 rounded transition
-                  ${
-                    active
-                      ? "bg-white text-ratecard-blue font-semibold"
-                      : "hover:bg-ratecard-green/20"
-                  }
-                `}
-              >
-
-                <Icon size={18} />
-
-                <span>
-                  {item.label}
-                </span>
-
-              </Link>
-
-            );
-          })}
-
+                      <span>
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* FOOTER */}
 
-        <div className="text-xs opacity-60">
-
-          © {new Date().getFullYear()} Ratecard
-
+        <div className="pt-8 text-xs opacity-60">
+          © {new Date().getFullYear()} Curator
         </div>
-
       </aside>
 
       {/* MAIN */}
 
       <main className="flex-1 p-10 bg-gray-50">
-
         {children}
-
       </main>
-
     </div>
   );
 }
