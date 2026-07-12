@@ -6,7 +6,6 @@ export type FeedBadgeType =
   | "topic"
   | "company"
   | "solution"
-  | "news_type"
   | "universe"
   | "concept";
 
@@ -112,9 +111,6 @@ export type FeedItem = {
   solutions?: Solution[];
 
   concepts?: Concept[];
-
-  news_type?: string | null;
-
   has_visual?: boolean;
 
   media_id?: string | null;
@@ -137,7 +133,6 @@ export type FeedMetaResponse = {
   topics: MetaItem[];
   companies: MetaItem[];
   solutions: MetaItem[];
-  news_types: MetaItem[];
 };
 
 
