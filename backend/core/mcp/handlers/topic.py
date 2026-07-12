@@ -4,9 +4,7 @@ from utils.bigquery_utils import query_bq
 
 from core.curator.entity_service import get_topic_view
 from core.feed.service import search_text
-from core.insight.service import run_insight_pipeline
 from core.numbers.insight_service import get_numbers_by_ids
-from core.radar.insight_service import get_latest_radar
 from core.mcp.suggestions import build_suggestions
 from config import BQ_PROJECT, BQ_DATASET
 
@@ -165,30 +163,11 @@ def handle_topic(entity: Dict) -> Dict:
             item["url"] = f"/analysis/{item.get('id')}"
 
     # ----------------------------------------------------------
-    # 4. ANALYSIS
-    # ----------------------------------------------------------
-    analysis_ids = [
-        i["id"]
-        for i in items
-        if i.get("type") == "analysis"
-    ][:10]
-
-    analysis_text = None
-
-    if analysis_ids:
-        analysis = run_insight_pipeline(analysis_ids)
-        analysis_text = analysis.get("insight")
-
-    # ----------------------------------------------------------
     # 5. NUMBERS
     # ----------------------------------------------------------
     number_ids = _get_topic_numbers_ids(label, limit=6)
     numbers = get_numbers_by_ids(number_ids) if number_ids else []
 
-    # ----------------------------------------------------------
-    # 6. RADAR
-    # ----------------------------------------------------------
-    radar = get_latest_radar("topic", topic_id)
 
     # ----------------------------------------------------------
     # 7. SUGGESTIONS
