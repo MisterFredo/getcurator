@@ -67,7 +67,7 @@ def suggest_alias_route(data: dict):
 
 
 # ============================================================
-# LIST (ADMIN / GLOBAL)
+# LIST
 # ============================================================
 
 @router.get("/list")
@@ -93,7 +93,7 @@ def list_types_route():
 
 
 # ============================================================
-# CURATOR LIST (FILTER BY USER UNIVERS)
+# USER COMPANIES
 # ============================================================
 
 @router.get("/list-curator")
@@ -226,7 +226,7 @@ def get_view_route(
             limit=limit,
             offset=offset,
             universe_id=universe_id if universe_id else None,
-            user_id=user_id,  # 🔥 important si tu veux filtrer aussi ici
+            user_id=user_id,
         )
 
         if not company:
@@ -237,7 +237,6 @@ def get_view_route(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Company view error: {e}")
         raise HTTPException(
             status_code=500,
             detail="Internal error"
