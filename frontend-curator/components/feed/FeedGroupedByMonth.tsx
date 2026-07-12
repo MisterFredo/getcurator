@@ -10,8 +10,6 @@ type FeedItem = {
 
   id: string;
 
-  type: "news" | "analysis";
-
   title: string;
 
   excerpt?: string | null;
@@ -23,8 +21,6 @@ type FeedItem = {
   companies?: any[];
 
   solutions?: any[];
-
-  news_type?: string | null;
 };
 
 type Props = {
