@@ -279,11 +279,9 @@ export default function CompanyForm({
 
     }
 
-    setCompanyId(
-      res.id_company
-    );
+    setCompanyId(res.id_company);
 
-    await loadCompany();
+    return res.id_company;
 
   }
 
