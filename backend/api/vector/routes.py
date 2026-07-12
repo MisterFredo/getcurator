@@ -14,13 +14,6 @@ from api.vector.models import (
 # SERVICES
 # ==================================================
 
-# NEWS
-from core.vectorization.vector_service import (
-    vectorize_news,
-    get_news_vector_status,
-    get_news_to_vectorize,
-)
-
 # CONTENT
 from core.vectorization.content_vector_service import (
     vectorize_content,
@@ -29,115 +22,6 @@ from core.vectorization.content_vector_service import (
 )
 
 router = APIRouter()
-
-
-# ==================================================
-# NEWS
-# ==================================================
-
-# --------------------------------------------------
-# VECTORIZE MULTIPLE NEWS (⚠️ DOIT ÊTRE AVANT /{news_id})
-# --------------------------------------------------
-
-@router.post("/news/batch", response_model=VectorNewsBatchResponse)
-def vectorize_news_batch(payload: VectorBatchRequest):
-
-    results = []
-    success = 0
-    error = 0
-
-    try:
-        # =========================
-        # SOURCE DES IDS
-        # =========================
-        if payload.ids:
-            news_ids = payload.ids
-        else:
-            news_ids = get_news_to_vectorize(
-                limit=payload.limit,
-                offset=payload.offset,
-                status=payload.status,
-            )
-
-        if not news_ids:
-            return VectorNewsBatchResponse(
-                status="done",
-                processed=0,
-                success=0,
-                error=0,
-                results=[]
-            )
-
-        # =========================
-        # PROCESS
-        # =========================
-        for news_id in news_ids:
-            try:
-                res = vectorize_news(news_id)
-
-                results.append(
-                    VectorNewsBatchItem(
-                        news_id=news_id,
-                        status=res.get("status", "ok"),
-                        nb_vectors=res.get("nb_vectors"),
-                    )
-                )
-                success += 1
-
-            except Exception as e:
-                results.append(
-                    VectorNewsBatchItem(
-                        news_id=news_id,
-                        status="error",
-                        error=str(e),
-                    )
-                )
-                error += 1
-
-        return VectorNewsBatchResponse(
-            status="done",
-            processed=len(news_ids),
-            success=success,
-            error=error,
-            results=results
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --------------------------------------------------
-# VECTORIZE ONE NEWS
-# --------------------------------------------------
-
-@router.post("/news/{news_id}")
-def vectorize_news_route(news_id: str):
-    try:
-        if news_id == "batch":
-            raise ValueError("Invalid news_id")
-
-        result = vectorize_news(news_id)
-        return result
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --------------------------------------------------
-# STATUS NEWS
-# --------------------------------------------------
-
-@router.get("/news/status")
-def news_status(limit: int = 50, offset: int = 0):
-    try:
-        return get_news_vector_status(limit=limit, offset=offset)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ==================================================
-# CONTENT (ANALYSES)
-# ==================================================
 
 # --------------------------------------------------
 # VECTORIZE MULTIPLE CONTENT (⚠️ AVANT /{content_id})
