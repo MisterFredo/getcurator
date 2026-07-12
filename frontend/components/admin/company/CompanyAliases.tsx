@@ -4,18 +4,22 @@
 
 import { useState } from "react";
 
+import {
+  CompanyAlias,
+} from "@/types/company";
+
 /* ========================================================= */
 
-type Alias = {
-  alias: string;
-};
-
 type Props = {
-  aliases: Alias[];
+  aliases: CompanyAlias[];
 
-  onAdd: (alias: string) => Promise<void>;
+  onAdd: (
+    alias: string,
+  ) => Promise<void>;
 
-  onDelete: (alias: string) => Promise<void>;
+  onDelete: (
+    alias: string,
+  ) => Promise<void>;
 
   disabled?: boolean;
 };
@@ -44,7 +48,9 @@ export default function CompanyAliases({
     setLoading,
   ] = useState(false);
 
-  /* ======================================================= */
+  /* =======================================================
+     ADD
+  ======================================================= */
 
   async function handleAdd() {
 
@@ -52,6 +58,16 @@ export default function CompanyAliases({
       value.trim();
 
     if (!alias) {
+      return;
+    }
+
+    if (
+      aliases.some(
+        (a) =>
+          a.alias.toLowerCase() ===
+          alias.toLowerCase()
+      )
+    ) {
       return;
     }
 
@@ -71,7 +87,29 @@ export default function CompanyAliases({
 
   }
 
-  /* ======================================================= */
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  async function handleDelete(
+    alias: string,
+  ) {
+
+    const ok = confirm(
+      `Delete alias "${alias}"?`
+    );
+
+    if (!ok) {
+      return;
+    }
+
+    await onDelete(alias);
+
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -98,6 +136,8 @@ export default function CompanyAliases({
         <input
           value={value}
           disabled={disabled}
+          placeholder="New alias..."
+          className="flex-1 border rounded px-3 py-2"
           onChange={(e) =>
             setValue(
               e.target.value
@@ -116,17 +156,16 @@ export default function CompanyAliases({
             }
 
           }}
-          className="flex-1 border rounded px-3 py-2"
-          placeholder="New alias..."
         />
 
         <button
           type="button"
+          onClick={handleAdd}
           disabled={
             disabled ||
-            loading
+            loading ||
+            !value.trim()
           }
-          onClick={handleAdd}
           className="px-4 py-2 rounded bg-ratecard-blue text-white disabled:opacity-40"
         >
           Add
@@ -148,26 +187,28 @@ export default function CompanyAliases({
 
         <div className="space-y-2">
 
-          {aliases.map((a) => (
+          {aliases.map((alias) => (
 
             <div
-              key={a.alias}
+              key={alias.alias}
               className="flex items-center justify-between border rounded px-3 py-2"
             >
 
               <span>
-                {a.alias}
+
+                {alias.alias.trim()}
+
               </span>
 
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() =>
-                  onDelete(
-                    a.alias
+                  handleDelete(
+                    alias.alias
                   )
                 }
-                className="text-red-600 hover:text-red-800 text-sm"
+                className="text-sm text-red-600 hover:text-red-800"
               >
                 Delete
               </button>
