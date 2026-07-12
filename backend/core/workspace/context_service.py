@@ -1,8 +1,5 @@
 from typing import List, Dict
 
-from core.insight.service import (
-    get_analysis_details_by_ids,
-)
 
 from core.numbers.insight_service import (
     get_numbers_by_ids,
@@ -21,13 +18,7 @@ def build_workspace_context(
     content_ids = content_ids or []
     number_ids = number_ids or []
 
-    # ========================================================
-    # CONTENTS
-    # ========================================================
 
-    contents = get_analysis_details_by_ids(
-        content_ids
-    )
 
     # ========================================================
     # NUMBERS
