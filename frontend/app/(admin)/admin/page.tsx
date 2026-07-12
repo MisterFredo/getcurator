@@ -37,8 +37,6 @@ export default function AdminHome() {
         const [
           rawRes,
           contentRes,
-          newsAdminRes,
-          brevesRes
         ] = await Promise.all([
           api.get("/content/raw/admin/stats"),
           api.get("/content/admin/stats"),
@@ -46,7 +44,6 @@ export default function AdminHome() {
 
         setRawStats(rawRes.stats);
         setContentStats(contentRes.stats);
-        });
 
       } catch (e) {
         console.error("Erreur dashboard admin", e);
@@ -58,7 +55,7 @@ export default function AdminHome() {
     loadStats();
   }, []);
 
-  if (loading) return <div>Chargement dashboard…</div>;
+    if (loading) return <div>Chargement dashboard…</div>;
 
   return (
     <div className="space-y-12">
