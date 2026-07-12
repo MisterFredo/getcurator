@@ -7,13 +7,6 @@
 export type DigestContentItem = {
   id: string;
 
-  /* ===============================
-     CONTENT TYPE
-  =============================== */
-
-  content_type?:
-    | "news"
-    | "analysis";
 
   /* ===============================
      CONTENT
