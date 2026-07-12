@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 from core.feed.service import search_text
-from core.insight.service import run_insight_pipeline
 from utils.bigquery_utils import query_bq
 from config import BQ_PROJECT, BQ_DATASET
 
@@ -83,13 +82,6 @@ def handle_analysis(entity: Dict, user_query: str) -> Dict:
             }
         }
 
-    # ----------------------------------------------------------
-    # PIPELINE INSIGHT (TON MOTEUR)
-    # ----------------------------------------------------------
-
-    result = run_insight_pipeline(ids)
-
-    insight_text = result.get("insight", "")
 
     # ----------------------------------------------------------
     # SUGGESTIONS
