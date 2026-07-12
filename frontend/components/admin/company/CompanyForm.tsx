@@ -322,15 +322,13 @@ export default function CompanyForm({
         const newCompanyId =
           await handleCreate();
 
-        if (newCompanyId) {
+        setCompanyId(
+          newCompanyId
+        );
 
-          setCompanyId(
-            newCompanyId
-          );
-
-          await loadCompany();
-
-        }
+        await loadCompany(
+          newCompanyId
+        );
 
       } else {
 
