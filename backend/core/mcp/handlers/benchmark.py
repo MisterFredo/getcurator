@@ -1,7 +1,6 @@
 from typing import Dict
 
 from core.curator.service import search
-from core.insight.service import run_insight_pipeline
 from core.mcp.suggestions import build_suggestions
 from config import BQ_PROJECT, BQ_DATASET
 
@@ -80,22 +79,6 @@ def handle_benchmark(user_query: str) -> Dict:
     # ----------------------------------------------------------
 
     rows = rows_1 + rows_2
-
-    # ----------------------------------------------------------
-    # ANALYSIS (PLUS PERTINENT)
-    # ----------------------------------------------------------
-
-    analysis_ids = [
-        r["id"]
-        for r in rows
-        if r.get("type") == "analysis"
-    ]
-
-    analysis_text = None
-
-    if analysis_ids:
-        result = run_insight_pipeline(analysis_ids)
-        analysis_text = result.get("insight")
 
     # ----------------------------------------------------------
     # SUGGESTIONS
