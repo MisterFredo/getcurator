@@ -130,17 +130,19 @@ export default function CompanyForm({
      LOAD COMPANY
   ======================================================= */
 
-  async function loadCompany() {
+  async function loadCompany(
+    id: string | null = companyId,
+  ) {
 
-    if (!companyId) {
-        return;
+    if (!id) {
+      return;
     }
 
     const c =
       await api.get(
-        `/company/${companyId}`
+        `/company/${id}`
       );
-
+    
     setCompany({
 
       name:
