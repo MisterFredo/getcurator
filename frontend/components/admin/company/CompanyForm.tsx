@@ -263,7 +263,7 @@ export default function CompanyForm({
      CREATE
   ======================================================= */
 
-  async function handleCreate() {
+  async function handleCreate(): Promise<string> {
 
     const res =
       await api.post(
@@ -278,8 +278,6 @@ export default function CompanyForm({
       );
 
     }
-
-    setCompanyId(res.id_company);
 
     return res.id_company;
 
