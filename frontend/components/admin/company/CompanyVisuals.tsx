@@ -34,30 +34,6 @@ export default function CompanyVisuals({
 
 }: Props) {
 
-  if (!companyId) {
-
-    return (
-
-      <section className="space-y-4">
-
-        <div>
-
-          <h2 className="text-lg font-semibold">
-            Visuals
-          </h2>
-
-          <p className="text-sm text-gray-500">
-            Save the company before uploading a logo.
-          </p>
-
-        </div>
-
-      </section>
-
-    );
-
-  }
-
   const rectUrl =
     logoFilename
       ? `${GCS_BASE_URL}/${COMPANY_MEDIA_PATH}/${logoFilename}`
@@ -74,17 +50,33 @@ export default function CompanyVisuals({
         </h2>
 
         <p className="text-sm text-gray-500">
-          Upload the assets associated with this company.
+
+          {companyId
+            ? "Upload the assets associated with this company."
+            : "Save the company before uploading a logo."}
+
         </p>
 
       </div>
 
-      <VisualSection
-        entityId={companyId}
-        entityType="company"
-        rectUrl={rectUrl}
-        onUpdated={onUpdated}
-      />
+      {!companyId ? (
+
+        <div className="rounded border border-dashed p-6 text-sm text-gray-500">
+
+          The visual section will become available once the company has been created.
+
+        </div>
+
+      ) : (
+
+        <VisualSection
+          entityId={companyId}
+          entityType="company"
+          rectUrl={rectUrl}
+          onUpdated={onUpdated}
+        />
+
+      )}
 
     </section>
 
