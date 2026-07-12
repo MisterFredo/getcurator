@@ -4,130 +4,255 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
-const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
-const COMPANY_MEDIA_PATH = "companies";
+import {
+  Pencil,
+  Trash2,
+} from "lucide-react";
+
+/* ========================================================= */
+
+const GCS_BASE_URL =
+  process.env.NEXT_PUBLIC_GCS_BASE_URL!;
+
+const COMPANY_MEDIA_PATH =
+  "companies";
+
+/* ========================================================= */
 
 type CompanyRow = {
   id_company: string;
-  name: string;
-  type?: string | null;
-  media_logo_rectangle_id?: string | null;
-  is_partner?: boolean | null;
-  has_description?: boolean;
-  has_wiki?: boolean;
 
-  // 🔥 NEW
+  name: string;
+
+  type?: string | null;
+
+  media_logo_rectangle_id?: string | null;
+
+  is_partner?: boolean | null;
+
   universes?: string[];
 };
 
+/* ========================================================= */
+
 export default function CompanyList() {
 
-  const [companies, setCompanies] = useState<CompanyRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [
+    companies,
+    setCompanies,
+  ] = useState<CompanyRow[]>([]);
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  /* ======================================================= */
 
   useEffect(() => {
+
     async function load() {
+
       setLoading(true);
+
       try {
-        const res = await api.get("/company/list");
-        setCompanies(res.companies || []);
+
+        const res =
+          await api.get("/company/list");
+
+        setCompanies(
+          res.companies || []
+        );
+
       } catch (e) {
+
         console.error(e);
-        alert("❌ Erreur chargement sociétés");
+
+        alert(
+          "Erreur chargement sociétés"
+        );
+
       } finally {
+
         setLoading(false);
+
       }
+
     }
 
     load();
+
   }, []);
 
-  async function deleteCompany(id: string, name: string) {
+  /* ======================================================= */
 
-    const ok = confirm(`Supprimer la société "${name}" ?`);
-    if (!ok) return;
+  async function deleteCompany(
+    id: string,
+    name: string,
+  ) {
+
+    if (
+      !confirm(
+        `Supprimer "${name}" ?`
+      )
+    ) {
+      return;
+    }
 
     try {
 
-      await api.delete(`/company/${id}`);
+      await api.delete(
+        `/company/${id}`
+      );
 
       setCompanies((prev) =>
-        prev.filter((c) => c.id_company !== id)
+        prev.filter(
+          (c) =>
+            c.id_company !== id
+        )
       );
 
     } catch (e) {
 
       console.error(e);
-      alert("❌ Erreur suppression");
+
+      alert(
+        "Erreur suppression"
+      );
 
     }
 
   }
 
-  const q = search.toLowerCase();
+  /* ======================================================= */
 
-  const filteredCompanies = companies.filter((c) =>
-    c.name.toLowerCase().includes(q) ||
-    (c.type || "").toLowerCase().includes(q)
-  );
+  const filtered =
+    companies.filter((c) => {
+
+      const q =
+        search.toLowerCase();
+
+      return (
+        c.name
+          .toLowerCase()
+          .includes(q)
+        ||
+        (
+          c.type || ""
+        )
+          .toLowerCase()
+          .includes(q)
+      );
+
+    });
+
+  /* ======================================================= */
 
   return (
+
     <div className="space-y-8">
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-semibold text-ratecard-blue">
-          Sociétés
-        </h1>
+      {/* =================================================== */}
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <h1 className="text-3xl font-semibold text-ratecard-blue">
+            Companies
+          </h1>
+
+          <div className="text-sm text-gray-500 mt-1">
+            {companies.length} companies
+          </div>
+
+        </div>
 
         <Link
           href="/admin/company/create"
-          className="bg-ratecard-green px-4 py-2 text-white rounded"
+          className="bg-ratecard-green text-white px-4 py-2 rounded"
         >
-          + Ajouter une société
+          + New Company
         </Link>
+
       </div>
 
-      {/* SEARCH */}
-      <div>
-        <input
-          type="text"
-          placeholder="Rechercher une société..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-2 rounded w-full max-w-md"
-        />
-      </div>
+      {/* =================================================== */}
+
+      <input
+        value={search}
+        onChange={(e) =>
+          setSearch(
+            e.target.value
+          )
+        }
+        placeholder="Search..."
+        className="border rounded px-3 py-2 w-full max-w-md"
+      />
+
+      {/* =================================================== */}
 
       {loading ? (
-        <p className="text-gray-500">Chargement…</p>
-      ) : filteredCompanies.length === 0 ? (
-        <p className="italic text-gray-500">
-          Aucune société.
-        </p>
+
+        <div>
+          Loading...
+        </div>
+
+      ) : filtered.length === 0 ? (
+
+        <div className="text-gray-500 italic">
+          No company found.
+        </div>
+
       ) : (
+
         <table className="w-full text-sm border-collapse">
 
           <thead>
-            <tr className="bg-gray-100 border-b text-left">
-              <th className="p-2">Nom</th>
-              <th className="p-2">Type</th>
-              <th className="p-2">Univers</th> {/* 🔥 NEW */}
-              <th className="p-2">Statut</th>
-              <th className="p-2">Description</th>
-              <th className="p-2">Wiki</th>
-              <th className="p-2">Logo</th>
-              <th className="p-2 text-right">Actions</th>
+
+            <tr className="bg-gray-100 border-b">
+
+              <th className="p-2 w-[90px]">
+                Logo
+              </th>
+
+              <th className="p-2 text-left">
+                Name
+              </th>
+
+              <th className="p-2 text-left">
+                Type
+              </th>
+
+              <th className="p-2 text-left">
+                Universes
+              </th>
+
+              <th className="p-2 text-center">
+                Partner
+              </th>
+
+              <th className="p-2 text-right">
+                Actions
+              </th>
+
             </tr>
+
           </thead>
 
           <tbody>
 
-            {filteredCompanies.map((c) => {
+            {filtered.map((c) => {
 
-              const rectUrl = c.media_logo_rectangle_id
-                ? `${GCS_BASE_URL}/${COMPANY_MEDIA_PATH}/${c.media_logo_rectangle_id}`
-                : null;
+              const logoUrl =
+                c.media_logo_rectangle_id
+                  ? `${GCS_BASE_URL}/${COMPANY_MEDIA_PATH}/${c.media_logo_rectangle_id}`
+                  : null;
 
               return (
 
@@ -136,89 +261,98 @@ export default function CompanyList() {
                   className="border-b hover:bg-gray-50"
                 >
 
+                  {/* LOGO */}
+
+                  <td className="p-2">
+
+                    {logoUrl ? (
+
+                      <img
+                        src={logoUrl}
+                        alt={c.name}
+                        className="h-10 max-w-[110px] object-contain"
+                      />
+
+                    ) : (
+
+                      <span className="text-gray-400">
+                        —
+                      </span>
+
+                    )}
+
+                  </td>
+
+                  {/* NAME */}
+
                   <td className="p-2 font-medium">
                     {c.name}
                   </td>
 
+                  {/* TYPE */}
+
                   <td className="p-2">
-                    {c.type || <span className="text-gray-400">—</span>}
+                    {c.type || "—"}
                   </td>
 
-                  {/* 🔥 UNIVERS */}
+                  {/* UNIVERSES */}
+
                   <td className="p-2">
-                    {c.universes && c.universes.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {c.universes.map((u) => (
+
+                    <div className="flex flex-wrap gap-1">
+
+                      {(c.universes || [])
+                        .map((u) => (
+
                           <span
                             key={u}
-                            className="px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700"
+                            className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700"
                           >
                             {u}
                           </span>
+
                         ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs">
-                        Global
-                      </span>
-                    )}
+
+                    </div>
+
                   </td>
 
-                  <td className="p-2">
-                    {c.is_partner ? (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
-                        Partenaire
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600">
-                        Non partenaire
-                      </span>
-                    )}
+                  {/* PARTNER */}
+
+                  <td className="text-center">
+
+                    {c.is_partner
+                      ? "✓"
+                      : "—"}
+
                   </td>
 
-                  <td className="p-2">
-                    {c.has_description ? (
-                      <span className="text-green-600 font-semibold">✓</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
+                  {/* ACTIONS */}
 
-                  <td className="p-2">
-                    {c.has_wiki ? (
-                      <span className="text-blue-600 font-semibold">✓</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
+                  <td className="text-right">
 
-                  <td className="p-2">
-                    {rectUrl ? (
-                      <img
-                        src={rectUrl}
-                        alt={`Logo ${c.name}`}
-                        className="h-10 max-w-[120px] object-contain"
-                      />
-                    ) : (
-                      <span className="text-gray-400 text-sm">—</span>
-                    )}
-                  </td>
+                    <div className="flex justify-end gap-3">
 
-                  <td className="p-2 text-right space-x-3">
+                      <Link
+                        href={`/admin/company/edit/${c.id_company}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Pencil size={16} />
+                      </Link>
 
-                    <Link
-                      href={`/admin/company/edit/${c.id_company}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Modifier
-                    </Link>
+                      <button
+                        onClick={() =>
+                          deleteCompany(
+                            c.id_company,
+                            c.name
+                          )
+                        }
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
 
-                    <button
-                      onClick={() => deleteCompany(c.id_company, c.name)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Supprimer
-                    </button>
+                    </div>
 
                   </td>
 
@@ -231,8 +365,11 @@ export default function CompanyList() {
           </tbody>
 
         </table>
+
       )}
 
     </div>
+
   );
+
 }
