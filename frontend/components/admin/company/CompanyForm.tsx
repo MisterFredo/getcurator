@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { api } from "@/lib/api";
 
@@ -135,10 +135,9 @@ export default function CompanyForm({
       return;
     }
 
-    const c =
-      await api.get(
-        `/company/${id}`
-      );
+    const c = await api.get(
+      `/company/${id}`
+    );
     
     setCompany({
 
@@ -178,10 +177,11 @@ export default function CompanyForm({
   }
 
   /* =======================================================
-     LOAD
-  ======================================================= */
+   LOAD
+======================================================= */
 
-  async function load() {
+const load = useCallback(
+  async () => {
 
     try {
 
@@ -205,17 +205,19 @@ export default function CompanyForm({
 
     }
 
-  }
+  },
+  [companyId],
+);
 
-  /* =======================================================
-     INITIAL LOAD
-  ======================================================= */
+/* =======================================================
+   INITIAL LOAD
+======================================================= */
 
-  useEffect(() => {
+useEffect(() => {
 
-    load();
+  load();
 
-  }, []);
+}, [load]);
 
   /* =======================================================
      BUILD PAYLOAD
