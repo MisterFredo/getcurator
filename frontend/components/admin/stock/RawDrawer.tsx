@@ -36,6 +36,10 @@ export default function RawDrawer({
   const [rawText, setRawText] = useState("");
 
   // 🔥 NEW
+  const [contentType, setContentType] =
+    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
+
+  // 🔥 NEW
   const [primaryCompanyId, setPrimaryCompanyId] =
     useState("");
 
@@ -74,6 +78,11 @@ export default function RawDrawer({
     setTitle(raw.source_title || "");
     setDate(raw.date_source ? raw.date_source.slice(0, 10) : "");
     setRawText("");
+
+    // 🔥 NEW
+    setContentType(
+      (raw.content_type as "ANALYSIS" | "NEWS") || "ANALYSIS"
+    );
 
     // 🔥 NEW
     setPrimaryCompanyId(
@@ -116,6 +125,9 @@ export default function RawDrawer({
         source_title: title,
         date_source: date || null,
         raw_text: rawText,
+
+        // 🔥 NEW
+        content_type: contentType,
 
         // 🔥 NEW
         id_primary_company:
@@ -177,6 +189,24 @@ export default function RawDrawer({
             onChange={(e) => setDate(e.target.value)}
             className="w-full border rounded p-2"
           />
+        </div>
+
+        {/* 🔥 CONTENT TYPE */}
+        <div className="space-y-2">
+          <label className="text-sm">Type de contenu</label>
+
+          <select
+            value={contentType}
+            onChange={(e) =>
+              setContentType(
+                e.target.value as "ANALYSIS" | "NEWS"
+              )
+            }
+            className="w-full border rounded p-2"
+          >
+            <option value="ANALYSIS">Analysis</option>
+            <option value="NEWS">News</option>
+          </select>
         </div>
 
         {/* 🔥 PRIMARY COMPANY */}
