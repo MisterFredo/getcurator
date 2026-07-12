@@ -4,7 +4,6 @@ from utils.bigquery_utils import query_bq
 
 from core.feed.service import search_text
 from core.numbers.insight_service import get_numbers_by_ids
-from core.radar.insight_service import get_latest_radar
 from core.mcp.suggestions import build_suggestions
 from config import BQ_PROJECT, BQ_DATASET
 
@@ -141,11 +140,6 @@ def handle_company(entity: Dict) -> Dict:
     # ----------------------------------------------------------
     number_ids = _get_company_numbers_ids(label, limit=6)
     numbers = get_numbers_by_ids(number_ids) if number_ids else []
-
-    # ----------------------------------------------------------
-    # 4. RADAR (SIGNAL STRATÉGIQUE)
-    # ----------------------------------------------------------
-    radar = get_latest_radar("company", company_id) if company_id else None
 
     # ----------------------------------------------------------
     # 5. SUGGESTIONS
