@@ -35,9 +35,6 @@ export default function CompanyForm({
   const isCreate =
     mode === "create";
 
-  const isEdit =
-    mode === "edit";
-
   /* =======================================================
      ENTITY
   ======================================================= */
