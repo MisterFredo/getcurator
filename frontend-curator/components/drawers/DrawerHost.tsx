@@ -8,9 +8,7 @@ import TopicDrawer from "@/components/drawers/TopicDrawer";
 import SolutionDrawer from "@/components/drawers/SolutionDrawer";
 
 // RIGHT DRAWERS
-import NewsDrawer from "@/components/drawers/NewsDrawer";
 import AnalysisDrawer from "@/components/drawers/AnalysisDrawer";
-import RadarDrawer from "@/components/drawers/RadarDrawer";
 import NumberDrawer from "@/components/drawers/NumberDrawer"; // ✅ NEW
 
 /* =========================================================
@@ -65,30 +63,10 @@ export default function DrawerHost() {
       )}
 
       {/* =========================================
-          RIGHT — NEWS
-      ========================================= */}
-      {rightType === "news" && rightId && (
-        <NewsDrawer
-          id={rightId}
-          onClose={closeRightDrawer}
-        />
-      )}
-
-      {/* =========================================
           RIGHT — ANALYSIS
       ========================================= */}
       {rightType === "analysis" && rightId && (
         <AnalysisDrawer
-          id={rightId}
-          onClose={closeRightDrawer}
-        />
-      )}
-
-      {/* =========================================
-          RIGHT — RADAR
-      ========================================= */}
-      {rightType === "radar" && rightId && (
-        <RadarDrawer
           id={rightId}
           onClose={closeRightDrawer}
         />
