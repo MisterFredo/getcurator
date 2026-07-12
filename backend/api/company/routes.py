@@ -12,7 +12,7 @@ from core.company.service import (
     update_company,
     delete_company,
     get_company_aliases,
-    add_company_alias,
+    create_company_alias,
     delete_company_alias,
 )
 
@@ -57,8 +57,6 @@ def suggest_alias_route(data: dict):
 
     if not name:
         raise HTTPException(400, "name required")
-
-    from core.company.ai import suggest_company_aliases
 
     aliases = suggest_company_aliases(name)
 
@@ -144,7 +142,7 @@ def get_aliases_route(id_company: str):
 
 
 @router.post("/{id_company}/alias")
-def add_alias_route(
+def create_alias_route(
     id_company: str,
     data: dict,
 ):
@@ -163,7 +161,7 @@ def add_alias_route(
                 "alias required"
             )
 
-        add_company_alias(
+        create_company_alias(
             id_company=id_company,
             alias=alias,
         )
@@ -180,9 +178,8 @@ def add_alias_route(
 
         raise HTTPException(
             400,
-            f"Erreur ajout alias : {e}"
+            f"Erreur création alias : {e}"
         )
-
 
 @router.delete("/{id_company}/alias")
 def delete_alias_route(
