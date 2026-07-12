@@ -223,42 +223,72 @@ useEffect(() => {
      BUILD PAYLOAD
   ======================================================= */
 
-  function getCompanyPayload() {
+ function getCreatePayload() {
 
-    return {
+  return {
 
-      name:
-        company.name,
+    name: company.name,
 
-      type:
-        company.type || null,
+    type: company.type || null,
 
-      description:
-        company.description || null,
+    description:
+      company.description || null,
 
-      linkedin_url:
-        company.linkedin_url || null,
+    linkedin_url:
+      company.linkedin_url || null,
 
-      website_url:
-        company.website_url || null,
+    website_url:
+      company.website_url || null,
 
-      wiki_content:
-        company.wiki_content || null,
+    is_partner:
+      company.is_partner,
 
-      is_partner:
-        company.is_partner,
+    universes:
+      company.universes,
 
-      universes:
-        company.universes,
+    aliases:
+      company.aliases.map(
+        (a) => a.alias
+      ),
 
-      aliases:
-        company.aliases.map(
-          (a) => a.alias
-        ),
+  };
 
-    };
+}
 
-  }
+function getUpdatePayload() {
+
+  return {
+
+    name: company.name,
+
+    type: company.type || null,
+
+    description:
+      company.description || null,
+
+    linkedin_url:
+      company.linkedin_url || null,
+
+    website_url:
+      company.website_url || null,
+
+    wiki_content:
+      company.wiki_content || null,
+
+    is_partner:
+      company.is_partner,
+
+    universes:
+      company.universes,
+
+    aliases:
+      company.aliases.map(
+        (a) => a.alias
+      ),
+
+  };
+
+}
 
   /* =======================================================
      CREATE
@@ -277,8 +307,8 @@ useEffect(() => {
     const res =
       await api.post(
         "/company/create",
-        payload,
-      );
+        getCreatePayload(),
+    );
 
     if (!res.id_company) {
 
@@ -303,11 +333,8 @@ useEffect(() => {
     }
 
     await api.put(
-
-      `/company/update/${companyId}`,
-
-      getCompanyPayload(),
-
+        `/company/update/${companyId}`,
+        getUpdatePayload(),
     );
 
     await loadCompany();
