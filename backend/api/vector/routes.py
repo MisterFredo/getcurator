@@ -2,10 +2,6 @@ from fastapi import APIRouter, HTTPException
 
 from api.vector.models import (
     VectorBatchRequest,
-
-    VectorNewsBatchResponse,
-    VectorNewsBatchItem,
-
     VectorContentBatchResponse,
     VectorContentBatchItem,
 )
