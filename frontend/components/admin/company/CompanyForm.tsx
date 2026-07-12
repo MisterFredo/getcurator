@@ -266,10 +266,18 @@ useEffect(() => {
 
   async function handleCreate(): Promise<string> {
 
+    const payload =
+      getCompanyPayload();
+
+    console.log(
+      "Company payload",
+      payload,
+    );
+
     const res =
       await api.post(
         "/company/create",
-        getCompanyPayload(),
+        payload,
       );
 
     if (!res.id_company) {
