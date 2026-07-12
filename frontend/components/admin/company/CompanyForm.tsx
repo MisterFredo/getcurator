@@ -6,7 +6,6 @@ import { api } from "@/lib/api";
 
 import {
   EMPTY_COMPANY,
-  CompanyAlias,
   CompanyFormData,
   CompanyType,
   Universe,
