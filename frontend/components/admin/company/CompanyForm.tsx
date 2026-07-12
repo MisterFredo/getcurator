@@ -319,7 +319,18 @@ export default function CompanyForm({
 
       if (isCreate) {
 
-        await handleCreate();
+        const newCompanyId =
+          await handleCreate();
+
+        if (newCompanyId) {
+
+          setCompanyId(
+            newCompanyId
+          );
+
+          await loadCompany();
+
+        }
 
       } else {
 
