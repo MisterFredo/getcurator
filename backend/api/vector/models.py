@@ -19,31 +19,6 @@ class VectorBatchRequest(BaseModel):
 
 
 # ============================================================
-# NEWS
-# ============================================================
-
-class VectorNewsResponse(BaseModel):
-    status: str
-    news_id: str
-    nb_vectors: int
-
-
-class VectorNewsBatchItem(BaseModel):
-    news_id: str
-    status: str
-    nb_vectors: Optional[int] = None
-    error: Optional[str] = None
-
-
-class VectorNewsBatchResponse(BaseModel):
-    status: str
-    processed: int
-    success: int
-    error: int
-    results: List[VectorNewsBatchItem]
-
-
-# ============================================================
 # CONTENT
 # ============================================================
 
