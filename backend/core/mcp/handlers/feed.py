@@ -44,7 +44,7 @@ def _get_latest_items(limit: int = 10) -> List[Dict]:
 def _normalize_item(r: Dict) -> Dict:
 
     return {
-        "id": r.get("id") or r.get("ID_NEWS") or r.get("ID_CONTENT"),
+        "id": r.get("id") or r.get("ID_CONTENT"),
         "type": r.get("type"),
         "title": r.get("title") or r.get("TITLE"),
         "excerpt": r.get("excerpt") or r.get("EXCERPT"),
