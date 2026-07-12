@@ -15,7 +15,6 @@ from core.mcp.handlers.benchmark import handle_benchmark
 from core.curator.service import search
 
 # insight + suggestions
-from core.insight.service import run_insight_pipeline
 from core.mcp.suggestions import build_suggestions
 
 
