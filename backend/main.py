@@ -71,7 +71,6 @@ include_router("api.search", "/api/search", "SEARCH")
 include_router("api.vector", "/api/vector", "VECTOR")
 include_router("api.insight", "/api/insight", "INSIGHT")
 include_router("api.workspace", "/api/workspace", "WORKSPACE")
-include_router("api.synthesis", "/api/synthesis", "SYNTHESIS")
 
 # --- FRONT PUBLIC (MEDIA)
 include_router("api.public", "/api/public", "PUBLIC")
@@ -80,7 +79,6 @@ include_router("api.public", "/api/public", "PUBLIC")
 include_router("api.admin", "/api/admin", "ADMIN")
 include_router("api.user", "/api/user", "USER")
 include_router("api.mcp", "/api/mcp", "MCP")
-include_router("api.radar", "/api/radar", "RADAR")
 include_router("api.numbers", "/api/numbers", "NUMBERS")
 
 # --- SUPPORT
@@ -98,12 +96,8 @@ def root():
         "modules": [
             "content",
             "content_read",
-            "news",
-            "event",
             "topic",
             "company",
-            "person",
-            "synthesis",
             "public",
             "visuals",
         ]
