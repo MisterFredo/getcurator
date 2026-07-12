@@ -222,7 +222,7 @@ export default function CompanyForm({
      BUILD PAYLOAD
   ======================================================= */
 
-  function buildPayload() {
+  function getCompanyPayload() {
 
     return {
 
@@ -268,7 +268,7 @@ export default function CompanyForm({
     const res =
       await api.post(
         "/company/create",
-        buildPayload(),
+        getCompanyPayload(),
       );
 
     if (!res.id_company) {
@@ -299,7 +299,7 @@ export default function CompanyForm({
 
       `/company/update/${companyId}`,
 
-      buildPayload(),
+      getCompanyPayload(),
 
     );
 
