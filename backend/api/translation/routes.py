@@ -75,8 +75,6 @@ def translate_batch_route(
             content_ids=data.content_ids,
 
             source_id=data.source_id,
-
-            content_type=data.content_type,
         )
 
         return {
