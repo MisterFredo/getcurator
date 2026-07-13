@@ -521,14 +521,6 @@ def get_item_curator(
     SELECT
 
         c.id_content AS id,
-
-        LOWER(
-            COALESCE(
-                c.content_type,
-                'ANALYSIS'
-            )
-        ) AS type,
-
         c.id_primary_company,
 
         c.title,
