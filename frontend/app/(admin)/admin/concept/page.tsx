@@ -1,23 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { api } from "@/lib/api";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-type ConceptRow = {
+import Link from "next/link";
+
+import {
+  Pencil,
+  Trash2,
+} from "lucide-react";
+
+import { api } from "@/lib/api";
+
+/* ========================================================= */
+
+type Concept = {
   id_concept: string;
   label: string;
-  description?: string;
-  is_active?: boolean;
-  updated_at?: string;
+  description: string;
 };
+
+/* ========================================================= */
 
 export default function ConceptList() {
 
-  const [loading, setLoading] = useState(true);
-  const [concepts, setConcepts] = useState<ConceptRow[]>([]);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [
+    concepts,
+    setConcepts,
+  ] = useState<Concept[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  /* ======================================================= */
 
   useEffect(() => {
 
@@ -25,13 +56,14 @@ export default function ConceptList() {
 
       try {
 
-        const res = await api.get("/concept/list");
-        setConcepts(res.concepts || []);
+        const res =
+          await api.get(
+            "/concept/list"
+          );
 
-      } catch (e) {
-
-        console.error(e);
-        alert("❌ Erreur chargement concepts");
+        setConcepts(
+          res.concepts ?? []
+        );
 
       } finally {
 
@@ -45,28 +77,34 @@ export default function ConceptList() {
 
   }, []);
 
-  async function handleDelete(id: string) {
+  /* ======================================================= */
 
-    const confirmDelete = window.confirm(
-      "Confirmer la suppression de ce concept ?"
-    );
+  async function handleDelete(
+    id: string,
+  ) {
 
-    if (!confirmDelete) return;
-
-    setDeletingId(id);
+    if (
+      !window.confirm(
+        "Delete this concept?"
+      )
+    ) {
+      return;
+    }
 
     try {
 
-      await api.delete(`/concept/${id}`);
+      setDeletingId(id);
 
-      setConcepts((prev) =>
-        prev.filter((c) => c.id_concept !== id)
+      await api.delete(
+        `/concept/${id}`
       );
 
-    } catch (e) {
-
-      console.error(e);
-      alert("❌ Erreur suppression concept");
+      setConcepts((prev) =>
+        prev.filter(
+          (c) =>
+            c.id_concept !== id
+        )
+      );
 
     } finally {
 
@@ -76,41 +114,94 @@ export default function ConceptList() {
 
   }
 
-  if (loading) return <p>Chargement…</p>;
+  /* ======================================================= */
+
+  const filtered =
+    concepts.filter((c) => {
+
+      const q =
+        search.toLowerCase();
+
+      return (
+        c.label
+          .toLowerCase()
+          .includes(q) ||
+        (c.description ?? "")
+          .toLowerCase()
+          .includes(q)
+      );
+
+    });
+
+  /* ======================================================= */
+
+  if (loading) {
+
+    return (
+      <p>
+        Loading...
+      </p>
+    );
+
+  }
 
   return (
+
     <div className="space-y-8">
 
       <div className="flex justify-between items-center">
+
         <h1 className="text-3xl font-semibold">
           Concepts
         </h1>
 
         <Link
           href="/admin/concept/create"
-          className="bg-ratecard-blue text-white px-4 py-2 rounded"
+          className="bg-ratecard-green text-white px-4 py-2 rounded"
         >
-          + Nouveau concept
+          + Add concept
         </Link>
+
       </div>
+
+      <input
+        value={search}
+        onChange={(e) =>
+          setSearch(
+            e.target.value
+          )
+        }
+        className="border rounded px-3 py-2 w-full max-w-md"
+        placeholder="Search concept..."
+      />
 
       <div className="border rounded overflow-hidden">
 
         <table className="w-full text-sm">
 
-          <thead className="bg-gray-100 text-left">
+          <thead className="bg-gray-100">
+
             <tr>
-              <th className="p-3">Label</th>
-              <th className="p-3">Description</th>
-              <th className="p-3">Statut</th>
-              <th className="p-3">Mis à jour</th>
-              <th className="p-3 w-24"></th>
+
+              <th className="p-3 text-left">
+                Label
+              </th>
+
+              <th className="p-3 text-left">
+                Description
+              </th>
+
+              <th className="p-3 w-28 text-right">
+                Actions
+              </th>
+
             </tr>
+
           </thead>
 
           <tbody>
 
-            {concepts.map((c) => (
+            {filtered.map((c) => (
 
               <tr
                 key={c.id_concept}
@@ -125,41 +216,28 @@ export default function ConceptList() {
                   {c.description || "—"}
                 </td>
 
-                <td className="p-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      c.is_active
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {c.is_active ? "Actif" : "Inactif"}
-                  </span>
-                </td>
-
-                <td className="p-3 text-gray-500">
-                  {c.updated_at
-                    ? new Date(c.updated_at).toLocaleDateString()
-                    : "-"}
-                </td>
-
-                <td className="p-3 flex items-center gap-3">
+                <td className="p-3 flex justify-end gap-3">
 
                   <Link
                     href={`/admin/concept/edit/${c.id_concept}`}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-blue-600"
                   >
-                    <Pencil size={16} />
+                    <Pencil size={16}/>
                   </Link>
 
                   <button
-                    onClick={() =>
-                      handleDelete(c.id_concept)
+                    disabled={
+                      deletingId ===
+                      c.id_concept
                     }
-                    disabled={deletingId === c.id_concept}
-                    className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                    onClick={() =>
+                      handleDelete(
+                        c.id_concept
+                      )
+                    }
+                    className="text-red-600"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={16}/>
                   </button>
 
                 </td>
@@ -168,17 +246,6 @@ export default function ConceptList() {
 
             ))}
 
-            {concepts.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="p-6 text-center text-gray-400"
-                >
-                  Aucun concept trouvé
-                </td>
-              </tr>
-            )}
-
           </tbody>
 
         </table>
@@ -186,5 +253,7 @@ export default function ConceptList() {
       </div>
 
     </div>
+
   );
+
 }
