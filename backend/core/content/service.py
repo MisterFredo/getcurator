@@ -92,13 +92,6 @@ def create_content(data: ContentCreate) -> str:
         "ID_CONTENT": content_id,
 
         # 🔥 NEW
-        "CONTENT_TYPE": (
-            data.content_type
-            if data.content_type
-            else "ANALYSIS"
-        ),
-
-        # 🔥 NEW
         "ID_PRIMARY_COMPANY": data.id_primary_company,
 
         "STATUS": "DRAFT",
@@ -330,9 +323,6 @@ def get_content(id_content: str):
           ID_CONTENT,
 
           -- 🔥 NEW
-          CONTENT_TYPE,
-
-          -- 🔥 NEW
           ID_PRIMARY_COMPANY,
 
           STATUS,
@@ -372,12 +362,6 @@ def get_content(id_content: str):
 
     content = {
         "id_content": row["ID_CONTENT"],
-
-        # 🔥 NEW
-        "content_type": (
-            row.get("CONTENT_TYPE")
-            or "ANALYSIS"
-        ),
 
         # 🔥 NEW
         "id_primary_company": row.get("ID_PRIMARY_COMPANY"),
@@ -517,8 +501,6 @@ def list_contents():
         SELECT
           c.ID_CONTENT,
 
-          c.CONTENT_TYPE,
-
           -- 🔥 NEW
           c.ID_PRIMARY_COMPANY,
 
@@ -554,12 +536,6 @@ def list_contents():
             "id_content": r["ID_CONTENT"],
             "source_url": r.get("SOURCE_URL"),
             "source_title": r.get("SOURCE_TITLE"),
-
-            # 🔥 NEW
-            "content_type": (
-                r.get("CONTENT_TYPE")
-                or "ANALYSIS"
-            ),
 
             # 🔥 NEW
             "id_primary_company": r.get(
@@ -606,8 +582,6 @@ def list_contents_admin():
         SELECT
           c.ID_CONTENT,
 
-          c.CONTENT_TYPE,
-
           -- 🔥 NEW
           c.ID_PRIMARY_COMPANY,
 
@@ -644,12 +618,6 @@ def list_contents_admin():
 
         {
             "id_content": r["ID_CONTENT"],
-
-            # 🔥 NEW
-            "content_type": (
-                r.get("CONTENT_TYPE")
-                or "ANALYSIS"
-            ),
 
             # 🔥 NEW
             "id_primary_company": r.get(
@@ -720,9 +688,6 @@ def store_raw_content(
     date_source: Optional[date] = None,
 
     # 🔥 NEW
-    content_type: str = "ANALYSIS",
-
-    # 🔥 NEW
     id_primary_company: Optional[str] = None,
 ) -> str:
 
@@ -742,9 +707,6 @@ def store_raw_content(
     row = [{
 
         "ID_RAW": raw_id,
-
-        # 🔥 NEW
-        "CONTENT_TYPE": content_type,
 
         # 🔥 NEW
         "ID_PRIMARY_COMPANY": id_primary_company,
@@ -808,7 +770,6 @@ def list_raw_stock(
     import_type: Optional[str] = None,
 
     # 🔥 NEW
-    content_type: Optional[str] = None,
     id_primary_company: Optional[str] = None,
 
     limit: int = 50,
@@ -831,11 +792,6 @@ def list_raw_stock(
         params["import_type"] = import_type
 
     # 🔥 NEW
-    if content_type:
-        conditions.append("r.CONTENT_TYPE = @content_type")
-        params["content_type"] = content_type
-
-    # 🔥 NEW
     if id_primary_company:
         conditions.append(
             "r.ID_PRIMARY_COMPANY = @id_primary_company"
@@ -850,7 +806,6 @@ def list_raw_stock(
     query = f"""
         SELECT
             r.ID_RAW,
-            r.CONTENT_TYPE,
 
             -- 🔥 NEW
             r.ID_PRIMARY_COMPANY,
@@ -900,11 +855,6 @@ def list_raw_stock(
         "rows": [
             {
                 "id_raw": r["ID_RAW"],
-
-                "content_type": (
-                    r.get("CONTENT_TYPE")
-                    or "ANALYSIS"
-                ),
 
                 # 🔥 NEW
                 "id_primary_company": r.get(
@@ -1048,15 +998,6 @@ def destock_raw_contents(
                 where={"ID_RAW": raw_id}
             )
 
-            # ====================================================
-            # CONTENT TYPE
-            # ====================================================
-
-            content_type = (
-                raw.get("CONTENT_TYPE")
-                or "ANALYSIS"
-            )
-
             # 🔥 NEW
             id_primary_company = raw.get(
                 "ID_PRIMARY_COMPANY"
@@ -1066,19 +1007,10 @@ def destock_raw_contents(
             # GENERATE CONTENT
             # ====================================================
 
-            if content_type == "NEWS":
-
-                summary = generate_news(
-                    source_id=raw.get("SOURCE_ID"),
-                    source_text=raw.get("RAW_TEXT", "")
-                )
-
-            else:
-
-                summary = generate_summary(
-                    source_id=raw.get("SOURCE_ID"),
-                    source_text=raw.get("RAW_TEXT", "")
-                )
+            summary = generate_summary(
+                source_id=raw.get("SOURCE_ID"),
+                source_text=raw.get("RAW_TEXT", "")
+            )
 
             concepts_llm = normalize_llm_list(
                 summary.get("concepts", [])
@@ -1135,9 +1067,6 @@ def destock_raw_contents(
             # ====================================================
 
             content_payload = ContentCreate(
-
-                # 🔥 NEW
-                content_type=content_type,
 
                 # 🔥 NEW
                 id_primary_company=id_primary_company,
@@ -1272,8 +1201,6 @@ def get_raw_detail(id_raw: str):
         SELECT
             r.ID_RAW,
 
-            r.CONTENT_TYPE,
-
             -- 🔥 NEW
             r.ID_PRIMARY_COMPANY,
 
@@ -1316,11 +1243,6 @@ def get_raw_detail(id_raw: str):
 
         "id_raw": r["ID_RAW"],
 
-        "content_type": (
-            r.get("CONTENT_TYPE")
-            or "ANALYSIS"
-        ),
-
         # 🔥 NEW
         "id_primary_company": r.get(
             "ID_PRIMARY_COMPANY"
@@ -1358,9 +1280,6 @@ def update_raw_content(
     raw_text: Optional[str] = None,
 
     # 🔥 NEW
-    content_type: Optional[str] = None,
-
-    # 🔥 NEW
     id_primary_company: Optional[str] = None,
 ):
 
@@ -1377,9 +1296,6 @@ def update_raw_content(
             SOURCE_URL = @source_url,
 
             RAW_TEXT = @raw_text,
-
-            -- 🔥 NEW
-            CONTENT_TYPE = @content_type,
 
             -- 🔥 NEW
             ID_PRIMARY_COMPANY = @id_primary_company
@@ -1412,13 +1328,6 @@ def update_raw_content(
                 "raw_text",
                 "STRING",
                 raw_text
-            ),
-
-            # 🔥 NEW
-            bigquery.ScalarQueryParameter(
-                "content_type",
-                "STRING",
-                content_type
             ),
 
             # 🔥 NEW
@@ -1670,13 +1579,6 @@ def update_content(id_content: str, data: ContentUpdate):
     now = datetime.now(timezone.utc)
 
     fields = {}
-
-    # ============================================================
-    # CONTENT TYPE
-    # ============================================================
-
-    if data.content_type is not None:
-        fields["CONTENT_TYPE"] = data.content_type
 
     # ============================================================
     # 🔥 PRIMARY COMPANY
@@ -2083,11 +1985,6 @@ def get_content_stats():
             STATUS = 'SCHEDULED'
           ) AS TOTAL_SCHEDULED,
 
-          -- 🔥 NEW
-          COUNTIF(
-            COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'NEWS'
-          ) AS TOTAL_NEWS,
-
           COUNTIF(
             COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'ANALYSIS'
           ) AS TOTAL_ANALYSIS,
@@ -2143,10 +2040,6 @@ def get_content_stats():
         "total_scheduled": r.get("TOTAL_SCHEDULED", 0),
 
         # 🔥 NEW
-        "total_news": r.get("TOTAL_NEWS", 0),
-
-        "total_analysis": r.get("TOTAL_ANALYSIS", 0),
-
         "total_published_this_year": r.get(
             "TOTAL_PUBLISHED_THIS_YEAR",
             0
