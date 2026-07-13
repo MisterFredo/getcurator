@@ -29,20 +29,6 @@ def build_user_filter(alias: str = "c") -> str:
     )
     """
 
-
-# ============================================================
-# 🔥 CONTENT TYPE FILTER
-# ============================================================
-
-def build_content_type_filter() -> str:
-    return """
-    AND (
-        @content_type IS NULL
-        OR LOWER(c.content_type) = LOWER(@content_type)
-    )
-    """
-
-
 # ============================================================
 # 🔥 MY FEED FILTER
 # ============================================================
@@ -121,7 +107,6 @@ def search(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
-    content_type: Optional[str] = None,
     feed_mode: Optional[str] = None,
 ) -> List[Dict]:
 
@@ -190,14 +175,6 @@ def search(
     sql = f"""
     SELECT
         c.id_content AS id,
-
-        LOWER(
-            COALESCE(
-                c.content_type,
-                'ANALYSIS'
-            )
-        ) AS type,
-
         c.id_primary_company,
 
         c.title,
@@ -235,7 +212,6 @@ def search(
             LIKE LOWER(CONCAT('%', @query, '%'))
     )
 
-    {build_content_type_filter()}
     {build_user_filter("c")}
     {universe_filter}
     {preferences_filter}
@@ -256,9 +232,6 @@ def search(
         "user_id": user_id,
 
         "universe_id": universe_id,
-
-        "content_type": content_type,
-
         "fav_companies": fav_companies,
         "fav_topics": fav_topics,
         "fav_solutions": fav_solutions,
@@ -328,7 +301,6 @@ def latest(
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
-    content_type: Optional[str] = None,
     feed_mode: Optional[str] = None,
 ) -> List[Dict]:
 
@@ -395,14 +367,6 @@ def latest(
     sql = f"""
     SELECT
         c.id_content AS id,
-
-        LOWER(
-            COALESCE(
-                c.content_type,
-                'ANALYSIS'
-            )
-        ) AS type,
-
         c.id_primary_company,
 
         c.title,
@@ -426,8 +390,6 @@ def latest(
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
     WHERE c.published_at IS NOT NULL
-
-    {build_content_type_filter()}
     {build_user_filter("c")}
     {universe_filter}
     {preferences_filter}
@@ -446,8 +408,6 @@ def latest(
         "user_id": user_id,
 
         "universe_id": universe_id,
-
-        "content_type": content_type,
 
         "fav_companies": fav_companies,
         "fav_topics": fav_topics,
