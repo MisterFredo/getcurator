@@ -94,9 +94,6 @@ export default function StockImportPanel({
         {
           id_source: sourceId,
 
-          content_type:
-            contentType,
-
           csv_text:
             csvText,
         }
@@ -153,9 +150,6 @@ export default function StockImportPanel({
 
           urls_text:
             urlsText,
-
-          content_type:
-            contentType,
         }
       );
 
