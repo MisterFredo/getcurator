@@ -246,7 +246,6 @@ def rebuild_content_enriched_row(
             companies,
             solutions,
             concepts,
-            content_type,
             id_primary_company
         )
 
@@ -388,13 +387,6 @@ def rebuild_content_enriched_row(
 
                 WHERE cp.ID_CONTENT = c.ID_CONTENT
             ) AS concepts,
-
-            LOWER(
-                COALESCE(
-                    c.CONTENT_TYPE,
-                    'ANALYSIS'
-                )
-            ) AS content_type,
 
             c.ID_PRIMARY_COMPANY AS id_primary_company
 
