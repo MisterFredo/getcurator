@@ -142,10 +142,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
       const c = res.content;
 
-      setContentType(
-        c.content_type || "ANALYSIS"
-      );
-
       // 🔥 NEW
       setPrimaryCompanyId(
         c.id_primary_company || null
@@ -232,8 +228,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
     const payload = {
 
-      content_type: contentType,
-
       // 🔥 NEW
       id_primary_company: primaryCompanyId,
 
@@ -305,8 +299,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
     await api.put(
       `/content/update/${internalContentId}`,
       {
-
-        content_type: contentType,
 
         // 🔥 NEW
         id_primary_company:
