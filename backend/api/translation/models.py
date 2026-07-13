@@ -58,8 +58,5 @@ class TranslationBatchRequest(
 
     # 🔥 FILTERS
     source_id: Optional[str] = None
-
-    content_type: Optional[str] = None
-
     class Config:
         extra = "forbid"
