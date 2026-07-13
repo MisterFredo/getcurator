@@ -189,15 +189,6 @@ def translate_contents_batch(
 
     source_id: Optional[str] = None,
 
-    content_type: Optional[str] = None,
-) -> Dict:
-
-    if not fields:
-        fields = [
-            "TITLE",
-            "EXCERPT",
-        ]
-
     # ========================================================
     # FILTERS
     # ========================================================
@@ -273,23 +264,6 @@ def translate_contents_batch(
         )
 
         params["source_id"] = source_id
-
-    # ========================================================
-    # CONTENT TYPE
-    # ========================================================
-
-    if content_type:
-
-        where_clauses.append(
-            """
-            UPPER(CONTENT_TYPE)
-            = UPPER(@content_type)
-            """
-        )
-
-        params["content_type"] = (
-            content_type
-        )
 
     # ========================================================
     # QUERY
