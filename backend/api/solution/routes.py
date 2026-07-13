@@ -1,25 +1,22 @@
 from fastapi import APIRouter, HTTPException, Query, Request
-from typing import Dict, Optional
+from typing import Optional
 
 from api.solution.models import (
     SolutionCreate,
     SolutionUpdate,
+    SolutionOut,
 )
 
 from core.solution.service import (
     create_solution,
     list_solutions,
+    list_solutions_for_user,
     get_solution,
     update_solution,
     delete_solution,
-    list_solutions_for_user,
     get_solution_aliases,
-    add_solution_alias,
+    create_solution_alias,
     delete_solution_alias,
-)
-
-from core.solution.ai import (
-    suggest_solution_aliases,
 )
 
 from core.curator.entity_service import (
@@ -29,7 +26,6 @@ from core.curator.entity_service import (
 from utils.auth import (
     get_user_id_from_request,
 )
-
 router = APIRouter()
 
 
@@ -79,41 +75,6 @@ def create_route(data: SolutionCreate):
         )
 
 
-# ============================================================
-# SUGGEST ALIAS
-# ============================================================
-
-@router.post("/suggest-alias")
-def suggest_alias_route(
-    data: Dict
-):
-
-    name = data.get("name")
-
-    if not name or not name.strip():
-
-        raise HTTPException(
-            400,
-            "name required"
-        )
-
-    try:
-
-        aliases = suggest_solution_aliases(
-            name
-        )
-
-        return {
-            "status": "ok",
-            "aliases": aliases,
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            500,
-            f"Erreur génération alias : {e}"
-        )
 
 
 # ============================================================
@@ -208,11 +169,10 @@ def get_aliases_route(
 
 
 @router.post("/{id_solution}/alias")
-def add_alias_route(
+def create_alias_route(
     id_solution: str,
     data: dict,
 ):
-
     try:
 
         alias = (
@@ -227,7 +187,7 @@ def add_alias_route(
                 "alias required"
             )
 
-        add_solution_alias(
+        create_solution_alias(
             id_solution=id_solution,
             alias=alias,
         )
@@ -244,7 +204,7 @@ def add_alias_route(
 
         raise HTTPException(
             400,
-            f"Erreur ajout alias : {e}"
+            f"Erreur création alias : {e}"
         )
 
 
@@ -278,39 +238,26 @@ def delete_alias_route(
 # GET ONE
 # ============================================================
 
-@router.get("/{id_solution}")
+@router.get(
+    "/{id_solution}",
+    response_model=SolutionOut,
+)
 def get_route(
-    id_solution: str
+    id_solution: str,
 ):
 
-    try:
+    solution = get_solution(
+        id_solution
+    )
 
-        solution = get_solution(
-            id_solution
-        )
-
-        if not solution:
-
-            raise HTTPException(
-                404,
-                "Solution introuvable"
-            )
-
-        return {
-            "status": "ok",
-            "solution": solution,
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
+    if not solution:
 
         raise HTTPException(
-            400,
-            f"Erreur récupération solution : {e}"
+            404,
+            "Solution introuvable",
         )
 
+    return solution
 
 # ============================================================
 # VIEW (CURATOR)
