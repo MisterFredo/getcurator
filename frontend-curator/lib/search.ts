@@ -7,10 +7,6 @@ type Params = {
   query?: string;
   limit?: number;
   offset?: number;
-
-  // 🔥 NEW
-  content_type?: "NEWS" | "ANALYSIS";
-
   // 🔥 EXISTANT
   user_id?: string;
   universe_id?: string | null;
@@ -92,14 +88,6 @@ export async function searchCurator(
       String(params.offset ?? 0)
     );
 
-    // 🔥 CONTENT TYPE
-    if (params.content_type) {
-      query.append(
-        "content_type",
-        params.content_type
-      );
-    }
-
     // 🔥 USER
     if (params.user_id) {
       query.append(
@@ -178,14 +166,6 @@ export async function getLatestCurator(
       "offset",
       String(params?.offset ?? 0)
     );
-
-    // 🔥 CONTENT TYPE
-    if (params?.content_type) {
-      query.append(
-        "content_type",
-        params.content_type
-      );
-    }
 
     // 🔥 USER
     if (params?.user_id) {
