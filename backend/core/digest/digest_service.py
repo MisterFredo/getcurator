@@ -168,14 +168,6 @@ def _load_contents_by_ids(
                         "id_content"
                     ),
 
-                "content_type":
-                    (
-                        row.get(
-                            "CONTENT_TYPE"
-                        )
-                        or "analysis"
-                    ).lower(),
-
                 "title":
                     row.get(
                         "title"
@@ -193,14 +185,6 @@ def _load_contents_by_ids(
 
                 "url":
                     (
-                        f"https://www.getcurator.ai/feed?news_id={row.get('id_content')}"
-                        if (
-                            row.get(
-                                "CONTENT_TYPE"
-                            )
-                            or ""
-                        ).upper() == "NEWS"
-                        else
                         f"https://www.getcurator.ai/feed?analysis_id={row.get('id_content')}"
                     ),
 
@@ -305,14 +289,6 @@ def _load_digest_contents(
                         "id_content"
                     ),
 
-                "content_type":
-                    (
-                        row.get(
-                            "CONTENT_TYPE"
-                        )
-                        or "analysis"
-                    ).lower(),
-
                 "title":
                     row.get(
                         "title"
@@ -330,14 +306,6 @@ def _load_digest_contents(
 
                 "url":
                     (
-                        f"https://www.getcurator.ai/feed?news_id={row.get('id_content')}"
-                        if (
-                            row.get(
-                                "CONTENT_TYPE"
-                            )
-                            or ""
-                        ).upper() == "NEWS"
-                        else
                         f"https://www.getcurator.ai/feed?analysis_id={row.get('id_content')}"
                     ),
 
