@@ -1,259 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
-import HtmlEditor from "@/components/admin/HtmlEditor";
 
-type Universe = {
-  id_universe: string;
-  label: string;
-};
+import { useParams } from "next/navigation";
 
-export default function EditTopic({ params }: { params: { id: string } }) {
+import TopicForm from "@/components/admin/topic/TopicForm";
 
-  const { id } = params;
+/* ========================================================= */
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export default function EditTopicPage() {
 
-  const [label, setLabel] = useState("");
+  const params =
+    useParams();
 
-  const [universes, setUniverses] = useState<Universe[]>([]);
-  const [selectedUniverses, setSelectedUniverses] = useState<string[]>([]);
-
-  const [description, setDescription] = useState("");
-  const [seoTitle, setSeoTitle] = useState("");
-  const [seoDescription, setSeoDescription] = useState("");
-
-  const [insightFrequency, setInsightFrequency] =
-    useState("QUARTERLY");
-
-  // ============================================================
-  // LOAD DATA
-  // ============================================================
-
-  useEffect(() => {
-
-    async function load() {
-
-      try {
-
-        const [t, u] = await Promise.all([
-          api.get(`/topic/${id}`),
-          api.get("/universe/list"),
-        ]);
-
-        setLabel(t.label || "");
-
-        setDescription(t.description || "");
-        setSeoTitle(t.seo_title || "");
-        setSeoDescription(t.seo_description || "");
-
-        setInsightFrequency(t.insight_frequency || "QUARTERLY");
-
-        setUniverses(u?.universes || []);
-
-        // 🔥 récupération univers existants
-        const existing = (t.universes || []).map(
-          (x: any) => x.id_universe
-        );
-
-        setSelectedUniverses(existing);
-
-      } catch (e) {
-
-        console.error(e);
-        alert("❌ Erreur chargement topic");
-
-      } finally {
-
-        setLoading(false);
-
-      }
-
-    }
-
-    load();
-
-  }, [id]);
-
-  // ============================================================
-  // TOGGLE UNIVERS
-  // ============================================================
-
-  function toggleUniverse(id: string) {
-    setSelectedUniverses((prev) =>
-      prev.includes(id)
-        ? prev.filter((u) => u !== id)
-        : [...prev, id]
-    );
-  }
-
-  // ============================================================
-  // SAVE
-  // ============================================================
-
-  async function save() {
-
-    if (!label.trim()) {
-      alert("Label requis");
-      return;
-    }
-
-    if (selectedUniverses.length === 0) {
-      alert("Sélectionner au moins un univers");
-      return;
-    }
-
-    try {
-
-      setSaving(true);
-
-      await api.put(`/topic/update/${id}`, {
-        label,
-        description: description || null,
-        seo_title: seoTitle || null,
-        seo_description: seoDescription || null,
-        insight_frequency: insightFrequency,
-        universe_ids: selectedUniverses,
-      });
-
-      alert("Topic modifié");
-
-    } catch (e) {
-
-      console.error(e);
-      alert("❌ Erreur mise à jour topic");
-
-    } finally {
-
-      setSaving(false);
-
-    }
-
-  }
-
-  if (loading) return <p>Chargement…</p>;
+  const topicId =
+    params.id as string;
 
   return (
+
     <div className="space-y-10">
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-semibold">
-          Modifier le topic
-        </h1>
+      <div className="flex items-center justify-between">
 
-        <Link href="/admin/topic" className="underline">
-          ← Retour
-        </Link>
-      </div>
+        <div>
 
-      {/* LABEL */}
-      <div className="space-y-2 max-w-2xl">
-        <label className="block text-sm font-medium">
-          Label
-        </label>
+          <h1 className="text-3xl font-semibold">
+            Edit topic
+          </h1>
 
-        <input
-          className="border p-2 w-full rounded"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-      </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Update the topic information and associated visuals.
+          </p>
 
-      {/* UNIVERS */}
-      <div className="space-y-2 max-w-2xl">
-        <label className="block text-sm font-medium">
-          Univers
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          {universes.map((u) => (
-            <button
-              key={u.id_universe}
-              type="button"
-              onClick={() => toggleUniverse(u.id_universe)}
-              className={`px-3 py-1 rounded border ${
-                selectedUniverses.includes(u.id_universe)
-                  ? "bg-blue-600 text-white"
-                  : "bg-white"
-              }`}
-            >
-              {u.label}
-            </button>
-          ))}
         </div>
-      </div>
 
-      {/* DESCRIPTION */}
-      <div className="space-y-2 max-w-2xl">
-        <label className="block text-sm font-medium">
-          Description éditoriale
-        </label>
-
-        <HtmlEditor
-          value={description}
-          onChange={setDescription}
-        />
-      </div>
-
-      {/* FREQUENCE */}
-      <div className="space-y-2 max-w-2xl">
-        <label className="block text-sm font-medium">
-          Fréquence des insights
-        </label>
-
-        <select
-          value={insightFrequency}
-          onChange={(e) => setInsightFrequency(e.target.value)}
-          className="border px-3 py-2 rounded w-full max-w-xs"
+        <Link
+          href="/admin/topic"
+          className="underline"
         >
-          <option value="WEEKLY">Weekly</option>
-          <option value="MONTHLY">Monthly</option>
-          <option value="QUARTERLY">Quarterly</option>
-        </select>
-      </div>
-
-      {/* SEO */}
-      <div className="space-y-4 max-w-2xl">
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            SEO title
-          </label>
-
-          <input
-            className="border p-2 w-full rounded"
-            value={seoTitle}
-            onChange={(e) => setSeoTitle(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            SEO description
-          </label>
-
-          <textarea
-            className="border p-2 w-full rounded h-20"
-            value={seoDescription}
-            onChange={(e) =>
-              setSeoDescription(e.target.value)
-            }
-          />
-        </div>
+          ← Back
+        </Link>
 
       </div>
 
-      <button
-        onClick={save}
-        disabled={saving}
-        className="bg-ratecard-blue px-4 py-2 text-white rounded disabled:opacity-50"
-      >
-        {saving ? "Enregistrement…" : "Enregistrer"}
-      </button>
+      <TopicForm
+        mode="edit"
+        topicId={topicId}
+      />
 
     </div>
+
   );
+
 }
