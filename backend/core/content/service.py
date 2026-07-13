@@ -165,25 +165,10 @@ def create_content(data: ContentCreate) -> str:
 
     try:
 
-        # 🔥 NEW
-        content_type = (
-            data.content_type
-            if data.content_type
-            else "ANALYSIS"
-        )
+
 
         chiffres = normalize_array(data.chiffres)
-
-        # 🔥 NEW
-        # Les NEWS ne déclenchent pas le pipeline backlog
-        if content_type == "NEWS":
-
-            print(
-                "ℹ️ NEWS CONTENT → SKIP NUMBERS BACKLOG:",
-                content_id
-            )
-
-        elif chiffres:
+        chiffres:
 
             backlog_rows = get_numbers_from_content(content_id)
 
