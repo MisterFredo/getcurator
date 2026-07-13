@@ -60,10 +60,6 @@ export default function ContentStockPage() {
         queryParams.append("import_type", filters.import_type);
       }
 
-      if (filters.content_type) {
-        queryParams.append("content_type", filters.content_type);
-      }
-
       // 🔥 NEW
       if (filters.id_primary_company) {
         queryParams.append(
@@ -356,13 +352,6 @@ export default function ContentStockPage() {
               setFilters((prev) => ({
                 ...prev,
                 import_type: v,
-              }))
-            }
-
-            onContentTypeChange={(v) =>
-              setFilters((prev) => ({
-                ...prev,
-                content_type: v,
               }))
             }
 
