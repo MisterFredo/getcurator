@@ -32,7 +32,6 @@ export default function ContentStockPage() {
     status: "",
     source_id: "",
     import_type: "",
-    content_type: "",
 
     // 🔥 NEW
     id_primary_company: "",
@@ -333,7 +332,6 @@ export default function ContentStockPage() {
             status={filters.status}
             sourceId={filters.source_id}
             importType={filters.import_type}
-            contentType={filters.content_type}
 
             // 🔥 NEW
             primaryCompanyId={filters.id_primary_company}
