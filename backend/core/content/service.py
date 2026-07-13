@@ -1443,9 +1443,6 @@ def get_source_monitoring():
       SELECT
         r.SOURCE_ID,
 
-        -- 🔥 NEW
-        r.CONTENT_TYPE,
-
         r.DATE_SOURCE,
         r.SOURCE_URL,
         r.SOURCE_TITLE,
@@ -1462,10 +1459,6 @@ def get_source_monitoring():
 
       SELECT
         SOURCE_ID,
-
-        -- 🔥 NEW
-        CONTENT_TYPE,
-
         DATE_SOURCE AS LAST_ARTICLE_DATE,
         SOURCE_URL AS LAST_ARTICLE_URL,
         SOURCE_TITLE AS LAST_ARTICLE_TITLE
@@ -1479,9 +1472,6 @@ def get_source_monitoring():
 
       SELECT
         SOURCE_ID,
-
-        -- 🔥 NEW
-        CONTENT_TYPE,
 
         MAX(CREATED_AT) AS LAST_IMPORT_AT,
 
@@ -1504,13 +1494,6 @@ def get_source_monitoring():
       s.SOURCE_ID,
 
       s.NAME AS SOURCE_NAME,
-
-      -- 🔥 NEW
-      COALESCE(
-        la.CONTENT_TYPE,
-        agg.CONTENT_TYPE,
-        'ANALYSIS'
-      ) AS CONTENT_TYPE,
 
       la.LAST_ARTICLE_DATE,
       la.LAST_ARTICLE_URL,
