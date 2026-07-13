@@ -41,7 +41,6 @@ def list_contents(
     limit: int = 20,
     offset: int = 0,
     topic_id: Optional[str] = None,
-    content_type: Optional[str] = None,
     id_primary_company: Optional[str] = None,
 ):
 
@@ -53,7 +52,6 @@ def list_contents(
     join = ""
 
     where_topic = ""
-    where_content_type = ""
     where_primary_company = ""
 
     # ============================================================
@@ -71,17 +69,6 @@ def list_contents(
 
         params["topic_id"] = topic_id
 
-    # ============================================================
-    # CONTENT TYPE FILTER
-    # ============================================================
-
-    if content_type:
-
-        where_content_type = """
-            AND c.CONTENT_TYPE = @content_type
-        """
-
-        params["content_type"] = content_type
 
     # ============================================================
     # PRIMARY COMPANY FILTER
@@ -109,8 +96,6 @@ def list_contents(
             c.EXCERPT,
             c.EXCERPT_EN,
 
-            c.CONTENT_TYPE,
-
             -- 🔥 NEW
             c.ID_PRIMARY_COMPANY,
 
@@ -133,8 +118,6 @@ def list_contents(
             AND c.IS_ACTIVE = TRUE
 
             {where_topic}
-
-            {where_content_type}
 
             {where_primary_company}
 
@@ -160,11 +143,6 @@ def list_contents(
             "excerpt": r.get("EXCERPT"),
             "excerpt_en": r.get("EXCERPT_EN"),
 
-            "content_type": (
-                r.get("CONTENT_TYPE")
-                or "ANALYSIS"
-            ),
-
             # 🔥 NEW
             "id_primary_company": r.get(
                 "ID_PRIMARY_COMPANY"
@@ -172,17 +150,6 @@ def list_contents(
 
             "primary_company_name": r.get(
                 "PRIMARY_COMPANY_NAME"
-            ),
-
-            # 🔥 utilisé rapidement côté FE
-            "is_news": (
-                (r.get("CONTENT_TYPE") or "ANALYSIS")
-                == "NEWS"
-            ),
-
-            "is_analysis": (
-                (r.get("CONTENT_TYPE") or "ANALYSIS")
-                == "ANALYSIS"
             ),
 
             "signal": r.get("SIGNAL_ANALYTIQUE"),
@@ -214,10 +181,6 @@ def get_content(id_content: str) -> Dict:
 
     r = rows[0]
 
-    content_type = (
-        r.get("content_type")
-        or "ANALYSIS"
-    )
 
     # ============================================================
     # PRIMARY COMPANY
@@ -266,16 +229,6 @@ def get_content(id_content: str) -> Dict:
 
         "published_at": r.get("published_at"),
 
-        # ========================================================
-        # CONTENT TYPE
-        # ========================================================
-
-        "content_type": content_type,
-
-        # 🔥 très utile FE immédiatement
-        "is_news": content_type == "NEWS",
-
-        "is_analysis": content_type == "ANALYSIS",
 
         # ========================================================
         # PRIMARY COMPANY
