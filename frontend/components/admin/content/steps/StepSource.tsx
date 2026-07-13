@@ -126,9 +126,6 @@ export default function StepSource({
         date_source: sourcePublishedAt || null,
 
         // 🔥 NEW
-        content_type: contentType,
-
-        // 🔥 NEW
         id_primary_company: primaryCompanyId,
         discovery_id: discoveryId,
       });
