@@ -23,7 +23,6 @@ class ContentSummaryRequest(BaseModel):
 
     source_id: Optional[str] = None
     source_text: str
-    content_type: Literal["ANALYSIS", "NEWS"] = "ANALYSIS"
     id_primary_company: Optional[str] = None
 
 
@@ -33,12 +32,6 @@ class ContentSummaryRequest(BaseModel):
 
 class ContentRawCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    content_type: Literal[
-        "ANALYSIS",
-        "NEWS"
-    ] = "ANALYSIS"
-
     source_id: str
     source_title: str
     source_url: Optional[str] = None
@@ -53,11 +46,6 @@ class ContentRawCreate(BaseModel):
 
 class ContentRawUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    content_type: Optional[
-        Literal["ANALYSIS", "NEWS"]
-    ] = None
-
     # 🔥 NEW
     id_primary_company: Optional[str] = None
 
@@ -71,12 +59,6 @@ class ContentRawOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id_raw: str
-
-    content_type: Literal[
-        "ANALYSIS",
-        "NEWS"
-    ] = "ANALYSIS"
-
     source_id: str
     source_url: Optional[str] = None
     source_title: str
@@ -133,12 +115,6 @@ class ContentCreate(BaseModel):
     # ========================================================
     # META
     # ========================================================
-
-    content_type: Literal[
-        "ANALYSIS",
-        "NEWS"
-    ] = "ANALYSIS"
-
     # 🔥 NEW
     id_primary_company: Optional[str] = None
 
@@ -241,11 +217,6 @@ class ContentUpdate(BaseModel):
     # ========================================================
     # META
     # ========================================================
-
-    content_type: Optional[
-        Literal["ANALYSIS", "NEWS"]
-    ] = None
-
     # 🔥 NEW
     id_primary_company: Optional[str] = None
 
@@ -342,12 +313,6 @@ class ContentOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id_content: str
-
-    content_type: Literal[
-        "ANALYSIS",
-        "NEWS"
-    ] = "ANALYSIS"
-
     # 🔥 NEW
     id_primary_company: Optional[str] = None
 
@@ -390,3 +355,71 @@ class ContentOut(BaseModel):
 
     concepts: List[str] = Field(default_factory=list)
     solutions: List[str] = Field(default_factory=list)
+
+
+# ============================================================
+# SEARCH
+# ============================================================
+
+class ContentSearchFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    search: Optional[str] = None
+
+    company_id: Optional[str] = None
+    solution_id: Optional[str] = None
+    topic_id: Optional[str] = None
+    concept_id: Optional[str] = None
+    source_id: Optional[str] = None
+
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+
+    only_numbers: bool = False
+
+
+class ContentSearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filters: ContentSearchFilters = Field(
+        default_factory=ContentSearchFilters
+    )
+
+    page: int = Field(
+        default=1,
+        ge=1,
+    )
+
+    page_size: int = Field(
+        default=100,
+        ge=1,
+        le=500,
+    )
+
+
+class ContentSearchItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id_content: str
+
+    title: Optional[str] = None
+
+    source_title: Optional[str] = None
+
+    source_date: Optional[date] = None
+
+    published_at: Optional[datetime] = None
+
+
+class ContentSearchResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contents: List[ContentSearchItem]
+
+    total_results: int
+
+    page: int
+
+    page_size: int
+
+    total_pages: int
