@@ -1,26 +1,52 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import Link from "next/link";
+
+import { Pencil, Trash2 } from "lucide-react";
+
 import { api } from "@/lib/api";
 
-type Universe = {
-  id_universe: string;
+import { Universe } from "@/types/topic";
+
+/* ========================================================= */
+
+type Topic = {
+  id_topic: string;
+
   label: string;
+
+  universes: Universe[];
 };
 
-type TopicRow = {
-  id_topic: string;
-  label: string;
-  universes?: Universe[];
-  nb_analyses?: number;
-  delta_30d?: number;
-};
+/* ========================================================= */
 
 export default function TopicList() {
 
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [
+    topics,
+    setTopics,
+  ] = useState<Topic[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  /* ======================================================= */
 
   useEffect(() => {
 
@@ -28,13 +54,20 @@ export default function TopicList() {
 
       try {
 
-        const res = await api.get("/topic/list");
-        setTopics(res.topics || []);
+        const res =
+          await api.get(
+            "/topic/list"
+          );
+
+        setTopics(
+          res.topics ?? []
+        );
 
       } catch (e) {
 
         console.error(e);
-        alert("❌ Erreur chargement topics");
+
+        setTopics([]);
 
       } finally {
 
@@ -48,111 +81,249 @@ export default function TopicList() {
 
   }, []);
 
-  // ============================================================
-  // RENDER UNIVERS
-  // ============================================================
+  /* ======================================================= */
 
-  function renderUniverses(universes?: Universe[]) {
+  async function handleDelete(
+    id: string,
+  ) {
 
-    if (!universes || universes.length === 0) {
-      return <span className="text-gray-400 text-xs">Aucun</span>;
+    const confirmed =
+      window.confirm(
+        "Delete this topic?"
+      );
+
+    if (!confirmed) {
+      return;
     }
 
-    return (
-      <div className="flex flex-wrap gap-1">
-        {universes.map((u) => (
-          <span
-            key={u.id_universe}
-            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800"
-          >
-            {u.label}
-          </span>
-        ))}
-      </div>
-    );
+    try {
+
+      setDeletingId(id);
+
+      await api.delete(
+        `/topic/${id}`
+      );
+
+      setTopics((prev) =>
+        prev.filter(
+          (t) =>
+            t.id_topic !== id
+        )
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert(
+        "Unable to delete topic."
+      );
+
+    } finally {
+
+      setDeletingId(null);
+
+    }
+
   }
 
+  /* ======================================================= */
+
+  const q =
+    search.toLowerCase();
+
+  const filteredTopics =
+    topics.filter((t) => {
+
+      if (
+        t.label
+          .toLowerCase()
+          .includes(q)
+      ) {
+        return true;
+      }
+
+      return (
+        t.universes ?? []
+      ).some((u) =>
+        u.label
+          .toLowerCase()
+          .includes(q)
+      );
+
+    });
+
+  /* ======================================================= */
+
+  if (loading) {
+
+    return (
+      <p>
+        Loading...
+      </p>
+    );
+
+  }
+
+  /* ======================================================= */
+
   return (
+
     <div className="space-y-8">
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
+
         <h1 className="text-3xl font-semibold">
           Topics
         </h1>
 
         <Link
           href="/admin/topic/create"
-          className="bg-ratecard-green px-4 py-2 text-white rounded"
+          className="bg-ratecard-green px-4 py-2 rounded text-white"
         >
-          + Ajouter un topic
+          + Add topic
         </Link>
+
       </div>
 
-      {loading ? (
+      <div>
 
-        <p className="text-gray-500">Chargement…</p>
+        <input
+          type="text"
+          value={search}
+          placeholder="Search topic..."
+          onChange={(e) =>
+            setSearch(
+              e.target.value
+            )
+          }
+          className="border rounded px-3 py-2 w-full max-w-md"
+        />
 
-      ) : topics.length === 0 ? (
+      </div>
 
-        <p className="italic text-gray-500">
-          Aucun topic.
-        </p>
+      <div className="border rounded overflow-hidden">
 
-      ) : (
+        <table className="w-full text-sm">
 
-        <div className="border rounded overflow-hidden">
+          <thead className="bg-gray-100 text-left">
 
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3">Label</th>
-                <th className="p-3">Univers</th>
-                <th className="p-3">Analyses</th>
-                <th className="p-3">Δ 30j</th>
-                <th className="p-3 w-24 text-right">Actions</th>
+            <tr>
+
+              <th className="p-3">
+                Label
+              </th>
+
+              <th className="p-3">
+                Universes
+              </th>
+
+              <th className="p-3 w-28 text-right">
+                Actions
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {filteredTopics.map((t) => (
+
+              <tr
+                key={t.id_topic}
+                className="border-t hover:bg-gray-50"
+              >
+
+                <td className="p-3 font-medium">
+                  {t.label}
+                </td>
+
+                <td className="p-3">
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {(t.universes ?? []).map(
+                      (u) => (
+
+                        <span
+                          key={
+                            u.id_universe
+                          }
+                          className="px-2 py-1 rounded bg-gray-100 text-xs"
+                        >
+                          {u.label}
+                        </span>
+
+                      )
+                    )}
+
+                  </div>
+
+                </td>
+
+                <td className="p-3 flex justify-end items-center gap-3">
+
+                  <Link
+                    href={`/admin/topic/edit/${t.id_topic}`}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+
+                    <Pencil
+                      size={16}
+                    />
+
+                  </Link>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(
+                        t.id_topic
+                      )
+                    }
+                    disabled={
+                      deletingId ===
+                      t.id_topic
+                    }
+                    className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                  >
+
+                    <Trash2
+                      size={16}
+                    />
+
+                  </button>
+
+                </td>
+
               </tr>
-            </thead>
 
-            <tbody>
-              {topics.map((t) => (
-                <tr
-                  key={t.id_topic}
-                  className="border-t hover:bg-gray-50"
+            ))}
+
+            {filteredTopics.length ===
+              0 && (
+
+              <tr>
+
+                <td
+                  colSpan={3}
+                  className="p-6 text-center text-gray-400"
                 >
-                  <td className="p-3 font-medium">
-                    {t.label}
-                  </td>
+                  No topic found.
+                </td>
 
-                  <td className="p-3">
-                    {renderUniverses(t.universes)}
-                  </td>
+              </tr>
 
-                  <td className="p-3 text-gray-700">
-                    {t.nb_analyses ?? 0}
-                  </td>
+            )}
 
-                  <td className="p-3 text-gray-700">
-                    {t.delta_30d ?? 0}
-                  </td>
+          </tbody>
 
-                  <td className="p-3 text-right">
-                    <Link
-                      href={`/admin/topic/edit/${t.id_topic}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Modifier
-                    </Link>
-                  </td>
+        </table>
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-        </div>
-
-      )}
+      </div>
 
     </div>
+
   );
+
 }
