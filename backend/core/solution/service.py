@@ -58,20 +58,12 @@ TABLE_SOLUTION_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION_ALIAS"
 )
 
-VIEW_STATS_SOLUTION = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_SOLUTION"
-)
-
-DEFAULT_FREQUENCY = (
-    "QUARTERLY"
-)
-
 # ============================================================
 # CREATE
 # ============================================================
 
 def create_solution(
-    data: SolutionCreate
+    data: SolutionCreate,
 ) -> str:
 
     solution_id = str(
@@ -84,31 +76,29 @@ def create_solution(
     )
 
     row = [{
+
         "ID_SOLUTION": solution_id,
+
         "NAME": data.name,
+
         "ID_COMPANY": data.id_company,
+
         "DESCRIPTION": (
             data.description
             or None
         ),
+
         "CONTENT": (
             data.content
             or None
         ),
-        "STATUS": (
-            data.status
-            or "DRAFT"
-        ),
-        "VECTORISE": bool(
-            data.vectorise
-        ),
-        "INSIGHT_FREQUENCY": (
-            data.insight_frequency
-            or DEFAULT_FREQUENCY
-        ),
+
         "CREATED_AT": now,
+
         "UPDATED_AT": now,
+
         "IS_ACTIVE": True,
+
     }]
 
     client = (
@@ -116,15 +106,17 @@ def create_solution(
     )
 
     client.load_table_from_json(
+
         row,
+
         TABLE_SOLUTION,
+
         job_config=(
             bigquery.LoadJobConfig(
-                write_disposition=(
-                    "WRITE_APPEND"
-                )
+                write_disposition="WRITE_APPEND",
             )
         ),
+
     ).result()
 
     # ========================================================
@@ -132,8 +124,11 @@ def create_solution(
     # ========================================================
 
     create_solution_alias(
+
         id_solution=solution_id,
+
         alias=data.name,
+
     )
 
     # ========================================================
@@ -151,8 +146,11 @@ def create_solution(
             continue
 
         create_solution_alias(
+
             id_solution=solution_id,
+
             alias=alias,
+
         )
 
     return solution_id
@@ -163,117 +161,80 @@ def create_solution(
 
 def list_solutions() -> List[Dict]:
 
-    sql = f"""
-    SELECT
-        s.ID_SOLUTION,
-        s.NAME,
-        s.STATUS,
-        s.ID_COMPANY,
+    rows = query_bq(
+        f"""
+        SELECT
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
 
-        s.MEDIA_LOGO_RECTANGLE_ID
-            AS SOLUTION_LOGO,
+            s.MEDIA_LOGO_RECTANGLE_ID
+                AS SOLUTION_LOGO,
 
-        c.NAME AS COMPANY_NAME,
+            c.NAME
+                AS COMPANY_NAME,
 
-        c.MEDIA_LOGO_RECTANGLE_ID,
+            c.MEDIA_LOGO_RECTANGLE_ID,
 
-        CAST(
-            c.IS_PARTNER AS BOOL
-        ) AS IS_PARTNER,
+            CAST(
+                c.IS_PARTNER AS BOOL
+            ) AS IS_PARTNER,
 
-        s.VECTORISE,
-        s.INSIGHT_FREQUENCY,
-        s.CREATED_AT,
-        s.UPDATED_AT,
+            s.CREATED_AT,
+            s.UPDATED_AT,
 
-        COALESCE(
-            st.total,
-            0
-        ) AS NB_ANALYSES,
+            ns.ID_SOLUTION IS NOT NULL
+                AS HAS_NUMBERS,
 
-        COALESCE(
-            st.last_30_days,
-            0
-        ) AS DELTA_30D,
+            ARRAY_AGG(
+                DISTINCT u.LABEL
+                IGNORE NULLS
+            ) AS UNIVERSES
 
-        ns.ID_SOLUTION IS NOT NULL
-            AS HAS_NUMBERS,
+        FROM `{TABLE_SOLUTION}` s
 
-        r.ID_INSIGHT,
-        r.KEY_POINTS,
+        LEFT JOIN `{TABLE_COMPANY}` c
+            ON c.ID_COMPANY = s.ID_COMPANY
 
-        ARRAY_AGG(
-            DISTINCT u.LABEL
-            IGNORE NULLS
-        ) AS universes
+        LEFT JOIN `{TABLE_COMPANY_UNIVERSE}` cu
+            ON cu.ID_COMPANY = c.ID_COMPANY
 
-    FROM `{TABLE_SOLUTION}` s
+        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
+            ON u.ID_UNIVERSE = cu.ID_UNIVERSE
 
-    LEFT JOIN `{TABLE_COMPANY}` c
-        ON s.ID_COMPANY = c.ID_COMPANY
+        LEFT JOIN (
+            SELECT DISTINCT ID_SOLUTION
+            FROM `{TABLE_NUMBERS_SOLUTION}`
+        ) ns
+            ON ns.ID_SOLUTION = s.ID_SOLUTION
 
-    LEFT JOIN `{TABLE_COMPANY_UNIVERSE}` cu
-        ON cu.ID_COMPANY = s.ID_COMPANY
+        WHERE s.IS_ACTIVE = TRUE
 
-    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
-        ON u.ID_UNIVERSE = cu.ID_UNIVERSE
+        GROUP BY
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
+            s.MEDIA_LOGO_RECTANGLE_ID,
+            c.NAME,
+            c.MEDIA_LOGO_RECTANGLE_ID,
+            c.IS_PARTNER,
+            s.CREATED_AT,
+            s.UPDATED_AT,
+            ns.ID_SOLUTION
 
-    LEFT JOIN `{VIEW_STATS_SOLUTION}` st
-        ON st.id_solution = s.ID_SOLUTION
-
-    LEFT JOIN (
-        SELECT DISTINCT ID_SOLUTION
-
-        FROM `{TABLE_NUMBERS_SOLUTION}`
-    ) ns
-        ON ns.ID_SOLUTION = s.ID_SOLUTION
-
-    LEFT JOIN (
-        SELECT *
-
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_RADAR`
-
-        WHERE STATUS = "GENERATED"
-
-        QUALIFY ROW_NUMBER() OVER (
-            PARTITION BY ENTITY_TYPE, ENTITY_ID
-            ORDER BY YEAR DESC, PERIOD DESC
-        ) = 1
-    ) r
-        ON r.ENTITY_ID = s.ID_SOLUTION
-       AND r.ENTITY_TYPE = "solution"
-
-    WHERE s.IS_ACTIVE = TRUE
-
-    GROUP BY
-        s.ID_SOLUTION,
-        s.NAME,
-        s.STATUS,
-        s.ID_COMPANY,
-        s.MEDIA_LOGO_RECTANGLE_ID,
-        c.NAME,
-        c.MEDIA_LOGO_RECTANGLE_ID,
-        c.IS_PARTNER,
-        s.VECTORISE,
-        s.INSIGHT_FREQUENCY,
-        s.CREATED_AT,
-        s.UPDATED_AT,
-        st.total,
-        st.last_30_days,
-        ns.ID_SOLUTION,
-        r.ID_INSIGHT,
-        r.KEY_POINTS
-
-    ORDER BY UPPER(s.NAME)
-    """
-
-    rows = query_bq(sql)
+        ORDER BY UPPER(s.NAME)
+        """
+    )
 
     return [
+
         {
             "id_solution": r["ID_SOLUTION"],
+
             "name": r["NAME"],
+
             "id_company": r["ID_COMPANY"],
+
             "company_name": r.get(
                 "COMPANY_NAME"
             ),
@@ -287,185 +248,165 @@ def list_solutions() -> List[Dict]:
 
             "logo_type": (
                 "solution"
-                if r.get(
-                    "SOLUTION_LOGO"
-                )
+                if r.get("SOLUTION_LOGO")
                 else "company"
             ),
 
             "is_partner": r.get(
                 "IS_PARTNER",
-                False
-            ),
-
-            "status": r.get(
-                "STATUS"
-            ),
-
-            "vectorise": r.get(
-                "VECTORISE",
-                False
-            ),
-
-            "insight_frequency": r.get(
-                "INSIGHT_FREQUENCY"
+                False,
             ),
 
             "created_at": r.get(
-                "CREATED_AT"
+                "CREATED_AT",
             ),
 
             "updated_at": r.get(
-                "UPDATED_AT"
-            ),
-
-            "nb_analyses": r.get(
-                "NB_ANALYSES",
-                0
-            ),
-
-            "delta_30d": r.get(
-                "DELTA_30D",
-                0
+                "UPDATED_AT",
             ),
 
             "has_numbers": r.get(
                 "HAS_NUMBERS",
-                False
+                False,
             ),
-
-            "last_radar": {
-                "id_insight": (
-                    r["ID_INSIGHT"]
-                ),
-                "key_points": (
-                    r["KEY_POINTS"]
-                ),
-            }
-            if r.get("ID_INSIGHT")
-            else None,
 
             "universes": (
-                r.get("universes")
+                r.get("UNIVERSES")
                 or []
             ),
+
         }
+
         for r in rows
+
     ]
 
-def list_solutions_for_user(user_id: str):
 
-    sql = f"""
-    SELECT
-        s.ID_SOLUTION,
-        s.NAME,
-        s.STATUS,
-        s.ID_COMPANY,
+def list_solutions_for_user(
+    user_id: str,
+) -> List[Dict]:
 
-        c.NAME AS COMPANY_NAME,
-        c.MEDIA_LOGO_RECTANGLE_ID,
-        CAST(c.IS_PARTNER AS BOOL) AS IS_PARTNER,
+    rows = query_bq(
+        f"""
+        SELECT
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
 
-        s.VECTORISE,
-        s.INSIGHT_FREQUENCY,
-        s.CREATED_AT,
-        s.UPDATED_AT,
+            s.MEDIA_LOGO_RECTANGLE_ID
+                AS SOLUTION_LOGO,
 
-        COALESCE(st.total, 0) AS NB_ANALYSES,
-        COALESCE(st.last_30_days, 0) AS DELTA_30D,
+            c.NAME
+                AS COMPANY_NAME,
 
-        IF(ns.ID_SOLUTION IS NOT NULL, TRUE, FALSE) AS HAS_NUMBERS,
+            c.MEDIA_LOGO_RECTANGLE_ID,
 
-        r.ID_INSIGHT,
-        r.KEY_POINTS,
+            CAST(
+                c.IS_PARTNER AS BOOL
+            ) AS IS_PARTNER,
 
-        ARRAY_AGG(DISTINCT u.LABEL IGNORE NULLS) AS universes
+            s.CREATED_AT,
+            s.UPDATED_AT,
 
-    FROM `{TABLE_SOLUTION}` s
+            ns.ID_SOLUTION IS NOT NULL
+                AS HAS_NUMBERS,
 
-    JOIN `{TABLE_COMPANY}` c
-      ON s.ID_COMPANY = c.ID_COMPANY
+            ARRAY_AGG(
+                DISTINCT u.LABEL
+                IGNORE NULLS
+            ) AS UNIVERSES
 
-    JOIN `{TABLE_COMPANY_UNIVERSE}` cu
-      ON cu.ID_COMPANY = c.ID_COMPANY
+        FROM `{TABLE_SOLUTION}` s
 
-    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
-      ON u.ID_UNIVERSE = cu.ID_UNIVERSE
+        JOIN `{TABLE_COMPANY}` c
+            ON c.ID_COMPANY = s.ID_COMPANY
 
-    JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE` uu
-      ON uu.ID_UNIVERSE = cu.ID_UNIVERSE
+        JOIN `{TABLE_COMPANY_UNIVERSE}` cu
+            ON cu.ID_COMPANY = c.ID_COMPANY
 
-    LEFT JOIN `{VIEW_STATS_SOLUTION}` st
-      ON st.id_solution = s.ID_SOLUTION
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
+            ON u.ID_UNIVERSE = cu.ID_UNIVERSE
 
-    LEFT JOIN (
-        SELECT DISTINCT ID_SOLUTION
-        FROM `{TABLE_NUMBERS_SOLUTION}`
-    ) ns
-      ON ns.ID_SOLUTION = s.ID_SOLUTION
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE` uu
+            ON uu.ID_UNIVERSE = cu.ID_UNIVERSE
 
-    LEFT JOIN (
-        SELECT *
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_RADAR`
-        WHERE STATUS = "GENERATED"
-        QUALIFY ROW_NUMBER() OVER (
-            PARTITION BY ENTITY_TYPE, ENTITY_ID
-            ORDER BY YEAR DESC, PERIOD DESC
-        ) = 1
-    ) r
-      ON r.ENTITY_ID = s.ID_SOLUTION
-      AND r.ENTITY_TYPE = "solution"
+        LEFT JOIN (
+            SELECT DISTINCT ID_SOLUTION
+            FROM `{TABLE_NUMBERS_SOLUTION}`
+        ) ns
+            ON ns.ID_SOLUTION = s.ID_SOLUTION
 
-    WHERE
-        s.IS_ACTIVE = TRUE
-        AND uu.ID_USER = @user_id
+        WHERE
+            s.IS_ACTIVE = TRUE
+            AND uu.ID_USER = @user_id
 
-    GROUP BY
-        s.ID_SOLUTION,
-        s.NAME,
-        s.STATUS,
-        s.ID_COMPANY,
-        c.NAME,
-        c.MEDIA_LOGO_RECTANGLE_ID,
-        c.IS_PARTNER,
-        s.VECTORISE,
-        s.INSIGHT_FREQUENCY,
-        s.CREATED_AT,
-        s.UPDATED_AT,
-        st.total,
-        st.last_30_days,
-        ns.ID_SOLUTION,
-        r.ID_INSIGHT,
-        r.KEY_POINTS
+        GROUP BY
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
+            s.MEDIA_LOGO_RECTANGLE_ID,
+            c.NAME,
+            c.MEDIA_LOGO_RECTANGLE_ID,
+            c.IS_PARTNER,
+            s.CREATED_AT,
+            s.UPDATED_AT,
+            ns.ID_SOLUTION
 
-    HAVING COALESCE(st.total, 0) >= 1
-
-    ORDER BY s.NAME ASC
-    """
-
-    rows = query_bq(sql, {"user_id": user_id})
+        ORDER BY
+            UPPER(s.NAME)
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
 
     return [
         {
             "id_solution": r["ID_SOLUTION"],
+
             "name": r["NAME"],
-            "status": r["STATUS"],
+
             "id_company": r["ID_COMPANY"],
-            "company_name": r["COMPANY_NAME"],
-            "media_logo_rectangle_id": r["MEDIA_LOGO_RECTANGLE_ID"],
-            "is_partner": r["IS_PARTNER"],
-            "vectorise": r["VECTORISE"],
-            "insight_frequency": r.get("INSIGHT_FREQUENCY"),
-            "created_at": r["CREATED_AT"],
-            "updated_at": r["UPDATED_AT"],
-            "nb_analyses": r["NB_ANALYSES"],
-            "delta_30d": r["DELTA_30D"],
-            "has_numbers": r.get("HAS_NUMBERS", False),
-            "last_radar": {
-                "id_insight": r["ID_INSIGHT"],
-                "key_points": r["KEY_POINTS"],
-            } if r.get("ID_INSIGHT") else None,
-            "universes": r.get("universes") or [],
+
+            "company_name": r.get(
+                "COMPANY_NAME"
+            ),
+
+            "media_logo_rectangle_id": (
+                r.get("SOLUTION_LOGO")
+                or r.get(
+                    "MEDIA_LOGO_RECTANGLE_ID"
+                )
+            ),
+
+            "logo_type": (
+                "solution"
+                if r.get("SOLUTION_LOGO")
+                else "company"
+            ),
+
+            "is_partner": r.get(
+                "IS_PARTNER",
+                False,
+            ),
+
+            "created_at": r.get(
+                "CREATED_AT",
+            ),
+
+            "updated_at": r.get(
+                "UPDATED_AT",
+            ),
+
+            "has_numbers": r.get(
+                "HAS_NUMBERS",
+                False,
+            ),
+
+            "universes": (
+                r.get("UNIVERSES")
+                or []
+            ),
         }
         for r in rows
     ]
@@ -475,8 +416,8 @@ def list_solutions_for_user(user_id: str):
 # ============================================================
 
 def get_solution(
-    id_solution: str
-):
+    id_solution: str,
+) -> Optional[Dict]:
 
     rows = query_bq(
         f"""
@@ -494,11 +435,10 @@ def get_solution(
         FROM `{TABLE_SOLUTION}` s
 
         LEFT JOIN `{TABLE_COMPANY}` c
-            ON s.ID_COMPANY = c.ID_COMPANY
+            ON c.ID_COMPANY = s.ID_COMPANY
 
         LEFT JOIN (
             SELECT DISTINCT ID_SOLUTION
-
             FROM `{TABLE_NUMBERS_SOLUTION}`
         ) ns
             ON ns.ID_SOLUTION = s.ID_SOLUTION
@@ -509,7 +449,7 @@ def get_solution(
         """,
         {
             "id": id_solution,
-        }
+        },
     )
 
     if not rows:
@@ -526,26 +466,23 @@ def get_solution(
     )
 
     return {
+
         "id_solution": r["ID_SOLUTION"],
+
         "name": r["NAME"],
+
         "id_company": r["ID_COMPANY"],
+
         "company_name": r.get(
             "COMPANY_NAME"
         ),
+
         "description": r.get(
             "DESCRIPTION"
         ),
+
         "content": r.get(
             "CONTENT"
-        ),
-        "status": r.get(
-            "STATUS"
-        ),
-        "vectorise": r.get(
-            "VECTORISE"
-        ),
-        "insight_frequency": r.get(
-            "INSIGHT_FREQUENCY"
         ),
 
         "media_logo_rectangle_id": (
@@ -573,10 +510,10 @@ def get_solution(
 
         "has_numbers": r.get(
             "HAS_NUMBERS",
-            False
+            False,
         ),
-    }
 
+    }
 # ============================================================
 # UPDATE
 # ============================================================
@@ -598,11 +535,6 @@ def update_solution(
         "id_company": "ID_COMPANY",
         "description": "DESCRIPTION",
         "content": "CONTENT",
-        "status": "STATUS",
-        "vectorise": "VECTORISE",
-        "insight_frequency": (
-            "INSIGHT_FREQUENCY"
-        ),
     }
 
     bq_values = {
@@ -611,25 +543,30 @@ def update_solution(
         if k in mapping
     }
 
-    bq_values["UPDATED_AT"] = (
-        datetime.utcnow()
-        .isoformat()
-    )
+    if bq_values:
 
-    return update_bq(
-        table=TABLE_SOLUTION,
-        fields=bq_values,
-        where={
-            "ID_SOLUTION": id_solution,
-        },
-    )
+        bq_values["UPDATED_AT"] = (
+            datetime.utcnow()
+            .isoformat()
+        )
+
+        update_bq(
+            table=TABLE_SOLUTION,
+            fields=bq_values,
+            where={
+                "ID_SOLUTION": id_solution,
+            },
+        )
+
+    return True
+
 
 # ============================================================
 # DELETE (SOFT)
 # ============================================================
 
 def delete_solution(
-    id_solution: str
+    id_solution: str,
 ) -> bool:
 
     existing = query_bq(
@@ -642,7 +579,7 @@ def delete_solution(
         """,
         {
             "id": id_solution,
-        }
+        },
     )
 
     if not existing:
@@ -652,7 +589,6 @@ def delete_solution(
         table=TABLE_SOLUTION,
         fields={
             "IS_ACTIVE": False,
-
             "UPDATED_AT": (
                 datetime.utcnow()
                 .isoformat()
@@ -662,7 +598,6 @@ def delete_solution(
             "ID_SOLUTION": id_solution,
         },
     )
-
 # ============================================================
 # SOLUTION ALIASES
 # ============================================================
@@ -672,7 +607,7 @@ def delete_solution(
 # ============================================================
 
 def get_solution_aliases(
-    id_solution: str
+    id_solution: str,
 ) -> List[Dict]:
 
     rows = query_bq(
@@ -688,7 +623,7 @@ def get_solution_aliases(
         """,
         {
             "id_solution": id_solution,
-        }
+        },
     )
 
     return [
@@ -698,10 +633,13 @@ def get_solution_aliases(
         for r in rows
     ]
 
+
+# ============================================================
+
 def create_solution_alias(
     id_solution: str,
     alias: str,
-):
+) -> bool:
 
     alias = (
         alias
@@ -711,14 +649,14 @@ def create_solution_alias(
     if not alias:
 
         raise ValueError(
-            "alias vide"
+            "Alias vide."
         )
 
     normalized_alias = normalize(
         alias
     )
 
-    rows = query_bq(
+    existing = query_bq(
         f"""
         SELECT 1
 
@@ -735,13 +673,11 @@ def create_solution_alias(
         LIMIT 1
         """,
         {
-            "normalized_alias": (
-                normalized_alias
-            ),
-        }
+            "normalized_alias": normalized_alias,
+        },
     )
 
-    if rows:
+    if existing:
         return False
 
     query_bq(
@@ -759,86 +695,18 @@ def create_solution_alias(
         {
             "alias": alias,
             "id_solution": id_solution,
-        }
+        },
     )
 
     return True
 
-def add_solution_alias(
-    id_solution: str,
-    alias: str,
-):
 
-    alias = (
-        alias
-        or ""
-    ).strip()
-
-    if not alias:
-
-        raise ValueError(
-            "alias vide"
-        )
-
-    normalized_alias = normalize(
-        alias
-    )
-
-    rows = query_bq(
-        f"""
-        SELECT 1
-
-        FROM `{TABLE_SOLUTION_ALIAS}`
-
-        WHERE
-            ID_SOLUTION = @id_solution
-
-        AND UPPER(
-            REGEXP_REPLACE(
-                REPLACE(ALIAS, '+', ' PLUS '),
-                r'[^A-Z0-9 ]',
-                ' '
-            )
-        ) = @normalized_alias
-
-        LIMIT 1
-        """,
-        {
-            "id_solution": id_solution,
-
-            "normalized_alias": (
-                normalized_alias
-            ),
-        }
-    )
-
-    if rows:
-        return False
-
-    query_bq(
-        f"""
-        INSERT INTO `{TABLE_SOLUTION_ALIAS}` (
-            ALIAS,
-            ID_SOLUTION
-        )
-
-        VALUES (
-            @alias,
-            @id_solution
-        )
-        """,
-        {
-            "alias": alias,
-            "id_solution": id_solution,
-        }
-    )
-
-    return True
+# ============================================================
 
 def delete_solution_alias(
     id_solution: str,
     alias: str,
-):
+) -> bool:
 
     alias = (
         alias
@@ -855,7 +723,7 @@ def delete_solution_alias(
     if not solution:
 
         raise ValueError(
-            "solution introuvable"
+            "Solution introuvable."
         )
 
     if normalize(alias) == normalize(
@@ -863,7 +731,7 @@ def delete_solution_alias(
     ):
 
         raise ValueError(
-            "Impossible de supprimer l'alias principal"
+            "Impossible de supprimer l'alias principal."
         )
 
     normalized_alias = normalize(
@@ -886,11 +754,8 @@ def delete_solution_alias(
         """,
         {
             "id_solution": id_solution,
-
-            "normalized_alias": (
-                normalized_alias
-            ),
-        }
+            "normalized_alias": normalized_alias,
+        },
     )
 
     return True
