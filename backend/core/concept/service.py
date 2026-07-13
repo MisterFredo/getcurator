@@ -1,7 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import Optional, List
-
 from google.cloud import bigquery
 
 from config import BQ_PROJECT, BQ_DATASET
@@ -10,14 +8,20 @@ from utils.bigquery_utils import (
     update_bq,
     get_bigquery_client,
 )
-from api.concept.models import ConceptCreate, ConceptUpdate
+from api.concept.models import (
+    ConceptCreate,
+    ConceptUpdate,
+)
 
-TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
+TABLE_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
+)
 
 
 # ============================================================
-# CREATE CONCEPT
+# CREATE
 # ============================================================
+
 def create_concept(data: ConceptCreate) -> str:
 
     concept_id = str(uuid.uuid4())
@@ -26,7 +30,7 @@ def create_concept(data: ConceptCreate) -> str:
     row = [{
         "ID_CONCEPT": concept_id,
         "LABEL": data.label,
-        "DESCRIPTION": data.description,
+        "DESCRIPTION": data.description or None,
         "IS_ACTIVE": True,
         "CREATED_AT": now,
         "UPDATED_AT": now,
@@ -34,34 +38,33 @@ def create_concept(data: ConceptCreate) -> str:
 
     client = get_bigquery_client()
 
-    job = client.load_table_from_json(
+    client.load_table_from_json(
         row,
         TABLE_CONCEPT,
         job_config=bigquery.LoadJobConfig(
-            write_disposition="WRITE_APPEND"
+            write_disposition="WRITE_APPEND",
         ),
-    )
-
-    job.result()
+    ).result()
 
     return concept_id
 
 
 # ============================================================
-# LIST CONCEPTS
+# LIST
 # ============================================================
+
 def list_concepts():
 
     sql = f"""
-        SELECT
-            ID_CONCEPT,
-            LABEL,
-            DESCRIPTION,
-            CREATED_AT,
-            UPDATED_AT
-        FROM `{TABLE_CONCEPT}`
-        WHERE COALESCE(IS_ACTIVE, TRUE) = TRUE
-        ORDER BY LABEL ASC
+    SELECT
+        ID_CONCEPT,
+        LABEL,
+        DESCRIPTION,
+        CREATED_AT,
+        UPDATED_AT
+    FROM `{TABLE_CONCEPT}`
+    WHERE COALESCE(IS_ACTIVE, TRUE)=TRUE
+    ORDER BY UPPER(LABEL)
     """
 
     rows = query_bq(sql)
@@ -70,19 +73,22 @@ def list_concepts():
         {
             "id_concept": r["ID_CONCEPT"],
             "label": r["LABEL"],
-            "description": r["DESCRIPTION"],
-            "created_at": r["CREATED_AT"],
-            "updated_at": r["UPDATED_AT"],
+            "description": r.get("DESCRIPTION"),
+            "created_at": r.get("CREATED_AT"),
+            "updated_at": r.get("UPDATED_AT"),
         }
         for r in rows
     ]
 
+
 # ============================================================
-# GET ONE CONCEPT
+# GET ONE
 # ============================================================
+
 def get_concept(concept_id: str):
 
-    sql = f"""
+    rows = query_bq(
+        f"""
         SELECT
             ID_CONCEPT,
             LABEL,
@@ -90,11 +96,13 @@ def get_concept(concept_id: str):
             CREATED_AT,
             UPDATED_AT
         FROM `{TABLE_CONCEPT}`
-        WHERE ID_CONCEPT = @id
+        WHERE ID_CONCEPT=@id
         LIMIT 1
-    """
-
-    rows = query_bq(sql, {"id": concept_id})
+        """,
+        {
+            "id": concept_id,
+        },
+    )
 
     if not rows:
         return None
@@ -104,17 +112,24 @@ def get_concept(concept_id: str):
     return {
         "id_concept": r["ID_CONCEPT"],
         "label": r["LABEL"],
-        "description": r["DESCRIPTION"],
-        "created_at": r["CREATED_AT"],
-        "updated_at": r["UPDATED_AT"],
+        "description": r.get("DESCRIPTION"),
+        "created_at": r.get("CREATED_AT"),
+        "updated_at": r.get("UPDATED_AT"),
     }
 
-# ============================================================
-# UPDATE CONCEPT
-# ============================================================
-def update_concept(id_concept: str, data: ConceptUpdate) -> bool:
 
-    values = data.dict(exclude_unset=True)
+# ============================================================
+# UPDATE
+# ============================================================
+
+def update_concept(
+    id_concept: str,
+    data: ConceptUpdate,
+) -> bool:
+
+    values = data.dict(
+        exclude_unset=True,
+    )
 
     if not values:
         return False
@@ -131,27 +146,39 @@ def update_concept(id_concept: str, data: ConceptUpdate) -> bool:
         if k in mapping
     }
 
-    bq_values["UPDATED_AT"] = datetime.utcnow().isoformat()
+    if not bq_values:
+        return False
+
+    bq_values["UPDATED_AT"] = (
+        datetime.utcnow().isoformat()
+    )
 
     return update_bq(
         table=TABLE_CONCEPT,
         fields=bq_values,
-        where={"ID_CONCEPT": id_concept},
+        where={
+            "ID_CONCEPT": id_concept,
+        },
     )
 
 
 # ============================================================
-# DELETE CONCEPT
+# DELETE
 # ============================================================
-def delete_concept(id_concept: str) -> bool:
+
+def delete_concept(
+    id_concept: str,
+) -> bool:
 
     existing = query_bq(
         f"""
         SELECT ID_CONCEPT
         FROM `{TABLE_CONCEPT}`
-        WHERE ID_CONCEPT = @id
+        WHERE ID_CONCEPT=@id
         """,
-        {"id": id_concept},
+        {
+            "id": id_concept,
+        },
     )
 
     if not existing:
@@ -163,5 +190,7 @@ def delete_concept(id_concept: str) -> bool:
             "IS_ACTIVE": False,
             "UPDATED_AT": datetime.utcnow().isoformat(),
         },
-        where={"ID_CONCEPT": id_concept},
+        where={
+            "ID_CONCEPT": id_concept,
+        },
     )
