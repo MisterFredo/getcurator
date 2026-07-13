@@ -8,9 +8,6 @@ type Source = {
   NB_IMPORTED_7D?: number;
 
   // 🔥 NEW
-  CONTENT_TYPE?: string;
-
-  // 🔥 NEW
   PRIMARY_COMPANY_NAME?: string;
 };
 
@@ -48,11 +45,6 @@ export default function SourceMonitoringTable({
           >
             <td className="p-3 font-medium">
               {s.SOURCE_NAME}
-            </td>
-
-            {/* 🔥 NEW */}
-            <td className="p-3">
-              {s.CONTENT_TYPE || "-"}
             </td>
 
             {/* 🔥 NEW */}
