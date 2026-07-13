@@ -10,9 +10,6 @@ type RawItem = {
   import_type?: string | null;
 
   // 🔥 NEW
-  content_type?: string | null;
-
-  // 🔥 NEW
   id_primary_company?: string | null;
 };
 
@@ -80,11 +77,6 @@ export default function RawDrawer({
     setRawText("");
 
     // 🔥 NEW
-    setContentType(
-      (raw.content_type as "ANALYSIS" | "NEWS") || "ANALYSIS"
-    );
-
-    // 🔥 NEW
     setPrimaryCompanyId(
       raw.id_primary_company || ""
     );
@@ -125,9 +117,6 @@ export default function RawDrawer({
         source_title: title,
         date_source: date || null,
         raw_text: rawText,
-
-        // 🔥 NEW
-        content_type: contentType,
 
         // 🔥 NEW
         id_primary_company:
