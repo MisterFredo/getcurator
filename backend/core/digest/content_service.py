@@ -709,8 +709,6 @@ def get_digest_contents(
 
         id_content AS id,
 
-        CONTENT_TYPE AS content_type,
-
         {title_sql},
 
         {excerpt_sql},
@@ -836,14 +834,6 @@ def get_digest_contents(
                 "id":
                     row.get("id"),
 
-                "content_type":
-                    (
-                        row.get(
-                            "content_type"
-                        )
-                        or "analysis"
-                    ).lower(),
-
                 "title":
                     row.get(
                         "title"
@@ -861,12 +851,6 @@ def get_digest_contents(
 
                 "url":
                     (
-                        f"https://www.getcurator.ai/feed?news_id={row.get('id')}"
-                        if (
-                            row.get("content_type")
-                            or ""
-                        ).upper() == "NEWS"
-                        else
                         f"https://www.getcurator.ai/feed?analysis_id={row.get('id')}"
                     ),
 
