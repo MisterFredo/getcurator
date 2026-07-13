@@ -110,12 +110,6 @@ export default function StepPreview({
 
             <div className="space-y-10">
 
-              {/* CONTENT TYPE */}
-
-              <div className="text-xs uppercase tracking-wide text-gray-500">
-                {content.content_type}
-              </div>
-
               {/* TITLE */}
 
               {content.title && (
