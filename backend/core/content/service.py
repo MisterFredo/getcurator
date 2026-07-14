@@ -1933,10 +1933,6 @@ def get_content_stats():
           ) AS TOTAL_SCHEDULED,
 
           COUNTIF(
-            COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'ANALYSIS'
-          ) AS TOTAL_ANALYSIS,
-
-          COUNTIF(
             STATUS = 'PUBLISHED'
             AND EXTRACT(YEAR FROM PUBLISHED_AT)
                 = EXTRACT(YEAR FROM CURRENT_DATE())
