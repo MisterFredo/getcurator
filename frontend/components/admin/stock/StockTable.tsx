@@ -73,13 +73,6 @@ export default function StockTable({
               </td>
 
               {/* 🔥 NEW */}
-              <td className="p-2">
-                <span className="text-xs px-2 py-1 rounded bg-gray-200">
-                  {r.content_type || "ANALYSIS"}
-                </span>
-              </td>
-
-              {/* 🔥 NEW */}
               <td className="p-2 text-gray-600">
                 {r.primary_company_name || "—"}
               </td>
