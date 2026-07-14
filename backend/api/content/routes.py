@@ -451,7 +451,6 @@ def import_raw_route(payload: dict):
     count = import_raw_content(
         text=text,
         id_source=id_source,
-        content_type=content_type,
         id_primary_company=id_primary_company,
     )
 
