@@ -396,8 +396,6 @@ def store_raw_route(
 
             date_source=payload.date_source,
 
-            content_type=payload.content_type,
-
             id_primary_company=payload.id_primary_company,
         )
 
@@ -446,11 +444,6 @@ def import_raw_route(payload: dict):
 
     id_source = payload.get("id_source")
 
-    content_type = payload.get(
-        "content_type",
-        "ANALYSIS"
-    )
-
     id_primary_company = payload.get(
         "id_primary_company"
     )
@@ -490,7 +483,6 @@ def import_csv_route(
         result = import_urls_csv(
             csv_text=payload.csv_text,
             id_source=payload.id_source,
-            content_type=payload.content_type,
         )
 
         return {
@@ -519,7 +511,6 @@ def raw_stock_route(
     status: Optional[str] = None,
     source_id: Optional[str] = None,
     import_type: Optional[str] = None,
-    content_type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -530,7 +521,6 @@ def raw_stock_route(
             status=status,
             source_id=source_id,
             import_type=import_type,
-            content_type=content_type,
             limit=limit,
             offset=offset,
         )
@@ -687,7 +677,6 @@ def import_urls_route(
         result = import_urls_batch(
             urls_text=payload.urls_text,
             id_source=payload.id_source,
-            content_type=payload.content_type,
             id_primary_company=payload.id_primary_company,
         )
 
@@ -733,8 +722,6 @@ def update_raw(
             source_title=payload.source_title,
 
             raw_text=payload.raw_text,
-
-            content_type=payload.content_type,
 
             id_primary_company=payload.id_primary_company,
         )
@@ -825,26 +812,10 @@ def ai_generate(
 
     try:
 
-        if (
-            getattr(
-                payload,
-                "content_type",
-                "ANALYSIS"
-            )
-            == "NEWS"
-        ):
-
-            result = generate_news(
-                source_id=payload.source_id,
-                source_text=payload.source_text,
-            )
-
-        else:
-
-            result = generate_summary(
-                source_id=payload.source_id,
-                source_text=payload.source_text,
-            )
+        result = generate_summary(
+            source_id=payload.source_id,
+            source_text=payload.source_text,
+        )
 
         if not isinstance(
             result,
@@ -870,7 +841,6 @@ def ai_generate(
             400,
             str(e)
         )
-
 
 # ============================================================
 # GET ONE CONTENT (ADMIN)
