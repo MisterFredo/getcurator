@@ -283,13 +283,6 @@ export default function FeedPage() {
               activeUniverse ||
               undefined,
 
-            content_type:
-              activeType === "all"
-                ? undefined
-                : activeType === "news"
-                  ? "NEWS"
-                  : "ANALYSIS",
-
             feed_mode: feedMode,
           })
 
@@ -302,13 +295,6 @@ export default function FeedPage() {
             universe_id:
               activeUniverse ||
               undefined,
-
-            content_type:
-              activeType === "all"
-                ? undefined
-                : activeType === "news"
-                  ? "NEWS"
-                  : "ANALYSIS",
 
             feed_mode: feedMode,
           });
