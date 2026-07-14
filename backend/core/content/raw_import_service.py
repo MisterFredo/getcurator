@@ -357,7 +357,6 @@ def import_raw_content(
     inserted = insert_raw_rows(
         rows,
         id_source,
-        content_type=content_type,
         id_primary_company=id_primary_company,
     )
 
@@ -587,7 +586,6 @@ def import_urls_batch(
 def import_urls_csv(
     csv_text: str,
     id_source: str,
-    content_type: str = "ANALYSIS",
 ):
 
     import csv
