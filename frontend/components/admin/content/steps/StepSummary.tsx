@@ -121,10 +121,6 @@ export default function StepSummary(
         {
 
           // 🔥 NEW
-          content_type:
-            props.contentType,
-
-          // 🔥 NEW
           id_primary_company:
             props.primaryCompanyId,
 
