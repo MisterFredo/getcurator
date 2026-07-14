@@ -1357,17 +1357,6 @@ def get_raw_stats() -> dict:
                 THEN 1 ELSE 0 END
             ) AS total_error,
 
-            -- 🔥 NEW
-            SUM(
-                CASE WHEN COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'NEWS'
-                THEN 1 ELSE 0 END
-            ) AS total_news,
-
-            SUM(
-                CASE WHEN COALESCE(CONTENT_TYPE, 'ANALYSIS') = 'ANALYSIS'
-                THEN 1 ELSE 0 END
-            ) AS total_analysis
-
         FROM `{TABLE_CONTENT_RAW}`
     """
 
