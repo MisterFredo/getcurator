@@ -92,17 +92,11 @@ class ImportUrlsRequest(BaseModel):
 
     id_source: str
 
-    content_type: Literal[
-        "ANALYSIS",
-        "NEWS"
-    ] = "ANALYSIS"
-
     id_primary_company: Optional[str] = None
 
 class ImportCsvRequest(BaseModel):
     csv_text: str
     id_source: str
-    content_type: str = "ANALYSIS"
 
 
 # ============================================================
