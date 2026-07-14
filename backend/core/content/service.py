@@ -956,9 +956,6 @@ def destock_raw_contents(
             print("SOURCE_ID:", raw.get("SOURCE_ID"))
 
             # 🔥 NEW
-            print("CONTENT_TYPE:", raw.get("CONTENT_TYPE"))
-
-            # 🔥 NEW
             print(
                 "ID_PRIMARY_COMPANY:",
                 raw.get("ID_PRIMARY_COMPANY")
@@ -1368,10 +1365,6 @@ def get_raw_stats() -> dict:
             "total_stored": 0,
             "total_processing": 0,
             "total_error": 0,
-
-            # 🔥 NEW
-            "total_news": 0,
-            "total_analysis": 0,
         }
 
     r = rows[0]
