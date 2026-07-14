@@ -1452,8 +1452,7 @@ def get_source_monitoring():
       FROM `adex-5555.RATECARD_PROD.RATECARD_CONTENT_RAW`
 
       GROUP BY
-        SOURCE_ID,
-        CONTENT_TYPE
+        SOURCE_ID
     )
 
     SELECT
