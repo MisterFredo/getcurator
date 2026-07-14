@@ -269,7 +269,6 @@ def insert_raw_rows(
     rows: List[Dict],
     id_source: str,
     import_type: str = "FILE",
-    content_type: str = "ANALYSIS",
 
     # 🔥 NEW
     id_primary_company: Optional[str] = None,
@@ -292,9 +291,6 @@ def insert_raw_rows(
                 "CREATED_AT": datetime.utcnow().isoformat(),
 
                 "STATUS": "STORED",
-
-                # 🔥 NEW
-                "CONTENT_TYPE": content_type,
 
                 # 🔥 NEW
                 "ID_PRIMARY_COMPANY": r.get(
@@ -348,7 +344,6 @@ def insert_raw_rows(
 def import_raw_content(
     text: str,
     id_source: str,
-    content_type: str = "ANALYSIS",
     id_primary_company: Optional[str] = None,
 ):
 
@@ -470,7 +465,6 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
 def import_urls_batch(
     urls_text: str,
     id_source: str,
-    content_type: str = "ANALYSIS",
     id_primary_company: Optional[str] = None,
 ):
 
@@ -528,8 +522,6 @@ def import_urls_batch(
                     "RAW_TEXT": raw_text,
                     "SOURCE_URL": parsed.get("SOURCE_URL"),
 
-                    # 🔥 NEW
-                    "CONTENT_TYPE": content_type,
                 }
             )
 
@@ -559,7 +551,6 @@ def import_urls_batch(
             import_type="URL",
 
             # 🔥 NEW
-            content_type=content_type,
             id_primary_company=id_primary_company,
         )
 
@@ -733,7 +724,6 @@ def import_urls_csv(
             inserted_rows,
             id_source=id_source,
             import_type="URL",
-            content_type=content_type,
         )
 
     # ----------------------------------------------------------
