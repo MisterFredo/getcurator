@@ -89,8 +89,6 @@ def search_route(
 
     offset: int = Query(0),
 
-    content_type: Optional[str] = Query(None),
-
     universe_id: Optional[str] = Query(None),
 
     feed_mode: Optional[str] = Query(None),
@@ -117,8 +115,6 @@ def search_route(
             user_id=user_id,
 
             universe_id=universe_id,
-
-            content_type=content_type,
 
             feed_mode=feed_mode,
         )
@@ -371,8 +367,6 @@ def latest_route(
 
     offset: int = Query(0),
 
-    content_type: Optional[str] = Query(None),
-
     universe_id: Optional[str] = Query(None),
 
     feed_mode: Optional[str] = Query(None),
@@ -397,8 +391,6 @@ def latest_route(
             user_id=user_id,
 
             universe_id=universe_id,
-
-            content_type=content_type,
 
             feed_mode=feed_mode,
         )
