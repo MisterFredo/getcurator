@@ -1380,9 +1380,7 @@ def get_raw_stats() -> dict:
         "total_error": r.get("total_error", 0),
 
         # 🔥 NEW
-        "total_news": r.get("total_news", 0),
 
-        "total_analysis": r.get("total_analysis", 0),
     }
 # ============================================================
 # SUBSTACK
@@ -1961,8 +1959,6 @@ def get_content_stats():
             "total_scheduled": 0,
 
             # 🔥 NEW
-            "total_news": 0,
-            "total_analysis": 0,
 
             "total_published_this_year": 0,
             "total_published_this_month": 0,
