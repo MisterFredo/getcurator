@@ -1415,7 +1415,7 @@ def get_source_monitoring():
         r.SOURCE_TITLE,
 
         ROW_NUMBER() OVER (
-          PARTITION BY r.SOURCE_ID, r.CONTENT_TYPE
+          PARTITION BY r.SOURCE_ID
           ORDER BY r.DATE_SOURCE DESC
         ) AS rn
 
