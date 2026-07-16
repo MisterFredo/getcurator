@@ -44,6 +44,7 @@ export function useCockpitOperations() {
       const res =
         await api.post(
           `/cockpit/operations/${operation}`,
+          {},
         );
 
       setSuccess(
