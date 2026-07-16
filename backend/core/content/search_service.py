@@ -343,8 +343,10 @@ def search_contents(
 
     return {
         "contents": contents,
-        "total_results": total_results,
         "page": request.page,
         "page_size": limit,
+        "total_results": total_results,
         "total_pages": total_pages,
+        "has_next": request.page < total_pages,
+        "has_previous": request.page > 1,
     }
