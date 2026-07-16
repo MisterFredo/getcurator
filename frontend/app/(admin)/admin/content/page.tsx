@@ -17,7 +17,6 @@ import type { SourceOption } from "@/types/source";
 
 import { useContentSearch } from "@/hooks/useContentSearch";
 
-import ContentOperations from "@/components/admin/content/ContentOperations";
 import ContentFiltersPanel from "@/components/admin/content/ContentFilters";
 import ContentTable from "@/components/admin/content/ContentTable";
 import ContentPagination from "@/components/admin/content/ContentPagination";
@@ -73,13 +72,9 @@ export default function ContentPage() {
     total_results,
     total_pages,
   } = useContentSearch({
-
     filters,
-
     page,
-
     pageSize: 100,
-
   });
 
   /* =======================================================
@@ -141,8 +136,8 @@ export default function ContentPage() {
       } catch (e) {
 
         console.error(
-          "Erreur chargement lookups",
-          e
+          "Unable to load lookups",
+          e,
         );
 
       }
@@ -171,9 +166,27 @@ export default function ContentPage() {
 
   return (
 
-    <div className="space-y-6">
+    <div className="space-y-8">
 
-      <ContentOperations />
+      {/* =================================================== */}
+      {/* HEADER */}
+      {/* =================================================== */}
+
+      <div>
+
+        <h1 className="text-3xl font-semibold">
+          Contents
+        </h1>
+
+        <p className="text-gray-500 mt-1">
+          Browse, search and edit published contents.
+        </p>
+
+      </div>
+
+      {/* =================================================== */}
+      {/* FILTERS */}
+      {/* =================================================== */}
 
       <ContentFiltersPanel
 
@@ -201,33 +214,51 @@ export default function ContentPage() {
 
         }}
 
-       />
-
-      <ContentTable
-
-        contents={contents}
-
-        loading={loading}
-
       />
 
-      <ContentPagination
+      {/* =================================================== */}
+      {/* RESULTS */}
+      {/* =================================================== */}
 
-        page={page}
+      <div className="space-y-4">
 
-        totalPages={
-          total_pages
-        }
+        <div className="flex items-center justify-between">
 
-        totalResults={
-          total_results
-        }
+          <div>
 
-        onPageChange={
-          setPage
-        }
+            <h2 className="text-xl font-semibold">
+              Results
+            </h2>
 
-      />
+            <p className="text-sm text-gray-500">
+              {total_results} contents found
+            </p>
+
+          </div>
+
+        </div>
+
+        <ContentTable
+
+          contents={contents}
+
+          loading={loading}
+
+        />
+
+        <ContentPagination
+
+          page={page}
+
+          totalPages={total_pages}
+
+          totalResults={total_results}
+
+          onPageChange={setPage}
+
+        />
+
+      </div>
 
     </div>
 
