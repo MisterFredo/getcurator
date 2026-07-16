@@ -6,11 +6,11 @@ import type {
   QualityRow,
 } from "@/types/cockpit";
 
-import CockpitHeader from "@/components/cockpit/CockpitHeader";
-import MonitoringPanel from "@/components/cockpit/MonitoringPanel";
-import OperationsPanel from "@/components/cockpit/OperationsPanel";
-import QualityPanel from "@/components/cockpit/QualityPanel";
-import ResultsPanel from "@/components/cockpit/ResultsPanel";
+import CockpitHeader from "@/components/admin/cockpit/CockpitHeader";
+import MonitoringPanel from "@/components/admin/cockpit/MonitoringPanel";
+import OperationsPanel from "@/components/admin/cockpit/OperationsPanel";
+import QualityPanel from "@/components/admin/cockpit/QualityPanel";
+import ResultsPanel from "@/components/admin/cockpit/ResultsPanel";
 
 /* ========================================================= */
 
