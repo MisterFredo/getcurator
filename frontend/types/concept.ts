@@ -16,6 +16,11 @@ export const EMPTY_CONCEPT: ConceptFormData = {
   description: "",
 };
 
+export type ConceptOption = {
+  id_concept: string;
+  label: string;
+};
+
 /* ========================================================= */
 
 export type ConceptDetail = ConceptFormData & {
