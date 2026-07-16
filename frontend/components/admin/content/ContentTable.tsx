@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 
-export type ContentRow = {
-  id_content: string;
-  title: string;
-  source_title?: string | null;
-  source_date?: string | null;
-  published_at?: string | null;
-};
+import type {
+  ContentRow,
+} from "@/types/content";
+
+/* ========================================================= */
 
 type Props = {
   contents: ContentRow[];
   loading: boolean;
 };
+
+/* ========================================================= */
 
 export default function ContentTable({
   contents,
@@ -24,7 +24,7 @@ export default function ContentTable({
   if (loading) {
     return (
       <div className="border rounded-lg bg-white p-8 text-center text-gray-500">
-        Loading contents...
+        Loading...
       </div>
     );
   }
@@ -33,6 +33,8 @@ export default function ContentTable({
     return (
       <div className="border rounded-lg bg-white p-8 text-center text-gray-500">
         No content found.
+        <br />
+        Try adjusting your filters.
       </div>
     );
   }
@@ -64,7 +66,7 @@ export default function ContentTable({
             >
 
               <td className="p-3 font-medium">
-                {content.title}
+                {content.title || "—"}
               </td>
 
               <td className="p-3">
@@ -108,4 +110,5 @@ export default function ContentTable({
 
     </div>
   );
+
 }
