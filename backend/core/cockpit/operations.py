@@ -596,3 +596,24 @@ def sync_prod_to_dev():
         "message": "Development synchronized.",
     }
 
+# ============================================================
+# RESTART DESTOCK
+# ============================================================
+
+def restart_destock():
+
+    sql = f"""
+    UPDATE `{TABLE_CONTENT_RAW}`
+    SET STATUS = 'STORED'
+
+    WHERE STATUS = 'STOPPED'
+
+    AND DATE_SOURCE BETWEEN
+        DATE '2026-01-01'
+        AND DATE '2026-05-06'
+    """
+
+    return _run_operation(
+        sql,
+        "Destock restarted.",
+    )
