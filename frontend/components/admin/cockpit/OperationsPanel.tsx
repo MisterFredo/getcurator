@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -9,21 +10,21 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+import {
+  useCockpitOperations,
+} from "@/hooks/useCockpitOperations";
+
 /* ========================================================= */
 
 type Operation = {
   id: string;
-
   label: string;
-
   description: string;
-
   icon: React.ElementType;
 };
 
 type Group = {
   title: string;
-
   operations: Operation[];
 };
 
@@ -114,18 +115,12 @@ const GROUPS: Group[] = [
 
 export default function OperationsPanel() {
 
-  async function runOperation(
-    operation: string,
-  ) {
-
-    console.log(
-      operation,
-    );
-
-    // prochain commit :
-    // POST /cockpit/operations/{operation}
-
-  }
+  const {
+    loading,
+    success,
+    error,
+    run,
+  } = useCockpitOperations();
 
   return (
 
@@ -143,18 +138,26 @@ export default function OperationsPanel() {
 
       </div>
 
+      {success && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {success}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className="space-y-8">
 
         {GROUPS.map((group) => (
 
-          <div
-            key={group.title}
-          >
+          <div key={group.title}>
 
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
               {group.title}
-
             </h3>
 
             <div className="space-y-3">
@@ -168,7 +171,7 @@ export default function OperationsPanel() {
 
                   <div
                     key={operation.id}
-                    className="flex items-center justify-between border rounded-lg p-4"
+                    className="flex items-center justify-between rounded-lg border p-4"
                   >
 
                     <div className="flex items-start gap-3">
@@ -181,15 +184,11 @@ export default function OperationsPanel() {
                       <div>
 
                         <div className="font-medium">
-
                           {operation.label}
-
                         </div>
 
                         <div className="text-sm text-gray-500">
-
                           {operation.description}
-
                         </div>
 
                       </div>
@@ -197,12 +196,11 @@ export default function OperationsPanel() {
                     </div>
 
                     <button
+                      disabled={loading}
                       onClick={() =>
-                        runOperation(
-                          operation.id
-                        )
+                        run(operation.id)
                       }
-                      className="inline-flex items-center gap-2 rounded-lg bg-ratecard-blue px-4 py-2 text-white hover:opacity-90"
+                      className="inline-flex items-center gap-2 rounded-lg bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50"
                     >
 
                       <Play size={16} />
