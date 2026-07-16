@@ -15,6 +15,13 @@ from core.cockpit.operations import (
     restart_destock,
 )
 
+from core.cockpit.quality import (
+    get_duplicate_titles,
+    get_unmatched_companies,
+    get_unmatched_solutions,
+    get_numbers_structure,
+)
+
 router = APIRouter()
 
 # ============================================================
@@ -80,3 +87,42 @@ def backup():
 def sync_dev():
 
     return sync_prod_to_dev()
+
+# ============================================================
+# QUALITY
+# ============================================================
+
+@router.get("/quality/duplicate-titles")
+def duplicate_titles():
+
+    return {
+        "status": "ok",
+        "results": get_duplicate_titles(),
+    }
+
+
+@router.get("/quality/unmatched-companies")
+def unmatched_companies():
+
+    return {
+        "status": "ok",
+        "results": get_unmatched_companies(),
+    }
+
+
+@router.get("/quality/unmatched-solutions")
+def unmatched_solutions():
+
+    return {
+        "status": "ok",
+        "results": get_unmatched_solutions(),
+    }
+
+
+@router.get("/quality/numbers-structure")
+def numbers_structure():
+
+    return {
+        "status": "ok",
+        "results": get_numbers_structure(),
+    }
