@@ -2,8 +2,8 @@
 
 /* ========================================================= */
 
-export type CompanyOption = {
-  id_company: string;
+export type SolutionOption = {
+  id_solution: string;
   name: string;
 };
 
