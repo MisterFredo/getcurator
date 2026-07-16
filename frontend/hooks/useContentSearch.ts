@@ -6,26 +6,8 @@ import { api } from "@/lib/api";
 
 import type {
   ContentFilters,
-  ContentRow,
+  ContentSearchResponse,
 } from "@/types/content";
-
-/* ========================================================= */
-
-type SearchResult = {
-  contents: ContentRow[];
-
-  total_results: number;
-
-  total_pages: number;
-
-  page: number;
-
-  page_size: number;
-
-  has_next: boolean;
-
-  has_previous: boolean;
-};
 
 /* ========================================================= */
 
@@ -34,6 +16,8 @@ type Props = {
   page: number;
   pageSize?: number;
 };
+
+/* ========================================================= */
 
 export function useContentSearch({
   filters,
@@ -49,7 +33,7 @@ export function useContentSearch({
   const [
     result,
     setResult,
-  ] = useState<SearchResult>({
+  ] = useState<ContentSearchResponse>({
     contents: [],
 
     total_results: 0,
