@@ -5,12 +5,21 @@ from config import (
 
 from utils.bigquery_utils import query_bq
 
+
 # ============================================================
 # TABLES
 # ============================================================
 
 TABLE_CONTENT = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+)
+
+TABLE_CONTENT_RAW = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
+)
+
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
 
 TABLE_CONTENT_COMPANY = (
@@ -21,19 +30,135 @@ TABLE_CONTENT_SOLUTION = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
 )
 
-TABLE_CONTENT_ENRICHED = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+TABLE_CONTENT_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
+)
+
+TABLE_CONTENT_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 )
 
 TABLE_COMPANY_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
 )
 
+TABLE_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
+)
+
 TABLE_SOLUTION_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION_ALIAS"
 )
 
+TABLE_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+)
 
+TABLE_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
+)
+
+TABLE_SOURCE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
+)
+
+TABLE_SOURCE_UNIVERSE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE"
+)
+
+TABLE_UNIVERSE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE"
+)
+
+TABLE_ALIAS_REJECTED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_ALIAS_REJECTED"
+)
+
+# ============================================================
+# DATASETS
+# ============================================================
+DATASET_PROD = "GETCURATOR_PROD"
+DATASET_DEV = "GETCURATOR_DEV"
+DATASET_BACKUP = "GETCURATOR_BACKUP"
+
+# ============================================================
+# BACKUP TABLES
+# ============================================================
+
+# ============================================================
+# BACKUP TABLES
+# ============================================================
+
+BACKUP_TABLES = [
+
+    # Companies
+    "RATECARD_COMPANY",
+    "RATECARD_COMPANY_ALIAS",
+    "RATECARD_COMPANY_METRICS",
+    "RATECARD_COMPANY_TYPE",
+    "RATECARD_COMPANY_UNIVERSE",
+
+    # Concepts
+    "RATECARD_CONCEPT",
+
+    # Content
+    "RATECARD_CONTENT",
+    "RATECARD_CONTENT_ENRICHED",
+    "RATECARD_CONTENT_COMPANY",
+    "RATECARD_CONTENT_CONCEPT",
+    "RATECARD_CONTENT_EVENT",
+    "RATECARD_CONTENT_PERSON",
+    "RATECARD_CONTENT_RAW",
+    "RATECARD_CONTENT_SOLUTION",
+    "RATECARD_CONTENT_TOPIC",
+
+    # Digests
+    "RATECARD_DIGEST",
+    "RATECARD_DIGEST_CONTENT",
+    "RATECARD_DIGEST_RUN",
+    "RATECARD_DIGEST_SEND",
+    "RATECARD_DIGEST_TEMPLATE",
+
+    # Numbers
+    "RATECARD_NUMBERS",
+    "RATECARD_NUMBERS_BACKLOG",
+    "RATECARD_NUMBERS_COMPANY",
+    "RATECARD_NUMBERS_SOLUTION",
+    "RATECARD_NUMBERS_TOPIC",
+    "RATECARD_NUMBERS_TYPE",
+
+    # Solutions
+    "RATECARD_SOLUTION",
+    "RATECARD_SOLUTION_ALIAS",
+
+    # Sources
+    "RATECARD_SOURCE",
+    "RATECARD_SOURCE_DISCOVERY",
+    "RATECARD_SOURCE_UNIVERSE",
+
+    # Topics
+    "RATECARD_TOPIC",
+    "RATECARD_TOPIC_METRICS",
+    "RATECARD_TOPIC_UNIVERSE",
+
+    # Universes
+    "RATECARD_UNIVERSE",
+
+    # Users
+    "RATECARD_USER",
+    "RATECARD_USER_KEYWORD",
+    "RATECARD_USER_PROFILE",
+    "RATECARD_USER_PREFERENCES",
+    "RATECARD_USER_UNIVERSE",
+
+    # Matching
+    "RATECARD_ALIAS_REJECTED",
+
+]
 # ============================================================
 # INTERNAL
 # ============================================================
@@ -196,3 +321,278 @@ def rebuild_content_solution():
         sql,
         "Content → Solution rebuilt.",
     )
+
+
+# ============================================================
+# POPULATE CONTENT_ENRICHED
+# ============================================================
+
+def populate_content_enriched():
+
+    # --------------------------------------------------------
+    # CLEAN TABLE
+    # --------------------------------------------------------
+
+    query_bq(
+        f"""
+        TRUNCATE TABLE `{TABLE_CONTENT_ENRICHED}`
+        """
+    )
+
+    # --------------------------------------------------------
+    # REBUILD
+    # --------------------------------------------------------
+
+    sql = f"""
+    INSERT INTO `{TABLE_CONTENT_ENRICHED}` (
+
+        id_content,
+        source_id,
+
+        id_raw,
+        source_url,
+        source_title,
+
+        title,
+        title_en,
+        excerpt,
+        excerpt_en,
+        content_body,
+
+        signal_analytique,
+        mecanique_expliquee,
+        enjeu_strategique,
+        point_de_friction,
+
+        chiffres,
+        acteurs_cites,
+
+        concepts_llm,
+        solutions_llm,
+        topics_llm,
+
+        status,
+        is_active,
+
+        source_date,
+        published_at,
+        created_at,
+        updated_at,
+
+        universes,
+        topics,
+        companies,
+        solutions,
+        concepts,
+
+        CONTENT_TYPE,
+        ID_PRIMARY_COMPANY
+    )
+
+    SELECT
+
+        c.ID_CONTENT AS id_content,
+
+        c.SOURCE_ID AS source_id,
+
+        c.ID_RAW AS id_raw,
+
+        c.SOURCE_URL AS source_url,
+
+        c.SOURCE_TITLE AS source_title,
+
+        c.TITLE AS title,
+
+        c.TITLE_EN AS title_en,
+
+        c.EXCERPT AS excerpt,
+
+        c.EXCERPT_EN AS excerpt_en,
+
+        c.CONTENT_BODY AS content_body,
+
+        c.SIGNAL_ANALYTIQUE AS signal_analytique,
+
+        c.MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
+
+        c.ENJEU_STRATEGIQUE AS enjeu_strategique,
+
+        c.POINT_DE_FRICTION AS point_de_friction,
+
+        c.CHIFFRES AS chiffres,
+
+        c.ACTEURS_CITES AS acteurs_cites,
+
+        c.CONCEPTS_LLM AS concepts_llm,
+
+        c.SOLUTIONS_LLM AS solutions_llm,
+
+        c.TOPICS_LLM AS topics_llm,
+
+        c.STATUS AS status,
+
+        c.IS_ACTIVE AS is_active,
+
+        c.SOURCE_DATE AS source_date,
+
+        c.PUBLISHED_AT AS published_at,
+
+        c.CREATED_AT AS created_at,
+
+        c.UPDATED_AT AS updated_at,
+
+        /* ----------------------------------------------------
+           ICI TU REPRENDS STRICTEMENT LE RESTE DE TA REQUÊTE
+           (universes, topics, companies, solutions,
+           concepts, CONTENT_TYPE, ID_PRIMARY_COMPANY)
+           EN REMPLAÇANT SIMPLEMENT LES NOMS DE TABLES
+           PAR LES CONSTANTES SI TU LES AS DÉFINIES.
+        ---------------------------------------------------- */
+
+    FROM `{TABLE_CONTENT}` c
+
+    WHERE c.STATUS = 'PUBLISHED'
+    """
+
+    query_bq(sql)
+
+    return {
+        "status": "ok",
+        "message": "CONTENT_ENRICHED refreshed.",
+    }
+
+
+# ============================================================
+# MATCHING FULL DISMISS
+# ============================================================
+
+def matching_full_dismiss():
+
+    sql = f"""
+    INSERT INTO `{TABLE_ALIAS_REJECTED}`
+    (
+      ID_REJECTED,
+      ALIAS,
+      ENTITY_TYPE,
+      FIRST_SEEN_AT,
+      LAST_SEEN_AT,
+      NB_OCCURRENCES,
+      STATUS
+    )
+
+    WITH entities AS (
+
+      SELECT
+        entity,
+        COUNT(*) AS nb_occurrences
+
+      FROM `{TABLE_CONTENT}`,
+      UNNEST(
+        ARRAY_CONCAT(
+          IFNULL(ACTEURS_CITES, []),
+          IFNULL(SOLUTIONS_LLM, [])
+        )
+      ) AS entity
+
+      WHERE entity IS NOT NULL
+        AND TRIM(entity) != ''
+
+      GROUP BY entity
+
+    ),
+
+    processed AS (
+
+      SELECT UPPER(TRIM(ALIAS)) AS alias
+      FROM `{TABLE_COMPANY_ALIAS}`
+
+      UNION DISTINCT
+
+      SELECT UPPER(TRIM(ALIAS))
+      FROM `{TABLE_SOLUTION_ALIAS}`
+
+      UNION DISTINCT
+
+      SELECT UPPER(TRIM(ALIAS))
+      FROM `{TABLE_ALIAS_REJECTED}`
+
+    )
+
+    SELECT
+      GENERATE_UUID(),
+      entity,
+      'unknown',
+      CURRENT_TIMESTAMP(),
+      CURRENT_TIMESTAMP(),
+      CAST(nb_occurrences AS STRING),
+      'REJECTED'
+
+    FROM entities e
+
+    LEFT JOIN processed p
+      ON UPPER(TRIM(e.entity)) = p.alias
+
+    WHERE p.alias IS NULL
+    """
+
+    return _run_operation(
+        sql,
+        "Unknown aliases dismissed.",
+    )
+
+# ============================================================
+# DATASET COPY
+# ============================================================
+
+def _copy_dataset(
+    source_dataset: str,
+    target_dataset: str,
+):
+
+    for table in BACKUP_TABLES:
+
+        sql = f"""
+        CREATE OR REPLACE TABLE
+        `{BQ_PROJECT}.{target_dataset}.{table}`
+
+        AS
+
+        SELECT *
+
+        FROM `{BQ_PROJECT}.{source_dataset}.{table}`
+        """
+
+        query_bq(sql)
+
+# ============================================================
+# BACKUP PROD
+# ============================================================
+
+def backup_prod():
+
+    _copy_dataset(
+        DATASET_PROD,
+        DATASET_BACKUP,
+    )
+
+    return {
+        "status": "ok",
+        "message": "Production backed up.",
+    }
+
+# ============================================================
+# SYNC PROD → DEV
+# ============================================================
+
+def sync_prod_to_dev():
+
+    _copy_dataset(
+        DATASET_PROD,
+        DATASET_DEV,
+    )
+
+    return {
+        "status": "ok",
+        "message": "Development synchronized.",
+    }
+
