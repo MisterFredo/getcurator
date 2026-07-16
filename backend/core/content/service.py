@@ -90,56 +90,38 @@ def create_content(data: ContentCreate) -> str:
 
     row = [{
         "ID_CONTENT": content_id,
-
-        # 🔥 NEW
         "ID_PRIMARY_COMPANY": data.id_primary_company,
-
         "STATUS": "DRAFT",
         "IS_ACTIVE": True,
         "AUTHOR": data.author,
-
         "SOURCE_ID": data.source_id,
-
         "SOURCE_PUBLISHED_AT": (
             data.source_published_at.isoformat()
-            if data.source_published_at
-            else None
+            if data.source_published_at else None
         ),
-
         "TITLE": data.title.strip(),
         "EXCERPT": data.excerpt,
         "CONTENT_BODY": data.content_body,
-
         "CHIFFRES": normalize_array(data.chiffres),
         "ACTEURS_CITES": normalize_array(data.acteurs_cites),
-
         "CONCEPTS_LLM": normalize_array(data.concepts_llm),
         "SOLUTIONS_LLM": normalize_array(data.solutions_llm),
         "TOPICS_LLM": normalize_array(data.topics_llm),
-
         "MECANIQUE_EXPLIQUEE": data.mecanique_expliquee,
         "ENJEU_STRATEGIQUE": data.enjeu_strategique,
         "POINT_DE_FRICTION": data.point_de_friction,
         "SIGNAL_ANALYTIQUE": data.signal_analytique,
-
         "SEO_TITLE": data.seo_title,
         "SEO_DESCRIPTION": data.seo_description,
-
         "PUBLISHED_AT": None,
-
         "CREATED_AT": now,
-
         "SOURCE_DATE": (
             data.source_date.isoformat()
-            if data.source_date
-            else None
+            if data.source_date else None
         ),
         "ID_RAW": data.id_raw,
-
         "SOURCE_URL": data.source_url,
-
         "SOURCE_TITLE": data.source_title,
-
         "UPDATED_AT": now,
     }]
 
@@ -165,10 +147,9 @@ def create_content(data: ContentCreate) -> str:
 
     try:
 
-
-
         chiffres = normalize_array(data.chiffres)
-        chiffres:
+
+        if chiffres:
 
             backlog_rows = get_numbers_from_content(content_id)
 
@@ -191,9 +172,11 @@ def create_content(data: ContentCreate) -> str:
                 )
 
             else:
+
                 print("ℹ️ NO VALID NUMBERS:", content_id)
 
         else:
+
             print("ℹ️ NO CHIFFRES TO PROCESS:", content_id)
 
     except Exception as e:
@@ -294,7 +277,6 @@ def create_content(data: ContentCreate) -> str:
     print("✔ RELATIONS DONE FOR:", content_id)
 
     return content_id
-
 
 # ============================================================
 # GET CONTENT
