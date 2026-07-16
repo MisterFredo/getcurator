@@ -68,18 +68,11 @@ export default function ContentPage() {
   ======================================================= */
 
   const {
-
     contents,
-
     loading,
-
     total_results,
-
     total_pages,
-
-    refresh,
-
-  } = useContentSearch({
+  } = useContentSearch(...);
 
     filters,
 
@@ -186,9 +179,7 @@ export default function ContentPage() {
 
         filters={filters}
 
-        onChange={
-          handleFiltersChange
-        }
+        onChange={handleFiltersChange}
 
         companies={companies}
 
@@ -200,8 +191,6 @@ export default function ContentPage() {
 
         sources={sources}
 
-        onSearch={refresh}
-
         onReset={() => {
 
           setPage(1);
@@ -212,7 +201,7 @@ export default function ContentPage() {
 
         }}
 
-      />
+       />
 
       <ContentTable
 
