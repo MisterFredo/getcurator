@@ -8,17 +8,18 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  Calendar,
   Database,
+  Gauge,
   Globe,
   Languages,
   Layers,
+  LayoutTemplate,
   Link as LinkIcon,
   Link2,
   Puzzle,
   Tags,
   Users,
-  Calendar,
-  LayoutTemplate,
 } from "lucide-react";
 
 export default function AdminShell({
@@ -26,20 +27,43 @@ export default function AdminShell({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
 
-  function isActive(href: string) {
-    if (!pathname) return false;
+  const pathname =
+    usePathname();
+
+  function isActive(
+    href: string,
+  ) {
+
+    if (!pathname) {
+      return false;
+    }
 
     return (
       pathname === href ||
-      pathname.startsWith(href + "/")
+      pathname.startsWith(
+        href + "/"
+      )
     );
   }
 
   const sections = [
+
+    {
+      title: "Cockpit",
+
+      items: [
+        {
+          href: "/admin/cockpit",
+          label: "Dashboard",
+          icon: Gauge,
+        },
+      ],
+    },
+
     {
       title: "Production",
+
       items: [
         {
           href: "/admin/discovery",
@@ -50,11 +74,6 @@ export default function AdminShell({
           href: "/admin/content/stock",
           label: "Stock",
           icon: Archive,
-        },
-        {
-          href: "/admin/matching",
-          label: "Matching",
-          icon: Link2,
         },
         {
           href: "/admin/translation",
@@ -71,6 +90,7 @@ export default function AdminShell({
 
     {
       title: "Knowledge",
+
       items: [
         {
           href: "/admin/source",
@@ -102,16 +122,12 @@ export default function AdminShell({
           label: "Numbers",
           icon: BarChart3,
         },
-        {
-          href: "/admin/users",
-          label: "Users",
-          icon: Users,
-        },
       ],
     },
 
     {
       title: "Intelligence",
+
       items: [
         {
           href: "/admin/digest",
@@ -122,8 +138,19 @@ export default function AdminShell({
     },
 
     {
-      title: "System",
+      title: "Administration",
+
       items: [
+        {
+          href: "/admin/users",
+          label: "Users",
+          icon: Users,
+        },
+        {
+          href: "/admin/matching",
+          label: "Matching",
+          icon: Link2,
+        },
         {
           href: "/admin/vector",
           label: "Vectorization",
@@ -136,16 +163,23 @@ export default function AdminShell({
         },
       ],
     },
+
   ];
 
   return (
+
     <div className="min-h-screen flex">
+
+      {/* ===================================================== */}
       {/* SIDEBAR */}
+      {/* ===================================================== */}
 
       <aside className="w-64 bg-ratecard-blue text-white p-6 flex flex-col">
+
         {/* HEADER */}
 
         <div className="mb-8">
+
           <h1 className="text-xl font-semibold">
             Curator Admin
           </h1>
@@ -153,25 +187,33 @@ export default function AdminShell({
           <p className="text-xs opacity-80 mt-1">
             Knowledge Platform
           </p>
+
         </div>
 
         {/* NAVIGATION */}
 
         <nav className="flex-1 overflow-y-auto space-y-8">
+
           {sections.map((section) => (
+
             <div key={section.title}>
+
               <div className="text-xs uppercase tracking-wider opacity-50 mb-2 px-3">
                 {section.title}
               </div>
 
               <div className="space-y-1">
+
                 {section.items.map((item) => {
-                  const Icon = item.icon;
+
+                  const Icon =
+                    item.icon;
 
                   const active =
                     isActive(item.href);
 
                   return (
+
                     <Link
                       key={item.href}
                       href={item.href}
@@ -184,17 +226,25 @@ export default function AdminShell({
                         }
                       `}
                     >
+
                       <Icon size={18} />
 
                       <span>
                         {item.label}
                       </span>
+
                     </Link>
+
                   );
+
                 })}
+
               </div>
+
             </div>
+
           ))}
+
         </nav>
 
         {/* FOOTER */}
@@ -202,13 +252,19 @@ export default function AdminShell({
         <div className="pt-8 text-xs opacity-60">
           © {new Date().getFullYear()} Curator
         </div>
+
       </aside>
 
+      {/* ===================================================== */}
       {/* MAIN */}
+      {/* ===================================================== */}
 
       <main className="flex-1 p-10 bg-gray-50">
         {children}
       </main>
+
     </div>
+
   );
+
 }
