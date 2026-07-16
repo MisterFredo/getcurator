@@ -441,17 +441,101 @@ def populate_content_enriched():
 
         c.UPDATED_AT AS updated_at,
 
-        /* ----------------------------------------------------
-           ICI TU REPRENDS STRICTEMENT LE RESTE DE TA REQUÊTE
-           (universes, topics, companies, solutions,
-           concepts, CONTENT_TYPE, ID_PRIMARY_COMPANY)
-           EN REMPLAÇANT SIMPLEMENT LES NOMS DE TABLES
-           PAR LES CONSTANTES SI TU LES AS DÉFINIES.
-        ---------------------------------------------------- */
+         -- ========================================================
+    -- UNIVERSES (🔥 SOURCE BASED)
+    -- ========================================================
 
-    FROM `{TABLE_CONTENT}` c
+    ARRAY(
+        SELECT DISTINCT AS STRUCT
+            u.ID_UNIVERSE AS id_universe,
+            u.LABEL AS label
 
-    WHERE c.STATUS = 'PUBLISHED'
+        FROM `{TABLE_SOURCE_UNIVERSE}` su
+
+        JOIN `{TABLE_UNIVERSE}` u
+          ON su.ID_UNIVERSE = u.ID_UNIVERSE
+
+        WHERE su.ID_SOURCE = c.SOURCE_ID
+    ) AS universes,
+
+    -- ========================================================
+    -- TOPICS
+    -- ========================================================
+
+    ARRAY(
+        SELECT DISTINCT AS STRUCT
+            t.ID_TOPIC AS id_topic,
+            t.LABEL AS label,
+            t.TOPIC_AXIS AS topic_axis
+
+        FROM `{TABLE_CONTENT_TOPIC}` ct
+
+        JOIN `{TABLE_TOPIC}` t
+          ON ct.ID_TOPIC = t.ID_TOPIC
+
+        WHERE ct.ID_CONTENT = c.ID_CONTENT
+    ) AS topics,
+
+    -- ========================================================
+    -- COMPANIES
+    -- ========================================================
+
+    ARRAY(
+        SELECT DISTINCT AS STRUCT
+            co.ID_COMPANY AS id_company,
+            co.NAME AS name,
+            co.MEDIA_LOGO_RECTANGLE_ID AS media_logo_rectangle_id
+
+        FROM `{TABLE_CONTENT_COMPANY}` cc
+
+        JOIN `{TABLE_COMPANY}` co
+          ON cc.ID_COMPANY = co.ID_COMPANY
+
+        WHERE cc.ID_CONTENT = c.ID_CONTENT
+    ) AS companies,
+
+    -- ========================================================
+    -- SOLUTIONS
+    -- ========================================================
+
+    ARRAY(
+        SELECT DISTINCT AS STRUCT
+            s.ID_SOLUTION AS id_solution,
+            s.NAME AS name
+
+        FROM `{TABLE_CONTENT_SOLUTION}` cs
+
+        JOIN `{TABLE_SOLUTION}` s
+          ON cs.ID_SOLUTION = s.ID_SOLUTION
+
+        WHERE cs.ID_CONTENT = c.ID_CONTENT
+    ) AS solutions,
+
+    -- ========================================================
+    -- CONCEPTS
+    -- ========================================================
+
+    ARRAY(
+        SELECT DISTINCT AS STRUCT
+            cp.ID_CONCEPT AS id_concept,
+            cpt.LABEL AS label
+
+        FROM `{TABLE_CONTENT_CONCEPT}` cp
+
+        JOIN `{TABLE_CONCEPT}` cpt
+          ON cp.ID_CONCEPT = cpt.ID_CONCEPT
+
+        WHERE cp.ID_CONTENT = c.ID_CONTENT
+    ) AS concepts,
+
+    c.CONTENT_TYPE AS CONTENT_TYPE,
+
+    c.ID_PRIMARY_COMPANY AS ID_PRIMARY_COMPANY
+
+FROM `{TABLE_CONTENT}` c
+
+WHERE
+    c.STATUS = 'PUBLISHED'
     """
 
     query_bq(sql)
