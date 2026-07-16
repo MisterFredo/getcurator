@@ -19,6 +19,45 @@ type Props = {
 
 /* ========================================================= */
 
+function cleanFilters(
+  filters: ContentFilters,
+) {
+
+  return {
+
+    search:
+      filters.search || null,
+
+    company_id:
+      filters.company_id || null,
+
+    solution_id:
+      filters.solution_id || null,
+
+    topic_id:
+      filters.topic_id || null,
+
+    concept_id:
+      filters.concept_id || null,
+
+    source_id:
+      filters.source_id || null,
+
+    date_from:
+      filters.date_from || null,
+
+    date_to:
+      filters.date_to || null,
+
+    only_numbers:
+      filters.only_numbers,
+
+  };
+
+}
+
+/* ========================================================= */
+
 export function useContentSearch({
   filters,
   page,
@@ -63,7 +102,7 @@ export function useContentSearch({
           await api.post(
             "/content/search",
             {
-              filters,
+              filters: cleanFilters(filters),
 
               page,
 
