@@ -29,15 +29,17 @@ type SearchResult = {
 
 /* ========================================================= */
 
-export function useContentSearch(
+type Props = {
+  filters: ContentFilters;
+  page: number;
+  pageSize?: number;
+};
 
-  filters: ContentFilters,
-
-  page: number,
-
+export function useContentSearch({
+  filters,
+  page,
   pageSize = 100,
-
-) {
+}: Props) {
 
   const [
     loading,
