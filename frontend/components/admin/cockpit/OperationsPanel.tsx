@@ -71,6 +71,13 @@ const GROUPS: Group[] = [
           "Refresh CONTENT_ENRICHED.",
         icon: Database,
       },
+      {
+        id: "matching-dismiss",
+        label: "Matching Dismiss",
+        description:
+          "Dismiss every unmatched alias.",
+        icon: Database,
+      },
     ],
   },
 
