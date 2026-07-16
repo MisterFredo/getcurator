@@ -12,48 +12,27 @@ type CompanyItem = {
 
 export default function StockFilters({
   sources,
-
-  // 🔥 NEW
   companies,
-
   status,
   sourceId,
   importType,
-  contentType,
-
-  // 🔥 NEW
   primaryCompanyId,
-
   total,
   onStatusChange,
   onSourceChange,
   onImportTypeChange,
-  onContentTypeChange,
-
-  // 🔥 NEW
   onPrimaryCompanyChange,
 }: {
   sources: SourceItem[];
-
-  // 🔥 NEW
   companies: CompanyItem[];
-
   status: string;
   sourceId: string;
   importType: string;
-  contentType: string;
-
-  // 🔥 NEW
   primaryCompanyId: string;
-
   total: number;
-
   onStatusChange: (v: string) => void;
   onSourceChange: (v: string) => void;
   onImportTypeChange: (v: string) => void;
-  onContentTypeChange: (v: string) => void;
-
-  // 🔥 NEW
   onPrimaryCompanyChange: (v: string) => void;
 }) {
   return (
@@ -93,55 +72,18 @@ export default function StockFilters({
       {/* IMPORT TYPE */}
       <select
         value={importType}
-        onChange={(e) =>
-          onImportTypeChange(e.target.value)
-        }
+        onChange={(e) => onImportTypeChange(e.target.value)}
         className="border rounded p-2 text-sm"
       >
-        <option value="">
-          Tous imports
-        </option>
-
-        <option value="FILE">
-          Fichier
-        </option>
-
-        <option value="URL">
-          URL
-        </option>
-
+        <option value="">Tous imports</option>
+        <option value="FILE">Fichier</option>
+        <option value="URL">URL</option>
       </select>
 
-      {/* CONTENT TYPE */}
-      <select
-        value={contentType}
-        onChange={(e) =>
-          onContentTypeChange(e.target.value)
-        }
-        className="border rounded p-2 text-sm"
-      >
-        <option value="">
-          Tous contenus
-        </option>
-
-        <option value="ANALYSIS">
-          Analysis
-        </option>
-
-        <option value="NEWS">
-          News
-        </option>
-
-      </select>
-
-      {/* 🔥 PRIMARY COMPANY */}
+      {/* PRIMARY COMPANY */}
       <select
         value={primaryCompanyId}
-        onChange={(e) =>
-          onPrimaryCompanyChange(
-            e.target.value
-          )
-        }
+        onChange={(e) => onPrimaryCompanyChange(e.target.value)}
         className="border rounded p-2 text-sm"
       >
         <option value="">
@@ -159,7 +101,7 @@ export default function StockFilters({
       </select>
 
       {/* TOTAL */}
-      <div className="text-sm text-gray-600 ml-auto">
+      <div className="ml-auto text-sm text-gray-600">
         {total} résultat(s)
       </div>
 
