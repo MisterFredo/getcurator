@@ -60,4 +60,4 @@ export default function ContentFilters({
 
     </div>
   );
-}ontent
+}content
