@@ -188,6 +188,7 @@ def translate_contents_batch(
     ] = None,
 
     source_id: Optional[str] = None,
+) -> Dict:
 
     # ========================================================
     # FILTERS
