@@ -21,6 +21,12 @@ export type TopicFormData = {
   universes: string[];
 };
 
+export type TopicOption = {
+  id_topic: string;
+  label: string;
+};
+
+
 /* ========================================================= */
 
 export const EMPTY_TOPIC: TopicFormData = {
