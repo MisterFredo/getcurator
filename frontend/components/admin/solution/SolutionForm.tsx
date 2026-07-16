@@ -6,9 +6,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 
-import {
+import type {
   CompanyOption,
+} from "@/types/company";
+
+import {
   EMPTY_SOLUTION,
+} from "@/types/solution";
+
+import type {
   SolutionFormData,
 } from "@/types/solution";
 
