@@ -72,7 +72,7 @@ export default function ContentPage() {
     loading,
     total_results,
     total_pages,
-  } = useContentSearch(...);
+  } = useContentSearch({
 
     filters,
 
