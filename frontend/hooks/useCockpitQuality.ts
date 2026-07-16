@@ -26,7 +26,7 @@ export function useCockpitQuality() {
 
   async function load(
     endpoint: string,
-  ) {
+  ): Promise<QualityRow[]> {
 
     try {
 
@@ -37,9 +37,12 @@ export function useCockpitQuality() {
           `/cockpit/quality/${endpoint}`,
         );
 
-      setRows(
-        res.results || [],
-      );
+      const data =
+        res.results || [];
+
+      setRows(data);
+
+      return data;
 
     } catch (e) {
 
@@ -49,6 +52,8 @@ export function useCockpitQuality() {
       );
 
       setRows([]);
+
+      return [];
 
     } finally {
 
