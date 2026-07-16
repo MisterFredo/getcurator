@@ -55,6 +55,7 @@ from core.content.news_ai import generate_news
 from core.content.raw_import_service import import_raw_content
 from core.content.raw_import_service import import_urls_batch
 from core.content.raw_import_service import import_urls_csv
+from core.content.search_service.py import search_contents
 
 from config import (
     BQ_PROJECT,
@@ -121,6 +122,19 @@ def list_route():
             "Erreur liste content"
         )
 
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+@router.post("/search")
+def search_route(
+    request: ContentSearchRequest
+):
+    try:
+        return search_contents(request)
+
+    except Exception as e:
         raise HTTPException(
             400,
             str(e)
