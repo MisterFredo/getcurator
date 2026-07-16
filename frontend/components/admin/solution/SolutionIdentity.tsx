@@ -2,7 +2,7 @@
 
 "use client";
 
-import { CompanyOption } from "@/types/solution";
+import type { CompanyOption } from "@/types/company";
 
 /* ========================================================= */
 
