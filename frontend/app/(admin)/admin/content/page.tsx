@@ -38,6 +38,11 @@ export default function ContentPage() {
   ] = useState(1);
 
   const [
+    selectedIds,
+    setSelectedIds,
+  ] = useState<string[]>([]);
+
+  const [
     companies,
     setCompanies,
   ] = useState<CompanyOption[]>([]);
@@ -158,6 +163,8 @@ export default function ContentPage() {
 
     setPage(1);
 
+    setSelectedIds([]);
+
     setFilters(next);
 
   }
@@ -208,6 +215,8 @@ export default function ContentPage() {
 
           setPage(1);
 
+          setSelectedIds([]);
+
           setFilters(
             EMPTY_CONTENT_FILTERS
           );
@@ -243,6 +252,10 @@ export default function ContentPage() {
           contents={contents}
 
           loading={loading}
+
+          selectedIds={selectedIds}
+
+          onSelectionChange={setSelectedIds}
 
         />
 
