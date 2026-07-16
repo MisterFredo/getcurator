@@ -55,7 +55,7 @@ from core.content.news_ai import generate_news
 from core.content.raw_import_service import import_raw_content
 from core.content.raw_import_service import import_urls_batch
 from core.content.raw_import_service import import_urls_csv
-from core.content.search_service.py import search_contents
+from core.content.search_service import search_contents
 
 from config import (
     BQ_PROJECT,
