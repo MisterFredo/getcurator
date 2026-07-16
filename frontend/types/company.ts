@@ -79,3 +79,8 @@ export type CompanyDetail = CompanyFormData & {
   updated_at?: string | null;
 
 };
+
+export type CompanyOption = {
+  id_company: string;
+  name: string;
+};
