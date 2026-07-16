@@ -10,6 +10,7 @@ from api.content.models import (
     ContentRawOut,
     ContentRawUpdate,
     ContentRawDestockRequest,
+    ContentSearchRequest,
     ImportUrlsRequest,
     ImportCsvRequest,
     BulkIdsRequest,
