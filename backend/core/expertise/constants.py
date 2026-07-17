@@ -24,12 +24,3 @@ OUTPUT_OPPORTUNITIES = "opportunities"
 
 OUTPUT_RISKS = "risks"
 
-# ============================================================
-# OUTPUT TYPES
-# ============================================================
-
-OutputType = Literal[
-    "key_points",
-    "structure",
-    "implications",
-]
