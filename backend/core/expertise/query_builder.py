@@ -5,6 +5,15 @@ from api.expertise.models import (
     SelectionFilters,
 )
 
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
 
 # ============================================================
 # BUILD SELECTION QUERY
