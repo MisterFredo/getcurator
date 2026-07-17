@@ -1,33 +1,40 @@
-from dataclasses import dataclass, field
+# backend/api/expertise/models.py
+
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 # ============================================================
 # PROFILE
 # ============================================================
 
-@dataclass
-class ExpertiseProfile:
+class ExpertiseProfile(BaseModel):
 
     id: str
 
     language: str
 
-    preferences: dict
+    preferences: dict = Field(
+        default_factory=dict,
+    )
 
-    keywords: list[str]
+    keywords: list[str] = Field(
+        default_factory=list,
+    )
 
-    geographies: list[str]
+    geographies: list[str] = Field(
+        default_factory=list,
+    )
 
-    profile_text: str
+    profile_text: str = ""
 
 
 # ============================================================
 # CONTENT
 # ============================================================
 
-@dataclass
-class ExpertiseContent:
+class ExpertiseContent(BaseModel):
 
     id: str
 
@@ -39,29 +46,40 @@ class ExpertiseContent:
 
     url: str
 
-    primary_company_logo: str | None
+    primary_company_logo: str | None = None
 
-    companies: list
+    companies: list = Field(
+        default_factory=list,
+    )
 
-    solutions: list
+    solutions: list = Field(
+        default_factory=list,
+    )
 
-    topics: list
+    topics: list = Field(
+        default_factory=list,
+    )
 
-    universes: list
+    universes: list = Field(
+        default_factory=list,
+    )
 
-    concepts: list
+    concepts: list = Field(
+        default_factory=list,
+    )
 
 
 # ============================================================
 # CONTEXT
 # ============================================================
 
-@dataclass
-class ExpertiseContext:
+class ExpertiseContext(BaseModel):
 
     profile: ExpertiseProfile
 
-    contents: list[ExpertiseContent]
+    contents: list[ExpertiseContent] = Field(
+        default_factory=list,
+    )
 
     count: int = 0
 
@@ -70,8 +88,7 @@ class ExpertiseContext:
 # INSIGHTS
 # ============================================================
 
-@dataclass
-class ExpertiseInsights:
+class ExpertiseInsights(BaseModel):
 
     summary: str = ""
 
@@ -79,12 +96,19 @@ class ExpertiseInsights:
 
 
 # ============================================================
-# RESULT
+# EXPERTISE
 # ============================================================
 
-@dataclass
-class Expertise:
+class Expertise(BaseModel):
 
-    context: ExpertiseContext
+    profile: ExpertiseProfile
 
-    insights: ExpertiseInsights
+    contents: list[ExpertiseContent] = Field(
+        default_factory=list,
+    )
+
+    count: int = 0
+
+    summary: str = ""
+
+    implications: str = ""
