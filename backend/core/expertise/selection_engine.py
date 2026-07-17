@@ -1,4 +1,61 @@
+from typing import Dict
 
+
+# ============================================================
+# BUILD SELECTION FILTERS
+# ============================================================
+
+def build_selection_filters(
+    profile: Dict,
+) -> Dict[str, str]:
+
+    preferences = (
+        profile.get("preferences")
+        or {}
+    )
+
+    company_ids = (
+        preferences.get("companies")
+        or []
+    )
+
+    solution_ids = (
+        preferences.get("solutions")
+        or []
+    )
+
+    topic_ids = (
+        preferences.get("topics")
+        or []
+    )
+
+    keywords = (
+        profile.get("keywords")
+        or []
+    )
+
+    filters_sql = build_filters(
+        company_ids=company_ids,
+        solution_ids=solution_ids,
+        topic_ids=topic_ids,
+    )
+
+    keywords_sql = build_keywords_filter(
+        keywords
+    )
+
+    if not keywords_sql:
+        keywords_sql = "FALSE"
+
+    return {
+
+        "filters_sql":
+            filters_sql,
+
+        "keywords_sql":
+            keywords_sql,
+    }
+    
 # ============================================================
 # BUILD FILTERS
 # ============================================================
