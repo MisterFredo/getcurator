@@ -1,6 +1,12 @@
-from typing import List
+# backend/core/workspace/service.py
 
 from utils.llm import run_llm
+
+from api.expertise.models import Expertise
+
+from api.workspace.models import (
+    WorkspaceNumber,
+)
 
 from core.expertise.service import (
     generate_expertise_from_contents,
@@ -18,8 +24,8 @@ from core.expertise.prompts.implications import (
     build_implications_prompt,
 )
 
-from core.user.user_profile_service import (
-    get_user_profile,
+from core.workspace.number_service import (
+    load_numbers_by_ids,
 )
 
 # ============================================================
@@ -27,7 +33,9 @@ from core.user.user_profile_service import (
 # ============================================================
 
 OUTPUT_KEY_POINTS = "key_points"
+
 OUTPUT_STRUCTURE = "structure"
+
 OUTPUT_IMPLICATIONS = "implications"
 
 
@@ -37,7 +45,8 @@ OUTPUT_IMPLICATIONS = "implications"
 
 def build_prompt(
     output_type: str,
-    context: dict,
+    expertise: Expertise,
+    numbers: list[WorkspaceNumber],
 ) -> str:
 
     # ========================================================
@@ -45,8 +54,10 @@ def build_prompt(
     # ========================================================
 
     if output_type == OUTPUT_KEY_POINTS:
+
         return build_key_points_prompt(
-            context
+            expertise=expertise,
+            numbers=numbers,
         )
 
     # ========================================================
@@ -54,13 +65,20 @@ def build_prompt(
     # ========================================================
 
     if output_type == OUTPUT_STRUCTURE:
+
         return build_structure_prompt(
-            context
+            expertise=expertise,
+            numbers=numbers,
         )
 
+    # ========================================================
+    # IMPLICATIONS
+    # ========================================================
+
     if output_type == OUTPUT_IMPLICATIONS:
+
         return build_implications_prompt(
-            context
+            expertise=expertise,
         )
 
     # ========================================================
@@ -78,14 +96,13 @@ def build_prompt(
 
 def generate_workspace_output(
     output_type: str,
-
-    content_ids: List[str] = None,
-    number_ids: List[str] = None,
-
-    user_id: str = None,
+    content_ids: list[str] | None = None,
+    number_ids: list[str] | None = None,
+    user_id: str | None = None,
 ) -> str:
 
     content_ids = content_ids or []
+
     number_ids = number_ids or []
 
     # ========================================================
@@ -96,48 +113,24 @@ def generate_workspace_output(
         return ""
 
     # ========================================================
-    # CONTEXT
+    # EXPERTISE
     # ========================================================
 
-    context = build_workspace_context(
+    expertise = generate_expertise_from_contents(
+        user_id=user_id,
         content_ids=content_ids,
-        number_ids=number_ids,
     )
 
-    # ========================================================
-    # PROFILE TEXT (IMPLICATIONS ONLY)
-    # ========================================================
-
-    if (
-        output_type == OUTPUT_IMPLICATIONS
-        and user_id
-    ):
-
-        profile = get_user_profile(
-            user_id
-        )
-
-        context["profile_text"] = (
-            profile.get(
-                "profile_text"
-            )
-            if profile
-            else ""
-        )
-
-        print("WORKSPACE PROFILE")
-        print(
-            context.get(
-                "profile_text"
-            )
-        )
-
-    # ========================================================
-    # SAFETY
-    # ========================================================
-
-    if context.get("total_count", 0) == 0:
+    if expertise.count == 0:
         return ""
+
+    # ========================================================
+    # NUMBERS
+    # ========================================================
+
+    numbers = load_numbers_by_ids(
+        number_ids
+    )
 
     # ========================================================
     # PROMPT
@@ -145,7 +138,8 @@ def generate_workspace_output(
 
     prompt = build_prompt(
         output_type=output_type,
-        context=context,
+        expertise=expertise,
+        numbers=numbers,
     )
 
     # ========================================================
