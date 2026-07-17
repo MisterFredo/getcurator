@@ -1,7 +1,7 @@
 # backend/api/expertise/models.py
 
 from typing import Any
-
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 
@@ -22,6 +22,16 @@ class ExpertisePreferences(BaseModel):
     topics: list[str] = Field(
         default_factory=list,
     )
+
+# ============================================================
+# SELECTION FILTERS
+# ============================================================
+
+class SelectionFilters(BaseModel):
+
+    filters_sql: str
+
+    keywords_sql: str
 
 
 # ============================================================
@@ -71,7 +81,7 @@ class ExpertiseContent(BaseModel):
 
     source_url: str = ""
 
-    published_at: Any
+    published_at: datetime | None = None
 
     # ========================================================
     # DISPLAY
