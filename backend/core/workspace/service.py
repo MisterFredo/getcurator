@@ -6,9 +6,15 @@ from core.expertise.service import (
     generate_expertise_from_contents,
 )
 
-from core.workspace.prompt_service import (
+from core.expertise.prompts.key_points import (
     build_key_points_prompt,
+)
+
+from core.expertise.prompts.structure import (
     build_structure_prompt,
+)
+
+from core.expertise.prompts.implications import (
     build_implications_prompt,
 )
 
