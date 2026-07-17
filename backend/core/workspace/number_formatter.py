@@ -16,33 +16,51 @@ def build_number_blocks(
 
     for n in numbers:
 
+        value = " ".join(
+
+            part
+
+            for part in (
+
+                str(n.get("value") or "").strip(),
+
+                str(n.get("unit") or "").strip(),
+
+                str(n.get("scale") or "").strip(),
+
+            )
+
+            if part
+
+        )
+
         block = f"""
 LABEL:
-{n.get("label")}
+{str(n.get("label") or "").strip()}
 
 VALUE:
-{n.get("value")} {n.get("unit")} {n.get("scale")}
+{value}
 
 TYPE:
-{n.get("type")}
+{str(n.get("type") or "").strip()}
 
 CATEGORY:
-{n.get("category")}
+{str(n.get("category") or "").strip()}
 
 ZONE:
-{n.get("zone")}
+{str(n.get("zone") or "").strip()}
 
 PERIOD:
-{n.get("period")}
+{str(n.get("period") or "").strip()}
 
 ENTITY:
-{n.get("entity_label")}
+{str(n.get("entity_label") or "").strip()}
 """
 
         blocks.append(
             block.strip()
         )
 
-    return "\n\n-----------------\n\n".join(
+    return "\n\n--------------------\n\n".join(
         blocks
     )
