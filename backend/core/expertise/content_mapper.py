@@ -1,4 +1,8 @@
-from typing import Dict, List
+# backend/core/expertise/content_mapper.py
+
+from api.expertise.models import (
+    ExpertiseContent,
+)
 
 
 # ============================================================
@@ -6,7 +10,7 @@ from typing import Dict, List
 # ============================================================
 
 def find_primary_logo(
-    companies: List[Dict],
+    companies: list[dict],
     primary_company_id: str | None,
 ) -> str | None:
 
@@ -19,9 +23,7 @@ def find_primary_logo(
     for company in companies:
 
         if (
-            company.get(
-                "id_company"
-            )
+            company.get("id_company")
             == primary_company_id
         ):
 
@@ -37,66 +39,62 @@ def find_primary_logo(
 # ============================================================
 
 def build_content(
-    row: Dict,
-) -> Dict:
+    row: dict,
+) -> ExpertiseContent:
 
     companies = (
         row.get("companies")
         or []
     )
 
-    primary_logo = (
-        find_primary_logo(
-            companies=companies,
-            primary_company_id=row.get(
-                "ID_PRIMARY_COMPANY"
-            ),
-        )
+    primary_logo = find_primary_logo(
+        companies=companies,
+        primary_company_id=row.get(
+            "ID_PRIMARY_COMPANY"
+        ),
     )
 
-    return {
+    return ExpertiseContent(
 
-        "id":
-            row.get("id"),
+        id=row.get("id"),
 
-        "title":
-            row.get("title"),
+        title=row.get("title"),
 
-        "excerpt":
-            row.get("excerpt"),
+        excerpt=row.get("excerpt"),
 
-        "published_at":
-            row.get("published_at"),
+        published_at=row.get(
+            "published_at"
+        ),
 
-        "url":
-            (
-                "https://www.getcurator.ai/feed"
-                f"?analysis_id={row.get('id')}"
-            ),
+        url=(
+            "https://www.getcurator.ai/feed"
+            f"?analysis_id={row.get('id')}"
+        ),
 
-        "primary_company_logo":
-            primary_logo,
+        primary_company_logo=primary_logo,
 
-        "companies":
-            companies,
+        companies=companies,
 
-        "solutions":
+        solutions=(
             row.get("solutions")
-            or [],
+            or []
+        ),
 
-        "topics":
+        topics=(
             row.get("topics")
-            or [],
+            or []
+        ),
 
-        "universes":
+        universes=(
             row.get("universes")
-            or [],
+            or []
+        ),
 
-        "concepts":
+        concepts=(
             row.get("concepts")
-            or [],
-    }
-
+            or []
+        ),
+    )
 
 
 # ============================================================
@@ -104,10 +102,12 @@ def build_content(
 # ============================================================
 
 def normalize_contents(
-    rows: List[Dict],
-) -> List[Dict]:
+    rows: list[dict],
+) -> list[ExpertiseContent]:
 
-    contents = []
+    contents: list[
+        ExpertiseContent
+    ] = []
 
     for row in rows:
 
@@ -117,12 +117,8 @@ def normalize_contents(
                 build_content(row)
             )
 
-        except Exception as e:
+        except Exception:
 
-            print("CONTENT BUILD ERROR")
-            print(e)
-
-    print("FINAL CONTENTS COUNT")
-    print(len(contents))
+            continue
 
     return contents
