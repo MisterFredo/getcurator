@@ -2,8 +2,8 @@ from typing import List
 
 from utils.llm import run_llm
 
-from core.workspace.context_service import (
-    build_workspace_context,
+from core.expertise.service import (
+    generate_expertise_from_contents,
 )
 
 from core.workspace.prompt_service import (
