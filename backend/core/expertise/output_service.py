@@ -1,6 +1,6 @@
 # backend/core/expertise/output_service.py
 
-from core.llm.service import run_llm
+from utils.llm import run_llm
 
 from api.expertise.models import (
     Expertise,
