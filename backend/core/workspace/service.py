@@ -1,11 +1,11 @@
 # backend/core/workspace/service.py
 
-from core.expertise.service import (
-    generate_expertise_from_contents,
-)
-
 from core.expertise.output_service import (
     generate_expertise_output,
+)
+
+from core.expertise.service import (
+    generate_expertise_from_contents,
 )
 
 
@@ -24,6 +24,15 @@ def generate_workspace_output(
     number_ids = number_ids or []
 
     # ========================================================
+    # VALIDATION
+    # ========================================================
+
+    if not user_id:
+        raise ValueError(
+            "user_id is required"
+        )
+
+    # ========================================================
     # EMPTY
     # ========================================================
 
@@ -35,8 +44,11 @@ def generate_workspace_output(
     # ========================================================
 
     expertise = generate_expertise_from_contents(
+
         user_id=user_id,
+
         content_ids=content_ids,
+
     )
 
     if expertise.count == 0:
@@ -47,6 +59,9 @@ def generate_workspace_output(
     # ========================================================
 
     return generate_expertise_output(
+
         expertise=expertise,
+
         output_type=output_type,
+
     )
