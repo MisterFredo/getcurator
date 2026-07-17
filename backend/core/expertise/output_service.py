@@ -1,6 +1,6 @@
 # backend/core/expertise/output_service.py
 
-from utils.llm import run_llm
+from core.llm.service import run_llm
 
 from api.expertise.models import (
     Expertise,
@@ -22,17 +22,17 @@ from core.expertise.prompts.implications import (
 # OUTPUT TYPES
 # ============================================================
 
-OUTPUT_KEY_POINTS = "key_points"
-
-OUTPUT_STRUCTURE = "structure"
-
-OUTPUT_IMPLICATIONS = "implications"
+from core.expertise.constants import (
+    OUTPUT_KEY_POINTS,
+    OUTPUT_STRUCTURE,
+    OUTPUT_IMPLICATIONS,
+)
 
 # ============================================================
 # BUILD PROMPT
 # ============================================================
 
-def build_prompt(
+def _build_prompt()
     output_type: str,
     expertise: Expertise,
 ) -> str:
