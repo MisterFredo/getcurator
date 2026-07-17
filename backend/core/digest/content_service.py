@@ -33,10 +33,6 @@ TABLE_USER_PREFERENCES = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
 )
 
-TABLE_DIGEST_SEND = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
-)
-
 TABLE_CONTENT_ENRICHED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
@@ -248,43 +244,6 @@ def load_user_context(
     }
 
 # ============================================================
-# LAST DIGEST SENT
-# ============================================================
-
-def get_last_digest_sent(
-    user_id: str,
-):
-
-    sql = f"""
-
-    SELECT
-        MAX(SENT_AT) AS LAST_SENT_AT
-
-    FROM `{TABLE_DIGEST_SEND}`
-
-    WHERE ID_USER = @user_id
-
-    """
-
-    rows = query_bq(
-        sql,
-
-        params={
-            "user_id": user_id,
-        },
-    )
-
-    print("LAST SENT")
-    print(rows)
-
-    if not rows:
-        return None
-
-    return rows[0].get(
-        "LAST_SENT_AT"
-    )
-
-# ============================================================
 # BUILD FILTERS
 # ============================================================
 
@@ -482,10 +441,6 @@ def build_keywords_filter(
         )
         + ")"
     )
-
-# ============================================================
-# DIGEST CONTENTS
-# ============================================================
 
 # ============================================================
 # DIGEST CONTENTS
@@ -897,24 +852,6 @@ def get_digest_contents(
     print("FINAL CONTENTS COUNT")
     print(len(contents))
 
-    # ========================================================
-    # LAST SENT
-    # ========================================================
-
-    last_sent_at = (
-        get_last_digest_sent(
-            user_id
-        )
-    )
-
-    print("FINAL RESPONSE")
-    print({
-        "contents_count": len(contents),
-        "language": language,
-        "last_sent_at": last_sent_at,
-        "keywords": len(keywords),
-        "geographies": len(geographies),
-    })
 
     # ========================================================
     # RESPONSE
@@ -951,7 +888,4 @@ def get_digest_contents(
 
         "language":
             language,
-
-        "last_sent_at":
-            last_sent_at,
     }
