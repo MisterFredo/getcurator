@@ -96,31 +96,25 @@ def build_selection_query(
     sql = f"""
 
     SELECT
-
         id_content AS id,
-
         {title_sql},
-
         {excerpt_sql},
 
         published_at,
-
         source_url,
-
         source_title,
-
         source_id,
-
         ID_PRIMARY_COMPANY,
-
+        content_body,
+        signal_analytique,
+        mecanique_expliquee,
+        enjeu_strategique,
+        point_de_friction,
+        chiffres,
         companies,
-
         solutions,
-
         topics,
-
         universes,
-
         concepts
 
     FROM `{TABLE_CONTENT_ENRICHED}`
