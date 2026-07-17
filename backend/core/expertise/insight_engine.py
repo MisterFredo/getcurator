@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from utils.llm import run_llm
 
-from core.workspace.prompt_service import (
+from core.expertise.prompt_service import (
     build_key_points_prompt,
     build_implications_prompt,
 )
