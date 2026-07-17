@@ -29,3 +29,20 @@ class WorkspaceGenerateRequest(BaseModel):
     number_ids: list[str] = Field(
         default_factory=list,
     )
+
+class WorkspaceNumber(BaseModel):
+    id_number: str
+
+    label: str
+
+    value: float | None = None
+    unit: str | None = None
+    scale: str | None = None
+
+    type: str | None = None
+    category: str | None = None
+
+    zone: str | None = None
+    period: str | None = None
+
+    entity_label: str | None = None
