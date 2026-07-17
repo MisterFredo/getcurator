@@ -1,17 +1,18 @@
 # backend/core/workspace/number_service.py
 
-from google.cloud import bigquery
-
 from api.workspace.models import (
     WorkspaceNumber,
 )
-
-from core.bigquery import get_bigquery_client
 
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
 
 # ============================================================
 # TABLE
@@ -20,6 +21,7 @@ from config import (
 TABLE_NUMBERS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_NUMBERS"
 )
+
 
 # ============================================================
 # LOAD NUMBERS BY IDS
@@ -32,77 +34,59 @@ def load_numbers_by_ids(
     if not number_ids:
         return []
 
-    client = get_bigquery_client()
+    rows = query_bq(
 
-    query = f"""
-    SELECT
+        f"""
+        SELECT
 
-        ID_NUMBER,
+            ID_NUMBER,
 
-        LABEL,
-        VALUE,
-        UNIT,
-        SCALE,
+            LABEL,
+            VALUE,
+            UNIT,
+            SCALE,
 
-        TYPE,
-        CATEGORY,
+            TYPE,
+            CATEGORY,
 
-        ZONE,
-        PERIOD,
+            ZONE,
+            PERIOD,
 
-        ENTITY_LABEL
+            ENTITY_LABEL
 
-    FROM `{TABLE_NUMBERS}`
+        FROM `{TABLE_NUMBERS}`
 
-    WHERE
-        ID_NUMBER IN UNNEST(@number_ids)
-    """
+        WHERE ID_NUMBER IN UNNEST(@number_ids)
+        """,
 
-    job_config = bigquery.QueryJobConfig(
+        {
+            "number_ids": number_ids,
+        },
 
-        query_parameters=[
+    ) or []
 
-            bigquery.ArrayQueryParameter(
-                "number_ids",
-                "STRING",
-                number_ids,
-            )
+    return [
 
-        ]
+        WorkspaceNumber(
 
-    )
+            id_number=row.get("ID_NUMBER"),
 
-    rows = client.query(
-        query,
-        job_config=job_config,
-    ).result()
+            label=row.get("LABEL"),
 
-    numbers: list[WorkspaceNumber] = []
+            value=row.get("VALUE"),
+            unit=row.get("UNIT"),
+            scale=row.get("SCALE"),
 
-    for row in rows:
+            type=row.get("TYPE"),
+            category=row.get("CATEGORY"),
 
-        numbers.append(
+            zone=row.get("ZONE"),
+            period=row.get("PERIOD"),
 
-            WorkspaceNumber(
-
-                id_number=row.ID_NUMBER,
-
-                label=row.LABEL,
-
-                value=row.VALUE,
-                unit=row.UNIT,
-                scale=row.SCALE,
-
-                type=row.TYPE,
-                category=row.CATEGORY,
-
-                zone=row.ZONE,
-                period=row.PERIOD,
-
-                entity_label=row.ENTITY_LABEL,
-
-            )
+            entity_label=row.get("ENTITY_LABEL"),
 
         )
 
-    return numbers
+        for row in rows
+
+    ]
