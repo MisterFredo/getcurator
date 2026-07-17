@@ -1,6 +1,5 @@
 # backend/api/expertise/models.py
 
-from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -139,22 +138,9 @@ class ExpertiseContext(BaseModel):
 
     count: int = 0
 
-
-# ============================================================
-# INSIGHTS
-# ============================================================
-
-class ExpertiseInsights(BaseModel):
-
-    summary: str = ""
-
-    implications: str = ""
-
-
 # ============================================================
 # EXPERTISE
 # ============================================================
-
 class Expertise(BaseModel):
 
     profile: ExpertiseProfile
@@ -164,7 +150,3 @@ class Expertise(BaseModel):
     )
 
     count: int = 0
-
-    summary: str = ""
-
-    implications: str = ""
