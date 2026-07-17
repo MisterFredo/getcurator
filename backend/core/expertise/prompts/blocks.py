@@ -1,4 +1,6 @@
-from api.expertise.models import ExpertiseContent
+from api.expertise.models import (
+    ExpertiseContent,
+)
 
 
 # ============================================================
@@ -18,25 +20,25 @@ def build_content_blocks(
 
         block = f"""
 TITLE:
-{c.title}
+{(c.title or "").strip()}
 
 CONTENT:
-{c.content_body}
+{(c.content_body or "").strip()}
 
 SIGNAL:
-{c.signal_analytique}
+{(c.signal_analytique or "").strip()}
 
 MECHANISM:
-{c.mecanique_expliquee}
+{(c.mecanique_expliquee or "").strip()}
 
 STRATEGIC ISSUE:
-{c.enjeu_strategique}
+{(c.enjeu_strategique or "").strip()}
 
 FRICTION:
-{c.point_de_friction}
+{(c.point_de_friction or "").strip()}
 
 NUMBERS:
-{c.chiffres}
+{(c.chiffres or "").strip()}
 """
 
         blocks.append(
