@@ -1,17 +1,23 @@
 # backend/core/expertise/insight_engine.py
 
-from typing import Dict, List
+from api.expertise.models import (
+    ExpertiseContent,
+    ExpertiseInsights,
+    ExpertiseProfile,
+)
 
-from core.llm.service import run_llm
+from core.llm.service import (
+    run_llm,
+)
 
 from .prompt_service import (
-    build_key_points_prompt,
     build_implications_prompt,
+    build_key_points_prompt,
 )
 
 
 # ============================================================
-# INTERNAL
+# RUN INSIGHT
 # ============================================================
 
 def _run_insight(
@@ -32,7 +38,7 @@ def _run_insight(
 # ============================================================
 
 def generate_summary(
-    contents: List[Dict],
+    contents: list[ExpertiseContent],
 ) -> str:
 
     if not contents:
@@ -52,19 +58,19 @@ def generate_summary(
 # ============================================================
 
 def generate_implications(
-    profile: Dict,
-    contents: List[Dict],
+    profile: ExpertiseProfile,
+    contents: list[ExpertiseContent],
 ) -> str:
 
     if not contents:
         return ""
 
     prompt = build_implications_prompt(
+
         contents=contents,
-        profile_text=profile.get(
-            "profile_text",
-            "",
-        ),
+
+        profile_text=profile.profile_text,
+
     )
 
     return _run_insight(
@@ -77,18 +83,18 @@ def generate_implications(
 # ============================================================
 
 def generate_insights(
-    profile: Dict,
-    contents: List[Dict],
-) -> Dict:
+    profile: ExpertiseProfile,
+    contents: list[ExpertiseContent],
+) -> ExpertiseInsights:
 
-    return {
+    return ExpertiseInsights(
 
-        "summary": generate_summary(
-            contents,
+        summary=generate_summary(
+            contents=contents,
         ),
 
-        "implications": generate_implications(
+        implications=generate_implications(
             profile=profile,
             contents=contents,
         ),
-    }
+    )
