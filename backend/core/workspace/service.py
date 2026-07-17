@@ -1,84 +1,12 @@
 # backend/core/workspace/service.py
 
-from utils.llm import run_llm
-
-from api.expertise.models import (
-    Expertise,
-)
-
 from core.expertise.service import (
     generate_expertise_from_contents,
 )
 
-from core.expertise.prompts.key_points import (
-    build_key_points_prompt,
+from core.expertise.output_service import (
+    generate_expertise_output,
 )
-
-from core.expertise.prompts.structure import (
-    build_structure_prompt,
-)
-
-from core.expertise.prompts.implications import (
-    build_implications_prompt,
-)
-
-# ============================================================
-# OUTPUT TYPES
-# ============================================================
-
-OUTPUT_KEY_POINTS = "key_points"
-
-OUTPUT_STRUCTURE = "structure"
-
-OUTPUT_IMPLICATIONS = "implications"
-
-
-# ============================================================
-# BUILD PROMPT
-# ============================================================
-
-def build_prompt(
-    output_type: str,
-    expertise: Expertise,
-) -> str:
-
-    # ========================================================
-    # KEY POINTS
-    # ========================================================
-
-    if output_type == OUTPUT_KEY_POINTS:
-
-        return build_key_points_prompt(
-            expertise=expertise,
-        )
-
-    # ========================================================
-    # STRUCTURE
-    # ========================================================
-
-    if output_type == OUTPUT_STRUCTURE:
-
-        return build_structure_prompt(
-            expertise=expertise,
-        )
-
-    # ========================================================
-    # IMPLICATIONS
-    # ========================================================
-
-    if output_type == OUTPUT_IMPLICATIONS:
-
-        return build_implications_prompt(
-            expertise=expertise,
-        )
-
-    # ========================================================
-    # UNKNOWN
-    # ========================================================
-
-    raise ValueError(
-        f"Unknown output_type: {output_type}"
-    )
 
 
 # ============================================================
@@ -115,25 +43,10 @@ def generate_workspace_output(
         return ""
 
     # ========================================================
-    # PROMPT
-    # ========================================================
-
-    prompt = build_prompt(
-        output_type=output_type,
-        expertise=expertise,
-    )
-
-    # ========================================================
-    # LLM
-    # ========================================================
-
-    result = run_llm(
-        prompt=prompt,
-        temperature=0.2,
-    )
-
-    # ========================================================
     # OUTPUT
     # ========================================================
 
-    return result or ""
+    return generate_expertise_output(
+        expertise=expertise,
+        output_type=output_type,
+    )
