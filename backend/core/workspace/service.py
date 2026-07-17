@@ -2,10 +2,8 @@
 
 from utils.llm import run_llm
 
-from api.expertise.models import Expertise
-
-from api.workspace.models import (
-    WorkspaceNumber,
+from api.expertise.models import (
+    Expertise,
 )
 
 from core.expertise.service import (
@@ -22,10 +20,6 @@ from core.expertise.prompts.structure import (
 
 from core.expertise.prompts.implications import (
     build_implications_prompt,
-)
-
-from core.workspace.number_service import (
-    load_numbers_by_ids,
 )
 
 # ============================================================
@@ -46,7 +40,6 @@ OUTPUT_IMPLICATIONS = "implications"
 def build_prompt(
     output_type: str,
     expertise: Expertise,
-    numbers: list[WorkspaceNumber],
 ) -> str:
 
     # ========================================================
@@ -57,7 +50,6 @@ def build_prompt(
 
         return build_key_points_prompt(
             expertise=expertise,
-            numbers=numbers,
         )
 
     # ========================================================
@@ -68,7 +60,6 @@ def build_prompt(
 
         return build_structure_prompt(
             expertise=expertise,
-            numbers=numbers,
         )
 
     # ========================================================
@@ -102,7 +93,6 @@ def generate_workspace_output(
 ) -> str:
 
     content_ids = content_ids or []
-
     number_ids = number_ids or []
 
     # ========================================================
@@ -125,21 +115,12 @@ def generate_workspace_output(
         return ""
 
     # ========================================================
-    # NUMBERS
-    # ========================================================
-
-    numbers = load_numbers_by_ids(
-        number_ids
-    )
-
-    # ========================================================
     # PROMPT
     # ========================================================
 
     prompt = build_prompt(
         output_type=output_type,
         expertise=expertise,
-        numbers=numbers,
     )
 
     # ========================================================
