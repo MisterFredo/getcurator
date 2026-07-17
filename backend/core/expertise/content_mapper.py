@@ -56,14 +56,47 @@ def build_content(
 
     return ExpertiseContent(
 
+        # ====================================================
+        # IDENTIFICATION
+        # ====================================================
+
         id=row.get("id"),
 
-        title=row.get("title"),
+        # ====================================================
+        # SOURCE
+        # ====================================================
 
-        excerpt=row.get("excerpt"),
+        source_id=(
+            row.get("source_id")
+            or ""
+        ),
+
+        source_title=(
+            row.get("source_title")
+            or ""
+        ),
+
+        source_url=(
+            row.get("source_url")
+            or ""
+        ),
 
         published_at=row.get(
             "published_at"
+        ),
+
+        # ====================================================
+        # DISPLAY
+        # ====================================================
+
+        title=(
+            row.get("title")
+            or ""
+        ),
+
+        excerpt=(
+            row.get("excerpt")
+            or ""
         ),
 
         url=(
@@ -72,6 +105,44 @@ def build_content(
         ),
 
         primary_company_logo=primary_logo,
+
+        # ====================================================
+        # CONTENT
+        # ====================================================
+
+        content_body=(
+            row.get("content_body")
+            or ""
+        ),
+
+        signal=(
+            row.get("signal_analytique")
+            or ""
+        ),
+
+        mecanique=(
+            row.get("mecanique_expliquee")
+            or ""
+        ),
+
+        enjeu=(
+            row.get("enjeu_strategique")
+            or ""
+        ),
+
+        friction=(
+            row.get("point_de_friction")
+            or ""
+        ),
+
+        chiffres=(
+            row.get("chiffres")
+            or ""
+        ),
+
+        # ====================================================
+        # STRUCTURED DATA
+        # ====================================================
 
         companies=companies,
 
@@ -118,7 +189,6 @@ def normalize_contents(
             )
 
         except Exception:
-
             continue
 
     return contents
