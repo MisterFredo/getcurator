@@ -1,23 +1,18 @@
 from typing import Dict, List
 
-from utils.llm import run_llm
+from core.llm.service import run_llm
 
-from core.expertise.prompt_service import (
+from .prompt_service import (
     build_key_points_prompt,
+)
+
+from .prompt_service import (
     build_implications_prompt,
-)
-
-from core.insight.service import (
-    get_analysis_details_by_ids,
-)
-
-from core.user.user_service import (
-    get_user_context,
 )
 
 
 # ============================================================
-# SUMMARY
+# GENERATE SUMMARY
 # ============================================================
 
 def generate_summary(
@@ -27,21 +22,40 @@ def generate_summary(
     if not contents:
         return ""
 
-    context = {
-        "contents": contents,
-        "numbers": [],
-    }
-
     prompt = build_key_points_prompt(
-        context
+        contents=contents,
     )
 
-    result = run_llm(
+    return run_llm(
         prompt=prompt,
         temperature=0.2,
     )
 
-    return result or ""
+
+# ============================================================
+# GENERATE IMPLICATIONS
+# ============================================================
+
+def generate_implications(
+    profile: Dict,
+    contents: List[Dict],
+) -> str:
+
+    if not contents:
+        return ""
+
+    prompt = build_implications_prompt(
+        contents=contents,
+        profile_text=profile.get(
+            "profile_text",
+            "",
+        ),
+    )
+
+    return run_llm(
+        prompt=prompt,
+        temperature=0.2,
+    )
 
 
 # ============================================================
