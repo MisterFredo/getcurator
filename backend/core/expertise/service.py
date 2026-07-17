@@ -2,11 +2,13 @@
 
 from api.expertise.models import (
     Expertise,
+    ExpertiseContent,
     ExpertiseContext,
+    ExpertiseProfile,
 )
 
-from .insight_engine import (
-    generate_insights,
+from .content_service import (
+    load_contents_by_ids,
 )
 
 from .profile_service import (
@@ -22,28 +24,19 @@ from .selection_engine import (
 # BUILD EXPERTISE
 # ============================================================
 
-def _build_expertise(
+def build_expertise(
     profile: ExpertiseProfile,
     contents: list[ExpertiseContent],
 ) -> Expertise:
 
-    context = ExpertiseContext(
-        profile=profile,
-        contents=contents,
-        count=len(contents),
-    )
-
-    insights = generate_insights(
-        profile=context.profile,
-        contents=context.contents,
-    )
-
     return Expertise(
-        profile=context.profile,
-        contents=context.contents,
-        count=context.count,
-        summary=insights.summary,
-        implications=insights.implications,
+
+        profile=profile,
+
+        contents=contents,
+
+        count=len(contents),
+
     )
 
 
@@ -79,6 +72,7 @@ def generate_expertise_context(
 
     )
 
+
 # ============================================================
 # GENERATE EXPERTISE
 # ============================================================
@@ -91,16 +85,25 @@ def generate_expertise(
 ) -> Expertise:
 
     context = generate_expertise_context(
+
         user_id=user_id,
+
         period_start=period_start,
+
         period_end=period_end,
+
         limit=limit,
+
     )
 
-    return _build_expertise(
+    return build_expertise(
+
         profile=context.profile,
+
         contents=context.contents,
+
     )
+
 
 # ============================================================
 # GENERATE EXPERTISE FROM CONTENTS
@@ -111,27 +114,18 @@ def generate_expertise_from_contents(
     content_ids: list[str],
 ) -> Expertise:
 
-    # ========================================================
-    # PROFILE
-    # ========================================================
-
     profile = load_profile(
         user_id=user_id,
     )
-
-    # ========================================================
-    # CONTENTS
-    # ========================================================
 
     contents = load_contents_by_ids(
         content_ids=content_ids,
     )
 
-    # ========================================================
-    # BUILD
-    # ========================================================
+    return build_expertise(
 
-    return _build_expertise(
         profile=profile,
+
         contents=contents,
+
     )
