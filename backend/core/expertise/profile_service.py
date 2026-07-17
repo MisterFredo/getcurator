@@ -1,6 +1,7 @@
 # backend/core/expertise/profile_service.py
 
 from api.expertise.models import (
+    ExpertisePreferences,
     ExpertiseProfile,
 )
 
@@ -12,9 +13,12 @@ from core.user.user_profile_service import (
     get_user_profile,
 )
 
-from .user_repository import (
-    load_user,
-    load_user_preferences,
+from core.user.user_preferences_service import (
+    get_user_preferences_grouped,
+)
+
+from core.user.user_service import (
+    get_user_context,
 )
 
 
@@ -26,45 +30,25 @@ def load_profile(
     user_id: str,
 ) -> ExpertiseProfile:
 
-    # ========================================================
-    # USER
-    # ========================================================
-
-    user = (
-        load_user(user_id)
+    context = (
+        get_user_context(user_id)
         or {}
     )
-
-    # ========================================================
-    # PREFERENCES
-    # ========================================================
-
-    preferences = (
-        load_user_preferences(user_id)
-        or {}
-    )
-
-    # ========================================================
-    # KEYWORDS
-    # ========================================================
-
-    keywords = (
-        get_user_keywords(user_id)
-        or []
-    )
-
-    # ========================================================
-    # PROFILE
-    # ========================================================
 
     profile = (
         get_user_profile(user_id)
         or {}
     )
 
-    # ========================================================
-    # GEOGRAPHIES
-    # ========================================================
+    preferences = (
+        get_user_preferences_grouped(user_id)
+        or {}
+    )
+
+    keywords = (
+        get_user_keywords(user_id)
+        or []
+    )
 
     geographies = [
 
@@ -84,20 +68,33 @@ def load_profile(
 
     ]
 
-    # ========================================================
-    # RESULT
-    # ========================================================
-
     return ExpertiseProfile(
 
         id=user_id,
 
         language=(
-            user.get("LANGUAGE")
+            context.get("lang")
             or "fr"
         ).lower(),
 
-        preferences=preferences,
+        preferences=ExpertisePreferences(
+
+            companies=preferences.get(
+                "COMPANY",
+                [],
+            ),
+
+            solutions=preferences.get(
+                "SOLUTION",
+                [],
+            ),
+
+            topics=preferences.get(
+                "TOPIC",
+                [],
+            ),
+
+        ),
 
         keywords=keywords,
 
@@ -107,4 +104,5 @@ def load_profile(
             profile.get("profile_text")
             or ""
         ),
+
     )
