@@ -6,7 +6,7 @@ from core.workspace.context_service import (
     build_workspace_context,
 )
 
-from core.expertise.prompt_service import (
+from core.workspace.prompt_service import (
     build_key_points_prompt,
     build_structure_prompt,
     build_implications_prompt,
