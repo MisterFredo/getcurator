@@ -15,7 +15,7 @@ from config import (
 # ============================================================
 
 TABLE_CONTENT = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
 
 # ============================================================
@@ -24,6 +24,7 @@ TABLE_CONTENT = (
 
 def load_contents_by_ids(
     content_ids: list[str],
+    language: str = "fr",
 ) -> list[ExpertiseContent]:
 
     if not content_ids:
@@ -31,13 +32,29 @@ def load_contents_by_ids(
 
     client = get_bigquery_client()
 
+    if language == "en":
+
+        title_sql = (
+            "COALESCE(TITLE_EN, TITLE) AS TITLE"
+        )
+
+        excerpt_sql = (
+            "COALESCE(EXCERPT_EN, EXCERPT) AS EXCERPT"
+        )
+
+    else:
+
+        title_sql = "TITLE"
+
+        excerpt_sql = "EXCERPT"
+
     query = f"""
     SELECT
 
         ID_CONTENT,
 
-        TITLE,
-        EXCERPT,
+        {title_sql},
+        {excerpt_sql},
 
         CONTENT_BODY,
 
@@ -60,7 +77,8 @@ def load_contents_by_ids(
 
     FROM `{TABLE_CONTENT}`
 
-    WHERE ID_CONTENT IN UNNEST(@content_ids)
+    WHERE
+        ID_CONTENT IN UNNEST(@content_ids)
     """
 
     job_config = bigquery.QueryJobConfig(
