@@ -2,9 +2,12 @@
 
 from google.cloud import bigquery
 
-from api.expertise.models import ExpertiseContent
-
 from core.bigquery import get_bigquery_client
+
+from core.expertise.content_mapper import (
+    normalize_contents,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -25,7 +28,7 @@ TABLE_CONTENT = (
 def load_contents_by_ids(
     content_ids: list[str],
     language: str = "fr",
-) -> list[ExpertiseContent]:
+):
 
     if not content_ids:
         return []
@@ -35,45 +38,49 @@ def load_contents_by_ids(
     if language == "en":
 
         title_sql = (
-            "COALESCE(TITLE_EN, TITLE) AS TITLE"
+            "COALESCE(TITLE_EN, TITLE) AS title"
         )
 
         excerpt_sql = (
-            "COALESCE(EXCERPT_EN, EXCERPT) AS EXCERPT"
+            "COALESCE(EXCERPT_EN, EXCERPT) AS excerpt"
         )
 
     else:
 
-        title_sql = "TITLE"
+        title_sql = "TITLE AS title"
 
-        excerpt_sql = "EXCERPT"
+        excerpt_sql = "EXCERPT AS excerpt"
 
     query = f"""
     SELECT
 
-        ID_CONTENT,
+        ID_CONTENT AS id,
+
+        SOURCE_ID AS source_id,
+        SOURCE_TITLE AS source_title,
+        SOURCE_URL AS source_url,
+
+        PUBLISHED_AT AS published_at,
 
         {title_sql},
         {excerpt_sql},
 
-        CONTENT_BODY,
+        CONTENT_BODY AS content_body,
 
-        SIGNAL_ANALYTIQUE,
-        MECANIQUE_EXPLIQUEE,
-        ENJEU_STRATEGIQUE,
-        POINT_DE_FRICTION,
+        SIGNAL_ANALYTIQUE AS signal_analytique,
+        MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
+        ENJEU_STRATEGIQUE AS enjeu_strategique,
+        POINT_DE_FRICTION AS point_de_friction,
 
-        CHIFFRES,
+        CHIFFRES AS chiffres,
 
-        SOURCE_TITLE,
-        SOURCE_URL,
-        SOURCE_DATE,
-        PUBLISHED_AT,
+        ID_PRIMARY_COMPANY,
 
-        COMPANIES,
-        SOLUTIONS,
-        TOPICS,
-        CONCEPTS
+        COMPANIES AS companies,
+        SOLUTIONS AS solutions,
+        TOPICS AS topics,
+        UNIVERSES AS universes,
+        CONCEPTS AS concepts
 
     FROM `{TABLE_CONTENT}`
 
@@ -84,11 +91,13 @@ def load_contents_by_ids(
     job_config = bigquery.QueryJobConfig(
 
         query_parameters=[
+
             bigquery.ArrayQueryParameter(
                 "content_ids",
                 "STRING",
                 content_ids,
             )
+
         ]
 
     )
@@ -98,40 +107,6 @@ def load_contents_by_ids(
         job_config=job_config,
     ).result()
 
-    contents = []
-
-    for row in rows:
-
-        contents.append(
-
-            ExpertiseContent(
-
-                id_content=row.ID_CONTENT,
-
-                title=row.TITLE,
-                excerpt=row.EXCERPT,
-
-                content_body=row.CONTENT_BODY,
-
-                signal_analytique=row.SIGNAL_ANALYTIQUE,
-                mecanique_expliquee=row.MECANIQUE_EXPLIQUEE,
-                enjeu_strategique=row.ENJEU_STRATEGIQUE,
-                point_de_friction=row.POINT_DE_FRICTION,
-
-                chiffres=row.CHIFFRES,
-
-                source_title=row.SOURCE_TITLE,
-                source_url=row.SOURCE_URL,
-                source_date=row.SOURCE_DATE,
-                published_at=row.PUBLISHED_AT,
-
-                companies=row.COMPANIES or [],
-                solutions=row.SOLUTIONS or [],
-                topics=row.TOPICS or [],
-                concepts=row.CONCEPTS or [],
-
-            )
-
-        )
-
-    return contents
+    return normalize_contents(
+        [dict(row) for row in rows]
+    )
