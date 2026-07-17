@@ -4,6 +4,13 @@ from api.expertise.models import (
     ExpertiseContent,
 )
 
+CURATOR_BASE_URL = (
+    os.getenv(
+        "CURATOR_BASE_URL",
+        "https://www.getcurator.ai",
+    )
+)
+
 
 # ============================================================
 # FIND PRIMARY LOGO
@@ -100,9 +107,9 @@ def build_content(
         ),
 
         url=(
-            "https://www.getcurator.ai/feed"
+            f"{CURATOR_BASE_URL}/feed"
             f"?analysis_id={row.get('id')}"
-        ),
+        )
 
         primary_company_logo=primary_logo,
 
