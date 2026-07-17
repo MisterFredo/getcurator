@@ -1,4 +1,6 @@
-from api.expertise.models import Expertise
+from api.expertise.models import (
+    Expertise,
+)
 
 from .blocks import (
     build_content_blocks,
@@ -19,25 +21,18 @@ def build_implications_prompt(
 
     profile_text = (
         expertise.profile.profile_text
+        or "No expert profile provided."
     )
 
     return f"""
-You are a business intelligence analyst.
+You are a senior business intelligence analyst.
 
-Your role is not to summarize content.
-
-The content has already been selected.
-
-Your role is to explain why these signals matter for a specific expert profile.
+Your role is to interpret the strategic significance of the selected signals for a specific expert profile.
 
 --------------------------------------------------
-LANGUAGE REQUIREMENT
+LANGUAGE
 
-Your entire response MUST be written in English.
-
-All headings, bullets and explanations must be in English.
-
-Never answer in French.
+Write the entire response in English.
 
 --------------------------------------------------
 EXPERT PROFILE
@@ -45,68 +40,60 @@ EXPERT PROFILE
 {profile_text}
 
 --------------------------------------------------
-CONTENTS
+SELECTED CONTENT
 
 {content_context}
 
 --------------------------------------------------
 OBJECTIVE
 
-Explain what the selected signals collectively mean for this expert profile.
+The content has already been selected.
 
-The content has already been filtered and selected.
+Do not summarize articles individually.
 
-Do not explain individual articles.
+Instead, explain what these signals collectively reveal for this specific expert profile.
 
-Do not rank articles.
-
-Do not summarize content.
-
-Focus on significance and implications.
+Identify recurring themes, connect related signals and explain why they matter.
 
 --------------------------------------------------
 TASK
 
 1. Identify recurring patterns across the selected signals.
-2. Explain why these patterns matter for the expert profile.
-3. Connect multiple signals together when they point to the same trend.
-4. Highlight what these signals collectively suggest.
-5. Focus on implications derived from the provided content only.
+2. Connect multiple signals whenever they reinforce the same trend.
+3. Explain why these patterns matter for the expert profile.
+4. Highlight the broader significance of the combined signals.
+5. Base every conclusion exclusively on the provided content.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
 KEY IMPLICATIONS
 
-- implication
-    Explanation
+- Implication title
+  Explanation
 
-- implication
-    Explanation
+- Implication title
+  Explanation
 
-- implication
-    Explanation
+- Implication title
+  Explanation
 
 --------------------------------------------------
 RULES
 
-- Maximum 5 implications
-- Each implication must contain a short implication title and a concise explanation of why it matters for the expert profile
-- No article-by-article summary
-- No filler
-- No generic statements
-- No invention
-- Use only the provided content
-- Base every implication on the selected signals
-- Connect signals whenever possible
-- Explain significance, not strategy
-- Do not recommend actions
-- Do not speculate about future outcomes
-- Do not invent opportunities or risks
+- Maximum 5 implications.
+- Keep each implication concise.
+- Explain significance, not strategy.
+- Do not summarize articles individually.
+- Do not recommend actions.
+- Do not invent opportunities, risks or future scenarios.
+- Do not speculate.
+- Do not use generic business language.
+- Use only the provided content as evidence.
 
 --------------------------------------------------
 
-You are an analyst, not a reporter.
+You are an analyst.
 
-Your role is to explain why the selected signals matter for this profile.
+Your objective is to explain why these signals matter for this expert profile.
 """.strip()
