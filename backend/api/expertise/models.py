@@ -6,6 +6,25 @@ from pydantic import BaseModel, Field
 
 
 # ============================================================
+# PREFERENCES
+# ============================================================
+
+class ExpertisePreferences(BaseModel):
+
+    companies: list[str] = Field(
+        default_factory=list,
+    )
+
+    solutions: list[str] = Field(
+        default_factory=list,
+    )
+
+    topics: list[str] = Field(
+        default_factory=list,
+    )
+
+
+# ============================================================
 # PROFILE
 # ============================================================
 
@@ -15,8 +34,8 @@ class ExpertiseProfile(BaseModel):
 
     language: str
 
-    preferences: dict = Field(
-        default_factory=dict,
+    preferences: ExpertisePreferences = Field(
+        default_factory=ExpertisePreferences,
     )
 
     keywords: list[str] = Field(
@@ -48,23 +67,23 @@ class ExpertiseContent(BaseModel):
 
     primary_company_logo: str | None = None
 
-    companies: list = Field(
+    companies: list[dict] = Field(
         default_factory=list,
     )
 
-    solutions: list = Field(
+    solutions: list[dict] = Field(
         default_factory=list,
     )
 
-    topics: list = Field(
+    topics: list[dict] = Field(
         default_factory=list,
     )
 
-    universes: list = Field(
+    universes: list[dict] = Field(
         default_factory=list,
     )
 
-    concepts: list = Field(
+    concepts: list[dict] = Field(
         default_factory=list,
     )
 
