@@ -15,6 +15,10 @@ from utils.auth import (
     get_user_id_from_request,
 )
 
+# ============================================================
+# ROUTER
+# ============================================================
+
 router = APIRouter()
 
 
@@ -34,11 +38,8 @@ def generate_workspace(
 
     result = generate_workspace_output(
         output_type=payload.output_type,
-
         content_ids=payload.content_ids,
-
         number_ids=payload.number_ids,
-
         user_id=user_id,
     )
 
