@@ -96,3 +96,33 @@ def build_content(
             row.get("concepts")
             or [],
     }
+
+
+
+# ============================================================
+# NORMALIZE CONTENTS
+# ============================================================
+
+def normalize_contents(
+    rows: List[Dict],
+) -> List[Dict]:
+
+    contents = []
+
+    for row in rows:
+
+        try:
+
+            contents.append(
+                build_content(row)
+            )
+
+        except Exception as e:
+
+            print("CONTENT BUILD ERROR")
+            print(e)
+
+    print("FINAL CONTENTS COUNT")
+    print(len(contents))
+
+    return contents
