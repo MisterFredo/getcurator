@@ -1,4 +1,187 @@
-from typing import Dict
+from typing import Dict, Tuple
+
+# ============================================================
+# BUILD SELECTION QUERY
+# ============================================================
+
+def build_selection_query(
+    profile: Dict,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    limit: int | None = None,
+) -> Tuple[str, Dict]:
+
+    language = (
+        profile.get("language")
+        or "fr"
+    ).lower()
+
+    is_en = (
+        language == "en"
+    )
+
+    selection = build_selection_filters(
+        profile
+    )
+
+    filters_sql = (
+        selection["filters_sql"]
+    )
+
+    keywords_sql = (
+        selection["keywords_sql"]
+    )
+
+    # ========================================================
+    # DATE FILTERS
+    # ========================================================
+
+    date_filter_sql = ""
+
+    params = {}
+
+    if period_start:
+
+        date_filter_sql += """
+
+        AND published_at >= @period_start
+
+        """
+
+        params["period_start"] = (
+            period_start
+        )
+
+    if period_end:
+
+        date_filter_sql += """
+
+        AND published_at < @period_end
+
+        """
+
+        params["period_end"] = (
+            period_end
+        )
+
+    # ========================================================
+    # LIMIT
+    # ========================================================
+
+    limit_sql = ""
+
+    if limit:
+
+        limit_sql = f"""
+
+        LIMIT {limit}
+
+        """
+
+    # ========================================================
+    # LANGUAGE
+    # ========================================================
+
+    if is_en:
+
+        title_sql = """
+
+        COALESCE(
+            TITLE_EN,
+            title
+        ) AS title
+
+        """
+
+        excerpt_sql = """
+
+        COALESCE(
+            EXCERPT_EN,
+            excerpt
+        ) AS excerpt
+
+        """
+
+    else:
+
+        title_sql = """
+
+        title AS title
+
+        """
+
+        excerpt_sql = """
+
+        excerpt AS excerpt
+
+        """
+
+    # ========================================================
+    # QUERY
+    # ========================================================
+
+    sql = f"""
+
+    SELECT
+
+        id_content AS id,
+
+        {title_sql},
+
+        {excerpt_sql},
+
+        published_at,
+
+        source_url,
+
+        source_title,
+
+        source_id,
+
+        ID_PRIMARY_COMPANY,
+
+        companies,
+
+        solutions,
+
+        topics,
+
+        universes,
+
+        concepts
+
+    FROM `{TABLE_CONTENT_ENRICHED}`
+
+    WHERE
+
+        is_active = TRUE
+
+        AND status = "PUBLISHED"
+
+        {date_filter_sql}
+
+        AND (
+
+            ({filters_sql})
+
+            OR
+
+            ({keywords_sql})
+
+        )
+
+    ORDER BY
+
+        published_at DESC
+
+    {limit_sql}
+
+    """
+
+    return (
+        sql,
+        params,
+    )
 
 
 # ============================================================
