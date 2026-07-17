@@ -1,6 +1,6 @@
-from typing import List, Literal, Optional
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ============================================================
@@ -18,12 +18,14 @@ OutputType = Literal[
 # REQUEST
 # ============================================================
 
-class WorkspaceGenerateRequest(
-    BaseModel
-):
+class WorkspaceGenerateRequest(BaseModel):
 
     output_type: OutputType
 
-    content_ids: Optional[List[str]] = []
+    content_ids: list[str] = Field(
+        default_factory=list,
+    )
 
-    number_ids: Optional[List[str]] = []
+    number_ids: list[str] = Field(
+        default_factory=list,
+    )
