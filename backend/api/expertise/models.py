@@ -55,38 +55,65 @@ class ExpertiseProfile(BaseModel):
 
 class ExpertiseContent(BaseModel):
 
+    # ========================================================
+    # IDENTIFICATION
+    # ========================================================
+
     id: str
+
+    # ========================================================
+    # SOURCE
+    # ========================================================
+
+    source_id: str = ""
+
+    source_title: str = ""
+
+    source_url: str = ""
+
+    published_at: Any
+
+    # ========================================================
+    # DISPLAY
+    # ========================================================
 
     title: str
 
     excerpt: str
 
-    published_at: Any
-
     url: str
 
     primary_company_logo: str | None = None
 
-    companies: list[dict] = Field(
-        default_factory=list,
-    )
+    # ========================================================
+    # CONTENT
+    # ========================================================
 
-    solutions: list[dict] = Field(
-        default_factory=list,
-    )
+    content_body: str = ""
 
-    topics: list[dict] = Field(
-        default_factory=list,
-    )
+    signal: str = ""
 
-    universes: list[dict] = Field(
-        default_factory=list,
-    )
+    mecanique: str = ""
 
-    concepts: list[dict] = Field(
-        default_factory=list,
-    )
+    enjeu: str = ""
 
+    friction: str = ""
+
+    chiffres: str = ""
+
+    # ========================================================
+    # STRUCTURED DATA
+    # ========================================================
+
+    companies: list[dict] = Field(default_factory=list)
+
+    solutions: list[dict] = Field(default_factory=list)
+
+    topics: list[dict] = Field(default_factory=list)
+
+    universes: list[dict] = Field(default_factory=list)
+
+    concepts: list[dict] = Field(default_factory=list)
 
 # ============================================================
 # CONTEXT
