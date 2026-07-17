@@ -1,6 +1,13 @@
 # backend/core/expertise/service.py
 
-from typing import Dict
+from api.expertise.models import (
+    Expertise,
+    ExpertiseContext,
+)
+
+from .insight_engine import (
+    generate_insights,
+)
 
 from .profile_service import (
     load_profile,
@@ -8,10 +15,6 @@ from .profile_service import (
 
 from .selection_engine import (
     select_contents,
-)
-
-from .insight_engine import (
-    generate_insights,
 )
 
 
@@ -24,7 +27,7 @@ def generate_expertise_context(
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
-) -> Dict:
+) -> ExpertiseContext:
 
     profile = load_profile(
         user_id=user_id,
@@ -37,14 +40,15 @@ def generate_expertise_context(
         limit=limit,
     )
 
-    return {
+    return ExpertiseContext(
 
-        "profile": profile,
+        profile=profile,
 
-        "contents": contents,
+        contents=contents,
 
-        "count": len(contents),
-    }
+        count=len(contents),
+
+    )
 
 
 # ============================================================
@@ -52,20 +56,30 @@ def generate_expertise_context(
 # ============================================================
 
 def generate_expertise_insights(
-    context: Dict,
-) -> Dict:
+    context: ExpertiseContext,
+) -> Expertise:
 
     insights = generate_insights(
-        profile=context["profile"],
-        contents=context["contents"],
+
+        profile=context.profile,
+
+        contents=context.contents,
+
     )
 
-    return {
+    return Expertise(
 
-        **context,
+        profile=context.profile,
 
-        **insights,
-    }
+        contents=context.contents,
+
+        count=context.count,
+
+        summary=insights.summary,
+
+        implications=insights.implications,
+
+    )
 
 
 # ============================================================
@@ -77,13 +91,18 @@ def generate_expertise(
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
-) -> Dict:
+) -> Expertise:
 
     context = generate_expertise_context(
+
         user_id=user_id,
+
         period_start=period_start,
+
         period_end=period_end,
+
         limit=limit,
+
     )
 
     return generate_expertise_insights(
