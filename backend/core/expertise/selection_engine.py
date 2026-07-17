@@ -1,4 +1,40 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
+from .content_mapper import (
+    normalize_contents,
+)
+
+
+# ============================================================
+# SELECT CONTENTS
+# ============================================================
+
+def select_contents(
+    profile: Dict,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    limit: int | None = None,
+) -> List[Dict]:
+
+    sql, params = build_selection_query(
+        profile=profile,
+        period_start=period_start,
+        period_end=period_end,
+        limit=limit,
+    )
+
+    rows = query_bq(
+        sql=sql,
+        params=params,
+    )
+
+    return normalize_contents(
+        rows
+    )
 
 # ============================================================
 # BUILD SELECTION QUERY
