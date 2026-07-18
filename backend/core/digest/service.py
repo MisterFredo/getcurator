@@ -1,5 +1,11 @@
 # backend/core/digest/service.py
 
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
+)
+
 from core.digest.models import (
     DigestRequest,
     DigestReview,
@@ -75,3 +81,110 @@ def generate_digest_review(
         knowledge=knowledge,
 
     )
+
+
+# ============================================================
+# RUN USER DIGEST
+# ============================================================
+
+def run_user_digest(
+    user_id: str,
+) -> DigestReview:
+
+    request = DigestRequest(
+
+        user_id=user_id,
+
+        target_type="user",
+
+        period_start=(
+            datetime.now(timezone.utc)
+            - timedelta(days=7)
+        ),
+
+        period_end=datetime.now(
+            timezone.utc
+        ),
+
+        capabilities=[
+            "summary",
+            "implications",
+        ],
+
+    )
+
+    return generate_digest_review(
+        request,
+    )
+
+
+# ============================================================
+# RUN EXPERT DIGEST
+# ============================================================
+
+def run_expert_digest(
+    expert_id: str,
+) -> DigestReview:
+
+    # TODO
+    # Charger l'expert afin de récupérer
+    # le user_id associé.
+
+    request = DigestRequest(
+
+        user_id="",
+
+        target_type="expert",
+
+        expert_id=expert_id,
+
+        period_start=(
+            datetime.now(timezone.utc)
+            - timedelta(days=30)
+        ),
+
+        period_end=datetime.now(
+            timezone.utc
+        ),
+
+        capabilities=[
+            "summary",
+            "implications",
+        ],
+
+    )
+
+    return generate_digest_review(
+        request,
+    )
+
+
+# ============================================================
+# LIST REVIEWS
+# ============================================================
+
+def list_digest_reviews():
+
+    raise NotImplementedError
+
+
+# ============================================================
+# GET REVIEW
+# ============================================================
+
+def get_digest_review(
+    review_id: str,
+):
+
+    raise NotImplementedError
+
+
+# ============================================================
+# SEND REVIEW
+# ============================================================
+
+def send_digest_review(
+    review_id: str,
+):
+
+    raise NotImplementedError
