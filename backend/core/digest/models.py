@@ -1,25 +1,45 @@
-# backend/core/digest/models.py
-
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from api.expertise.models import (
-    Expertise,
+from core.delivery.models import (
+    KnowledgeResult,
 )
 
-class Digest(BaseModel):
+
+# ============================================================
+# DIGEST REQUEST
+# ============================================================
+
+class DigestRequest(BaseModel):
 
     user_id: str
+
+    target_type: Literal[
+        "user",
+        "expert",
+    ]
+
+    expert_id: str | None = None
 
     period_start: datetime
 
     period_end: datetime
 
-    expertise: Expertise
+    capabilities: list[str]
 
-    capability_results: dict[str, str]
 
-    intro: str = ""
+# ============================================================
+# DIGEST REVIEW
+# ============================================================
 
-    outro: str = ""
+class DigestReview(BaseModel):
+
+    request: DigestRequest
+
+    total_contents: int
+
+    analyzed_contents: int
+
+    knowledge: KnowledgeResult
