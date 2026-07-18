@@ -1,5 +1,3 @@
-# backend/core/digest/service.py
-
 from datetime import (
     datetime,
     timedelta,
