@@ -1,11 +1,11 @@
 # backend/core/workspace/service.py
 
-from core.expertise.output_service import (
-    generate_expertise_output,
+from core.delivery.models import (
+    KnowledgeRequest,
 )
 
-from core.expertise.service import (
-    generate_expertise_from_contents,
+from core.delivery.service import (
+    deliver_knowledge,
 )
 
 
@@ -23,45 +23,32 @@ def generate_workspace_output(
     content_ids = content_ids or []
     number_ids = number_ids or []
 
-    # ========================================================
-    # VALIDATION
-    # ========================================================
-
     if not user_id:
         raise ValueError(
             "user_id is required"
         )
 
-    # ========================================================
-    # EMPTY
-    # ========================================================
-
     if not content_ids and not number_ids:
         return ""
 
-    # ========================================================
-    # EXPERTISE
-    # ========================================================
-
-    expertise = generate_expertise_from_contents(
+    request = KnowledgeRequest(
 
         user_id=user_id,
 
         content_ids=content_ids,
 
+        number_ids=number_ids,
+
+        capabilities=[
+            output_type,
+        ],
     )
 
-    if expertise.count == 0:
-        return ""
+    result = deliver_knowledge(
+        request
+    )
 
-    # ========================================================
-    # OUTPUT
-    # ========================================================
-
-    return generate_expertise_output(
-
-        expertise=expertise,
-
-        output_type=output_type,
-
+    return result.outputs.get(
+        output_type,
+        "",
     )
