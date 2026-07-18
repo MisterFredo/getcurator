@@ -1,13 +1,16 @@
-# backend/api/digest/routes.py
-
 from fastapi import APIRouter
+
+from core.digest.models import (
+    UserDigestRunRequest,
+    ExpertDigestRunRequest,
+)
 
 from core.digest.service import (
     run_user_digest,
     run_expert_digest,
-    send_digest_review,
-    get_digest_review,
     list_digest_reviews,
+    get_digest_review,
+    send_digest_review,
 )
 
 router = APIRouter()
@@ -19,13 +22,11 @@ router = APIRouter()
 
 @router.post("/run-user")
 def run_user_digest_route(
-    payload: dict,
+    request: UserDigestRunRequest,
 ):
 
     return run_user_digest(
-
-        user_id=payload["user_id"],
-
+        user_id=request.user_id,
     )
 
 
@@ -35,13 +36,11 @@ def run_user_digest_route(
 
 @router.post("/run-expert")
 def run_expert_digest_route(
-    payload: dict,
+    request: ExpertDigestRunRequest,
 ):
 
     return run_expert_digest(
-
-        expert_id=payload["expert_id"],
-
+        expert_id=request.expert_id,
     )
 
 
@@ -50,13 +49,13 @@ def run_expert_digest_route(
 # ============================================================
 
 @router.get("/reviews")
-def reviews():
+def list_reviews():
 
     return list_digest_reviews()
 
 
 @router.get("/reviews/{review_id}")
-def review(
+def get_review(
     review_id: str,
 ):
 
@@ -70,7 +69,7 @@ def review(
 # ============================================================
 
 @router.post("/reviews/{review_id}/send")
-def send_review(
+def send_review_route(
     review_id: str,
 ):
 
