@@ -90,36 +90,6 @@ def sync_dev():
 
     return sync_prod_to_dev()
 
-# ============================================================
-# RUN USER DIGEST
-# ============================================================
-
-@router.post("/operations/run-user-digest")
-def run_user_digest_route(
-    payload: dict,
-):
-
-    return run_user_digest(
-
-        user_id=payload["user_id"],
-
-    )
-
-
-# ============================================================
-# RUN EXPERT DIGEST
-# ============================================================
-
-@router.post("/operations/run-expert-digest")
-def run_expert_digest_route(
-    payload: dict,
-):
-
-    return run_expert_digest(
-
-        expert_id=payload["expert_id"],
-
-    )
 
 # ============================================================
 # QUALITY
