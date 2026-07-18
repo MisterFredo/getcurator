@@ -14,12 +14,12 @@ def send_digest(
     recipient: str,
 ) -> None:
 
-    html = render_email(
-        document,
-    )
+    """
+    Send a digest to a recipient.
 
-    send_email(
-        to=recipient,
-        subject=document.title,
-        html=html,
-    )
+    TODO
+    ----
+    - Render DigestDocument into HTML
+    - Send email through the selected provider
+    """
+    raise NotImplementedError
