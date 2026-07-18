@@ -1,5 +1,7 @@
 # backend/core/expertise/content_mapper.py
 
+import os
+
 from api.expertise.models import (
     ExpertiseContent,
 )
