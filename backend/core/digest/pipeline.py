@@ -1,4 +1,4 @@
-# backend/core/digest/scheduler.py
+# backend/core/digest/pipeline.py
 
 from core.digest.models import (
     DigestRequest,
@@ -18,16 +18,16 @@ from core.digest.send_service import (
 
 
 # ============================================================
-# RUN USER DIGEST
+# RUN DIGEST
 # ============================================================
 
-def run_user_digest(
+def run_digest(
     request: DigestRequest,
     recipient: str,
 ) -> None:
 
     # ========================================================
-    # GENERATE
+    # REVIEW
     # ========================================================
 
     review = generate_digest_review(
@@ -35,7 +35,7 @@ def run_user_digest(
     )
 
     # ========================================================
-    # RENDER
+    # DOCUMENT
     # ========================================================
 
     document = render_digest(
