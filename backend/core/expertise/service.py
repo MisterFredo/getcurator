@@ -43,7 +43,7 @@ def build_expertise(
 # GENERATE EXPERTISE
 # ============================================================
 
-def generate_expertise(
+def generate_expertise_from_profile(
     user_id: str,
     period_start: str | None = None,
     period_end: str | None = None,
