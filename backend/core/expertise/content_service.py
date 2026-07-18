@@ -2,7 +2,7 @@
 
 from google.cloud import bigquery
 
-from utils.bigquery import get_bigquery_client
+from utils.bigquery_utils import get_bigquery_client
 
 from core.expertise.content_mapper import (
     normalize_contents,
