@@ -2,6 +2,7 @@
 
 from core.digest.models import (
     DigestRequest,
+    DeliveryResult,
 )
 
 from core.digest.service import (
@@ -24,7 +25,17 @@ from core.digest.send_service import (
 def run_digest(
     request: DigestRequest,
     recipient: str,
-) -> None:
+) -> DeliveryResult:
+    """
+    Execute the complete digest pipeline.
+
+    Pipeline
+    --------
+    1. Generate the digest review.
+    2. Render the editorial document.
+    3. Send the digest.
+    4. Return the delivery result.
+    """
 
     # ========================================================
     # REVIEW
@@ -46,7 +57,7 @@ def run_digest(
     # SEND
     # ========================================================
 
-    send_digest(
+    return send_digest(
         document=document,
         recipient=recipient,
     )
