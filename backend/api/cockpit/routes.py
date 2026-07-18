@@ -13,8 +13,6 @@ from core.cockpit.operations import (
     backup_prod,
     sync_prod_to_dev,
     restart_destock,
-    run_user_digest,
-    run_expert_digest,
 )
 
 from core.cockpit.quality import (
