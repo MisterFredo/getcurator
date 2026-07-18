@@ -14,7 +14,7 @@ from core.delivery.service import (
 # ============================================================
 
 def generate_workspace_output(
-    output_type: str,
+    capability: str,
     content_ids: list[str] | None = None,
     number_ids: list[str] | None = None,
     user_id: str | None = None,
@@ -40,7 +40,7 @@ def generate_workspace_output(
         number_ids=number_ids,
 
         capabilities=[
-            output_type,
+            capability,
         ],
     )
 
@@ -48,7 +48,7 @@ def generate_workspace_output(
         request
     )
 
-    return result.outputs.get(
-        output_type,
+    return result.capability_results.get(
+        capability,
         "",
     )
