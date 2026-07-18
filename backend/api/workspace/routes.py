@@ -37,7 +37,7 @@ def generate_workspace(
     )
 
     result = generate_workspace_output(
-        output_type=payload.output_type,
+        capability=payload.capability,
         content_ids=payload.content_ids,
         number_ids=payload.number_ids,
         user_id=user_id,
