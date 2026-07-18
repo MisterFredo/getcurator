@@ -2,6 +2,7 @@
 
 from core.digest.models import (
     DigestDocument,
+    DeliveryResult,
 )
 
 
@@ -12,14 +13,20 @@ from core.digest.models import (
 def send_digest(
     document: DigestDocument,
     recipient: str,
-) -> None:
-
+) -> DeliveryResult:
     """
     Send a digest to a recipient.
+
+    Pipeline
+    --------
+    1. Render the DigestDocument into HTML.
+    2. Send the email through the configured provider.
+    3. Return the delivery result.
 
     TODO
     ----
     - Render DigestDocument into HTML
-    - Send email through the selected provider
+    - Integrate the email provider
     """
+
     raise NotImplementedError
