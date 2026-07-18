@@ -1,4 +1,4 @@
-# backend/core/expertise/output_service.py
+# backend/core/expertise/capability_service.py
 
 from utils.llm import run_llm
 
@@ -18,22 +18,19 @@ from core.expertise.prompts.implications import (
     build_implications_prompt,
 )
 
-# ============================================================
-# OUTPUT TYPES
-# ============================================================
-
-from core.expertise.constants import (
-    OUTPUT_KEY_POINTS,
-    OUTPUT_STRUCTURE,
-    OUTPUT_IMPLICATIONS,
+from core.expertise.capabilities import (
+    CAPABILITY_KEY_POINTS,
+    CAPABILITY_STRUCTURE,
+    CAPABILITY_IMPLICATIONS,
 )
+
 
 # ============================================================
 # BUILD PROMPT
 # ============================================================
 
-def _build_prompt()
-    output_type: str,
+def _build_prompt(
+    capability: str,
     expertise: Expertise,
 ) -> str:
 
@@ -41,7 +38,7 @@ def _build_prompt()
     # KEY POINTS
     # ========================================================
 
-    if output_type == OUTPUT_KEY_POINTS:
+    if capability == CAPABILITY_KEY_POINTS:
 
         return build_key_points_prompt(
             expertise=expertise,
@@ -51,7 +48,7 @@ def _build_prompt()
     # STRUCTURE
     # ========================================================
 
-    if output_type == OUTPUT_STRUCTURE:
+    if capability == CAPABILITY_STRUCTURE:
 
         return build_structure_prompt(
             expertise=expertise,
@@ -61,7 +58,7 @@ def _build_prompt()
     # IMPLICATIONS
     # ========================================================
 
-    if output_type == OUTPUT_IMPLICATIONS:
+    if capability == CAPABILITY_IMPLICATIONS:
 
         return build_implications_prompt(
             expertise=expertise,
@@ -72,17 +69,17 @@ def _build_prompt()
     # ========================================================
 
     raise ValueError(
-        f"Unknown output_type: {output_type}"
+        f"Unknown capability: {capability}"
     )
 
 
 # ============================================================
-# GENERATE OUTPUT
+# EXECUTE CAPABILITY
 # ============================================================
 
-def generate_expertise_output(
+def execute_capability(
     expertise: Expertise,
-    output_type: str,
+    capability: str,
 ) -> str:
 
     if expertise.count == 0:
@@ -92,8 +89,8 @@ def generate_expertise_output(
     # PROMPT
     # ========================================================
 
-    prompt = build_prompt(
-        output_type=output_type,
+    prompt = _build_prompt(
+        capability=capability,
         expertise=expertise,
     )
 
@@ -107,7 +104,7 @@ def generate_expertise_output(
     )
 
     # ========================================================
-    # OUTPUT
+    # RESULT
     # ========================================================
 
     return result or ""
