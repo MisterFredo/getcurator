@@ -1,15 +1,46 @@
+# backend/core/delivery/service.py
+
 from core.delivery.models import (
     KnowledgeRequest,
     KnowledgeResult,
 )
 
 from core.expertise.service import (
+    generate_expertise,
     generate_expertise_from_contents,
 )
 
 from core.expertise.capability_service import (
     execute_capability,
 )
+
+
+# ============================================================
+# BUILD EXPERTISE
+# ============================================================
+
+def _build_expertise(
+    request: KnowledgeRequest,
+):
+
+    # ========================================================
+    # CONTENT IDS
+    # ========================================================
+
+    if request.content_ids:
+
+        return generate_expertise_from_contents(
+            user_id=request.user_id,
+            content_ids=request.content_ids,
+        )
+
+    # ========================================================
+    # PROFILE SELECTION
+    # ========================================================
+
+    return generate_expertise(
+        user_id=request.user_id,
+    )
 
 
 # ============================================================
@@ -24,16 +55,15 @@ def deliver_knowledge(
     # BUILD EXPERTISE
     # ========================================================
 
-    expertise = generate_expertise_from_contents(
-        user_id=request.user_id,
-        content_ids=request.content_ids,
+    expertise = _build_expertise(
+        request,
     )
 
     # ========================================================
     # EXECUTE CAPABILITIES
     # ========================================================
 
-    capability_results = {}
+    capability_results: dict[str, str] = {}
 
     for capability in request.capabilities:
 
