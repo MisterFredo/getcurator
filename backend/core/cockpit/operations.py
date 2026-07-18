@@ -704,28 +704,31 @@ def restart_destock():
         "Destock restarted.",
     )
 
-
 # ============================================================
 # RUN USER DIGEST
 # ============================================================
 
 def run_user_digest(
     user_id: str,
-    period_start: str,
-    period_end: str,
 ):
+
+    user = get_user(
+        user_id,
+    )
+
     request = DigestRequest(
 
         user_id=user_id,
 
         target_type="user",
 
-        period_start=datetime.fromisoformat(
-            period_start
+        period_start=(
+            datetime.now(timezone.utc)
+            - timedelta(days=7)
         ),
 
-        period_end=datetime.fromisoformat(
-            period_end
+        period_end=datetime.now(
+            timezone.utc
         ),
 
         capabilities=[
@@ -739,36 +742,37 @@ def run_user_digest(
 
         request=request,
 
-        recipient="",  # TODO: récupérer l'email utilisateur
+        recipient=user.email,
 
     )
-
 
 # ============================================================
 # RUN EXPERT DIGEST
 # ============================================================
 
 def run_expert_digest(
-    user_id: str,
     expert_id: str,
-    period_start: str,
-    period_end: str,
 ):
+
+    expert = get_expert(
+        expert_id,
+    )
 
     request = DigestRequest(
 
-        user_id=user_id,
+        user_id=expert.user_id,
 
         target_type="expert",
 
         expert_id=expert_id,
 
-        period_start=datetime.fromisoformat(
-            period_start
+        period_start=(
+            datetime.now(timezone.utc)
+            - timedelta(days=30)
         ),
 
-        period_end=datetime.fromisoformat(
-            period_end
+        period_end=datetime.now(
+            timezone.utc
         ),
 
         capabilities=[
@@ -782,6 +786,6 @@ def run_expert_digest(
 
         request=request,
 
-        recipient="",  # TODO: récupérer l'email destinataire
+        recipient=expert.email,
 
     )
