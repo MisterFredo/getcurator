@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Any
+
+from api.expertise.models import (
+    Expertise,
+)
 
 
 # ============================================================
@@ -9,19 +12,37 @@ from typing import Any
 @dataclass(slots=True)
 class KnowledgeRequest:
 
+    # ========================================================
+    # CONTEXT
+    # ========================================================
+
     user_id: str
+
+    # ========================================================
+    # REQUEST
+    # ========================================================
 
     capabilities: list[str]
 
-    content_ids: list[str] = field(default_factory=list)
+    content_ids: list[str] = field(
+        default_factory=list,
+    )
 
-    number_ids: list[str] = field(default_factory=list)
+    number_ids: list[str] = field(
+        default_factory=list,
+    )
 
     expert_id: str | None = None
 
     period: str | None = None
 
-    metadata: dict[str, Any] = field(default_factory=dict)
+    # ========================================================
+    # EXTENSIONS
+    # ========================================================
+
+    metadata: dict = field(
+        default_factory=dict,
+    )
 
 
 # ============================================================
@@ -31,12 +52,24 @@ class KnowledgeRequest:
 @dataclass(slots=True)
 class KnowledgeResult:
 
-    expertise: Any
+    # ========================================================
+    # EXPERTISE
+    # ========================================================
+
+    expertise: Expertise
+
+    # ========================================================
+    # CAPABILITIES
+    # ========================================================
 
     capability_results: dict[str, str] = field(
         default_factory=dict,
     )
 
-    metadata: dict[str, Any] = field(
+    # ========================================================
+    # EXTENSIONS
+    # ========================================================
+
+    metadata: dict = field(
         default_factory=dict,
     )
