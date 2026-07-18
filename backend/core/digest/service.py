@@ -38,7 +38,7 @@ def generate_digest_review(
 
         period_end=request.period_end.isoformat(),
 
-        limit=20,
+        limit=request.limit,
 
     )
 
