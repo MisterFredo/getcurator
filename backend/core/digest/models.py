@@ -103,3 +103,10 @@ class DeliveryResult(BaseModel):
     sent_at: datetime | None = None
 
     error: str | None = None
+
+class UserDigestRunRequest(BaseModel):
+    user_id: str
+
+
+class ExpertDigestRunRequest(BaseModel):
+    expert_id: str
