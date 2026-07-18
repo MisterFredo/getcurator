@@ -3,7 +3,6 @@
 from api.expertise.models import (
     Expertise,
     ExpertiseContent,
-    ExpertiseContext,
     ExpertiseProfile,
 )
 
@@ -41,15 +40,15 @@ def build_expertise(
 
 
 # ============================================================
-# GENERATE EXPERTISE CONTEXT
+# GENERATE EXPERTISE
 # ============================================================
 
-def generate_expertise_context(
+def generate_expertise(
     user_id: str,
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
-) -> ExpertiseContext:
+) -> Expertise:
 
     profile = load_profile(
         user_id=user_id,
@@ -62,45 +61,11 @@ def generate_expertise_context(
         limit=limit,
     )
 
-    return ExpertiseContext(
+    return build_expertise(
 
         profile=profile,
 
         contents=contents,
-
-        count=len(contents),
-
-    )
-
-
-# ============================================================
-# GENERATE EXPERTISE
-# ============================================================
-
-def generate_expertise(
-    user_id: str,
-    period_start: str | None = None,
-    period_end: str | None = None,
-    limit: int | None = None,
-) -> Expertise:
-
-    context = generate_expertise_context(
-
-        user_id=user_id,
-
-        period_start=period_start,
-
-        period_end=period_end,
-
-        limit=limit,
-
-    )
-
-    return build_expertise(
-
-        profile=context.profile,
-
-        contents=context.contents,
 
     )
 
