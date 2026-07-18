@@ -86,3 +86,22 @@ class DigestCard(BaseModel):
     url: str
 
     company_logo: str | None = None
+
+
+# ============================================================
+# DELIVERY RESULT
+# ============================================================
+
+class DeliveryResult(BaseModel):
+
+    success: bool
+
+    recipient: str
+
+    provider: str
+
+    message_id: str | None = None
+
+    sent_at: datetime | None = None
+
+    error: str | None = None
