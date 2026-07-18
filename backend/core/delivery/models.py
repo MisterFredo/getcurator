@@ -33,6 +33,10 @@ class KnowledgeResult:
 
     expertise: Any
 
-    outputs: dict[str, str] = field(default_factory=dict)
+    capability_results: dict[str, str] = field(
+        default_factory=dict,
+    )
 
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(
+        default_factory=dict,
+    )
