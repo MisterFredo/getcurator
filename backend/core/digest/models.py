@@ -8,10 +8,6 @@ from core.delivery.models import (
 )
 
 
-# ============================================================
-# DIGEST REQUEST
-# ============================================================
-
 class DigestRequest(BaseModel):
 
     user_id: str
@@ -28,6 +24,8 @@ class DigestRequest(BaseModel):
     period_end: datetime
 
     capabilities: list[str]
+
+    limit: int = 20
 
 
 # ============================================================
