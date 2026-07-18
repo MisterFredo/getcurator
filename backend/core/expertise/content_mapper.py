@@ -109,7 +109,7 @@ def build_content(
         url=(
             f"{CURATOR_BASE_URL}/feed"
             f"?analysis_id={row.get('id')}"
-        )
+        ),
 
         primary_company_logo=primary_logo,
 
