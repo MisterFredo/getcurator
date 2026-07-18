@@ -2,9 +2,14 @@ from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
-
 from utils.bigquery_utils import query_bq
-
+from datetime import datetime
+from core.digest.models import (
+    DigestRequest,
+)
+from core.digest.pipeline import (
+    run_digest,
+)
 
 # ============================================================
 # TABLES
@@ -697,4 +702,86 @@ def restart_destock():
     return _run_operation(
         sql,
         "Destock restarted.",
+    )
+
+
+# ============================================================
+# RUN USER DIGEST
+# ============================================================
+
+def run_user_digest(
+    user_id: str,
+    period_start: str,
+    period_end: str,
+):
+    request = DigestRequest(
+
+        user_id=user_id,
+
+        target_type="user",
+
+        period_start=datetime.fromisoformat(
+            period_start
+        ),
+
+        period_end=datetime.fromisoformat(
+            period_end
+        ),
+
+        capabilities=[
+            "summary",
+            "implications",
+        ],
+
+    )
+
+    return run_digest(
+
+        request=request,
+
+        recipient="",  # TODO: récupérer l'email utilisateur
+
+    )
+
+
+# ============================================================
+# RUN EXPERT DIGEST
+# ============================================================
+
+def run_expert_digest(
+    user_id: str,
+    expert_id: str,
+    period_start: str,
+    period_end: str,
+):
+
+    request = DigestRequest(
+
+        user_id=user_id,
+
+        target_type="expert",
+
+        expert_id=expert_id,
+
+        period_start=datetime.fromisoformat(
+            period_start
+        ),
+
+        period_end=datetime.fromisoformat(
+            period_end
+        ),
+
+        capabilities=[
+            "summary",
+            "implications",
+        ],
+
+    )
+
+    return run_digest(
+
+        request=request,
+
+        recipient="",  # TODO: récupérer l'email destinataire
+
     )
