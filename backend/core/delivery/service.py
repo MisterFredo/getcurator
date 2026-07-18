@@ -6,12 +6,16 @@ from core.delivery.models import (
 )
 
 from core.expertise.service import (
-    generate_expertise,
+    generate_expertise_from_profile,
     generate_expertise_from_contents,
 )
 
 from core.expertise.capability_service import (
     execute_capability,
+)
+
+from api.expertise.models import (
+    Expertise,
 )
 
 
@@ -21,11 +25,7 @@ from core.expertise.capability_service import (
 
 def _build_expertise(
     request: KnowledgeRequest,
-):
-
-    # ========================================================
-    # CONTENT IDS
-    # ========================================================
+) -> Expertise:
 
     if request.content_ids:
 
@@ -34,11 +34,7 @@ def _build_expertise(
             content_ids=request.content_ids,
         )
 
-    # ========================================================
-    # PROFILE SELECTION
-    # ========================================================
-
-    return generate_expertise(
+    return generate_expertise_from_profile(
         user_id=request.user_id,
     )
 
