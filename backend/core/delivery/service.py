@@ -55,9 +55,15 @@ def deliver_knowledge(
     # BUILD EXPERTISE
     # ========================================================
 
-    expertise = _build_expertise(
-        request,
-    )
+    if request.expertise is not None:
+
+        expertise = request.expertise
+
+    else:
+
+        expertise = _build_expertise(
+            request,
+        )
 
     # ========================================================
     # EXECUTE CAPABILITIES
