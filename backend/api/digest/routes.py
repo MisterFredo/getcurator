@@ -2,51 +2,66 @@
 
 from fastapi import APIRouter
 
-from core.digest.models import (
-    DigestRequest,
-    DigestReview,
-)
-
 from core.digest.service import (
-    generate_digest_review,
-)
-
-from core.digest.render_service import (
-    render_digest,
-)
-
-from core.digest.pipeline import (
-    run_digest,
+    run_user_digest,
+    run_expert_digest,
+    send_digest_review,
+    get_digest_review,
+    list_digest_reviews,
 )
 
 router = APIRouter()
 
 
 # ============================================================
-# REVIEW
+# USER DIGEST
 # ============================================================
 
-@router.post("/review")
-def review_digest(
-    request: DigestRequest,
-) -> DigestReview:
+@router.post("/run-user")
+def run_user_digest_route(
+    payload: dict,
+):
 
-    return generate_digest_review(
-        request,
+    return run_user_digest(
+
+        user_id=payload["user_id"],
+
     )
 
 
 # ============================================================
-# DOCUMENT
+# EXPERT DIGEST
 # ============================================================
 
-@router.post("/document")
-def render_digest_document(
-    review: DigestReview,
+@router.post("/run-expert")
+def run_expert_digest_route(
+    payload: dict,
 ):
 
-    return render_digest(
-        review,
+    return run_expert_digest(
+
+        expert_id=payload["expert_id"],
+
+    )
+
+
+# ============================================================
+# REVIEWS
+# ============================================================
+
+@router.get("/reviews")
+def reviews():
+
+    return list_digest_reviews()
+
+
+@router.get("/reviews/{review_id}")
+def review(
+    review_id: str,
+):
+
+    return get_digest_review(
+        review_id,
     )
 
 
@@ -54,17 +69,11 @@ def render_digest_document(
 # SEND
 # ============================================================
 
-@router.post("/send")
-def send_digest(
-    request: DigestRequest,
-    recipient: str,
+@router.post("/reviews/{review_id}/send")
+def send_review(
+    review_id: str,
 ):
 
-    run_digest(
-        request=request,
-        recipient=recipient,
+    return send_digest_review(
+        review_id,
     )
-
-    return {
-        "status": "ok",
-    }
