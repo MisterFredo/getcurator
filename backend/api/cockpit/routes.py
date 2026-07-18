@@ -13,6 +13,8 @@ from core.cockpit.operations import (
     backup_prod,
     sync_prod_to_dev,
     restart_destock,
+    run_user_digest,
+    run_expert_digest,
 )
 
 from core.cockpit.quality import (
@@ -87,6 +89,47 @@ def backup():
 def sync_dev():
 
     return sync_prod_to_dev()
+
+# ============================================================
+# RUN USER DIGEST
+# ============================================================
+
+@router.post("/operations/run-user-digest")
+def run_user_digest_route(
+    payload: dict,
+):
+
+    return run_user_digest(
+
+        user_id=payload["user_id"],
+
+        period_start=payload["period_start"],
+
+        period_end=payload["period_end"],
+
+    )
+
+
+# ============================================================
+# RUN EXPERT DIGEST
+# ============================================================
+
+@router.post("/operations/run-expert-digest")
+def run_expert_digest_route(
+    payload: dict,
+):
+
+    return run_expert_digest(
+
+        user_id=payload["user_id"],
+
+        expert_id=payload["expert_id"],
+
+        period_start=payload["period_start"],
+
+        period_end=payload["period_end"],
+
+    )
 
 # ============================================================
 # QUALITY
