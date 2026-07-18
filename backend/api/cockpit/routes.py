@@ -103,10 +103,6 @@ def run_user_digest_route(
 
         user_id=payload["user_id"],
 
-        period_start=payload["period_start"],
-
-        period_end=payload["period_end"],
-
     )
 
 
@@ -121,13 +117,7 @@ def run_expert_digest_route(
 
     return run_expert_digest(
 
-        user_id=payload["user_id"],
-
         expert_id=payload["expert_id"],
-
-        period_start=payload["period_start"],
-
-        period_end=payload["period_end"],
 
     )
 
