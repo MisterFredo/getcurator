@@ -5,13 +5,7 @@ from fastapi import (
     Query,
 )
 
-from core.digest.content_service import (
-    get_digest_contents,
-)
 
-from core.digest.send_service import (
-    log_digest_send,
-)
 
 router = APIRouter()
 
