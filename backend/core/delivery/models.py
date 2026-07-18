@@ -1,4 +1,8 @@
-from dataclasses import dataclass, field
+# backend/core/delivery/models.py
+
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 from api.expertise.models import (
     Expertise,
@@ -9,8 +13,7 @@ from api.expertise.models import (
 # KNOWLEDGE REQUEST
 # ============================================================
 
-@dataclass(slots=True)
-class KnowledgeRequest:
+class KnowledgeRequest(BaseModel):
 
     # ========================================================
     # CONTEXT
@@ -24,11 +27,11 @@ class KnowledgeRequest:
 
     capabilities: list[str]
 
-    content_ids: list[str] = field(
+    content_ids: list[str] = Field(
         default_factory=list,
     )
 
-    number_ids: list[str] = field(
+    number_ids: list[str] = Field(
         default_factory=list,
     )
 
@@ -40,7 +43,7 @@ class KnowledgeRequest:
     # EXTENSIONS
     # ========================================================
 
-    metadata: dict = field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
     )
 
@@ -49,8 +52,7 @@ class KnowledgeRequest:
 # KNOWLEDGE RESULT
 # ============================================================
 
-@dataclass(slots=True)
-class KnowledgeResult:
+class KnowledgeResult(BaseModel):
 
     # ========================================================
     # EXPERTISE
@@ -62,7 +64,7 @@ class KnowledgeResult:
     # CAPABILITIES
     # ========================================================
 
-    capability_results: dict[str, str] = field(
+    capability_results: dict[str, str] = Field(
         default_factory=dict,
     )
 
@@ -70,6 +72,6 @@ class KnowledgeResult:
     # EXTENSIONS
     # ========================================================
 
-    metadata: dict = field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
     )
