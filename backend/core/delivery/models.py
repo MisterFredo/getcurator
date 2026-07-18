@@ -15,17 +15,9 @@ from api.expertise.models import (
 
 class KnowledgeRequest(BaseModel):
 
-    # ========================================================
-    # CONTEXT
-    # ========================================================
-
     user_id: str
 
-    # ========================================================
-    # REQUEST
-    # ========================================================
-
-    capabilities: list[str]
+    expertise: Expertise | None = None
 
     content_ids: list[str] = Field(
         default_factory=list,
@@ -35,17 +27,7 @@ class KnowledgeRequest(BaseModel):
         default_factory=list,
     )
 
-    expert_id: str | None = None
-
-    period: str | None = None
-
-    # ========================================================
-    # EXTENSIONS
-    # ========================================================
-
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-    )
+    capabilities: list[str]
 
 
 # ============================================================
