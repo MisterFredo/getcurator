@@ -22,16 +22,6 @@ class ExpertisePreferences(BaseModel):
         default_factory=list,
     )
 
-# ============================================================
-# SELECTION FILTERS
-# ============================================================
-
-class SelectionFilters(BaseModel):
-
-    filters_sql: str
-
-    keywords_sql: str
-
 
 # ============================================================
 # PROFILE
@@ -124,19 +114,7 @@ class ExpertiseContent(BaseModel):
 
     concepts: list[dict] = Field(default_factory=list)
 
-# ============================================================
-# CONTEXT
-# ============================================================
 
-class ExpertiseContext(BaseModel):
-
-    profile: ExpertiseProfile
-
-    contents: list[ExpertiseContent] = Field(
-        default_factory=list,
-    )
-
-    count: int = 0
 
 # ============================================================
 # EXPERTISE
