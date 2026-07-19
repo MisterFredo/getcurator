@@ -594,3 +594,48 @@ def list_expert_users(
         expert_id
     )
 
+
+# =========================================================
+# ADMIN / USER / EXPERTS
+# =========================================================
+
+@router.get("/admin/{user_id}/experts")
+def admin_list_user_experts(
+    user_id: str,
+):
+
+    return get_user_experts(
+        user_id
+    )
+
+
+@router.post("/admin/{user_id}/experts/{expert_id}")
+def admin_subscribe_user_to_expert(
+    user_id: str,
+    expert_id: str,
+):
+
+    subscribe_user_to_expert(
+        user_id,
+        expert_id,
+    )
+
+    return {
+        "status": "ok",
+    }
+
+
+@router.delete("/admin/{user_id}/experts/{expert_id}")
+def admin_unsubscribe_user_from_expert(
+    user_id: str,
+    expert_id: str,
+):
+
+    unsubscribe_user_to_expert(
+        user_id,
+        expert_id,
+    )
+
+    return {
+        "status": "ok",
+    }
