@@ -1,25 +1,58 @@
 "use client";
 
-const LANGUAGES = [
-  { value: "fr", label: "Français" },
-  { value: "en", label: "English" },
+import CardSection from "@/components/ui/CardSection";
+
+/* ========================================================= */
+
+const PROFILE_TYPES = [
+  {
+    value: "USER",
+    label: "User",
+  },
+  {
+    value: "EXPERT",
+    label: "Expert",
+  },
 ];
 
 const ROLES = [
-  { value: "user", label: "User" },
-  { value: "admin", label: "Admin" },
+  {
+    value: "user",
+    label: "User",
+  },
+  {
+    value: "admin",
+    label: "Admin",
+  },
 ];
 
-const PROFILE_TYPES = [
-  { value: "USER", label: "User" },
-  { value: "EXPERT", label: "Expert" },
+const LANGUAGES = [
+  {
+    value: "fr",
+    label: "Français",
+  },
+  {
+    value: "en",
+    label: "English",
+  },
 ];
 
 const FREQUENCIES = [
-  { value: "WEEKLY", label: "Weekly" },
-  { value: "MONTHLY", label: "Monthly" },
-  { value: "DISABLED", label: "Disabled" },
+  {
+    value: "WEEKLY",
+    label: "Weekly",
+  },
+  {
+    value: "MONTHLY",
+    label: "Monthly",
+  },
+  {
+    value: "DISABLED",
+    label: "Disabled",
+  },
 ];
+
+/* ========================================================= */
 
 type Props = {
   profileType: "USER" | "EXPERT";
@@ -48,6 +81,8 @@ type Props = {
   ) => void;
 };
 
+/* ========================================================= */
+
 export default function ProfileAccountCard({
   profileType,
   setProfileType,
@@ -67,181 +102,181 @@ export default function ProfileAccountCard({
 
   return (
 
-    <div className="bg-white border rounded-xl p-6 space-y-6">
+    <CardSection
+      title="Account"
+      description="Configure how this profile behaves inside GetCurator."
+    >
 
-      {/* ===================================================== */}
-      {/* HEADER */}
-      {/* ===================================================== */}
+      <div className="space-y-6">
 
-      <div>
+        {/* ===================================================== */}
+        {/* GRID */}
+        {/* ===================================================== */}
 
-        <h2 className="text-lg font-semibold">
-          Account
-        </h2>
+        <div className="grid grid-cols-2 gap-6">
 
-        <p className="text-sm text-gray-500 mt-1">
-          Configure how this profile behaves inside GetCurator.
-        </p>
+          {/* PROFILE TYPE */}
 
-      </div>
+          <div className="space-y-2">
 
-      {/* ===================================================== */}
-      {/* GRID */}
-      {/* ===================================================== */}
+            <label className="text-sm font-medium">
+              Profile Type
+            </label>
 
-      <div className="grid grid-cols-2 gap-6">
+            <select
+              value={profileType}
+              onChange={(e) =>
+                setProfileType(
+                  e.target.value as
+                    | "USER"
+                    | "EXPERT"
+                )
+              }
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              {PROFILE_TYPES.map((item) => (
 
-        {/* PROFILE TYPE */}
+                <option
+                  key={item.value}
+                  value={item.value}
+                >
+                  {item.label}
+                </option>
 
-        <div className="space-y-2">
+              ))}
+            </select>
 
-          <label className="text-sm font-medium">
-            Profile Type
-          </label>
-
-          <select
-            value={profileType}
-            onChange={(e) =>
-              setProfileType(
-                e.target.value as
-                  "USER" | "EXPERT"
-              )
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          >
-            {PROFILE_TYPES.map((p) => (
-              <option
-                key={p.value}
-                value={p.value}
-              >
-                {p.label}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        {/* ROLE */}
-
-        <div className="space-y-2">
-
-          <label className="text-sm font-medium">
-            Role
-          </label>
-
-          <select
-            value={role}
-            onChange={(e) =>
-              setRole(
-                e.target.value
-              )
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          >
-            {ROLES.map((r) => (
-              <option
-                key={r.value}
-                value={r.value}
-              >
-                {r.label}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        {/* LANGUAGE */}
-
-        <div className="space-y-2">
-
-          <label className="text-sm font-medium">
-            Language
-          </label>
-
-          <select
-            value={language}
-            onChange={(e) =>
-              setLanguage(
-                e.target.value
-              )
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          >
-            {LANGUAGES.map((l) => (
-              <option
-                key={l.value}
-                value={l.value}
-              >
-                {l.label}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        {/* DIGEST */}
-
-        <div className="space-y-2">
-
-          <label className="text-sm font-medium">
-            Digest Frequency
-          </label>
-
-          <select
-            value={frequency}
-            onChange={(e) =>
-              setFrequency(
-                e.target.value
-              )
-            }
-            className="w-full border rounded-lg px-3 py-2"
-          >
-            {FREQUENCIES.map((f) => (
-              <option
-                key={f.value}
-                value={f.value}
-              >
-                {f.label}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-      </div>
-
-      {/* ===================================================== */}
-      {/* ACTIVE */}
-      {/* ===================================================== */}
-
-      <div className="flex items-center justify-between border rounded-lg px-4 py-3">
-
-        <div>
-
-          <div className="font-medium">
-            Active
           </div>
 
-          <div className="text-sm text-gray-500">
-            Inactive profiles are ignored by digest generation and MCP.
+          {/* ROLE */}
+
+          <div className="space-y-2">
+
+            <label className="text-sm font-medium">
+              Role
+            </label>
+
+            <select
+              value={role}
+              onChange={(e) =>
+                setRole(
+                  e.target.value
+                )
+              }
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              {ROLES.map((item) => (
+
+                <option
+                  key={item.value}
+                  value={item.value}
+                >
+                  {item.label}
+                </option>
+
+              ))}
+            </select>
+
+          </div>
+
+          {/* LANGUAGE */}
+
+          <div className="space-y-2">
+
+            <label className="text-sm font-medium">
+              Language
+            </label>
+
+            <select
+              value={language}
+              onChange={(e) =>
+                setLanguage(
+                  e.target.value
+                )
+              }
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              {LANGUAGES.map((item) => (
+
+                <option
+                  key={item.value}
+                  value={item.value}
+                >
+                  {item.label}
+                </option>
+
+              ))}
+            </select>
+
+          </div>
+
+          {/* DIGEST */}
+
+          <div className="space-y-2">
+
+            <label className="text-sm font-medium">
+              Digest Frequency
+            </label>
+
+            <select
+              value={frequency}
+              onChange={(e) =>
+                setFrequency(
+                  e.target.value
+                )
+              }
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              {FREQUENCIES.map((item) => (
+
+                <option
+                  key={item.value}
+                  value={item.value}
+                >
+                  {item.label}
+                </option>
+
+              ))}
+            </select>
+
           </div>
 
         </div>
 
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) =>
-            setIsActive(
-              e.target.checked
-            )
-          }
-          className="h-5 w-5"
-        />
+        {/* ===================================================== */}
+        {/* ACTIVE */}
+        {/* ===================================================== */}
+
+        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+
+          <div>
+
+            <div className="font-medium">
+              Active
+            </div>
+
+            <div className="text-sm text-gray-500">
+              Inactive profiles are ignored by digest generation and MCP.
+            </div>
+
+          </div>
+
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) =>
+              setIsActive(
+                e.target.checked
+              )
+            }
+            className="h-5 w-5"
+          />
+
+        </div>
 
       </div>
 
-    </div>
+    </CardSection>
 
   );
 
