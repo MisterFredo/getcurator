@@ -95,10 +95,43 @@ export default function ProfileEditor({
             `/user/${userId}`,
           );
 
-        setUser({
-          ...user,
-          ...res.user,
-        });
+        const user = res.user;
+
+        setEmail(user.EMAIL ?? "");
+        setPassword("");
+
+        setDisplayName(
+          user.DISPLAY_NAME ?? "",
+        );
+
+        setName(user.NAME ?? "");
+
+        setCompany(
+          user.COMPANY ?? "",
+        );
+
+        setDescription(
+          user.DESCRIPTION ?? "",
+        );
+
+        setProfileType(
+          (user.PROFILE_TYPE ?? "USER") as
+            "USER" | "EXPERT",
+        );
+
+        setRole(user.ROLE ?? "user");
+
+        setLanguage(
+          user.LANGUAGE ?? "fr",
+        );
+
+        setFrequency(
+          user.FREQUENCY ?? "WEEKLY",
+        );
+
+        setIsActive(
+          user.IS_ACTIVE ?? true,
+        );
 
       } catch (e) {
 
