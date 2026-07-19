@@ -49,10 +49,20 @@ def _infer_type(value):
 # ---------------------------------------------------------
 # Requête BigQuery (SELECT)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Requête BigQuery (SELECT / UPDATE / INSERT / DELETE)
+# ---------------------------------------------------------
 def query_bq(sql: str, params: dict = None) -> list[dict]:
     """
-    Exécute une requête SELECT sur BigQuery.
-    Supporte automatiquement les paramètres ARRAY.
+    Exécute une requête BigQuery.
+
+    Supporte automatiquement :
+    - STRING
+    - INT64
+    - BOOL
+    - ARRAY<STRING>
+
+    Retourne une liste de dictionnaires.
     """
 
     client = get_bigquery_client()
@@ -60,53 +70,85 @@ def query_bq(sql: str, params: dict = None) -> list[dict]:
     job_config = None
 
     if params:
+
         query_parameters = []
 
         for name, value in params.items():
 
-            # 🔥 CAS ARRAY (LIST)
+            # =====================================================
+            # ARRAY<STRING>
+            # =====================================================
+
             if isinstance(value, list):
 
-                # 👉 FIX CRITIQUE : array vide sécurisé
+                # BigQuery n'accepte pas les ARRAY vides
                 if len(value) == 0:
-                    value = ["__EMPTY__"]  # valeur impossible
+                    value = ["__EMPTY__"]
 
                 query_parameters.append(
                     bigquery.ArrayQueryParameter(
                         name,
                         "STRING",
-                        value
+                        value,
                     )
                 )
 
-            # 🔥 CAS INT
+            # =====================================================
+            # BOOL
+            # (⚠️ avant INT car bool hérite de int en Python)
+            # =====================================================
+
+            elif isinstance(value, bool):
+
+                query_parameters.append(
+                    bigquery.ScalarQueryParameter(
+                        name,
+                        "BOOL",
+                        value,
+                    )
+                )
+
+            # =====================================================
+            # INT64
+            # =====================================================
+
             elif isinstance(value, int):
+
                 query_parameters.append(
                     bigquery.ScalarQueryParameter(
                         name,
                         "INT64",
-                        value
+                        value,
                     )
                 )
 
-            # 🔥 CAS AUTRES
+            # =====================================================
+            # AUTRES TYPES
+            # =====================================================
+
             else:
+
                 query_parameters.append(
                     bigquery.ScalarQueryParameter(
                         name,
                         _infer_type(value),
-                        value
+                        value,
                     )
                 )
 
         job_config = bigquery.QueryJobConfig(
-            query_parameters=query_parameters
+            query_parameters=query_parameters,
         )
 
-    job = client.query(sql, job_config=job_config)
+    job = client.query(
+        sql,
+        job_config=job_config,
+    )
 
-    return [dict(row) for row in job.result()]
-
+    return [
+        dict(row)
+        for row in job.result()
+    ]
 
 # ---------------------------------------------------------
 # Insertion BigQuery (INSERT SQL, PAS de streaming)
