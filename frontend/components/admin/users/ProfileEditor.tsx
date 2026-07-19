@@ -38,20 +38,38 @@ export default function ProfileEditor({
   const [saving, setSaving] =
     useState(false);
 
-  const [user, setUser] =
-    useState<any>({
-      email: "",
-      password: "",
-      name: "",
-      display_name: "",
-      company: "",
-      description: "",
-      role: "user",
-      profile_type: "USER",
-      language: "en",
-      digest_frequency: "WEEKLY",
-      is_active: true,
-    });
+  const [email, setEmail] =
+  useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [displayName, setDisplayName] =
+    useState("");
+
+  const [name, setName] =
+    useState("");
+
+  const [company, setCompany] =
+    useState("");
+
+  const [description, setDescription] =
+    useState("");
+
+  const [profileType, setProfileType] =
+    useState<"USER" | "EXPERT">("USER");
+
+  const [role, setRole] =
+    useState("user");
+
+  const [language, setLanguage] =
+    useState("fr");
+
+  const [frequency, setFrequency] =
+    useState("WEEKLY");
+
+  const [isActive, setIsActive] =
+    useState(true);
 
   /* =====================================================
      LOAD
@@ -97,22 +115,6 @@ export default function ProfileEditor({
     load();
 
   }, [mode, userId]);
-
-  /* =====================================================
-     UPDATE FIELD
-  ===================================================== */
-
-  function updateField(
-    key: string,
-    value: any,
-  ) {
-
-    setUser((prev: any) => ({
-      ...prev,
-      [key]: value,
-    }));
-
-  }
 
   /* =====================================================
      SAVE
