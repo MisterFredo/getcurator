@@ -385,7 +385,11 @@ def update_user(payload):
             "display_name": payload.display_name,
             "description": payload.description,
             "frequency": payload.frequency,
-            "is_active": payload.is_active,
+            "is_active": (
+                None
+                if payload.is_active is None
+                else int(payload.is_active)
+            ),
         },
     )
 
