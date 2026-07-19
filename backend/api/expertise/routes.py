@@ -9,7 +9,8 @@ from api.expertise.models import (
 )
 
 from core.expertise.service import (
-    generate_expertise,
+    generate_expertise_from_profile,
+    generate_expertise_from_content,
 )
 
 router = APIRouter()
@@ -24,7 +25,7 @@ def generate_expertise_route(
     payload: dict,
 ) -> dict:
 
-    result: Expertise = generate_expertise(
+    result: Expertise = generate_expertise_from_profile(
 
         user_id=payload.get(
             "user_id"
