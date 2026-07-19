@@ -526,6 +526,21 @@ def get_user(user_id: str):
         "universes": universes,
     }
 
+# =========================================================
+# ADMIN / EXPERTS
+# =========================================================
+
+@router.get("/admin/experts")
+def admin_list_experts():
+
+    users = list_users(
+        profile_type="EXPERT",
+    )
+
+    return {
+        "experts": users,
+    }
+
 
 # =========================================================
 # USER / EXPERTS
