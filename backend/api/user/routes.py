@@ -370,19 +370,35 @@ def bootstrap_admin(secret: str):
 # =========================================================
 
 @router.get("/list")
-def list_users_route():
-    users = list_users()
-    return {"users": users}
+def list_users_route(
+    profile_type: Optional[str] = None,
+):
 
-@router.get("/digest-users")
-def list_digest_users_route():
-
-    users = list_digest_users()
+    users = list_users(
+        profile_type=profile_type,
+    )
 
     return {
-        "users": users
+        "users": users,
     }
 
+
+# =========================================================
+# LIST DIGEST PROFILES
+# =========================================================
+
+@router.get("/digest-users")
+def list_digest_users_route(
+    profile_type: str = "USER",
+):
+
+    users = list_digest_users(
+        profile_type=profile_type,
+    )
+
+    return {
+        "users": users,
+    }
 
 # =========================================================
 # UPDATE USER
