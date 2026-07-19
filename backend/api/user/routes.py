@@ -354,6 +354,7 @@ def bootstrap_admin(secret: str):
         company="Curator",
         language="fr",
         role="admin",
+        profile_type="USER",
         universes=[]
     )
 
