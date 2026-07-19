@@ -418,6 +418,7 @@ def login(payload: LoginPayload):
         "user_id": user["ID_USER"],
         "email": user["EMAIL"],
         "role": user.get("ROLE", "user"),
+        "profile_type": user.get("PROFILE_TYPE", "USER"),
         "language": user.get("LANGUAGE", "fr"),  # 🔥 AJOUT
         "universes": universes,
     }
