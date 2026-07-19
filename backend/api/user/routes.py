@@ -40,6 +40,13 @@ from core.user.user_profile_service import (
     update_user_profile,
 )
 
+from core.user.user_expert_service import (
+    subscribe_user_to_expert,
+    unsubscribe_user_from_expert,
+    get_user_experts,
+    get_expert_users,
+)
+
 from utils.auth import get_user_id_from_request
 
 router = APIRouter()
@@ -518,4 +525,72 @@ def get_user(user_id: str):
         "user": user,
         "universes": universes,
     }
+
+
+# =========================================================
+# USER / EXPERTS
+# =========================================================
+
+@router.get("/experts")
+def list_user_experts(
+    request: Request,
+):
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    return get_user_experts(
+        user_id
+    )
+
+
+@router.post("/experts/{expert_id}")
+def subscribe_to_expert(
+    expert_id: str,
+    request: Request,
+):
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    subscribe_user_to_expert(
+        user_id,
+        expert_id,
+    )
+
+    return {
+        "status": "ok"
+    }
+
+
+@router.delete("/experts/{expert_id}")
+def unsubscribe_from_expert(
+    expert_id: str,
+    request: Request,
+):
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    unsubscribe_user_from_expert(
+        user_id,
+        expert_id,
+    )
+
+    return {
+        "status": "ok"
+    }
+
+
+@router.get("/expert/{expert_id}/users")
+def list_expert_users(
+    expert_id: str,
+):
+
+    return get_expert_users(
+        expert_id
+    )
 
