@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import CardSection from "@/components/ui/CardSection";
 import { api } from "@/lib/api";
 
 /* ========================================================= */
@@ -32,16 +33,25 @@ function PreferenceSection({
 }) {
 
   return (
-    <div className="space-y-2">
 
-      <div className="text-sm font-medium text-gray-700">
-        {title}
+    <div className="space-y-3">
+
+      <div className="flex items-center justify-between">
+
+        <h3 className="font-medium">
+          {title}
+        </h3>
+
+        <span className="text-sm text-gray-400">
+          {items.length}
+        </span>
+
       </div>
 
       {items.length === 0 ? (
 
-        <div className="text-sm text-gray-400">
-          Aucun
+        <div className="text-sm text-gray-400 italic">
+          No preferences selected.
         </div>
 
       ) : (
@@ -53,10 +63,10 @@ function PreferenceSection({
             <span
               key={item.id}
               className="
-                px-3
-                py-1
                 rounded-full
                 bg-gray-100
+                px-3
+                py-1
                 text-sm
               "
             >
@@ -70,7 +80,9 @@ function PreferenceSection({
       )}
 
     </div>
+
   );
+
 }
 
 /* ========================================================= */
@@ -79,15 +91,19 @@ export default function UserPreferencesViewer({
   userId,
 }: Props) {
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [preferences, setPreferences] =
-    useState<Preferences>({
-      COMPANY: [],
-      SOLUTION: [],
-      TOPIC: [],
-    });
+  const [
+    preferences,
+    setPreferences,
+  ] = useState<Preferences>({
+    COMPANY: [],
+    SOLUTION: [],
+    TOPIC: [],
+  });
 
   /* =====================================================
      LOAD
@@ -101,23 +117,24 @@ export default function UserPreferencesViewer({
 
         setLoading(true);
 
-        const res = await api.get(
-          `/user/preferences/${userId}`
-        );
+        const res =
+          await api.get(
+            `/user/preferences/${userId}`,
+          );
 
         setPreferences(
-          res?.preferences || {
+          res?.preferences ?? {
             COMPANY: [],
             SOLUTION: [],
             TOPIC: [],
-          }
+          },
         );
 
-      } catch (e) {
+      } catch (error) {
 
         console.error(
-          "❌ preferences load",
-          e
+          "Failed to load preferences",
+          error,
         );
 
       } finally {
@@ -125,6 +142,7 @@ export default function UserPreferencesViewer({
         setLoading(false);
 
       }
+
     }
 
     if (userId) {
@@ -137,65 +155,44 @@ export default function UserPreferencesViewer({
      UI
   ===================================================== */
 
-  if (loading) {
-
-    return (
-
-      <div className="
-        border
-        rounded-lg
-        p-6
-      ">
-        Chargement...
-      </div>
-
-    );
-  }
-
   return (
 
-    <div className="
-      border
-      rounded-lg
-      p-6
-      space-y-6
-    ">
+    <CardSection
+      title="Preferences"
+      description="Topics, Companies and Solutions followed by this profile."
+    >
 
-      <div>
+      {loading ? (
 
-        <h2 className="
-          text-lg
-          font-semibold
-        ">
-          Favoris
-        </h2>
+        <div className="text-sm text-gray-500">
+          Loading...
+        </div>
 
-        <p className="
-          text-sm
-          text-gray-500
-          mt-1
-        ">
-          Préférences actuellement
-          configurées par l'utilisateur.
-        </p>
+      ) : (
 
-      </div>
+        <div className="space-y-8">
 
-      <PreferenceSection
-        title={`Topics (${preferences.TOPIC.length})`}
-        items={preferences.TOPIC}
-      />
+          <PreferenceSection
+            title="Topics"
+            items={preferences.TOPIC}
+          />
 
-      <PreferenceSection
-        title={`Companies (${preferences.COMPANY.length})`}
-        items={preferences.COMPANY}
-      />
+          <PreferenceSection
+            title="Companies"
+            items={preferences.COMPANY}
+          />
 
-      <PreferenceSection
-        title={`Solutions (${preferences.SOLUTION.length})`}
-        items={preferences.SOLUTION}
-      />
+          <PreferenceSection
+            title="Solutions"
+            items={preferences.SOLUTION}
+          />
 
-    </div>
+        </div>
+
+      )}
+
+    </CardSection>
+
   );
+
 }
