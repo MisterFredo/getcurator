@@ -619,10 +619,11 @@ def admin_list_user_experts(
     user_id: str,
 ):
 
-    return get_user_experts(
-        user_id
-    )
-
+    return {
+        "experts": get_user_experts(
+            user_id
+        )
+    }
 
 @router.post("/admin/{user_id}/experts/{expert_id}")
 def admin_subscribe_user_to_expert(
