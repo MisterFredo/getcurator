@@ -10,7 +10,7 @@ from api.expertise.models import (
 
 from core.expertise.service import (
     generate_expertise_from_profile,
-    generate_expertise_from_content,
+    generate_expertise_from_contents,
 )
 
 router = APIRouter()
