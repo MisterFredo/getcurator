@@ -81,11 +81,6 @@ def get_sources_from_universes(universes: list[str]):
     rows = query_bq(query, {"universes": universes})
     return [row["ID_SOURCE"] for row in rows]
 
-
-# =========================================================
-# USER CONTEXT
-# =========================================================
-
 # =========================================================
 # USER CONTEXT
 # =========================================================
@@ -211,12 +206,35 @@ def create_user(payload):
     # LANGUAGE HANDLING (SECURE)
     # --------------------------------------------------------
 
-    SUPPORTED_LANGS = ["fr", "en"]
-
     language = (
         payload.language
         if payload.language in SUPPORTED_LANGS
         else "fr"
+    )
+
+    # --------------------------------------------------------
+    # DEFAULTS
+    # --------------------------------------------------------
+
+    profile_type = payload.profile_type or "USER"
+
+    display_name = (
+        payload.display_name
+        or payload.name
+        or payload.email
+    )
+
+    description = payload.description
+
+    frequency = (
+        payload.frequency
+        or "WEEKLY"
+    )
+
+    is_active = (
+        True
+        if payload.is_active is None
+        else payload.is_active
     )
 
     # --------------------------------------------------------
@@ -235,6 +253,11 @@ def create_user(payload):
             COMPANY,
             LANGUAGE,
             ROLE,
+            PROFILE_TYPE,
+            DISPLAY_NAME,
+            DESCRIPTION,
+            FREQUENCY,
+            IS_ACTIVE,
             CREATED_AT
         )
         VALUES (
@@ -245,6 +268,11 @@ def create_user(payload):
             @company,
             @language,
             @role,
+            @profile_type,
+            @display_name,
+            @description,
+            @frequency,
+            @is_active,
             CURRENT_TIMESTAMP()
         )
         """,
@@ -256,6 +284,11 @@ def create_user(payload):
             "company": payload.company,
             "language": language,
             "role": payload.role or "user",
+            "profile_type": profile_type,
+            "display_name": display_name,
+            "description": description,
+            "frequency": frequency,
+            "is_active": is_active,
         },
     )
 
@@ -263,10 +296,17 @@ def create_user(payload):
     # ASSIGN UNIVERS
     # --------------------------------------------------------
 
-    assign_universes(user_id, payload.universes)
+    assign_universes(
+        user_id,
+        payload.universes or [],
+    )
 
     return user_id
 
+
+# =========================================================
+# UPDATE USER
+# =========================================================
 
 # =========================================================
 # UPDATE USER
@@ -290,7 +330,33 @@ def update_user(payload):
             NAME = @name,
             COMPANY = @company,
             LANGUAGE = @language,
-            ROLE = COALESCE(@role, ROLE)
+            ROLE = COALESCE(@role, ROLE),
+
+            PROFILE_TYPE = COALESCE(
+                @profile_type,
+                PROFILE_TYPE
+            ),
+
+            DISPLAY_NAME = COALESCE(
+                @display_name,
+                DISPLAY_NAME
+            ),
+
+            DESCRIPTION = COALESCE(
+                @description,
+                DESCRIPTION
+            ),
+
+            FREQUENCY = COALESCE(
+                @frequency,
+                FREQUENCY
+            ),
+
+            IS_ACTIVE = COALESCE(
+                @is_active,
+                IS_ACTIVE
+            )
+
         WHERE ID_USER = @user_id
         """,
         {
@@ -299,6 +365,12 @@ def update_user(payload):
             "company": payload.company,
             "language": payload.language or "fr",
             "role": payload.role,
+
+            "profile_type": payload.profile_type,
+            "display_name": payload.display_name,
+            "description": payload.description,
+            "frequency": payload.frequency,
+            "is_active": payload.is_active,
         },
     )
 
@@ -310,15 +382,26 @@ def update_user(payload):
 
         assign_universes(
             payload.user_id,
-            payload.universes
+            payload.universes,
         )
-
 
 # =========================================================
 # LIST USERS
 # =========================================================
 
-def list_users():
+def list_users(
+    profile_type: Optional[str] = None,
+):
+
+    where_clause = ""
+
+    params = {}
+
+    if profile_type:
+        where_clause = """
+        WHERE u.PROFILE_TYPE = @profile_type
+        """
+        params["profile_type"] = profile_type
 
     query = f"""
     SELECT
@@ -326,9 +409,13 @@ def list_users():
         u.ID_USER,
         u.EMAIL,
         u.NAME,
+        u.DISPLAY_NAME,
         u.COMPANY,
         u.LANGUAGE,
         u.ROLE,
+        u.PROFILE_TYPE,
+        u.FREQUENCY,
+        u.IS_ACTIVE,
         u.CREATED_AT,
 
         COUNT(DISTINCT k.KEYWORD)
@@ -355,25 +442,38 @@ def list_users():
     LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE` p
       ON u.ID_USER = p.ID_USER
 
+    {where_clause}
+
     GROUP BY
         u.ID_USER,
         u.EMAIL,
         u.NAME,
+        u.DISPLAY_NAME,
         u.COMPANY,
         u.LANGUAGE,
         u.ROLE,
+        u.PROFILE_TYPE,
+        u.FREQUENCY,
+        u.IS_ACTIVE,
         u.CREATED_AT
 
     ORDER BY
         u.CREATED_AT DESC
     """
 
-    return query_bq(query)
+    return query_bq(
+        query,
+        params,
+    )
+
+
 # =========================================================
-# LIST DIGEST USERS
+# LIST DIGEST PROFILES
 # =========================================================
 
-def list_digest_users():
+def list_digest_users(
+    profile_type: str = "USER",
+):
 
     table_digest_send = (
         f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_SEND"
@@ -394,25 +494,22 @@ def list_digest_users():
         u.ID_USER,
         u.EMAIL,
         u.NAME,
+        u.DISPLAY_NAME,
         u.COMPANY,
         u.LANGUAGE,
         u.ROLE,
+        u.PROFILE_TYPE,
+        u.FREQUENCY,
         u.CREATED_AT,
 
         ds.LAST_SENT_AT
 
     FROM `{TABLE_USER}` u
 
-    # =====================================================
-    # USERS ELIGIBLE FOR DIGEST
-    # FAVORITES OR KEYWORDS
-    # =====================================================
-
     LEFT JOIN (
 
         SELECT
             ID_USER,
-
             MAX(SENT_AT) AS LAST_SENT_AT
 
         FROM `{table_digest_send}`
@@ -421,37 +518,37 @@ def list_digest_users():
 
     ) ds
 
-    ON u.ID_USER = ds.ID_USER
+        ON u.ID_USER = ds.ID_USER
 
-    WHERE (
+    WHERE
 
-        EXISTS (
+        u.PROFILE_TYPE = @profile_type
 
-            SELECT 1
+        AND (
 
-            FROM `{table_user_preferences}` p
+            EXISTS (
 
-            WHERE p.ID_USER = u.ID_USER
+                SELECT 1
+
+                FROM `{table_user_preferences}` p
+
+                WHERE p.ID_USER = u.ID_USER
+
+            )
+
+            OR
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM `{table_user_keyword}` k
+
+                WHERE k.ID_USER = u.ID_USER
+
+            )
 
         )
-
-        OR
-
-        EXISTS (
-
-            SELECT 1
-
-            FROM `{table_user_keyword}` k
-
-            WHERE k.ID_USER = u.ID_USER
-
-        )
-
-    )
-
-    # =====================================================
-    # ORDER
-    # =====================================================
 
     ORDER BY
         ds.LAST_SENT_AT DESC NULLS LAST,
@@ -460,9 +557,11 @@ def list_digest_users():
     """
 
     return query_bq(
-        query
+        query,
+        {
+            "profile_type": profile_type,
+        },
     )
-
 
 # =========================================================
 # ASSIGN UNIVERS
