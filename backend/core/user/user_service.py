@@ -303,11 +303,6 @@ def create_user(payload):
 
     return user_id
 
-
-# =========================================================
-# UPDATE USER
-# =========================================================
-
 # =========================================================
 # UPDATE USER
 # =========================================================
@@ -327,10 +322,26 @@ def update_user(payload):
         f"""
         UPDATE `{TABLE_USER}`
         SET
+            EMAIL = COALESCE(
+                @email,
+                EMAIL
+            ),
+
+            PASSWORD = COALESCE(
+                @password,
+                PASSWORD
+            ),
+
             NAME = @name,
+
             COMPANY = @company,
+
             LANGUAGE = @language,
-            ROLE = COALESCE(@role, ROLE),
+
+            ROLE = COALESCE(
+                @role,
+                ROLE
+            ),
 
             PROFILE_TYPE = COALESCE(
                 @profile_type,
@@ -361,11 +372,15 @@ def update_user(payload):
         """,
         {
             "user_id": payload.user_id,
+
+            "email": payload.email,
+            "password": payload.password,
+
             "name": payload.name,
             "company": payload.company,
             "language": payload.language or "fr",
-            "role": payload.role,
 
+            "role": payload.role,
             "profile_type": payload.profile_type,
             "display_name": payload.display_name,
             "description": payload.description,
@@ -384,7 +399,6 @@ def update_user(payload):
             payload.user_id,
             payload.universes,
         )
-
 # =========================================================
 # LIST USERS
 # =========================================================
