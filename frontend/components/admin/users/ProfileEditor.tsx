@@ -159,11 +159,25 @@ export default function ProfileEditor({
 
       setSaving(true);
 
+      const payload = {
+        email,
+        password,
+        name,
+        company,
+        language,
+        role,
+        profile_type: profileType,
+        display_name: displayName,
+        description,
+        frequency,
+        is_active: isActive,
+      };
+
       if (mode === "create") {
 
         await api.post(
           "/user/create",
-          user,
+          payload,
         );
 
       } else {
@@ -172,15 +186,13 @@ export default function ProfileEditor({
           "/user/update",
           {
             user_id: userId,
-            ...user,
+            ...payload,
           },
         );
 
       }
 
-      router.push(
-        "/admin/users",
-      );
+      router.push("/admin/users");
 
     } catch (e) {
 
@@ -215,19 +227,44 @@ export default function ProfileEditor({
     <div className="space-y-6">
 
       <ProfileIdentityCard
-        values={user}
-        onChange={updateField}
-        disabled={mode === "edit"}
+        email={email}
+        setEmail={setEmail}
+
+        displayName={displayName}
+        setDisplayName={setDisplayName}
+
+        name={name}
+        setName={setName}
+
+        company={company}
+        setCompany={setCompany}
+
+        description={description}
+        setDescription={setDescription}
+
+        emailDisabled={mode === "edit"}
       />
 
       <ProfileAccountCard
-        values={user}
-        onChange={updateField}
+        profileType={profileType}
+        setProfileType={setProfileType}
+
+        role={role}
+        setRole={setRole}
+
+        language={language}
+        setLanguage={setLanguage}
+
+        frequency={frequency}
+        setFrequency={setFrequency}
+
+        isActive={isActive}
+        setIsActive={setIsActive}
       />
 
       <ProfileSecurityCard
-        values={user}
-        onChange={updateField}
+        password={password}
+        setPassword={setPassword}
       />
 
       <FormActions
@@ -246,8 +283,7 @@ export default function ProfileEditor({
       {mode === "edit" &&
         userId && (
           <>
-            {user.profile_type ===
-              "USER" && (
+            {profileType === "USER" && (
               <ProfileExpertsCard
                 userId={userId}
               />
