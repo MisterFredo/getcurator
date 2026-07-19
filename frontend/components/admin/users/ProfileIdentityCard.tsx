@@ -1,5 +1,9 @@
 "use client";
 
+import CardSection from "@/components/ui/CardSection";
+
+/* ========================================================= */
+
 type Props = {
   email: string;
   setEmail: (value: string) => void;
@@ -18,6 +22,8 @@ type Props = {
 
   emailDisabled?: boolean;
 };
+
+/* ========================================================= */
 
 export default function ProfileIdentityCard({
   email,
@@ -40,78 +46,132 @@ export default function ProfileIdentityCard({
 
   return (
 
-    <div className="bg-white border rounded-xl p-6 space-y-6">
+    <CardSection
+      title="Identity"
+      description="Basic information describing this profile."
+    >
 
-      {/* ===================================================== */}
-      {/* HEADER */}
-      {/* ===================================================== */}
+      <div className="space-y-6">
 
-      <div>
-
-        <h2 className="text-lg font-semibold">
-          Identity
-        </h2>
-
-        <p className="text-sm text-gray-500 mt-1">
-          Basic information describing this profile.
-        </p>
-
-      </div>
-
-      {/* ===================================================== */}
-      {/* EMAIL */}
-      {/* ===================================================== */}
-
-      <div className="space-y-2">
-
-        <label className="text-sm font-medium">
-          Email
-        </label>
-
-        <input
-          type="email"
-          value={email}
-          disabled={emailDisabled}
-          onChange={(e) =>
-            setEmail(
-              e.target.value
-            )
-          }
-          className={`
-            w-full
-            border
-            rounded-lg
-            px-3
-            py-2
-
-            ${emailDisabled
-              ? "bg-gray-100 text-gray-500"
-              : ""}
-          `}
-        />
-
-      </div>
-
-      {/* ===================================================== */}
-      {/* DISPLAY NAME / INTERNAL NAME */}
-      {/* ===================================================== */}
-
-      <div className="grid grid-cols-2 gap-6">
+        {/* ===================================================== */}
+        {/* EMAIL */}
+        {/* ===================================================== */}
 
         <div className="space-y-2">
 
           <label className="text-sm font-medium">
-            Display Name
+            Email
           </label>
 
           <input
-            value={displayName}
+            type="email"
+            value={email}
+            disabled={emailDisabled}
             onChange={(e) =>
-              setDisplayName(
+              setEmail(
                 e.target.value
               )
             }
-            placeholder="Retail Media Expert"
+            className={`
+              w-full
+              border
+              rounded-lg
+              px-3
+              py-2
+              ${
+                emailDisabled
+                  ? "bg-gray-100 text-gray-500"
+                  : ""
+              }
+            `}
+          />
+
+        </div>
+
+        {/* ===================================================== */}
+        {/* DISPLAY NAME / INTERNAL NAME */}
+        {/* ===================================================== */}
+
+        <div className="grid grid-cols-2 gap-6">
+
+          <div className="space-y-2">
+
+            <label className="text-sm font-medium">
+              Display Name
+            </label>
+
+            <input
+              value={displayName}
+              onChange={(e) =>
+                setDisplayName(
+                  e.target.value
+                )
+              }
+              placeholder="Retail Media Expert"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+              "
+            />
+
+            <p className="text-xs text-gray-500">
+              Public name displayed in the application.
+            </p>
+
+          </div>
+
+          <div className="space-y-2">
+
+            <label className="text-sm font-medium">
+              Internal Name
+            </label>
+
+            <input
+              value={name}
+              onChange={(e) =>
+                setName(
+                  e.target.value
+                )
+              }
+              placeholder="Retail Media Editorial Expert"
+              className="
+                w-full
+                border
+                rounded-lg
+                px-3
+                py-2
+              "
+            />
+
+            <p className="text-xs text-gray-500">
+              Internal administration name.
+            </p>
+
+          </div>
+
+        </div>
+
+        {/* ===================================================== */}
+        {/* COMPANY */}
+        {/* ===================================================== */}
+
+        <div className="space-y-2">
+
+          <label className="text-sm font-medium">
+            Company
+          </label>
+
+          <input
+            value={company}
+            onChange={(e) =>
+              setCompany(
+                e.target.value
+              )
+            }
+            placeholder="GetCurator"
             className="
               w-full
               border
@@ -121,108 +181,46 @@ export default function ProfileIdentityCard({
             "
           />
 
-          <p className="text-xs text-gray-500">
-            Public name displayed in the interface.
-          </p>
-
         </div>
+
+        {/* ===================================================== */}
+        {/* DESCRIPTION */}
+        {/* ===================================================== */}
 
         <div className="space-y-2">
 
           <label className="text-sm font-medium">
-            Internal Name
+            Description
           </label>
 
-          <input
-            value={name}
+          <textarea
+            rows={4}
+            value={description}
             onChange={(e) =>
-              setName(
+              setDescription(
                 e.target.value
               )
             }
-            placeholder="Retail Media Editorial Expert"
+            placeholder="Short description of this profile..."
             className="
               w-full
               border
               rounded-lg
               px-3
               py-2
+              resize-none
             "
           />
 
           <p className="text-xs text-gray-500">
-            Internal administration name.
+            Used to describe the profile in the admin interface and in the future Expert catalog.
           </p>
 
         </div>
 
       </div>
 
-      {/* ===================================================== */}
-      {/* COMPANY */}
-      {/* ===================================================== */}
-
-      <div className="space-y-2">
-
-        <label className="text-sm font-medium">
-          Company
-        </label>
-
-        <input
-          value={company}
-          onChange={(e) =>
-            setCompany(
-              e.target.value
-            )
-          }
-          placeholder="GetCurator"
-          className="
-            w-full
-            border
-            rounded-lg
-            px-3
-            py-2
-          "
-        />
-
-      </div>
-
-      {/* ===================================================== */}
-      {/* DESCRIPTION */}
-      {/* ===================================================== */}
-
-      <div className="space-y-2">
-
-        <label className="text-sm font-medium">
-          Description
-        </label>
-
-        <textarea
-          rows={4}
-          value={description}
-          onChange={(e) =>
-            setDescription(
-              e.target.value
-            )
-          }
-          placeholder="Short description of this profile or expert..."
-          className="
-            w-full
-            border
-            rounded-lg
-            px-3
-            py-2
-            resize-none
-          "
-        />
-
-        <p className="text-xs text-gray-500">
-          Used to describe the profile in the admin interface and future expert catalog.
-        </p>
-
-      </div>
-
-    </div>
+    </CardSection>
 
   );
 
