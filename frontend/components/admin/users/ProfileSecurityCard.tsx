@@ -7,12 +7,18 @@ import {
   EyeOff,
 } from "lucide-react";
 
+import CardSection from "@/components/ui/CardSection";
+
+/* ========================================================= */
+
 type Props = {
   password: string;
   setPassword: (
     value: string
   ) => void;
 };
+
+/* ========================================================= */
 
 export default function ProfileSecurityCard({
   password,
@@ -29,7 +35,7 @@ export default function ProfileSecurityCard({
   ===================================================== */
 
   function generatePassword(
-    length = 16
+    length = 16,
   ) {
 
     const chars =
@@ -48,9 +54,12 @@ export default function ProfileSecurityCard({
       i++
     ) {
 
-      result += chars[
-        array[i] % chars.length
-      ];
+      result +=
+        chars[
+          array[i] %
+          chars.length
+        ];
+
     }
 
     setPassword(result);
@@ -65,27 +74,10 @@ export default function ProfileSecurityCard({
 
   return (
 
-    <div className="bg-white border rounded-xl p-6 space-y-6">
-
-      {/* ===================================================== */}
-      {/* HEADER */}
-      {/* ===================================================== */}
-
-      <div>
-
-        <h2 className="text-lg font-semibold">
-          Security
-        </h2>
-
-        <p className="text-sm text-gray-500 mt-1">
-          Define or regenerate the password used to access the platform.
-        </p>
-
-      </div>
-
-      {/* ===================================================== */}
-      {/* PASSWORD */}
-      {/* ===================================================== */}
+    <CardSection
+      title="Security"
+      description="Manage credentials for this profile."
+    >
 
       <div className="space-y-2">
 
@@ -136,13 +128,13 @@ export default function ProfileSecurityCard({
                 generatePassword()
               }
               className="
-                text-xs
-                px-2
-                py-1
                 rounded
                 bg-gray-100
-                hover:bg-gray-200
+                px-2
+                py-1
+                text-xs
                 transition
+                hover:bg-gray-200
               "
             >
               Generate
@@ -162,11 +154,8 @@ export default function ProfileSecurityCard({
             >
 
               {showPassword
-                ? (
-                  <EyeOff size={18} />
-                ) : (
-                  <Eye size={18} />
-                )}
+                ? <EyeOff size={18} />
+                : <Eye size={18} />}
 
             </button>
 
@@ -180,7 +169,7 @@ export default function ProfileSecurityCard({
 
       </div>
 
-    </div>
+    </CardSection>
 
   );
 
