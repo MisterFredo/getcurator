@@ -73,6 +73,9 @@ class LoginPayload(BaseModel):
 class UpdateUserPayload(BaseModel):
     user_id: str
 
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+
     name: Optional[str] = None
     company: Optional[str] = None
     language: Optional[str] = "fr"
@@ -80,11 +83,11 @@ class UpdateUserPayload(BaseModel):
     universes: Optional[List[str]] = None
 
     role: Optional[str] = None
-
     profile_type: Optional[str] = None
 
     display_name: Optional[str] = None
     description: Optional[str] = None
+
     frequency: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -109,7 +112,6 @@ class UpdateUserPayload(BaseModel):
         if v not in SUPPORTED_FREQUENCIES:
             raise ValueError("Invalid frequency")
         return v
-
 
 # =========================================================
 # ASSIGN UNIVERS
