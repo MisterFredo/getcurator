@@ -136,10 +136,7 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        "/digest/prepare",
-        {
-          batch_id: selectedBatch.id,
-        }
+        `/digest/batches/${selectedBatch.id}/prepare`
       );
 
       await loadBatches();
@@ -175,10 +172,7 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        "/digest/generate",
-        {
-          batch_id: selectedBatch.id,
-        }
+        `/digest/batches/${selectedBatch.id}/generate`
       );
 
       await loadBatches();
@@ -214,10 +208,7 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        "/digest/send",
-        {
-          batch_id: selectedBatch.id,
-        }
+        `/digest/batches/${selectedBatch.id}/send`
       );
 
       await loadBatches();
