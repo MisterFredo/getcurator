@@ -88,7 +88,7 @@ class DigestBatch(BaseModel):
         "monthly",
     ]
 
-    profile_type: Literal[
+    audience: Literal[
         "user",
         "expert",
     ]
@@ -105,7 +105,10 @@ class DigestBatch(BaseModel):
         "completed",
         "failed",
     ]
-
+    items_count: int = 0
+    generated_count: int = 0
+    sent_count: int = 0
+    failed_count: int = 0
     created_at: datetime
 
     completed_at: datetime | None = None
@@ -129,8 +132,8 @@ class DigestBatchItem(BaseModel):
         "failed",
     ]
 
-    recipient_count: int = 0
-
+    recipients_count: int = 0
+    selected_contents: int = 0
     generated_at: datetime | None = None
 
     sent_at: datetime | None = None
