@@ -1,19 +1,19 @@
 "use client";
 
 import type {
-  DigestReview,
+  DigestBatchItem,
 } from "@/types/digest";
 
 /* ========================================================= */
 
 type Props = {
 
-  reviews: DigestReview[];
+  items: DigestBatchItem[];
 
-  selectedReview: DigestReview | null;
+  selectedItem: DigestBatchItem | null;
 
   onSelect: (
-    review: DigestReview,
+    item: DigestBatchItem,
   ) => void;
 
 };
@@ -22,9 +22,9 @@ type Props = {
 
 export default function ReviewTable({
 
-  reviews,
+  items,
 
-  selectedReview,
+  selectedItem,
 
   onSelect,
 
@@ -80,7 +80,7 @@ export default function ReviewTable({
 
         <tbody>
 
-          {reviews.length === 0 && (
+          {items.length === 0 && (
 
             <tr>
 
@@ -97,19 +97,19 @@ export default function ReviewTable({
 
           )}
 
-          {reviews.map((review) => {
+          {items.map((item) => {
 
             const selected =
-              selectedReview?.id === review.id;
+              selectedItem?.id === item.id;
 
             return (
 
               <tr
 
-                key={review.id}
+                key={item.id}
 
                 onClick={() =>
-                  onSelect(review)
+                  onSelect(item)
                 }
 
                 className={`cursor-pointer border-t hover:bg-gray-50 ${
@@ -122,29 +122,29 @@ export default function ReviewTable({
 
                 <td className="px-4 py-3">
 
-                  {review.user_id}
+                  {item.user_id}
 
                 </td>
 
                 <td className="px-4 py-3">
 
-                  {review.analyzed_contents}
-
-                  {" / "}
-
-                  {review.total_contents}
+                  {item.selected_contents}
 
                 </td>
 
                 <td className="px-4 py-3">
 
-                  Generated
+                  {item.status}
 
                 </td>
 
                 <td className="px-4 py-3">
 
-                  {review.created_at}
+                  {item.generated_at
+                    ? new Date(
+                        item.generated_at
+                      ).toLocaleString()
+                    : "-"}
 
                 </td>
 
