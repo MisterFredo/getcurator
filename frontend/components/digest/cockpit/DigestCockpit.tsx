@@ -136,7 +136,8 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        `/digest/batches/${selectedBatch.id}/prepare`
+        `/digest/batches/${selectedBatch.id}/prepare`,
+        {}
       );
 
       await loadBatches();
@@ -173,6 +174,7 @@ export default function DigestCockpit() {
 
       await api.post(
         `/digest/batches/${selectedBatch.id}/generate`
+        {}
       );
 
       await loadBatches();
@@ -209,6 +211,7 @@ export default function DigestCockpit() {
 
       await api.post(
         `/digest/batches/${selectedBatch.id}/send`
+        {}
       );
 
       await loadBatches();
