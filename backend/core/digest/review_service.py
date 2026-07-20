@@ -9,6 +9,10 @@ from core.digest.review_repository import (
     fetch_reviews,
 )
 
+from core.digest.render_service import (
+    render_digest,
+)
+
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
@@ -102,7 +106,7 @@ def get_review(
     review_id: str,
 ) -> DigestReview:
     """
-    Return a DigestReview.
+    Return a DigestReview ready for display.
     """
 
     review = fetch_review(
@@ -114,6 +118,10 @@ def get_review(
         raise ValueError(
             f"Unknown review: {review_id}"
         )
+
+    review.document = render_digest(
+        review,
+    )
 
     return review
 
