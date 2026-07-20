@@ -20,8 +20,8 @@ from core.digest.profile_service import (
     get_digest_profiles,
 )
 
-from core.digest.service import (
-    generate_digest_review,
+from core.digest.review_service import (
+    generate_review,
 )
 
 from core.digest.repository import (
