@@ -1,6 +1,24 @@
 // frontend/types/digest.ts
 
 /* =========================================================
+   REQUEST
+========================================================= */
+
+export type DigestRequest = {
+
+  user_id: string;
+
+  period_start: string;
+
+  period_end: string;
+
+  capabilities: string[];
+
+  limit: number;
+
+};
+
+/* =========================================================
    BATCH
 ========================================================= */
 
@@ -9,12 +27,12 @@ export type DigestBatch = {
   id: string;
 
   frequency:
-    | "WEEKLY"
-    | "MONTHLY";
+    | "weekly"
+    | "monthly";
 
   audience:
-    | "USER"
-    | "EXPERT";
+    | "user"
+    | "expert";
 
   period_start: string;
 
@@ -65,6 +83,8 @@ export type DigestBatchItem = {
     | "sent"
     | "failed";
 
+  selected_contents: number;
+
   generated_at?: string | null;
 
   sent_at?: string | null;
@@ -80,6 +100,8 @@ export type DigestBatchItem = {
 export type DigestDocument = {
 
   title: string;
+
+  subtitle?: string;
 
   period: string;
 
@@ -99,7 +121,7 @@ export type DigestSection = {
 
   body: string;
 
-  cards?: DigestCard[];
+  cards: DigestCard[];
 
 };
 
@@ -133,7 +155,7 @@ export type DigestReview = {
 
   id: string;
 
-  user_id: string;
+  request: DigestRequest;
 
   total_contents: number;
 
@@ -142,5 +164,17 @@ export type DigestReview = {
   created_at: string;
 
   document: DigestDocument;
+
+};
+
+/* =========================================================
+   BATCH DETAIL
+========================================================= */
+
+export type DigestBatchDetail = {
+
+  batch: DigestBatch;
+
+  items: DigestBatchItem[];
 
 };
