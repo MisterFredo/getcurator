@@ -341,10 +341,6 @@ def regenerate_batch_item(
         # SAVE REVIEW
         # ====================================================
 
-        review = insert_digest_review(
-            review,
-        )
-
         item.review_id = review.id
 
         item.generated_at = datetime.now(
