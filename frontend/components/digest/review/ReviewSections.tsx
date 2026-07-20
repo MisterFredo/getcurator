@@ -51,7 +51,7 @@ export default function ReviewSections({
 
           {section.body && (
 
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
 
               {section.body}
 
@@ -63,58 +63,61 @@ export default function ReviewSections({
           {/* CARDS */}
           {/* ============================================= */}
 
-          {section.cards &&
-            section.cards.length > 0 && (
+          {section.cards.length > 0 && (
 
-              <div className="space-y-4">
+            <div className="space-y-4">
 
-                {section.cards.map((card) => (
+              {section.cards.map((card) => (
 
-                  <div
-                    key={card.id}
-                    className="rounded-lg border bg-white p-5"
-                  >
+                <div
+                  key={card.id}
+                  className="rounded-lg border bg-white p-5"
+                >
 
-                    <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-4">
 
-                      {card.company_logo && (
+                    {card.company_logo && (
 
-                        <img
-                          src={card.company_logo}
-                          alt=""
-                          className="h-10 w-10 rounded object-contain"
-                        />
+                      <img
+                        src={card.company_logo}
+                        alt=""
+                        className="h-10 w-10 rounded object-contain"
+                      />
 
-                      )}
+                    )}
 
-                      <div className="flex-1">
+                    <div className="flex-1">
 
-                        <h3 className="font-semibold">
+                      <h3 className="font-semibold">
 
-                          {card.title}
+                        {card.title}
 
-                        </h3>
+                      </h3>
 
-                        <div className="mt-1 text-xs text-gray-500">
+                      <div className="mt-1 text-xs text-gray-500">
 
-                          {card.source_title}
+                        {card.source_title}
 
-                          {card.published_at && (
+                        {card.published_at && (
 
-                            <>
-                              {" • "}
-                              {card.published_at}
-                            </>
+                          <>
+                            {" • "}
+                            {new Date(
+                              card.published_at
+                            ).toLocaleDateString()}
+                          </>
 
-                          )}
+                        )}
 
-                        </div>
+                      </div>
 
-                        <p className="mt-3 text-sm text-gray-700">
+                      <p className="mt-3 text-sm text-gray-700">
 
-                          {card.excerpt}
+                        {card.excerpt}
 
-                        </p>
+                      </p>
+
+                      {card.url && (
 
                         <a
                           href={card.url}
@@ -127,17 +130,19 @@ export default function ReviewSections({
 
                         </a>
 
-                      </div>
+                      )}
 
                     </div>
 
                   </div>
 
-                ))}
+                </div>
 
-              </div>
+              ))}
 
-            )}
+            </div>
+
+          )}
 
         </section>
 
