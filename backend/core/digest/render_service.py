@@ -135,7 +135,7 @@ def render_digest(
         sections.append(
 
             DigestSection(
-                id="articles",
+                id=ARTICLES_SECTION,
                 title="Articles",
                 body="",
                 cards=cards,
