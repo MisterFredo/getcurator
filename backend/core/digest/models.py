@@ -27,6 +27,10 @@ class DigestRequest(BaseModel):
 
 class DigestReview(BaseModel):
 
+    id: str = Field(
+        default_factory=lambda: str(uuid4())
+    )
+
     request: DigestRequest
 
     total_contents: int
