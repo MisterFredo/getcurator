@@ -1,11 +1,11 @@
 "use client";
 
+import ReviewHeader from "./ReviewHeader";
+import ReviewPreview from "./ReviewPreview";
+
 import type {
   DigestReview,
 } from "@/types/digest";
-
-import ReviewHeader from "./ReviewHeader";
-import ReviewPreview from "./ReviewPreview";
 
 /* ========================================================= */
 
@@ -32,22 +32,37 @@ export default function ReviewStudio({
 
   return (
 
-    <div className="fixed inset-0 bg-black/40 flex justify-end z-50">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
 
-      <div className="w-[700px] bg-white h-full shadow-xl flex flex-col">
+      <div className="flex h-full w-[720px] flex-col bg-white shadow-xl">
+
+        {/* ================================================ */}
+        {/* HEADER */}
+        {/* ================================================ */}
 
         <ReviewHeader
+
           review={review}
+
           onClose={onClose}
+
         />
 
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* ================================================ */}
+        {/* BODY */}
+        {/* ================================================ */}
 
-          <ReviewPreview
-            document={
-              review.document
-            }
-          />
+        <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+
+          <div className="mx-auto max-w-[820px]">
+
+            <ReviewPreview
+
+              document={review.document}
+
+            />
+
+          </div>
 
         </div>
 
