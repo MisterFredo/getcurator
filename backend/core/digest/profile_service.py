@@ -70,3 +70,18 @@ def _get_expert_profiles(
     # AND STATUS='ACTIVE'
 
     raise NotImplementedError
+
+def count_digest_profiles(
+    frequency: str,
+    audience: str,
+) -> int:
+    """
+    Return the number of eligible profiles.
+    """
+
+    return len(
+        get_digest_profiles(
+            frequency=frequency,
+            audience=audience,
+        )
+    )
