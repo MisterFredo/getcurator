@@ -106,7 +106,52 @@ def insert_batch(
     Persist a new DigestBatch.
     """
 
-    raise NotImplementedError
+    client = get_bigquery_client()
+
+    row = [{
+
+        "ID": batch.id,
+
+        "FREQUENCY": batch.frequency,
+
+        "AUDIENCE": batch.audience,
+
+        "PERIOD_START": batch.period_start,
+
+        "PERIOD_END": batch.period_end,
+
+        "STATUS": batch.status,
+
+        "ITEMS_COUNT": batch.items_count,
+
+        "GENERATED_COUNT": batch.generated_count,
+
+        "SENT_COUNT": batch.sent_count,
+
+        "FAILED_COUNT": batch.failed_count,
+
+        "CREATED_AT": batch.created_at,
+
+        "COMPLETED_AT": batch.completed_at,
+
+    }]
+
+    client.load_table_from_json(
+
+        row,
+
+        TABLE_BATCH,
+
+        job_config=bigquery.LoadJobConfig(
+
+            write_disposition="WRITE_APPEND",
+
+        ),
+
+    ).result()
+
+    return batch
+
 
 
 def update_batch(
@@ -116,7 +161,35 @@ def update_batch(
     Update an existing DigestBatch.
     """
 
-    raise NotImplementedError
+    update_bq(
+
+        table=TABLE_BATCH,
+
+        where={
+
+            "ID": batch.id,
+
+        },
+
+        fields={
+
+            "STATUS": batch.status,
+
+            "ITEMS_COUNT": batch.items_count,
+
+            "GENERATED_COUNT": batch.generated_count,
+
+            "SENT_COUNT": batch.sent_count,
+
+            "FAILED_COUNT": batch.failed_count,
+
+            "COMPLETED_AT": batch.completed_at,
+
+        },
+
+    )
+
+    return batch
 
 
 def fetch_batch(
@@ -126,7 +199,38 @@ def fetch_batch(
     Return a DigestBatch by id.
     """
 
-    raise NotImplementedError
+    sql = f"""
+        SELECT
+            ID,
+            FREQUENCY,
+            AUDIENCE,
+            PERIOD_START,
+            PERIOD_END,
+            STATUS,
+            ITEMS_COUNT,
+            GENERATED_COUNT,
+            SENT_COUNT,
+            FAILED_COUNT,
+            CREATED_AT,
+            COMPLETED_AT
+        FROM `{TABLE_BATCH}`
+        WHERE ID = @id
+        LIMIT 1
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "id": batch_id,
+        },
+    )
+
+    if not rows:
+        return None
+
+    return _map_batch(
+        rows[0]
+    )
 
 
 def fetch_batches() -> list[DigestBatch]:
@@ -174,8 +278,45 @@ def insert_batch_item(
     Persist a new DigestBatchItem.
     """
 
-    raise NotImplementedError
+    client = get_bigquery_client()
 
+    row = [{
+
+        "ID": item.id,
+
+        "BATCH_ID": item.batch_id,
+
+        "USER_ID": item.user_id,
+
+        "REVIEW_ID": item.review_id,
+
+        "STATUS": item.status,
+
+        "SELECTED_CONTENTS": item.selected_contents,
+
+        "GENERATED_AT": item.generated_at,
+
+        "SENT_AT": item.sent_at,
+
+        "ERROR": item.error,
+
+    }]
+
+    client.load_table_from_json(
+
+        row,
+
+        TABLE_ITEM,
+
+        job_config=bigquery.LoadJobConfig(
+
+            write_disposition="WRITE_APPEND",
+
+        ),
+
+    ).result()
+
+    return item
 
 def update_batch_item(
     item: DigestBatchItem,
@@ -184,7 +325,35 @@ def update_batch_item(
     Update a DigestBatchItem.
     """
 
-    raise NotImplementedError
+    update_bq(
+
+        table=TABLE_ITEM,
+
+        where={
+
+            "ID": item.id,
+
+        },
+
+        fields={
+
+            "REVIEW_ID": item.review_id,
+
+            "STATUS": item.status,
+
+            "SELECTED_CONTENTS": item.selected_contents,
+
+            "GENERATED_AT": item.generated_at,
+
+            "SENT_AT": item.sent_at,
+
+            "ERROR": item.error,
+
+        },
+
+    )
+
+    return item
 
 
 def fetch_batch_item(
@@ -194,7 +363,42 @@ def fetch_batch_item(
     Return a DigestBatchItem by id.
     """
 
-    raise NotImplementedError
+    sql = f"""
+        SELECT
+            ID,
+            BATCH_ID,
+            USER_ID,
+            REVIEW_ID,
+            STATUS,
+            SELECTED_CONTENTS,
+            GENERATED_AT,
+            SENT_AT,
+            ERROR
+        FROM `{TABLE_ITEM}`
+        WHERE ID = @id
+        LIMIT 1
+    """
+
+    rows = query_bq(
+
+        sql,
+
+        {
+
+            "id": item_id,
+
+        },
+
+    )
+
+    if not rows:
+        return None
+
+    return _map_batch_item(
+
+        rows[0]
+
+    )
 
 
 def fetch_batch_items(
@@ -204,19 +408,34 @@ def fetch_batch_items(
     Return every item belonging to a batch.
     """
 
-    raise NotImplementedError
-
-
-def update_batch_item_status(
-    item_id: str,
-    status: str,
-    error: str | None = None,
-    generated_at: datetime | None = None,
-    sent_at: datetime | None = None,
-) -> None:
+    sql = f"""
+        SELECT
+            ID,
+            BATCH_ID,
+            USER_ID,
+            REVIEW_ID,
+            STATUS,
+            SELECTED_CONTENTS,
+            GENERATED_AT,
+            SENT_AT,
+            ERROR
+        FROM `{TABLE_ITEM}`
+        WHERE BATCH_ID = @batch_id
+        ORDER BY USER_ID
     """
-    Update the execution status of a DigestBatchItem.
-    Optionally update generated_at, sent_at and error.
-    """
 
-    raise NotImplementedError
+    rows = query_bq(
+        sql,
+        {
+            "batch_id": batch_id,
+        },
+    )
+
+    return [
+
+        _map_batch_item(row)
+
+        for row in rows
+
+    ]
+
