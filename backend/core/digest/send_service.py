@@ -15,18 +15,63 @@ def send_digest(
     recipient: str,
 ) -> DeliveryResult:
     """
-    Send a digest to a recipient.
+    Deliver a DigestDocument to a recipient.
+    """
 
-    Pipeline
-    --------
-    1. Render the DigestDocument into HTML.
-    2. Send the email through the configured provider.
-    3. Return the delivery result.
+    # ========================================================
+    # RENDER HTML
+    # ========================================================
+
+    html = render_digest_html(
+        document,
+    )
+
+    # ========================================================
+    # SEND EMAIL
+    # ========================================================
+
+    return send_email(
+        recipient=recipient,
+        subject=document.title,
+        html=html,
+    )
+
+
+# ============================================================
+# RENDER
+# ============================================================
+
+def render_digest_html(
+    document: DigestDocument,
+) -> str:
+    """
+    Render a DigestDocument into HTML.
 
     TODO
     ----
-    - Render DigestDocument into HTML
-    - Integrate the email provider
+    Convert the document structure into
+    the final email template.
+    """
+
+    raise NotImplementedError
+
+
+# ============================================================
+# EMAIL
+# ============================================================
+
+def send_email(
+    recipient: str,
+    subject: str,
+    html: str,
+) -> DeliveryResult:
+    """
+    Send an HTML email through the configured
+    email provider.
+
+    TODO
+    ----
+    Integrate Resend (or another provider).
     """
 
     raise NotImplementedError
