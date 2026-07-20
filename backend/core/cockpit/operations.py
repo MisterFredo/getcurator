@@ -4,12 +4,7 @@ from config import (
 )
 from utils.bigquery_utils import query_bq
 from datetime import datetime
-from core.digest.models import (
-    DigestRequest,
-)
-from core.digest.pipeline import (
-    run_digest,
-)
+
 
 # ============================================================
 # TABLES
