@@ -139,3 +139,15 @@ class DigestBatchItem(BaseModel):
     sent_at: datetime | None = None
 
     error: str | None = None
+
+class DigestBatchCreateRequest(BaseModel):
+
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ]
+
+    audience: Literal[
+        "user",
+        "expert",
+    ]
