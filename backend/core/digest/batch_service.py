@@ -33,7 +33,6 @@ from core.digest.repository import (
     update_batch_item,
     fetch_batch_item,
     fetch_batch_items,
-    update_batch_item_status,
 )
 
 from core.expertise.constants import (
