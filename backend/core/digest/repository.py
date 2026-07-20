@@ -96,9 +96,12 @@ def update_batch_item_status(
     item_id: str,
     status: str,
     error: str | None = None,
+    generated_at: datetime | None = None,
+    sent_at: datetime | None = None,
 ) -> None:
     """
-    Update only the execution status of a batch item.
+    Update the execution status of a DigestBatchItem.
+    Optionally update generated_at, sent_at and error.
     """
 
     raise NotImplementedError
