@@ -17,11 +17,6 @@ from core.digest.repository import (
     fetch_batch,
 )
 
-from core.digest.service import (
-    get_digest_review,
-    regenerate_digest_review,
-)
-
 from core.digest.send_service import (
     send_digest_review,
 )
