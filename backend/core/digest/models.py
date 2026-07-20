@@ -12,13 +12,6 @@ class DigestRequest(BaseModel):
 
     user_id: str
 
-    target_type: Literal[
-        "user",
-        "expert",
-    ]
-
-    expert_id: str | None = None
-
     period_start: datetime
 
     period_end: datetime
@@ -86,27 +79,60 @@ class DigestCard(BaseModel):
     company_logo: str | None = None
 
 
-# ============================================================
-# DELIVERY RESULT
-# ============================================================
+class DigestBatch(BaseModel):
 
-class DeliveryResult(BaseModel):
+    id: str
 
-    success: bool
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ]
 
-    recipient: str
+    profile_type: Literal[
+        "user",
+        "expert",
+    ]
 
-    provider: str
+    period_start: datetime
 
-    message_id: str | None = None
+    period_end: datetime
+
+    status: Literal[
+        "created",
+        "generating",
+        "generated",
+        "sending",
+        "completed",
+        "failed",
+    ]
+
+    created_at: datetime
+
+    completed_at: datetime | None = None
+
+class DigestBatchItem(BaseModel):
+
+    id: str
+
+    batch_id: str
+
+    user_id: str
+
+    review_id: str | None = None
+
+    status: Literal[
+        "pending",
+        "generating",
+        "generated",
+        "sending",
+        "sent",
+        "failed",
+    ]
+
+    recipient_count: int = 0
+
+    generated_at: datetime | None = None
 
     sent_at: datetime | None = None
 
     error: str | None = None
-
-class UserDigestRunRequest(BaseModel):
-    user_id: str
-
-
-class ExpertDigestRunRequest(BaseModel):
-    expert_id: str
