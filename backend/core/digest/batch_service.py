@@ -359,7 +359,7 @@ def regenerate_batch_item(
         # GENERATE REVIEW
         # ====================================================
 
-        review = generate_digest_review(
+        review = generate_review(
             request=request,
         )
 
