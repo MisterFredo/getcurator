@@ -60,7 +60,7 @@ export default function ReviewHeader({
 
               <div>
 
-                User : {review.user_id}
+                User : {review.request.user_id}
 
               </div>
 
@@ -84,7 +84,9 @@ export default function ReviewHeader({
 
                 {" "}
 
-                {review.created_at}
+                {new Date(
+                  review.created_at
+                ).toLocaleString()}
 
               </div>
 
