@@ -122,7 +122,6 @@ def prepare_batch(
         batch,
     )
 
-
 # ============================================================
 # GENERATE
 # ============================================================
@@ -135,7 +134,41 @@ def generate_batch(
     belonging to the batch.
     """
 
-    raise NotImplementedError
+    items = fetch_batch_items(
+        batch_id=batch.id,
+    )
+
+    batch.status = "generating"
+
+    update_batch(
+        batch,
+    )
+
+    generated = 0
+    failed = 0
+
+    for item in items:
+
+        try:
+
+            regenerate_batch_item(
+                item.id,
+            )
+
+            generated += 1
+
+        except Exception:
+
+            failed += 1
+
+    batch.generated_count = generated
+    batch.failed_count = failed
+
+    batch.status = "generated"
+
+    return update_batch(
+        batch,
+    )
 
 
 # ============================================================
@@ -150,8 +183,56 @@ def send_batch(
     belonging to the batch.
     """
 
-    raise NotImplementedError
+    items = fetch_batch_items(
+        batch_id=batch.id,
+    )
 
+    batch.status = "sending"
+
+    update_batch(
+        batch,
+    )
+
+    sent = 0
+    failed = batch.failed_count
+
+    for item in items:
+
+        if item.status != "generated":
+            continue
+
+        try:
+
+            # TODO
+            # resolve recipients
+            # render document
+            # send email
+
+            update_batch_item_status(
+                item_id=item.id,
+                status="sent",
+            )
+
+            sent += 1
+
+        except Exception:
+
+            failed += 1
+
+            update_batch_item_status(
+                item_id=item.id,
+                status="failed",
+                error="Send failed",
+            )
+
+    batch.sent_count = sent
+    batch.failed_count = failed
+
+    batch.status = "completed"
+
+    return update_batch(
+        batch,
+    )
 
 # ============================================================
 # ITEM
