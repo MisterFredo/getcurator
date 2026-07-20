@@ -17,9 +17,6 @@ from core.digest.repository import (
     fetch_batch,
 )
 
-from core.digest.send_service import (
-    send_digest_review,
-)
 
 router = APIRouter()
 
