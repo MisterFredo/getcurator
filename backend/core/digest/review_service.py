@@ -9,12 +9,6 @@ from core.digest.review_repository import (
     fetch_reviews,
 )
 
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
-
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
@@ -29,14 +23,14 @@ from core.delivery.service import (
 
 
 # ============================================================
-# GENERATE REVIEW
+# GENERATE
 # ============================================================
 
 def generate_review(
-    request:Request,
-) -> Review:
+    request: DigestRequest,
+) -> DigestReview:
     """
-    Generate and persist a Review.
+    Generate and persist a DigestReview.
     """
 
     # ========================================================
@@ -77,7 +71,7 @@ def generate_review(
     # REVIEW
     # ========================================================
 
-    review = Review(
+    review = DigestReview(
 
         request=request,
 
@@ -99,15 +93,16 @@ def generate_review(
         review,
     )
 
+
 # ============================================================
 # GET
 # ============================================================
 
 def get_review(
     review_id: str,
-) -> Review:
+) -> DigestReview:
     """
-    Return a Review.
+    Return a DigestReview.
     """
 
     review = fetch_review(
@@ -122,15 +117,14 @@ def get_review(
 
     return review
 
+
 # ============================================================
 # LIST
 # ============================================================
 
-def list_reviews() -> list[Review]:
+def list_reviews() -> list[DigestReview]:
     """
-    Return the latest Review history.
+    Return the latest DigestReview history.
     """
 
     return fetch_reviews()
-
-
