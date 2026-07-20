@@ -166,3 +166,9 @@ class DigestProfile(BaseModel):
         "expert",
     ]
 
+class DigestBatchDetail(BaseModel):
+
+    batch: DigestBatch
+
+    items: list[DigestBatchItem]
+
