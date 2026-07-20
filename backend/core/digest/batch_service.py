@@ -1,20 +1,25 @@
 # backend/core/digest/batch_service.py
 
-from core.digest.models import (
-    DigestBatch,
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
 )
-
-
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from core.digest.models import (
+    DigestRequest,
     DigestBatch,
     DigestBatchItem,
+    DigestBatchDetail,
 )
 
 from core.digest.profile_service import (
     get_digest_profiles,
+)
+
+from core.digest.service import (
+    generate_digest_review,
 )
 
 from core.digest.repository import (
@@ -29,7 +34,6 @@ from core.digest.repository import (
     update_batch_item_status,
 )
 
-
 # ============================================================
 # CREATE
 # ============================================================
@@ -42,12 +46,37 @@ def create_batch(
     Create and persist a new DigestBatch.
     """
 
+    now = datetime.now(
+        timezone.utc,
+    )
+
+    if frequency == "weekly":
+
+        period_start = (
+            now - timedelta(days=7)
+        )
+
+    elif frequency == "monthly":
+
+        period_start = (
+            now - timedelta(days=30)
+        )
+
+    else:
+
+        raise ValueError(
+            f"Unknown frequency: {frequency}"
+        )
+
     batch = DigestBatch(
 
         id=str(uuid4()),
 
         frequency=frequency,
         audience=audience,
+
+        period_start=period_start,
+        period_end=now,
 
         status="created",
 
@@ -56,9 +85,9 @@ def create_batch(
         sent_count=0,
         failed_count=0,
 
-        created_at=datetime.now(
-            timezone.utc,
-        ),
+        created_at=now,
+
+        completed_at=None,
 
     )
 
@@ -100,9 +129,6 @@ def prepare_batch(
             review_id=None,
 
             status="pending",
-
-            recipients_count=profile.recipients_count,
-
             selected_contents=0,
 
             generated_at=None,
