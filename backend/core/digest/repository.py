@@ -1,7 +1,11 @@
 # backend/core/digest/batch_service.py
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from core.digest.models import (
     DigestBatch,
+    DigestBatchItem,
 )
 
 from core.digest.profile_service import (
@@ -33,7 +37,29 @@ def create_batch(
     Create and persist a new DigestBatch.
     """
 
-    raise NotImplementedError
+    batch = DigestBatch(
+
+        id=str(uuid4()),
+
+        frequency=frequency,
+        audience=audience,
+
+        status="created",
+
+        items_count=0,
+        generated_count=0,
+        sent_count=0,
+        failed_count=0,
+
+        created_at=datetime.now(
+            timezone.utc,
+        ),
+
+    )
+
+    return insert_batch(
+        batch,
+    )
 
 
 # ============================================================
@@ -48,7 +74,53 @@ def prepare_batch(
     DigestBatchItems for the batch.
     """
 
-    raise NotImplementedError
+    profiles = get_digest_profiles(
+
+        frequency=batch.frequency,
+
+        audience=batch.audience,
+
+    )
+
+    for profile in profiles:
+
+        item = DigestBatchItem(
+
+            id=str(uuid4()),
+
+            batch_id=batch.id,
+
+            user_id=profile.user_id,
+
+            review_id=None,
+
+            status="pending",
+
+            recipients_count=profile.recipients_count,
+
+            selected_contents=0,
+
+            generated_at=None,
+
+            sent_at=None,
+
+            error=None,
+
+        )
+
+        insert_batch_item(
+            item,
+        )
+
+    batch.items_count = len(
+        profiles,
+    )
+
+    batch.status = "prepared"
+
+    return update_batch(
+        batch,
+    )
 
 
 # ============================================================
