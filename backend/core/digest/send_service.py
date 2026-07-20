@@ -2,6 +2,9 @@
 
 from core.digest.models import (
     DigestDocument,
+)
+
+from core.delivery.models import (
     DeliveryResult,
 )
 
@@ -31,9 +34,13 @@ def send_digest(
     # ========================================================
 
     return send_email(
+
         recipient=recipient,
+
         subject=document.title,
+
         html=html,
+
     )
 
 
@@ -49,8 +56,8 @@ def render_digest_html(
 
     TODO
     ----
-    Convert the document structure into
-    the final email template.
+    Convert the DigestDocument into the
+    final HTML email template.
     """
 
     raise NotImplementedError
