@@ -72,7 +72,7 @@ export default function ReviewStudio({
         );
 
       setReview(
-        res.review
+        res
       );
 
     } catch (e) {
