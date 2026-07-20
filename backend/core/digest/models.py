@@ -166,4 +166,3 @@ class DigestProfile(BaseModel):
         "expert",
     ]
 
-    recipients_count: int
