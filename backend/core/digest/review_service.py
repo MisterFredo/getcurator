@@ -32,11 +32,11 @@ from core.delivery.service import (
 # GENERATE REVIEW
 # ============================================================
 
-def generate_digest_review(
-    request: DigestRequest,
-) -> DigestReview:
+def generate_review(
+    request:Request,
+) -> Review:
     """
-    Generate and persist a DigestReview.
+    Generate and persist a Review.
     """
 
     # ========================================================
@@ -77,7 +77,7 @@ def generate_digest_review(
     # REVIEW
     # ========================================================
 
-    review = DigestReview(
+    review = Review(
 
         request=request,
 
@@ -103,11 +103,11 @@ def generate_digest_review(
 # GET
 # ============================================================
 
-def get_digest_review(
+def get_review(
     review_id: str,
-) -> DigestReview:
+) -> Review:
     """
-    Return a DigestReview.
+    Return a Review.
     """
 
     review = fetch_review(
@@ -126,9 +126,9 @@ def get_digest_review(
 # LIST
 # ============================================================
 
-def list_digest_reviews() -> list[DigestReview]:
+def list_reviews() -> list[Review]:
     """
-    Return the latest DigestReview history.
+    Return the latest Review history.
     """
 
     return fetch_reviews()
