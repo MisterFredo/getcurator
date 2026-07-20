@@ -151,3 +151,19 @@ class DigestBatchCreateRequest(BaseModel):
         "user",
         "expert",
     ]
+
+class DigestProfile(BaseModel):
+
+    user_id: str
+
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ]
+
+    audience: Literal[
+        "user",
+        "expert",
+    ]
+
+    recipients_count: int
