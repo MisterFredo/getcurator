@@ -1,87 +1,138 @@
 // frontend/types/digest.ts
 
 /* =========================================================
-   CONTENT
+   BATCH
 ========================================================= */
 
-export type DigestContentItem = {
+export type DigestBatch = {
+
   id: string;
 
+  frequency:
+    | "WEEKLY"
+    | "MONTHLY";
 
-  /* ===============================
-     CONTENT
-  =============================== */
+  audience:
+    | "USER"
+    | "EXPERT";
 
-  title: string;
+  period_start: string;
 
-  excerpt?: string;
+  period_end: string;
 
-  published_at?: string;
+  status:
+    | "created"
+    | "prepared"
+    | "generating"
+    | "generated"
+    | "sending"
+    | "completed"
+    | "failed";
 
-  url?: string;
+  items_count: number;
 
-  /* ===============================
-     VISUALS
-  =============================== */
+  generated_count: number;
 
-  media_id?: string | null;
+  sent_count: number;
 
-  primary_company_logo?: string | null;
+  failed_count: number;
 
-  /* ===============================
-     ENTITIES
-  =============================== */
+  created_at: string;
 
-  companies?: {
-    id_company: string;
+  completed_at?: string | null;
 
-    name: string;
-
-    is_partner?: boolean;
-
-    media_logo_rectangle_id?: string;
-  }[];
-
-  solutions?: {
-    id_solution: string;
-
-    name: string;
-  }[];
-
-  topics?: {
-    id_topic?: string;
-
-    label?: string;
-
-    LABEL?: string;
-  }[];
-
-  universes?: {
-    id_universe?: string;
-
-    label?: string;
-  }[];
-
-  concepts?: {
-    id_concept?: string;
-
-    label?: string;
-  }[];
-
-  /* ===============================
-     OPTIONAL UI
-  =============================== */
-
-  styles?: string[];
 };
 
 /* =========================================================
-   EDITORIAL FLOW
+   REVIEW ITEM
 ========================================================= */
 
-export type DigestEditorialItem = {
+export type DigestBatchItem = {
+
   id: string;
 
-  type:
-    | "content";
+  batch_id: string;
+
+  user_id: string;
+
+  review_id?: string | null;
+
+  status:
+    | "pending"
+    | "generating"
+    | "generated"
+    | "sending"
+    | "sent"
+    | "failed";
+
+  generated_at?: string | null;
+
+  sent_at?: string | null;
+
+  error?: string | null;
+
+};
+
+/* =========================================================
+   DOCUMENT
+========================================================= */
+
+export type DigestDocument = {
+
+  title: string;
+
+  period: string;
+
+  sections: DigestSection[];
+
+};
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+export type DigestSection = {
+
+  title: string;
+
+  body: string;
+
+  cards?: DigestCard[];
+
+};
+
+/* =========================================================
+   CARD
+========================================================= */
+
+export type DigestCard = {
+
+  title: string;
+
+  excerpt: string;
+
+  url: string;
+
+  company_logo?: string | null;
+
+};
+
+/* =========================================================
+   REVIEW
+========================================================= */
+
+export type DigestReview = {
+
+  id: string;
+
+  user_id: string;
+
+  total_contents: number;
+
+  analyzed_contents: number;
+
+  created_at: string;
+
+  document: DigestDocument;
+
 };
