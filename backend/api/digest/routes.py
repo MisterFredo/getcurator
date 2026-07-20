@@ -1,66 +1,89 @@
 from fastapi import APIRouter
 
 from core.digest.models import (
-    UserDigestRunRequest,
-    ExpertDigestRunRequest,
+    DigestBatchCreateRequest,
+)
+
+from core.digest.batch_service import (
+    create_batch,
+    prepare_batch,
+    generate_batch,
+    send_batch,
+    get_batch,
+    list_batches,
 )
 
 from core.digest.service import (
-    run_user_digest,
-    run_expert_digest,
-    list_digest_reviews,
     get_digest_review,
-    send_digest_review,
 )
 
 router = APIRouter()
 
 
 # ============================================================
-# USER DIGEST
+# BATCHES
 # ============================================================
 
-@router.post("/run-user")
-def run_user_digest_route(
-    request: UserDigestRunRequest,
+@router.post("/batches")
+def create_batch_route(
+    request: DigestBatchCreateRequest,
 ):
 
-    return run_user_digest(
-        user_id=request.user_id,
+    return create_batch(
+        frequency=request.frequency,
+        audience=request.audience,
+    )
+
+
+@router.get("/batches")
+def list_batches_route():
+
+    return list_batches()
+
+
+@router.get("/batches/{batch_id}")
+def get_batch_route(
+    batch_id: str,
+):
+
+    return get_batch(
+        batch_id=batch_id,
     )
 
 
 # ============================================================
-# EXPERT DIGEST
+# PREPARE
 # ============================================================
 
-@router.post("/run-expert")
-def run_expert_digest_route(
-    request: ExpertDigestRunRequest,
+@router.post("/batches/{batch_id}/prepare")
+def prepare_batch_route(
+    batch_id: str,
 ):
 
-    return run_expert_digest(
-        expert_id=request.expert_id,
+    batch = get_batch(
+        batch_id=batch_id,
+    )
+
+    return prepare_batch(
+        batch=batch,
     )
 
 
 # ============================================================
-# REVIEWS
+# GENERATE
 # ============================================================
 
-@router.get("/reviews")
-def list_reviews():
-
-    return list_digest_reviews()
-
-
-@router.get("/reviews/{review_id}")
-def get_review(
-    review_id: str,
+@router.post("/batches/{batch_id}/generate")
+def generate_batch_route(
+    batch_id: str,
 ):
 
-    return get_digest_review(
-        review_id,
+    batch = get_batch(
+        batch_id=batch_id,
+    )
+
+    return generate_batch(
+        batch=batch,
     )
 
 
@@ -68,11 +91,29 @@ def get_review(
 # SEND
 # ============================================================
 
-@router.post("/reviews/{review_id}/send")
-def send_review_route(
+@router.post("/batches/{batch_id}/send")
+def send_batch_route(
+    batch_id: str,
+):
+
+    batch = get_batch(
+        batch_id=batch_id,
+    )
+
+    return send_batch(
+        batch=batch,
+    )
+
+
+# ============================================================
+# REVIEWS
+# ============================================================
+
+@router.get("/reviews/{review_id}")
+def get_review_route(
     review_id: str,
 ):
 
-    return send_digest_review(
-        review_id,
+    return get_digest_review(
+        review_id=review_id,
     )
