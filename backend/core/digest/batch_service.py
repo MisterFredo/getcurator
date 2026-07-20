@@ -14,7 +14,7 @@ def create_batch(
     audience: str,
 ) -> DigestBatch:
     """
-    Create a new DigestBatch.
+    Create and persist a new DigestBatch.
     """
 
     raise NotImplementedError
@@ -25,10 +25,10 @@ def create_batch(
 # ============================================================
 
 def prepare_batch(
-    batch_id: str,
-):
+    batch: DigestBatch,
+) -> DigestBatch:
     """
-    Resolve the list of profiles and create
+    Resolve eligible profiles and create
     DigestBatchItems.
     """
 
@@ -40,11 +40,11 @@ def prepare_batch(
 # ============================================================
 
 def generate_batch(
-    batch_id: str,
-):
+    batch: DigestBatch,
+) -> DigestBatch:
     """
-    Generate all digests for the selected
-    DigestBatchItems.
+    Generate every selected digest belonging
+    to the batch.
     """
 
     raise NotImplementedError
@@ -55,11 +55,10 @@ def generate_batch(
 # ============================================================
 
 def send_batch(
-    batch_id: str,
-):
+    batch: DigestBatch,
+) -> DigestBatch:
     """
-    Send every generated digest belonging
-    to the batch.
+    Deliver every generated digest of the batch.
     """
 
     raise NotImplementedError
@@ -73,7 +72,7 @@ def get_batch(
     batch_id: str,
 ) -> DigestBatch:
     """
-    Return a DigestBatch with its items.
+    Return a DigestBatch.
     """
 
     raise NotImplementedError
@@ -83,9 +82,16 @@ def get_batch(
 # LIST
 # ============================================================
 
-def list_batches():
+def list_batches() -> list[DigestBatch]:
     """
     Return the latest DigestBatch history.
     """
 
     raise NotImplementedError
+
+def regenerate_batch_item(
+    item_id: str,
+):
+    """
+    Regenerate a single digest.
+    """
