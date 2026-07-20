@@ -124,15 +124,15 @@ class DigestBatchItem(BaseModel):
     review_id: str | None = None
 
     status: Literal[
-        "pending",
+        "created",
+        "prepared",
         "generating",
         "generated",
         "sending",
-        "sent",
+        "completed",
         "failed",
     ]
 
-    recipients_count: int = 0
     selected_contents: int = 0
     generated_at: datetime | None = None
 
