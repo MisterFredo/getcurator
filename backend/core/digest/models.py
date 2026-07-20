@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -103,6 +104,7 @@ class DigestBatch(BaseModel):
 
     status: Literal[
         "created",
+        "prepared",
         "generating",
         "generated",
         "sending",
@@ -128,12 +130,11 @@ class DigestBatchItem(BaseModel):
     review_id: str | None = None
 
     status: Literal[
-        "created",
-        "prepared",
+        "pending",
         "generating",
         "generated",
         "sending",
-        "completed",
+        "sent",
         "failed",
     ]
 
@@ -159,7 +160,7 @@ class DigestBatchCreateRequest(BaseModel):
 class DigestProfile(BaseModel):
 
     user_id: str
-
+    language: str = "en"
     frequency: Literal[
         "weekly",
         "monthly",
