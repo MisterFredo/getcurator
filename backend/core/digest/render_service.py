@@ -9,6 +9,33 @@ from core.digest.models import (
 
 
 # ============================================================
+# DISPLAY ORDER
+# ============================================================
+
+SECTION_ORDER = [
+
+    "summary",
+
+    "implications",
+
+    "key_points",
+
+    "structure",
+
+    "opportunities",
+
+    "risks",
+
+    "benchmark",
+
+    "timeline",
+
+    "comparison",
+
+]
+
+
+# ============================================================
 # RENDER DIGEST
 # ============================================================
 
@@ -21,13 +48,47 @@ def render_digest(
 
     sections: list[DigestSection] = []
 
+    capability_results = (
+        review.knowledge.capability_results
+    )
+
     # ========================================================
     # CAPABILITIES
     # ========================================================
 
+    for capability in SECTION_ORDER:
+
+        result = capability_results.get(
+            capability,
+        )
+
+        if not result:
+            continue
+
+        sections.append(
+
+            DigestSection(
+
+                title=_format_title(
+                    capability,
+                ),
+
+                body=result,
+
+            )
+
+        )
+
+    # ========================================================
+    # REMAINING CAPABILITIES
+    # ========================================================
+
     for capability, result in (
-        review.knowledge.capability_results.items()
+        capability_results.items()
     ):
+
+        if capability in SECTION_ORDER:
+            continue
 
         sections.append(
 
@@ -49,7 +110,9 @@ def render_digest(
 
     cards: list[DigestCard] = []
 
-    for content in review.knowledge.expertise.contents:
+    for content in (
+        review.knowledge.expertise.contents
+    ):
 
         cards.append(
 
@@ -113,7 +176,15 @@ def _build_title(
     Build the document title.
     """
 
-    return "Curator Digest"
+    duration = (
+        review.request.period_end
+        - review.request.period_start
+    ).days
+
+    if duration <= 8:
+        return "Weekly Curator Digest"
+
+    return "Monthly Curator Digest"
 
 
 def _format_title(
