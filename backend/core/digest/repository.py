@@ -10,7 +10,7 @@ from core.digest.models import (
 # BATCH
 # ============================================================
 
-def create_batch(
+def insert_batch(
     batch: DigestBatch,
 ) -> DigestBatch:
     """
@@ -24,13 +24,13 @@ def update_batch(
     batch: DigestBatch,
 ) -> DigestBatch:
     """
-    Update an existing DigestBatch.
+    Persist changes to an existing DigestBatch.
     """
 
     raise NotImplementedError
 
 
-def get_batch(
+def fetch_batch(
     batch_id: str,
 ) -> DigestBatch | None:
     """
@@ -40,7 +40,7 @@ def get_batch(
     raise NotImplementedError
 
 
-def list_batches() -> list[DigestBatch]:
+def fetch_batches() -> list[DigestBatch]:
     """
     Return the latest DigestBatches.
     """
@@ -52,7 +52,7 @@ def list_batches() -> list[DigestBatch]:
 # BATCH ITEMS
 # ============================================================
 
-def create_batch_item(
+def insert_batch_item(
     item: DigestBatchItem,
 ) -> DigestBatchItem:
     """
@@ -66,13 +66,13 @@ def update_batch_item(
     item: DigestBatchItem,
 ) -> DigestBatchItem:
     """
-    Update a DigestBatchItem.
+    Persist changes to a DigestBatchItem.
     """
 
     raise NotImplementedError
 
 
-def get_batch_item(
+def fetch_batch_item(
     item_id: str,
 ) -> DigestBatchItem | None:
     """
@@ -82,7 +82,7 @@ def get_batch_item(
     raise NotImplementedError
 
 
-def list_batch_items(
+def fetch_batch_items(
     batch_id: str,
 ) -> list[DigestBatchItem]:
     """
@@ -91,13 +91,14 @@ def list_batch_items(
 
     raise NotImplementedError
 
+
 def update_batch_item_status(
     item_id: str,
     status: str,
     error: str | None = None,
 ):
     """
-    Update only the execution status of a batch item.
+    Update only the execution status of a DigestBatchItem.
     """
 
     raise NotImplementedError
