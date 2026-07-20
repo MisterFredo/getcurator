@@ -36,6 +36,11 @@ from core.digest.repository import (
     update_batch_item_status,
 )
 
+from core.expertise.constants import (
+    OUTPUT_SUMMARY,
+    OUTPUT_IMPLICATIONS,
+)
+
 # ============================================================
 # CREATE
 # ============================================================
