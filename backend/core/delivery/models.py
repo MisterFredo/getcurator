@@ -57,3 +57,21 @@ class KnowledgeResult(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict,
     )
+
+# ============================================================
+# DELIVERY RESULT
+# ============================================================
+
+class DeliveryResult(BaseModel):
+
+    success: bool
+
+    recipient: str
+
+    provider: str
+
+    message_id: str | None = None
+
+    sent_at: datetime | None = None
+
+    error: str | None = None
