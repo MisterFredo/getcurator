@@ -5,6 +5,12 @@ from config import (
     BQ_DATASET,
 )
 
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
+)
+
 from utils.bigquery_utils import (
     query_bq,
     update_bq,
