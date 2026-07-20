@@ -12,6 +12,7 @@ from utils.bigquery_utils import (
 )
 
 from core.digest.models import (
+    DigestRequest,
     DigestReview,
 )
 
@@ -144,14 +145,25 @@ def fetch_review(
     )
 
     if not rows:
-
         return None
 
     row = rows[0]
 
     knowledge = KnowledgeResult.model_validate(
-
         row["KNOWLEDGE_JSON"],
+    )
+
+    request = DigestRequest(
+
+        user_id=row["USER_ID"],
+
+        period_start=row["PERIOD_START"],
+
+        period_end=row["PERIOD_END"],
+
+        capabilities=list(
+            knowledge.capability_results.keys(),
+        ),
 
     )
 
@@ -159,21 +171,11 @@ def fetch_review(
 
         id=row["ID"],
 
-        request={
+        request=request,
 
-            "user_id": row["USER_ID"],
-
-            "period_start": row["PERIOD_START"],
-
-            "period_end": row["PERIOD_END"],
-
-            "capabilities": list(
-                knowledge.capability_results.keys(),
-            ),
-
-        },
-
-        total_contents=row["TOTAL_CONTENTS"],
+        total_contents=row[
+            "TOTAL_CONTENTS"
+        ],
 
         analyzed_contents=row[
             "ANALYZED_CONTENTS"
@@ -185,9 +187,11 @@ def fetch_review(
 
     )
 
+
 # ============================================================
 # LIST
 # ============================================================
+
 def fetch_reviews() -> list[DigestReview]:
     """
     Return the latest DigestReviews.
@@ -208,8 +212,20 @@ def fetch_reviews() -> list[DigestReview]:
     for row in rows:
 
         knowledge = KnowledgeResult.model_validate(
-
             row["KNOWLEDGE_JSON"],
+        )
+
+        request = DigestRequest(
+
+            user_id=row["USER_ID"],
+
+            period_start=row["PERIOD_START"],
+
+            period_end=row["PERIOD_END"],
+
+            capabilities=list(
+                knowledge.capability_results.keys(),
+            ),
 
         )
 
@@ -219,19 +235,7 @@ def fetch_reviews() -> list[DigestReview]:
 
                 id=row["ID"],
 
-                request={
-
-                    "user_id": row["USER_ID"],
-
-                    "period_start": row["PERIOD_START"],
-
-                    "period_end": row["PERIOD_END"],
-
-                    "capabilities": list(
-                        knowledge.capability_results.keys(),
-                    ),
-
-                },
+                request=request,
 
                 total_contents=row[
                     "TOTAL_CONTENTS"
@@ -243,7 +247,9 @@ def fetch_reviews() -> list[DigestReview]:
 
                 knowledge=knowledge,
 
-                created_at=row["CREATED_AT"],
+                created_at=row[
+                    "CREATED_AT"
+                ],
 
             )
 
