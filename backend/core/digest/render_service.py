@@ -82,15 +82,9 @@ def render_digest(
         sections.append(
 
             DigestSection(
-
                 id=capability,
-
-                title=_format_title(
-                    capability,
-                ),
-
+                title=_format_title(capability),
                 body=result,
-
             )
 
         )
@@ -107,15 +101,9 @@ def render_digest(
         sections.append(
 
             DigestSection(
-
                 id=capability,
-
-                title=_format_title(
-                    capability,
-                ),
-
+                title=_format_title(capability),
                 body=result,
-
             )
 
         )
@@ -131,21 +119,13 @@ def render_digest(
         cards.append(
 
             DigestCard(
-
                 id=content.id,
-
                 title=content.title,
-
                 excerpt=content.excerpt,
-
                 url=content.url,
-
                 source_title=content.source_title,
-
                 published_at=content.published_at,
-
                 company_logo=content.company_logo,
-
             )
 
         )
@@ -155,15 +135,10 @@ def render_digest(
         sections.append(
 
             DigestSection(
-
-                id=ARTICLES_SECTION,
-
+                id="articles",
                 title="Articles",
-
                 body="",
-
                 cards=cards,
-
             )
 
         )
