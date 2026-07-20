@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 
 import type {
   DigestBatch,
-  DigestReview,
+  DigestBatchItem,
 } from "@/types/digest";
 
 import BatchHeader from "./BatchHeader";
@@ -31,14 +31,14 @@ export default function DigestCockpit() {
   ] = useState<DigestBatch | null>(null);
 
   const [
-    reviews,
-    setReviews,
-  ] = useState<DigestReview[]>([]);
+    items,
+    setItems,
+  ] = useState<DigestBatchItem[]>([]);
 
   const [
-    selectedReview,
-    setSelectedReview,
-  ] = useState<DigestReview | null>(null);
+    selectedItem,
+    setSelectedItem,
+  ] = useState<DigestBatchItem | null>(null);
 
   const [
     loading,
@@ -72,7 +72,7 @@ export default function DigestCockpit() {
         );
 
       setBatches(
-        res.batches || []
+        res
       );
 
     } catch (e) {
@@ -110,11 +110,11 @@ export default function DigestCockpit() {
         res.batch
       );
 
-      setReviews(
-        res.reviews || []
+      setItems(
+        res.items
       );
 
-      setSelectedReview(
+      setSelectedItem(
         null
       );
 
@@ -127,22 +127,22 @@ export default function DigestCockpit() {
   }
 
   /* =======================================================
-     REVIEW
+     ITEM
   ======================================================= */
 
-  function openReview(
-    review: DigestReview,
+  function openItem(
+    item: DigestBatchItem,
   ) {
 
-    setSelectedReview(
-      review
+    setSelectedItem(
+      item
     );
 
   }
 
   function closeReview() {
 
-    setSelectedReview(
+    setSelectedItem(
       null
     );
 
@@ -186,17 +186,22 @@ export default function DigestCockpit() {
 
       <ReviewTable
 
-        reviews={reviews}
+        items={items}
 
-        selectedReview={selectedReview}
+        selectedItem={selectedItem}
 
-        onSelect={openReview}
+        onSelect={openItem}
 
       />
 
       <ReviewStudio
-        reviewId={selectedReview?.id ?? null}
+
+        reviewId={
+          selectedItem?.review_id ?? null
+        }
+
         onClose={closeReview}
+
       />
 
       {error && (
