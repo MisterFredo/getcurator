@@ -77,7 +77,9 @@ def generate_digest_review(
 
         total_contents=expertise.count,
 
-        analyzed_contents=expertise.count,
+        analyzed_contents=len(
+            expertise.contents,
+        ),
 
         knowledge=knowledge,
 
@@ -90,7 +92,6 @@ def generate_digest_review(
     return insert_review(
         review,
     )
-
 
 # ============================================================
 # GET
