@@ -133,46 +133,4 @@ def list_digest_reviews() -> list[DigestReview]:
 
     return fetch_reviews()
 
-# ============================================================
-# REGENERATE REVIEW
-# ============================================================
 
-def regenerate_digest_review(
-    review_id: str,
-):
-
-    review = fetch_review(
-        review_id=review_id,
-    )
-
-    if review is None:
-
-        raise ValueError(
-            f"Unknown review: {review_id}"
-        )
-
-    return generate_review(
-        review=review,
-    )
-
-# ============================================================
-# SEND REVIEW
-# ============================================================
-
-def send_digest_review(
-    review_id: str,
-):
-
-    review = fetch_review(
-        review_id=review_id,
-    )
-
-    if review is None:
-
-        raise ValueError(
-            f"Unknown review: {review_id}"
-        )
-
-    return send_review(
-        review=review,
-    )
