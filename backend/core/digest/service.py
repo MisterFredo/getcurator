@@ -103,10 +103,17 @@ def get_digest_review(
     Return a DigestReview.
     """
 
-    return fetch_review(
+    review = fetch_review(
         review_id=review_id,
     )
 
+    if review is None:
+
+        raise ValueError(
+            f"Unknown review: {review_id}"
+        )
+
+    return review
 
 # ============================================================
 # LIST
