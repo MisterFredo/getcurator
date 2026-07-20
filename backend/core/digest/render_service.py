@@ -15,6 +15,9 @@ from core.digest.models import (
 def render_digest(
     review: DigestReview,
 ) -> DigestDocument:
+    """
+    Convert a DigestReview into a DigestDocument.
+    """
 
     sections: list[DigestSection] = []
 
@@ -41,7 +44,7 @@ def render_digest(
         )
 
     # ========================================================
-    # CONTENTS
+    # ARTICLES
     # ========================================================
 
     cards: list[DigestCard] = []
@@ -68,7 +71,7 @@ def render_digest(
 
         DigestSection(
 
-            title="Contents",
+            title="Articles",
 
             body="",
 
@@ -84,11 +87,13 @@ def render_digest(
 
     return DigestDocument(
 
-        title="Curator Digest",
+        title=_build_title(
+            review,
+        ),
 
         period=(
             f"{review.request.period_start:%d/%m/%Y}"
-            f" - "
+            " - "
             f"{review.request.period_end:%d/%m/%Y}"
         ),
 
@@ -101,9 +106,23 @@ def render_digest(
 # PRIVATE
 # ============================================================
 
+def _build_title(
+    review: DigestReview,
+) -> str:
+    """
+    Build the document title.
+    """
+
+    return "Curator Digest"
+
+
 def _format_title(
     capability: str,
 ) -> str:
+    """
+    Convert an output capability into
+    a readable section title.
+    """
 
     return (
         capability
