@@ -197,7 +197,11 @@ def generate_batch(
         try:
 
             regenerate_batch_item(
-                item.id,
+
+                item=item,
+
+                batch=batch,
+
             )
 
             generated += 1
@@ -207,6 +211,7 @@ def generate_batch(
             failed += 1
 
     batch.generated_count = generated
+
     batch.failed_count = failed
 
     batch.status = "generated"
@@ -301,35 +306,12 @@ def send_batch(
 # ============================================================
 
 def regenerate_batch_item(
-    item_id: str,
+    item: DigestBatchItem,
+    batch: DigestBatch,
 ) -> DigestReview:
     """
     Regenerate a single DigestBatchItem.
     """
-
-    # ========================================================
-    # LOAD ITEM
-    # ========================================================
-
-    item = fetch_batch_item(
-        item_id=item_id,
-    )
-
-    if item is None:
-
-        raise ValueError(
-            f"Unknown batch item: {item_id}"
-        )
-
-    batch = fetch_batch(
-        batch_id=item.batch_id,
-    )
-
-    if batch is None:
-
-        raise ValueError(
-            f"Unknown batch: {item.batch_id}"
-        )
 
     update_batch_item_status(
 
@@ -354,8 +336,11 @@ def regenerate_batch_item(
             period_end=batch.period_end,
 
             capabilities=[
-                "summary",
-                "implications",
+
+                OUTPUT_SUMMARY,
+
+                OUTPUT_IMPLICATIONS,
+
             ],
 
         )
@@ -374,20 +359,18 @@ def regenerate_batch_item(
 
         item.review_id = review.id
 
+        item.selected_contents = (
+            review.total_contents
+        )
+
         item.generated_at = datetime.now(
             timezone.utc,
         )
 
+        item.status = "generated"
+
         update_batch_item(
             item,
-        )
-
-        update_batch_item_status(
-
-            item_id=item.id,
-
-            status="generated",
-
         )
 
         return review
