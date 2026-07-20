@@ -3,6 +3,12 @@ from core.digest.models import (
     DigestReview,
 )
 
+from core.digest.review_repository import (
+    insert_review,
+    fetch_review,
+    fetch_reviews,
+)
+
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
@@ -20,11 +26,11 @@ from core.delivery.service import (
 # GENERATE REVIEW
 # ============================================================
 
-def generate_review(
+def generate_digest_review(
     request: DigestRequest,
 ) -> DigestReview:
     """
-    Generate a digest review for a single profile.
+    Generate and persist a DigestReview.
     """
 
     # ========================================================
@@ -65,7 +71,7 @@ def generate_review(
     # REVIEW
     # ========================================================
 
-    return DigestReview(
+    review = DigestReview(
 
         request=request,
 
@@ -77,18 +83,38 @@ def generate_review(
 
     )
 
+    # ========================================================
+    # PERSIST
+    # ========================================================
+
+    return insert_review(
+        review,
+    )
+
 
 # ============================================================
-# REVIEWS
+# GET
 # ============================================================
-
-def list_digest_reviews():
-
-    raise NotImplementedError
-
 
 def get_digest_review(
     review_id: str,
-):
+) -> DigestReview:
+    """
+    Return a DigestReview.
+    """
 
-    raise NotImplementedError
+    return fetch_review(
+        review_id=review_id,
+    )
+
+
+# ============================================================
+# LIST
+# ============================================================
+
+def list_digest_reviews() -> list[DigestReview]:
+    """
+    Return the latest DigestReview history.
+    """
+
+    return fetch_reviews()
