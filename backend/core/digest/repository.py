@@ -116,9 +116,9 @@ def insert_batch(
 
         "AUDIENCE": batch.audience,
 
-        "PERIOD_START": batch.period_start,
+        "PERIOD_START": batch.period_start.isoformat(),
 
-        "PERIOD_END": batch.period_end,
+        "PERIOD_END": batch.period_end.isoformat(),
 
         "STATUS": batch.status,
 
@@ -130,9 +130,13 @@ def insert_batch(
 
         "FAILED_COUNT": batch.failed_count,
 
-        "CREATED_AT": batch.created_at,
+        "CREATED_AT": batch.created_at.isoformat(),
 
-        "COMPLETED_AT": batch.completed_at,
+        "COMPLETED_AT": (
+            batch.completed_at.isoformat()
+            if batch.completed_at
+            else None
+        ),
 
     }]
 
@@ -151,7 +155,6 @@ def insert_batch(
     ).result()
 
     return batch
-
 
 
 def update_batch(
