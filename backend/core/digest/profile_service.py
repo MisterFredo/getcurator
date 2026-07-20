@@ -1,4 +1,4 @@
-# backend/core/digest/profile_service.py
+from typing import Literal
 
 from core.digest.models import (
     DigestProfile,
@@ -10,8 +10,14 @@ from core.digest.models import (
 # ============================================================
 
 def get_digest_profiles(
-    frequency: str,
-    audience: str,
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ],
+    audience: Literal[
+        "user",
+        "expert",
+    ],
 ) -> list[DigestProfile]:
     """
     Return every profile eligible for a DigestBatch.
@@ -23,7 +29,7 @@ def get_digest_profiles(
             frequency=frequency,
         )
 
-    if audience == "expert":
+    elif audience == "expert":
 
         return _get_expert_profiles(
             frequency=frequency,
@@ -39,7 +45,10 @@ def get_digest_profiles(
 # ============================================================
 
 def _get_user_profiles(
-    frequency: str,
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ],
 ) -> list[DigestProfile]:
     """
     Return every active USER profile.
@@ -58,7 +67,10 @@ def _get_user_profiles(
 # ============================================================
 
 def _get_expert_profiles(
-    frequency: str,
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ],
 ) -> list[DigestProfile]:
     """
     Return every active EXPERT profile.
@@ -70,18 +82,3 @@ def _get_expert_profiles(
     # AND STATUS='ACTIVE'
 
     raise NotImplementedError
-
-def count_digest_profiles(
-    frequency: str,
-    audience: str,
-) -> int:
-    """
-    Return the number of eligible profiles.
-    """
-
-    return len(
-        get_digest_profiles(
-            frequency=frequency,
-            audience=audience,
-        )
-    )
