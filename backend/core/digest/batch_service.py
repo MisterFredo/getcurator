@@ -12,6 +12,7 @@ from core.digest.models import (
     DigestRequest,
     DigestBatch,
     DigestBatchItem,
+    DigestReview,
     DigestBatchDetail,
 )
 
@@ -242,26 +243,40 @@ def send_batch(
 
         try:
 
+            # ====================================================
             # TODO
-            # resolve recipients
-            # render document
-            # send email
+            # ====================================================
+            # Resolve recipients
+            # Render digest document
+            # Send email
+            # ====================================================
 
             update_batch_item_status(
+
                 item_id=item.id,
+
                 status="sent",
+
+                sent_at=datetime.now(
+                    timezone.utc,
+                ),
+
             )
 
             sent += 1
 
-        except Exception:
+        except Exception as exc:
 
             failed += 1
 
             update_batch_item_status(
+
                 item_id=item.id,
+
                 status="failed",
-                error="Send failed",
+
+                error=str(exc),
+
             )
 
     batch.sent_count = sent
@@ -269,17 +284,20 @@ def send_batch(
 
     batch.status = "completed"
 
+    batch.completed_at = datetime.now(
+        timezone.utc,
+    )
+
     return update_batch(
         batch,
     )
-
 # ============================================================
 # ITEM
 # ============================================================
 
 def regenerate_batch_item(
     item_id: str,
-):
+) -> DigestReview:
     """
     Regenerate a single DigestBatchItem.
     """
