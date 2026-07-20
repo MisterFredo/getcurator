@@ -356,20 +356,36 @@ def regenerate_batch_item(
 
 def get_batch(
     batch_id: str,
-) -> DigestBatch:
+) -> DigestBatchDetail:
+    """
+    Return a DigestBatch with its items.
+    """
 
     batch = fetch_batch(
         batch_id=batch_id,
     )
 
     if batch is None:
+
         raise ValueError(
             f"Unknown batch: {batch_id}"
         )
 
-    batch.items = fetch_batch_items(
+    items = fetch_batch_items(
         batch_id=batch_id,
     )
 
-    return batch
+    return DigestBatchDetail(
 
+        batch=batch,
+
+        items=items,
+
+    )
+
+def list_batches() -> list[DigestBatch]:
+    """
+    Return the latest DigestBatch history.
+    """
+
+    return fetch_batches()
