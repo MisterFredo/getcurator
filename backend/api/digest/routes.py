@@ -13,10 +13,13 @@ from core.digest.batch_service import (
     list_batches,
 )
 
+from core.digest.review_service import (
+    get_review,
+)
+
 from core.digest.repository import (
     fetch_batch,
 )
-
 
 router = APIRouter()
 
@@ -133,29 +136,6 @@ def get_review_route(
     review_id: str,
 ):
 
-    return get_digest_review(
-        review_id=review_id,
-    )
-
-# ============================================================
-# REVIEW
-# ============================================================
-
-@router.post("/reviews/{review_id}/regenerate")
-def regenerate_review_route(
-    review_id: str,
-):
-
-    return regenerate_digest_review(
-        review_id=review_id,
-    )
-
-
-@router.post("/reviews/{review_id}/send")
-def send_review_route(
-    review_id: str,
-):
-
-    return send_digest_review(
+    return get_review(
         review_id=review_id,
     )
