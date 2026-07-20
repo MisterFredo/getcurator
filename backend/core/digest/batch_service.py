@@ -353,3 +353,23 @@ def regenerate_batch_item(
 
         raise
 
+
+def get_batch(
+    batch_id: str,
+) -> DigestBatch:
+
+    batch = fetch_batch(
+        batch_id=batch_id,
+    )
+
+    if batch is None:
+        raise ValueError(
+            f"Unknown batch: {batch_id}"
+        )
+
+    batch.items = fetch_batch_items(
+        batch_id=batch_id,
+    )
+
+    return batch
+
