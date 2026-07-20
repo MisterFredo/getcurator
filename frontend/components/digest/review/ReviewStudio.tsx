@@ -1,34 +1,105 @@
 "use client";
 
-import ReviewHeader from "./ReviewHeader";
-import ReviewPreview from "./ReviewPreview";
+import { useEffect, useState } from "react";
+
+import { api } from "@/lib/api";
 
 import type {
   DigestReview,
 } from "@/types/digest";
 
+import ReviewHeader from "./ReviewHeader";
+import ReviewPreview from "./ReviewPreview";
+
 /* ========================================================= */
 
 type Props = {
-
-  review: DigestReview | null;
-
+  reviewId: string | null;
   onClose: () => void;
-
 };
 
 /* ========================================================= */
 
 export default function ReviewStudio({
 
-  review,
+  reviewId,
 
   onClose,
 
 }: Props) {
 
-  if (!review)
+  const [
+    review,
+    setReview,
+  ] = useState<DigestReview | null>(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  /* =======================================================
+     LOAD REVIEW
+  ======================================================= */
+
+  useEffect(() => {
+
+    if (!reviewId) {
+
+      setReview(null);
+
+      return;
+
+    }
+
+    loadReview();
+
+  }, [reviewId]);
+
+  async function loadReview() {
+
+    if (!reviewId) {
+      return;
+    }
+
+    try {
+
+      setLoading(true);
+
+      const res =
+        await api.get(
+          `/digest/reviews/${reviewId}`
+        );
+
+      setReview(
+        res.review
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      setReview(null);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }
+
+  /* =======================================================
+     CLOSED
+  ======================================================= */
+
+  if (!reviewId) {
     return null;
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -44,6 +115,8 @@ export default function ReviewStudio({
 
           review={review}
 
+          loading={loading}
+
           onClose={onClose}
 
         />
@@ -56,11 +129,31 @@ export default function ReviewStudio({
 
           <div className="mx-auto max-w-[820px]">
 
-            <ReviewPreview
+            {loading ? (
 
-              document={review.document}
+              <div className="py-20 text-center text-sm text-gray-500">
 
-            />
+                Loading review...
+
+              </div>
+
+            ) : review ? (
+
+              <ReviewPreview
+
+                document={review.document}
+
+              />
+
+            ) : (
+
+              <div className="py-20 text-center text-sm text-red-600">
+
+                Unable to load review.
+
+              </div>
+
+            )}
 
           </div>
 
