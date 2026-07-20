@@ -245,8 +245,108 @@ def regenerate_batch_item(
     Regenerate a single DigestBatchItem.
     """
 
-    raise NotImplementedError
+    # ========================================================
+    # LOAD ITEM
+    # ========================================================
 
+    item = fetch_batch_item(
+        item_id=item_id,
+    )
+
+    if item is None:
+
+        raise ValueError(
+            f"Unknown batch item: {item_id}"
+        )
+
+    batch = fetch_batch(
+        batch_id=item.batch_id,
+    )
+
+    if batch is None:
+
+        raise ValueError(
+            f"Unknown batch: {item.batch_id}"
+        )
+
+    update_batch_item_status(
+
+        item_id=item.id,
+
+        status="generating",
+
+    )
+
+    try:
+
+        # ====================================================
+        # BUILD REQUEST
+        # ====================================================
+
+        request = DigestRequest(
+
+            user_id=item.user_id,
+
+            period_start=batch.period_start,
+
+            period_end=batch.period_end,
+
+            capabilities=[
+                "summary",
+                "implications",
+            ],
+
+        )
+
+        # ====================================================
+        # GENERATE REVIEW
+        # ====================================================
+
+        review = generate_digest_review(
+            request=request,
+        )
+
+        # ====================================================
+        # SAVE REVIEW
+        # ====================================================
+
+        review = insert_digest_review(
+            review,
+        )
+
+        item.review_id = review.id
+
+        item.generated_at = datetime.now(
+            timezone.utc,
+        )
+
+        update_batch_item(
+            item,
+        )
+
+        update_batch_item_status(
+
+            item_id=item.id,
+
+            status="generated",
+
+        )
+
+        return review
+
+    except Exception as exc:
+
+        update_batch_item_status(
+
+            item_id=item.id,
+
+            status="failed",
+
+            error=str(exc),
+
+        )
+
+        raise
 
 # ============================================================
 # GET
