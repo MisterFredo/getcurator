@@ -1,9 +1,3 @@
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
-
 from core.digest.models import (
     DigestRequest,
     DigestReview,
@@ -23,12 +17,15 @@ from core.delivery.service import (
 
 
 # ============================================================
-# GENERATE DIGEST REVIEW
+# GENERATE REVIEW
 # ============================================================
 
-def generate_digest_review(
+def generate_review(
     request: DigestRequest,
 ) -> DigestReview:
+    """
+    Generate a digest review for a single profile.
+    """
 
     # ========================================================
     # BUILD EXPERTISE
@@ -56,9 +53,9 @@ def generate_digest_review(
 
             user_id=request.user_id,
 
-            expertise=expertise,
-
             capabilities=request.capabilities,
+
+            expertise=expertise,
 
         )
 
@@ -82,83 +79,7 @@ def generate_digest_review(
 
 
 # ============================================================
-# RUN USER DIGEST
-# ============================================================
-
-def run_user_digest(
-    user_id: str,
-) -> DigestReview:
-
-    request = DigestRequest(
-
-        user_id=user_id,
-
-        target_type="user",
-
-        period_start=(
-            datetime.now(timezone.utc)
-            - timedelta(days=7)
-        ),
-
-        period_end=datetime.now(
-            timezone.utc
-        ),
-
-        capabilities=[
-            "summary",
-            "implications",
-        ],
-
-    )
-
-    return generate_digest_review(
-        request,
-    )
-
-
-# ============================================================
-# RUN EXPERT DIGEST
-# ============================================================
-
-def run_expert_digest(
-    expert_id: str,
-) -> DigestReview:
-
-    # TODO
-    # Charger l'expert afin de récupérer
-    # le user_id associé.
-
-    request = DigestRequest(
-
-        user_id="",
-
-        target_type="expert",
-
-        expert_id=expert_id,
-
-        period_start=(
-            datetime.now(timezone.utc)
-            - timedelta(days=30)
-        ),
-
-        period_end=datetime.now(
-            timezone.utc
-        ),
-
-        capabilities=[
-            "summary",
-            "implications",
-        ],
-
-    )
-
-    return generate_digest_review(
-        request,
-    )
-
-
-# ============================================================
-# LIST REVIEWS
+# REVIEWS
 # ============================================================
 
 def list_digest_reviews():
@@ -166,22 +87,7 @@ def list_digest_reviews():
     raise NotImplementedError
 
 
-# ============================================================
-# GET REVIEW
-# ============================================================
-
 def get_digest_review(
-    review_id: str,
-):
-
-    raise NotImplementedError
-
-
-# ============================================================
-# SEND REVIEW
-# ============================================================
-
-def send_digest_review(
     review_id: str,
 ):
 
