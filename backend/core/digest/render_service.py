@@ -1,11 +1,5 @@
 # backend/core/digest/render_service.py
 
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
-
 from core.digest.models import (
     DigestReview,
     DigestDocument,
@@ -13,36 +7,50 @@ from core.digest.models import (
     DigestCard,
 )
 
+from core.expertise.constants import (
+    OUTPUT_SUMMARY,
+    OUTPUT_IMPLICATIONS,
+    OUTPUT_KEY_POINTS,
+    OUTPUT_STRUCTURE,
+    OUTPUT_OPPORTUNITIES,
+    OUTPUT_RISKS,
+    OUTPUT_BENCHMARK,
+    OUTPUT_TIMELINE,
+    OUTPUT_COMPARISON,
+)
+
 
 # ============================================================
 # DISPLAY ORDER
 # ============================================================
 
-SECTION_ORDER = [
+DISPLAY_ORDER = [
 
-    "summary",
+    OUTPUT_SUMMARY,
 
-    "implications",
+    OUTPUT_IMPLICATIONS,
 
-    "key_points",
+    OUTPUT_KEY_POINTS,
 
-    "structure",
+    OUTPUT_STRUCTURE,
 
-    "opportunities",
+    OUTPUT_OPPORTUNITIES,
 
-    "risks",
+    OUTPUT_RISKS,
 
-    "benchmark",
+    OUTPUT_BENCHMARK,
 
-    "timeline",
+    OUTPUT_TIMELINE,
 
-    "comparison",
+    OUTPUT_COMPARISON,
 
 ]
 
+ARTICLES_SECTION = "articles"
+
 
 # ============================================================
-# RENDER DIGEST
+# RENDER
 # ============================================================
 
 def render_digest(
@@ -62,7 +70,7 @@ def render_digest(
     # CAPABILITIES
     # ========================================================
 
-    for capability in SECTION_ORDER:
+    for capability in DISPLAY_ORDER:
 
         result = capability_results.get(
             capability,
@@ -74,6 +82,8 @@ def render_digest(
         sections.append(
 
             DigestSection(
+
+                id=capability,
 
                 title=_format_title(
                     capability,
@@ -89,16 +99,16 @@ def render_digest(
     # REMAINING CAPABILITIES
     # ========================================================
 
-    for capability, result in (
-        capability_results.items()
-    ):
+    for capability, result in capability_results.items():
 
-        if capability in SECTION_ORDER:
+        if capability in DISPLAY_ORDER:
             continue
 
         sections.append(
 
             DigestSection(
+
+                id=capability,
 
                 title=_format_title(
                     capability,
@@ -116,13 +126,13 @@ def render_digest(
 
     cards: list[DigestCard] = []
 
-    for content in (
-        review.knowledge.expertise.contents
-    ):
+    for content in review.knowledge.expertise.contents:
 
         cards.append(
 
             DigestCard(
+
+                id=content.id,
 
                 title=content.title,
 
@@ -130,25 +140,33 @@ def render_digest(
 
                 url=content.url,
 
+                source_title=content.source_title,
+
+                published_at=content.published_at,
+
                 company_logo=content.company_logo,
 
             )
 
         )
 
-    sections.append(
+    if cards:
 
-        DigestSection(
+        sections.append(
 
-            title="Articles",
+            DigestSection(
 
-            body="",
+                id=ARTICLES_SECTION,
 
-            cards=cards,
+                title="Articles",
+
+                body="",
+
+                cards=cards,
+
+            )
 
         )
-
-    )
 
     # ========================================================
     # DOCUMENT
@@ -188,6 +206,7 @@ def _build_title(
     ).days
 
     if duration <= 8:
+
         return "Weekly Curator Digest"
 
     return "Monthly Curator Digest"
@@ -197,7 +216,7 @@ def _format_title(
     capability: str,
 ) -> str:
     """
-    Convert an output capability into
+    Convert a capability identifier into
     a readable section title.
     """
 
