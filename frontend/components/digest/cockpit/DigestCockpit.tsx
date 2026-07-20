@@ -92,6 +92,151 @@ export default function DigestCockpit() {
   }
 
   /* =======================================================
+     CREATE
+  ======================================================= */
+
+  async function createBatch() {
+
+    try {
+
+      await api.post(
+        "/digest/batches",
+        {
+          frequency: "weekly",
+          audience: "user",
+        }
+      );
+
+      await loadBatches();
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Unable to create batch.");
+
+    }
+
+  }
+
+  /* =======================================================
+     PREPARE
+  ======================================================= */
+
+  async function prepareBatch() {
+
+    if (!selectedBatch) {
+
+      alert("Select a batch first.");
+
+      return;
+
+    }
+
+    try {
+
+      await api.post(
+        "/digest/prepare",
+        {
+          batch_id: selectedBatch.id,
+        }
+      );
+
+      await loadBatches();
+
+      await openBatch(
+        selectedBatch
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Unable to prepare batch.");
+
+    }
+
+  }
+
+  /* =======================================================
+     GENERATE
+  ======================================================= */
+
+  async function generateBatch() {
+
+    if (!selectedBatch) {
+
+      alert("Select a batch first.");
+
+      return;
+
+    }
+
+    try {
+
+      await api.post(
+        "/digest/generate",
+        {
+          batch_id: selectedBatch.id,
+        }
+      );
+
+      await loadBatches();
+
+      await openBatch(
+        selectedBatch
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Unable to generate batch.");
+
+    }
+
+  }
+
+  /* =======================================================
+     SEND
+  ======================================================= */
+
+  async function sendBatch() {
+
+    if (!selectedBatch) {
+
+      alert("Select a batch first.");
+
+      return;
+
+    }
+
+    try {
+
+      await api.post(
+        "/digest/send",
+        {
+          batch_id: selectedBatch.id,
+        }
+      );
+
+      await loadBatches();
+
+      await openBatch(
+        selectedBatch
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert("Unable to send batch.");
+
+    }
+
+  }
+
+  /* =======================================================
      LOAD BATCH
   ======================================================= */
 
@@ -162,13 +307,13 @@ export default function DigestCockpit() {
 
       <BatchToolbar
 
-        onCreate={() => {}}
+        onCreate={createBatch}
 
-        onPrepare={() => {}}
+        onPrepare={prepareBatch}
 
-        onGenerate={() => {}}
+        onGenerate={generateBatch}
 
-        onSend={() => {}}
+        onSend={sendBatch}
 
       />
 
