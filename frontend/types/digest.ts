@@ -44,7 +44,7 @@ export type DigestBatch = {
 };
 
 /* =========================================================
-   REVIEW ITEM
+   BATCH ITEM
 ========================================================= */
 
 export type DigestBatchItem = {
@@ -93,6 +93,8 @@ export type DigestDocument = {
 
 export type DigestSection = {
 
+  id: string;
+
   title: string;
 
   body: string;
@@ -107,11 +109,17 @@ export type DigestSection = {
 
 export type DigestCard = {
 
+  id: string;
+
   title: string;
 
   excerpt: string;
 
   url: string;
+
+  source_title?: string;
+
+  published_at?: string;
 
   company_logo?: string | null;
 
