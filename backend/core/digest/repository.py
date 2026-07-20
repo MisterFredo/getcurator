@@ -1,104 +1,123 @@
-# backend/core/digest/repository.py
+# backend/core/digest/batch_service.py
 
 from core.digest.models import (
     DigestBatch,
-    DigestBatchItem,
+)
+
+from core.digest.profile_service import (
+    get_digest_profiles,
+)
+
+from core.digest.repository import (
+    insert_batch,
+    update_batch,
+    fetch_batch,
+    fetch_batches,
+    insert_batch_item,
+    update_batch_item,
+    fetch_batch_item,
+    fetch_batch_items,
+    update_batch_item_status,
 )
 
 
 # ============================================================
-# BATCH
+# CREATE
 # ============================================================
 
-def insert_batch(
+def create_batch(
+    frequency: str,
+    audience: str,
+) -> DigestBatch:
+    """
+    Create and persist a new DigestBatch.
+    """
+
+    raise NotImplementedError
+
+
+# ============================================================
+# PREPARE
+# ============================================================
+
+def prepare_batch(
     batch: DigestBatch,
 ) -> DigestBatch:
     """
-    Persist a new DigestBatch.
+    Resolve eligible profiles and create
+    DigestBatchItems for the batch.
     """
 
     raise NotImplementedError
 
 
-def update_batch(
+# ============================================================
+# GENERATE
+# ============================================================
+
+def generate_batch(
     batch: DigestBatch,
 ) -> DigestBatch:
     """
-    Persist changes to an existing DigestBatch.
-    """
-
-    raise NotImplementedError
-
-
-def fetch_batch(
-    batch_id: str,
-) -> DigestBatch | None:
-    """
-    Return a DigestBatch by id.
-    """
-
-    raise NotImplementedError
-
-
-def fetch_batches() -> list[DigestBatch]:
-    """
-    Return the latest DigestBatches.
+    Generate every DigestReview
+    belonging to the batch.
     """
 
     raise NotImplementedError
 
 
 # ============================================================
-# BATCH ITEMS
+# SEND
 # ============================================================
 
-def insert_batch_item(
-    item: DigestBatchItem,
-) -> DigestBatchItem:
+def send_batch(
+    batch: DigestBatch,
+) -> DigestBatch:
     """
-    Persist a new DigestBatchItem.
-    """
-
-    raise NotImplementedError
-
-
-def update_batch_item(
-    item: DigestBatchItem,
-) -> DigestBatchItem:
-    """
-    Persist changes to a DigestBatchItem.
+    Deliver every generated digest
+    belonging to the batch.
     """
 
     raise NotImplementedError
 
 
-def fetch_batch_item(
+# ============================================================
+# ITEM
+# ============================================================
+
+def regenerate_batch_item(
     item_id: str,
-) -> DigestBatchItem | None:
-    """
-    Return a DigestBatchItem by id.
-    """
-
-    raise NotImplementedError
-
-
-def fetch_batch_items(
-    batch_id: str,
-) -> list[DigestBatchItem]:
-    """
-    Return every item belonging to a batch.
-    """
-
-    raise NotImplementedError
-
-
-def update_batch_item_status(
-    item_id: str,
-    status: str,
-    error: str | None = None,
 ):
     """
-    Update only the execution status of a DigestBatchItem.
+    Regenerate a single DigestBatchItem.
     """
 
     raise NotImplementedError
+
+
+# ============================================================
+# GET
+# ============================================================
+
+def get_batch(
+    batch_id: str,
+) -> DigestBatch:
+    """
+    Return a DigestBatch.
+    """
+
+    return fetch_batch(
+        batch_id=batch_id,
+    )
+
+
+# ============================================================
+# LIST
+# ============================================================
+
+def list_batches() -> list[DigestBatch]:
+    """
+    Return the latest DigestBatch history.
+    """
+
+    return fetch_batches()
