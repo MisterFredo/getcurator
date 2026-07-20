@@ -17,6 +17,10 @@ from core.digest.service import (
     get_digest_review,
 )
 
+from core.digest.repository import (
+    fetch_batch,
+)
+
 router = APIRouter()
 
 
@@ -60,9 +64,15 @@ def prepare_batch_route(
     batch_id: str,
 ):
 
-    batch = get_batch(
+    batch = fetch_batch(
         batch_id=batch_id,
     )
+
+    if batch is None:
+
+        raise ValueError(
+            f"Unknown batch: {batch_id}"
+        )
 
     return prepare_batch(
         batch=batch,
@@ -78,9 +88,15 @@ def generate_batch_route(
     batch_id: str,
 ):
 
-    batch = get_batch(
+    batch = fetch_batch(
         batch_id=batch_id,
     )
+
+    if batch is None:
+
+        raise ValueError(
+            f"Unknown batch: {batch_id}"
+        )
 
     return generate_batch(
         batch=batch,
@@ -96,9 +112,15 @@ def send_batch_route(
     batch_id: str,
 ):
 
-    batch = get_batch(
+    batch = fetch_batch(
         batch_id=batch_id,
     )
+
+    if batch is None:
+
+        raise ValueError(
+            f"Unknown batch: {batch_id}"
+        )
 
     return send_batch(
         batch=batch,
