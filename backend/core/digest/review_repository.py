@@ -15,6 +15,10 @@ from core.digest.models import (
     DigestReview,
 )
 
+from core.delivery.models import (
+    KnowledgeResult,
+)
+
 TABLE_REVIEW = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_REVIEW"
 )
@@ -124,19 +128,125 @@ def fetch_review(
     Return a DigestReview by id.
     """
 
-    raise NotImplementedError(
-        "KnowledgeResult deserialization not implemented yet."
+    rows = query_bq(
+
+        f"""
+        SELECT *
+        FROM `{TABLE_REVIEW}`
+        WHERE ID = @id
+        LIMIT 1
+        """,
+
+        {
+            "id": review_id,
+        },
+
+    )
+
+    if not rows:
+
+        return None
+
+    row = rows[0]
+
+    knowledge = KnowledgeResult.model_validate(
+
+        row["KNOWLEDGE_JSON"],
+
+    )
+
+    return DigestReview(
+
+        id=row["ID"],
+
+        request={
+
+            "user_id": row["USER_ID"],
+
+            "period_start": row["PERIOD_START"],
+
+            "period_end": row["PERIOD_END"],
+
+            "capabilities": list(
+                knowledge.capability_results.keys(),
+            ),
+
+        },
+
+        total_contents=row["TOTAL_CONTENTS"],
+
+        analyzed_contents=row[
+            "ANALYZED_CONTENTS"
+        ],
+
+        knowledge=knowledge,
+
+        created_at=row["CREATED_AT"],
+
     )
 
 # ============================================================
 # LIST
 # ============================================================
-
 def fetch_reviews() -> list[DigestReview]:
     """
     Return the latest DigestReviews.
     """
 
-    raise NotImplementedError(
-        "KnowledgeResult deserialization not implemented yet."
+    rows = query_bq(
+
+        f"""
+        SELECT *
+        FROM `{TABLE_REVIEW}`
+        ORDER BY CREATED_AT DESC
+        """,
+
     )
+
+    reviews: list[DigestReview] = []
+
+    for row in rows:
+
+        knowledge = KnowledgeResult.model_validate(
+
+            row["KNOWLEDGE_JSON"],
+
+        )
+
+        reviews.append(
+
+            DigestReview(
+
+                id=row["ID"],
+
+                request={
+
+                    "user_id": row["USER_ID"],
+
+                    "period_start": row["PERIOD_START"],
+
+                    "period_end": row["PERIOD_END"],
+
+                    "capabilities": list(
+                        knowledge.capability_results.keys(),
+                    ),
+
+                },
+
+                total_contents=row[
+                    "TOTAL_CONTENTS"
+                ],
+
+                analyzed_contents=row[
+                    "ANALYZED_CONTENTS"
+                ],
+
+                knowledge=knowledge,
+
+                created_at=row["CREATED_AT"],
+
+            )
+
+        )
+
+    return reviews
