@@ -1,5 +1,3 @@
-# backend/core/digest/batch_service.py
-
 from datetime import datetime, timezone
 from uuid import uuid4
 
