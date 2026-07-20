@@ -10,8 +10,10 @@ import type {
 } from "@/types/digest";
 
 import BatchHeader from "./BatchHeader";
+import BatchToolbar from "./BatchToolbar";
 import BatchTable from "./BatchTable";
-import ReviewTable from "./ReviewTable";
+
+import ReviewTable from "../review/ReviewTable";
 import ReviewStudio from "../review/ReviewStudio";
 
 /* ========================================================= */
@@ -158,22 +160,46 @@ export default function DigestCockpit() {
         onRefresh={loadBatches}
       />
 
+      <BatchToolbar
+
+        onCreate={() => {}}
+
+        onPrepare={() => {}}
+
+        onGenerate={() => {}}
+
+        onSend={() => {}}
+
+      />
+
       <BatchTable
+
         batches={batches}
+
         loading={loading}
+
         selectedBatch={selectedBatch}
+
         onSelect={openBatch}
+
       />
 
       <ReviewTable
+
         reviews={reviews}
+
         selectedReview={selectedReview}
+
         onSelect={openReview}
+
       />
 
       <ReviewStudio
+
         review={selectedReview}
+
         onClose={closeReview}
+
       />
 
       {error && (
