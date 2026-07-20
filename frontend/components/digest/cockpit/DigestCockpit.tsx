@@ -173,7 +173,7 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        `/digest/batches/${selectedBatch.id}/generate`
+        `/digest/batches/${selectedBatch.id}/generate`,
         {}
       );
 
@@ -210,7 +210,7 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        `/digest/batches/${selectedBatch.id}/send`
+        `/digest/batches/${selectedBatch.id}/send`,
         {}
       );
 
