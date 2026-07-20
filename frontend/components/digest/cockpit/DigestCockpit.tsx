@@ -195,11 +195,8 @@ export default function DigestCockpit() {
       />
 
       <ReviewStudio
-
-        review={selectedReview}
-
+        reviewId={selectedReview?.id ?? null}
         onClose={closeReview}
-
       />
 
       {error && (
