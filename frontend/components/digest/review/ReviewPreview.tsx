@@ -10,7 +10,7 @@ import type {
 
 type Props = {
 
-  document: DigestDocument;
+  document: DigestDocument | null;
 
 };
 
@@ -21,6 +21,20 @@ export default function ReviewPreview({
   document,
 
 }: Props) {
+
+  if (!document) {
+
+    return (
+
+      <div className="rounded-lg border bg-white p-12 text-center text-sm text-gray-500">
+
+        No preview available.
+
+      </div>
+
+    );
+
+  }
 
   return (
 
