@@ -52,6 +52,16 @@ export default function ReviewPreview({
 
         </h1>
 
+        {document.subtitle && (
+
+          <div className="mt-2 text-base text-gray-700">
+
+            {document.subtitle}
+
+          </div>
+
+        )}
+
         <div className="mt-2 text-sm text-gray-500">
 
           {document.period}
