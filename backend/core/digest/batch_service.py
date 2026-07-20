@@ -6,6 +6,7 @@ from datetime import (
     timezone,
 )
 from uuid import uuid4
+from typing import Literal
 
 from core.digest.models import (
     DigestRequest,
@@ -38,9 +39,16 @@ from core.digest.repository import (
 # CREATE
 # ============================================================
 
+
 def create_batch(
-    frequency: str,
-    audience: str,
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ],
+    audience: Literal[
+        "user",
+        "expert",
+    ],
 ) -> DigestBatch:
     """
     Create and persist a new DigestBatch.
