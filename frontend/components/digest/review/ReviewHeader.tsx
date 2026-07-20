@@ -8,7 +8,9 @@ import type {
 
 type Props = {
 
-  review: DigestReview;
+  review: DigestReview | null;
+
+  loading?: boolean;
 
   onClose: () => void;
 
@@ -19,6 +21,8 @@ type Props = {
 export default function ReviewHeader({
 
   review,
+
+  loading = false,
 
   onClose,
 
@@ -42,39 +46,59 @@ export default function ReviewHeader({
 
           </h2>
 
-          <div className="mt-2 space-y-1 text-sm text-gray-500">
+          {loading ? (
 
-            <div>
+            <div className="mt-2 text-sm text-gray-500">
 
-              User : {review.user_id}
-
-            </div>
-
-            <div>
-
-              Contents :
-
-              {" "}
-
-              {review.analyzed_contents}
-
-              {" / "}
-
-              {review.total_contents}
+              Loading review...
 
             </div>
 
-            <div>
+          ) : review ? (
 
-              Generated :
+            <div className="mt-2 space-y-1 text-sm text-gray-500">
 
-              {" "}
+              <div>
 
-              {review.created_at}
+                User : {review.user_id}
+
+              </div>
+
+              <div>
+
+                Contents :
+
+                {" "}
+
+                {review.analyzed_contents}
+
+                {" / "}
+
+                {review.total_contents}
+
+              </div>
+
+              <div>
+
+                Generated :
+
+                {" "}
+
+                {review.created_at}
+
+              </div>
 
             </div>
 
-          </div>
+          ) : (
+
+            <div className="mt-2 text-sm text-red-600">
+
+              Unable to load review.
+
+            </div>
+
+          )}
 
         </div>
 
@@ -85,13 +109,15 @@ export default function ReviewHeader({
         <div className="flex items-center gap-3">
 
           <button
-            className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+            disabled={!review || loading}
+            className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Regenerate
           </button>
 
           <button
-            className="rounded-md bg-ratecard-blue px-4 py-2 text-sm text-white hover:opacity-90"
+            disabled={!review || loading}
+            className="rounded-md bg-ratecard-blue px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Send
           </button>
