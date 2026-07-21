@@ -1,5 +1,14 @@
 from typing import Literal
 
+from backend.config import (
+    BQ_DATASET,
+    BQ_PROJECT,
+)
+
+from backend.utils.bigquery_utils import (
+    query_bq,
+)
+
 from core.digest.models import (
     DigestRecipient,
 )
@@ -8,6 +17,10 @@ Audience = Literal[
     "user",
     "expert",
 ]
+
+TABLE_USER = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
+)
 
 
 # ============================================================
@@ -39,21 +52,10 @@ def get_digest_recipients(
 
 def _get_user_recipients(
 ) -> list[DigestRecipient]:
-    """
-    Return every active USER recipient.
-    """
 
-    # TODO
-    #
-    # SELECT
-    #     ID_USER,
-    #     LANGUAGE
-    # FROM RATECARD_USER
-    # WHERE PROFILE_TYPE = 'USER'
-    #   AND IS_ACTIVE = TRUE
-    #
-
-    raise NotImplementedError
+    return _load_recipients(
+        "USER",
+    )
 
 
 # ============================================================
@@ -62,18 +64,54 @@ def _get_user_recipients(
 
 def _get_expert_recipients(
 ) -> list[DigestRecipient]:
-    """
-    Return every active EXPERT recipient.
+
+    return _load_recipients(
+        "EXPERT",
+    )
+
+
+# ============================================================
+# INTERNAL
+# ============================================================
+
+def _load_recipients(
+    profile_type: str,
+) -> list[DigestRecipient]:
+
+    sql = f"""
+        SELECT
+
+            ID_USER,
+            LANGUAGE
+
+        FROM `{TABLE_USER}`
+
+        WHERE PROFILE_TYPE = @profile_type
+          AND IS_ACTIVE = TRUE
+
+        ORDER BY EMAIL
     """
 
-    # TODO
-    #
-    # SELECT
-    #     ID_USER,
-    #     LANGUAGE
-    # FROM RATECARD_USER
-    # WHERE PROFILE_TYPE = 'EXPERT'
-    #   AND IS_ACTIVE = TRUE
-    #
+    rows = query_bq(
+        sql,
+        {
+            "profile_type": profile_type,
+        },
+    )
 
-    raise NotImplementedError
+    return [
+
+        DigestRecipient(
+
+            user_id=row["ID_USER"],
+
+            language=row.get(
+                "LANGUAGE",
+                "en",
+            ),
+
+        )
+
+        for row in rows
+
+    ]
