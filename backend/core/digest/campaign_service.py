@@ -6,6 +6,8 @@ from datetime import (
     timezone,
 )
 
+from calendar import monthrange
+
 from uuid import uuid4
 
 from core.digest.models import (
@@ -52,17 +54,62 @@ def create_campaign(
         timezone.utc,
     )
 
+    # ========================================================
+    # PERIOD
+    # ========================================================
+
     if request.frequency == "weekly":
 
-        period_start = now - timedelta(
-            days=7,
+        # Previous complete week (Monday → Sunday)
+
+        current_monday = (
+            now
+            - timedelta(days=now.weekday())
+        ).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+        period_end = (
+            current_monday
+            - timedelta(microseconds=1)
+        )
+
+        period_start = (
+            current_monday
+            - timedelta(days=7)
         )
 
     else:
 
-        period_start = now - timedelta(
-            days=30,
+        # Previous complete month
+
+        first_day_current_month = now.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
         )
+
+        period_end = (
+            first_day_current_month
+            - timedelta(microseconds=1)
+        )
+
+        period_start = period_end.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+    # ========================================================
+    # CAMPAIGN
+    # ========================================================
 
     campaign = Campaign(
 
@@ -74,7 +121,7 @@ def create_campaign(
 
         period_start=period_start,
 
-        period_end=now,
+        period_end=period_end,
 
         status="created",
 
@@ -85,6 +132,10 @@ def create_campaign(
     campaign = insert_campaign(
         campaign,
     )
+
+    # ========================================================
+    # PROFILES
+    # ========================================================
 
     profiles = get_digest_profiles(
         audience=request.audience,
@@ -111,8 +162,6 @@ def create_campaign(
     return update_campaign(
         campaign,
     )
-
-
 # ============================================================
 # GENERATE
 # ============================================================
