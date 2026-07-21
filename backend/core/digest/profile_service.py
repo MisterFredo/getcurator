@@ -1,13 +1,8 @@
 from typing import Literal
 
-from backend.config import (
-    BQ_DATASET,
-    BQ_PROJECT,
-)
+from config import BQ_DATASET, BQ_PROJECT
 
-from backend.utils.bigquery_utils import (
-    query_bq,
-)
+from utils.bigquery_utils import query_bq
 
 from core.digest.models import (
     DigestRecipient,
