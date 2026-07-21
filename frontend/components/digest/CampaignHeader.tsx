@@ -20,7 +20,7 @@ export default function CampaignHeader({
 
       <div className="flex items-start justify-between">
 
-        <div className="space-y-2">
+        <div className="space-y-3">
 
           <h1 className="text-2xl font-bold capitalize">
 
@@ -28,7 +28,7 @@ export default function CampaignHeader({
 
           </h1>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
 
             <span className="capitalize">
 
@@ -38,6 +38,7 @@ export default function CampaignHeader({
 
             <span>
 
+              Coverage:{" "}
               {campaign.period_start}
               {" "}
               →
@@ -46,9 +47,15 @@ export default function CampaignHeader({
 
             </span>
 
+            <span>
+
+              Created: {campaign.created_at}
+
+            </span>
+
             <span className="capitalize">
 
-              {campaign.status}
+              Status: {campaign.status}
 
             </span>
 
@@ -65,7 +72,7 @@ export default function CampaignHeader({
       <div className="mt-6 grid grid-cols-4 gap-4">
 
         <StatCard
-          label="Digests"
+          label="Recipients"
           value={campaign.digests_count}
         />
 
