@@ -1,11 +1,5 @@
 # backend/core/digest/send_service.py
 
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
-
 from core.digest.models import (
     DigestDocument,
 )
@@ -16,28 +10,20 @@ from core.delivery.models import (
 
 
 # ============================================================
-# SEND DIGEST
+# SEND
 # ============================================================
 
 def send_digest(
-    document: DigestDocument,
     recipient: str,
+    document: DigestDocument,
 ) -> DeliveryResult:
     """
-    Deliver a DigestDocument to a recipient.
+    Deliver a DigestDocument by email.
     """
-
-    # ========================================================
-    # RENDER HTML
-    # ========================================================
 
     html = render_digest_html(
         document,
     )
-
-    # ========================================================
-    # SEND EMAIL
-    # ========================================================
 
     return send_email(
 
@@ -51,19 +37,19 @@ def send_digest(
 
 
 # ============================================================
-# RENDER
+# HTML
 # ============================================================
 
 def render_digest_html(
     document: DigestDocument,
 ) -> str:
     """
-    Render a DigestDocument into HTML.
+    Convert a DigestDocument into
+    an HTML email.
 
     TODO
     ----
-    Convert the DigestDocument into the
-    final HTML email template.
+    Build the final Curator email template.
     """
 
     raise NotImplementedError
@@ -79,12 +65,12 @@ def send_email(
     html: str,
 ) -> DeliveryResult:
     """
-    Send an HTML email through the configured
-    email provider.
+    Send an HTML email using the
+    configured email provider.
 
     TODO
     ----
-    Integrate Resend (or another provider).
+    Integrate Resend.
     """
 
     raise NotImplementedError
