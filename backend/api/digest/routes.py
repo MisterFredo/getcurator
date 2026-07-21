@@ -30,15 +30,21 @@ def create_campaign_route(
     request: CampaignCreateRequest,
 ):
 
-    return create_campaign(
-        request,
-    )
+    return {
+        "status": "ok",
+        "campaign": create_campaign(
+            request,
+        ),
+    }
 
 
 @router.get("/campaigns")
 def list_campaigns_route():
 
-    return list_campaigns()
+    return {
+        "status": "ok",
+        "campaigns": list_campaigns(),
+    }
 
 
 @router.get("/campaigns/{campaign_id}")
@@ -46,9 +52,12 @@ def get_campaign_route(
     campaign_id: str,
 ):
 
-    return get_campaign(
-        campaign_id,
-    )
+    return {
+        "status": "ok",
+        "campaign": get_campaign(
+            campaign_id,
+        ),
+    }
 
 
 # ============================================================
@@ -60,9 +69,12 @@ def generate_campaign_route(
     campaign_id: str,
 ):
 
-    return generate_campaign(
-        campaign_id,
-    )
+    return {
+        "status": "ok",
+        "campaign": generate_campaign(
+            campaign_id,
+        ),
+    }
 
 
 # ============================================================
@@ -74,9 +86,12 @@ def send_campaign_route(
     campaign_id: str,
 ):
 
-    return send_campaign(
-        campaign_id,
-    )
+    return {
+        "status": "ok",
+        "campaign": send_campaign(
+            campaign_id,
+        ),
+    }
 
 
 # ============================================================
@@ -88,6 +103,9 @@ def get_digest_route(
     digest_id: str,
 ):
 
-    return get_digest(
-        digest_id,
-    )
+    return {
+        "status": "ok",
+        "digest": get_digest(
+            digest_id,
+        ),
+    }
