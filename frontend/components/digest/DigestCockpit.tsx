@@ -14,8 +14,8 @@ import type {
 import CampaignTable from "./CampaignTable";
 import CampaignPanel from "./CampaignPanel";
 
-import RecipientTable from ".RecipientTable";
-import ReviewStudio from "../review/ReviewStudio";
+import RecipientTable from "./RecipientTable";
+import DigestPreview from "./DigestPreview";
 
 /* ========================================================= */
 
@@ -330,7 +330,7 @@ export default function DigestCockpit() {
 
       />
 
-      <ReviewStudio
+      <DigestPreview
 
         reviewId={
           selectedItem?.review_id ?? null
