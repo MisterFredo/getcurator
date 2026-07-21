@@ -338,12 +338,6 @@ def insert_digest(
         "STATUS":
             digest.status,
 
-        "PERIOD_START":
-            digest.request.period_start.isoformat(),
-
-        "PERIOD_END":
-            digest.request.period_end.isoformat(),
-
         "TOTAL_CONTENTS":
             digest.total_contents,
 
