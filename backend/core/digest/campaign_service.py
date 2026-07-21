@@ -87,11 +87,11 @@ def create_campaign(
     )
 
     profiles = get_digest_profiles(
-
-        frequency=request.frequency,
-
         audience=request.audience,
+    )
 
+    campaign.digests_count = len(
+        profiles,
     )
 
     for profile in profiles:
@@ -107,10 +107,6 @@ def create_campaign(
         insert_digest(
             digest,
         )
-
-    campaign.digests_count = len(
-        profiles,
-    )
 
     return update_campaign(
         campaign,
