@@ -9,9 +9,10 @@ import type {
   DigestBatchItem,
 } from "@/types/digest";
 
-import BatchHeader from "./BatchHeader";
-import BatchToolbar from "./BatchToolbar";
-import BatchTable from "./BatchTable";
+
+
+import CampaignTable from "./CampaignTable";
+import CampaignPanel from "./CampaignPanel";
 
 import ReviewTable from "../review/ReviewTable";
 import ReviewStudio from "../review/ReviewStudio";
@@ -295,11 +296,7 @@ export default function DigestCockpit() {
 
     <div className="space-y-6">
 
-      <BatchHeader
-        onRefresh={loadBatches}
-      />
-
-      <BatchToolbar
+      <CampaignPanel
 
         onCreate={createBatch}
 
@@ -311,13 +308,13 @@ export default function DigestCockpit() {
 
       />
 
-      <BatchTable
+      <CampaignTable
 
-        batches={batches}
+        campaigns={batches}
 
         loading={loading}
 
-        selectedBatch={selectedBatch}
+        selectedCampaign={selectedBatch}
 
         onSelect={openBatch}
 
