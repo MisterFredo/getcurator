@@ -14,7 +14,9 @@ import type {
 export async function listCampaigns(): Promise<Campaign[]> {
 
   const res =
-    await api.get("/campaigns");
+    await api.get(
+      "/digest/campaigns",
+    );
 
   return res.campaigns;
 
@@ -25,9 +27,11 @@ export async function getCampaign(
 ): Promise<CampaignDetail> {
 
   const res =
-    await api.get(`/campaigns/${id}`);
+    await api.get(
+      `/digest/campaigns/${id}`,
+    );
 
-  return res;
+  return res.campaign;
 
 }
 
@@ -37,7 +41,7 @@ export async function createCampaign(
 
   const res =
     await api.post(
-      "/campaigns",
+      "/digest/campaigns",
       request,
     );
 
@@ -47,23 +51,29 @@ export async function createCampaign(
 
 export async function generateCampaign(
   id: string,
-): Promise<void> {
+): Promise<Campaign> {
 
-  await api.post(
-    `/campaigns/${id}/generate`,
-    {},
-  );
+  const res =
+    await api.post(
+      `/digest/campaigns/${id}/generate`,
+      {},
+    );
+
+  return res.campaign;
 
 }
 
 export async function sendCampaign(
   id: string,
-): Promise<void> {
+): Promise<Campaign> {
 
-  await api.post(
-    `/campaigns/${id}/send`,
-    {},
-  );
+  const res =
+    await api.post(
+      `/digest/campaigns/${id}/send`,
+      {},
+    );
+
+  return res.campaign;
 
 }
 
@@ -77,7 +87,7 @@ export async function getDigest(
 
   const res =
     await api.get(
-      `/digests/${id}`,
+      `/digest/digests/${id}`,
     );
 
   return res.digest;
