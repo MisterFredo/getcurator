@@ -1,6 +1,6 @@
-# backend/core/digest/repository.py
+import json
 
-from datetime import datetime
+from google.cloud import bigquery
 
 from config import (
     BQ_PROJECT,
@@ -13,34 +13,32 @@ from utils.bigquery_utils import (
     get_bigquery_client,
 )
 
-from google.cloud import bigquery
-
 from core.digest.models import (
-    DigestBatch,
-    DigestBatchItem,
+    Campaign,
+    Digest,
 )
 
 # ============================================================
 # TABLES
 # ============================================================
 
-TABLE_BATCH = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_BATCH"
+TABLE_CAMPAIGN = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CAMPAIGN"
 )
 
-TABLE_ITEM = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST_BATCH_ITEM"
+TABLE_DIGEST = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST"
 )
 
 # ============================================================
-# MAPPING
+# CAMPAIGN MAPPING
 # ============================================================
 
-def _map_batch(
+def _map_campaign(
     row,
-) -> DigestBatch:
+) -> Campaign:
 
-    return DigestBatch(
+    return Campaign(
 
         id=row["ID"],
 
@@ -54,7 +52,7 @@ def _map_batch(
 
         status=row["STATUS"],
 
-        items_count=row["ITEMS_COUNT"],
+        digests_count=row["DIGESTS_COUNT"],
 
         generated_count=row["GENERATED_COUNT"],
 
@@ -64,79 +62,61 @@ def _map_batch(
 
         created_at=row["CREATED_AT"],
 
-        completed_at=row.get("COMPLETED_AT"),
-
-    )
-
-
-def _map_batch_item(
-    row,
-) -> DigestBatchItem:
-
-    return DigestBatchItem(
-
-        id=row["ID"],
-
-        batch_id=row["BATCH_ID"],
-
-        user_id=row["USER_ID"],
-
-        review_id=row.get("REVIEW_ID"),
-
-        status=row["STATUS"],
-
-        selected_contents=row["SELECTED_CONTENTS"],
-
-        generated_at=row.get("GENERATED_AT"),
-
-        sent_at=row.get("SENT_AT"),
-
-        error=row.get("ERROR"),
+        completed_at=row.get(
+            "COMPLETED_AT",
+        ),
 
     )
 
 # ============================================================
-# BATCH
+# CAMPAIGN
 # ============================================================
 
-def insert_batch(
-    batch: DigestBatch,
-) -> DigestBatch:
+def insert_campaign(
+    campaign: Campaign,
+) -> Campaign:
     """
-    Persist a new DigestBatch.
+    Persist a new Campaign.
     """
 
     client = get_bigquery_client()
 
     row = [{
 
-        "ID": batch.id,
+        "ID": campaign.id,
 
-        "FREQUENCY": batch.frequency,
+        "FREQUENCY": campaign.frequency,
 
-        "AUDIENCE": batch.audience,
+        "AUDIENCE": campaign.audience,
 
-        "PERIOD_START": batch.period_start.isoformat(),
+        "PERIOD_START":
+            campaign.period_start.isoformat(),
 
-        "PERIOD_END": batch.period_end.isoformat(),
+        "PERIOD_END":
+            campaign.period_end.isoformat(),
 
-        "STATUS": batch.status,
+        "STATUS":
+            campaign.status,
 
-        "ITEMS_COUNT": batch.items_count,
+        "DIGESTS_COUNT":
+            campaign.digests_count,
 
-        "GENERATED_COUNT": batch.generated_count,
+        "GENERATED_COUNT":
+            campaign.generated_count,
 
-        "SENT_COUNT": batch.sent_count,
+        "SENT_COUNT":
+            campaign.sent_count,
 
-        "FAILED_COUNT": batch.failed_count,
+        "FAILED_COUNT":
+            campaign.failed_count,
 
-        "CREATED_AT": batch.created_at.isoformat(),
+        "CREATED_AT":
+            campaign.created_at.isoformat(),
 
-        "COMPLETED_AT": (
-            batch.completed_at.isoformat()
-            if batch.completed_at
-            else None
-        ),
+        "COMPLETED_AT":
+            campaign.completed_at.isoformat()
+            if campaign.completed_at
+            else None,
 
     }]
 
@@ -144,7 +124,7 @@ def insert_batch(
 
         row,
 
-        TABLE_BATCH,
+        TABLE_CAMPAIGN,
 
         job_config=bigquery.LoadJobConfig(
 
@@ -154,116 +134,116 @@ def insert_batch(
 
     ).result()
 
-    return batch
+    return campaign
 
 
-def update_batch(
-    batch: DigestBatch,
-) -> DigestBatch:
+def update_campaign(
+    campaign: Campaign,
+) -> Campaign:
     """
-    Update an existing DigestBatch.
+    Update an existing Campaign.
     """
 
     update_bq(
 
-        table=TABLE_BATCH,
+        table=TABLE_CAMPAIGN,
 
         where={
 
-            "ID": batch.id,
+            "ID": campaign.id,
 
         },
 
         fields={
 
-            "STATUS": batch.status,
+            "STATUS":
+                campaign.status,
 
-            "ITEMS_COUNT": batch.items_count,
+            "DIGESTS_COUNT":
+                campaign.digests_count,
 
-            "GENERATED_COUNT": batch.generated_count,
+            "GENERATED_COUNT":
+                campaign.generated_count,
 
-            "SENT_COUNT": batch.sent_count,
+            "SENT_COUNT":
+                campaign.sent_count,
 
-            "FAILED_COUNT": batch.failed_count,
+            "FAILED_COUNT":
+                campaign.failed_count,
 
-            "COMPLETED_AT": batch.completed_at,
+            "COMPLETED_AT":
+                campaign.completed_at,
 
         },
 
     )
 
-    return batch
+    return campaign
 
 
-def fetch_batch(
-    batch_id: str,
-) -> DigestBatch | None:
+def fetch_campaign(
+    campaign_id: str,
+) -> Campaign | None:
     """
-    Return a DigestBatch by id.
+    Return a Campaign by id.
     """
 
     sql = f"""
-        SELECT
-            ID,
-            FREQUENCY,
-            AUDIENCE,
-            PERIOD_START,
-            PERIOD_END,
-            STATUS,
-            ITEMS_COUNT,
-            GENERATED_COUNT,
-            SENT_COUNT,
-            FAILED_COUNT,
-            CREATED_AT,
-            COMPLETED_AT
-        FROM `{TABLE_BATCH}`
+        SELECT *
+
+        FROM `{TABLE_CAMPAIGN}`
+
         WHERE ID = @id
+
         LIMIT 1
     """
 
     rows = query_bq(
+
         sql,
+
         {
-            "id": batch_id,
+
+            "id": campaign_id,
+
         },
+
     )
 
     if not rows:
+
         return None
 
-    return _map_batch(
-        rows[0]
+    return _map_campaign(
+
+        rows[0],
+
     )
 
 
-def fetch_batches() -> list[DigestBatch]:
+def fetch_campaigns(
+) -> list[Campaign]:
     """
-    Return the latest DigestBatches.
+    Return Campaign history.
     """
 
     sql = f"""
-        SELECT
-            ID,
-            FREQUENCY,
-            AUDIENCE,
-            PERIOD_START,
-            PERIOD_END,
-            STATUS,
-            ITEMS_COUNT,
-            GENERATED_COUNT,
-            SENT_COUNT,
-            FAILED_COUNT,
-            CREATED_AT,
-            COMPLETED_AT
-        FROM `{TABLE_BATCH}`
+        SELECT *
+
+        FROM `{TABLE_CAMPAIGN}`
+
         ORDER BY CREATED_AT DESC
     """
 
-    rows = query_bq(sql)
+    rows = query_bq(
+        sql,
+    )
 
     return [
 
-        _map_batch(row)
+        _map_campaign(
+            row,
+        )
 
         for row in rows
 
@@ -271,37 +251,133 @@ def fetch_batches() -> list[DigestBatch]:
 
 
 # ============================================================
-# BATCH ITEMS
+# DIGEST MAPPING
 # ============================================================
 
-def insert_batch_item(
-    item: DigestBatchItem,
-) -> DigestBatchItem:
+def _map_digest(
+    row,
+) -> Digest:
+
+    knowledge = None
+
+    if row.get("KNOWLEDGE"):
+
+        knowledge = KnowledgeResult.model_validate_json(
+            row["KNOWLEDGE"],
+        )
+
+    document = None
+
+    if row.get("DOCUMENT"):
+
+        document = DigestDocument.model_validate_json(
+            row["DOCUMENT"],
+        )
+
+    return Digest(
+
+        id=row["ID"],
+
+        campaign_id=row["CAMPAIGN_ID"],
+
+        request=DigestRequest(
+
+            user_id=row["USER_ID"],
+
+            period_start=row["PERIOD_START"],
+
+            period_end=row["PERIOD_END"],
+
+            capabilities=[],
+
+        ),
+
+        status=row["STATUS"],
+
+        total_contents=row["TOTAL_CONTENTS"],
+
+        analyzed_contents=row["ANALYZED_CONTENTS"],
+
+        knowledge=knowledge,
+
+        document=document,
+
+        generated_at=row.get(
+            "GENERATED_AT",
+        ),
+
+        sent_at=row.get(
+            "SENT_AT",
+        ),
+
+        error=row.get(
+            "ERROR",
+        ),
+
+    )
+
+
+# ============================================================
+# DIGEST
+# ============================================================
+
+def insert_digest(
+    digest: Digest,
+) -> Digest:
     """
-    Persist a new DigestBatchItem.
+    Persist a Digest.
     """
 
     client = get_bigquery_client()
 
     row = [{
 
-        "ID": item.id,
+        "ID":
+            digest.id,
 
-        "BATCH_ID": item.batch_id,
+        "CAMPAIGN_ID":
+            digest.campaign_id,
 
-        "USER_ID": item.user_id,
+        "USER_ID":
+            digest.request.user_id,
 
-        "REVIEW_ID": item.review_id,
+        "STATUS":
+            digest.status,
 
-        "STATUS": item.status,
+        "PERIOD_START":
+            digest.request.period_start.isoformat(),
 
-        "SELECTED_CONTENTS": item.selected_contents,
+        "PERIOD_END":
+            digest.request.period_end.isoformat(),
 
-        "GENERATED_AT": item.generated_at,
+        "TOTAL_CONTENTS":
+            digest.total_contents,
 
-        "SENT_AT": item.sent_at,
+        "ANALYZED_CONTENTS":
+            digest.analyzed_contents,
 
-        "ERROR": item.error,
+        "KNOWLEDGE":
+            digest.knowledge.model_dump_json()
+            if digest.knowledge
+            else None,
+
+        "DOCUMENT":
+            digest.document.model_dump_json()
+            if digest.document
+            else None,
+
+        "GENERATED_AT":
+            digest.generated_at.isoformat()
+            if digest.generated_at
+            else None,
+
+        "SENT_AT":
+            digest.sent_at.isoformat()
+            if digest.sent_at
+            else None,
+
+        "ERROR":
+            digest.error,
 
     }]
 
@@ -309,7 +385,7 @@ def insert_batch_item(
 
         row,
 
-        TABLE_ITEM,
+        TABLE_DIGEST,
 
         job_config=bigquery.LoadJobConfig(
 
@@ -319,66 +395,77 @@ def insert_batch_item(
 
     ).result()
 
-    return item
+    return digest
 
-def update_batch_item(
-    item: DigestBatchItem,
-) -> DigestBatchItem:
+
+def update_digest(
+    digest: Digest,
+) -> Digest:
     """
-    Update a DigestBatchItem.
+    Update an existing Digest.
     """
 
     update_bq(
 
-        table=TABLE_ITEM,
+        table=TABLE_DIGEST,
 
         where={
 
-            "ID": item.id,
+            "ID": digest.id,
 
         },
 
         fields={
 
-            "REVIEW_ID": item.review_id,
+            "STATUS":
+                digest.status,
 
-            "STATUS": item.status,
+            "TOTAL_CONTENTS":
+                digest.total_contents,
 
-            "SELECTED_CONTENTS": item.selected_contents,
+            "ANALYZED_CONTENTS":
+                digest.analyzed_contents,
 
-            "GENERATED_AT": item.generated_at,
+            "KNOWLEDGE":
+                digest.knowledge.model_dump_json()
+                if digest.knowledge
+                else None,
 
-            "SENT_AT": item.sent_at,
+            "DOCUMENT":
+                digest.document.model_dump_json()
+                if digest.document
+                else None,
 
-            "ERROR": item.error,
+            "GENERATED_AT":
+                digest.generated_at,
+
+            "SENT_AT":
+                digest.sent_at,
+
+            "ERROR":
+                digest.error,
 
         },
 
     )
 
-    return item
+    return digest
 
 
-def fetch_batch_item(
-    item_id: str,
-) -> DigestBatchItem | None:
+def fetch_digest(
+    digest_id: str,
+) -> Digest | None:
     """
-    Return a DigestBatchItem by id.
+    Return a Digest by id.
     """
 
     sql = f"""
-        SELECT
-            ID,
-            BATCH_ID,
-            USER_ID,
-            REVIEW_ID,
-            STATUS,
-            SELECTED_CONTENTS,
-            GENERATED_AT,
-            SENT_AT,
-            ERROR
-        FROM `{TABLE_ITEM}`
+        SELECT *
+
+        FROM `{TABLE_DIGEST}`
+
         WHERE ID = @id
+
         LIMIT 1
     """
 
@@ -388,57 +475,58 @@ def fetch_batch_item(
 
         {
 
-            "id": item_id,
+            "id": digest_id,
 
         },
 
     )
 
     if not rows:
+
         return None
 
-    return _map_batch_item(
+    return _map_digest(
 
-        rows[0]
+        rows[0],
 
     )
 
 
-def fetch_batch_items(
-    batch_id: str,
-) -> list[DigestBatchItem]:
+def fetch_digests(
+    campaign_id: str,
+) -> list[Digest]:
     """
-    Return every item belonging to a batch.
+    Return all Digests belonging to a Campaign.
     """
 
     sql = f"""
-        SELECT
-            ID,
-            BATCH_ID,
-            USER_ID,
-            REVIEW_ID,
-            STATUS,
-            SELECTED_CONTENTS,
-            GENERATED_AT,
-            SENT_AT,
-            ERROR
-        FROM `{TABLE_ITEM}`
-        WHERE BATCH_ID = @batch_id
-        ORDER BY USER_ID
+        SELECT *
+
+        FROM `{TABLE_DIGEST}`
+
+        WHERE CAMPAIGN_ID = @campaign_id
+
+        ORDER BY GENERATED_AT DESC
     """
 
     rows = query_bq(
+
         sql,
+
         {
-            "batch_id": batch_id,
+
+            "campaign_id": campaign_id,
+
         },
+
     )
 
     return [
 
-        _map_batch_item(row)
+        _map_digest(
+            row,
+        )
 
         for row in rows
 
     ]
-
