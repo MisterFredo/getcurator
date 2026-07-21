@@ -333,7 +333,7 @@ def insert_digest(
             digest.campaign_id,
 
         "USER_ID":
-            digest.request.user_id,
+            digest.user_id,
 
         "STATUS":
             digest.status,
