@@ -189,21 +189,11 @@ class CampaignCreateRequest(BaseModel):
 # DIGEST PROFILE
 # ============================================================
 
-class DigestProfile(BaseModel):
+class DigestRecipient(BaseModel):
 
     user_id: str
 
-    language: str = "en"
-
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ]
-
-    audience: Literal[
-        "user",
-        "expert",
-    ]
+    language: str
 
 
 # ============================================================
