@@ -11,6 +11,9 @@ import type {
 } from "@/types/digest";
 
 import CampaignTable from "@/components/digest/CampaignTable";
+import CreateCampaignDialog from "@/components/digest/CreateCampaignDialog";
+
+/* ========================================================= */
 
 export default function DigestPage() {
 
@@ -24,6 +27,10 @@ export default function DigestPage() {
     setLoading,
   ] = useState(true);
 
+  /* =========================================================
+     LOAD
+  ========================================================= */
+
   async function load() {
 
     setLoading(true);
@@ -35,9 +42,14 @@ export default function DigestPage() {
 
       setCampaigns(data);
 
-    }
+    } catch (error) {
 
-    finally {
+      console.error(
+        "Unable to load campaigns",
+        error,
+      );
+
+    } finally {
 
       setLoading(false);
 
@@ -45,15 +57,23 @@ export default function DigestPage() {
 
   }
 
+  /* ========================================================= */
+
   useEffect(() => {
 
     load();
 
   }, []);
 
+  /* ========================================================= */
+
   return (
 
     <div className="space-y-6">
+
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
 
       <div className="flex items-center justify-between">
 
@@ -67,19 +87,27 @@ export default function DigestPage() {
 
           <p className="text-sm text-gray-500">
 
-            Generate and send weekly or monthly digests.
+            Generate and send weekly or monthly digest campaigns.
 
           </p>
 
         </div>
 
+        <CreateCampaignDialog
+          onCreated={load}
+        />
+
       </div>
+
+      {/* =====================================================
+          TABLE
+      ====================================================== */}
 
       {loading ? (
 
-        <div>
+        <div className="rounded-lg border bg-white p-8 text-center text-gray-500">
 
-          Loading...
+          Loading campaigns...
 
         </div>
 
