@@ -141,11 +141,24 @@ def create_campaign(
         audience=request.audience,
     )
 
+    print("====================================")
+    print("AUDIENCE :", request.audience)
+    print("RECIPIENTS :", len(recipients))
+
+    if recipients:
+
+        print("FIRST RECIPIENT :", recipients[0])
+
     campaign.digests_count = len(
         recipients,
     )
 
     for recipient in recipients:
+
+        print(
+            "Creating digest for:",
+            recipient.user_id,
+        )
 
         digest = Digest(
 
@@ -159,10 +172,16 @@ def create_campaign(
             digest,
         )
 
-    return update_campaign(
+    campaign = update_campaign(
         campaign,
     )
 
+    print(
+        "Campaign created:",
+        campaign.id,
+    )
+
+    return campaign
 
 # ============================================================
 # GENERATE
