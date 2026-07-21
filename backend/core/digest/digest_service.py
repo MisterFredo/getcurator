@@ -1,5 +1,11 @@
 # backend/core/digest/digest_service.py
 
+from datetime import (
+    datetime,
+    timezone,
+)
+
+
 from core.digest.models import (
     Digest,
     DigestRequest,
@@ -94,7 +100,9 @@ def generate_digest(
 
     )
 
-    digest.status = "generated"
+    digest.generated_at = datetime.now(
+        timezone.utc,
+    )
 
     return update_digest(
         digest,
