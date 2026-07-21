@@ -14,7 +14,7 @@ import type {
 import CampaignTable from "./CampaignTable";
 import CampaignPanel from "./CampaignPanel";
 
-import ReviewTable from "../review/ReviewTable";
+import RecipientTable from ".RecipientTable";
 import ReviewStudio from "../review/ReviewStudio";
 
 /* ========================================================= */
@@ -320,11 +320,11 @@ export default function DigestCockpit() {
 
       />
 
-      <ReviewTable
+      <RecipientTable
 
-        items={items}
+        recipients={items}
 
-        selectedItem={selectedItem}
+        selectedRecipient={selectedItem}
 
         onSelect={openItem}
 
