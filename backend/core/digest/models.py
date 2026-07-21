@@ -90,22 +90,20 @@ class DigestDocument(BaseModel):
 
 class Digest(BaseModel):
 
-    id: str = Field(
-        default_factory=lambda: str(uuid4())
-    )
+    id: str
 
     campaign_id: str
 
-    request: DigestRequest
+    user_id: str
 
     status: Literal[
-        "pending",
+        "created",
         "generating",
         "generated",
         "sending",
-        "sent",
+        "completed",
         "failed",
-    ] = "pending"
+    ]
 
     total_contents: int = 0
 
@@ -125,46 +123,6 @@ class Digest(BaseModel):
 # ============================================================
 # CAMPAIGN
 # ============================================================
-
-class Campaign(BaseModel):
-
-    id: str
-
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ]
-
-    audience: Literal[
-        "user",
-        "expert",
-    ]
-
-    period_start: datetime
-
-    period_end: datetime
-
-    status: Literal[
-        "created",
-        "generating",
-        "generated",
-        "sending",
-        "completed",
-        "failed",
-    ]
-
-    digests_count: int = 0
-
-    generated_count: int = 0
-
-    sent_count: int = 0
-
-    failed_count: int = 0
-
-    created_at: datetime
-
-    completed_at: datetime | None = None
-
 
 # ============================================================
 # CAMPAIGN CREATE REQUEST
