@@ -1,10 +1,15 @@
 # backend/core/digest/render_service.py
 
+from datetime import datetime
+
 from core.digest.models import (
-    DigestReview,
     DigestDocument,
     DigestSection,
     DigestCard,
+)
+
+from core.delivery.models import (
+    KnowledgeResult,
 )
 
 from core.expertise.constants import (
@@ -54,16 +59,22 @@ ARTICLES_SECTION = "articles"
 # ============================================================
 
 def render_digest(
-    review: DigestReview,
+
+    knowledge: KnowledgeResult,
+
+    period_start: datetime,
+
+    period_end: datetime,
+
 ) -> DigestDocument:
     """
-    Convert a DigestReview into a DigestDocument.
+    Build a DigestDocument from a KnowledgeResult.
     """
 
     sections: list[DigestSection] = []
 
     capability_results = (
-        review.knowledge.capability_results
+        knowledge.outputs
     )
 
     # ========================================================
@@ -83,7 +94,9 @@ def render_digest(
 
             DigestSection(
                 id=capability,
-                title=_format_title(capability),
+                title=_format_title(
+                    capability,
+                ),
                 body=result,
             )
 
@@ -102,7 +115,9 @@ def render_digest(
 
             DigestSection(
                 id=capability,
-                title=_format_title(capability),
+                title=_format_title(
+                    capability,
+                ),
                 body=result,
             )
 
@@ -114,18 +129,26 @@ def render_digest(
 
     cards: list[DigestCard] = []
 
-    for content in review.knowledge.expertise.contents:
+    for content in knowledge.expertise.contents:
 
         cards.append(
 
             DigestCard(
+
                 id=content.id,
+
                 title=content.title,
+
                 excerpt=content.excerpt,
-                url=content.url,
+
+                url=content.curator_link,
+
                 source_title=content.source_title,
+
                 published_at=content.published_at,
-                company_logo=content.company_logo,
+
+                company_logo=content.primary_logo,
+
             )
 
         )
@@ -135,10 +158,15 @@ def render_digest(
         sections.append(
 
             DigestSection(
+
                 id=ARTICLES_SECTION,
+
                 title="Articles",
+
                 body="",
+
                 cards=cards,
+
             )
 
         )
@@ -150,13 +178,14 @@ def render_digest(
     return DigestDocument(
 
         title=_build_title(
-            review,
+            period_start,
+            period_end,
         ),
 
         period=(
-            f"{review.request.period_start:%d/%m/%Y}"
+            f"{period_start:%d/%m/%Y}"
             " - "
-            f"{review.request.period_end:%d/%m/%Y}"
+            f"{period_end:%d/%m/%Y}"
         ),
 
         sections=sections,
@@ -169,15 +198,19 @@ def render_digest(
 # ============================================================
 
 def _build_title(
-    review: DigestReview,
+
+    period_start: datetime,
+
+    period_end: datetime,
+
 ) -> str:
     """
     Build the document title.
     """
 
     duration = (
-        review.request.period_end
-        - review.request.period_start
+        period_end
+        - period_start
     ).days
 
     if duration <= 8:
@@ -191,8 +224,8 @@ def _format_title(
     capability: str,
 ) -> str:
     """
-    Convert a capability identifier into
-    a readable section title.
+    Convert a capability identifier
+    into a readable section title.
     """
 
     return (
