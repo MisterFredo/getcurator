@@ -1,76 +1,79 @@
 from typing import Literal
 
 from core.digest.models import (
-    DigestProfile,
+    DigestRecipient,
 )
-
-# ============================================================
-# TYPES
-# ============================================================
 
 Audience = Literal[
     "user",
     "expert",
 ]
 
+
 # ============================================================
 # PUBLIC
 # ============================================================
 
-def get_digest_profiles(
+def get_digest_recipients(
     audience: Audience,
-) -> list[DigestProfile]:
+) -> list[DigestRecipient]:
     """
-    Return every active recipient profile
-    for the requested audience.
+    Return every active recipient for
+    the requested audience.
     """
 
     if audience == "user":
-        return _get_user_profiles()
+        return _get_user_recipients()
 
     if audience == "expert":
-        return _get_expert_profiles()
+        return _get_expert_recipients()
 
     raise ValueError(
         f"Unknown audience: {audience}",
     )
 
+
 # ============================================================
 # USERS
 # ============================================================
 
-def _get_user_profiles(
-) -> list[DigestProfile]:
+def _get_user_recipients(
+) -> list[DigestRecipient]:
     """
-    Return every active USER profile.
+    Return every active USER recipient.
     """
 
     # TODO
     #
-    # SELECT *
+    # SELECT
+    #     ID_USER,
+    #     LANGUAGE
     # FROM RATECARD_USER
     # WHERE PROFILE_TYPE = 'USER'
-    #   AND STATUS = 'ACTIVE'
+    #   AND IS_ACTIVE = TRUE
     #
 
     raise NotImplementedError
+
 
 # ============================================================
 # EXPERTS
 # ============================================================
 
-def _get_expert_profiles(
-) -> list[DigestProfile]:
+def _get_expert_recipients(
+) -> list[DigestRecipient]:
     """
-    Return every active EXPERT profile.
+    Return every active EXPERT recipient.
     """
 
     # TODO
     #
-    # SELECT *
+    # SELECT
+    #     ID_USER,
+    #     LANGUAGE
     # FROM RATECARD_USER
     # WHERE PROFILE_TYPE = 'EXPERT'
-    #   AND STATUS = 'ACTIVE'
+    #   AND IS_ACTIVE = TRUE
     #
 
     raise NotImplementedError
