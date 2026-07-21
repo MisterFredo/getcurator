@@ -125,6 +125,55 @@ class Digest(BaseModel):
 # ============================================================
 
 # ============================================================
+# CAMPAIGN
+# ============================================================
+
+class Campaign(BaseModel):
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+    )
+
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ]
+
+    audience: Literal[
+        "user",
+        "expert",
+    ]
+
+    period_start: datetime
+
+    period_end: datetime
+
+    status: Literal[
+        "created",
+        "generating",
+        "generated",
+        "sending",
+        "completed",
+        "failed",
+    ] = "created"
+
+    digests_count: int = 0
+
+    generated_count: int = 0
+
+    sent_count: int = 0
+
+    failed_count: int = 0
+
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(
+            timezone.utc,
+        )
+    )
+
+    completed_at: datetime | None = None
+
+# ============================================================
 # CAMPAIGN CREATE REQUEST
 # ============================================================
 
