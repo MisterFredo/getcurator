@@ -5,25 +5,21 @@
 ========================================================= */
 
 export type DigestRequest = {
-
   user_id: string;
 
   period_start: string;
-
   period_end: string;
 
   capabilities: string[];
 
   limit: number;
-
 };
 
 /* =========================================================
-   BATCH
+   CAMPAIGN
 ========================================================= */
 
-export type DigestBatch = {
-
+export type Campaign = {
   id: string;
 
   frequency:
@@ -35,45 +31,53 @@ export type DigestBatch = {
     | "expert";
 
   period_start: string;
-
   period_end: string;
 
   status:
     | "created"
-    | "prepared"
     | "generating"
     | "generated"
     | "sending"
     | "completed"
     | "failed";
 
-  items_count: number;
-
+  digests_count: number;
   generated_count: number;
-
   sent_count: number;
-
   failed_count: number;
 
   created_at: string;
 
   completed_at?: string | null;
-
 };
 
 /* =========================================================
-   BATCH ITEM
+   CREATE CAMPAIGN
 ========================================================= */
 
-export type DigestBatchItem = {
+export type CampaignCreateRequest = {
+  frequency:
+    | "weekly"
+    | "monthly";
 
+  audience:
+    | "user"
+    | "expert";
+
+  period_start: string;
+  period_end: string;
+};
+
+/* =========================================================
+   DIGEST
+========================================================= */
+
+export type Digest = {
   id: string;
 
-  batch_id: string;
+  campaign_id: string;
 
   user_id: string;
-
-  review_id?: string | null;
 
   status:
     | "pending"
@@ -83,14 +87,18 @@ export type DigestBatchItem = {
     | "sent"
     | "failed";
 
-  selected_contents: number;
+  total_contents: number;
+  analyzed_contents: number;
+
+  knowledge: any;
+
+  document: DigestDocument;
 
   generated_at?: string | null;
 
   sent_at?: string | null;
 
   error?: string | null;
-
 };
 
 /* =========================================================
@@ -98,7 +106,6 @@ export type DigestBatchItem = {
 ========================================================= */
 
 export type DigestDocument = {
-
   title: string;
 
   subtitle?: string;
@@ -106,7 +113,6 @@ export type DigestDocument = {
   period: string;
 
   sections: DigestSection[];
-
 };
 
 /* =========================================================
@@ -114,7 +120,6 @@ export type DigestDocument = {
 ========================================================= */
 
 export type DigestSection = {
-
   id: string;
 
   title: string;
@@ -122,7 +127,6 @@ export type DigestSection = {
   body: string;
 
   cards: DigestCard[];
-
 };
 
 /* =========================================================
@@ -130,7 +134,6 @@ export type DigestSection = {
 ========================================================= */
 
 export type DigestCard = {
-
   id: string;
 
   title: string;
@@ -144,37 +147,14 @@ export type DigestCard = {
   published_at?: string;
 
   company_logo?: string | null;
-
 };
 
 /* =========================================================
-   REVIEW
+   CAMPAIGN DETAIL
 ========================================================= */
 
-export type DigestReview = {
+export type CampaignDetail = {
+  campaign: Campaign;
 
-  id: string;
-
-  request: DigestRequest;
-
-  total_contents: number;
-
-  analyzed_contents: number;
-
-  created_at: string;
-
-  document: DigestDocument;
-
-};
-
-/* =========================================================
-   BATCH DETAIL
-========================================================= */
-
-export type DigestBatchDetail = {
-
-  batch: DigestBatch;
-
-  items: DigestBatchItem[];
-
+  digests: Digest[];
 };
