@@ -262,16 +262,20 @@ def _map_digest(
 
     if row.get("KNOWLEDGE"):
 
-        knowledge = KnowledgeResult.model_validate_json(
-            row["KNOWLEDGE"],
+        knowledge = (
+            KnowledgeResult.model_validate_json(
+                row["KNOWLEDGE"],
+            )
         )
 
     document = None
 
     if row.get("DOCUMENT"):
 
-        document = DigestDocument.model_validate_json(
-            row["DOCUMENT"],
+        document = (
+            DigestDocument.model_validate_json(
+                row["DOCUMENT"],
+            )
         )
 
     return Digest(
@@ -280,17 +284,7 @@ def _map_digest(
 
         campaign_id=row["CAMPAIGN_ID"],
 
-        request=DigestRequest(
-
-            user_id=row["USER_ID"],
-
-            period_start=row["PERIOD_START"],
-
-            period_end=row["PERIOD_END"],
-
-            capabilities=[],
-
-        ),
+        user_id=row["USER_ID"],
 
         status=row["STATUS"],
 
