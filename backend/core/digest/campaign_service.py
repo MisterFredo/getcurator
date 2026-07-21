@@ -134,24 +134,24 @@ def create_campaign(
     )
 
     # ========================================================
-    # PROFILES
+    # RECIPIENTS
     # ========================================================
 
-    profiles = get_digest_profiles(
+    recipients = get_digest_recipients(
         audience=request.audience,
     )
 
     campaign.digests_count = len(
-        profiles,
+        recipients,
     )
 
-    for profile in profiles:
+    for recipient in recipients:
 
         digest = Digest(
 
             campaign_id=campaign.id,
 
-            user_id=profile.user_id,
+            user_id=recipient.user_id,
 
         )
 
@@ -162,6 +162,8 @@ def create_campaign(
     return update_campaign(
         campaign,
     )
+
+
 # ============================================================
 # GENERATE
 # ============================================================
