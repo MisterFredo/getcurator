@@ -31,32 +31,19 @@ export default function CampaignHeader({
           <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
 
             <span className="capitalize">
-
               Audience: {campaign.audience}
-
             </span>
 
             <span>
-
-              Coverage:{" "}
-              {campaign.period_start}
-              {" "}
-              →
-              {" "}
-              {campaign.period_end}
-
+              {formatCoverage(campaign)}
             </span>
 
             <span>
-
-              Created: {campaign.created_at}
-
+              Created: {formatDate(campaign.created_at)}
             </span>
 
             <span className="capitalize">
-
               Status: {campaign.status}
-
             </span>
 
           </div>
@@ -127,6 +114,65 @@ function StatCard({
 
     </div>
 
+  );
+
+}
+
+/* ========================================================= */
+
+function formatCoverage(
+  campaign: Campaign,
+): string {
+
+  const start =
+    new Date(campaign.period_start);
+
+  const end =
+    new Date(campaign.period_end);
+
+  if (
+    campaign.frequency === "monthly"
+  ) {
+
+    return `Coverage: ${start.toLocaleDateString(
+      "en-US",
+      {
+        month: "long",
+        year: "numeric",
+      },
+    )}`;
+
+  }
+
+  return `Coverage: Week of ${start.toLocaleDateString(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+    },
+  )}–${end.toLocaleDateString(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+    },
+  )}`;
+
+}
+
+/* ========================================================= */
+
+function formatDate(
+  value: string,
+): string {
+
+  return new Date(value).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    },
   );
 
 }
