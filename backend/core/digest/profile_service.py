@@ -4,20 +4,25 @@ from core.digest.models import (
     DigestProfile,
 )
 
+# ============================================================
+# TYPES
+# ============================================================
+
+Audience = Literal[
+    "user",
+    "expert",
+]
 
 # ============================================================
 # PUBLIC
 # ============================================================
 
 def get_digest_profiles(
-    audience: Literal[
-        "user",
-        "expert",
-    ],
+    audience: Audience,
 ) -> list[DigestProfile]:
     """
-    Return every active profile eligible
-    for a digest campaign.
+    Return every active recipient profile
+    for the requested audience.
     """
 
     if audience == "user":
@@ -27,9 +32,8 @@ def get_digest_profiles(
         return _get_expert_profiles()
 
     raise ValueError(
-        f"Unknown audience: {audience}"
+        f"Unknown audience: {audience}",
     )
-
 
 # ============================================================
 # USERS
@@ -42,13 +46,14 @@ def _get_user_profiles(
     """
 
     # TODO
+    #
     # SELECT *
     # FROM RATECARD_USER
-    # WHERE PROFILE_TYPE='USER'
-    #   AND STATUS='ACTIVE'
+    # WHERE PROFILE_TYPE = 'USER'
+    #   AND STATUS = 'ACTIVE'
+    #
 
     raise NotImplementedError
-
 
 # ============================================================
 # EXPERTS
@@ -61,9 +66,11 @@ def _get_expert_profiles(
     """
 
     # TODO
+    #
     # SELECT *
     # FROM RATECARD_USER
-    # WHERE PROFILE_TYPE='EXPERT'
-    #   AND STATUS='ACTIVE'
+    # WHERE PROFILE_TYPE = 'EXPERT'
+    #   AND STATUS = 'ACTIVE'
+    #
 
     raise NotImplementedError
