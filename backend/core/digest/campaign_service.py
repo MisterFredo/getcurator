@@ -19,7 +19,7 @@ from core.digest.models import (
 )
 
 from core.digest.profile_service import (
-    get_digest_profiles,
+    get_digest_recipients,
 )
 
 from core.digest.digest_service import (
