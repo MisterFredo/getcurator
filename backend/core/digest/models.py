@@ -14,7 +14,6 @@ from core.delivery.models import (
     KnowledgeResult,
 )
 
-
 # ============================================================
 # DIGEST REQUEST
 # ============================================================
@@ -86,37 +85,48 @@ class DigestDocument(BaseModel):
 
 
 # ============================================================
-# DIGEST REVIEW
+# DIGEST
 # ============================================================
 
-class DigestReview(BaseModel):
+class Digest(BaseModel):
 
     id: str = Field(
         default_factory=lambda: str(uuid4())
     )
 
+    campaign_id: str
+
     request: DigestRequest
 
-    total_contents: int
+    status: Literal[
+        "pending",
+        "generating",
+        "generated",
+        "sending",
+        "sent",
+        "failed",
+    ] = "pending"
 
-    analyzed_contents: int
+    total_contents: int = 0
 
-    knowledge: KnowledgeResult
+    analyzed_contents: int = 0
+
+    knowledge: KnowledgeResult | None = None
 
     document: DigestDocument | None = None
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(
-            timezone.utc,
-        )
-    )
+    generated_at: datetime | None = None
+
+    sent_at: datetime | None = None
+
+    error: str | None = None
 
 
 # ============================================================
-# DIGEST BATCH
+# CAMPAIGN
 # ============================================================
 
-class DigestBatch(BaseModel):
+class Campaign(BaseModel):
 
     id: str
 
@@ -136,7 +146,6 @@ class DigestBatch(BaseModel):
 
     status: Literal[
         "created",
-        "prepared",
         "generating",
         "generated",
         "sending",
@@ -144,7 +153,7 @@ class DigestBatch(BaseModel):
         "failed",
     ]
 
-    items_count: int = 0
+    digests_count: int = 0
 
     generated_count: int = 0
 
@@ -158,42 +167,10 @@ class DigestBatch(BaseModel):
 
 
 # ============================================================
-# DIGEST BATCH ITEM
+# CAMPAIGN CREATE REQUEST
 # ============================================================
 
-class DigestBatchItem(BaseModel):
-
-    id: str
-
-    batch_id: str
-
-    user_id: str
-
-    review_id: str | None = None
-
-    status: Literal[
-        "pending",
-        "generating",
-        "generated",
-        "sending",
-        "sent",
-        "failed",
-    ]
-
-    selected_contents: int = 0
-
-    generated_at: datetime | None = None
-
-    sent_at: datetime | None = None
-
-    error: str | None = None
-
-
-# ============================================================
-# DIGEST BATCH CREATE REQUEST
-# ============================================================
-
-class DigestBatchCreateRequest(BaseModel):
+class CampaignCreateRequest(BaseModel):
 
     frequency: Literal[
         "weekly",
@@ -228,11 +205,11 @@ class DigestProfile(BaseModel):
 
 
 # ============================================================
-# DIGEST BATCH DETAIL
+# CAMPAIGN DETAIL
 # ============================================================
 
-class DigestBatchDetail(BaseModel):
+class CampaignDetail(BaseModel):
 
-    batch: DigestBatch
+    campaign: Campaign
 
-    items: list[DigestBatchItem]
+    digests: list[Digest]
