@@ -1,9 +1,4 @@
 from typing import Literal
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
 
 from core.digest.models import (
     DigestProfile,
@@ -15,30 +10,21 @@ from core.digest.models import (
 # ============================================================
 
 def get_digest_profiles(
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ],
     audience: Literal[
         "user",
         "expert",
     ],
 ) -> list[DigestProfile]:
     """
-    Return every profile eligible for a DigestBatch.
+    Return every active profile eligible
+    for a digest campaign.
     """
 
     if audience == "user":
+        return _get_user_profiles()
 
-        return _get_user_profiles(
-            frequency=frequency,
-        )
-
-    elif audience == "expert":
-
-        return _get_expert_profiles(
-            frequency=frequency,
-        )
+    if audience == "expert":
+        return _get_expert_profiles()
 
     raise ValueError(
         f"Unknown audience: {audience}"
@@ -50,19 +36,16 @@ def get_digest_profiles(
 # ============================================================
 
 def _get_user_profiles(
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ],
 ) -> list[DigestProfile]:
     """
     Return every active USER profile.
     """
 
     # TODO
-    # Query RATECARD_USER
+    # SELECT *
+    # FROM RATECARD_USER
     # WHERE PROFILE_TYPE='USER'
-    # AND STATUS='ACTIVE'
+    #   AND STATUS='ACTIVE'
 
     raise NotImplementedError
 
@@ -72,18 +55,15 @@ def _get_user_profiles(
 # ============================================================
 
 def _get_expert_profiles(
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ],
 ) -> list[DigestProfile]:
     """
     Return every active EXPERT profile.
     """
 
     # TODO
-    # Query RATECARD_USER
+    # SELECT *
+    # FROM RATECARD_USER
     # WHERE PROFILE_TYPE='EXPERT'
-    # AND STATUS='ACTIVE'
+    #   AND STATUS='ACTIVE'
 
     raise NotImplementedError
