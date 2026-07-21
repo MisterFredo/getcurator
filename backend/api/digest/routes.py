@@ -1,83 +1,53 @@
+# backend/api/digest/routes.py
+
 from fastapi import APIRouter
 
 from core.digest.models import (
-    DigestBatchCreateRequest,
+    CampaignCreateRequest,
 )
 
-from core.digest.batch_service import (
-    create_batch,
-    prepare_batch,
-    generate_batch,
-    send_batch,
-    get_batch,
-    list_batches,
+from core.digest.campaign_service import (
+    create_campaign,
+    list_campaigns,
+    get_campaign,
+    generate_campaign,
+    send_campaign,
 )
 
-from core.digest.review_service import (
-    generate_review,
-    get_review,
-    list_reviews,
-)
-
-from core.digest.repository import (
-    fetch_batch,
+from core.digest.digest_service import (
+    get_digest,
 )
 
 router = APIRouter()
 
 
 # ============================================================
-# BATCHES
+# CAMPAIGNS
 # ============================================================
 
-@router.post("/batches")
-def create_batch_route(
-    request: DigestBatchCreateRequest,
+@router.post("/campaigns")
+def create_campaign_route(
+    request: CampaignCreateRequest,
 ):
 
-    return create_batch(
-        frequency=request.frequency,
-        audience=request.audience,
+    return create_campaign(
+        request,
     )
 
 
-@router.get("/batches")
-def list_batches_route():
+@router.get("/campaigns")
+def list_campaigns_route():
 
-    return list_batches()
+    return list_campaigns()
 
 
-@router.get("/batches/{batch_id}")
-def get_batch_route(
-    batch_id: str,
+@router.get("/campaigns/{campaign_id}")
+def get_campaign_route(
+    campaign_id: str,
 ):
 
-    return get_batch(
-        batch_id=batch_id,
-    )
-
-
-# ============================================================
-# PREPARE
-# ============================================================
-
-@router.post("/batches/{batch_id}/prepare")
-def prepare_batch_route(
-    batch_id: str,
-):
-
-    batch = fetch_batch(
-        batch_id=batch_id,
-    )
-
-    if batch is None:
-
-        raise ValueError(
-            f"Unknown batch: {batch_id}"
-        )
-
-    return prepare_batch(
-        batch=batch,
+    return get_campaign(
+        campaign_id,
     )
 
 
@@ -85,23 +55,13 @@ def prepare_batch_route(
 # GENERATE
 # ============================================================
 
-@router.post("/batches/{batch_id}/generate")
-def generate_batch_route(
-    batch_id: str,
+@router.post("/campaigns/{campaign_id}/generate")
+def generate_campaign_route(
+    campaign_id: str,
 ):
 
-    batch = fetch_batch(
-        batch_id=batch_id,
-    )
-
-    if batch is None:
-
-        raise ValueError(
-            f"Unknown batch: {batch_id}"
-        )
-
-    return generate_batch(
-        batch=batch,
+    return generate_campaign(
+        campaign_id,
     )
 
 
@@ -109,35 +69,25 @@ def generate_batch_route(
 # SEND
 # ============================================================
 
-@router.post("/batches/{batch_id}/send")
-def send_batch_route(
-    batch_id: str,
+@router.post("/campaigns/{campaign_id}/send")
+def send_campaign_route(
+    campaign_id: str,
 ):
 
-    batch = fetch_batch(
-        batch_id=batch_id,
-    )
-
-    if batch is None:
-
-        raise ValueError(
-            f"Unknown batch: {batch_id}"
-        )
-
-    return send_batch(
-        batch=batch,
+    return send_campaign(
+        campaign_id,
     )
 
 
 # ============================================================
-# REVIEWS
+# DIGESTS
 # ============================================================
 
-@router.get("/reviews/{review_id}")
-def get_review_route(
-    review_id: str,
+@router.get("/digests/{digest_id}")
+def get_digest_route(
+    digest_id: str,
 ):
 
-    return get_review(
-        review_id=review_id,
+    return get_digest(
+        digest_id,
     )
