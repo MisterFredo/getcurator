@@ -120,43 +120,7 @@ export default function DigestCockpit() {
 
   }
 
-  /* =======================================================
-     PREPARE
-  ======================================================= */
-
-  async function prepareBatch() {
-
-    if (!selectedBatch) {
-
-      alert("Select a batch first.");
-
-      return;
-
-    }
-
-    try {
-
-      await api.post(
-        `/digest/batches/${selectedBatch.id}/prepare`,
-        {}
-      );
-
-      await loadBatches();
-
-      await openBatch(
-        selectedBatch
-      );
-
-    } catch (e) {
-
-      console.error(e);
-
-      alert("Unable to prepare batch.");
-
-    }
-
-  }
-
+  
   /* =======================================================
      GENERATE
   ======================================================= */
@@ -298,9 +262,9 @@ export default function DigestCockpit() {
 
       <CampaignPanel
 
-        onCreate={createBatch}
+        campaign={selectedBatch}
 
-        onPrepare={prepareBatch}
+        onNewCampaign={createBatch}
 
         onGenerate={generateBatch}
 
