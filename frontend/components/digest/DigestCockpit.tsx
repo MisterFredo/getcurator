@@ -9,11 +9,8 @@ import type {
   DigestBatchItem,
 } from "@/types/digest";
 
-
-
-import CampaignTable from "./CampaignTable";
 import CampaignPanel from "./CampaignPanel";
-
+import CampaignTable from "./CampaignTable";
 import RecipientTable from "./RecipientTable";
 import DigestPreview from "./DigestPreview";
 
@@ -22,23 +19,23 @@ import DigestPreview from "./DigestPreview";
 export default function DigestCockpit() {
 
   const [
-    batches,
-    setBatches,
+    campaigns,
+    setCampaigns,
   ] = useState<DigestBatch[]>([]);
 
   const [
-    selectedBatch,
-    setSelectedBatch,
+    selectedCampaign,
+    setSelectedCampaign,
   ] = useState<DigestBatch | null>(null);
 
   const [
-    items,
-    setItems,
+    recipients,
+    setRecipients,
   ] = useState<DigestBatchItem[]>([]);
 
   const [
-    selectedItem,
-    setSelectedItem,
+    selectedRecipient,
+    setSelectedRecipient,
   ] = useState<DigestBatchItem | null>(null);
 
   const [
@@ -52,16 +49,16 @@ export default function DigestCockpit() {
   ] = useState("");
 
   /* =======================================================
-     LOAD BATCHES
+     LOAD CAMPAIGNS
   ======================================================= */
 
   useEffect(() => {
 
-    loadBatches();
+    loadCampaigns();
 
   }, []);
 
-  async function loadBatches() {
+  async function loadCampaigns() {
 
     try {
 
@@ -72,7 +69,7 @@ export default function DigestCockpit() {
           "/digest/batches"
         );
 
-      setBatches(
+      setCampaigns(
         res
       );
 
@@ -81,7 +78,7 @@ export default function DigestCockpit() {
       console.error(e);
 
       setError(
-        "Unable to load batches."
+        "Unable to load campaigns."
       );
 
     } finally {
@@ -93,10 +90,10 @@ export default function DigestCockpit() {
   }
 
   /* =======================================================
-     CREATE
+     NEW CAMPAIGN
   ======================================================= */
 
-  async function createBatch() {
+  async function createCampaign() {
 
     try {
 
@@ -108,28 +105,31 @@ export default function DigestCockpit() {
         }
       );
 
-      await loadBatches();
+      await loadCampaigns();
 
     } catch (e) {
 
       console.error(e);
 
-      alert("Unable to create batch.");
+      alert(
+        "Unable to create campaign."
+      );
 
     }
 
   }
 
-  
   /* =======================================================
      GENERATE
   ======================================================= */
 
-  async function generateBatch() {
+  async function generateCampaign() {
 
-    if (!selectedBatch) {
+    if (!selectedCampaign) {
 
-      alert("Select a batch first.");
+      alert(
+        "Select a campaign first."
+      );
 
       return;
 
@@ -138,21 +138,26 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        `/digest/batches/${selectedBatch.id}/generate`,
-        {}
+
+        `/digest/batches/${selectedCampaign.id}/generate`,
+
+        {},
+
       );
 
-      await loadBatches();
+      await loadCampaigns();
 
-      await openBatch(
-        selectedBatch
+      await openCampaign(
+        selectedCampaign,
       );
 
     } catch (e) {
 
       console.error(e);
 
-      alert("Unable to generate batch.");
+      alert(
+        "Unable to generate digests."
+      );
 
     }
 
@@ -162,11 +167,13 @@ export default function DigestCockpit() {
      SEND
   ======================================================= */
 
-  async function sendBatch() {
+  async function sendCampaign() {
 
-    if (!selectedBatch) {
+    if (!selectedCampaign) {
 
-      alert("Select a batch first.");
+      alert(
+        "Select a campaign first."
+      );
 
       return;
 
@@ -175,50 +182,55 @@ export default function DigestCockpit() {
     try {
 
       await api.post(
-        `/digest/batches/${selectedBatch.id}/send`,
-        {}
+
+        `/digest/batches/${selectedCampaign.id}/send`,
+
+        {},
+
       );
 
-      await loadBatches();
+      await loadCampaigns();
 
-      await openBatch(
-        selectedBatch
+      await openCampaign(
+        selectedCampaign,
       );
 
     } catch (e) {
 
       console.error(e);
 
-      alert("Unable to send batch.");
+      alert(
+        "Unable to send digests."
+      );
 
     }
 
   }
 
   /* =======================================================
-     LOAD BATCH
+     OPEN CAMPAIGN
   ======================================================= */
 
-  async function openBatch(
-    batch: DigestBatch,
+  async function openCampaign(
+    campaign: DigestBatch,
   ) {
 
     try {
 
       const res =
         await api.get(
-          `/digest/batches/${batch.id}`
+          `/digest/batches/${campaign.id}`
         );
 
-      setSelectedBatch(
+      setSelectedCampaign(
         res.batch
       );
 
-      setItems(
+      setRecipients(
         res.items
       );
 
-      setSelectedItem(
+      setSelectedRecipient(
         null
       );
 
@@ -231,22 +243,22 @@ export default function DigestCockpit() {
   }
 
   /* =======================================================
-     ITEM
+     OPEN RECIPIENT
   ======================================================= */
 
-  function openItem(
-    item: DigestBatchItem,
+  function openRecipient(
+    recipient: DigestBatchItem,
   ) {
 
-    setSelectedItem(
-      item
+    setSelectedRecipient(
+      recipient
     );
 
   }
 
-  function closeReview() {
+  function closePreview() {
 
-    setSelectedItem(
+    setSelectedRecipient(
       null
     );
 
@@ -262,51 +274,67 @@ export default function DigestCockpit() {
 
       <CampaignPanel
 
-        campaign={selectedBatch}
+        campaign={selectedCampaign}
 
-        onNewCampaign={createBatch}
+        onNewCampaign={
+          createCampaign
+        }
 
-        onGenerate={generateBatch}
+        onGenerate={
+          generateCampaign
+        }
 
-        onSend={sendBatch}
+        onSend={
+          sendCampaign
+        }
 
       />
 
       <CampaignTable
 
-        campaigns={batches}
+        campaigns={campaigns}
 
         loading={loading}
 
-        selectedCampaign={selectedBatch}
+        selectedCampaign={
+          selectedCampaign
+        }
 
-        onSelect={openBatch}
+        onSelect={
+          openCampaign
+        }
 
       />
 
       <RecipientTable
 
-        recipients={items}
+        recipients={recipients}
 
-        selectedRecipient={selectedItem}
+        selectedRecipient={
+          selectedRecipient
+        }
 
-        onSelect={openItem}
+        onSelect={
+          openRecipient
+        }
 
       />
 
       <DigestPreview
 
         reviewId={
-          selectedItem?.review_id ?? null
+          selectedRecipient?.review_id ?? null
         }
 
-        onClose={closeReview}
+        onClose={
+          closePreview
+        }
 
       />
 
       {error && (
 
-        <div className="text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
 
           {error}
 
