@@ -90,7 +90,9 @@ class DigestDocument(BaseModel):
 
 class Digest(BaseModel):
 
-    id: str
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+    )
 
     campaign_id: str
 
@@ -103,7 +105,7 @@ class Digest(BaseModel):
         "sending",
         "completed",
         "failed",
-    ]
+    ] = "created"
 
     total_contents: int = 0
 
