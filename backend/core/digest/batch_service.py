@@ -104,7 +104,11 @@ def create_batch(
 
     )
 
-    return insert_batch(
+    batch = insert_batch(
+        batch,
+    )
+
+    return prepare_batch(
         batch,
     )
 
