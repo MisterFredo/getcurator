@@ -3,7 +3,7 @@
 "use client";
 
 import DigestCockpit
-  from "@/components/digest/cockpit/DigestCockpit";
+  from "@/components/digest/DigestCockpit";
 
 /* ========================================================= */
 
