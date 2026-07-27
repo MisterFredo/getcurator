@@ -15,7 +15,6 @@ from core.digest.models import (
     CampaignDetail,
     CampaignCreateRequest,
     Digest,
-    DigestRequest,
 )
 
 from core.digest.profile_service import (
@@ -35,12 +34,6 @@ from core.digest.repository import (
     update_digest,
     fetch_digests,
 )
-
-from core.expertise.constants import (
-    OUTPUT_SUMMARY,
-    OUTPUT_IMPLICATIONS,
-)
-
 
 # ============================================================
 # CREATE
@@ -187,6 +180,10 @@ def create_campaign(
 # GENERATE
 # ============================================================
 
+# ============================================================
+# GENERATE
+# ============================================================
+
 def generate_campaign(
     campaign_id: str,
 ) -> Campaign:
@@ -200,6 +197,10 @@ def generate_campaign(
         raise ValueError(
             campaign_id,
         )
+
+    # ========================================================
+    # START CAMPAIGN
+    # ========================================================
 
     campaign.status = "generating"
 
@@ -215,33 +216,25 @@ def generate_campaign(
         campaign.id,
     )
 
+    # ========================================================
+    # GENERATE DIGESTS
+    # ========================================================
+
     for digest in digests:
 
         try:
 
-            request = DigestRequest(
+            digest.status = "generating"
 
-                user_id=digest.user_id,
-
-                period_start=campaign.period_start,
-
-                period_end=campaign.period_end,
-
-                capabilities=[
-
-                    OUTPUT_SUMMARY,
-
-                    OUTPUT_IMPLICATIONS,
-
-                ],
-
+            update_digest(
+                digest,
             )
 
             generate_digest(
 
-                digest,
+                digest=digest,
 
-                request,
+                campaign=campaign,
 
             )
 
@@ -259,11 +252,21 @@ def generate_campaign(
 
             failed += 1
 
+    # ========================================================
+    # UPDATE CAMPAIGN
+    # ========================================================
+
     campaign.generated_count = generated
 
     campaign.failed_count = failed
 
-    campaign.status = "generated"
+    if generated == 0:
+
+        campaign.status = "failed"
+
+    else:
+
+        campaign.status = "generated"
 
     return update_campaign(
         campaign,
