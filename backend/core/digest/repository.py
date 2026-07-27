@@ -1,5 +1,3 @@
-import json
-
 from google.cloud import bigquery
 
 from config import (
@@ -16,6 +14,14 @@ from utils.bigquery_utils import (
 from core.digest.models import (
     Campaign,
     Digest,
+)
+
+from core.delivery.models import (
+    KnowledgeResult,
+)
+
+from core.digest.models import (
+    DigestDocument,
 )
 
 # ============================================================
