@@ -5,14 +5,12 @@ from datetime import (
     timezone,
 )
 
-
 from core.digest.models import (
+    Campaign,
     Digest,
-    DigestRequest,
 )
 
 from core.digest.repository import (
-    insert_digest,
     update_digest,
     fetch_digest,
 )
@@ -33,6 +31,22 @@ from core.delivery.service import (
     deliver_knowledge,
 )
 
+from core.delivery.outputs import (
+    OUTPUT_SUMMARY,
+    OUTPUT_IMPLICATIONS,
+)
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+DIGEST_CAPABILITIES = [
+    OUTPUT_SUMMARY,
+    OUTPUT_IMPLICATIONS,
+]
+
+DEFAULT_DIGEST_LIMIT = 20
+
 
 # ============================================================
 # GENERATE
@@ -40,7 +54,7 @@ from core.delivery.service import (
 
 def generate_digest(
     digest: Digest,
-    request: DigestRequest,
+    campaign: Campaign,
 ) -> Digest:
     """
     Generate a personalized Digest.
@@ -52,13 +66,13 @@ def generate_digest(
 
     expertise = generate_expertise_from_profile(
 
-        user_id=request.user_id,
+        user_id=digest.user_id,
 
-        period_start=request.period_start.isoformat(),
+        period_start=campaign.period_start.isoformat(),
 
-        period_end=request.period_end.isoformat(),
+        period_end=campaign.period_end.isoformat(),
 
-        limit=request.limit,
+        limit=DEFAULT_DIGEST_LIMIT,
 
     )
 
@@ -70,9 +84,9 @@ def generate_digest(
 
         KnowledgeRequest(
 
-            user_id=request.user_id,
+            user_id=digest.user_id,
 
-            capabilities=request.capabilities,
+            capabilities=DIGEST_CAPABILITIES,
 
             expertise=expertise,
 
@@ -81,7 +95,7 @@ def generate_digest(
     )
 
     # ========================================================
-    # DIGEST
+    # BUILD DOCUMENT
     # ========================================================
 
     digest.total_contents = expertise.count
@@ -100,9 +114,15 @@ def generate_digest(
 
     )
 
+    digest.status = "generated"
+
     digest.generated_at = datetime.now(
         timezone.utc,
     )
+
+    # ========================================================
+    # PERSIST
+    # ========================================================
 
     return update_digest(
         digest,
@@ -117,7 +137,7 @@ def get_digest(
     digest_id: str,
 ) -> Digest:
     """
-    Return a generated Digest.
+    Return a Digest.
     """
 
     digest = fetch_digest(
