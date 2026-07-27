@@ -31,7 +31,7 @@ from core.delivery.service import (
     deliver_knowledge,
 )
 
-from core.delivery.outputs import (
+from core.expertise.constants import (
     OUTPUT_SUMMARY,
     OUTPUT_IMPLICATIONS,
 )
