@@ -388,6 +388,19 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
         query_parameters=params,
     )
 
+    print("=" * 80)
+    print(sql)
+
+    for p in params:
+        print(
+            p.name,
+            type(p).__name__,
+            getattr(p, "type_", None),
+            getattr(p, "value", None),
+        )
+
+    print("=" * 80)
+
     client.query(
         sql,
         job_config=job_config,
