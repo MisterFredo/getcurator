@@ -13,6 +13,7 @@ from uuid import uuid4
 from core.digest.models import (
     Campaign,
     CampaignDetail,
+    CampaignDigest,
     CampaignCreateRequest,
     Digest,
 )
@@ -176,9 +177,6 @@ def create_campaign(
 
     return campaign
 
-# ============================================================
-# GENERATE
-# ============================================================
 
 # ============================================================
 # GENERATE
@@ -368,23 +366,36 @@ def get_campaign(
     # DIGESTS
     # ========================================================
 
-    digests = fetch_digests(
-        campaign.id,
-    )
+    digests = []
 
-    for digest in digests:
+    for digest in fetch_digests(
+        campaign.id,
+    ):
 
         user = users.get(
             digest.user_id,
         )
 
-        if user:
+        digests.append(
 
-            digest.user_name = (
-                user.get("DISPLAY_NAME")
-                or user.get("NAME")
-                or user.get("EMAIL")
+            CampaignDigest(
+
+                **digest.model_dump(),
+
+                user_name=(
+                    user.get("DISPLAY_NAME")
+                    or user.get("NAME")
+                    if user else None
+                ),
+
+                user_email=(
+                    user.get("EMAIL")
+                    if user else None
+                ),
+
             )
+
+        )
 
     # ========================================================
     # RESPONSE
