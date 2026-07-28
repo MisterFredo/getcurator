@@ -170,6 +170,27 @@ class CampaignCreateRequest(BaseModel):
         "expert",
     ]
 
+# ============================================================
+# CAMPAIGN DIGEST
+# ============================================================
+
+class CampaignDigest(Digest):
+
+    user_name: str | None = None
+
+    user_email: str | None = None
+
+
+# ============================================================
+# CAMPAIGN DETAIL
+# ============================================================
+
+class CampaignDetail(BaseModel):
+
+    campaign: Campaign
+
+    digests: list[CampaignDigest]
+
 
 # ============================================================
 # DIGEST PROFILE
