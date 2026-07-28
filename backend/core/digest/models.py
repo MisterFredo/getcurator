@@ -14,22 +14,6 @@ from core.delivery.models import (
     KnowledgeResult,
 )
 
-# ============================================================
-# DIGEST REQUEST
-# ============================================================
-
-class DigestRequest(BaseModel):
-
-    user_id: str
-
-    period_start: datetime
-
-    period_end: datetime
-
-    capabilities: list[str]
-
-    limit: int = 20
-
 
 # ============================================================
 # DIGEST CARD
