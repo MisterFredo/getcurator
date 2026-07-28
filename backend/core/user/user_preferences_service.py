@@ -43,78 +43,28 @@ TABLE_SOLUTION = (
 # ============================================================
 
 def get_user_preferences(
-    user_id: str,
-) -> Dict:
+    user_id: str
+) -> List[Dict]:
 
     query = f"""
     SELECT
-        p.TYPE,
-        p.VALUE_ID,
+        TYPE,
+        VALUE_ID
 
-        c.NAME AS COMPANY_NAME,
-        t.LABEL AS TOPIC_NAME,
-        s.NAME AS SOLUTION_NAME
+    FROM `{TABLE_USER_PREFERENCES}`
 
-    FROM `{TABLE_USER_PREFERENCES}` p
-
-    LEFT JOIN `{TABLE_COMPANY}` c
-        ON p.TYPE = 'COMPANY'
-       AND p.VALUE_ID = c.ID_COMPANY
-
-    LEFT JOIN `{TABLE_TOPIC}` t
-        ON p.TYPE = 'TOPIC'
-       AND p.VALUE_ID = t.ID_TOPIC
-
-    LEFT JOIN `{TABLE_SOLUTION}` s
-        ON p.TYPE = 'SOLUTION'
-       AND p.VALUE_ID = s.ID_SOLUTION
-
-    WHERE p.ID_USER = @user_id
-
-    ORDER BY p.TYPE
+    WHERE ID_USER = @user_id
     """
 
-    rows = (
+    return (
         query_bq(
             query,
             {
-                "user_id": user_id,
-            },
+                "user_id": user_id
+            }
         )
         or []
     )
-
-    companies = []
-    topics = []
-    solutions = []
-
-    for row in rows:
-
-        preference = {
-            "id": row["VALUE_ID"],
-            "label": None,
-        }
-
-        if row["TYPE"] == "COMPANY":
-
-            preference["label"] = row["COMPANY_NAME"]
-            companies.append(preference)
-
-        elif row["TYPE"] == "TOPIC":
-
-            preference["label"] = row["TOPIC_NAME"]
-            topics.append(preference)
-
-        elif row["TYPE"] == "SOLUTION":
-
-            preference["label"] = row["SOLUTION_NAME"]
-            solutions.append(preference)
-
-    return {
-        "companies": companies,
-        "topics": topics,
-        "solutions": solutions,
-    }
 
 # ============================================================
 # ADD PREFERENCE
