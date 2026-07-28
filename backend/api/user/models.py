@@ -56,6 +56,15 @@ class CreateUserPayload(BaseModel):
             return "WEEKLY"
         return v
 
+class UserPreferencesPayload(BaseModel):
+    user_id: str
+
+    companies: list[str] = []
+
+    solutions: list[str] = []
+
+    topics: list[str] = []
+
 
 # =========================================================
 # LOGIN
