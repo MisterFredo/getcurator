@@ -8,6 +8,7 @@ from api.user.models import (
     UpdateUserPayload,
     UserKeywordPayload,
     UserProfilePayload,
+    UserPreferencesPayload,
 )
 
 from core.user.user_service import (
@@ -27,6 +28,7 @@ from core.user.user_preferences_service import (
     add_user_preference,
     remove_user_preference,
     get_user_preferences_detailed,
+    set_user_preferences,
 )
 
 from core.user.user_keyword_service import (
@@ -131,6 +133,26 @@ def get_preferences_by_user(
 
     return {
         "preferences": prefs
+    }
+
+# =========================================================
+# USER PREFERENCES (ADMIN UPDATE)
+# =========================================================
+
+@router.post("/preferences/update")
+def update_preferences(
+    payload: UserPreferencesPayload,
+):
+
+    set_user_preferences(
+        user_id=payload.user_id,
+        companies=payload.companies,
+        solutions=payload.solutions,
+        topics=payload.topics,
+    )
+
+    return {
+        "status": "ok",
     }
 
 
