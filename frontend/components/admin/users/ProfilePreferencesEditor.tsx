@@ -403,8 +403,7 @@ export default function ProfilePreferencesEditor({
 
           onClick={save}
 
-          disabled={saving}
-
+          disabled={loading || saving}
           className={`
             px-4
             py-2
