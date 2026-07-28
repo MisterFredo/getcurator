@@ -141,13 +141,13 @@ def render_digest(
 
                 excerpt=content.excerpt,
 
-                url=content.curator_link,
+                url=content.url,
 
                 source_title=content.source_title,
 
                 published_at=content.published_at,
 
-                company_logo=content.primary_logo,
+                company_logo=content.primary_company_logo,
 
             )
 
