@@ -110,10 +110,11 @@ def generate_digest(
 
         knowledge=knowledge,
 
-        expertise=expertise,
+        period_start=campaign.period_start,
+
+        period_end=campaign.period_end,
 
     )
-
     digest.status = "generated"
 
     digest.generated_at = datetime.now(
