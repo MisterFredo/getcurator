@@ -196,6 +196,12 @@ def insert_bq(table: str, rows: list[dict]):
 # ---------------------------------------------------------
 # Mise à jour BigQuery (UPDATE SQL CANONIQUE)
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# Mise à jour BigQuery (UPDATE SQL CANONIQUE)
+# ---------------------------------------------------------
+import json
+
+
 def update_bq(table: str, fields: dict, where: dict) -> bool:
     """
     Exécute un UPDATE BigQuery sécurisé avec paramètres typés.
@@ -221,12 +227,22 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
         set_clause.append(f"{k} = @{k}")
 
         # 🔥 ARRAY<STRING>
-        if isinstance(v, list):
+        if isinstance(v, list) and not isinstance(v, dict):
             params.append(
                 bigquery.ArrayQueryParameter(
                     k,
                     "STRING",
-                    v
+                    v,
+                )
+            )
+
+        # 🔥 JSON
+        elif isinstance(v, dict):
+            params.append(
+                bigquery.ScalarQueryParameter(
+                    k,
+                    "JSON",
+                    json.dumps(v),
                 )
             )
 
@@ -236,7 +252,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     k,
                     "TIMESTAMP",
-                    v
+                    v,
                 )
             )
 
@@ -246,7 +262,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     k,
                     "DATE",
-                    v
+                    v,
                 )
             )
 
@@ -256,7 +272,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     k,
                     "BOOL",
-                    v
+                    v,
                 )
             )
 
@@ -266,7 +282,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     k,
                     "INT64",
-                    v
+                    v,
                 )
             )
 
@@ -276,17 +292,17 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     k,
                     "FLOAT64",
-                    v
+                    v,
                 )
             )
 
-        # 🔥 STRING / fallback
+        # 🔥 STRING / NULL
         else:
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
                     "STRING",
-                    v
+                    v,
                 )
             )
 
@@ -296,14 +312,17 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     for k, v in where.items():
 
         where_key = f"where_{k}"
-        where_clause.append(f"{k} = @{where_key}")
+
+        where_clause.append(
+            f"{k} = @{where_key}"
+        )
 
         if isinstance(v, datetime):
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "TIMESTAMP",
-                    v
+                    v,
                 )
             )
 
@@ -312,7 +331,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "DATE",
-                    v
+                    v,
                 )
             )
 
@@ -321,7 +340,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "BOOL",
-                    v
+                    v,
                 )
             )
 
@@ -330,7 +349,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "INT64",
-                    v
+                    v,
                 )
             )
 
@@ -339,7 +358,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "FLOAT64",
-                    v
+                    v,
                 )
             )
 
@@ -348,7 +367,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 bigquery.ScalarQueryParameter(
                     where_key,
                     "STRING",
-                    v
+                    v,
                 )
             )
 
@@ -362,9 +381,12 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     """
 
     job_config = bigquery.QueryJobConfig(
-        query_parameters=params
+        query_parameters=params,
     )
 
-    client.query(sql, job_config=job_config).result()
+    client.query(
+        sql,
+        job_config=job_config,
+    ).result()
 
     return True
