@@ -183,9 +183,12 @@ export default function ProfilePreferencesEditor({
            USER PREFERENCES
         =============================================== */
 
-        const preferences:
-          PreferencesResponse =
-          preferenceRes.preferences;
+        const preferences: PreferencesResponse =
+          preferenceRes?.preferences ?? {
+            companies: [],
+            topics: [],
+            solutions: [],
+          };
 
         setSelectedCompanies(
           preferences.companies || []
