@@ -34,8 +34,6 @@ export default function CreateCampaignDialog({
   ] = useState<CampaignCreateRequest>({
     frequency: "weekly",
     audience: "user",
-    period_start: "",
-    period_end: "",
   });
 
   async function handleCreate() {
@@ -157,45 +155,17 @@ export default function CreateCampaignDialog({
 
           <label className="block text-sm mb-1">
 
-            Period Start
+            Period
 
           </label>
 
-          <input
-            type="date"
-            value={form.period_start}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                period_start:
-                  e.target.value,
-              })
-            }
-            className="w-full rounded border px-3 py-2"
-          />
+          <div className="rounded border bg-gray-50 px-3 py-2 text-sm text-gray-600">
 
-        </div>
+            {form.frequency === "weekly"
+              ? "Previous complete week"
+              : "Previous complete month"}
 
-        <div>
-
-          <label className="block text-sm mb-1">
-
-            Period End
-
-          </label>
-
-          <input
-            type="date"
-            value={form.period_end}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                period_end:
-                  e.target.value,
-              })
-            }
-            className="w-full rounded border px-3 py-2"
-          />
+          </div>
 
         </div>
 
@@ -211,9 +181,11 @@ export default function CreateCampaignDialog({
           <button
             disabled={loading}
             onClick={handleCreate}
-            className="rounded bg-blue-600 px-4 py-2 text-white"
+            className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
           >
-            Create
+            {loading
+              ? "Creating..."
+              : "Create"}
           </button>
 
         </div>
