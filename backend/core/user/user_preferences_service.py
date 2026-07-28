@@ -66,6 +66,85 @@ def get_user_preferences(
         or []
     )
 
+def get_user_preferences_for_admin(
+    user_id: str,
+) -> Dict:
+
+    query = f"""
+    SELECT
+        p.TYPE,
+        p.VALUE_ID,
+
+        c.NAME AS COMPANY_NAME,
+        t.LABEL AS TOPIC_NAME,
+        s.NAME AS SOLUTION_NAME
+
+    FROM `{TABLE_USER_PREFERENCES}` p
+
+    LEFT JOIN `{TABLE_COMPANY}` c
+        ON p.TYPE = 'COMPANY'
+       AND p.VALUE_ID = c.ID_COMPANY
+
+    LEFT JOIN `{TABLE_TOPIC}` t
+        ON p.TYPE = 'TOPIC'
+       AND p.VALUE_ID = t.ID_TOPIC
+
+    LEFT JOIN `{TABLE_SOLUTION}` s
+        ON p.TYPE = 'SOLUTION'
+       AND p.VALUE_ID = s.ID_SOLUTION
+
+    WHERE p.ID_USER = @user_id
+
+    ORDER BY p.TYPE
+    """
+
+    rows = (
+        query_bq(
+            query,
+            {
+                "user_id": user_id,
+            },
+        )
+        or []
+    )
+
+    result = {
+        "companies": [],
+        "topics": [],
+        "solutions": [],
+    }
+
+    for row in rows:
+
+        if row["TYPE"] == "COMPANY":
+
+            result["companies"].append(
+                {
+                    "id": row["VALUE_ID"],
+                    "label": row["COMPANY_NAME"],
+                }
+            )
+
+        elif row["TYPE"] == "TOPIC":
+
+            result["topics"].append(
+                {
+                    "id": row["VALUE_ID"],
+                    "label": row["TOPIC_NAME"],
+                }
+            )
+
+        elif row["TYPE"] == "SOLUTION":
+
+            result["solutions"].append(
+                {
+                    "id": row["VALUE_ID"],
+                    "label": row["SOLUTION_NAME"],
+                }
+            )
+
+    return result
+
 # ============================================================
 # ADD PREFERENCE
 # ============================================================
