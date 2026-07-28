@@ -269,7 +269,7 @@ def _map_digest(
     if row.get("KNOWLEDGE"):
 
         knowledge = (
-            KnowledgeResult.model_validate_json(
+            KnowledgeResult.model_validate(
                 row["KNOWLEDGE"],
             )
         )
@@ -279,7 +279,7 @@ def _map_digest(
     if row.get("DOCUMENT"):
 
         document = (
-            DigestDocument.model_validate_json(
+            DigestDocument.model_validate(
                 row["DOCUMENT"],
             )
         )
