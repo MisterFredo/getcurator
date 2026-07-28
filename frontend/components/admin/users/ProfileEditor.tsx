@@ -9,7 +9,7 @@ import ProfileIdentityCard from "./ProfileIdentityCard";
 import ProfileAccountCard from "./ProfileAccountCard";
 import ProfileSecurityCard from "./ProfileSecurityCard";
 import ProfileExpertsCard from "./ProfileExpertsCard";
-import ProfilePreferencesViewer from "./ProfilePreferencesViewer";
+import ProfilePreferencesEditor from "./ProfilePreferencesEditor";
 import ProfileKeywordsEditor from "./ProfileKeywordsEditor";
 import ProfileGeographyEditor from "./ProfileGeographyEditor";
 import ProfileAIEditor from "./ProfileAIEditor";
@@ -289,7 +289,7 @@ export default function ProfileEditor({
               />
             )}
 
-            <ProfilePreferencesViewer
+            <ProfilePreferencesEditor
               userId={userId}
             />
 
