@@ -227,6 +227,8 @@ export default function ProfilePreferencesEditor({
 
   async function save() {
 
+    setSaved(false);
+
     setSaving(true);
 
     try {
@@ -255,10 +257,11 @@ export default function ProfilePreferencesEditor({
 
       setSaved(true);
 
-      setTimeout(
-        () => setSaved(false),
-        2000
-      );
+      setTimeout(() => {
+
+        setSaved(false);
+
+      }, 2000);
 
     } catch (e) {
 
