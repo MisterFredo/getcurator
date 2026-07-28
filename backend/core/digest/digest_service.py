@@ -31,9 +31,9 @@ from core.delivery.service import (
     deliver_knowledge,
 )
 
-from core.expertise.constants import (
-    OUTPUT_SUMMARY,
-    OUTPUT_IMPLICATIONS,
+from core.expertise.capabilities import (
+    CAPABILITY_KEY_POINTS,
+    CAPABILITY_IMPLICATIONS,
 )
 
 # ============================================================
@@ -41,8 +41,8 @@ from core.expertise.constants import (
 # ============================================================
 
 DIGEST_CAPABILITIES = [
-    OUTPUT_SUMMARY,
-    OUTPUT_IMPLICATIONS,
+    CAPABILITY_KEY_POINTS,
+    CAPABILITY_IMPLICATIONS,
 ]
 
 DEFAULT_DIGEST_LIMIT = 20
