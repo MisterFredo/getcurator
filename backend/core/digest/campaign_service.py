@@ -36,6 +36,10 @@ from core.digest.repository import (
     fetch_digests,
 )
 
+from core.user.user_service import (
+    list_users,
+)
+
 # ============================================================
 # CREATE
 # ============================================================
