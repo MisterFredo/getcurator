@@ -324,3 +324,68 @@ def get_user_preferences_detailed(
         ]
 
     return result
+
+
+# ============================================================
+# REPLACE USER PREFERENCES
+# ============================================================
+
+def set_user_preferences(
+    user_id: str,
+    companies: List[str],
+    solutions: List[str],
+    topics: List[str],
+):
+
+    if not user_id:
+        return
+
+    # ========================================================
+    # CLEAR EXISTING PREFERENCES
+    # ========================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_USER_PREFERENCES}`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+    # ========================================================
+    # COMPANIES
+    # ========================================================
+
+    for company_id in companies or []:
+
+        add_user_preference(
+            user_id=user_id,
+            pref_type="COMPANY",
+            value_id=company_id,
+        )
+
+    # ========================================================
+    # SOLUTIONS
+    # ========================================================
+
+    for solution_id in solutions or []:
+
+        add_user_preference(
+            user_id=user_id,
+            pref_type="SOLUTION",
+            value_id=solution_id,
+        )
+
+    # ========================================================
+    # TOPICS
+    # ========================================================
+
+    for topic_id in topics or []:
+
+        add_user_preference(
+            user_id=user_id,
+            pref_type="TOPIC",
+            value_id=topic_id,
+        )
