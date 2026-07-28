@@ -4,7 +4,6 @@ from datetime import datetime, date
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-
 # ---------------------------------------------------------
 # Client BigQuery (version minimaliste pour Ratecard)
 # ---------------------------------------------------------
@@ -196,20 +195,24 @@ def insert_bq(table: str, rows: list[dict]):
 # ---------------------------------------------------------
 # Mise à jour BigQuery (UPDATE SQL CANONIQUE)
 # ---------------------------------------------------------
-
-
-def update_bq(table: str, fields: dict, where: dict) -> bool:
+def update_bq(
+    table: str,
+    fields: dict,
+    where: dict,
+) -> bool:
     """
     Exécute un UPDATE BigQuery sécurisé avec paramètres typés.
-
-    fields = {"COL": value}
-    where = {"ID": value}
     """
 
     if not fields:
         return False
 
     client = get_bigquery_client()
+
+    JSON_COLUMNS = {
+        "KNOWLEDGE",
+        "DOCUMENT",
+    }
 
     set_clause = []
     where_clause = []
@@ -218,31 +221,19 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     # ==========================================================
     # SET
     # ==========================================================
-    for k, v in fields.items():
-        print("FIELD:", k)
 
-        # Les colonnes JSON doivent passer par PARSE_JSON()
-        if isinstance(v, dict):
+    for k, v in fields.items():
+
+        # ------------------------------------------------------
+        # JSON
+        # ------------------------------------------------------
+
+        if k in JSON_COLUMNS:
+
             set_clause.append(
                 f"{k} = PARSE_JSON(@{k})"
             )
-        else:
-            set_clause.append(
-                f"{k} = @{k}"
-            )
 
-        # 🔥 ARRAY<STRING>
-        if isinstance(v, list) and not isinstance(v, dict):
-            params.append(
-                bigquery.ArrayQueryParameter(
-                    k,
-                    "STRING",
-                    v,
-                )
-            )
-
-        # 🔥 JSON
-        elif isinstance(v, dict):
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -251,8 +242,28 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 TIMESTAMP
+            continue
+
+        # ------------------------------------------------------
+        # Standard
+        # ------------------------------------------------------
+
+        set_clause.append(
+            f"{k} = @{k}"
+        )
+
+        if isinstance(v, list):
+
+            params.append(
+                bigquery.ArrayQueryParameter(
+                    k,
+                    "STRING",
+                    v,
+                )
+            )
+
         elif isinstance(v, datetime):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -261,8 +272,8 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 DATE
         elif isinstance(v, date):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -271,8 +282,8 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 BOOL
         elif isinstance(v, bool):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -281,8 +292,8 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 INT
         elif isinstance(v, int):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -291,8 +302,8 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 FLOAT
         elif isinstance(v, float):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -301,8 +312,8 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
                 )
             )
 
-        # 🔥 STRING / NULL
         else:
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
@@ -314,6 +325,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     # ==========================================================
     # WHERE
     # ==========================================================
+
     for k, v in where.items():
 
         where_key = f"where_{k}"
@@ -323,6 +335,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
         )
 
         if isinstance(v, datetime):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -332,6 +345,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             )
 
         elif isinstance(v, date):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -341,6 +355,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             )
 
         elif isinstance(v, bool):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -350,6 +365,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             )
 
         elif isinstance(v, int):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -359,6 +375,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             )
 
         elif isinstance(v, float):
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -368,6 +385,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             )
 
         else:
+
             params.append(
                 bigquery.ScalarQueryParameter(
                     where_key,
@@ -379,6 +397,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     # ==========================================================
     # EXECUTION
     # ==========================================================
+
     sql = f"""
         UPDATE `{table}`
         SET {", ".join(set_clause)}
