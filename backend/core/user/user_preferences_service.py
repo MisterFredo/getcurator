@@ -18,11 +18,23 @@ from utils.bigquery_utils import (
 
 
 # ============================================================
-# TABLE
+# TABLES
 # ============================================================
 
 TABLE_USER_PREFERENCES = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+)
+
+TABLE_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+)
+
+TABLE_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 )
 
 
