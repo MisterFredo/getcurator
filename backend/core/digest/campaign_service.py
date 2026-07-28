@@ -341,6 +341,10 @@ def send_campaign(
 # GET
 # ============================================================
 
+# ============================================================
+# GET
+# ============================================================
+
 def get_campaign(
     campaign_id: str,
 ) -> CampaignDetail:
@@ -355,16 +359,48 @@ def get_campaign(
             campaign_id,
         )
 
+    # ========================================================
+    # USERS
+    # ========================================================
+
+    users = {
+        user["ID_USER"]: user
+        for user in list_users()
+    }
+
+    # ========================================================
+    # DIGESTS
+    # ========================================================
+
+    digests = fetch_digests(
+        campaign.id,
+    )
+
+    for digest in digests:
+
+        user = users.get(
+            digest.user_id,
+        )
+
+        if user:
+
+            digest.user_name = (
+                user.get("DISPLAY_NAME")
+                or user.get("NAME")
+                or user.get("EMAIL")
+            )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
     return CampaignDetail(
 
         campaign=campaign,
 
-        digests=fetch_digests(
-            campaign.id,
-        ),
+        digests=digests,
 
     )
-
 
 # ============================================================
 # LIST
