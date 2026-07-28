@@ -66,84 +66,8 @@ def get_user_preferences(
         or []
     )
 
-def get_user_preferences_for_admin(
-    user_id: str,
-) -> Dict:
 
-    query = f"""
-    SELECT
-        p.TYPE,
-        p.VALUE_ID,
 
-        c.NAME AS COMPANY_NAME,
-        t.LABEL AS TOPIC_NAME,
-        s.NAME AS SOLUTION_NAME
-
-    FROM `{TABLE_USER_PREFERENCES}` p
-
-    LEFT JOIN `{TABLE_COMPANY}` c
-        ON p.TYPE = 'COMPANY'
-       AND p.VALUE_ID = c.ID_COMPANY
-
-    LEFT JOIN `{TABLE_TOPIC}` t
-        ON p.TYPE = 'TOPIC'
-       AND p.VALUE_ID = t.ID_TOPIC
-
-    LEFT JOIN `{TABLE_SOLUTION}` s
-        ON p.TYPE = 'SOLUTION'
-       AND p.VALUE_ID = s.ID_SOLUTION
-
-    WHERE p.ID_USER = @user_id
-
-    ORDER BY p.TYPE
-    """
-
-    rows = (
-        query_bq(
-            query,
-            {
-                "user_id": user_id,
-            },
-        )
-        or []
-    )
-
-    result = {
-        "companies": [],
-        "topics": [],
-        "solutions": [],
-    }
-
-    for row in rows:
-
-        if row["TYPE"] == "COMPANY":
-
-            result["companies"].append(
-                {
-                    "id": row["VALUE_ID"],
-                    "label": row["COMPANY_NAME"],
-                }
-            )
-
-        elif row["TYPE"] == "TOPIC":
-
-            result["topics"].append(
-                {
-                    "id": row["VALUE_ID"],
-                    "label": row["TOPIC_NAME"],
-                }
-            )
-
-        elif row["TYPE"] == "SOLUTION":
-
-            result["solutions"].append(
-                {
-                    "id": row["VALUE_ID"],
-                    "label": row["SOLUTION_NAME"],
-                }
-            )
-
-    return result
 
 # ============================================================
 # ADD PREFERENCE
@@ -283,7 +207,7 @@ def get_user_preferences_grouped(
 # =========================================================
 
 def get_user_preferences_detailed(
-    user_id: str
+    user_id: str,
 ):
 
     rows = query_bq(
@@ -295,35 +219,35 @@ def get_user_preferences_detailed(
         WHERE ID_USER = @user_id
         """,
         {
-            "user_id": user_id
-        }
+            "user_id": user_id,
+        },
     )
 
     result = {
-        "COMPANY": [],
-        "SOLUTION": [],
-        "TOPIC": [],
+        "companies": [],
+        "solutions": [],
+        "topics": [],
     }
 
     if not rows:
         return result
 
     company_ids = [
-        r["VALUE_ID"]
-        for r in rows
-        if r["TYPE"] == "COMPANY"
+        row["VALUE_ID"]
+        for row in rows
+        if row["TYPE"] == "COMPANY"
     ]
 
     solution_ids = [
-        r["VALUE_ID"]
-        for r in rows
-        if r["TYPE"] == "SOLUTION"
+        row["VALUE_ID"]
+        for row in rows
+        if row["TYPE"] == "SOLUTION"
     ]
 
     topic_ids = [
-        r["VALUE_ID"]
-        for r in rows
-        if r["TYPE"] == "TOPIC"
+        row["VALUE_ID"]
+        for row in rows
+        if row["TYPE"] == "TOPIC"
     ]
 
     # =====================================================
@@ -338,21 +262,23 @@ def get_user_preferences_detailed(
                 ID_COMPANY,
                 NAME,
                 MEDIA_LOGO_RECTANGLE_ID
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY`
+            FROM `{TABLE_COMPANY}`
             WHERE ID_COMPANY IN UNNEST(@ids)
             """,
             {
-                "ids": company_ids
-            }
+                "ids": company_ids,
+            },
         )
 
-        result["COMPANY"] = [
+        result["companies"] = [
             {
-                "id": c["ID_COMPANY"],
-                "label": c["NAME"],
-                "logo": c.get("MEDIA_LOGO_RECTANGLE_ID"),
+                "id": company["ID_COMPANY"],
+                "label": company["NAME"],
+                "logo": company.get(
+                    "MEDIA_LOGO_RECTANGLE_ID"
+                ),
             }
-            for c in companies
+            for company in companies
         ]
 
     # =====================================================
@@ -367,23 +293,28 @@ def get_user_preferences_detailed(
                 s.ID_SOLUTION,
                 s.NAME,
                 c.MEDIA_LOGO_RECTANGLE_ID
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION` s
-            LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY` c
+
+            FROM `{TABLE_SOLUTION}` s
+
+            LEFT JOIN `{TABLE_COMPANY}` c
                 ON s.ID_COMPANY = c.ID_COMPANY
+
             WHERE s.ID_SOLUTION IN UNNEST(@ids)
             """,
             {
-                "ids": solution_ids
-            }
+                "ids": solution_ids,
+            },
         )
 
-        result["SOLUTION"] = [
+        result["solutions"] = [
             {
-                "id": s["ID_SOLUTION"],
-                "label": s["NAME"],
-                "logo": s.get("MEDIA_LOGO_RECTANGLE_ID"),
+                "id": solution["ID_SOLUTION"],
+                "label": solution["NAME"],
+                "logo": solution.get(
+                    "MEDIA_LOGO_RECTANGLE_ID"
+                ),
             }
-            for s in solutions
+            for solution in solutions
         ]
 
     # =====================================================
@@ -397,20 +328,20 @@ def get_user_preferences_detailed(
             SELECT
                 ID_TOPIC,
                 LABEL
-            FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC`
+            FROM `{TABLE_TOPIC}`
             WHERE ID_TOPIC IN UNNEST(@ids)
             """,
             {
-                "ids": topic_ids
-            }
+                "ids": topic_ids,
+            },
         )
 
-        result["TOPIC"] = [
+        result["topics"] = [
             {
-                "id": t["ID_TOPIC"],
-                "label": t["LABEL"],
+                "id": topic["ID_TOPIC"],
+                "label": topic["LABEL"],
             }
-            for t in topics
+            for topic in topics
         ]
 
     return result
