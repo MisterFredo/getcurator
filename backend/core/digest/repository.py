@@ -421,12 +421,16 @@ def update_digest(
                 digest.analyzed_contents,
 
             "KNOWLEDGE":
-                digest.knowledge.model_dump_json()
+                digest.knowledge.model_dump(
+                    mode="json",
+                )
                 if digest.knowledge
                 else None,
 
             "DOCUMENT":
-                digest.document.model_dump_json()
+                digest.document.model_dump(
+                    mode="json",
+                )
                 if digest.document
                 else None,
 
