@@ -74,7 +74,7 @@ def render_digest(
     sections: list[DigestSection] = []
 
     capability_results = (
-        knowledge.outputs
+        knowledge.capability_results
     )
 
     # ========================================================
