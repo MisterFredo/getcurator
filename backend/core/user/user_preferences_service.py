@@ -52,7 +52,7 @@ def get_user_preferences(
         p.VALUE_ID,
 
         c.NAME AS COMPANY_NAME,
-        t.NAME AS TOPIC_NAME,
+        t.LABEL AS TOPIC_NAME,
         s.NAME AS SOLUTION_NAME
 
     FROM `{TABLE_USER_PREFERENCES}` p
