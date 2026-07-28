@@ -196,10 +196,6 @@ def insert_bq(table: str, rows: list[dict]):
 # ---------------------------------------------------------
 # Mise à jour BigQuery (UPDATE SQL CANONIQUE)
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# Mise à jour BigQuery (UPDATE SQL CANONIQUE)
-# ---------------------------------------------------------
-import json
 
 
 def update_bq(table: str, fields: dict, where: dict) -> bool:
@@ -224,7 +220,15 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     # ==========================================================
     for k, v in fields.items():
 
-        set_clause.append(f"{k} = @{k}")
+        # Les colonnes JSON doivent passer par PARSE_JSON()
+        if isinstance(v, dict):
+            set_clause.append(
+                f"{k} = PARSE_JSON(@{k})"
+            )
+        else:
+            set_clause.append(
+                f"{k} = @{k}"
+            )
 
         # 🔥 ARRAY<STRING>
         if isinstance(v, list) and not isinstance(v, dict):
@@ -241,7 +245,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
             params.append(
                 bigquery.ScalarQueryParameter(
                     k,
-                    "JSON",
+                    "STRING",
                     json.dumps(v),
                 )
             )
