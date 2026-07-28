@@ -11,8 +11,13 @@ def build_content_blocks(
     contents: list[ExpertiseContent],
 ) -> str:
     """
-    Convert the selected expertise contents into a textual context
-    consumed by the different Expertise prompts.
+    Convert the selected expertise contents into a structured textual
+    context consumed by the Expertise prompts.
+
+    The enriched analytical fields are presented first because they
+    represent the synthesized knowledge extracted from each article.
+
+    The original article remains available as supporting context.
     """
 
     if not contents:
@@ -20,17 +25,10 @@ def build_content_blocks(
 
     blocks = []
 
-    for c in contents:
+    for index, c in enumerate(contents, start=1):
 
         block = f"""
-TITLE:
-{(c.title or "").strip()}
-
-EXCERPT:
-{(c.excerpt or "").strip()}
-
-CONTENT:
-{(c.content_body or "").strip()}
+CONTENT #{index}
 
 SIGNAL:
 {(c.signal or "").strip()}
@@ -44,14 +42,27 @@ STRATEGIC ISSUE:
 FRICTION:
 {(c.friction or "").strip()}
 
-NUMBERS:
+KEY FIGURES:
 {(c.chiffres or "").strip()}
+
+--------------------------------------------------
+
+SOURCE CONTEXT
+
+TITLE:
+{(c.title or "").strip()}
+
+EXCERPT:
+{(c.excerpt or "").strip()}
+
+CONTENT:
+{(c.content_body or "").strip()}
 """
 
         blocks.append(
             block.strip()
         )
 
-    return "\n\n====================\n\n".join(
+    return "\n\n==================================================\n\n".join(
         blocks
     )
