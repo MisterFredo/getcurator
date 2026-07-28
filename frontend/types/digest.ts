@@ -71,12 +71,16 @@ export type Digest = {
 
   user_id: string;
 
+  user_name?: string;
+
+  user_email?: string;
+
   status:
-    | "pending"
+    | "created"
     | "generating"
     | "generated"
     | "sending"
-    | "sent"
+    | "completed"
     | "failed";
 
   total_contents: number;
@@ -92,7 +96,6 @@ export type Digest = {
 
   error?: string | null;
 };
-
 /* =========================================================
    DOCUMENT
 ========================================================= */
