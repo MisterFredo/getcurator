@@ -219,6 +219,7 @@ def update_bq(table: str, fields: dict, where: dict) -> bool:
     # SET
     # ==========================================================
     for k, v in fields.items():
+        print("FIELD:", k)
 
         # Les colonnes JSON doivent passer par PARSE_JSON()
         if isinstance(v, dict):
