@@ -56,16 +56,8 @@ export type Campaign = {
 ========================================================= */
 
 export type CampaignCreateRequest = {
-  frequency:
-    | "weekly"
-    | "monthly";
-
-  audience:
-    | "user"
-    | "expert";
-
-  period_start: string;
-  period_end: string;
+  frequency: "weekly" | "monthly";
+  audience: "user" | "expert";
 };
 
 /* =========================================================
