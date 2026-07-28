@@ -20,7 +20,25 @@ export default function DigestRow({
 
       <td className="px-4 py-3">
 
-        {digest.user_id}
+        <div className="flex flex-col">
+
+          <span className="font-medium">
+
+            {digest.user_name ?? digest.user_id}
+
+          </span>
+
+          {digest.user_email && (
+
+            <span className="text-xs text-gray-500">
+
+              {digest.user_email}
+
+            </span>
+
+          )}
+
+        </div>
 
       </td>
 
