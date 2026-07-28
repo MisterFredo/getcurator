@@ -202,13 +202,3 @@ class DigestRecipient(BaseModel):
 
     language: str
 
-
-# ============================================================
-# CAMPAIGN DETAIL
-# ============================================================
-
-class CampaignDetail(BaseModel):
-
-    campaign: Campaign
-
-    digests: list[Digest]
