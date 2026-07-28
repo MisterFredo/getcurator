@@ -285,3 +285,157 @@ export default function ProfilePreferencesEditor({
     );
 
   }
+
+    /* =======================================================
+     RENDER
+  ======================================================= */
+
+  return (
+
+    <div
+      className="
+        border
+        rounded-lg
+        bg-white
+        p-6
+        space-y-6
+      "
+    >
+
+      {/* ===================================================
+          HEADER
+      =================================================== */}
+
+      <div>
+
+        <h3
+          className="
+            text-lg
+            font-semibold
+          "
+        >
+          Preferences
+        </h3>
+
+        <p
+          className="
+            text-sm
+            text-gray-500
+            mt-1
+          "
+        >
+          Select the companies, topics and
+          solutions followed by this user.
+        </p>
+
+      </div>
+
+      {/* ===================================================
+          COMPANIES
+      =================================================== */}
+
+      <SearchableMultiSelect
+
+        label="Companies"
+
+        placeholder="Search a company..."
+
+        options={companyOptions}
+
+        values={selectedCompanies}
+
+        onChange={setSelectedCompanies}
+
+      />
+
+      {/* ===================================================
+          TOPICS
+      =================================================== */}
+
+      <SearchableMultiSelect
+
+        label="Topics"
+
+        placeholder="Search a topic..."
+
+        options={topicOptions}
+
+        values={selectedTopics}
+
+        onChange={setSelectedTopics}
+
+      />
+
+      {/* ===================================================
+          SOLUTIONS
+      =================================================== */}
+
+      <SearchableMultiSelect
+
+        label="Solutions"
+
+        placeholder="Search a solution..."
+
+        options={solutionOptions}
+
+        values={selectedSolutions}
+
+        onChange={setSelectedSolutions}
+
+      />
+
+      {/* ===================================================
+          ACTIONS
+      =================================================== */}
+
+      <div
+        className="
+          flex
+          justify-end
+          pt-2
+        "
+      >
+
+        <button
+
+          onClick={save}
+
+          disabled={saving}
+
+          className={`
+            px-4
+            py-2
+            rounded-lg
+            text-sm
+            text-white
+            transition
+
+            ${
+              saving
+                ? "bg-gray-400 cursor-not-allowed"
+                : saved
+                  ? "bg-emerald-600"
+                  : "bg-blue-600 hover:bg-blue-700"
+            }
+          `}
+        >
+
+          {
+            saving
+              ? "Saving..."
+
+              : saved
+                ? "✓ Saved"
+
+                : "Save preferences"
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
+  );
+
+}
