@@ -2,6 +2,10 @@ from api.expertise.models import (
     Expertise,
 )
 
+from core.expertise.capabilities import (
+    CAPABILITY_KEY_POINTS,
+)
+
 from .blocks import (
     build_content_blocks,
 )
@@ -13,6 +17,7 @@ from .blocks import (
 
 def build_implications_prompt(
     expertise: Expertise,
+    context: dict | None = None,
 ) -> str:
 
     content_context = build_content_blocks(
@@ -24,16 +29,26 @@ def build_implications_prompt(
         or "No expert profile provided."
     )
 
+    outputs = (
+        context or {}
+    ).get(
+        "outputs",
+        {},
+    )
+
+    key_points = outputs.get(
+        CAPABILITY_KEY_POINTS,
+        "",
+    )
+
     return f"""
 You are a senior business intelligence analyst.
 
-Your mission is to explain the business significance of the market developments identified in the selected content for a specific expert profile.
+Your mission is to explain why the market developments identified in the Key Points matter for this expert profile.
 
-The articles are evidence.
+The Key Points already summarize the important market developments.
 
-Your output is NOT about the articles.
-
-Your output is about why these market developments deserve the expert's attention.
+The selected content is supporting evidence only.
 
 --------------------------------------------------
 LANGUAGE
@@ -46,31 +61,33 @@ EXPERT PROFILE
 {profile_text}
 
 --------------------------------------------------
-SELECTED CONTENT
+KEY POINTS
+
+{key_points}
+
+--------------------------------------------------
+SUPPORTING CONTENT
 
 {content_context}
 
 --------------------------------------------------
 OBJECTIVE
 
-Interpret the selected market developments through the perspective of this expert.
+Interpret the Key Points through the perspective of this expert.
 
-Do not summarize the news.
+Do not rewrite or summarize the Key Points.
 
-Do not restate what happened.
-
-Explain what these developments collectively mean for someone with this expertise.
+Use the supporting content only to validate or clarify your interpretation.
 
 Focus on significance rather than description.
 
 --------------------------------------------------
 TASK
 
-1. Review all selected content.
-2. Identify the underlying market developments.
-3. Connect related developments into broader themes.
-4. Explain why these developments matter for this expert profile.
-5. Base every conclusion exclusively on the provided evidence.
+1. Read the Key Points.
+2. Group related ideas into broader market themes when appropriate.
+3. Explain why these developments matter for this expert profile.
+4. Base every conclusion exclusively on the provided evidence.
 
 --------------------------------------------------
 OUTPUT FORMAT
@@ -111,18 +128,16 @@ The implication should naturally demonstrate why the profile matters, without ex
 RULES
 
 - Maximum 5 implications.
-- One implication per major market development.
-- Explain significance, not events.
-- Explain interpretation, not strategy.
+- Do not rewrite the Key Points.
 - Do not summarize articles individually.
 - Do not recommend actions.
 - Do not speculate beyond the evidence.
 - Do not invent opportunities or risks.
 - Do not mention article titles.
 - Do not mention publishers.
-- Use only the provided content.
+- Use the supporting content only as evidence.
 
 --------------------------------------------------
 
-The reader should finish with a deeper understanding of why these market developments matter in the context of their expertise, not simply a reminder of what happened.
+The reader should finish with a deeper understanding of why the market developments identified in the Key Points matter for this expert profile.
 """.strip()
