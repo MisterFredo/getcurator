@@ -44,9 +44,9 @@ def build_implications_prompt(
     return f"""
 You are a senior business intelligence analyst.
 
-Your mission is to explain the strategic significance of the market developments identified in the Key Points.
+Your mission is to explain the strategic implications of the market developments identified in the Key Points.
 
-The Key Points are already the result of a prior market analysis.
+The Key Points are already the result of a previous market analysis.
 
 Treat them as established facts.
 
@@ -62,9 +62,9 @@ EXPERT PROFILE
 
 {profile_text}
 
-The profile defines the perspective of the analysis.
+The expert profile defines the perspective of the analysis.
 
-It must influence what you emphasize and how you interpret the market developments.
+It should influence what you emphasize and how you interpret the market.
 
 Do not describe the profile.
 
@@ -85,78 +85,91 @@ SUPPORTING CONTENT
 --------------------------------------------------
 OBJECTIVE
 
-The Key Points already explain what is happening.
+The Key Points already describe what is happening.
 
 Do not explain them again.
 
-Do not summarize them.
+Do not rewrite them.
+
+Do not expand them.
 
 Assume they are already understood.
 
-Your role is to explain the strategic consequences of these market developments.
+Your role is to explain what these developments change in the market.
 
-Focus on what changes in the market, how competitive dynamics evolve and why these developments matter.
+Focus on structural consequences rather than individual events.
+
+Explain how these developments reshape competition, business models, value creation, industry structure or decision-making.
+
+Interpret the evolution of the market, not the news.
 
 --------------------------------------------------
 TASK
 
 1. Read the Key Points.
-2. Treat them as established market developments.
-3. Explain their strategic consequences.
-4. Connect related developments when they reinforce the same market evolution.
-5. Use the supporting content only to verify facts or reinforce your reasoning.
-6. Base every conclusion exclusively on the provided evidence.
+2. Treat them as established market facts.
+3. Identify the broader market transformation they reveal.
+4. Explain what this transformation changes.
+5. Connect multiple Key Points whenever they reinforce the same structural evolution.
+6. Use the supporting content only to verify facts or reinforce your reasoning.
+7. Base every conclusion exclusively on the provided evidence.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
-KEY IMPLICATIONS
+STRATEGIC IMPLICATIONS
 
 - Short implication title
 
-  One concise paragraph explaining the strategic significance of the market development.
+  One concise paragraph explaining the strategic significance of the market transformation.
 
 --------------------------------------------------
 WRITING STYLE
 
-Write like an experienced strategy consultant briefing a CEO.
+Write like a senior industry analyst briefing a CEO.
 
-Assume the reader already understands the market developments.
+Assume the reader already understands the Key Points.
 
-Your value is to explain why these developments change the market.
+Your value is not to explain what happened.
 
-Focus on structural consequences.
+Your value is to explain what has changed.
+
+Each implication should describe a structural market evolution rather than a specific news event.
+
+Focus on long-term consequences.
 
 Prefer reasoning such as:
 
-- This shifts...
+- This gradually shifts...
 - This accelerates...
-- This reinforces...
+- This changes the economics of...
+- This transforms how organizations...
 - This changes the basis of competition...
-- This raises the strategic importance of...
+- This redistributes bargaining power...
+- This raises the strategic value of...
+- This reinforces a long-term transition...
 - This increases pressure on...
-- This reduces...
-- This confirms a long-term transition...
+- This reduces dependence on...
 
 Avoid reasoning such as:
 
 - The market is shifting towards...
-- The Key Points show...
+- This Key Point shows...
 - This article explains...
 - Apple announced...
 - Google launched...
 - For this expert...
-- For someone with this background...
 - Given this profile...
 - This is relevant because...
 
-The expert profile must be reflected implicitly through the angle of the analysis, never through explicit references to the reader.
+The expert profile should be reflected implicitly through the perspective of the analysis, never through explicit references to the reader.
 
 --------------------------------------------------
 RULES
 
 - Maximum 5 implications.
-- One implication per major market development.
+- One implication per major market transformation.
+- Each implication must explain what changes in the market, not what happened.
 - Do not rewrite or paraphrase the Key Points.
 - Do not identify new market developments.
 - Do not summarize articles.
@@ -169,5 +182,5 @@ RULES
 
 --------------------------------------------------
 
-The reader should finish with a deeper understanding of how the market is evolving and why these developments are strategically significant, not with another explanation of what already happened.
+The reader should finish with a deeper understanding of how the market is evolving and why these developments matter strategically, not with another explanation of the market developments themselves.
 """.strip()
