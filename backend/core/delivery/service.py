@@ -16,6 +16,7 @@ from core.expertise.capability_service import (
 
 from core.expertise.capabilities import (
     CAPABILITY_KEY_POINTS,
+    CAPABILITY_IMPLICATIONS,
 )
 
 from api.expertise.models import (
@@ -79,7 +80,17 @@ def deliver_knowledge(
     # KEY POINTS FIRST
     # ========================================================
 
-    if CAPABILITY_KEY_POINTS in request.capabilities:
+    needs_key_points = (
+
+        CAPABILITY_KEY_POINTS in request.capabilities
+
+        or
+
+        CAPABILITY_IMPLICATIONS in request.capabilities
+
+    )
+
+    if needs_key_points:
 
         result = execute_capability(
 
@@ -91,13 +102,19 @@ def deliver_knowledge(
 
         )
 
-        capability_results[
-            CAPABILITY_KEY_POINTS
-        ] = result
+        # Toujours disponible pour les capacités suivantes
 
         context["outputs"][
             CAPABILITY_KEY_POINTS
         ] = result
+
+        # Exposé uniquement s'il a été demandé
+
+        if CAPABILITY_KEY_POINTS in request.capabilities:
+
+            capability_results[
+                CAPABILITY_KEY_POINTS
+            ] = result
 
     # ========================================================
     # OTHER CAPABILITIES
