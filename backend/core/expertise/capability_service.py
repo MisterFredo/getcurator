@@ -32,7 +32,10 @@ from core.expertise.capabilities import (
 def _build_prompt(
     capability: str,
     expertise: Expertise,
+    context: dict[str, str] | None = None,
 ) -> str:
+
+    context = context or {}
 
     # ========================================================
     # KEY POINTS
@@ -62,6 +65,7 @@ def _build_prompt(
 
         return build_implications_prompt(
             expertise=expertise,
+            context=context,
         )
 
     # ========================================================
@@ -80,6 +84,7 @@ def _build_prompt(
 def execute_capability(
     expertise: Expertise,
     capability: str,
+    context: dict[str, str] | None = None,
 ) -> str:
 
     if expertise.count == 0:
@@ -92,6 +97,7 @@ def execute_capability(
     prompt = _build_prompt(
         capability=capability,
         expertise=expertise,
+        context=context,
     )
 
     # ========================================================
