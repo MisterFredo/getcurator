@@ -1,3 +1,5 @@
+# backend/core/delivery/service.py
+
 from core.delivery.models import (
     KnowledgeRequest,
     KnowledgeResult,
@@ -12,8 +14,8 @@ from core.expertise.capability_service import (
     execute_capability,
 )
 
-from core.expertise.constants import (
-    OUTPUT_KEY_POINTS,
+from core.expertise.capabilities import (
+    CAPABILITY_KEY_POINTS,
 )
 
 from api.expertise.models import (
@@ -69,30 +71,32 @@ def deliver_knowledge(
 
     capability_results: dict[str, str] = {}
 
-    context: dict[str, str] = {}
+    context = {
+        "outputs": {},
+    }
 
     # ========================================================
     # KEY POINTS FIRST
     # ========================================================
 
-    if OUTPUT_KEY_POINTS in request.capabilities:
+    if CAPABILITY_KEY_POINTS in request.capabilities:
 
         result = execute_capability(
 
             expertise=expertise,
 
-            capability=OUTPUT_KEY_POINTS,
+            capability=CAPABILITY_KEY_POINTS,
 
             context=context,
 
         )
 
         capability_results[
-            OUTPUT_KEY_POINTS
+            CAPABILITY_KEY_POINTS
         ] = result
 
-        context[
-            OUTPUT_KEY_POINTS
+        context["outputs"][
+            CAPABILITY_KEY_POINTS
         ] = result
 
     # ========================================================
@@ -101,7 +105,7 @@ def deliver_knowledge(
 
     for capability in request.capabilities:
 
-        if capability == OUTPUT_KEY_POINTS:
+        if capability == CAPABILITY_KEY_POINTS:
 
             continue
 
@@ -119,7 +123,7 @@ def deliver_knowledge(
             capability
         ] = result
 
-        context[
+        context["outputs"][
             capability
         ] = result
 
