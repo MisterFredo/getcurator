@@ -38,12 +38,13 @@ Write the entire response in English.
 --------------------------------------------------
 OBJECTIVE
 
-Produce an executive briefing that allows a decision-maker to understand the most important changes affecting the market.
+Identify the most important market developments emerging from the selected content.
 
-Focus on trends, shifts, emerging patterns and structural evolutions.
+Each Key Point should describe a market development that can be interpreted independently by subsequent analytical capabilities.
+
+Focus on trends, structural shifts, emerging patterns and market evolutions.
 
 Do not describe individual news stories.
-
 --------------------------------------------------
 SELECTED CONTENT
 
@@ -62,11 +63,11 @@ TASK
 --------------------------------------------------
 OUTPUT FORMAT
 
-TOP 5
+KEY MARKET DEVELOPMENTS
 
 - One concise statement describing a major market development.
 
-NOTABLE
+SECONDARY DEVELOPMENTS
 
 - One concise statement describing a secondary market development.
 
@@ -109,6 +110,7 @@ RULES
 - Do not mention article titles.
 - Do not mention publishers.
 - Use only the provided content.
+- Each Key Point should be self-contained and understandable without referring back to the original articles.
 
 --------------------------------------------------
 
