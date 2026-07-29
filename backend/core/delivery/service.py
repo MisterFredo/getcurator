@@ -1,5 +1,3 @@
-# backend/core/delivery/service.py
-
 from core.delivery.models import (
     KnowledgeRequest,
     KnowledgeResult,
@@ -12,6 +10,10 @@ from core.expertise.service import (
 
 from core.expertise.capability_service import (
     execute_capability,
+)
+
+from core.expertise.constants import (
+    OUTPUT_KEY_POINTS,
 )
 
 from api.expertise.models import (
@@ -62,23 +64,73 @@ def deliver_knowledge(
         )
 
     # ========================================================
-    # EXECUTE CAPABILITIES
+    # CONTEXT
     # ========================================================
 
     capability_results: dict[str, str] = {}
 
+    context: dict[str, str] = {}
+
+    # ========================================================
+    # KEY POINTS FIRST
+    # ========================================================
+
+    if OUTPUT_KEY_POINTS in request.capabilities:
+
+        result = execute_capability(
+
+            expertise=expertise,
+
+            capability=OUTPUT_KEY_POINTS,
+
+            context=context,
+
+        )
+
+        capability_results[
+            OUTPUT_KEY_POINTS
+        ] = result
+
+        context[
+            OUTPUT_KEY_POINTS
+        ] = result
+
+    # ========================================================
+    # OTHER CAPABILITIES
+    # ========================================================
+
     for capability in request.capabilities:
 
-        capability_results[capability] = execute_capability(
+        if capability == OUTPUT_KEY_POINTS:
+
+            continue
+
+        result = execute_capability(
+
             expertise=expertise,
+
             capability=capability,
+
+            context=context,
+
         )
+
+        capability_results[
+            capability
+        ] = result
+
+        context[
+            capability
+        ] = result
 
     # ========================================================
     # RESULT
     # ========================================================
 
     return KnowledgeResult(
+
         expertise=expertise,
+
         capability_results=capability_results,
+
     )
