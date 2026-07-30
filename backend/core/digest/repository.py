@@ -255,19 +255,6 @@ def fetch_campaigns(
 
     ]
 
-def claim_next_pending_digest() -> Digest | None:
-
-    digest = fetch_first_pending_digest()
-
-    if digest is None:
-        return None
-
-    digest.status = "generating"
-
-    update_digest(digest)
-
-    return digest
-
 
 # ============================================================
 # DIGEST MAPPING
