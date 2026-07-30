@@ -9,7 +9,6 @@ from datetime import (
 from calendar import monthrange
 
 from uuid import uuid4
-import traceback
 
 from core.digest.models import (
     Campaign,
@@ -23,9 +22,6 @@ from core.digest.profile_service import (
     get_digest_recipients,
 )
 
-from core.digest.digest_service import (
-    generate_digest,
-)
 
 from core.digest.repository import (
     insert_campaign,
@@ -202,83 +198,39 @@ def generate_campaign(
         )
 
     # ========================================================
-    # START CAMPAIGN
+    # QUEUE CAMPAIGN
     # ========================================================
 
-    campaign.status = "generating"
+    campaign.status = "queued"
 
     update_campaign(
         campaign,
     )
 
-    generated = 0
-
-    failed = 0
+    # ========================================================
+    # QUEUE DIGESTS
+    # ========================================================
 
     digests = fetch_digests(
         campaign.id,
     )
 
-    # ========================================================
-    # GENERATE DIGESTS
-    # ========================================================
-
     for digest in digests:
 
-        try:
+        digest.status = "pending"
+        digest.error = None
+        digest.generated_at = None
+        digest.sent_at = None
 
-            digest.status = "generating"
+        update_digest(
+            digest,
+        )
 
-            update_digest(
-                digest,
-            )
-
-            generate_digest(
-
-                digest=digest,
-
-                campaign=campaign,
-
-            )
-
-            generated += 1
-
-        except Exception as exc:
-
-            traceback.print_exc()
-
-            raise
-
-            digest.status = "failed"
-
-            digest.error = str(exc)
-
-            update_digest(
-                digest,
-            )
-
-            failed += 1
-
-    # ========================================================
-    # UPDATE CAMPAIGN
-    # ========================================================
-
-    campaign.generated_count = generated
-
-    campaign.failed_count = failed
-
-    if generated == 0:
-
-        campaign.status = "failed"
-
-    else:
-
-        campaign.status = "generated"
-
-    return update_campaign(
-        campaign,
+    print(
+        f"Campaign queued: {campaign.id}"
     )
 
+    return campaign
 
 # ============================================================
 # SEND
