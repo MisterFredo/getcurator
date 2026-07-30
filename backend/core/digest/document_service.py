@@ -7,8 +7,10 @@ from core.delivery.models import (
 )
 
 from core.digest.models import (
+    DigestBadge,
     DigestCard,
     DigestDocument,
+    DigestProfile,
     DigestSection,
 )
 
@@ -92,6 +94,8 @@ SECTION_ARTICLES = "Articles"
 # ============================================================
 
 def build_digest_document(
+
+    profile: DigestProfile,
 
     knowledge: KnowledgeResult,
 
@@ -209,6 +213,8 @@ def build_digest_document(
         ),
 
         created_at=datetime.utcnow(),
+
+        profile=profile,
 
         sections=sections,
 
