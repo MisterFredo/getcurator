@@ -20,6 +20,7 @@ from core.digest.digest_service import (
     send_digest,
 )
 
+
 router = APIRouter()
 
 
@@ -91,52 +92,6 @@ def send_campaign_route(
         ),
     }
 
-
-# ============================================================
-# DIGESTS
-# ============================================================
-
-@router.get("/digests/{digest_id}")
-def get_digest_route(
-    digest_id: str,
-):
-
-    return {
-        "status": "ok",
-        "digest": get_digest(
-            digest_id,
-        ),
-    }
-
-
-# ============================================================
-# DIGEST ACTIONS
-# ============================================================
-
-@router.post("/digests/{digest_id}/generate")
-def generate_digest_route(
-    digest_id: str,
-):
-
-    return {
-        "status": "ok",
-        "digest": generate_digest(
-            digest_id,
-        ),
-    }
-
-
-@router.post("/digests/{digest_id}/send")
-def send_digest_route(
-    digest_id: str,
-):
-
-    return {
-        "status": "ok",
-        "digest": send_digest(
-            digest_id,
-        ),
-    }
 
 # ============================================================
 # GET DIGEST
