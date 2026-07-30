@@ -20,6 +20,7 @@ export default function DigestRow({
 
     await api.post(
       `/digest/digests/${digest.id}/generate`,
+      {},
     );
 
     window.location.reload();
@@ -30,6 +31,7 @@ export default function DigestRow({
 
     await api.post(
       `/digest/digests/${digest.id}/send`,
+      {},
     );
 
     window.location.reload();
