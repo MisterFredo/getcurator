@@ -16,6 +16,8 @@ from core.digest.campaign_service import (
 
 from core.digest.digest_service import (
     get_digest,
+    generate_digest,
+    send_digest,
 )
 
 router = APIRouter()
@@ -61,7 +63,7 @@ def get_campaign_route(
 
 
 # ============================================================
-# GENERATE
+# CAMPAIGN ACTIONS
 # ============================================================
 
 @router.post("/campaigns/{campaign_id}/generate")
@@ -76,10 +78,6 @@ def generate_campaign_route(
         ),
     }
 
-
-# ============================================================
-# SEND
-# ============================================================
 
 @router.post("/campaigns/{campaign_id}/send")
 def send_campaign_route(
@@ -106,6 +104,36 @@ def get_digest_route(
     return {
         "status": "ok",
         "digest": get_digest(
+            digest_id,
+        ),
+    }
+
+
+# ============================================================
+# DIGEST ACTIONS
+# ============================================================
+
+@router.post("/digests/{digest_id}/generate")
+def generate_digest_route(
+    digest_id: str,
+):
+
+    return {
+        "status": "ok",
+        "digest": generate_digest(
+            digest_id,
+        ),
+    }
+
+
+@router.post("/digests/{digest_id}/send")
+def send_digest_route(
+    digest_id: str,
+):
+
+    return {
+        "status": "ok",
+        "digest": send_digest(
             digest_id,
         ),
     }
