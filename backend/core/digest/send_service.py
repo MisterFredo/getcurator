@@ -8,6 +8,10 @@ from core.delivery.models import (
     DeliveryResult,
 )
 
+from core.digest.html_service import (
+    render_digest_html,
+)
+
 
 # ============================================================
 # SEND
@@ -34,25 +38,6 @@ def send_digest(
         html=html,
 
     )
-
-
-# ============================================================
-# HTML
-# ============================================================
-
-def render_digest_html(
-    document: DigestDocument,
-) -> str:
-    """
-    Convert a DigestDocument into
-    an HTML email.
-
-    TODO
-    ----
-    Build the final Curator email template.
-    """
-
-    raise NotImplementedError
 
 
 # ============================================================
