@@ -20,7 +20,8 @@ from core.digest.models import (
 
 def build_digest_document(
     knowledge: KnowledgeResult,
-    request: DigestRequest,
+    period_start: datetime,
+    period_end: datetime,
 ) -> DigestDocument:
     """
     Build the final DigestDocument from a KnowledgeResult.
