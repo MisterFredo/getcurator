@@ -86,10 +86,9 @@ class Digest(BaseModel):
         "created",
         "generating",
         "generated",
-        "sending",
-        "completed",
+        "sent",
         "failed",
-    ] = "created"
+    ]
 
     total_contents: int = 0
 
