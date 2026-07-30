@@ -20,6 +20,10 @@ from core.digest.digest_service import (
     send_digest,
 )
 
+from core.digest.html_service import (
+    render_digest_html,
+)
+
 
 router = APIRouter()
 
