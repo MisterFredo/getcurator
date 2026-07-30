@@ -27,6 +27,8 @@ def build_content_blocks(
 
     for index, c in enumerate(contents, start=1):
 
+        figures = "\n".join(c.chiffres or [])
+
         block = f"""
 CONTENT #{index}
 
@@ -43,7 +45,7 @@ FRICTION:
 {(c.friction or "").strip()}
 
 KEY FIGURES:
-{(c.chiffres or "").strip()}
+{figures}
 
 --------------------------------------------------
 
