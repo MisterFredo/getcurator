@@ -116,6 +116,58 @@ p {
 
 }
 
+/* ==========================================================
+   PROFILE
+========================================================== */
+
+.profile {
+
+    background: #ffffff;
+
+    padding: 0 48px 40px 48px;
+
+}
+
+.profile-description {
+
+    color: #666666;
+
+    margin-bottom: 24px;
+
+}
+
+/* ==========================================================
+   BADGES
+========================================================== */
+
+.badge-list {
+
+    margin-bottom: 24px;
+
+}
+
+.badge {
+
+    display: inline-block;
+
+    margin: 0 8px 8px 0;
+
+    padding: 6px 12px;
+
+    border-radius: 999px;
+
+    background: #eef3ff;
+
+    color: #0057ff;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    line-height: 1;
+
+}
+
 
 /* ==========================================================
    SECTIONS
