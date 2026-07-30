@@ -33,13 +33,10 @@ export default function DigestRow({
 
   function handlePreview() {
 
-    openRightDrawer({
-
-      type: "digest-preview",
-
-      id: digest.id,
-
-    });
+    openRightDrawer(
+      "digest-preview",
+      digest.id,
+    );
 
   }
 
