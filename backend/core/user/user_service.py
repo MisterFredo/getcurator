@@ -582,6 +582,49 @@ def list_digest_users(
     )
 
 # =========================================================
+# GET USER
+# =========================================================
+
+def get_user(
+    user_id: str,
+):
+
+    query = f"""
+    SELECT
+
+        ID_USER,
+        EMAIL,
+        NAME,
+        DISPLAY_NAME,
+        COMPANY,
+        LANGUAGE,
+        ROLE,
+        PROFILE_TYPE,
+        FREQUENCY,
+        IS_ACTIVE,
+        CREATED_AT
+
+    FROM `{TABLE_USER}`
+
+    WHERE ID_USER = @user_id
+
+    LIMIT 1
+    """
+
+    rows = query_bq(
+        query,
+        {
+            "user_id": user_id,
+        },
+    )
+
+    if not rows:
+
+        return None
+
+    return rows[0]
+
+# =========================================================
 # ASSIGN UNIVERS
 # =========================================================
 
