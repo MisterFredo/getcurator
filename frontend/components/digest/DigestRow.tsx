@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { api } from "@/lib/api";
+
 import type {
   Digest,
 } from "@/types/digest";
@@ -13,6 +15,26 @@ type Props = {
 export default function DigestRow({
   digest,
 }: Props) {
+
+  async function handleGenerate() {
+
+    await api.post(
+      `/digest/digests/${digest.id}/generate`,
+    );
+
+    window.location.reload();
+
+  }
+
+  async function handleSend() {
+
+    await api.post(
+      `/digest/digests/${digest.id}/send`,
+    );
+
+    window.location.reload();
+
+  }
 
   return (
 
@@ -62,7 +84,21 @@ export default function DigestRow({
 
       <td className="px-4 py-3">
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+
+          <button
+            onClick={handleGenerate}
+            className="rounded border px-3 py-1 hover:bg-gray-50"
+          >
+            Generate
+          </button>
+
+          <button
+            onClick={handleSend}
+            className="rounded border px-3 py-1 hover:bg-gray-50"
+          >
+            Send
+          </button>
 
           <Link
             href={`/admin/digest/digests/${digest.id}`}
