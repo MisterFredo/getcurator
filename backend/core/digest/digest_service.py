@@ -40,8 +40,8 @@ from core.digest.send_service import (
     send_digest as deliver_digest,
 )
 
-from core.delivery.models import (
-    DeliveryResult,
+from core.user.user_service import (
+    get_user,
 )
 
 # ============================================================
@@ -232,6 +232,16 @@ def send_digest(
             "Digest has not been generated."
         )
 
+    user = get_user(
+        digest.user_id,
+    )
+
+    if user is None:
+
+        raise ValueError(
+            f"Unknown user: {digest.user_id}"
+        )
+
     # ========================================================
     # START
     # ========================================================
@@ -246,16 +256,11 @@ def send_digest(
 
     try:
 
-        #
-        # TODO
-        # Resolve recipient email
-        #
-
         deliver_digest(
 
             document=digest.document,
 
-            recipient="TODO",
+            recipient=user["EMAIL"],
 
         )
 
