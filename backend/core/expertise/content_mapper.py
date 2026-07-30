@@ -186,9 +186,7 @@ def normalize_contents(
     rows: list[dict],
 ) -> list[ExpertiseContent]:
 
-    contents: list[
-        ExpertiseContent
-    ] = []
+    contents = []
 
     for row in rows:
 
@@ -198,12 +196,17 @@ def normalize_contents(
                 build_content(row)
             )
 
-        except Exception:
+        except Exception as e:
+
+            import traceback
+
             print("=" * 80)
+            print("ERROR BUILDING CONTENT")
             traceback.print_exc()
             print("ROW:")
             print(row)
             print("=" * 80)
-    raise
+
+            raise e
 
     return contents
