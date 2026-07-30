@@ -108,7 +108,9 @@ class ExpertiseContent(BaseModel):
 
     friction: str = ""
 
-    chiffres: str = ""
+    chiffres: list[str] = Field(
+        default_factory=list,
+    )
 
     # ========================================================
     # STRUCTURED DATA
