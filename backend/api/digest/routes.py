@@ -137,3 +137,59 @@ def send_digest_route(
             digest_id,
         ),
     }
+
+# ============================================================
+# GET DIGEST
+# ============================================================
+
+@router.get(
+    "/digests/{digest_id}",
+)
+def get_digest_route(
+    digest_id: str,
+):
+
+    return {
+        "status": "ok",
+        "digest": get_digest(
+            digest_id,
+        ),
+    }
+
+
+# ============================================================
+# GENERATE DIGEST
+# ============================================================
+
+@router.post(
+    "/digests/{digest_id}/generate",
+)
+def generate_digest_route(
+    digest_id: str,
+):
+
+    return {
+        "status": "ok",
+        "digest": generate_digest(
+            digest_id,
+        ),
+    }
+
+
+# ============================================================
+# SEND DIGEST
+# ============================================================
+
+@router.post(
+    "/digests/{digest_id}/send",
+)
+def send_digest_route(
+    digest_id: str,
+):
+
+    return {
+        "status": "ok",
+        "digest": send_digest(
+            digest_id,
+        ),
+    }
