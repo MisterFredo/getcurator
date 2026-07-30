@@ -19,14 +19,20 @@ from core.delivery.models import (
 # ============================================================
 
 class DigestCard(BaseModel):
-    id: str
-    title: str
-    excerpt: str
-    url: str
-    source_title: str | None = None
-    published_at: datetime | None = None
-    company_logo: str | None = None
 
+    id: str
+
+    title: str
+
+    excerpt: str
+
+    url: str
+
+    source_title: str | None = None
+
+    published_at: datetime | None = None
+
+    logo_url: str | None = None
 
 # ============================================================
 # DIGEST SECTION
@@ -45,9 +51,11 @@ class DigestSection(BaseModel):
 # ============================================================
 
 class DigestDocument(BaseModel):
+
     title: str
     subtitle: str = ""
     period: str
+    created_at: datetime
     sections: list[DigestSection]
 
 # ============================================================
