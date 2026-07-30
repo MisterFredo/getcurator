@@ -148,3 +148,37 @@ def send_digest_route(
             digest_id,
         ),
     }
+
+# ============================================================
+# PREVIEW
+# ============================================================
+
+@router.get(
+    "/digests/{digest_id}/preview",
+)
+def preview_digest_route(
+    digest_id: str,
+):
+    """
+    Render the HTML preview of a Digest.
+    """
+
+    digest = get_digest(
+        digest_id,
+    )
+
+    if digest.document is None:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Digest has not been generated.",
+        )
+
+    html = render_digest_html(
+        digest.document,
+    )
+
+    return {
+        "status": "ok",
+        "html": html,
+    }
