@@ -124,7 +124,7 @@ p {
 
     background: #ffffff;
 
-    padding: 0 48px 40px 48px;
+    padding: 24px 48px 40px 48px;
 
 }
 
@@ -194,13 +194,13 @@ p {
 
 .card {
 
-    border: 1px solid #e6e6e6;
+    border: 1px solid #e8e8e8;
 
-    border-radius: 8px;
+    border-radius: 10px;
 
-    padding: 20px;
+    padding: 24px;
 
-    margin-top: 20px;
+    margin-top: 24px;
 
 }
 
@@ -217,6 +217,8 @@ p {
     display: inline-block;
 
     margin-top: 8px;
+
+    font-size: 14px;
 
     font-weight: 600;
 
