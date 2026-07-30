@@ -1,7 +1,6 @@
 # backend/core/expertise/content_mapper.py
 
 import os
-import traceback
 
 from api.expertise.models import (
     ExpertiseContent,
@@ -197,15 +196,6 @@ def normalize_contents(
             )
 
         except Exception as e:
-
-            import traceback
-
-            print("=" * 80)
-            print("ERROR BUILDING CONTENT")
-            traceback.print_exc()
-            print("ROW:")
-            print(row)
-            print("=" * 80)
 
             raise e
 
