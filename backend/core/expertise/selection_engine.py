@@ -49,6 +49,17 @@ def select_contents(
 
     )
 
+    print("=" * 80)
+    print("ROWS RETURNED :", len(rows))
+
+    if rows:
+        print("FIRST ROW")
+        print(rows[0])
+    else:
+        print("NO ROWS RETURNED")
+
+    print("=" * 80)
+
     return normalize_contents(
         rows
     )
