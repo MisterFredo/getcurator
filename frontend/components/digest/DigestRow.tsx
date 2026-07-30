@@ -2,6 +2,8 @@
 
 import { api } from "@/lib/api";
 
+import { useDrawer } from "@/contexts/DrawerContext";
+
 import type {
   Digest,
 } from "@/types/digest";
@@ -14,6 +16,10 @@ export default function DigestRow({
   digest,
 }: Props) {
 
+  const {
+    openRightDrawer,
+  } = useDrawer();
+
   async function handleGenerate() {
 
     await api.post(
@@ -25,29 +31,15 @@ export default function DigestRow({
 
   }
 
-  async function handlePreview() {
+  function handlePreview() {
 
-    const res = await api.get(
-      `/digest/digests/${digest.id}/preview`,
-    );
+    openRightDrawer({
 
-    const preview =
-      window.open(
-        "",
-        "_blank",
-      );
+      type: "digest-preview",
 
-    if (!preview) {
-      return;
-    }
+      id: digest.id,
 
-    preview.document.open();
-
-    preview.document.write(
-      res.html,
-    );
-
-    preview.document.close();
+    });
 
   }
 
