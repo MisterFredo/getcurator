@@ -227,33 +227,15 @@ def generate_campaign(
 
         try:
 
-            digest.status = "generating"
-
-            update_digest(
-                digest,
-            )
-
             generate_digest(
                 digest.id,
             )
 
-            )
-
             generated += 1
 
-        except Exception as exc:
+        except Exception:
 
             traceback.print_exc()
-
-            raise
-
-            digest.status = "failed"
-
-            digest.error = str(exc)
-
-            update_digest(
-                digest,
-            )
 
             failed += 1
 
@@ -276,7 +258,6 @@ def generate_campaign(
     return update_campaign(
         campaign,
     )
-
 
 # ============================================================
 # SEND
