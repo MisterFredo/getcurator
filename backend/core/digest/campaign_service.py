@@ -9,6 +9,7 @@ from datetime import (
 from calendar import monthrange
 
 from uuid import uuid4
+import traceback
 
 from core.digest.models import (
     Campaign,
@@ -243,6 +244,10 @@ def generate_campaign(
             generated += 1
 
         except Exception as exc:
+
+            traceback.print_exc()
+
+            raise
 
             digest.status = "failed"
 
