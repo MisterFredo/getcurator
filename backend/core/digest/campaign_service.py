@@ -9,6 +9,7 @@ from datetime import (
 from calendar import monthrange
 
 from uuid import uuid4
+import traceback
 
 from core.digest.models import (
     Campaign,
@@ -22,6 +23,9 @@ from core.digest.profile_service import (
     get_digest_recipients,
 )
 
+from core.digest.digest_service import (
+    generate_digest,
+)
 
 from core.digest.repository import (
     insert_campaign,
@@ -198,58 +202,83 @@ def generate_campaign(
         )
 
     # ========================================================
-    # QUEUE CAMPAIGN
+    # START CAMPAIGN
     # ========================================================
 
-    campaign.status = "queued"
+    campaign.status = "generating"
 
     update_campaign(
         campaign,
     )
 
-    # ========================================================
-    # QUEUE DIGESTS
-    # ========================================================
+    generated = 0
+
+    failed = 0
 
     digests = fetch_digests(
         campaign.id,
     )
 
+    # ========================================================
+    # GENERATE DIGESTS
+    # ========================================================
+
     for digest in digests:
 
-        digest.status = "pending"
+        try:
 
-        digest.error = None
+            digest.status = "generating"
 
-        digest.generated_at = None
+            update_digest(
+                digest,
+            )
 
-        digest.sent_at = None
+            generate_digest(
 
-        update_digest(
-            digest,
-        )
+                digest=digest,
 
-    print(
-        f"Campaign queued: {campaign.id}"
+                campaign=campaign,
+
+            )
+
+            generated += 1
+
+        except Exception as exc:
+
+            traceback.print_exc()
+
+            raise
+
+            digest.status = "failed"
+
+            digest.error = str(exc)
+
+            update_digest(
+                digest,
+            )
+
+            failed += 1
+
+    # ========================================================
+    # UPDATE CAMPAIGN
+    # ========================================================
+
+    campaign.generated_count = generated
+
+    campaign.failed_count = failed
+
+    if generated == 0:
+
+        campaign.status = "failed"
+
+    else:
+
+        campaign.status = "generated"
+
+    return update_campaign(
+        campaign,
     )
 
-    # ========================================================
-    # PROCESS DIGESTS
-    # ========================================================
-
-    from core.digest.digest_worker import (
-        process_pending_digests,
-    )
-
-    process_pending_digests()
-
-    # ========================================================
-    # DONE
-    # ========================================================
-
-    return fetch_campaign(
-        campaign.id,
-    )
 
 # ============================================================
 # SEND
