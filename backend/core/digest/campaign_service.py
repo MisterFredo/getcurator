@@ -165,7 +165,14 @@ def create_campaign(
 
             user_id=recipient.user_id,
 
+            status="created",
+
+            total_contents=0,
+
+            analyzed_contents=0,
+
         )
+
 
         insert_digest(
             digest,
