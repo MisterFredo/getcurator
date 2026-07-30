@@ -28,6 +28,8 @@ class DigestCard(BaseModel):
 
     published_at: datetime | None = None
 
+    cta: str = "Read on GetCurator"
+
 
 class DigestSection(BaseModel):
 
