@@ -146,7 +146,7 @@ def build_content(
 
         chiffres=(
             row.get("chiffres")
-            or ""
+            or []
         ),
 
         # ====================================================
