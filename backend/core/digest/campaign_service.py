@@ -234,10 +234,8 @@ def generate_campaign(
             )
 
             generate_digest(
-
-                digest=digest,
-
-                campaign=campaign,
+                digest.id,
+            )
 
             )
 
