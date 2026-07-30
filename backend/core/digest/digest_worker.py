@@ -5,8 +5,10 @@ import traceback
 
 from core.digest.repository import (
     claim_next_pending_digest,
-    update_digest,
     fetch_campaign,
+    fetch_digests,
+    update_campaign,
+    update_digest,
 )
 
 from core.digest.digest_service import (
@@ -29,8 +31,9 @@ def process_next_digest() -> bool:
 
     Returns
     -------
-    True if a digest was processed.
-    False if no pending digest was found.
+    bool
+        True if a digest was processed.
+        False if no pending digest was found.
     """
 
     digest = claim_next_pending_digest()
@@ -44,11 +47,12 @@ def process_next_digest() -> bool:
 
     if campaign is None:
 
-        digest.status = "failed"
-
-        digest.error = (
-            "Campaign not found."
+        print(
+            f"[FAILED] Campaign not found for digest {digest.id}"
         )
+
+        digest.status = "failed"
+        digest.error = "Campaign not found."
 
         update_digest(
             digest,
@@ -56,7 +60,27 @@ def process_next_digest() -> bool:
 
         return True
 
+    # ========================================================
+    # CAMPAIGN START
+    # ========================================================
+
+    if campaign.status == "queued":
+
+        campaign.status = "processing"
+
+        update_campaign(
+            campaign,
+        )
+
+    # ========================================================
+    # GENERATE DIGEST
+    # ========================================================
+
     try:
+
+        print(
+            f"[GENERATING] {digest.user_id}"
+        )
 
         generate_digest(
 
@@ -72,6 +96,10 @@ def process_next_digest() -> bool:
             digest,
         )
 
+        print(
+            f"[OK] {digest.user_id}"
+        )
+
     except Exception as exc:
 
         traceback.print_exc()
@@ -84,6 +112,50 @@ def process_next_digest() -> bool:
             digest,
         )
 
+        print(
+            f"[FAILED] {digest.user_id}"
+        )
+
+    # ========================================================
+    # CAMPAIGN PROGRESS
+    # ========================================================
+
+    digests = fetch_digests(
+        campaign.id,
+    )
+
+    generated = sum(
+        d.status == "generated"
+        for d in digests
+    )
+
+    failed = sum(
+        d.status == "failed"
+        for d in digests
+    )
+
+    campaign.generated_count = generated
+
+    campaign.failed_count = failed
+
+    # ========================================================
+    # CAMPAIGN COMPLETE
+    # ========================================================
+
+    if generated + failed == len(digests):
+
+        if generated == 0:
+
+            campaign.status = "failed"
+
+        else:
+
+            campaign.status = "generated"
+
+    update_campaign(
+        campaign,
+    )
+
     return True
 
 
@@ -93,11 +165,11 @@ def process_next_digest() -> bool:
 
 def run() -> None:
     """
-    Background worker.
+    Background digest worker.
     """
 
     print("====================================")
-    print("Digest Worker started")
+    print("DIGEST WORKER STARTED")
     print("====================================")
 
     while True:
