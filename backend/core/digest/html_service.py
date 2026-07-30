@@ -1,8 +1,10 @@
 # backend/core/digest/html_service.py
 
 from core.digest.models import (
+    DigestBadge,
     DigestCard,
     DigestDocument,
+    DigestProfile,
     DigestSection,
 )
 
@@ -46,6 +48,8 @@ def render_digest_html(
     cellspacing="0">
 
 {_render_header(document)}
+
+{_render_profile(document)}
 
 {_render_sections(document)}
 
@@ -130,6 +134,99 @@ def _render_header(
 </tr>
 """
 
+# ============================================================
+# PROFILE
+# ============================================================
+
+def _render_profile(
+    document: DigestDocument,
+) -> str:
+
+    profile = document.profile
+
+    return f"""
+<tr>
+
+<td class="profile">
+
+<h2>
+
+Your Monitoring Profile
+
+</h2>
+
+{_render_profile_identity(profile)}
+
+{_render_profile_badges(
+    "Companies",
+    profile.companies,
+)}
+
+{_render_profile_badges(
+    "Topics",
+    profile.topics,
+)}
+
+{_render_profile_badges(
+    "Solutions",
+    profile.solutions,
+)}
+
+{_render_keywords(
+    profile.keywords,
+)}
+
+</td>
+
+</tr>
+"""
+
+# ============================================================
+# PROFILE IDENTITY
+# ============================================================
+
+def _render_profile_identity(
+    profile: DigestProfile,
+) -> str:
+
+    subtitle = []
+
+    if profile.role:
+        subtitle.append(profile.role)
+
+    if profile.company:
+        subtitle.append(profile.company)
+
+    html = f"""
+<p>
+
+<strong>{profile.name}</strong>
+
+</p>
+"""
+
+    if subtitle:
+
+        html += f"""
+<p>
+
+{" · ".join(subtitle)}
+
+</p>
+"""
+
+    if profile.description:
+
+        html += f"""
+<p class="profile-description">
+
+{profile.description}
+
+</p>
+"""
+
+    return html
+
 
 # ============================================================
 # SECTIONS
@@ -143,6 +240,83 @@ def _render_sections(
         _render_section(section)
         for section in document.sections
     )
+
+# ============================================================
+# BADGES
+# ============================================================
+
+def _render_profile_badges(
+    title: str,
+    badges: list[DigestBadge],
+) -> str:
+
+    if not badges:
+
+        return ""
+
+    html = f"""
+<h3>
+
+{title}
+
+</h3>
+
+<div class="badge-list">
+"""
+
+    for badge in badges:
+
+        html += f"""
+<span class="badge">
+
+{badge.label}
+
+</span>
+"""
+
+    html += """
+</div>
+"""
+
+    return html
+
+# ============================================================
+# KEYWORDS
+# ============================================================
+
+def _render_keywords(
+    keywords: list[str],
+) -> str:
+
+    if not keywords:
+
+        return ""
+
+    html = """
+<h3>
+
+Keywords
+
+</h3>
+
+<div class="badge-list">
+"""
+
+    for keyword in keywords:
+
+        html += f"""
+<span class="badge">
+
+{keyword}
+
+</span>
+"""
+
+    html += """
+</div>
+"""
+
+    return html
 
 
 # ============================================================
