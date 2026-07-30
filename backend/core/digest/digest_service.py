@@ -36,6 +36,14 @@ from core.expertise.capabilities import (
     CAPABILITY_IMPLICATIONS,
 )
 
+from core.digest.send_service import (
+    send_digest as deliver_digest,
+)
+
+from core.delivery.models import (
+    DeliveryResult,
+)
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -193,6 +201,84 @@ def get_digest(
 
         raise ValueError(
             f"Unknown digest: {digest_id}"
+        )
+
+    return digest
+
+# ============================================================
+# SEND
+# ============================================================
+
+def send_digest(
+    digest_id: str,
+) -> Digest:
+    """
+    Send a generated Digest.
+    """
+
+    digest = fetch_digest(
+        digest_id,
+    )
+
+    if digest is None:
+
+        raise ValueError(
+            f"Unknown digest: {digest_id}"
+        )
+
+    if digest.document is None:
+
+        raise ValueError(
+            "Digest has not been generated."
+        )
+
+    # ========================================================
+    # START
+    # ========================================================
+
+    digest.status = "sending"
+
+    digest.error = None
+
+    update_digest(
+        digest,
+    )
+
+    try:
+
+        #
+        # TODO
+        # Resolve recipient email
+        #
+
+        deliver_digest(
+
+            document=digest.document,
+
+            recipient="TODO",
+
+        )
+
+        digest.status = "sent"
+
+        digest.sent_at = datetime.now(
+            timezone.utc,
+        )
+
+        digest.error = None
+
+    except Exception as exc:
+
+        digest.status = "generated"
+
+        digest.error = str(exc)
+
+        raise
+
+    finally:
+
+        update_digest(
+            digest,
         )
 
     return digest
