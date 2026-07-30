@@ -15,8 +15,8 @@ from core.digest.repository import (
     update_digest,
 )
 
-from core.digest.render_service import (
-    render_digest,
+from core.digest.document_service import (
+    build_digest_document,
 )
 
 from core.expertise.service import (
@@ -147,7 +147,7 @@ def generate_digest(
 
         digest.knowledge = knowledge
 
-        digest.document = render_digest(
+        digest.document = build_digest_document(
 
             knowledge=knowledge,
 
