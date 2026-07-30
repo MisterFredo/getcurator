@@ -4,6 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  DrawerProvider,
+} from "@/contexts/DrawerContext";
+
+import DrawerHost from "@/components/drawers/DrawerHost";
+
+import {
   Archive,
   BarChart3,
   BookOpen,
@@ -168,6 +174,8 @@ export default function AdminShell({
 
   return (
 
+  <DrawerProvider>
+
     <div className="min-h-screen flex">
 
       {/* ===================================================== */}
@@ -176,82 +184,7 @@ export default function AdminShell({
 
       <aside className="w-64 bg-ratecard-blue text-white p-6 flex flex-col">
 
-        {/* HEADER */}
-
-        <div className="mb-8">
-
-          <h1 className="text-xl font-semibold">
-            Curator Admin
-          </h1>
-
-          <p className="text-xs opacity-80 mt-1">
-            Knowledge Platform
-          </p>
-
-        </div>
-
-        {/* NAVIGATION */}
-
-        <nav className="flex-1 overflow-y-auto space-y-8">
-
-          {sections.map((section) => (
-
-            <div key={section.title}>
-
-              <div className="text-xs uppercase tracking-wider opacity-50 mb-2 px-3">
-                {section.title}
-              </div>
-
-              <div className="space-y-1">
-
-                {section.items.map((item) => {
-
-                  const Icon =
-                    item.icon;
-
-                  const active =
-                    isActive(item.href);
-
-                  return (
-
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`
-                        flex items-center gap-3 px-3 py-2 rounded transition
-                        ${
-                          active
-                            ? "bg-white text-ratecard-blue font-semibold"
-                            : "hover:bg-ratecard-green/20"
-                        }
-                      `}
-                    >
-
-                      <Icon size={18} />
-
-                      <span>
-                        {item.label}
-                      </span>
-
-                    </Link>
-
-                  );
-
-                })}
-
-              </div>
-
-            </div>
-
-          ))}
-
-        </nav>
-
-        {/* FOOTER */}
-
-        <div className="pt-8 text-xs opacity-60">
-          © {new Date().getFullYear()} Curator
-        </div>
+        {/* ... tout ton code existant de la sidebar ... */}
 
       </aside>
 
@@ -263,8 +196,15 @@ export default function AdminShell({
         {children}
       </main>
 
+      {/* ===================================================== */}
+      {/* DRAWERS */}
+      {/* ===================================================== */}
+
+      <DrawerHost />
+
     </div>
 
-  );
+  </DrawerProvider>
 
+);
 }
