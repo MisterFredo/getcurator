@@ -35,6 +35,12 @@ class DigestProfile(BaseModel):
     role: str | None = None
 
     description: str | None = None
+    geography_1: str | None = None
+
+    geography_2: str | None = None
+
+    geography_3: str | None = None
+
 
     companies: list[DigestBadge] = Field(
         default_factory=list,
@@ -65,8 +71,6 @@ class DigestCard(BaseModel):
     source_title: str | None = None
 
     published_at: datetime | None = None
-
-    cta: str = "Read on GetCurator"
 
     badges: list[DigestBadge] = Field(
         default_factory=list,
