@@ -1,6 +1,5 @@
 # backend/core/digest/digest_worker.py
 
-import time
 import traceback
 
 from core.digest.repository import (
@@ -16,13 +15,7 @@ from core.digest.digest_service import (
 )
 
 # ============================================================
-# CONFIG
-# ============================================================
-
-POLL_INTERVAL = 5
-
-# ============================================================
-# PROCESS
+# PROCESS ONE DIGEST
 # ============================================================
 
 def process_next_digest() -> bool:
@@ -52,6 +45,7 @@ def process_next_digest() -> bool:
         )
 
         digest.status = "failed"
+
         digest.error = "Campaign not found."
 
         update_digest(
@@ -61,7 +55,7 @@ def process_next_digest() -> bool:
         return True
 
     # ========================================================
-    # CAMPAIGN START
+    # START CAMPAIGN
     # ========================================================
 
     if campaign.status == "queued":
@@ -73,7 +67,7 @@ def process_next_digest() -> bool:
         )
 
     # ========================================================
-    # GENERATE DIGEST
+    # GENERATE
     # ========================================================
 
     try:
@@ -117,7 +111,7 @@ def process_next_digest() -> bool:
         )
 
     # ========================================================
-    # CAMPAIGN PROGRESS
+    # UPDATE CAMPAIGN
     # ========================================================
 
     digests = fetch_digests(
@@ -138,10 +132,6 @@ def process_next_digest() -> bool:
 
     campaign.failed_count = failed
 
-    # ========================================================
-    # CAMPAIGN COMPLETE
-    # ========================================================
-
     if generated + failed == len(digests):
 
         if generated == 0:
@@ -160,33 +150,22 @@ def process_next_digest() -> bool:
 
 
 # ============================================================
-# LOOP
+# PROCESS ALL PENDING DIGESTS
 # ============================================================
 
-def run() -> None:
+def process_pending_digests() -> None:
     """
-    Background digest worker.
+    Process all pending digests.
     """
 
     print("====================================")
-    print("DIGEST WORKER STARTED")
+    print("PROCESSING PENDING DIGESTS")
     print("====================================")
 
-    while True:
+    while process_next_digest():
 
-        processed = process_next_digest()
+        pass
 
-        if not processed:
-
-            time.sleep(
-                POLL_INTERVAL,
-            )
-
-
-# ============================================================
-# ENTRYPOINT
-# ============================================================
-
-if __name__ == "__main__":
-
-    run()
+    print("====================================")
+    print("DIGEST PROCESSING COMPLETED")
+    print("====================================")
