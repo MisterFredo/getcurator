@@ -32,8 +32,6 @@ class DigestCard(BaseModel):
 
     published_at: datetime | None = None
 
-    logo_url: str | None = None
-
 # ============================================================
 # DIGEST SECTION
 # ============================================================
