@@ -197,7 +197,9 @@ def normalize_contents(
                 build_content(row)
             )
 
-        except Exception:
-            continue
+        except Exception as e:
+            print(e)
+            print(row)
+            raise
 
     return contents
