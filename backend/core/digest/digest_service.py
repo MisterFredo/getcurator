@@ -44,6 +44,10 @@ from core.user.user_service import (
     get_user,
 )
 
+from core.digest.digest_profile_service import (
+    build_digest_profile,
+)
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -102,6 +106,14 @@ def generate_digest(
     try:
 
         # ====================================================
+        # BUILD PROFILE
+        # ====================================================
+
+        profile = build_digest_profile(
+            digest.user_id,
+        )
+
+        # ====================================================
         # BUILD EXPERTISE
         # ====================================================
 
@@ -148,6 +160,8 @@ def generate_digest(
         digest.knowledge = knowledge
 
         digest.document = build_digest_document(
+
+            profile=profile,
 
             knowledge=knowledge,
 
