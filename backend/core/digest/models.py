@@ -134,8 +134,8 @@ class CampaignCreateRequest(BaseModel):
 # ============================================================
 
 class CampaignDigest(Digest):
-    display_name: str | None = None
-    email: str | None = None
+    user_name: str | None = None
+    user_email: str | None = None
 
 # ============================================================
 # CAMPAIGN DETAIL
