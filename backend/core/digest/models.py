@@ -14,10 +14,6 @@ from core.delivery.models import (
     KnowledgeResult,
 )
 
-# ============================================================
-# DIGEST CARD
-# ============================================================
-
 class DigestCard(BaseModel):
 
     id: str
@@ -32,28 +28,28 @@ class DigestCard(BaseModel):
 
     published_at: datetime | None = None
 
-# ============================================================
-# DIGEST SECTION
-# ============================================================
 
 class DigestSection(BaseModel):
-    id: str
+
     title: str
-    body: str
+
+    content: str
+
     cards: list[DigestCard] = Field(
         default_factory=list,
     )
 
-# ============================================================
-# DIGEST DOCUMENT
-# ============================================================
 
 class DigestDocument(BaseModel):
 
     title: str
+
     subtitle: str = ""
+
     period: str
+
     created_at: datetime
+
     sections: list[DigestSection]
 
 # ============================================================
