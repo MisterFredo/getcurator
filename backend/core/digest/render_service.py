@@ -147,8 +147,6 @@ def render_digest(
 
                 published_at=content.published_at,
 
-                company_logo=content.primary_company_logo,
-
             )
 
         )
