@@ -62,15 +62,15 @@ EXPERT PROFILE
 
 {profile_text}
 
-The expert profile defines the perspective of the analysis.
+The expert profile defines the strategic priorities of this analysis.
 
-It should influence what you emphasize and how you interpret the market.
+Use it as a prioritization framework.
 
-Do not describe the profile.
+When several market transformations emerge from the Key Points, emphasize those that are the most strategically relevant to this profile.
 
-Do not mention the profile.
+The profile should influence what you choose to analyze, not simply how you write.
 
-Do not explain why the profile is relevant.
+Never mention or describe the profile.
 
 --------------------------------------------------
 KEY POINTS
@@ -85,33 +85,43 @@ SUPPORTING CONTENT
 --------------------------------------------------
 OBJECTIVE
 
-The Key Points already describe what is happening.
-
-Do not explain them again.
+The Key Points already explain what happened.
 
 Do not rewrite them.
 
+Do not summarize them.
+
 Do not expand them.
 
-Assume they are already understood.
+Assume the reader already understands them.
 
-Your role is to explain what these developments change in the market.
+Your role is to explain what these developments change for the market from the perspective defined by the expert profile.
 
-Focus on structural consequences rather than individual events.
+Identify the structural transformations behind the Key Points.
 
-Explain how these developments reshape competition, business models, value creation, industry structure or decision-making.
+Focus on changes in:
 
-Interpret the evolution of the market, not the news.
+- competition
+- business models
+- customer behavior
+- value creation
+- distribution of power
+- industry dynamics
+- long-term strategic direction
+
+Connect multiple Key Points whenever they reveal the same underlying transformation.
+
+Use the supporting content only to validate or reinforce your reasoning.
 
 --------------------------------------------------
 TASK
 
 1. Read the Key Points.
 2. Treat them as established market facts.
-3. Identify the broader market transformation they reveal.
-4. Explain what this transformation changes.
-5. Connect multiple Key Points whenever they reinforce the same structural evolution.
-6. Use the supporting content only to verify facts or reinforce your reasoning.
+3. Identify the major structural transformations they reveal.
+4. Prioritize the transformations that are the most relevant to the expert profile.
+5. Explain what these transformations change in the market.
+6. Connect related Key Points whenever appropriate.
 7. Base every conclusion exclusively on the provided evidence.
 
 --------------------------------------------------
@@ -121,66 +131,60 @@ STRATEGIC IMPLICATIONS
 
 - Short implication title
 
-  One concise paragraph explaining the strategic significance of the market transformation.
+  One concise paragraph explaining the strategic significance of the transformation.
 
 --------------------------------------------------
 WRITING STYLE
 
-Write like a senior industry analyst briefing a CEO.
+Write like a senior industry analyst briefing an executive.
 
-Assume the reader already understands the Key Points.
+The reader already understands the market developments.
 
-Your value is not to explain what happened.
+Your value is to explain why they matter strategically.
 
-Your value is to explain what has changed.
-
-Each implication should describe a structural market evolution rather than a specific news event.
-
-Focus on long-term consequences.
+Focus on structural evolution rather than individual events.
 
 Prefer reasoning such as:
 
-- This gradually shifts...
 - This accelerates...
+- This reinforces...
+- This gradually shifts...
 - This changes the economics of...
 - This transforms how organizations...
-- This changes the basis of competition...
+- This reshapes competitive dynamics...
 - This redistributes bargaining power...
-- This raises the strategic value of...
-- This reinforces a long-term transition...
-- This increases pressure on...
+- This increases the strategic value of...
 - This reduces dependence on...
+- This creates structural pressure on...
 
 Avoid reasoning such as:
 
 - The market is shifting towards...
 - This Key Point shows...
 - This article explains...
-- Apple announced...
-- Google launched...
+- Company X announced...
 - For this expert...
 - Given this profile...
+- This profile focuses on...
 - This is relevant because...
 
-The expert profile should be reflected implicitly through the perspective of the analysis, never through explicit references to the reader.
+The influence of the expert profile must remain implicit.
 
 --------------------------------------------------
 RULES
 
 - Maximum 5 implications.
-- One implication per major market transformation.
-- Each implication must explain what changes in the market, not what happened.
-- Do not rewrite or paraphrase the Key Points.
-- Do not identify new market developments.
+- One implication per major structural transformation.
+- Prioritize the transformations that matter most for the expert profile.
+- Do not rewrite the Key Points.
 - Do not summarize articles.
+- Do not identify new market developments.
 - Do not recommend actions.
-- Do not speculate beyond the evidence.
+- Do not speculate beyond the available evidence.
 - Do not invent opportunities or risks.
-- Do not mention article titles.
-- Do not mention publishers.
-- Use the supporting content only as supporting evidence.
+- Do not mention article titles or publishers.
 
 --------------------------------------------------
 
-The reader should finish with a deeper understanding of how the market is evolving and why these developments matter strategically, not with another explanation of the market developments themselves.
+The reader should finish with a deeper understanding of the structural transformations that matter most from the perspective defined by the expert profile.
 """.strip()
