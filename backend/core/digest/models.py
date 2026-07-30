@@ -36,15 +36,19 @@ class DigestProfile(BaseModel):
 
     description: str | None = None
 
-    topics: list[DigestBadge] = Field(
-        default_factory=list,
-    )
-
     companies: list[DigestBadge] = Field(
         default_factory=list,
     )
 
-    keywords: list[DigestBadge] = Field(
+    topics: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
+    solutions: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
+    keywords: list[str] = Field(
         default_factory=list,
     )
 
