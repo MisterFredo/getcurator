@@ -153,17 +153,6 @@ def build_selection_query(
     {limit_sql}
 
     """
-
-    print("=" * 80)
-    print("GENERATED SQL")
-    print("=" * 80)
-    print(sql)
-
-    print("=" * 80)
-    print("PARAMS")
-    print("=" * 80)
-    print(params)
-
     return sql, params
 
 
