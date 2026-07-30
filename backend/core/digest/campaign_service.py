@@ -218,8 +218,11 @@ def generate_campaign(
     for digest in digests:
 
         digest.status = "pending"
+
         digest.error = None
+
         digest.generated_at = None
+
         digest.sent_at = None
 
         update_digest(
@@ -230,7 +233,23 @@ def generate_campaign(
         f"Campaign queued: {campaign.id}"
     )
 
-    return campaign
+    # ========================================================
+    # PROCESS DIGESTS
+    # ========================================================
+
+    from core.digest.digest_worker import (
+        process_pending_digests,
+    )
+
+    process_pending_digests()
+
+    # ========================================================
+    # DONE
+    # ========================================================
+
+    return fetch_campaign(
+        campaign.id,
+    )
 
 # ============================================================
 # SEND
