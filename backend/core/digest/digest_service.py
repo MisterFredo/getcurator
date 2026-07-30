@@ -6,13 +6,13 @@ from datetime import (
 )
 
 from core.digest.models import (
-    Campaign,
     Digest,
 )
 
 from core.digest.repository import (
-    update_digest,
     fetch_digest,
+    fetch_campaign,
+    update_digest,
 )
 
 from core.digest.render_service import (
@@ -53,81 +53,125 @@ DEFAULT_DIGEST_LIMIT = 20
 # ============================================================
 
 def generate_digest(
-    digest: Digest,
-    campaign: Campaign,
+    digest_id: str,
 ) -> Digest:
     """
     Generate a personalized Digest.
     """
 
-    # ========================================================
-    # BUILD EXPERTISE
-    # ========================================================
-
-    expertise = generate_expertise_from_profile(
-
-        user_id=digest.user_id,
-
-        period_start=campaign.period_start.isoformat(),
-
-        period_end=campaign.period_end.isoformat(),
-
-        limit=DEFAULT_DIGEST_LIMIT,
-
+    digest = fetch_digest(
+        digest_id,
     )
 
+    if digest is None:
+
+        raise ValueError(
+            f"Unknown digest: {digest_id}"
+        )
+
+    campaign = fetch_campaign(
+        digest.campaign_id,
+    )
+
+    if campaign is None:
+
+        raise ValueError(
+            f"Unknown campaign: {digest.campaign_id}"
+        )
+
     # ========================================================
-    # DELIVERY
+    # START
     # ========================================================
 
-    knowledge = deliver_knowledge(
+    digest.status = "generating"
 
-        KnowledgeRequest(
+    digest.error = None
+
+    update_digest(
+        digest,
+    )
+
+    try:
+
+        # ====================================================
+        # BUILD EXPERTISE
+        # ====================================================
+
+        expertise = generate_expertise_from_profile(
 
             user_id=digest.user_id,
 
-            capabilities=DIGEST_CAPABILITIES,
+            period_start=campaign.period_start.isoformat(),
 
-            expertise=expertise,
+            period_end=campaign.period_end.isoformat(),
+
+            limit=DEFAULT_DIGEST_LIMIT,
 
         )
 
-    )
+        # ====================================================
+        # DELIVERY
+        # ====================================================
 
-    # ========================================================
-    # BUILD DOCUMENT
-    # ========================================================
+        knowledge = deliver_knowledge(
 
-    digest.total_contents = expertise.count
+            KnowledgeRequest(
 
-    digest.analyzed_contents = len(
-        expertise.contents,
-    )
+                user_id=digest.user_id,
 
-    digest.knowledge = knowledge
+                capabilities=DIGEST_CAPABILITIES,
 
-    digest.document = render_digest(
+                expertise=expertise,
 
-        knowledge=knowledge,
+            )
 
-        period_start=campaign.period_start,
+        )
 
-        period_end=campaign.period_end,
+        # ====================================================
+        # BUILD DOCUMENT
+        # ====================================================
 
-    )
-    digest.status = "generated"
+        digest.total_contents = expertise.count
 
-    digest.generated_at = datetime.now(
-        timezone.utc,
-    )
+        digest.analyzed_contents = len(
+            expertise.contents,
+        )
 
-    # ========================================================
-    # PERSIST
-    # ========================================================
+        digest.knowledge = knowledge
 
-    return update_digest(
-        digest,
-    )
+        digest.document = render_digest(
+
+            knowledge=knowledge,
+
+            period_start=campaign.period_start,
+
+            period_end=campaign.period_end,
+
+        )
+
+        digest.status = "generated"
+
+        digest.generated_at = datetime.now(
+            timezone.utc,
+        )
+
+        digest.error = None
+
+    except Exception as exc:
+
+        digest.status = "failed"
+
+        digest.error = str(exc)
+
+        raise
+
+    finally:
+
+        update_digest(
+            digest,
+        )
+
+    return digest
 
 
 # ============================================================
