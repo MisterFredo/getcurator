@@ -14,6 +14,40 @@ from core.delivery.models import (
     KnowledgeResult,
 )
 
+class DigestBadge(BaseModel):
+
+    label: str
+
+    type: Literal[
+        "company",
+        "topic",
+        "solution",
+
+    ]
+
+
+class DigestProfile(BaseModel):
+
+    name: str
+
+    company: str | None = None
+
+    role: str | None = None
+
+    description: str | None = None
+
+    topics: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
+    companies: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
+    keywords: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
 class DigestCard(BaseModel):
 
     id: str
@@ -29,6 +63,14 @@ class DigestCard(BaseModel):
     published_at: datetime | None = None
 
     cta: str = "Read on GetCurator"
+
+    badges: list[DigestBadge] = Field(
+        default_factory=list,
+    )
+
+    matching_badges: list[DigestBadge] = Field(
+        default_factory=list,
+    )
 
 
 class DigestSection(BaseModel):
@@ -51,6 +93,8 @@ class DigestDocument(BaseModel):
     period: str
 
     created_at: datetime
+
+    profile: DigestProfile
 
     sections: list[DigestSection]
 
