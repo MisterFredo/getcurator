@@ -2,33 +2,36 @@
 
 import { useDrawer } from "@/contexts/DrawerContext";
 
-// DRAWERS
 import AnalysisDrawerAdmin from "@/components/drawers/AnalysisDrawerAdmin";
+import DigestPreviewDrawer from "@/components/drawers/DigestPreviewDrawer";
 
-/* =========================================================
-   HOST — RENDU CENTRALISÉ DES DRAWERS
-========================================================= */
+/* ========================================================= */
 
 export default function DrawerHost() {
+
   const {
-    leftDrawer,
     rightDrawer,
-    closeLeftDrawer,
     closeRightDrawer,
   } = useDrawer();
 
   return (
     <>
-      
-      {/* =========================================
-          DRAWER DROITE — ANALYSIS (ADMIN)
-      ========================================= */}
-      {rightDrawer.type === "analysis" && rightDrawer.id && (
-        <AnalysisDrawerAdmin
-          contentId={rightDrawer.id}
-          onClose={closeRightDrawer}
-        />
+      {rightDrawer.type === "analysis" &&
+        rightDrawer.id && (
+          <AnalysisDrawerAdmin
+            contentId={rightDrawer.id}
+            onClose={closeRightDrawer}
+          />
+      )}
+
+      {rightDrawer.type === "digest-preview" &&
+        rightDrawer.id && (
+          <DigestPreviewDrawer
+            digestId={rightDrawer.id}
+            onClose={closeRightDrawer}
+          />
       )}
     </>
   );
+
 }
