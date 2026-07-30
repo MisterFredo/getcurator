@@ -11,10 +11,20 @@ import {
    TYPES
 ========================================================= */
 
-type DrawerTypeLeft = "member" | null;
-type DrawerTypeRight = "news" | "analysis" | "newsletter" | null;
+type DrawerTypeLeft =
+  | "member"
+  | null;
 
-type DrawerMode = "silent" | "route";
+type DrawerTypeRight =
+  | "news"
+  | "analysis"
+  | "newsletter"
+  | "digest-preview"
+  | null;
+
+type DrawerMode =
+  | "silent"
+  | "route";
 
 type DrawerSlot = {
   type: DrawerTypeLeft | DrawerTypeRight;
@@ -29,17 +39,20 @@ type DrawerContextType = {
   openLeftDrawer: (
     type: "member",
     id: string,
-    mode?: DrawerMode
+    mode?: DrawerMode,
   ) => void;
 
   openRightDrawer: (
-    type: "news" | "analysis",
+    type:
+      | "news"
+      | "analysis"
+      | "digest-preview",
     id: string,
-    mode?: DrawerMode
+    mode?: DrawerMode,
   ) => void;
 
   openNewsletterDrawer: (
-    mode?: DrawerMode
+    mode?: DrawerMode,
   ) => void;
 
   closeLeftDrawer: () => void;
@@ -50,9 +63,10 @@ type DrawerContextType = {
    CONTEXT
 ========================================================= */
 
-const DrawerContext = createContext<DrawerContextType | null>(
-  null
-);
+const DrawerContext =
+  createContext<DrawerContextType | null>(
+    null,
+  );
 
 /* =========================================================
    PROVIDER
@@ -63,61 +77,98 @@ export function DrawerProvider({
 }: {
   children: ReactNode;
 }) {
-  const [leftDrawer, setLeftDrawer] = useState<DrawerSlot>({
+
+  const [
+    leftDrawer,
+    setLeftDrawer,
+  ] = useState<DrawerSlot>({
     type: null,
     id: null,
     mode: null,
   });
 
-  const [rightDrawer, setRightDrawer] = useState<DrawerSlot>({
+  const [
+    rightDrawer,
+    setRightDrawer,
+  ] = useState<DrawerSlot>({
     type: null,
     id: null,
     mode: null,
   });
 
-  /* -----------------------------
-     OPEN / CLOSE — LEFT
-  ----------------------------- */
+  /* =======================================================
+     LEFT
+  ======================================================= */
 
   function openLeftDrawer(
     type: "member",
     id: string,
-    mode: DrawerMode = "silent"
+    mode: DrawerMode = "silent",
   ) {
-    setLeftDrawer({ type, id, mode });
+
+    setLeftDrawer({
+      type,
+      id,
+      mode,
+    });
+
   }
 
   function closeLeftDrawer() {
-    setLeftDrawer({ type: null, id: null, mode: null });
+
+    setLeftDrawer({
+      type: null,
+      id: null,
+      mode: null,
+    });
+
   }
 
-  /* -----------------------------
-     OPEN / CLOSE — RIGHT
-  ----------------------------- */
+  /* =======================================================
+     RIGHT
+  ======================================================= */
 
   function openRightDrawer(
-    type: "news" | "analysis",
+    type:
+      | "news"
+      | "analysis"
+      | "digest-preview",
     id: string,
-    mode: DrawerMode = "silent"
+    mode: DrawerMode = "silent",
   ) {
-    setRightDrawer({ type, id, mode });
+
+    setRightDrawer({
+      type,
+      id,
+      mode,
+    });
+
   }
 
   function openNewsletterDrawer(
-    mode: DrawerMode = "silent"
+    mode: DrawerMode = "silent",
   ) {
+
     setRightDrawer({
       type: "newsletter",
       id: null,
       mode,
     });
+
   }
 
   function closeRightDrawer() {
-    setRightDrawer({ type: null, id: null, mode: null });
+
+    setRightDrawer({
+      type: null,
+      id: null,
+      mode: null,
+    });
+
   }
 
   return (
+
     <DrawerContext.Provider
       value={{
         leftDrawer,
@@ -129,9 +180,13 @@ export function DrawerProvider({
         closeRightDrawer,
       }}
     >
+
       {children}
+
     </DrawerContext.Provider>
+
   );
+
 }
 
 /* =========================================================
@@ -139,11 +194,20 @@ export function DrawerProvider({
 ========================================================= */
 
 export function useDrawer() {
-  const ctx = useContext(DrawerContext);
-  if (!ctx) {
-    throw new Error(
-      "useDrawer must be used within DrawerProvider"
+
+  const ctx =
+    useContext(
+      DrawerContext,
     );
+
+  if (!ctx) {
+
+    throw new Error(
+      "useDrawer must be used within DrawerProvider",
+    );
+
   }
+
   return ctx;
+
 }
