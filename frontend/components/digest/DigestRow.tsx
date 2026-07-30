@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { api } from "@/lib/api";
 
 import type {
@@ -24,6 +22,32 @@ export default function DigestRow({
     );
 
     window.location.reload();
+
+  }
+
+  async function handlePreview() {
+
+    const res = await api.get(
+      `/digest/digests/${digest.id}/preview`,
+    );
+
+    const preview =
+      window.open(
+        "",
+        "_blank",
+      );
+
+    if (!preview) {
+      return;
+    }
+
+    preview.document.open();
+
+    preview.document.write(
+      res.html,
+    );
+
+    preview.document.close();
 
   }
 
@@ -96,18 +120,18 @@ export default function DigestRow({
           </button>
 
           <button
+            onClick={handlePreview}
+            className="rounded border px-3 py-1 hover:bg-gray-50"
+          >
+            Preview
+          </button>
+
+          <button
             onClick={handleSend}
             className="rounded border px-3 py-1 hover:bg-gray-50"
           >
             Send
           </button>
-
-          <Link
-            href={`/admin/digest/digests/${digest.id}`}
-            className="rounded border px-3 py-1 hover:bg-gray-50"
-          >
-            Preview
-          </Link>
 
         </div>
 
