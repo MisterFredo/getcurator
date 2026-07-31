@@ -1,9 +1,7 @@
+# backend/core/digest/html_implications.py
+
 from core.digest.models import (
     DigestSection,
-)
-
-from core.digest.html_parser import (
-    parse_implications,
 )
 
 
@@ -18,21 +16,6 @@ def render_implications_section(
     Render the Strategic Implications section.
     """
 
-    blocks = parse_implications(
-        section.content,
-    )
-
-    html = "".join(
-
-        render_implication(
-            title=block["title"],
-            analysis=block["body"],
-        )
-
-        for block in blocks
-
-    )
-
     return f"""
 <tr>
 
@@ -44,40 +27,13 @@ def render_implications_section(
 
 </h2>
 
-{html}
+<div class="implications-content">
+
+{section.content}
+
+</div>
 
 </td>
 
 </tr>
-"""
-
-
-# ============================================================
-# IMPLICATION
-# ============================================================
-
-def render_implication(
-    title: str,
-    analysis: str,
-) -> str:
-    """
-    Render one strategic implication.
-    """
-
-    return f"""
-<div class="implication">
-
-<div class="implication-title">
-
-{title}
-
-</div>
-
-<div class="implication-analysis">
-
-{analysis}
-
-</div>
-
-</div>
 """
