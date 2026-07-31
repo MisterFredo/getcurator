@@ -94,15 +94,12 @@ SECTION_ARTICLES = "Articles"
 # ============================================================
 
 def build_digest_document(
-
     profile: DigestProfile,
-
     knowledge: KnowledgeResult,
-
     period_start: datetime,
-
     period_end: datetime,
-
+    frequency: str,
+    audience: str,
 ) -> DigestDocument:
     """
     Build a DigestDocument from a KnowledgeResult.
@@ -200,6 +197,10 @@ def build_digest_document(
 
     return DigestDocument(
 
+        frequency=frequency,
+
+        audience=audience,
+
         title=_build_title(
             period_start,
             period_end,
@@ -219,7 +220,6 @@ def build_digest_document(
         sections=sections,
 
     )
-
 
 # ============================================================
 # CARD
