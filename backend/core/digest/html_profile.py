@@ -51,15 +51,15 @@ Based on your saved monitoring preferences.
 
 {render_profile_description(profile)}
 
-<p class="profile-link">
+<a
+    href="https://www.getcurator.ai/settings"
+    target="_blank"
+    rel="noopener noreferrer"
+>
 
-<a href="https://www.getcurator.ai/settings">
-
-Edit your monitoring profile →
+    Edit your monitoring profile →
 
 </a>
-
-</p>
 
 {render_profile_badges(
     "Companies",
