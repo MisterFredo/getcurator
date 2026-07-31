@@ -51,6 +51,16 @@ Based on your saved monitoring preferences.
 
 {render_profile_description(profile)}
 
+<p class="profile-link">
+
+<a href="https://www.getcurator.ai/settings">
+
+Edit your monitoring profile →
+
+</a>
+
+</p>
+
 {render_profile_badges(
     "Companies",
     profile.companies,
