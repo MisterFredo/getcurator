@@ -360,122 +360,16 @@ p {
 }
 
 /* ==========================================================
-   MARKET DEVELOPMENT LABEL
+   DIVIDER
 ========================================================== */
 
-.market-development-label {
+.digest-divider {
 
-    display: inline-block;
+    margin: 28px 0;
 
-    margin: 28px 0 12px;
+    border: 0;
 
-    padding: 4px 10px;
-
-    border-radius: 999px;
-
-    background: #EEF4FF;
-
-    color: #315EFB;
-
-    font-size: 10px;
-
-    font-weight: 700;
-
-    letter-spacing: 1px;
-
-    text-transform: uppercase;
-
-}
-
-.market-development-title-label {
-
-    display: block;
-
-    margin: 14px 0 4px;
-
-    color: #111827;
-
-    font-size: 12px;
-
-    font-weight: 700;
-
-    text-transform: uppercase;
-
-}
-
-.market-development-summary-label {
-
-    display: block;
-
-    margin: 16px 0 6px;
-
-    color: #6B7280;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-    text-transform: uppercase;
-
-}
-
-/* ==========================================================
-   STRATEGIC IMPLICATION LABEL
-========================================================== */
-
-.strategic-implication-label {
-
-    display: inline-block;
-
-    margin: 28px 0 12px;
-
-    padding: 4px 10px;
-
-    border-radius: 999px;
-
-    background: #ECFDF5;
-
-    color: #047857;
-
-    font-size: 10px;
-
-    font-weight: 700;
-
-    letter-spacing: 1px;
-
-    text-transform: uppercase;
-
-}
-
-.strategic-implication-title-label {
-
-    display: block;
-
-    margin: 14px 0 4px;
-
-    color: #111827;
-
-    font-size: 12px;
-
-    font-weight: 700;
-
-    text-transform: uppercase;
-
-}
-
-.strategic-implication-analysis-label {
-
-    display: block;
-
-    margin: 16px 0 6px;
-
-    color: #6B7280;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-    text-transform: uppercase;
+    border-top: 1px solid #E5E7EB;
 
 }
 
