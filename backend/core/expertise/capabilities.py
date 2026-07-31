@@ -4,9 +4,18 @@
 # CAPABILITIES
 # ============================================================
 
-CAPABILITY_KEY_POINTS = "key_points"
+CAPABILITY_EXECUTIVE_SUMMARY = (
+    "executive_summary"
+)
 
-CAPABILITY_STRUCTURE = "structure"
+CAPABILITY_KEY_POINTS = (
+    "key_points"
+)
 
-CAPABILITY_IMPLICATIONS = "implications"
+CAPABILITY_IMPLICATIONS = (
+    "implications"
+)
 
+CAPABILITY_STRUCTURE = (
+    "structure"
+)
