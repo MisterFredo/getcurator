@@ -22,7 +22,7 @@ def build_key_points_prompt(
     return f"""
 You are a senior business intelligence analyst.
 
-Your mission is to identify the structural market developments emerging from a curated set of business content.
+Your mission is to identify the major market developments emerging from a curated set of business content.
 
 The articles are evidence.
 
@@ -38,13 +38,20 @@ Write the entire response in English.
 --------------------------------------------------
 OBJECTIVE
 
-Identify the most important market developments emerging from the selected content.
+Identify the few structural market developments that best explain the evolution of the market during this period.
 
-Each Key Point should describe a market development that can be interpreted independently by subsequent analytical capabilities.
+Each development should be understandable on its own.
 
-Focus on trends, structural shifts, emerging patterns and market evolutions.
+Focus on:
+
+- structural shifts
+- recurring patterns
+- emerging trends
+- changes in competitive dynamics
+- market evolution
 
 Do not describe individual news stories.
+
 --------------------------------------------------
 SELECTED CONTENT
 
@@ -54,65 +61,79 @@ SELECTED CONTENT
 TASK
 
 1. Read every content item.
-2. Look across all articles rather than treating them independently.
-3. Identify recurring themes and common directions.
-4. Merge multiple articles describing the same evolution.
+2. Identify recurring market developments.
+3. Merge articles describing the same evolution.
+4. Ignore isolated events unless they reveal a broader trend.
 5. Prioritize the developments with the greatest strategic significance.
-6. Express each finding as a market evolution rather than an event.
+6. Express every development as a market evolution rather than a news event.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
-KEY MARKET DEVELOPMENTS
+For each market development, use exactly the following structure.
 
-- One concise statement describing a major market development.
+MARKET DEVELOPMENT
 
-SECONDARY DEVELOPMENTS
+TITLE
 
-- One concise statement describing a secondary market development.
+A short title.
+
+Maximum 8 words.
+
+SUMMARY
+
+A concise explanation written in 2 to 3 sentences.
+
+Explain what is happening in the market.
+
+Do not explain why it matters.
 
 --------------------------------------------------
 WRITING STYLE
 
-Write like an analyst presenting findings to executives.
+Write like an analyst briefing executives.
 
-Prefer sentences such as:
+Be factual.
 
-- The market is shifting towards...
-- Publishers are increasingly...
-- Brands are moving away from...
-- Privacy requirements are accelerating...
-- Retail media is becoming...
-- Browser vendors are consolidating...
+Be concise.
 
-Avoid sentences such as:
+Prefer formulations such as:
+
+- Premiumization continues to accelerate...
+- Retail media is expanding into...
+- Consumer demand is shifting toward...
+- Distribution models are evolving...
+- Competitive pressure is increasing...
+- Investment is concentrating around...
+
+Avoid formulations such as:
 
 - Apple announced...
 - Google launched...
 - Company X introduced...
-- An article explains...
+- This article explains...
+- According to...
+- The report states...
 
 --------------------------------------------------
 RULES
 
-- Maximum 5 TOP 5 items.
-- Maximum 5 NOTABLE items.
-- One market development per bullet.
-- Merge related evidence into one finding.
-- Never produce one bullet per article.
-- Focus on the market, not individual companies.
-- Mention companies only when they genuinely represent a broader market movement.
+- Maximum 5 market developments.
+- Order them from most important to least important.
+- One development per block.
+- One market evolution only.
+- Merge related evidence.
 - Remove duplication.
-- Keep every statement factual.
-- Do not explain why the development matters.
-- Do not make recommendations.
-- Do not speculate beyond the evidence.
+- Stay factual.
+- Do not speculate.
+- Do not recommend actions.
+- Do not explain strategic implications.
 - Do not mention article titles.
 - Do not mention publishers.
+- Mention companies only when they genuinely illustrate a broader market evolution.
 - Use only the provided content.
-- Each Key Point should be self-contained and understandable without referring back to the original articles.
 
 --------------------------------------------------
 
-The reader should finish with a clear understanding of the few market developments that deserve attention this week, not with a list of article summaries.
+The reader should finish with a clear understanding of the five market developments that best define the current period.
 """.strip()
