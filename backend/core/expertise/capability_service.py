@@ -6,6 +6,10 @@ from api.expertise.models import (
     Expertise,
 )
 
+from core.expertise.prompts.executive_summary import (
+    build_executive_summary_prompt,
+)
+
 from core.expertise.prompts.key_points import (
     build_key_points_prompt,
 )
@@ -19,6 +23,7 @@ from core.expertise.prompts.implications import (
 )
 
 from core.expertise.capabilities import (
+    CAPABILITY_EXECUTIVE_SUMMARY,
     CAPABILITY_KEY_POINTS,
     CAPABILITY_STRUCTURE,
     CAPABILITY_IMPLICATIONS,
@@ -36,6 +41,16 @@ def _build_prompt(
 ) -> str:
 
     context = context or {}
+
+    # ========================================================
+    # EXECUTIVE SUMMARY
+    # ========================================================
+
+    if capability == CAPABILITY_EXECUTIVE_SUMMARY:
+
+        return build_executive_summary_prompt(
+            context=context,
+        )
 
     # ========================================================
     # KEY POINTS
