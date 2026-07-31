@@ -70,8 +70,6 @@ Use it only to prioritize the implications.
 
 Never mention the profile.
 
-Never explain that the profile influenced your reasoning.
-
 Its influence must remain completely implicit.
 
 --------------------------------------------------
@@ -102,7 +100,7 @@ Focus on structural consequences such as:
 - investment priorities
 - long-term market direction
 
-Connect multiple Key Points whenever they describe the same structural transformation.
+Connect multiple Key Points whenever they reveal the same structural transformation.
 
 --------------------------------------------------
 TASK
@@ -112,39 +110,35 @@ TASK
 3. Identify the structural transformations they reveal.
 4. Prioritize the transformations that matter most for the expert profile.
 5. Explain why these transformations matter strategically.
-6. Support every conclusion using the provided evidence.
+6. Base every conclusion exclusively on the provided evidence.
 7. Never introduce new market developments.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
-Repeat EXACTLY the following structure for every Strategic Implication.
+For each Strategic Implication, use EXACTLY the following structure.
 
-STRATEGIC IMPLICATION
+Implication title
 
-TITLE
+One concise paragraph (maximum 80 words) explaining the strategic consequence.
 
-<maximum 8 words>
+--------------------------------------------------
 
-ANALYSIS
+Repeat the same structure for every implication.
 
-<one paragraph, maximum 80 words>
+Separate each implication with exactly:
 
-The analysis must explain:
+--------------------------------------------------
 
-- what is changing,
-- why it matters,
-- what structural transformation it reveals.
+Do not use bullets.
 
-Do not add bullets.
-
-Do not number the implications.
+Do not use numbering.
 
 Do not use Markdown.
 
 Do not use bold.
 
-Do not omit any heading.
+Do not add introductions or conclusions.
 
 --------------------------------------------------
 WRITING STYLE
@@ -181,10 +175,9 @@ Avoid formulations such as:
 --------------------------------------------------
 RULES
 
-- Maximum 5 Strategic Implications.
+- Maximum 5 implications.
 - Order them from most important to least important.
-- One Strategic Implication per block.
-- One structural transformation only.
+- One structural transformation per implication.
 - Do not rewrite the Key Points.
 - Do not summarize the articles.
 - Do not identify new market developments.
@@ -194,7 +187,7 @@ RULES
 - Do not mention article titles.
 - Do not mention publishers.
 - Base every conclusion exclusively on the provided evidence.
-- Every Strategic Implication must remain understandable if read independently.
+- Every implication must remain understandable if read independently.
 
 --------------------------------------------------
 
