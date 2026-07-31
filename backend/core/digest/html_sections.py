@@ -23,21 +23,51 @@ def render_sections(
     Render all digest sections.
     """
 
-    return "".join(
-        render_section(section)
-        for section in document.sections
-    )
+    html = ""
 
+    for section in document.sections:
+
+        if section.title == "Executive Summary":
+
+            html += render_summary_section(
+                section,
+            )
+
+        elif section.title == "Key Points":
+
+            html += render_key_points_section(
+                section,
+            )
+
+        elif section.title == "Strategic Implications":
+
+            html += render_implications_section(
+                section,
+            )
+
+        elif section.title == "Articles":
+
+            html += render_articles_section(
+                section,
+            )
+
+        else:
+
+            html += render_default_section(
+                section,
+            )
+
+    return html
 
 # ============================================================
-# SECTION
+# DEFAULT SECTION
 # ============================================================
 
-def render_section(
+def render_default_section(
     section: DigestSection,
 ) -> str:
     """
-    Render a digest section.
+    Default rendering for a digest section.
     """
 
     cards = "".join(
@@ -69,6 +99,57 @@ def render_section(
 </tr>
 """
 
+
+# ============================================================
+# EXECUTIVE SUMMARY
+# ============================================================
+
+def render_summary_section(
+    section: DigestSection,
+) -> str:
+
+    return render_default_section(
+        section,
+    )
+
+
+# ============================================================
+# KEY POINTS
+# ============================================================
+
+def render_key_points_section(
+    section: DigestSection,
+) -> str:
+
+    return render_default_section(
+        section,
+    )
+
+
+# ============================================================
+# STRATEGIC IMPLICATIONS
+# ============================================================
+
+def render_implications_section(
+    section: DigestSection,
+) -> str:
+
+    return render_default_section(
+        section,
+    )
+
+
+# ============================================================
+# ARTICLES
+# ============================================================
+
+def render_articles_section(
+    section: DigestSection,
+) -> str:
+
+    return render_default_section(
+        section,
+    )
 
 # ============================================================
 # CARD
