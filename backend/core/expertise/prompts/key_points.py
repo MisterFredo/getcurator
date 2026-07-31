@@ -44,7 +44,7 @@ The objective is not to summarize the news.
 
 The objective is to explain the major evolutions emerging from all the available evidence.
 
-Each market development should be understandable on its own.
+Each Market Development should be understandable on its own.
 
 Focus on:
 
@@ -74,27 +74,27 @@ TASK
 --------------------------------------------------
 OUTPUT FORMAT
 
-Repeat the following block for every Market Development.
+Repeat EXACTLY the following structure for every Market Development.
 
 MARKET DEVELOPMENT
 
 TITLE
 
-Maximum 8 words.
-Prefer a noun phrase rather than a full sentence.
-Write the title immediately after the TITLE heading.
+<maximum 8 words>
 
 SUMMARY
 
-Exactly one paragraph.
+<one paragraph, maximum 60 words>
 
-Maximum 60 words.
+Do not add bullets.
 
-Describe only the market evolution.
+Do not number the developments.
 
-Do not discuss strategic implications.
+Do not use Markdown.
 
-Do not mention the supporting articles.
+Do not use bold.
+
+Do not omit any heading.
 
 --------------------------------------------------
 WRITING STYLE
