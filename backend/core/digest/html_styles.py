@@ -221,9 +221,11 @@ p {
 
     color: #315EFB;
 
-    font-size: 12px;
+    font-size: 13px;
 
-    font-weight: 600;
+    font-weight: 500;
+
+    opacity: .9;
 
     text-decoration: none;
 
@@ -521,11 +523,12 @@ p {
 
     margin-top: 12px;
 
-    font-size: 14px;
+    font-size: 13px;
 
-    font-weight: 600;
+    font-weight: 500;
 
 }
+
 
 /* ==========================================================
    FOOTER
