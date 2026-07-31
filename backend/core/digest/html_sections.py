@@ -19,6 +19,10 @@ from core.digest.html_key_points import (
     render_key_points_section,
 )
 
+from core.digest.html_implications import (
+    render_implications_section,
+)
+
 
 # ============================================================
 # SECTIONS
