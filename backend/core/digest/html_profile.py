@@ -145,6 +145,25 @@ def render_badge_group(
 
     return html
 
+# ============================================================
+# BADGE
+# ============================================================
+
+def render_badge(
+    badge: DigestBadge,
+) -> str:
+    """
+    Render a single badge.
+    """
+
+    return f"""
+<span class="badge badge-{badge.type}">
+
+{badge.label}
+
+</span>
+"""
+
 
 # ============================================================
 # KEYWORDS
