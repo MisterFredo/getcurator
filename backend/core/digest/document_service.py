@@ -15,16 +15,11 @@ from core.digest.models import (
     DigestSection,
 )
 
-from core.expertise.constants import (
-    OUTPUT_SUMMARY,
-    OUTPUT_IMPLICATIONS,
-    OUTPUT_KEY_POINTS,
-    OUTPUT_STRUCTURE,
-    OUTPUT_OPPORTUNITIES,
-    OUTPUT_RISKS,
-    OUTPUT_BENCHMARK,
-    OUTPUT_TIMELINE,
-    OUTPUT_COMPARISON,
+from core.expertise.capabilities import (
+    CAPABILITY_EXECUTIVE_SUMMARY,
+    CAPABILITY_KEY_POINTS,
+    CAPABILITY_IMPLICATIONS,
+    CAPABILITY_STRUCTURE,
 )
 
 # ============================================================
@@ -33,23 +28,13 @@ from core.expertise.constants import (
 
 DISPLAY_ORDER = [
 
-    OUTPUT_SUMMARY,
+    CAPABILITY_EXECUTIVE_SUMMARY,
 
-    OUTPUT_KEY_POINTS,
+    CAPABILITY_KEY_POINTS,
 
-    OUTPUT_IMPLICATIONS,
+    CAPABILITY_IMPLICATIONS,
 
-    OUTPUT_STRUCTURE,
-
-    OUTPUT_OPPORTUNITIES,
-
-    OUTPUT_RISKS,
-
-    OUTPUT_BENCHMARK,
-
-    OUTPUT_TIMELINE,
-
-    OUTPUT_COMPARISON,
+    CAPABILITY_STRUCTURE,
 
 ]
 
@@ -59,32 +44,17 @@ DISPLAY_ORDER = [
 
 SECTION_TITLES = {
 
-    OUTPUT_SUMMARY:
+    CAPABILITY_EXECUTIVE_SUMMARY:
         "Executive Summary",
 
-    OUTPUT_KEY_POINTS:
+    CAPABILITY_KEY_POINTS:
         "Key Points",
 
-    OUTPUT_IMPLICATIONS:
+    CAPABILITY_IMPLICATIONS:
         "Strategic Implications",
 
-    OUTPUT_STRUCTURE:
+    CAPABILITY_STRUCTURE:
         "Market Structure",
-
-    OUTPUT_OPPORTUNITIES:
-        "Opportunities",
-
-    OUTPUT_RISKS:
-        "Risks",
-
-    OUTPUT_BENCHMARK:
-        "Benchmark",
-
-    OUTPUT_TIMELINE:
-        "Timeline",
-
-    OUTPUT_COMPARISON:
-        "Comparison",
 
 }
 
