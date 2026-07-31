@@ -111,16 +111,16 @@ def render_profile_badges(
 # ============================================================
 # BADGE GROUP
 # ============================================================
-
 def render_badge_group(
     title: str,
-    labels: list[str],
+    badges: list[DigestBadge],
 ) -> str:
     """
     Render a titled group of badges.
     """
 
-    if not labels:
+    if not badges:
+
         return ""
 
     html = f"""
@@ -133,15 +133,11 @@ def render_badge_group(
 <div class="badge-list">
 """
 
-    for label in labels:
+    for badge in badges:
 
-        html += f"""
-<span class="badge">
-
-{label}
-
-</span>
-"""
+        html += render_badge(
+            badge,
+        )
 
     html += """
 </div>
