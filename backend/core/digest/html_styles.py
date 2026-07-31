@@ -213,7 +213,7 @@ p {
 
 .profile-link {
 
-    margin: -6px 0 18px;
+    margin: -6px 0 12px;
 
 }
 
@@ -221,7 +221,7 @@ p {
 
     color: #315EFB;
 
-    font-size: 14px;
+    font-size: 12px;
 
     font-weight: 600;
 
