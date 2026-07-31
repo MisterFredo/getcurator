@@ -75,24 +75,26 @@ TASK
 --------------------------------------------------
 OUTPUT FORMAT
 
-EXECUTIVE SUMMARY
+Write only the Executive Summary.
 
-One paragraph.
+Use 2 or 3 short paragraphs.
 
-Maximum 5 sentences.
+Each paragraph should contain 1 or 2 sentences.
 
 Maximum 120 words.
+
+Leave one blank line between paragraphs.
 
 --------------------------------------------------
 WRITING STYLE
 
-Write like the opening paragraph of an executive market briefing.
+Write like the opening section of an executive market briefing.
 
 Be concise.
 
 Be analytical.
 
-Be readable.
+Be highly readable.
 
 Prefer formulations such as:
 
@@ -113,9 +115,12 @@ Avoid formulations such as:
 --------------------------------------------------
 RULES
 
-- One paragraph only.
+- Return only the summary text.
+- Do not write a title.
+- Do not write "Executive Summary".
+- Use 2 or 3 short paragraphs.
 - No bullet points.
-- No headings inside the paragraph.
+- No headings.
 - No recommendations.
 - No strategic implications.
 - No speculation.
