@@ -16,19 +16,59 @@ def render_implications_section(
     Render the Strategic Implications section.
     """
 
-    html = (
-        section.content
+    html = ""
 
-        .replace(
-            "--------------------------------------------------",
-            '<hr class="digest-divider">',
+    blocks = [
+
+        block.strip()
+
+        for block in section.content.split(
+            "--------------------------------------------------"
         )
 
-        .replace(
-            "\n",
-            "<br>",
+        if block.strip()
+
+    ]
+
+    for block in blocks:
+
+        lines = [
+
+            line.strip()
+
+            for line in block.splitlines()
+
+            if line.strip()
+
+        ]
+
+        if not lines:
+
+            continue
+
+        title = lines[0]
+
+        body = "<br><br>".join(
+            lines[1:]
         )
-    )
+
+        html += f"""
+<div class="market-card">
+
+<h3>
+
+{title}
+
+</h3>
+
+<p>
+
+{body}
+
+</p>
+
+</div>
+"""
 
     return f"""
 <tr>
