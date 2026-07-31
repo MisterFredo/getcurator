@@ -95,10 +95,6 @@ def render_profile_description(
 # PROFILE BADGES
 # ============================================================
 
-# ============================================================
-# PROFILE BADGES
-# ============================================================
-
 def render_profile_badges(
     title: str,
     badges: list[DigestBadge],
@@ -165,7 +161,18 @@ def render_keywords(
     Render the keyword group.
     """
 
+    badges = [
+
+        DigestBadge(
+            label=keyword,
+            type="keyword",
+        )
+
+        for keyword in keywords
+
+    ]
+
     return render_badge_group(
-        "Keywords",
-        keywords,
+        title="Keywords",
+        badges=badges,
     )
