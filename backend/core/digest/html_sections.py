@@ -1,9 +1,14 @@
 # backend/core/digest/html_sections.py
 
 from core.digest.models import (
+    DigestBadge,
     DigestCard,
     DigestDocument,
     DigestSection,
+)
+
+from core.digest.html_badges import (
+    render_badge,
 )
 
 
@@ -31,15 +36,14 @@ def render_sections(
 def render_section(
     section: DigestSection,
 ) -> str:
+    """
+    Render a digest section.
+    """
 
-    cards = ""
-
-    if section.cards:
-
-        cards = "".join(
-            render_card(card)
-            for card in section.cards
-        )
+    cards = "".join(
+        render_card(card)
+        for card in section.cards
+    )
 
     return f"""
 <tr>
@@ -47,7 +51,9 @@ def render_section(
 <td class="section">
 
 <h2>
-    {section.title}
+
+{section.title}
+
 </h2>
 
 <div class="section-content">
@@ -71,26 +77,13 @@ def render_section(
 def render_card(
     card: DigestCard,
 ) -> str:
+    """
+    Render a digest card.
+    """
 
-    meta = ""
-
-    if card.source_title:
-
-        meta = card.source_title
-
-    if card.published_at:
-
-        date = card.published_at.strftime(
-            "%d %b %Y"
-        )
-
-        if meta:
-
-            meta += f" • {date}"
-
-        else:
-
-            meta = date
+    meta = build_card_meta(
+        card,
+    )
 
     return f"""
 <div class="card">
@@ -100,6 +93,10 @@ def render_card(
 {card.title}
 
 </h3>
+
+{render_card_badges(
+    card.badges,
+)}
 
 <p class="meta">
 
@@ -127,3 +124,69 @@ Read on GetCurator →
 
 </div>
 """
+
+
+# ============================================================
+# CARD META
+# ============================================================
+
+def build_card_meta(
+    card: DigestCard,
+) -> str:
+    """
+    Build the card metadata.
+    """
+
+    meta = ""
+
+    if card.source_title:
+
+        meta = card.source_title
+
+    if card.published_at:
+
+        date = card.published_at.strftime(
+            "%d %b %Y"
+        )
+
+        if meta:
+
+            meta += f" • {date}"
+
+        else:
+
+            meta = date
+
+    return meta
+
+
+# ============================================================
+# CARD BADGES
+# ============================================================
+
+def render_card_badges(
+    badges: list[DigestBadge],
+) -> str:
+    """
+    Render the badges attached to a card.
+    """
+
+    if not badges:
+
+        return ""
+
+    html = """
+<div class="badge-list">
+"""
+
+    for badge in badges:
+
+        html += render_badge(
+            badge,
+        )
+
+    html += """
+</div>
+"""
+
+    return html
