@@ -15,6 +15,7 @@ from core.expertise.capability_service import (
 )
 
 from core.expertise.capabilities import (
+    CAPABILITY_EXECUTIVE_SUMMARY,
     CAPABILITY_KEY_POINTS,
     CAPABILITY_IMPLICATIONS,
 )
@@ -80,13 +81,19 @@ def deliver_knowledge(
     # KEY POINTS FIRST
     # ========================================================
 
-    needs_key_points = (
+    needs_key_points = any(
 
-        CAPABILITY_KEY_POINTS in request.capabilities
+        capability in request.capabilities
 
-        or
+        for capability in (
 
-        CAPABILITY_IMPLICATIONS in request.capabilities
+            CAPABILITY_KEY_POINTS,
+
+            CAPABILITY_EXECUTIVE_SUMMARY,
+
+            CAPABILITY_IMPLICATIONS,
+
+        )
 
     )
 
