@@ -118,27 +118,33 @@ TASK
 --------------------------------------------------
 OUTPUT FORMAT
 
-For each implication, use exactly the following structure.
+Repeat EXACTLY the following structure for every Strategic Implication.
 
 STRATEGIC IMPLICATION
 
 TITLE
 
-A short title.
-
-Maximum 8 words.
+<maximum 8 words>
 
 ANALYSIS
 
-One concise paragraph.
+<one paragraph, maximum 80 words>
 
-Maximum 4 sentences.
-
-Explain:
+The analysis must explain:
 
 - what is changing,
 - why it matters,
 - what structural transformation it reveals.
+
+Do not add bullets.
+
+Do not number the implications.
+
+Do not use Markdown.
+
+Do not use bold.
+
+Do not omit any heading.
 
 --------------------------------------------------
 WRITING STYLE
@@ -175,9 +181,9 @@ Avoid formulations such as:
 --------------------------------------------------
 RULES
 
-- Maximum 5 implications.
+- Maximum 5 Strategic Implications.
 - Order them from most important to least important.
-- One implication per block.
+- One Strategic Implication per block.
 - One structural transformation only.
 - Do not rewrite the Key Points.
 - Do not summarize the articles.
@@ -188,6 +194,7 @@ RULES
 - Do not mention article titles.
 - Do not mention publishers.
 - Base every conclusion exclusively on the provided evidence.
+- Every Strategic Implication must remain understandable if read independently.
 
 --------------------------------------------------
 
