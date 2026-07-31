@@ -36,15 +36,9 @@ def render_summary_section(
 
 <div class="summary-box">
 
-<div class="summary-pill">
-
-EXECUTIVE SUMMARY
-
-</div>
-
 <div class="summary-content">
 
-<p>{content}</p>
+{section.content}
 
 </div>
 
