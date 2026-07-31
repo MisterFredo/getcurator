@@ -10,6 +10,12 @@ from core.digest.html_badges import (
     render_badge_group,
 )
 
+# ============================================================
+# CONFIG
+# ============================================================
+
+MAX_DESCRIPTION_LENGTH = 180
+
 
 # ============================================================
 # PROFILE
@@ -39,7 +45,7 @@ Monitoring Profile
 
 <p class="profile-intro">
 
-Built from your saved monitoring preferences.
+Based on your saved monitoring preferences.
 
 </p>
 
@@ -76,6 +82,25 @@ Built from your saved monitoring preferences.
 # PROFILE DESCRIPTION
 # ============================================================
 
+def truncate_description(
+    text: str,
+) -> str:
+    """
+    Truncate the profile description for email rendering.
+    """
+
+    text = text.strip()
+
+    if len(text) <= MAX_DESCRIPTION_LENGTH:
+        return text
+
+    return (
+        text[:MAX_DESCRIPTION_LENGTH]
+        .rstrip()
+        + "…"
+    )
+
+
 def render_profile_description(
     profile: DigestProfile,
 ) -> str:
@@ -89,7 +114,7 @@ def render_profile_description(
     return f"""
 <p class="profile-description">
 
-{profile.description}
+{truncate_description(profile.description)}
 
 </p>
 """
