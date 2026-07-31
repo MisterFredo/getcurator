@@ -37,11 +37,35 @@ def render_sections(
 
     for section in document.sections:
 
+        # ====================================================
+        # EXECUTIVE SUMMARY
+        # ====================================================
+
         if section.title == "Executive Summary":
+
+            html += f"""
+<tr>
+
+<td class="section">
+
+<h2>
+
+{section.title}
+
+</h2>
+
+</td>
+
+</tr>
+"""
 
             html += render_summary_section(
                 section,
             )
+
+        # ====================================================
+        # KEY POINTS
+        # ====================================================
 
         elif section.title == "Key Points":
 
@@ -49,17 +73,29 @@ def render_sections(
                 section,
             )
 
+        # ====================================================
+        # STRATEGIC IMPLICATIONS
+        # ====================================================
+
         elif section.title == "Strategic Implications":
 
             html += render_implications_section(
                 section,
             )
 
+        # ====================================================
+        # ARTICLES
+        # ====================================================
+
         elif section.title == "Articles":
 
             html += render_articles_section(
                 section,
             )
+
+        # ====================================================
+        # DEFAULT
+        # ====================================================
 
         else:
 
