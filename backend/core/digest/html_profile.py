@@ -95,6 +95,10 @@ def render_profile_description(
 # PROFILE BADGES
 # ============================================================
 
+# ============================================================
+# PROFILE BADGES
+# ============================================================
+
 def render_profile_badges(
     title: str,
     badges: list[DigestBadge],
@@ -104,13 +108,9 @@ def render_profile_badges(
     """
 
     return render_badge_group(
-        title,
-        [
-            badge.label
-            for badge in badges
-        ],
+        title=title,
+        badges=badges,
     )
-
 
 # ============================================================
 # BADGE GROUP
