@@ -20,9 +20,16 @@ def render_key_points_section(
     Render the Key Points section.
     """
 
+    print("=" * 80)
+    print("RAW KEY POINTS")
+    print(section.content)
+    print("=" * 80)
+
     blocks = parse_market_developments(
         section.content,
     )
+
+    print(blocks)
 
     html = ""
 
