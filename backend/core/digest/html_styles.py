@@ -98,7 +98,7 @@ p {
 
 .header {
 
-    padding: 24px 48px;
+    padding: 20px 48px;
 
     text-align: center;
 
@@ -108,21 +108,13 @@ p {
 
 }
 
-.digest-type {
+.digest-meta {
 
-    display: inline-block;
-
-    margin-bottom: 10px;
-
-    padding: 4px 10px;
-
-    border-radius: 999px;
-
-    background: #EEF4FF;
+    margin: 0;
 
     color: #315EFB;
 
-    font-size: 10px;
+    font-size: 11px;
 
     font-weight: 700;
 
@@ -132,9 +124,23 @@ p {
 
 }
 
+.reader-name {
+
+    margin: 12px 0 0;
+
+    font-size: 20px;
+
+    font-weight: 600;
+
+    line-height: 1.3;
+
+    color: #1F2937;
+
+}
+
 .header h1 {
 
-    margin: 0;
+    margin: 10px 0 0;
 
     font-size: 28px;
 
@@ -142,53 +148,9 @@ p {
 
     line-height: 1.2;
 
-}
-
-.reader-name {
-
-    margin: 12px 0 4px;
-
-    font-size: 20px;
-
-    font-weight: 600;
-
-    line-height: 1.2;
+    color: #111827;
 
 }
-
-.reader-role {
-
-    margin: 0;
-
-    color: #6B7280;
-
-    font-size: 14px;
-
-    line-height: 1.4;
-
-}
-
-.period {
-
-    margin-top: 14px;
-
-    font-size: 14px;
-
-    color: #374151;
-
-}
-
-.prepared {
-
-    margin-top: 4px;
-
-    font-size: 12px;
-
-    color: #9CA3AF;
-
-}
-
-
 /* ==========================================================
    PROFILE
 ========================================================== */
