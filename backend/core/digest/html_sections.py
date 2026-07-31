@@ -15,6 +15,10 @@ from core.digest.html_summary import (
     render_summary_section,
 )
 
+from core.digest.html_key_points import (
+    render_key_points_section,
+)
+
 
 # ============================================================
 # SECTIONS
@@ -103,44 +107,6 @@ def render_default_section(
 </tr>
 """
 
-
-# ============================================================
-# KEY POINTS
-# ============================================================
-
-def render_key_points_section(
-    section: DigestSection,
-) -> str:
-
-    return render_default_section(
-        section,
-    )
-
-
-# ============================================================
-# STRATEGIC IMPLICATIONS
-# ============================================================
-
-def render_implications_section(
-    section: DigestSection,
-) -> str:
-
-    return render_default_section(
-        section,
-    )
-
-
-# ============================================================
-# ARTICLES
-# ============================================================
-
-def render_articles_section(
-    section: DigestSection,
-) -> str:
-
-    return render_default_section(
-        section,
-    )
 
 # ============================================================
 # CARD
