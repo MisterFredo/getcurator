@@ -22,7 +22,7 @@ class DigestBadge(BaseModel):
         "company",
         "topic",
         "solution",
-
+        "keyword",
     ]
 
 
