@@ -1,6 +1,9 @@
 # backend/api/digest/routes.py
 
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    HTTPException,
+)
 
 from core.digest.models import (
     CampaignCreateRequest,
