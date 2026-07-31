@@ -361,7 +361,7 @@ p {
 
 .key-points {
 
-    padding: 0 48px 32px;
+    padding: 0 48px 36px;
 
 }
 
@@ -371,7 +371,7 @@ p {
 
 .implications {
 
-    padding: 0 48px 32px;
+    padding: 0 48px 36px;
 
 }
 
@@ -381,9 +381,9 @@ p {
 
 .market-card {
 
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 
-    padding: 24px 24px;
+    padding: 28px;
 
     border: 1px solid #E5E7EB;
 
@@ -401,9 +401,9 @@ p {
 
 .market-card h3 {
 
-    margin: 0 0 12px;
+    margin: 0 0 16px;
 
-    font-size: 20px;
+    font-size: 18px;
 
     font-weight: 700;
 
@@ -423,7 +423,7 @@ p {
 
     font-size: 15px;
 
-    line-height: 1.75;
+    line-height: 1.8;
 
     color: #4B5563;
 
