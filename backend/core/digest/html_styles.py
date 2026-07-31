@@ -246,10 +246,6 @@ p {
 
     border-radius: 999px;
 
-    background: #EEF4FF;
-
-    color: #315EFB;
-
     font-size: 13px;
 
     font-weight: 600;
@@ -258,18 +254,37 @@ p {
 
 }
 
-/* Future badge colors
+.badge-company {
 
-.badge-company {}
+    background: #F3E8FF;
 
-.badge-topic {}
+    color: #7C3AED;
 
-.badge-solution {}
+}
 
-.badge-keyword {}
+.badge-topic {
 
-*/
+    background: #EEF4FF;
 
+    color: #315EFB;
+
+}
+
+.badge-solution {
+
+    background: #ECFDF3;
+
+    color: #027A48;
+
+}
+
+.badge-keyword {
+
+    background: #F3F4F6;
+
+    color: #4B5563;
+
+}
 
 /* ==========================================================
    SECTIONS
