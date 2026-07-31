@@ -44,7 +44,7 @@ The objective is not to summarize the news.
 
 The objective is to explain the major evolutions emerging from all the available evidence.
 
-Each Market Development should be understandable on its own.
+Each development should be understandable on its own.
 
 Focus on:
 
@@ -69,32 +69,34 @@ TASK
 3. Distinguish structural changes from isolated events.
 4. Identify the few developments that best explain the market.
 5. Rank them by strategic significance.
-6. Produce one Market Development for each major evolution.
+6. Produce one development for each major market evolution.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
-Repeat EXACTLY the following structure for every Market Development.
+For each development, use EXACTLY the following structure.
 
-MARKET DEVELOPMENT
+Development title
 
-TITLE
+One concise paragraph (maximum 60 words) describing the market evolution.
 
-<maximum 8 words>
+--------------------------------------------------
 
-SUMMARY
+Repeat the same structure for every development.
 
-<one paragraph, maximum 60 words>
+Separate each development with exactly:
 
-Do not add bullets.
+--------------------------------------------------
 
-Do not number the developments.
+Do not use bullets.
+
+Do not use numbering.
 
 Do not use Markdown.
 
 Do not use bold.
 
-Do not omit any heading.
+Do not add introductions or conclusions.
 
 --------------------------------------------------
 WRITING STYLE
@@ -128,10 +130,9 @@ Avoid formulations such as:
 --------------------------------------------------
 RULES
 
-- Maximum 5 Market Developments.
+- Maximum 5 developments.
 - Order them from most important to least important.
-- One Market Development per block.
-- One market evolution only.
+- One market evolution only per development.
 - Merge related evidence.
 - Remove duplication.
 - Stay factual.
@@ -142,7 +143,7 @@ RULES
 - Do not mention publishers.
 - Mention companies only when they genuinely illustrate a broader market evolution.
 - Use only the provided content.
-- Every Market Development must remain understandable if read independently.
+- Every development must remain understandable if read independently.
 
 --------------------------------------------------
 
