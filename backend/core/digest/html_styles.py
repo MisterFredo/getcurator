@@ -98,7 +98,7 @@ p {
 
 .header {
 
-    padding: 64px;
+    padding: 24px 48px;
 
     text-align: center;
 
@@ -112,9 +112,9 @@ p {
 
     display: inline-block;
 
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 
-    padding: 6px 14px;
+    padding: 4px 10px;
 
     border-radius: 999px;
 
@@ -122,11 +122,11 @@ p {
 
     color: #315EFB;
 
-    font-size: 11px;
+    font-size: 10px;
 
     font-weight: 700;
 
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
 
     text-transform: uppercase;
 
@@ -136,15 +136,23 @@ p {
 
     margin: 0;
 
+    font-size: 28px;
+
+    font-weight: 700;
+
+    line-height: 1.2;
+
 }
 
 .reader-name {
 
-    margin: 26px 0 8px;
+    margin: 12px 0 4px;
 
-    font-size: 22px;
+    font-size: 20px;
 
     font-weight: 600;
+
+    line-height: 1.2;
 
 }
 
@@ -154,15 +162,17 @@ p {
 
     color: #6B7280;
 
-    font-size: 15px;
+    font-size: 14px;
+
+    line-height: 1.4;
 
 }
 
 .period {
 
-    margin-top: 28px;
+    margin-top: 14px;
 
-    font-size: 15px;
+    font-size: 14px;
 
     color: #374151;
 
@@ -170,11 +180,11 @@ p {
 
 .prepared {
 
-    margin-top: 8px;
+    margin-top: 4px;
+
+    font-size: 12px;
 
     color: #9CA3AF;
-
-    font-size: 13px;
 
 }
 
@@ -185,7 +195,7 @@ p {
 
 .profile {
 
-    padding: 40px 64px;
+    padding: 20px 48px;
 
     background: #FFFFFF;
 
@@ -199,29 +209,43 @@ p {
 
     background: #FAFBFD;
 
-    padding: 28px;
+    padding: 20px 22px;
+
+}
+
+.profile-box h2 {
+
+    margin: 0;
+
+    font-size: 20px;
+
+    line-height: 1.2;
 
 }
 
 .profile-intro {
 
-    margin-top: 12px;
-
-    margin-bottom: 20px;
+    margin: 8px 0 14px;
 
     color: #6B7280;
+
+    font-size: 14px;
+
+    line-height: 1.5;
 
 }
 
 .profile-description {
 
-    margin-bottom: 28px;
+    margin-bottom: 18px;
 
-    max-width: 560px;
+    max-width: 100%;
 
     color: #374151;
 
-    line-height: 1.8;
+    font-size: 15px;
+
+    line-height: 1.6;
 
 }
 
@@ -230,30 +254,27 @@ p {
    BADGES
 ========================================================== */
 
+.profile h3 {
+
+    margin: 16px 0 8px;
+
+}
+
 .badge-list {
 
-    margin-bottom: 24px;
+    margin-bottom: 12px;
 
 }
 
 .badge {
 
-    display: inline-block;
+    margin: 0 6px 6px 0;
 
-    margin: 0 8px 8px 0;
+    padding: 6px 10px;
 
-    padding: 7px 13px;
-
-    border-radius: 999px;
-
-    font-size: 13px;
-
-    font-weight: 600;
-
-    line-height: 1;
+    font-size: 12px;
 
 }
-
 .badge-company {
 
     background: #F3E8FF;
