@@ -1,5 +1,3 @@
-# backend/core/digest/html_styles.py
-
 # ============================================================
 # DIGEST EMAIL STYLES
 # ============================================================
@@ -16,7 +14,7 @@ body {
 
     padding: 0;
 
-    background: #f5f7fa;
+    background: #F5F7FA;
 
     font-family: Arial, Helvetica, sans-serif;
 
@@ -32,7 +30,7 @@ table {
 
 a {
 
-    color: #0057ff;
+    color: #315EFB;
 
     text-decoration: none;
 
@@ -47,7 +45,7 @@ h1 {
 
     margin: 0;
 
-    font-size: 32px;
+    font-size: 34px;
 
     font-weight: 700;
 
@@ -57,31 +55,39 @@ h1 {
 
 h2 {
 
-    margin: 0 0 16px 0;
+    margin: 0;
 
     font-size: 24px;
 
     font-weight: 700;
 
+    line-height: 1.3;
+
 }
 
 h3 {
 
-    margin: 0 0 8px 0;
+    margin: 28px 0 10px;
 
-    font-size: 18px;
+    font-size: 12px;
 
-    font-weight: 600;
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+    color: #6B7280;
 
 }
 
 p {
 
-    margin: 0 0 16px 0;
-
-    line-height: 1.6;
+    margin: 0 0 16px;
 
     font-size: 15px;
+
+    line-height: 1.7;
 
 }
 
@@ -92,11 +98,13 @@ p {
 
 .header {
 
-    padding: 48px 56px;
+    padding: 64px;
 
     text-align: center;
 
     border-bottom: 1px solid #E5E7EB;
+
+    background: #FFFFFF;
 
 }
 
@@ -104,9 +112,9 @@ p {
 
     display: inline-block;
 
-    margin-bottom: 18px;
+    margin-bottom: 20px;
 
-    padding: 6px 12px;
+    padding: 6px 14px;
 
     border-radius: 999px;
 
@@ -128,17 +136,11 @@ p {
 
     margin: 0;
 
-    font-size: 34px;
-
-    font-weight: 700;
-
-    line-height: 1.2;
-
 }
 
 .reader-name {
 
-    margin: 22px 0 6px;
+    margin: 26px 0 8px;
 
     font-size: 22px;
 
@@ -158,7 +160,7 @@ p {
 
 .period {
 
-    margin-top: 26px;
+    margin-top: 28px;
 
     font-size: 15px;
 
@@ -175,25 +177,54 @@ p {
     font-size: 13px;
 
 }
+
+
 /* ==========================================================
    PROFILE
 ========================================================== */
 
 .profile {
 
-    background: #ffffff;
+    padding: 40px 64px;
 
-    padding: 24px 48px 40px 48px;
+    background: #FFFFFF;
+
+}
+
+.profile-box {
+
+    border: 1px solid #E5E7EB;
+
+    border-radius: 14px;
+
+    background: #FAFBFD;
+
+    padding: 28px;
+
+}
+
+.profile-intro {
+
+    margin-top: 12px;
+
+    margin-bottom: 20px;
+
+    color: #6B7280;
 
 }
 
 .profile-description {
 
-    color: #666666;
+    margin-bottom: 28px;
 
-    margin-bottom: 24px;
+    max-width: 560px;
+
+    color: #374151;
+
+    line-height: 1.8;
 
 }
+
 
 /* ==========================================================
    BADGES
@@ -211,13 +242,13 @@ p {
 
     margin: 0 8px 8px 0;
 
-    padding: 6px 12px;
+    padding: 7px 13px;
 
     border-radius: 999px;
 
-    background: #eef3ff;
+    background: #EEF4FF;
 
-    color: #0057ff;
+    color: #315EFB;
 
     font-size: 13px;
 
@@ -227,6 +258,18 @@ p {
 
 }
 
+/* Future badge colors
+
+.badge-company {}
+
+.badge-topic {}
+
+.badge-solution {}
+
+.badge-keyword {}
+
+*/
+
 
 /* ==========================================================
    SECTIONS
@@ -234,15 +277,21 @@ p {
 
 .section {
 
-    background: #ffffff;
+    padding: 0 64px 48px;
 
-    padding: 0 48px 40px 48px;
+    background: #FFFFFF;
 
 }
 
 .section-content {
 
-    margin-bottom: 24px;
+    margin-top: 20px;
+
+    margin-bottom: 28px;
+
+    max-width: 620px;
+
+    line-height: 1.8;
 
 }
 
@@ -253,21 +302,41 @@ p {
 
 .card {
 
-    border: 1px solid #e8e8e8;
+    margin-top: 28px;
 
-    border-radius: 10px;
+    padding: 28px;
 
-    padding: 24px;
+    border: 1px solid #E5E7EB;
 
-    margin-top: 24px;
+    border-radius: 16px;
+
+    background: #FFFFFF;
+
+}
+
+.card h3 {
+
+    margin: 0 0 10px;
+
+    font-size: 20px;
+
+    font-weight: 600;
+
+    color: #222222;
+
+    text-transform: none;
+
+    letter-spacing: normal;
 
 }
 
 .meta {
 
+    margin-bottom: 18px;
+
     font-size: 13px;
 
-    color: #888888;
+    color: #9CA3AF;
 
 }
 
@@ -290,13 +359,15 @@ p {
 
 .footer {
 
-    padding: 40px;
+    padding: 48px;
 
     text-align: center;
 
     font-size: 12px;
 
-    color: #888888;
+    color: #9CA3AF;
+
+    background: #FFFFFF;
 
 }
 """
