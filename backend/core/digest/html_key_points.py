@@ -16,6 +16,30 @@ def render_key_points_section(
     Render the Key Points section.
     """
 
+    html = (
+        section.content
+
+        .replace(
+            "MARKET DEVELOPMENT",
+            '<div class="market-development-label">Market Development</div>',
+        )
+
+        .replace(
+            "TITLE",
+            '<div class="market-development-title-label">Title</div>',
+        )
+
+        .replace(
+            "SUMMARY",
+            '<div class="market-development-summary-label">Summary</div>',
+        )
+
+        .replace(
+            "\n",
+            "<br>",
+        )
+    )
+
     return f"""
 <tr>
 
@@ -29,7 +53,7 @@ def render_key_points_section(
 
 <div class="key-points-content">
 
-{section.content}
+{html}
 
 </div>
 
