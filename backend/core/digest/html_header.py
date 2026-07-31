@@ -1,8 +1,23 @@
-# backend/core/digest/html_header.py
-
 from core.digest.models import (
     DigestDocument,
 )
+
+
+# ============================================================
+# DIGEST TYPE
+# ============================================================
+
+def build_digest_type(
+    document: DigestDocument,
+) -> str:
+    """
+    Build the digest type label.
+    """
+
+    frequency = document.frequency.upper()
+    audience = document.audience.upper()
+
+    return f"{frequency} {audience}"
 
 
 # ============================================================
@@ -13,12 +28,10 @@ def render_header(
     document: DigestDocument,
 ) -> str:
     """
-    Render the digest cover.
+    Render the digest header.
     """
 
     profile = document.profile
-
-    identity = profile.name
 
     details = []
 
@@ -37,7 +50,7 @@ def render_header(
 
 <div class="digest-type">
 
-WEEKLY PERSONAL
+{build_digest_type(document)}
 
 </div>
 
@@ -49,7 +62,7 @@ Your Intelligence Briefing
 
 <p class="reader-name">
 
-{identity}
+{profile.name}
 
 </p>
 
@@ -61,13 +74,7 @@ Your Intelligence Briefing
 
 <p class="period">
 
-Week of {document.period}
-
-</p>
-
-<p class="prepared">
-
-Prepared from your monitoring profile
+{document.period}
 
 </p>
 
