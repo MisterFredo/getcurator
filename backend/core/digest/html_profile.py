@@ -14,9 +14,6 @@ from core.digest.models import (
 def render_profile(
     document: DigestDocument,
 ) -> str:
-    """
-    Render the monitoring profile.
-    """
 
     profile = document.profile
 
@@ -27,11 +24,17 @@ def render_profile(
 
 <h2>
 
-Your Monitoring Profile
+Monitoring Profile
 
 </h2>
 
-{render_profile_identity(profile)}
+<p class="profile-intro">
+
+Built from your saved monitoring preferences.
+
+</p>
+
+{render_profile_description(profile)}
 
 {render_profile_badges(
     "Companies",
@@ -56,53 +59,6 @@ Your Monitoring Profile
 
 </tr>
 """
-
-
-# ============================================================
-# PROFILE IDENTITY
-# ============================================================
-
-def render_profile_identity(
-    profile: DigestProfile,
-) -> str:
-
-    subtitle = []
-
-    if profile.role:
-        subtitle.append(profile.role)
-
-    if profile.company:
-        subtitle.append(profile.company)
-
-    html = f"""
-<p>
-
-<strong>{profile.name}</strong>
-
-</p>
-"""
-
-    if subtitle:
-
-        html += f"""
-<p>
-
-{" · ".join(subtitle)}
-
-</p>
-"""
-
-    if profile.description:
-
-        html += f"""
-<p class="profile-description">
-
-{profile.description}
-
-</p>
-"""
-
-    return html
 
 
 # ============================================================
