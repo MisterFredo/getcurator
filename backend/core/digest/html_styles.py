@@ -235,7 +235,6 @@ p {
 
 }
 
-
 /* ==========================================================
    BADGES
 ========================================================== */
@@ -293,97 +292,6 @@ p {
 
 }
 
-/* ==========================================================
-   SUMMARY
-========================================================== */
-
-.summary {
-
-    padding: 0 48px 28px;
-
-}
-
-.summary-box {
-
-    padding: 22px 26px;
-
-    border: 1px solid #E5E7EB;
-
-    border-radius: 12px;
-
-    background: #F9FAFB;
-
-}
-
-/* ==========================================================
-   KEY POINTS
-========================================================== */
-
-.key-points {
-
-    padding: 0 48px 36px;
-
-}
-
-.key-points-content {
-
-    white-space: pre-line;
-
-    font-size: 15px;
-
-    line-height: 1.8;
-
-    color: #374151;
-
-}
-
-/* ==========================================================
-   STRATEGIC IMPLICATIONS
-========================================================== */
-
-.implications {
-
-    padding: 0 48px 36px;
-
-}
-
-.implications-content {
-
-    white-space: pre-line;
-
-    font-size: 15px;
-
-    line-height: 1.8;
-
-    color: #374151;
-
-}
-
-/* ==========================================================
-   DIVIDER
-========================================================== */
-
-.digest-divider {
-
-    margin: 28px 0;
-
-    border: 0;
-
-    border-top: 1px solid #E5E7EB;
-
-}
-
-/* ==========================================================
-   ARTICLES
-========================================================== */
-
-.articles {
-
-    padding: 0 48px 36px;
-
-}
-
-
 
 /* ==========================================================
    EXECUTIVE SUMMARY
@@ -399,11 +307,11 @@ p {
 
 .summary-box {
 
-    padding: 24px 28px;
+    padding: 24px 26px;
 
     border: 1px solid #E5E7EB;
 
-    border-radius: 16px;
+    border-radius: 14px;
 
     background: linear-gradient(
         180deg,
@@ -448,6 +356,90 @@ p {
 }
 
 /* ==========================================================
+   KEY POINTS
+========================================================== */
+
+.key-points {
+
+    padding: 0 48px 32px;
+
+}
+
+/* ==========================================================
+   STRATEGIC IMPLICATIONS
+========================================================== */
+
+.implications {
+
+    padding: 0 48px 32px;
+
+}
+
+/* ==========================================================
+   ANALYSIS CARDS
+========================================================== */
+
+.market-card {
+
+    margin-bottom: 20px;
+
+    padding: 22px 24px;
+
+    border: 1px solid #E5E7EB;
+
+    border-radius: 14px;
+
+    background: #FFFFFF;
+
+}
+
+.market-card:last-child {
+
+    margin-bottom: 0;
+
+}
+
+.market-card h3 {
+
+    margin: 0 0 12px;
+
+    font-size: 20px;
+
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    color: #111827;
+
+    letter-spacing: normal;
+
+    text-transform: none;
+
+}
+
+.market-card p {
+
+    margin: 0;
+
+    font-size: 15px;
+
+    line-height: 1.75;
+
+    color: #4B5563;
+
+}
+
+/* ==========================================================
+   ARTICLES
+========================================================== */
+
+.articles {
+
+    padding: 0 48px 36px;
+
+}
+
+/* ==========================================================
    SECTIONS
 ========================================================== */
 
@@ -461,7 +453,7 @@ p {
 
 .section h2 {
 
-    margin-bottom: 18px;
+    margin: 0 0 20px;
 
 }
 
@@ -471,34 +463,41 @@ p {
 
 }
 
-
 /* ==========================================================
-   CARDS
+   ARTICLE CARDS
 ========================================================== */
 
 .card {
 
-    margin-top: 28px;
+    margin-bottom: 20px;
 
-    padding: 28px;
+    padding: 24px;
 
     border: 1px solid #E5E7EB;
 
-    border-radius: 16px;
+    border-radius: 14px;
 
     background: #FFFFFF;
 
 }
 
+.card:last-child {
+
+    margin-bottom: 0;
+
+}
+
 .card h3 {
 
-    margin: 0 0 10px;
+    margin: 0 0 12px;
 
     font-size: 20px;
 
-    font-weight: 600;
+    font-weight: 700;
 
-    color: #222222;
+    line-height: 1.35;
+
+    color: #111827;
 
     text-transform: none;
 
@@ -508,7 +507,7 @@ p {
 
 .meta {
 
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 
     font-size: 13px;
 
@@ -520,7 +519,7 @@ p {
 
     display: inline-block;
 
-    margin-top: 8px;
+    margin-top: 12px;
 
     font-size: 14px;
 
@@ -528,14 +527,13 @@ p {
 
 }
 
-
 /* ==========================================================
    FOOTER
 ========================================================== */
 
 .footer {
 
-    padding: 48px;
+    padding: 40px 48px;
 
     text-align: center;
 
@@ -546,4 +544,6 @@ p {
     background: #FFFFFF;
 
 }
-"""
+
+
+
