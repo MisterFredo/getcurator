@@ -20,18 +20,8 @@ def render_key_points_section(
         section.content
 
         .replace(
-            "MARKET DEVELOPMENT",
-            '<div class="market-development-label">Market Development</div>',
-        )
-
-        .replace(
-            "TITLE",
-            '<div class="market-development-title-label">Title</div>',
-        )
-
-        .replace(
-            "SUMMARY",
-            '<div class="market-development-summary-label">Summary</div>',
+            "--------------------------------------------------",
+            '<hr class="digest-divider">',
         )
 
         .replace(
