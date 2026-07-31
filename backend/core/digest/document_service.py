@@ -98,8 +98,8 @@ def build_digest_document(
     knowledge: KnowledgeResult,
     period_start: datetime,
     period_end: datetime,
-    frequency: str,
-    audience: str,
+    frequency: Literal["weekly", "monthly"],
+    audience: Literal["user", "expert"],
 ) -> DigestDocument:
     """
     Build a DigestDocument from a KnowledgeResult.
@@ -198,7 +198,6 @@ def build_digest_document(
     return DigestDocument(
 
         frequency=frequency,
-
         audience=audience,
 
         title=_build_title(
