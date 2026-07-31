@@ -1,6 +1,7 @@
 # backend/core/digest/document_service.py
 
 from datetime import datetime
+from typing import Literal
 
 from core.delivery.models import (
     KnowledgeResult,
