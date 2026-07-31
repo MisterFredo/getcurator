@@ -92,30 +92,89 @@ p {
 
 .header {
 
-    background: #ffffff;
+    padding: 48px 56px;
 
-    padding: 48px;
+    text-align: center;
+
+    border-bottom: 1px solid #E5E7EB;
 
 }
 
-.subtitle {
+.digest-type {
 
-    margin-top: 16px;
+    display: inline-block;
 
-    color: #666666;
+    margin-bottom: 18px;
+
+    padding: 6px 12px;
+
+    border-radius: 999px;
+
+    background: #EEF4FF;
+
+    color: #315EFB;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    letter-spacing: 1.2px;
+
+    text-transform: uppercase;
+
+}
+
+.header h1 {
+
+    margin: 0;
+
+    font-size: 34px;
+
+    font-weight: 700;
+
+    line-height: 1.2;
+
+}
+
+.reader-name {
+
+    margin: 22px 0 6px;
+
+    font-size: 22px;
+
+    font-weight: 600;
+
+}
+
+.reader-role {
+
+    margin: 0;
+
+    color: #6B7280;
+
+    font-size: 15px;
 
 }
 
 .period {
 
-    margin-top: 24px;
+    margin-top: 26px;
 
-    font-size: 14px;
+    font-size: 15px;
 
-    color: #888888;
+    color: #374151;
 
 }
 
+.prepared {
+
+    margin-top: 8px;
+
+    color: #9CA3AF;
+
+    font-size: 13px;
+
+}
 /* ==========================================================
    PROFILE
 ========================================================== */
