@@ -294,26 +294,118 @@ p {
 }
 
 /* ==========================================================
-   SECTIONS
+   SUMMARY
 ========================================================== */
 
-.section {
+.summary {
 
-    padding: 0 64px 48px;
+    padding: 0 48px 28px;
+
+}
+
+.summary-box {
+
+    padding: 22px 26px;
+
+    border: 1px solid #E5E7EB;
+
+    border-radius: 12px;
+
+    background: #F9FAFB;
+
+}
+
+/* ==========================================================
+   KEY POINTS
+========================================================== */
+
+.key-points {
+
+    padding: 0 48px 36px;
+
+}
+
+/* ==========================================================
+   IMPLICATIONS
+========================================================== */
+
+.implications {
+
+    padding: 0 48px 36px;
+
+}
+
+/* ==========================================================
+   ARTICLES
+========================================================== */
+
+.articles {
+
+    padding: 0 48px 36px;
+
+}
+
+/* ==========================================================
+   MARKET DEVELOPMENTS
+========================================================== */
+
+.market-development {
+
+    margin-bottom: 18px;
+
+    padding: 18px 22px;
+
+    border: 1px solid #E5E7EB;
+
+    border-radius: 12px;
 
     background: #FFFFFF;
 
 }
 
+.market-development-title {
+
+    margin-bottom: 10px;
+
+    font-size: 17px;
+
+    font-weight: 700;
+
+    color: #111827;
+
+}
+
+.market-development-summary {
+
+    font-size: 15px;
+
+    line-height: 1.7;
+
+    color: #4B5563;
+
+}
+
+/* ==========================================================
+   SECTIONS
+========================================================== */
+
+.section {
+
+    padding: 0 48px 36px;
+
+    background: #FFFFFF;
+
+}
+
+.section h2 {
+
+    margin-bottom: 18px;
+
+}
+
 .section-content {
 
-    margin-top: 20px;
-
-    margin-bottom: 28px;
-
-    max-width: 620px;
-
-    line-height: 1.8;
+    line-height: 1.7;
 
 }
 
