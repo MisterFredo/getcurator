@@ -22,13 +22,13 @@ def build_key_points_prompt(
     return f"""
 You are a senior business intelligence analyst.
 
-Your mission is to identify the major market developments emerging from a curated set of business content.
+Your mission is to identify the few market developments that best explain what changed in the market during this period.
 
 The articles are evidence.
 
 Your output is NOT about the articles.
 
-Your output is about what is happening in the market.
+Your output is about the market.
 
 --------------------------------------------------
 LANGUAGE
@@ -38,19 +38,23 @@ Write the entire response in English.
 --------------------------------------------------
 OBJECTIVE
 
-Identify the few structural market developments that best explain the evolution of the market during this period.
+Identify the structural market developments that together explain the current market narrative.
 
-Each development should be understandable on its own.
+The objective is not to summarize the news.
+
+The objective is to explain the major evolutions emerging from all the available evidence.
+
+Each market development should be understandable on its own.
 
 Focus on:
 
 - structural shifts
 - recurring patterns
 - emerging trends
-- changes in competitive dynamics
+- competitive dynamics
 - market evolution
 
-Do not describe individual news stories.
+Ignore isolated events unless they reveal a broader market transformation.
 
 --------------------------------------------------
 SELECTED CONTENT
@@ -61,41 +65,47 @@ SELECTED CONTENT
 TASK
 
 1. Read every content item.
-2. Identify recurring market developments.
-3. Merge articles describing the same evolution.
-4. Ignore isolated events unless they reveal a broader trend.
-5. Prioritize the developments with the greatest strategic significance.
-6. Express every development as a market evolution rather than a news event.
+2. Group articles describing the same market evolution.
+3. Distinguish structural changes from isolated events.
+4. Identify the few developments that best explain the market.
+5. Rank them by strategic significance.
+6. Produce one Market Development for each major evolution.
 
 --------------------------------------------------
 OUTPUT FORMAT
 
-For each market development, use exactly the following structure.
+Repeat the following block for every Market Development.
 
 MARKET DEVELOPMENT
 
 TITLE
 
-A short title.
-
 Maximum 8 words.
+
+Prefer a noun phrase rather than a full sentence.
 
 SUMMARY
 
-A concise explanation written in 2 to 3 sentences.
+Exactly one paragraph.
 
-Explain what is happening in the market.
+Maximum 60 words.
 
-Do not explain why it matters.
+Describe only the market evolution.
+
+Do not discuss strategic implications.
+
+Do not mention the supporting articles.
 
 --------------------------------------------------
 WRITING STYLE
 
-Write like an analyst briefing executives.
+Write like a senior market analyst briefing executives.
 
 Be factual.
 
 Be concise.
+
+Be analytical.
 
 Prefer formulations such as:
 
@@ -118,9 +128,9 @@ Avoid formulations such as:
 --------------------------------------------------
 RULES
 
-- Maximum 5 market developments.
+- Maximum 5 Market Developments.
 - Order them from most important to least important.
-- One development per block.
+- One Market Development per block.
 - One market evolution only.
 - Merge related evidence.
 - Remove duplication.
@@ -132,8 +142,9 @@ RULES
 - Do not mention publishers.
 - Mention companies only when they genuinely illustrate a broader market evolution.
 - Use only the provided content.
+- Every Market Development must remain understandable if read independently.
 
 --------------------------------------------------
 
-The reader should finish with a clear understanding of the five market developments that best define the current period.
+The reader should finish with a clear understanding of the few market developments that define the current period.
 """.strip()
