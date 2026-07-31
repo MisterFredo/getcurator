@@ -105,6 +105,15 @@ class DigestDocument(BaseModel):
     profile: DigestProfile
 
     sections: list[DigestSection]
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ]
+
+    audience: Literal[
+        "user",
+        "expert",
+    ]
 
 # ============================================================
 # DIGEST
