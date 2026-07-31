@@ -386,6 +386,46 @@ p {
 }
 
 /* ==========================================================
+   STRATEGIC IMPLICATIONS
+========================================================== */
+
+.implication {
+
+    margin-bottom: 18px;
+
+    padding: 18px 22px;
+
+    border: 1px solid #DBEAFE;
+
+    border-radius: 12px;
+
+    background: #F8FBFF;
+
+}
+
+.implication-title {
+
+    margin-bottom: 10px;
+
+    font-size: 17px;
+
+    font-weight: 700;
+
+    color: #111827;
+
+}
+
+.implication-analysis {
+
+    font-size: 15px;
+
+    line-height: 1.7;
+
+    color: #4B5563;
+
+}
+
+/* ==========================================================
    SECTIONS
 ========================================================== */
 
