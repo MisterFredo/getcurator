@@ -211,6 +211,30 @@ p {
 
 }
 
+.profile-link {
+
+    margin: -6px 0 18px;
+
+}
+
+.profile-link a {
+
+    color: #315EFB;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    text-decoration: none;
+
+}
+
+.profile-link a:hover {
+
+    text-decoration: underline;
+
+}
+
 
 /* ==========================================================
    BADGES
