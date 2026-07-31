@@ -11,6 +11,10 @@ from core.digest.html_badges import (
     render_badge,
 )
 
+from core.digest.html_summary import (
+    render_summary_section,
+)
+
 
 # ============================================================
 # SECTIONS
@@ -98,19 +102,6 @@ def render_default_section(
 
 </tr>
 """
-
-
-# ============================================================
-# EXECUTIVE SUMMARY
-# ============================================================
-
-def render_summary_section(
-    section: DigestSection,
-) -> str:
-
-    return render_default_section(
-        section,
-    )
 
 
 # ============================================================
