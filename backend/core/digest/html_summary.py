@@ -16,6 +16,19 @@ def render_summary_section(
     Render the Executive Summary section.
     """
 
+    content = (
+        section.content
+        .strip()
+        .replace(
+            "\n\n",
+            "</p><p>",
+        )
+        .replace(
+            "\n",
+            " ",
+        )
+    )
+
     return f"""
 <tr>
 
@@ -31,7 +44,7 @@ EXECUTIVE SUMMARY
 
 <div class="summary-content">
 
-{section.content}
+<p>{content}</p>
 
 </div>
 
