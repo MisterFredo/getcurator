@@ -78,19 +78,36 @@ def render_profile_description(
 
 </p>
 """
-
-
+    
 # ============================================================
 # PROFILE BADGES
 # ============================================================
 
-def render_profile_badges(
-    title: str,
-    badges: list[DigestBadge],
+def render_profile(
+    document: DigestDocument,
 ) -> str:
+    """
+    Render the monitoring profile.
+    """
 
-    if not badges:
+    return render_badge_group(
+        title,
+        [badge.label for badge in badges],
+    )
 
+# ============================================================
+# BADGE GROUP
+# ============================================================
+
+def render_badge_group(
+    title: str,
+    labels: list[str],
+) -> str:
+    """
+    Render a titled group of badges.
+    """
+
+    if not labels:
         return ""
 
     html = f"""
@@ -103,12 +120,12 @@ def render_profile_badges(
 <div class="badge-list">
 """
 
-    for badge in badges:
+    for label in labels:
 
         html += f"""
 <span class="badge">
 
-{badge.label}
+{label}
 
 </span>
 """
@@ -118,7 +135,6 @@ def render_profile_badges(
 """
 
     return html
-
 
 # ============================================================
 # KEYWORDS
@@ -128,32 +144,7 @@ def render_keywords(
     keywords: list[str],
 ) -> str:
 
-    if not keywords:
-
-        return ""
-
-    html = """
-<h3>
-
-Keywords
-
-</h3>
-
-<div class="badge-list">
-"""
-
-    for keyword in keywords:
-
-        html += f"""
-<span class="badge">
-
-{keyword}
-
-</span>
-"""
-
-    html += """
-</div>
-"""
-
-    return html
+    return render_badge_group(
+        "Keywords",
+        keywords,
+    )
