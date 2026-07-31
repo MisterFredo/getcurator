@@ -2,23 +2,41 @@
 # EXPERTISE OUTPUT TYPES
 # ============================================================
 
-OUTPUT_SUMMARY = "summary"
+OUTPUT_EXECUTIVE_SUMMARY = (
+    "executive_summary"
+)
 
-OUTPUT_IMPLICATIONS = "implications"
+OUTPUT_KEY_POINTS = (
+    "key_points"
+)
 
-OUTPUT_KEY_POINTS = "key_points"
+OUTPUT_IMPLICATIONS = (
+    "implications"
+)
 
-OUTPUT_STRUCTURE = "structure"
+OUTPUT_STRUCTURE = (
+    "structure"
+)
 
-OUTPUT_OPPORTUNITIES = "opportunities"
+OUTPUT_OPPORTUNITIES = (
+    "opportunities"
+)
 
-OUTPUT_RISKS = "risks"
+OUTPUT_RISKS = (
+    "risks"
+)
 
-OUTPUT_BENCHMARK = "benchmark"
+OUTPUT_BENCHMARK = (
+    "benchmark"
+)
 
-OUTPUT_TIMELINE = "timeline"
+OUTPUT_TIMELINE = (
+    "timeline"
+)
 
-OUTPUT_COMPARISON = "comparison"
+OUTPUT_COMPARISON = (
+    "comparison"
+)
 
 
 # ============================================================
@@ -27,11 +45,11 @@ OUTPUT_COMPARISON = "comparison"
 
 DEFAULT_OUTPUTS = [
 
-    OUTPUT_SUMMARY,
-
-    OUTPUT_IMPLICATIONS,
+    OUTPUT_EXECUTIVE_SUMMARY,
 
     OUTPUT_KEY_POINTS,
+
+    OUTPUT_IMPLICATIONS,
 
     OUTPUT_STRUCTURE,
 
@@ -44,5 +62,7 @@ DEFAULT_OUTPUTS = [
     OUTPUT_TIMELINE,
 
     OUTPUT_COMPARISON,
+
+]
 
 ]
