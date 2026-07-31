@@ -81,8 +81,8 @@ MARKET DEVELOPMENT
 TITLE
 
 Maximum 8 words.
-
 Prefer a noun phrase rather than a full sentence.
+Write the title immediately after the TITLE heading.
 
 SUMMARY
 
