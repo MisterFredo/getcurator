@@ -325,13 +325,157 @@ p {
 
 }
 
+.key-points-content {
+
+    white-space: pre-line;
+
+    font-size: 15px;
+
+    line-height: 1.8;
+
+    color: #374151;
+
+}
+
 /* ==========================================================
-   IMPLICATIONS
+   STRATEGIC IMPLICATIONS
 ========================================================== */
 
 .implications {
 
     padding: 0 48px 36px;
+
+}
+
+.implications-content {
+
+    white-space: pre-line;
+
+    font-size: 15px;
+
+    line-height: 1.8;
+
+    color: #374151;
+
+}
+
+/* ==========================================================
+   MARKET DEVELOPMENT LABEL
+========================================================== */
+
+.market-development-label {
+
+    display: inline-block;
+
+    margin: 28px 0 12px;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+
+    background: #EEF4FF;
+
+    color: #315EFB;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+}
+
+.market-development-title-label {
+
+    display: block;
+
+    margin: 14px 0 4px;
+
+    color: #111827;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+.market-development-summary-label {
+
+    display: block;
+
+    margin: 16px 0 6px;
+
+    color: #6B7280;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+/* ==========================================================
+   STRATEGIC IMPLICATION LABEL
+========================================================== */
+
+.strategic-implication-label {
+
+    display: inline-block;
+
+    margin: 28px 0 12px;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+
+    background: #ECFDF5;
+
+    color: #047857;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+}
+
+.strategic-implication-title-label {
+
+    display: block;
+
+    margin: 14px 0 4px;
+
+    color: #111827;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+}
+
+.strategic-implication-analysis-label {
+
+    display: block;
+
+    margin: 16px 0 6px;
+
+    color: #6B7280;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
 
 }
 
@@ -345,122 +489,7 @@ p {
 
 }
 
-/* ==========================================================
-   MARKET DEVELOPMENTS
-========================================================== */
 
-.market-development{
-
-    margin-bottom:20px;
-
-    padding:22px;
-
-    border:1px solid #E5E7EB;
-
-    border-radius:14px;
-
-    background:#FFFFFF;
-
-}
-
-.market-development-header{
-
-    margin-bottom:14px;
-
-}
-
-.market-development-pill{
-
-    display:inline-block;
-
-    padding:4px 10px;
-
-    border-radius:999px;
-
-    background:#EEF4FF;
-
-    color:#315EFB;
-
-    font-size:10px;
-
-    font-weight:700;
-
-    letter-spacing:1px;
-
-    text-transform:uppercase;
-
-}
-
-.market-development-title{
-
-    margin-bottom:10px;
-
-    font-size:20px;
-
-    font-weight:700;
-
-    line-height:1.3;
-
-    color:#111827;
-
-}
-
-.market-development-summary{
-
-    font-size:15px;
-
-    line-height:1.8;
-
-    color:#4B5563;
-
-}
-/* ==========================================================
-   STRATEGIC IMPLICATIONS
-========================================================== */
-
-.implication {
-
-    margin-bottom: 18px;
-
-    padding: 18px 22px;
-
-    border: 1px solid #DBEAFE;
-
-    border-radius: 12px;
-
-    background: #F8FBFF;
-
-}
-
-.implication-title {
-
-    margin-bottom: 10px;
-
-    font-size: 17px;
-
-    font-weight: 700;
-
-    color: #111827;
-
-}
-
-.implication-analysis {
-
-    font-size: 15px;
-
-    line-height: 1.7;
-
-    color: #4B5563;
-
-}
-
-.implication-pill{
-
-    background:#ECFDF5;
-
-    color:#047857;
-
-}
 
 /* ==========================================================
    EXECUTIVE SUMMARY
