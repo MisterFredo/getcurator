@@ -60,6 +60,25 @@ Built from your saved monitoring preferences.
 </tr>
 """
 
+# ============================================================
+# PROFILE DESCRIPTION
+# ============================================================
+
+def render_profile_description(
+    profile: DigestProfile,
+) -> str:
+
+    if not profile.description:
+        return ""
+
+    return f"""
+<p class="profile-description">
+
+{profile.description}
+
+</p>
+"""
+
 
 # ============================================================
 # PROFILE BADGES
