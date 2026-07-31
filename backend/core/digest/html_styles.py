@@ -349,42 +349,71 @@ p {
    MARKET DEVELOPMENTS
 ========================================================== */
 
-.market-development {
+.market-development{
 
-    margin-bottom: 18px;
+    margin-bottom:20px;
 
-    padding: 18px 22px;
+    padding:22px;
 
-    border: 1px solid #E5E7EB;
+    border:1px solid #E5E7EB;
 
-    border-radius: 12px;
+    border-radius:14px;
 
-    background: #FFFFFF;
-
-}
-
-.market-development-title {
-
-    margin-bottom: 10px;
-
-    font-size: 17px;
-
-    font-weight: 700;
-
-    color: #111827;
+    background:#FFFFFF;
 
 }
 
-.market-development-summary {
+.market-development-header{
 
-    font-size: 15px;
-
-    line-height: 1.7;
-
-    color: #4B5563;
+    margin-bottom:14px;
 
 }
 
+.market-development-pill{
+
+    display:inline-block;
+
+    padding:4px 10px;
+
+    border-radius:999px;
+
+    background:#EEF4FF;
+
+    color:#315EFB;
+
+    font-size:10px;
+
+    font-weight:700;
+
+    letter-spacing:1px;
+
+    text-transform:uppercase;
+
+}
+
+.market-development-title{
+
+    margin-bottom:10px;
+
+    font-size:20px;
+
+    font-weight:700;
+
+    line-height:1.3;
+
+    color:#111827;
+
+}
+
+.market-development-summary{
+
+    font-size:15px;
+
+    line-height:1.8;
+
+    color:#4B5563;
+
+}
 /* ==========================================================
    STRATEGIC IMPLICATIONS
 ========================================================== */
@@ -422,6 +451,76 @@ p {
     line-height: 1.7;
 
     color: #4B5563;
+
+}
+
+.implication-pill{
+
+    background:#ECFDF5;
+
+    color:#047857;
+
+}
+
+/* ==========================================================
+   EXECUTIVE SUMMARY
+========================================================== */
+
+.summary {
+
+    padding: 0 48px 32px;
+
+    background: #FFFFFF;
+
+}
+
+.summary-box {
+
+    padding: 24px 28px;
+
+    border: 1px solid #E5E7EB;
+
+    border-radius: 16px;
+
+    background: linear-gradient(
+        180deg,
+        #FCFCFD 0%,
+        #F8FAFC 100%
+    );
+
+}
+
+.summary-pill {
+
+    display: inline-block;
+
+    margin-bottom: 16px;
+
+    padding: 5px 12px;
+
+    border-radius: 999px;
+
+    background: #111827;
+
+    color: #FFFFFF;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+}
+
+.summary-content {
+
+    font-size: 16px;
+
+    line-height: 1.8;
+
+    color: #374151;
 
 }
 
