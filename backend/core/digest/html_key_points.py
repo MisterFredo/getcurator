@@ -4,10 +4,6 @@ from core.digest.models import (
     DigestSection,
 )
 
-from core.digest.html_parser import (
-    parse_market_developments,
-)
-
 
 # ============================================================
 # KEY POINTS
@@ -20,26 +16,6 @@ def render_key_points_section(
     Render the Key Points section.
     """
 
-    print("=" * 80)
-    print("RAW KEY POINTS")
-    print(section.content)
-    print("=" * 80)
-
-    blocks = parse_market_developments(
-        section.content,
-    )
-
-    print(blocks)
-
-    html = ""
-
-    for block in blocks:
-
-        html += render_market_development(
-            title=block["title"],
-            summary=block["body"],
-        )
-
     return f"""
 <tr>
 
@@ -51,40 +27,13 @@ def render_key_points_section(
 
 </h2>
 
-{html}
+<div class="key-points-content">
+
+{section.content}
+
+</div>
 
 </td>
 
 </tr>
-"""
-
-
-# ============================================================
-# MARKET DEVELOPMENT
-# ============================================================
-
-def render_market_development(
-    title: str,
-    summary: str,
-) -> str:
-    """
-    Render one market development.
-    """
-
-    return f"""
-<div class="market-development">
-
-<div class="market-development-title">
-
-{title}
-
-</div>
-
-<div class="market-development-summary">
-
-{summary}
-
-</div>
-
-</div>
 """
