@@ -1,3 +1,5 @@
+# backend/core/digest/html_header.py
+
 from core.digest.models import (
     DigestDocument,
 )
@@ -14,10 +16,10 @@ def build_digest_type(
     Build the digest type label.
     """
 
-    frequency = document.frequency.upper()
-    audience = document.audience.upper()
-
-    return f"{frequency} {audience}"
+    return (
+        f"{document.frequency.upper()} "
+        f"{document.audience.upper()}"
+    )
 
 
 # ============================================================
@@ -33,50 +35,34 @@ def render_header(
 
     profile = document.profile
 
-    details = []
-
-    if profile.role:
-        details.append(profile.role)
-
-    if profile.company:
-        details.append(profile.company)
-
-    subtitle = " · ".join(details)
+    company = (
+        f" · {profile.company}"
+        if profile.company
+        else ""
+    )
 
     return f"""
 <tr>
 
 <td class="header">
 
-<div class="digest-type">
+<p class="digest-meta">
 
-{build_digest_type(document)}
+{build_digest_type(document)} · {document.period}
 
-</div>
+</p>
+
+<p class="reader-name">
+
+{profile.name}{company}
+
+</p>
 
 <h1>
 
 Your Intelligence Briefing
 
 </h1>
-
-<p class="reader-name">
-
-{profile.name}
-
-</p>
-
-<p class="reader-role">
-
-{subtitle}
-
-</p>
-
-<p class="period">
-
-{document.period}
-
-</p>
 
 </td>
 
