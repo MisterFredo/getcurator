@@ -13,32 +13,62 @@ def render_header(
     document: DigestDocument,
 ) -> str:
     """
-    Render the digest header.
+    Render the digest cover.
     """
 
-    subtitle = ""
+    profile = document.profile
 
-    if document.subtitle:
+    identity = profile.name
 
-        subtitle = f"""
-<p class="subtitle">
-    {document.subtitle}
-</p>
-"""
+    details = []
+
+    if profile.role:
+        details.append(profile.role)
+
+    if profile.company:
+        details.append(profile.company)
+
+    subtitle = " · ".join(details)
 
     return f"""
 <tr>
 
 <td class="header">
 
+<div class="digest-type">
+
+WEEKLY PERSONAL
+
+</div>
+
 <h1>
-    {document.title}
+
+Your Intelligence Briefing
+
 </h1>
+
+<p class="reader-name">
+
+{identity}
+
+</p>
+
+<p class="reader-role">
 
 {subtitle}
 
+</p>
+
 <p class="period">
-    {document.period}
+
+Week of {document.period}
+
+</p>
+
+<p class="prepared">
+
+Prepared from your monitoring profile
+
 </p>
 
 </td>
