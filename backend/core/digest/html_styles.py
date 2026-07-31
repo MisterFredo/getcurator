@@ -171,7 +171,7 @@ p {
 
     background: #FAFBFD;
 
-    padding: 20px 22px;
+    padding: 24px 24px;
 
 }
 
@@ -307,7 +307,7 @@ p {
 
 .summary-box {
 
-    padding: 24px 26px;
+    padding: 24px 24px;
 
     border: 1px solid #E5E7EB;
 
@@ -383,7 +383,7 @@ p {
 
     margin-bottom: 20px;
 
-    padding: 22px 24px;
+    padding: 24px 24px;
 
     border: 1px solid #E5E7EB;
 
