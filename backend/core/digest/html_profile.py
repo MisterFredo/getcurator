@@ -14,6 +14,9 @@ from core.digest.models import (
 def render_profile(
     document: DigestDocument,
 ) -> str:
+    """
+    Render the monitoring profile.
+    """
 
     profile = document.profile
 
@@ -21,6 +24,8 @@ def render_profile(
 <tr>
 
 <td class="profile">
+
+<div class="profile-box">
 
 <h2>
 
@@ -55,10 +60,13 @@ Built from your saved monitoring preferences.
     profile.keywords,
 )}
 
+</div>
+
 </td>
 
 </tr>
 """
+
 
 # ============================================================
 # PROFILE DESCRIPTION
@@ -67,6 +75,9 @@ Built from your saved monitoring preferences.
 def render_profile_description(
     profile: DigestProfile,
 ) -> str:
+    """
+    Render the optional profile description.
+    """
 
     if not profile.description:
         return ""
@@ -78,22 +89,28 @@ def render_profile_description(
 
 </p>
 """
-    
+
+
 # ============================================================
 # PROFILE BADGES
 # ============================================================
 
-def render_profile(
-    document: DigestDocument,
+def render_profile_badges(
+    title: str,
+    badges: list[DigestBadge],
 ) -> str:
     """
-    Render the monitoring profile.
+    Render a badge group from DigestBadge objects.
     """
 
     return render_badge_group(
         title,
-        [badge.label for badge in badges],
+        [
+            badge.label
+            for badge in badges
+        ],
     )
+
 
 # ============================================================
 # BADGE GROUP
@@ -136,6 +153,7 @@ def render_badge_group(
 
     return html
 
+
 # ============================================================
 # KEYWORDS
 # ============================================================
@@ -143,6 +161,9 @@ def render_badge_group(
 def render_keywords(
     keywords: list[str],
 ) -> str:
+    """
+    Render the keyword group.
+    """
 
     return render_badge_group(
         "Keywords",
