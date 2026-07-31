@@ -20,18 +20,8 @@ def render_implications_section(
         section.content
 
         .replace(
-            "STRATEGIC IMPLICATION",
-            '<div class="strategic-implication-label">Strategic Implication</div>',
-        )
-
-        .replace(
-            "TITLE",
-            '<div class="strategic-implication-title-label">Title</div>',
-        )
-
-        .replace(
-            "ANALYSIS",
-            '<div class="strategic-implication-analysis-label">Analysis</div>',
+            "--------------------------------------------------",
+            '<hr class="digest-divider">',
         )
 
         .replace(
