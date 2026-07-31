@@ -23,11 +23,11 @@ def render_summary_section(
 
 <div class="summary-box">
 
-<h2>
+<div class="summary-pill">
 
-{section.title}
+EXECUTIVE SUMMARY
 
-</h2>
+</div>
 
 <div class="summary-content">
 
