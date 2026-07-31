@@ -309,7 +309,7 @@ p {
 
 .summary-box {
 
-    padding: 24px 24px;
+    padding: 24px;
 
     border: 1px solid #E5E7EB;
 
@@ -354,6 +354,18 @@ p {
     line-height: 1.8;
 
     color: #374151;
+
+}
+
+.summary-content p {
+
+    margin: 0 0 18px;
+
+}
+
+.summary-content p:last-child {
+
+    margin-bottom: 0;
 
 }
 
