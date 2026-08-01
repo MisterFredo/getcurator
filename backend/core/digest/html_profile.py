@@ -30,6 +30,12 @@ def render_profile(
 
     profile = document.profile
 
+    company = (
+        f"<div class=\"profile-company\">{profile.company}</div>"
+        if profile.company
+        else ""
+    )
+
     return f"""
 <tr>
 
@@ -37,19 +43,27 @@ def render_profile(
 
 <div class="profile-box">
 
+<div class="profile-identity">
+
+<div class="profile-name">
+
+{profile.name}
+
+</div>
+
+{company}
+
+</div>
+
 <h2>
 
 Monitoring Profile
 
 </h2>
 
-<p class="profile-intro">
-
-Based on your saved monitoring preferences.
-
-</p>
-
 {render_profile_description(profile)}
+
+<div class="profile-link">
 
 <a
     href="https://www.getcurator.ai/settings"
@@ -57,9 +71,11 @@ Based on your saved monitoring preferences.
     rel="noopener noreferrer"
 >
 
-    Edit your monitoring profile →
+Edit your monitoring profile →
 
 </a>
+
+</div>
 
 {render_profile_badges(
     "Companies",
