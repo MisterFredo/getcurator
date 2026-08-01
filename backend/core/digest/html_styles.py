@@ -192,7 +192,7 @@ p {
 
 .profile-name {
 
-    font-size: 30px;
+    font-size: 22px;
 
     font-weight: 700;
 
@@ -206,7 +206,7 @@ p {
 
     margin-top: 4px;
 
-    font-size: 17px;
+    font-size: 15px;
 
     color: #6B7280;
 
