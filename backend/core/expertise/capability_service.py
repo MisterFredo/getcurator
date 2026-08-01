@@ -49,6 +49,7 @@ def _build_prompt(
     if capability == CAPABILITY_EXECUTIVE_SUMMARY:
 
         return build_executive_summary_prompt(
+            expertise=expertise,
             context=context,
         )
 
