@@ -74,19 +74,25 @@ TASK
 --------------------------------------------------
 OUTPUT FORMAT
 
-For each development, use EXACTLY the following structure.
+For each Market Development, use EXACTLY the following structure.
 
-Development title
+A short title on its own line (maximum 12 words).
 
 One concise paragraph (maximum 60 words) describing the market evolution.
 
 --------------------------------------------------
 
-Repeat the same structure for every development.
+Repeat the same structure for every Market Development.
 
-Separate each development with exactly:
+Separate each Market Development with exactly:
 
 --------------------------------------------------
+
+The title is mandatory.
+
+Do not omit it.
+
+Do not merge the title with the paragraph.
 
 Do not use bullets.
 
@@ -143,7 +149,8 @@ RULES
 - Do not mention publishers.
 - Mention companies only when they genuinely illustrate a broader market evolution.
 - Use only the provided content.
-- Every development must remain understandable if read independently.
+- Every Market Development must have a clear standalone title.
+- Every paragraph must remain understandable when read independently.
 
 --------------------------------------------------
 
