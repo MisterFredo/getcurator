@@ -98,19 +98,39 @@ p {
 
 .header {
 
-    padding: 20px 48px;
+    padding: 18px 48px 14px;
 
     text-align: center;
-
-    border-bottom: 1px solid #E5E7EB;
 
     background: #FFFFFF;
 
 }
 
-.digest-meta {
+.header h1 {
 
     margin: 0;
+
+    font-size: 26px;
+
+    font-weight: 700;
+
+    line-height: 1.25;
+
+    color: #111827;
+
+}
+
+.by-getcurator {
+
+    font-weight: 500;
+
+    color: #6B7280;
+
+}
+
+.digest-meta {
+
+    margin: 8px 0 0;
 
     color: #315EFB;
 
@@ -124,40 +144,13 @@ p {
 
 }
 
-.reader-name {
-
-    margin: 12px 0 0;
-
-    font-size: 20px;
-
-    font-weight: 600;
-
-    line-height: 1.3;
-
-    color: #1F2937;
-
-}
-
-.header h1 {
-
-    margin: 10px 0 0;
-
-    font-size: 28px;
-
-    font-weight: 700;
-
-    line-height: 1.2;
-
-    color: #111827;
-
-}
 /* ==========================================================
    PROFILE
 ========================================================== */
 
 .profile {
 
-    padding: 20px 48px;
+    padding: 0 48px 32px;
 
     background: #FFFFFF;
 
@@ -171,69 +164,7 @@ p {
 
     background: #FAFBFD;
 
-    padding: 24px 24px;
-
-}
-
-.profile-box h2 {
-
-    margin: 0;
-
-    font-size: 20px;
-
-    line-height: 1.2;
-
-}
-
-.profile-intro {
-
-    margin: 8px 0 14px;
-
-    color: #6B7280;
-
-    font-size: 14px;
-
-    line-height: 1.5;
-
-}
-
-.profile-description {
-
-    margin-bottom: 18px;
-
-    max-width: 100%;
-
-    color: #374151;
-
-    font-size: 15px;
-
-    line-height: 1.6;
-
-}
-
-.profile-link {
-
-    margin: -6px 0 12px;
-
-}
-
-.profile-link a {
-
-    color: #315EFB;
-
-    font-size: 13px;
-
-    font-weight: 500;
-
-    opacity: .9;
-
-    text-decoration: none;
-
-}
-
-.profile-link a:hover {
-
-    text-decoration: underline;
+    padding: 24px;
 
 }
 
