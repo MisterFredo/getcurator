@@ -199,6 +199,62 @@ def _build_card(
     content,
 ) -> DigestCard:
 
+    badges: list[DigestBadge] = []
+
+    # ========================================================
+    # COMPANIES
+    # ========================================================
+
+    for company in content.companies:
+
+        badges.append(
+
+            DigestBadge(
+
+                label=company["NAME"],
+
+                type="company",
+
+            )
+
+        )
+
+    # ========================================================
+    # TOPICS
+    # ========================================================
+
+    for topic in content.topics:
+
+        badges.append(
+
+            DigestBadge(
+
+                label=topic["LABEL"],
+
+                type="topic",
+
+            )
+
+        )
+
+    # ========================================================
+    # SOLUTIONS
+    # ========================================================
+
+    for solution in content.solutions:
+
+        badges.append(
+
+            DigestBadge(
+
+                label=solution["NAME"],
+
+                type="solution",
+
+            )
+
+        )
+
     return DigestCard(
 
         id=content.id,
@@ -213,8 +269,9 @@ def _build_card(
 
         published_at=content.published_at,
 
-    )
+        badges=badges,
 
+    )
 
 # ============================================================
 # TITLE
