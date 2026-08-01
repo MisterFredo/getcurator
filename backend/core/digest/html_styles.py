@@ -439,7 +439,7 @@ p {
 
 .market-card h3 {
 
-    margin: 0 0 10px;
+    margin: 0 0 6px;
 
     font-size: 17px;
 
