@@ -78,7 +78,7 @@ def deliver_knowledge(
     }
 
     # ========================================================
-    # KEY POINTS FIRST
+    # KEY POINTS
     # ========================================================
 
     needs_key_points = any(
@@ -89,9 +89,9 @@ def deliver_knowledge(
 
             CAPABILITY_KEY_POINTS,
 
-            CAPABILITY_EXECUTIVE_SUMMARY,
-
             CAPABILITY_IMPLICATIONS,
+
+            CAPABILITY_EXECUTIVE_SUMMARY,
 
         )
 
@@ -109,13 +109,9 @@ def deliver_knowledge(
 
         )
 
-        # Toujours disponible pour les capacités suivantes
-
         context["outputs"][
             CAPABILITY_KEY_POINTS
         ] = result
-
-        # Exposé uniquement s'il a été demandé
 
         if CAPABILITY_KEY_POINTS in request.capabilities:
 
@@ -124,12 +120,68 @@ def deliver_knowledge(
             ] = result
 
     # ========================================================
-    # OTHER CAPABILITIES
+    # STRATEGIC IMPLICATIONS
+    # ========================================================
+
+    if CAPABILITY_IMPLICATIONS in request.capabilities:
+
+        result = execute_capability(
+
+            expertise=expertise,
+
+            capability=CAPABILITY_IMPLICATIONS,
+
+            context=context,
+
+        )
+
+        context["outputs"][
+            CAPABILITY_IMPLICATIONS
+        ] = result
+
+        capability_results[
+            CAPABILITY_IMPLICATIONS
+        ] = result
+
+    # ========================================================
+    # EXECUTIVE SUMMARY
+    # ========================================================
+
+    if CAPABILITY_EXECUTIVE_SUMMARY in request.capabilities:
+
+        result = execute_capability(
+
+            expertise=expertise,
+
+            capability=CAPABILITY_EXECUTIVE_SUMMARY,
+
+            context=context,
+
+        )
+
+        context["outputs"][
+            CAPABILITY_EXECUTIVE_SUMMARY
+        ] = result
+
+        capability_results[
+            CAPABILITY_EXECUTIVE_SUMMARY
+        ] = result
+
+    # ========================================================
+    # REMAINING CAPABILITIES
     # ========================================================
 
     for capability in request.capabilities:
 
-        if capability == CAPABILITY_KEY_POINTS:
+        if capability in (
+
+            CAPABILITY_KEY_POINTS,
+
+            CAPABILITY_IMPLICATIONS,
+
+            CAPABILITY_EXECUTIVE_SUMMARY,
+
+        ):
 
             continue
 
@@ -143,11 +195,11 @@ def deliver_knowledge(
 
         )
 
-        capability_results[
+        context["outputs"][
             capability
         ] = result
 
-        context["outputs"][
+        capability_results[
             capability
         ] = result
 
