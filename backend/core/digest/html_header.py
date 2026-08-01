@@ -41,8 +41,11 @@ def render_header(
 <h1>
 
 Your Intelligence Briefing
+
 <span class="by-getcurator">
+
 by GetCurator
+
 </span>
 
 </h1>
