@@ -196,6 +196,58 @@ p {
 
 }
 
+.profile-box h2 {
+
+    margin: 0 0 12px;
+
+    font-size: 20px;
+
+    font-weight: 700;
+
+    color: #111827;
+
+}
+
+.profile-description {
+
+    margin-bottom: 16px;
+
+    color: #374151;
+
+    font-size: 15px;
+
+    line-height: 1.7;
+
+}
+
+.profile-link {
+
+    margin-bottom: 22px;
+
+}
+
+.profile-link a {
+
+    color: #315EFB;
+
+    font-size: 12px;
+
+    font-weight: 500;
+
+    opacity: .8;
+
+    text-decoration: none;
+
+}
+
+.profile-link a:hover {
+
+    opacity: 1;
+
+    text-decoration: underline;
+
+}
+
 /* ==========================================================
    BADGES
 ========================================================== */
