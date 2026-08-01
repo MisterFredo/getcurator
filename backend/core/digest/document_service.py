@@ -211,7 +211,7 @@ def _build_card(
 
             DigestBadge(
 
-                label=company["NAME"],
+                label=company["name"],
 
                 type="company",
 
@@ -247,7 +247,7 @@ def _build_card(
 
             DigestBadge(
 
-                label=solution["NAME"],
+                label=solution["name"],
 
                 type="solution",
 
