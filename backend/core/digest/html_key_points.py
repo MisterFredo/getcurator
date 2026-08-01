@@ -46,12 +46,20 @@ def render_key_points_section(
 
             continue
 
+        title = lines[0]
+
         body = "<br><br>".join(
-            lines,
+            lines[1:]
         )
 
         html += f"""
 <div class="market-card">
+
+<h3>
+
+{title}
+
+</h3>
 
 <p>
 
