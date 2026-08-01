@@ -33,36 +33,25 @@ def render_header(
     Render the digest header.
     """
 
-    profile = document.profile
-
-    company = (
-        f" · {profile.company}"
-        if profile.company
-        else ""
-    )
-
     return f"""
 <tr>
 
 <td class="header">
+
+<h1>
+
+Your Intelligence Briefing
+<span class="by-getcurator">
+by GetCurator
+</span>
+
+</h1>
 
 <p class="digest-meta">
 
 {build_digest_type(document)} · {document.period}
 
 </p>
-
-<p class="reader-name">
-
-{profile.name}{company}
-
-</p>
-
-<h1>
-
-Your Intelligence Briefing
-
-</h1>
 
 </td>
 
