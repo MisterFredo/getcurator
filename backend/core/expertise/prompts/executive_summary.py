@@ -1,5 +1,6 @@
 from core.expertise.capabilities import (
     CAPABILITY_KEY_POINTS,
+    CAPABILITY_IMPLICATIONS,
 )
 
 
@@ -23,20 +24,25 @@ def build_executive_summary_prompt(
         "",
     )
 
+    implications = outputs.get(
+        CAPABILITY_IMPLICATIONS,
+        "",
+    )
+
     return f"""
 You are a senior business intelligence analyst.
 
-Your mission is to write a concise Executive Summary of the market developments already identified in the Key Points.
+Your mission is to write the Executive Summary of this market briefing.
 
-The Key Points are established market facts.
+The Key Points describe what happened.
 
-Do not question them.
+The Strategic Implications explain why these developments matter.
 
-Do not reinterpret them.
+Your role is to synthesize both into one concise executive narrative.
 
-Do not introduce new ideas.
+The Executive Summary is the first section of the report.
 
-Your role is to help an executive understand the overall story of this period in less than one minute.
+It should allow an executive to understand both the direction of the market and why this period matters before reading the detailed analysis.
 
 --------------------------------------------------
 LANGUAGE
@@ -49,28 +55,36 @@ KEY POINTS
 {key_points}
 
 --------------------------------------------------
+STRATEGIC IMPLICATIONS
+
+{implications}
+
+--------------------------------------------------
 OBJECTIVE
 
-Produce a short narrative that summarizes the overall direction of the market.
+Produce one concise executive narrative answering two questions:
 
-The Executive Summary should answer one question:
+• What is the overall story of this period?
 
-"What is the story of this period?"
+• Why is this story strategically important?
 
-Do not list the Key Points.
+The Executive Summary should not repeat the Key Points.
 
-Connect them naturally into one coherent narrative.
+It should not summarize the Strategic Implications one by one.
 
-Highlight the dominant themes and explain how they fit together.
+Instead, integrate both into one coherent narrative.
+
+Focus on the dominant market trajectory rather than individual developments.
 
 --------------------------------------------------
 TASK
 
-1. Read every Key Point.
-2. Identify the common direction they reveal.
-3. Build one coherent narrative.
-4. Explain the overall market trajectory.
-5. Remain strictly faithful to the Key Points.
+1. Read the Key Points.
+2. Read the Strategic Implications.
+3. Identify the single market narrative emerging from both.
+4. Explain the overall direction of the market.
+5. Explain why this direction matters strategically.
+6. Stay strictly faithful to the provided analysis.
 
 --------------------------------------------------
 OUTPUT FORMAT
@@ -88,47 +102,50 @@ Leave one blank line between paragraphs.
 --------------------------------------------------
 WRITING STYLE
 
-Write like the opening section of an executive market briefing.
+Write like the opening section of a board-level market briefing.
 
 Be concise.
 
 Be analytical.
 
-Be highly readable.
+Be readable.
+
+Write with confidence.
 
 Prefer formulations such as:
 
 - This period confirms...
 - The market continues to...
-- Several developments indicate...
-- Together these developments suggest...
-- The overall direction points toward...
+- Together these developments reveal...
+- The overall direction indicates...
+- The market is entering a phase where...
 
 Avoid formulations such as:
 
 - The Key Points show...
+- The Strategic Implications explain...
 - This report explains...
-- The articles indicate...
 - According to...
 - Company X announced...
 
 --------------------------------------------------
 RULES
 
-- Return only the summary text.
+- Return only the Executive Summary text.
 - Do not write a title.
 - Do not write "Executive Summary".
 - Use 2 or 3 short paragraphs.
 - No bullet points.
 - No headings.
-- No recommendations.
-- No strategic implications.
-- No speculation.
-- No new market developments.
-- Use only the information contained in the Key Points.
+- Do not list the Key Points.
+- Do not list the Strategic Implications.
+- Do not recommend actions.
+- Do not speculate.
+- Do not introduce new market developments.
+- Base the summary exclusively on the provided Key Points and Strategic Implications.
 - Do not mention articles or publishers.
 
 --------------------------------------------------
 
-The reader should understand the overall direction of the market after reading this Executive Summary, before exploring the Key Points in detail.
+The reader should finish this Executive Summary with a clear understanding of both the dominant market narrative and its strategic significance before reading the rest of the report.
 """.strip()
