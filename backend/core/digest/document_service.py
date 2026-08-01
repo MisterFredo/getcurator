@@ -229,7 +229,7 @@ def _build_card(
 
             DigestBadge(
 
-                label=topic["LABEL"],
+                label=topic["label"],
 
                 type="topic",
 
