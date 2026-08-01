@@ -507,9 +507,9 @@ p {
 
 .card {
 
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 
-    padding: 18px 20px;
+    padding: 18px 20px 14px;
 
     border: 1px solid #E5E7EB;
 
@@ -527,13 +527,13 @@ p {
 
 .card h3 {
 
-    margin: 0 0 6px;
+    margin: 0 0 8px;
 
     font-size: 18px;
 
     font-weight: 700;
 
-    line-height: 1.3;
+    line-height: 1.35;
 
     color: #111827;
 
@@ -543,43 +543,13 @@ p {
 
 }
 
-.badge-list {
-
-    margin-bottom: 8px;
-
-}
-
-.badge {
-
-    margin: 0 4px 4px 0;
-
-}
-
 .meta {
 
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 
     font-size: 13px;
 
     color: #9CA3AF;
-
-}
-
-.card p {
-
-    margin: 0 0 10px;
-
-    font-size: 15px;
-
-    line-height: 1.65;
-
-    color: #4B5563;
-
-}
-
-.card p:last-of-type {
-
-    margin-bottom: 0;
 
 }
 
@@ -594,6 +564,7 @@ p {
     font-weight: 500;
 
 }
+
 
 /* ==========================================================
    FOOTER
