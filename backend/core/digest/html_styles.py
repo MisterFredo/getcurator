@@ -150,7 +150,7 @@ p {
 
 .profile {
 
-    padding: 0 48px 32px;
+    padding: 0 48px 24px;
 
     background: #FFFFFF;
 
@@ -164,7 +164,7 @@ p {
 
     background: #FAFBFD;
 
-    padding: 24px;
+    padding: 20px;
 
 }
 
@@ -180,7 +180,7 @@ p {
 
     align-items: flex-start;
 
-    margin-bottom: 18px;
+    margin-bottom: 14px;
 
 }
 
@@ -192,7 +192,7 @@ p {
 
 .profile-name {
 
-    font-size: 22px;
+    font-size: 20px;
 
     font-weight: 700;
 
@@ -206,7 +206,7 @@ p {
 
     margin-top: 4px;
 
-    font-size: 15px;
+    font-size: 14px;
 
     color: #6B7280;
 
@@ -267,13 +267,13 @@ p {
 
 .profile h3 {
 
-    margin: 16px 0 8px;
+    margin: 14px 0 6px;
 
 }
 
 .badge-list {
 
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 
 }
 
@@ -325,7 +325,7 @@ p {
 
 .summary {
 
-    padding: 0 48px 32px;
+    padding: 0 48px 22px;
 
     background: #FFFFFF;
 
@@ -333,7 +333,7 @@ p {
 
 .summary-box {
 
-    padding: 24px;
+    padding: 18px 20px;
 
     border: 1px solid #E5E7EB;
 
@@ -373,9 +373,9 @@ p {
 
 .summary-content {
 
-    font-size: 16px;
+    font-size: 15px;
 
-    line-height: 1.8;
+    line-height: 1.65;
 
     color: #374151;
 
@@ -383,7 +383,7 @@ p {
 
 .summary-content p {
 
-    margin: 0 0 18px;
+    margin: 0 0 12px;
 
 }
 
@@ -399,7 +399,7 @@ p {
 
 .key-points {
 
-    padding: 0 48px 36px;
+    padding: 0 48px 22px;
 
 }
 
@@ -409,7 +409,7 @@ p {
 
 .implications {
 
-    padding: 0 48px 36px;
+    padding: 0 48px 22px;
 
 }
 
@@ -419,9 +419,9 @@ p {
 
 .market-card {
 
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 
-    padding: 28px;
+    padding: 18px 20px;
 
     border: 1px solid #E5E7EB;
 
@@ -439,9 +439,9 @@ p {
 
 .market-card h3 {
 
-    margin: 0 0 16px;
+    margin: 0 0 10px;
 
-    font-size: 18px;
+    font-size: 17px;
 
     font-weight: 700;
 
@@ -461,7 +461,7 @@ p {
 
     font-size: 15px;
 
-    line-height: 1.8;
+    line-height: 1.65;
 
     color: #4B5563;
 
@@ -483,7 +483,7 @@ p {
 
 .section {
 
-    padding: 0 48px 36px;
+    padding: 0 48px 22px;
 
     background: #FFFFFF;
 
@@ -491,7 +491,7 @@ p {
 
 .section h2 {
 
-    margin: 0 0 20px;
+    margin: 0 0 12px;
 
 }
 
@@ -507,9 +507,9 @@ p {
 
 .card {
 
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 
-    padding: 24px;
+    padding: 18px 20px;
 
     border: 1px solid #E5E7EB;
 
@@ -527,9 +527,9 @@ p {
 
 .card h3 {
 
-    margin: 0 0 12px;
+    margin: 0 0 8px;
 
-    font-size: 20px;
+    font-size: 18px;
 
     font-weight: 700;
 
@@ -545,7 +545,7 @@ p {
 
 .meta {
 
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 
     font-size: 13px;
 
@@ -559,7 +559,7 @@ p {
 
     margin-top: 12px;
 
-    font-size: 13px;
+    font-size: 11px;
 
     font-weight: 500;
 
