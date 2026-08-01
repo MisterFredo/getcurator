@@ -23,6 +23,27 @@ from core.digest.html_articles import (
 
 
 # ============================================================
+# DISPLAY TITLES
+# ============================================================
+
+DISPLAY_TITLES = {
+
+    "Executive Summary":
+        "Your Executive Brief",
+
+    "Key Points":
+        "Market Developments",
+
+    "Strategic Implications":
+        "What This Means for You",
+
+    "Articles":
+        "Supporting Articles",
+
+}
+
+
+# ============================================================
 # SECTIONS
 # ============================================================
 
@@ -37,6 +58,11 @@ def render_sections(
 
     for section in document.sections:
 
+        display_title = DISPLAY_TITLES.get(
+            section.title,
+            section.title,
+        )
+
         # ====================================================
         # EXECUTIVE SUMMARY
         # ====================================================
@@ -50,7 +76,7 @@ def render_sections(
 
 <h2>
 
-{section.title}
+{display_title}
 
 </h2>
 
@@ -69,6 +95,8 @@ def render_sections(
 
         elif section.title == "Key Points":
 
+            section.title = display_title
+
             html += render_key_points_section(
                 section,
             )
@@ -78,6 +106,8 @@ def render_sections(
         # ====================================================
 
         elif section.title == "Strategic Implications":
+
+            section.title = display_title
 
             html += render_implications_section(
                 section,
@@ -89,6 +119,8 @@ def render_sections(
 
         elif section.title == "Articles":
 
+            section.title = display_title
+
             html += render_articles_section(
                 section,
             )
@@ -98,6 +130,8 @@ def render_sections(
         # ====================================================
 
         else:
+
+            section.title = display_title
 
             html += render_default_section(
                 section,
