@@ -8,6 +8,12 @@ from core.digest.html_badges import (
     render_badge,
 )
 
+# ============================================================
+# CONFIG
+# ============================================================
+
+MAX_EXCERPT_LENGTH = 120
+
 
 # ============================================================
 # ARTICLES
@@ -21,8 +27,11 @@ def render_articles_section(
     """
 
     cards = "".join(
+
         render_card(card)
+
         for card in section.cards
+
     )
 
     return f"""
@@ -80,7 +89,9 @@ def render_card(
 
 <p>
 
-{card.excerpt}
+{truncate_excerpt(
+    card.excerpt,
+)}
 
 </p>
 
@@ -90,7 +101,8 @@ def render_card(
     href="{card.url}"
     class="cta"
     target="_blank"
-    rel="noopener noreferrer">
+    rel="noopener noreferrer"
+>
 
 Read on GetCurator →
 
@@ -100,6 +112,30 @@ Read on GetCurator →
 
 </div>
 """
+
+
+# ============================================================
+# EXCERPT
+# ============================================================
+
+def truncate_excerpt(
+    text: str,
+) -> str:
+    """
+    Truncate the article excerpt for email rendering.
+    """
+
+    text = text.strip()
+
+    if len(text) <= MAX_EXCERPT_LENGTH:
+
+        return text
+
+    return (
+        text[:MAX_EXCERPT_LENGTH]
+        .rstrip()
+        + "…"
+    )
 
 
 # ============================================================
