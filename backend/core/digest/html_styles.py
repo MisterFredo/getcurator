@@ -168,6 +168,34 @@ p {
 
 }
 
+.profile-identity {
+
+    margin-bottom: 20px;
+
+}
+
+.profile-name {
+
+    font-size: 22px;
+
+    font-weight: 700;
+
+    color: #111827;
+
+    line-height: 1.2;
+
+}
+
+.profile-company {
+
+    margin-top: 4px;
+
+    font-size: 15px;
+
+    color: #6B7280;
+
+}
+
 /* ==========================================================
    BADGES
 ========================================================== */
