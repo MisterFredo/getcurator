@@ -168,21 +168,37 @@ p {
 
 }
 
+/* ==========================================================
+   PROFILE HEADER
+========================================================== */
+
+.profile-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    margin-bottom: 18px;
+
+}
+
 .profile-identity {
 
-    margin-bottom: 20px;
+    flex: 1;
 
 }
 
 .profile-name {
 
-    font-size: 22px;
+    font-size: 30px;
 
     font-weight: 700;
 
-    color: #111827;
-
     line-height: 1.2;
+
+    color: #111827;
 
 }
 
@@ -190,39 +206,37 @@ p {
 
     margin-top: 4px;
 
-    font-size: 15px;
+    font-size: 17px;
 
     color: #6B7280;
 
 }
 
-.profile-box h2 {
-
-    margin: 0 0 12px;
-
-    font-size: 20px;
-
-    font-weight: 700;
-
-    color: #111827;
-
-}
+/* ==========================================================
+   DESCRIPTION
+========================================================== */
 
 .profile-description {
 
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 
     color: #374151;
 
     font-size: 15px;
 
-    line-height: 1.7;
+    line-height: 1.75;
 
 }
 
+/* ==========================================================
+   EDIT PROFILE
+========================================================== */
+
 .profile-link {
 
-    margin-bottom: 22px;
+    margin-left: 24px;
+
+    white-space: nowrap;
 
 }
 
@@ -234,7 +248,7 @@ p {
 
     font-weight: 500;
 
-    opacity: .8;
+    opacity: .75;
 
     text-decoration: none;
 
@@ -247,7 +261,6 @@ p {
     text-decoration: underline;
 
 }
-
 /* ==========================================================
    BADGES
 ========================================================== */
