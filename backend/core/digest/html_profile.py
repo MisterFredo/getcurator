@@ -31,7 +31,13 @@ def render_profile(
     profile = document.profile
 
     company = (
-        f"<div class=\"profile-company\">{profile.company}</div>"
+        f"""
+<div class="profile-company">
+
+{profile.company}
+
+</div>
+"""
         if profile.company
         else ""
     )
@@ -42,6 +48,8 @@ def render_profile(
 <td class="profile">
 
 <div class="profile-box">
+
+<div class="profile-header">
 
 <div class="profile-identity">
 
@@ -55,14 +63,6 @@ def render_profile(
 
 </div>
 
-<h2>
-
-Monitoring Profile
-
-</h2>
-
-{render_profile_description(profile)}
-
 <div class="profile-link">
 
 <a
@@ -71,11 +71,15 @@ Monitoring Profile
     rel="noopener noreferrer"
 >
 
-Edit your monitoring profile →
+Edit profile →
 
 </a>
 
 </div>
+
+</div>
+
+{render_profile_description(profile)}
 
 {render_profile_badges(
     "Companies",
