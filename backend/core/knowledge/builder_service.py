@@ -9,6 +9,7 @@ from .block_service import (
 )
 
 from .models import (
+    KnowledgeBlockType,
     KnowledgeEntityType,
 )
 
@@ -23,15 +24,11 @@ def build_entity(
 ):
     """
     Bootstrap the Knowledge of one entity.
+
+    Each Knowledge Agent processes only
+    the observations relevant to its own
+    Knowledge Block.
     """
-
-    batches = load_batches(
-        entity_type,
-        entity_id,
-    )
-
-    if not batches:
-        return
 
     for block_type in [
 
@@ -46,6 +43,19 @@ def build_entity(
         "chiffres",
 
     ]:
+
+        batches = load_batches(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+            block_type=block_type,
+
+        )
+
+        if not batches:
+            continue
 
         build_block(
 
