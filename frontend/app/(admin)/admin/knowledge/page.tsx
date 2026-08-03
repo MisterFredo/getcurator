@@ -249,3 +249,224 @@ export default function KnowledgePage() {
     }
 
   }
+
+    /* =======================================================
+     RENDER
+  ======================================================= */
+
+  return (
+
+    <div className="space-y-8">
+
+      {/* =================================================== */}
+
+      <div>
+
+        <h1 className="text-3xl font-semibold text-ratecard-blue">
+          Knowledge
+        </h1>
+
+        <p className="text-gray-500 mt-1">
+          Build and edit entity knowledge.
+        </p>
+
+      </div>
+
+      {/* =================================================== */}
+
+      {loading ? (
+
+        <div>
+          Loading...
+        </div>
+
+      ) : (
+
+        <div className="space-y-6 max-w-5xl">
+
+          <SearchableSelect
+
+            label="Company"
+
+            placeholder="Search company..."
+
+            options={
+
+              companies.map((c) => ({
+
+                id: c.id_company,
+
+                label: c.name,
+
+              }))
+
+            }
+
+            value={selectedCompany}
+
+            onChange={async (company) => {
+
+              setSelectedCompany(
+                company,
+              );
+
+              if (company) {
+
+                await loadKnowledge(
+                  company.id,
+                );
+
+              } else {
+
+                setKnowledge(
+                  null,
+                );
+
+                setSignal("");
+
+              }
+
+            }}
+
+          />
+
+          {/* =========================================== */}
+
+          <div>
+
+            <button
+
+              onClick={
+                buildKnowledge
+              }
+
+              disabled={
+                !selectedCompany ||
+                building
+              }
+
+              className="bg-ratecard-green text-white px-5 py-2 rounded disabled:opacity-50"
+
+            >
+
+              {
+
+                building
+
+                  ? "Building..."
+
+                  : "Build Knowledge"
+
+              }
+
+            </button>
+
+          </div>
+
+          {/* =========================================== */}
+
+          {
+
+            selectedCompany && (
+
+              <>
+
+                <div className="space-y-2">
+
+                  <div className="flex items-center justify-between">
+
+                    <h2 className="text-xl font-semibold">
+
+                      Signal Analytique
+
+                    </h2>
+
+                    {
+
+                      knowledge && (
+
+                        <div className="text-xs text-gray-500">
+
+                          Version {
+
+                            knowledge
+                              .signal_analytique
+                              ?.version ?? 0
+
+                          }
+
+                        </div>
+
+                      )
+
+                    }
+
+                  </div>
+
+                  <textarea
+
+                    value={signal}
+
+                    onChange={(e) =>
+
+                      setSignal(
+                        e.target.value,
+                      )
+
+                    }
+
+                    rows={24}
+
+                    className="w-full border rounded p-4 font-mono text-sm"
+
+                  />
+
+                </div>
+
+                {/* =================================== */}
+
+                <div>
+
+                  <button
+
+                    onClick={
+                      saveSignal
+                    }
+
+                    disabled={
+                      saving
+                    }
+
+                    className="bg-ratecard-blue text-white px-5 py-2 rounded disabled:opacity-50"
+
+                  >
+
+                    {
+
+                      saving
+
+                        ? "Saving..."
+
+                        : "Save"
+
+                    }
+
+                  </button>
+
+                </div>
+
+              </>
+
+            )
+
+          }
+
+        </div>
+
+      )}
+
+    </div>
+
+  );
+
+}
