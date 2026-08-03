@@ -102,3 +102,13 @@ class KnowledgeContent(BaseModel):
     chiffres: str
 
     published_at: datetime
+
+class KnowledgeBlockUpdateRequest(BaseModel):
+
+    entity_type: KnowledgeEntityType
+
+    entity_id: str
+
+    block_type: KnowledgeBlockType
+
+    content: str
