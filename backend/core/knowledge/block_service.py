@@ -12,7 +12,7 @@ from utils.llm import (
 from .models import (
     KnowledgeBlock,
     KnowledgeBlockType,
-    KnowledgeContent,
+    KnowledgeObservation,
     KnowledgeEntityType,
 )
 
@@ -25,6 +25,7 @@ from .prompts.signal import (
     build_signal_prompt,
 )
 
+
 # ============================================================
 # BUILD BLOCK
 # ============================================================
@@ -33,7 +34,7 @@ def build_block(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    batches: list[list[KnowledgeContent]],
+    batches: list[list[KnowledgeObservation]],
 ):
     """
     Build one Knowledge Block.
@@ -104,7 +105,7 @@ def build_block(
 
 def _update_block(
     block: KnowledgeBlock,
-    batch: list[KnowledgeContent],
+    batch: list[KnowledgeObservation],
 ) -> KnowledgeBlock:
     """
     Update one Knowledge Block from
@@ -151,7 +152,7 @@ def _update_block(
 def _build_prompt(
     block_type: KnowledgeBlockType,
     block: KnowledgeBlock,
-    batch: list[KnowledgeContent],
+    batch: list[KnowledgeObservation],
 ) -> str:
     """
     Dispatch to the appropriate
