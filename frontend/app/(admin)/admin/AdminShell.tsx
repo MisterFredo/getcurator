@@ -7,8 +7,8 @@ import {
   Archive,
   BarChart3,
   BookOpen,
+  Brain,
   Building2,
-  Calendar,
   Database,
   Gauge,
   Globe,
@@ -49,6 +49,10 @@ export default function AdminShell({
 
   const sections = [
 
+    // =====================================================
+    // COCKPIT
+    // =====================================================
+
     {
       title: "Cockpit",
 
@@ -60,6 +64,10 @@ export default function AdminShell({
         },
       ],
     },
+
+    // =====================================================
+    // PRODUCTION
+    // =====================================================
 
     {
       title: "Production",
@@ -88,8 +96,12 @@ export default function AdminShell({
       ],
     },
 
+    // =====================================================
+    // REFERENCE DATA
+    // =====================================================
+
     {
-      title: "Knowledge",
+      title: "Reference Data",
 
       items: [
         {
@@ -125,10 +137,19 @@ export default function AdminShell({
       ],
     },
 
+    // =====================================================
+    // INTELLIGENCE
+    // =====================================================
+
     {
       title: "Intelligence",
 
       items: [
+        {
+          href: "/admin/knowledge",
+          label: "Knowledge",
+          icon: Brain,
+        },
         {
           href: "/admin/digest",
           label: "Digest",
@@ -136,6 +157,10 @@ export default function AdminShell({
         },
       ],
     },
+
+    // =====================================================
+    // ADMINISTRATION
+    // =====================================================
 
     {
       title: "Administration",
@@ -155,11 +180,6 @@ export default function AdminShell({
           href: "/admin/vector",
           label: "Vectorization",
           icon: Database,
-        },
-        {
-          href: "/admin/radar",
-          label: "Radar",
-          icon: Calendar,
         },
       ],
     },
@@ -225,6 +245,7 @@ export default function AdminShell({
                             : "hover:bg-ratecard-green/20"
                         }
                       `}
+
                     >
 
                       <Icon size={18} />
