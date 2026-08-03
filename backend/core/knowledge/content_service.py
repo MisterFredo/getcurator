@@ -114,10 +114,6 @@ def _load_contents(
         block_type
     ]
 
-    column = block_columns[
-        block_type
-    ]
-
     query = f"""
     SELECT
 
