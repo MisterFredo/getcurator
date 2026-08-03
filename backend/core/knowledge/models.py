@@ -49,9 +49,9 @@ class KnowledgeBlock(BaseModel):
 
 class KnowledgeEntity(BaseModel):
 
-    entity_type: ...
+    entity_type: KnowledgeEntityType
 
-    entity_id: ...
+    entity_id: str
 
     signal_analytique: KnowledgeBlock
 
