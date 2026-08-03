@@ -34,6 +34,7 @@ def upsert_block(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block: KnowledgeBlock,
+    updated_by: str = "LLM",
 ):
     """
     Insert or update one Knowledge Block.
@@ -54,7 +55,9 @@ def upsert_block(
 
             @content AS CONTENT,
 
-            @version AS VERSION
+            @version AS VERSION,
+
+            @updated_by AS UPDATED_BY
 
     ) S
 
@@ -78,7 +81,9 @@ def upsert_block(
 
             VERSION = S.VERSION,
 
-            UPDATED_AT = CURRENT_TIMESTAMP()
+            UPDATED_AT = CURRENT_TIMESTAMP(),
+
+            UPDATED_BY = S.UPDATED_BY
 
     WHEN NOT MATCHED THEN
 
@@ -94,7 +99,9 @@ def upsert_block(
 
             VERSION,
 
-            UPDATED_AT
+            UPDATED_AT,
+
+            UPDATED_BY
 
         )
 
@@ -110,7 +117,9 @@ def upsert_block(
 
             S.VERSION,
 
-            CURRENT_TIMESTAMP()
+            CURRENT_TIMESTAMP(),
+
+            S.UPDATED_BY
 
         )
     """
@@ -123,6 +132,7 @@ def upsert_block(
             "block_type": block.block_type,
             "content": block.content,
             "version": block.version,
+            "updated_by": updated_by,
         },
     )
 
@@ -250,20 +260,34 @@ def get_entity(
 
         entity_id=entity_id,
 
-        signal_analytique=blocks["signal_analytique"],
+        signal_analytique=blocks.get(
+            "signal_analytique",
+            _empty_block("signal_analytique"),
+        ),
 
-        mecanique_expliquee=blocks["mecanique_expliquee"],
+        mecanique_expliquee=blocks.get(
+            "mecanique_expliquee",
+            _empty_block("mecanique_expliquee"),
+        ),
 
-        enjeu_strategique=blocks["enjeu_strategique"],
-
-        point_de_friction=blocks["point_de_friction"],
-
-        chiffres=blocks["chiffres"],
-
+        enjeu_strategique=blocks.get(
+            "enjeu_strategique",
+            _empty_block("enjeu_strategique"),
+        ),
+    
+        point_de_friction=blocks.get(
+            "point_de_friction",
+            _empty_block("point_de_friction"),
+        ),
+    
+        chiffres=blocks.get(
+            "chiffres",
+            _empty_block("chiffres"),
+        ),
+    
         updated_at=updated_at,
 
     )
-
 
 # ============================================================
 # DELETE ENTITY
@@ -294,4 +318,65 @@ def delete_entity(
             "entity_type": entity_type,
             "entity_id": entity_id,
         },
+    )
+
+# ============================================================
+# EXISTS
+# ============================================================
+
+def exists_entity(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+) -> bool:
+
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_KNOWLEDGE}`
+
+        WHERE
+
+            ENTITY_TYPE = @entity_type
+
+        AND
+
+            ENTITY_ID = @entity_id
+
+        LIMIT 1
+        """,
+        {
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+        },
+    )
+
+    return bool(rows)
+
+
+# ============================================================
+# EMPTY BLOCK
+# ============================================================
+
+def _empty_block(
+    block_type: KnowledgeBlockType,
+) -> KnowledgeBlock:
+
+    from datetime import (
+        datetime,
+        timezone,
+    )
+
+    return KnowledgeBlock(
+
+        block_type=block_type,
+
+        content="",
+
+        version=0,
+
+        updated_at=datetime.now(
+            timezone.utc,
+        ),
+
     )
