@@ -66,23 +66,6 @@ class KnowledgeEntity(BaseModel):
     updated_at: datetime
 
 # ============================================================
-# KNOWLEDGE UPDATE
-# ============================================================
-
-class KnowledgeUpdate(BaseModel):
-    """
-    One new observation used to update
-    one Knowledge Block.
-    """
-
-    title: str
-
-    excerpt: str
-
-    content: str
-
-
-# ============================================================
 # KNOWLEDGE REQUEST
 # ============================================================
 
@@ -91,3 +74,31 @@ class KnowledgeRequest(BaseModel):
     entity_type: KnowledgeEntityType
 
     entity_id: str
+
+# ============================================================
+# KNOWLEDGE CONTENT
+# ============================================================
+
+class KnowledgeContent(BaseModel):
+    """
+    One enriched content used by
+    the Knowledge Builder.
+    """
+
+    id: str
+
+    title: str
+
+    excerpt: str
+
+    signal_analytique: str
+
+    mecanique_expliquee: str
+
+    enjeu_strategique: str
+
+    point_de_friction: str
+
+    chiffres: str
+
+    published_at: datetime
