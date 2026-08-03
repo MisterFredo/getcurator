@@ -10,7 +10,8 @@ from utils.bigquery_utils import (
 )
 
 from .models import (
-    KnowledgeContent,
+    KnowledgeObservation,
+    KnowledgeBlockType,
     KnowledgeEntityType,
 )
 
@@ -37,13 +38,37 @@ TABLE_CONTENT_SOLUTION = (
 
 
 # ============================================================
+# BLOCK COLUMNS
+# ============================================================
+
+BLOCK_COLUMNS = {
+
+    "signal_analytique":
+        "SIGNAL_ANALYTIQUE",
+
+    "mecanique_expliquee":
+        "MECANIQUE_EXPLIQUEE",
+
+    "enjeu_strategique":
+        "ENJEU_STRATEGIQUE",
+
+    "point_de_friction":
+        "POINT_DE_FRICTION",
+
+    "chiffres":
+        "CHIFFRES",
+
+}
+
+# ============================================================
 # LOAD CONTENTS
 # ============================================================
 
 def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
-) -> list[KnowledgeContent]:
+    block_type: KnowledgeBlockType,
+) -> list[KnowledgeObservation]:
 
     match entity_type:
 
@@ -52,6 +77,7 @@ def load_contents(
                 relation_table=TABLE_CONTENT_COMPANY,
                 relation_column="ID_COMPANY",
                 entity_id=entity_id,
+                block_type=block_type,
             )
 
         case "topic":
@@ -59,6 +85,7 @@ def load_contents(
                 relation_table=TABLE_CONTENT_TOPIC,
                 relation_column="ID_TOPIC",
                 entity_id=entity_id,
+                block_type=block_type,
             )
 
         case "solution":
@@ -66,6 +93,7 @@ def load_contents(
                 relation_table=TABLE_CONTENT_SOLUTION,
                 relation_column="ID_SOLUTION",
                 entity_id=entity_id,
+                block_type=block_type,
             )
 
     return []
@@ -79,7 +107,16 @@ def _load_contents(
     relation_table: str,
     relation_column: str,
     entity_id: str,
-) -> list[KnowledgeContent]:
+    block_type: KnowledgeBlockType,
+) -> list[KnowledgeObservation]:
+
+    column = BLOCK_COLUMNS[
+        block_type
+    ]
+
+    column = block_columns[
+        block_type
+    ]
 
     query = f"""
     SELECT
@@ -90,15 +127,7 @@ def _load_contents(
 
         c.EXCERPT,
 
-        c.SIGNAL_ANALYTIQUE,
-
-        c.MECANIQUE_EXPLIQUEE,
-
-        c.ENJEU_STRATEGIQUE,
-
-        c.POINT_DE_FRICTION,
-
-        c.CHIFFRES,
+        c.{column} AS CONTENT,
 
         c.PUBLISHED_AT
 
@@ -120,6 +149,10 @@ def _load_contents(
 
         c.IS_ACTIVE = TRUE
 
+    AND
+
+        c.PUBLISHED_AT IS NOT NULL
+
     ORDER BY
 
         c.PUBLISHED_AT ASC
@@ -134,7 +167,7 @@ def _load_contents(
 
     return [
 
-        KnowledgeContent(
+        KnowledgeObservation(
 
             id=row["ID_CONTENT"],
 
@@ -142,15 +175,7 @@ def _load_contents(
 
             excerpt=row["EXCERPT"],
 
-            signal_analytique=row.get("SIGNAL_ANALYTIQUE") or "",
-
-            mecanique_expliquee=row.get("MECANIQUE_EXPLIQUEE") or "",
-
-            enjeu_strategique=row.get("ENJEU_STRATEGIQUE") or "",
-
-            point_de_friction=row.get("POINT_DE_FRICTION") or "",
-
-            chiffres=row.get("CHIFFRES") or "",
+            content=row.get("CONTENT") or "",
 
             published_at=row["PUBLISHED_AT"],
 
@@ -167,8 +192,9 @@ def _load_contents(
 def load_new_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
+    block_type: KnowledgeBlockType,
     last_content_date,
-) -> list[KnowledgeContent]:
+) -> list[KnowledgeObservation]:
     """
     Load only the contents published after
     the last Knowledge update.
@@ -183,6 +209,7 @@ def load_new_contents(
                 relation_table=TABLE_CONTENT_COMPANY,
                 relation_column="ID_COMPANY",
                 entity_id=entity_id,
+                block_type=block_type,
                 last_content_date=last_content_date,
             )
 
@@ -191,6 +218,7 @@ def load_new_contents(
                 relation_table=TABLE_CONTENT_TOPIC,
                 relation_column="ID_TOPIC",
                 entity_id=entity_id,
+                block_type=block_type,
                 last_content_date=last_content_date,
             )
 
@@ -199,11 +227,11 @@ def load_new_contents(
                 relation_table=TABLE_CONTENT_SOLUTION,
                 relation_column="ID_SOLUTION",
                 entity_id=entity_id,
+                block_type=block_type,
                 last_content_date=last_content_date,
             )
 
     return []
-
 # ============================================================
 # GENERIC UPDATE LOADER
 # ============================================================
@@ -212,12 +240,17 @@ def _load_new_contents(
     relation_table: str,
     relation_column: str,
     entity_id: str,
+    block_type: KnowledgeBlockType,
     last_content_date,
-) -> list[KnowledgeContent]:
+) -> list[KnowledgeObservation]:
     """
     Load only contents newer than the last
     processed content.
     """
+
+    column = BLOCK_COLUMNS[
+        block_type
+    ]
 
     query = f"""
     SELECT DISTINCT
@@ -228,15 +261,7 @@ def _load_new_contents(
 
         c.EXCERPT,
 
-        c.SIGNAL_ANALYTIQUE,
-
-        c.MECANIQUE_EXPLIQUEE,
-
-        c.ENJEU_STRATEGIQUE,
-
-        c.POINT_DE_FRICTION,
-
-        c.CHIFFRES,
+        c.{column} AS CONTENT,
 
         c.PUBLISHED_AT
 
@@ -281,7 +306,7 @@ def _load_new_contents(
 
     return [
 
-        KnowledgeContent(
+        KnowledgeObservation(
 
             id=row["ID_CONTENT"],
 
@@ -289,15 +314,7 @@ def _load_new_contents(
 
             excerpt=row["EXCERPT"],
 
-            signal_analytique=row.get("SIGNAL_ANALYTIQUE") or "",
-
-            mecanique_expliquee=row.get("MECANIQUE_EXPLIQUEE") or "",
-
-            enjeu_strategique=row.get("ENJEU_STRATEGIQUE") or "",
-
-            point_de_friction=row.get("POINT_DE_FRICTION") or "",
-
-            chiffres=row.get("CHIFFRES") or "",
+            content=row.get("CONTENT") or "",
 
             published_at=row["PUBLISHED_AT"],
 
@@ -315,8 +332,9 @@ def _load_new_contents(
 def load_batches(
     entity_type: KnowledgeEntityType,
     entity_id: str,
+    block_type: KnowledgeBlockType,
     batch_size: int = 50,
-) -> list[list[KnowledgeContent]]:
+) -> list[list[KnowledgeObservation]]:
     """
     Load contents and split them into
     chronological batches.
