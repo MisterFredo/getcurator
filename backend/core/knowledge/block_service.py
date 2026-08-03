@@ -1,6 +1,14 @@
 # backend/core/knowledge/block_service.py
 
-from datetime import datetime, timezone
+from datetime import (
+    datetime,
+    timezone,
+)
+
+from utils.llm import (
+    run_llm,
+)
+
 from .models import (
     KnowledgeBlock,
     KnowledgeBlockType,
@@ -13,6 +21,9 @@ from .repository import (
     upsert_block,
 )
 
+from .prompts.signal import (
+    build_signal_prompt,
+)
 
 # ============================================================
 # BUILD BLOCK
@@ -34,9 +45,9 @@ def build_block(
     has been processed.
     """
 
-    # --------------------------------------------------------
-    # CURRENT BLOCK
-    # --------------------------------------------------------
+    # ========================================================
+    # LOAD CURRENT BLOCK
+    # ========================================================
 
     block = get_block(
         entity_type,
@@ -56,12 +67,13 @@ def build_block(
 
             updated_at=datetime.now(
                 timezone.utc,
-            )
+            ),
+
         )
 
-    # --------------------------------------------------------
-    # PROCESS BATCHES
-    # --------------------------------------------------------
+    # ========================================================
+    # PROCESS CHRONOLOGICAL BATCHES
+    # ========================================================
 
     for batch in batches:
 
@@ -99,4 +111,81 @@ def _update_block(
     one chronological batch.
     """
 
-    raise NotImplementedError
+    prompt = _build_prompt(
+
+        block_type=block.block_type,
+
+        block=block,
+
+        batch=batch,
+
+    )
+
+    content = run_llm(
+
+        prompt=prompt,
+
+        temperature=0.2,
+
+    ) or block.content
+
+    return KnowledgeBlock(
+
+        block_type=block.block_type,
+
+        content=content.strip(),
+
+        version=block.version + 1,
+
+        updated_at=datetime.now(
+            timezone.utc,
+        ),
+
+    )
+
+
+# ============================================================
+# BUILD PROMPT
+# ============================================================
+
+def _build_prompt(
+    block_type: KnowledgeBlockType,
+    block: KnowledgeBlock,
+    batch: list[KnowledgeContent],
+) -> str:
+    """
+    Dispatch to the appropriate
+    prompt builder.
+    """
+
+    match block_type:
+
+        case "signal_analytique":
+
+            return build_signal_prompt(
+
+                block=block,
+
+                contents=batch,
+
+            )
+
+        case "mecanique_expliquee":
+
+            raise NotImplementedError
+
+        case "enjeu_strategique":
+
+            raise NotImplementedError
+
+        case "point_de_friction":
+
+            raise NotImplementedError
+
+        case "chiffres":
+
+            raise NotImplementedError
+
+    raise ValueError(
+        f"Unknown block type: {block_type}"
+    )
