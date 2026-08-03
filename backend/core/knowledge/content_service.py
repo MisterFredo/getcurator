@@ -159,3 +159,38 @@ def _load_contents(
         for row in rows
 
     ]
+
+
+# ============================================================
+# LOAD BATCHES
+# ============================================================
+
+def load_batches(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+    batch_size: int = 50,
+) -> list[list[KnowledgeContent]]:
+    """
+    Load contents and split them into
+    chronological batches.
+    """
+
+    contents = load_contents(
+        entity_type=entity_type,
+        entity_id=entity_id,
+    )
+
+    if not contents:
+        return []
+
+    return [
+
+        contents[i:i + batch_size]
+
+        for i in range(
+            0,
+            len(contents),
+            batch_size,
+        )
+
+    ]
