@@ -2,7 +2,7 @@
 
 from ..models import (
     KnowledgeBlock,
-    KnowledgeContent,
+    KnowledgeObservation,
 )
 
 
@@ -12,7 +12,7 @@ from ..models import (
 
 def build_signal_prompt(
     block: KnowledgeBlock,
-    contents: list[KnowledgeContent],
+    contents: list[KnowledgeObservation],
 ) -> str:
 
     current_notes = (
@@ -32,8 +32,8 @@ TITLE
 EXCERPT
 {content.excerpt}
 
-SIGNAL
-{content.signal_analytique}
+OBSERVATION
+{content.content}
 """.strip())
 
     observations = "\n\n--------------------------------------------------\n\n".join(
