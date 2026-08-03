@@ -1,8 +1,8 @@
 # backend/core/knowledge/content_service.py
 
 from .models import (
+    KnowledgeContent,
     KnowledgeEntityType,
-    KnowledgeUpdate,
 )
 
 
@@ -13,9 +13,10 @@ from .models import (
 def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
-) -> list[KnowledgeUpdate]:
+) -> list[KnowledgeContent]:
     """
-    Load every content associated with one entity.
+    Load every enriched content attached
+    to one entity.
 
     Contents are returned from oldest
     to newest.
@@ -47,7 +48,7 @@ def load_contents(
 
 def _load_company_contents(
     company_id: str,
-) -> list[KnowledgeUpdate]:
+) -> list[KnowledgeContent]:
 
     raise NotImplementedError
 
@@ -58,7 +59,7 @@ def _load_company_contents(
 
 def _load_topic_contents(
     topic_id: str,
-) -> list[KnowledgeUpdate]:
+) -> list[KnowledgeContent]:
 
     raise NotImplementedError
 
@@ -69,6 +70,6 @@ def _load_topic_contents(
 
 def _load_solution_contents(
     solution_id: str,
-) -> list[KnowledgeUpdate]:
+) -> list[KnowledgeContent]:
 
     raise NotImplementedError
