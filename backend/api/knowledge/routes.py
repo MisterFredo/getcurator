@@ -31,7 +31,8 @@ def build_knowledge_route(
     request: KnowledgeRequest,
 ):
     """
-    Bootstrap the Knowledge of one entity.
+    Bootstrap the complete Knowledge
+    of one entity.
     """
 
     build_knowledge(
@@ -86,8 +87,8 @@ def update_knowledge_route(
     request: KnowledgeRequest,
 ):
     """
-    Incrementally update one entity
-    from newly available contents.
+    Update the Knowledge of one entity
+    using newly available contents.
     """
 
     update_knowledge(
@@ -117,17 +118,19 @@ def update_knowledge_block_route(
     Manually edit one Knowledge Block.
     """
 
+    block = update_knowledge_block(
+
+        entity_type=request.entity_type,
+
+        entity_id=request.entity_id,
+
+        block_type=request.block_type,
+
+        content=request.content,
+
+    )
+
     return {
         "status": "ok",
-        "block": update_knowledge_block(
-
-            entity_type=request.entity_type,
-
-            entity_id=request.entity_id,
-
-            block_type=request.block_type,
-
-            content=request.content,
-
-        ),
+        "block": block,
     }
