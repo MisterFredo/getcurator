@@ -1,3 +1,10 @@
+// frontend/types/knowledge.ts
+
+export type KnowledgeRequest = {
+  entity_type: "company" | "topic" | "solution";
+  entity_id: string;
+};
+
 export type KnowledgeBlock = {
   block_type: string;
   content: string;
@@ -16,4 +23,11 @@ export type KnowledgeEntity = {
   chiffres: KnowledgeBlock;
 
   updated_at: string;
+};
+
+export type KnowledgeBlockUpdateRequest = {
+  entity_type: "company" | "topic" | "solution";
+  entity_id: string;
+  block_type: string;
+  content: string;
 };
