@@ -33,17 +33,12 @@ KnowledgeBlockType = Literal[
 # ============================================================
 
 class KnowledgeBlock(BaseModel):
-    """
-    Consultant notes for one knowledge block.
-    """
 
     block_type: KnowledgeBlockType
 
-    notes: list[str] = Field(
-        default_factory=list,
-    )
+    content: str
 
-    version: int = 1
+    version: int
 
     updated_at: datetime
 
