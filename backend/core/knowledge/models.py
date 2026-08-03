@@ -5,7 +5,6 @@ from typing import Literal
 
 from pydantic import (
     BaseModel,
-    Field,
 )
 
 
@@ -65,6 +64,7 @@ class KnowledgeEntity(BaseModel):
 
     updated_at: datetime
 
+
 # ============================================================
 # KNOWLEDGE REQUEST
 # ============================================================
@@ -75,14 +75,22 @@ class KnowledgeRequest(BaseModel):
 
     entity_id: str
 
+
 # ============================================================
-# KNOWLEDGE CONTENT
+# KNOWLEDGE OBSERVATION
 # ============================================================
 
-class KnowledgeContent(BaseModel):
+class KnowledgeObservation(BaseModel):
     """
-    One enriched content used by
-    the Knowledge Builder.
+    One observation sent to one Knowledge Agent.
+
+    The meaning of `content` depends on the Agent:
+
+    - Signal Agent              -> signal_analytique
+    - Mechanics Agent           -> mecanique_expliquee
+    - Strategic Agent           -> enjeu_strategique
+    - Friction Agent            -> point_de_friction
+    - Numbers Agent             -> chiffres
     """
 
     id: str
@@ -91,17 +99,14 @@ class KnowledgeContent(BaseModel):
 
     excerpt: str
 
-    signal_analytique: str
-
-    mecanique_expliquee: str
-
-    enjeu_strategique: str
-
-    point_de_friction: str
-
-    chiffres: str
+    content: str
 
     published_at: datetime
+
+
+# ============================================================
+# KNOWLEDGE BLOCK UPDATE
+# ============================================================
 
 class KnowledgeBlockUpdateRequest(BaseModel):
 
