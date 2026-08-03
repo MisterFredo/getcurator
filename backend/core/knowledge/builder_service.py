@@ -9,7 +9,6 @@ from .block_service import (
 )
 
 from .models import (
-    KnowledgeBlockType,
     KnowledgeEntityType,
 )
 
@@ -25,46 +24,34 @@ def build_entity(
     """
     Bootstrap the Knowledge of one entity.
 
-    Each Knowledge Agent processes only
-    the observations relevant to its own
-    Knowledge Block.
+    V1:
+    Only the Analytical Signal block
+    is generated.
     """
 
-    for block_type in [
+    block_type = "signal_analytique"
 
-        "signal_analytique",
+    batches = load_batches(
 
-        "mecanique_expliquee",
+        entity_type=entity_type,
 
-        "enjeu_strategique",
+        entity_id=entity_id,
 
-        "point_de_friction",
+        block_type=block_type,
 
-        "chiffres",
+    )
 
-    ]:
+    if not batches:
+        return
 
-        batches = load_batches(
+    build_block(
 
-            entity_type=entity_type,
+        entity_type=entity_type,
 
-            entity_id=entity_id,
+        entity_id=entity_id,
 
-            block_type=block_type,
+        block_type=block_type,
 
-        )
+        batches=batches,
 
-        if not batches:
-            continue
-
-        build_block(
-
-            entity_type=entity_type,
-
-            entity_id=entity_id,
-
-            block_type=block_type,
-
-            batches=batches,
-
-        )
+    )
