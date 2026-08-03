@@ -102,6 +102,9 @@ Never exceed fifty bullet points.
 
 Quality is more important than quantity.
 
+If the current notebook is already correct,
+do not modify it.
+
 --------------------------------------------------
 OUTPUT
 
