@@ -1,8 +1,38 @@
 # backend/core/knowledge/content_service.py
 
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
 from .models import (
     KnowledgeContent,
     KnowledgeEntityType,
+)
+
+
+# ============================================================
+# TABLES
+# ============================================================
+
+TABLE_CONTENT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
+TABLE_CONTENT_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
+)
+
+TABLE_CONTENT_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
+)
+
+TABLE_CONTENT_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
 )
 
 
@@ -14,62 +44,118 @@ def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
 ) -> list[KnowledgeContent]:
-    """
-    Load every enriched content attached
-    to one entity.
-
-    Contents are returned from oldest
-    to newest.
-    """
 
     match entity_type:
 
         case "company":
-            return _load_company_contents(
-                entity_id,
+            return _load_contents(
+                relation_table=TABLE_CONTENT_COMPANY,
+                relation_column="ID_COMPANY",
+                entity_id=entity_id,
             )
 
         case "topic":
-            return _load_topic_contents(
-                entity_id,
+            return _load_contents(
+                relation_table=TABLE_CONTENT_TOPIC,
+                relation_column="ID_TOPIC",
+                entity_id=entity_id,
             )
 
         case "solution":
-            return _load_solution_contents(
-                entity_id,
+            return _load_contents(
+                relation_table=TABLE_CONTENT_SOLUTION,
+                relation_column="ID_SOLUTION",
+                entity_id=entity_id,
             )
 
     return []
 
 
 # ============================================================
-# COMPANY
+# GENERIC LOADER
 # ============================================================
 
-def _load_company_contents(
-    company_id: str,
+def _load_contents(
+    relation_table: str,
+    relation_column: str,
+    entity_id: str,
 ) -> list[KnowledgeContent]:
 
-    raise NotImplementedError
+    query = f"""
+    SELECT
 
+        c.ID_CONTENT,
 
-# ============================================================
-# TOPIC
-# ============================================================
+        c.TITLE,
 
-def _load_topic_contents(
-    topic_id: str,
-) -> list[KnowledgeContent]:
+        c.EXCERPT,
 
-    raise NotImplementedError
+        c.SIGNAL_ANALYTIQUE,
 
+        c.MECANIQUE_EXPLIQUEE,
 
-# ============================================================
-# SOLUTION
-# ============================================================
+        c.ENJEU_STRATEGIQUE,
 
-def _load_solution_contents(
-    solution_id: str,
-) -> list[KnowledgeContent]:
+        c.POINT_DE_FRICTION,
 
-    raise NotImplementedError
+        c.CHIFFRES,
+
+        c.PUBLISHED_AT
+
+    FROM `{TABLE_CONTENT}` c
+
+    JOIN `{relation_table}` r
+
+        ON r.ID_CONTENT = c.ID_CONTENT
+
+    WHERE
+
+        r.{relation_column} = @entity_id
+
+    AND
+
+        c.STATUS = "PUBLISHED"
+
+    AND
+
+        c.IS_ACTIVE = TRUE
+
+    ORDER BY
+
+        c.PUBLISHED_AT ASC
+    """
+
+    rows = query_bq(
+        query,
+        {
+            "entity_id": entity_id,
+        },
+    ) or []
+
+    return [
+
+        KnowledgeContent(
+
+            id=row["ID_CONTENT"],
+
+            title=row["TITLE"],
+
+            excerpt=row["EXCERPT"],
+
+            signal_analytique=row.get("SIGNAL_ANALYTIQUE") or "",
+
+            mecanique_expliquee=row.get("MECANIQUE_EXPLIQUEE") or "",
+
+            enjeu_strategique=row.get("ENJEU_STRATEGIQUE") or "",
+
+            point_de_friction=row.get("POINT_DE_FRICTION") or "",
+
+            chiffres=row.get("CHIFFRES") or "",
+
+            published_at=row["PUBLISHED_AT"],
+
+        )
+
+        for row in rows
+
+    ]
