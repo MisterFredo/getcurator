@@ -78,6 +78,7 @@ TABLE_ALIAS_REJECTED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_ALIAS_REJECTED"
 )
 
+
 # ============================================================
 # DATASETS
 # ============================================================
@@ -112,9 +113,11 @@ BACKUP_TABLES = [
     "RATECARD_CONTENT_SOLUTION",
     "RATECARD_CONTENT_TOPIC",
 
-    # Digests
+    # Intelligence
     "RATECARD_DIGEST",
     "RATECARD_CAMPAIGN",
+    "RATECARD_KNOWLEDGE",
+    "RATECARD_KNOWLEDGE_STATUS",
 
     # Numbers
     "RATECARD_NUMBERS",
