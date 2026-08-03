@@ -4,8 +4,11 @@ from .content_service import (
     load_batches,
 )
 
+from .block_service import (
+    build_block,
+)
+
 from .models import (
-    KnowledgeBlockType,
     KnowledgeEntityType,
 )
 
@@ -22,10 +25,6 @@ def build_entity(
     Bootstrap the Knowledge of one entity.
     """
 
-    # --------------------------------------------------------
-    # LOAD BATCHES
-    # --------------------------------------------------------
-
     batches = load_batches(
         entity_type,
         entity_id,
@@ -33,10 +32,6 @@ def build_entity(
 
     if not batches:
         return
-
-    # --------------------------------------------------------
-    # BUILD EVERY BLOCK
-    # --------------------------------------------------------
 
     for block_type in [
 
@@ -52,7 +47,7 @@ def build_entity(
 
     ]:
 
-        _build_block(
+        build_block(
 
             entity_type=entity_type,
 
@@ -63,24 +58,3 @@ def build_entity(
             batches=batches,
 
         )
-
-
-# ============================================================
-# BUILD BLOCK
-# ============================================================
-
-def _build_block(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
-    block_type: KnowledgeBlockType,
-    batches,
-):
-    """
-    Build one Knowledge Block.
-
-    Each chronological batch updates
-    the consultant notes produced by
-    the previous batch.
-    """
-
-    raise NotImplementedError
