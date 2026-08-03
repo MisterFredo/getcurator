@@ -1,5 +1,6 @@
 # backend/core/knowledge/block_service.py
 
+from datetime import datetime, timezone
 from .models import (
     KnowledgeBlock,
     KnowledgeBlockType,
@@ -53,8 +54,9 @@ def build_block(
 
             version=1,
 
-            updated_at=None,
-
+            updated_at=datetime.now(
+                timezone.utc,
+            )
         )
 
     # --------------------------------------------------------
