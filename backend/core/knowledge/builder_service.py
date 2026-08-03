@@ -1,5 +1,9 @@
 # backend/core/knowledge/builder_service.py
 
+from .content_service import (
+    load_batches,
+)
+
 from .models import (
     KnowledgeBlockType,
     KnowledgeEntityType,
@@ -16,34 +20,19 @@ def build_entity(
 ):
     """
     Bootstrap the Knowledge of one entity.
-
-    Process:
-        1. Load every related content.
-        2. Sort chronologically.
-        3. Split into batches.
-        4. Build each Knowledge Block.
-        5. Save every block.
     """
 
     # --------------------------------------------------------
-    # LOAD CONTENTS
+    # LOAD BATCHES
     # --------------------------------------------------------
 
-    contents = _load_contents(
+    batches = load_batches(
         entity_type,
         entity_id,
     )
 
-    if not contents:
+    if not batches:
         return
-
-    # --------------------------------------------------------
-    # SPLIT BATCHES
-    # --------------------------------------------------------
-
-    batches = _split_batches(
-        contents,
-    )
 
     # --------------------------------------------------------
     # BUILD EVERY BLOCK
@@ -77,40 +66,6 @@ def build_entity(
 
 
 # ============================================================
-# LOAD CONTENTS
-# ============================================================
-
-def _load_contents(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
-):
-    """
-    Load every content associated
-    with the entity.
-
-    Ordered from oldest to newest.
-    """
-
-    raise NotImplementedError
-
-
-# ============================================================
-# SPLIT BATCHES
-# ============================================================
-
-def _split_batches(
-    contents,
-    batch_size: int = 50,
-):
-    """
-    Split chronological contents
-    into batches.
-    """
-
-    raise NotImplementedError
-
-
-# ============================================================
 # BUILD BLOCK
 # ============================================================
 
@@ -123,8 +78,9 @@ def _build_block(
     """
     Build one Knowledge Block.
 
-    Each batch updates the notes
-    produced by the previous batch.
+    Each chronological batch updates
+    the consultant notes produced by
+    the previous batch.
     """
 
     raise NotImplementedError
