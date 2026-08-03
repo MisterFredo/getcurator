@@ -193,6 +193,33 @@ def get_block(
         updated_at=row["UPDATED_AT"],
     )
 
+# ============================================================
+# EMPTY BLOCK
+# ============================================================
+
+def _empty_block(
+    block_type: KnowledgeBlockType,
+) -> KnowledgeBlock:
+
+    from datetime import (
+        datetime,
+        timezone,
+    )
+
+    return KnowledgeBlock(
+
+        block_type=block_type,
+
+        content="",
+
+        version=0,
+
+        updated_at=datetime.now(
+            timezone.utc,
+        ),
+
+    )
+
 
 # ============================================================
 # GET ENTITY
@@ -354,29 +381,3 @@ def exists_entity(
     return bool(rows)
 
 
-# ============================================================
-# EMPTY BLOCK
-# ============================================================
-
-def _empty_block(
-    block_type: KnowledgeBlockType,
-) -> KnowledgeBlock:
-
-    from datetime import (
-        datetime,
-        timezone,
-    )
-
-    return KnowledgeBlock(
-
-        block_type=block_type,
-
-        content="",
-
-        version=0,
-
-        updated_at=datetime.now(
-            timezone.utc,
-        ),
-
-    )
