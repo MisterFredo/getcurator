@@ -29,6 +29,7 @@ TABLE_CONTENT = (
 # ============================================================
 
 KNOWLEDGE_BATCH_SIZE = 50
+KNOWLEDGE_BUILD_OFFSET = 0
 KNOWLEDGE_BUILD_LIMIT = 50
 
 
@@ -221,7 +222,8 @@ def _load_contents(
     if KNOWLEDGE_BUILD_LIMIT is not None:
 
         rows = rows[
-            :KNOWLEDGE_BUILD_LIMIT
+            KNOWLEDGE_BUILD_OFFSET:
+            KNOWLEDGE_BUILD_OFFSET + KNOWLEDGE_BUILD_LIMIT
         ]
 
     return [
