@@ -184,7 +184,7 @@ def _load_contents(
 
     CROSS JOIN UNNEST(
         c.{entity_array}
-    ) entity
+    ) AS entity
 
     WHERE
 
@@ -213,6 +213,16 @@ def _load_contents(
         query,
         params,
     ) or []
+
+    # ========================================================
+    # V1 LIMIT
+    # ========================================================
+
+    if KNOWLEDGE_BUILD_LIMIT is not None:
+
+        rows = rows[
+            :KNOWLEDGE_BUILD_LIMIT
+        ]
 
     return [
 
