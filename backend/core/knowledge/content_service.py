@@ -343,6 +343,7 @@ def load_batches(
     contents = load_contents(
         entity_type=entity_type,
         entity_id=entity_id,
+        block_type=block_type,
     )
 
     if not contents:
