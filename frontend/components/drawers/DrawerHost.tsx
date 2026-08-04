@@ -20,6 +20,8 @@ export default function DrawerHost() {
 
   } = useDrawer();
 
+  console.log("HOST", rightDrawer);
+
   return (
 
     <>
