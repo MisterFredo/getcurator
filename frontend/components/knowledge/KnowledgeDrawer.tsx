@@ -1,8 +1,26 @@
+// KnowledgeDrawer.tsx
+
+"use client";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  getKnowledge,
+} from "@/lib/knowledge";
+
+import type {
+  KnowledgeEntity,
+  KnowledgeEntityType,
+} from "@/types/knowledge";
+
 type Props = {
 
-  open: boolean;
+  entityId: string;
 
-  entity: any;
+  entityType: KnowledgeEntityType;
 
   onClose: () => void;
 
@@ -10,12 +28,71 @@ type Props = {
 
 export default function KnowledgeDrawer({
 
-  open,
+  entityId,
+
+  entityType,
+
+  onClose,
 
 }: Props) {
 
-  if (!open) {
+  const [
+    knowledge,
+    setKnowledge,
+  ] =
+    useState<KnowledgeEntity | null>(
+      null,
+    );
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  useEffect(() => {
+
+    async function load() {
+
+      try {
+
+        const entity =
+          await getKnowledge(
+
+            entityType,
+
+            entityId,
+
+          );
+
+        setKnowledge(
+          entity,
+        );
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+      }
+
+    }
+
+    load();
+
+  }, [
+
+    entityId,
+
+    entityType,
+
+  ]);
+
+  if (loading) {
+
     return null;
+
   }
 
   return (
