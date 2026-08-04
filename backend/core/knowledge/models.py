@@ -79,10 +79,6 @@ class KnowledgeEntitySummary(BaseModel):
 
     contents_count: int
 
-    available_contents: int
-
-    knowledge_coverage: int
-
     users_count: int
 
     experts_count: int
