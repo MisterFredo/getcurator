@@ -4,21 +4,19 @@ import type {
   KnowledgeEntitySummary,
 } from "@/types/knowledge";
 
+/* ========================================================= */
+
 type Props = {
 
   entities: KnowledgeEntitySummary[];
 
-  onOpen: (
-    entity: KnowledgeEntitySummary,
-  ) => void;
-
 };
+
+/* ========================================================= */
 
 export default function KnowledgeExplorerTable({
 
   entities,
-
-  onOpen,
 
 }: Props) {
 
@@ -73,8 +71,6 @@ export default function KnowledgeExplorerTable({
               key={`${entity.entity_type}-${entity.entity_id}`}
 
               entity={entity}
-
-              onOpen={onOpen}
 
             />
 
