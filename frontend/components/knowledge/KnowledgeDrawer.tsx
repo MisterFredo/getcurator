@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import { X } from "lucide-react";
+
 import {
   getKnowledge,
 } from "@/lib/knowledge";
@@ -55,6 +57,12 @@ export default function KnowledgeDrawer({
     useState(true);
 
   const [
+    isOpen,
+    setIsOpen,
+  ] =
+    useState(false);
+
+  const [
     selectedBlock,
     setSelectedBlock,
   ] =
@@ -74,7 +82,7 @@ export default function KnowledgeDrawer({
 
     try {
 
-      const knowledge =
+      const res =
         await getKnowledge(
 
           entity.entity_type,
@@ -84,8 +92,16 @@ export default function KnowledgeDrawer({
         );
 
       setKnowledge(
-        knowledge,
+        res,
       );
+
+      requestAnimationFrame(() => {
+
+        setIsOpen(
+          true,
+        );
+
+      });
 
     } catch (e) {
 
@@ -121,75 +137,161 @@ export default function KnowledgeDrawer({
      RENDER
   ======================================================= */
 
-  if (loading) {
-
-    return (
-
-      <div className="flex h-full items-center justify-center">
-
-        Loading...
-
-      </div>
-
-    );
-
-  }
-
-  if (!knowledge) {
-
-    return (
-
-      <div className="flex h-full items-center justify-center">
-
-        Unable to load Knowledge.
-
-      </div>
-
-    );
-
-  }
-
   return (
 
-    <div className="flex h-full flex-col bg-white">
+    <div className="fixed inset-0 z-[100] flex">
 
-      <KnowledgeSummary
+      {/* =================================================== */}
+      {/* OVERLAY */}
+      {/* =================================================== */}
 
-        entity={entity}
+      <div
 
-        knowledge={knowledge}
+        className="absolute inset-0 bg-black/40"
 
-        onClose={onClose}
-
-      />
-
-      <KnowledgeTabs
-
-        selectedBlock={selectedBlock}
-
-        onChange={setSelectedBlock}
+        onClick={onClose}
 
       />
 
-      <KnowledgeBlockEditor
+      {/* =================================================== */}
+      {/* DRAWER */}
+      {/* =================================================== */}
 
-        entity={entity}
+      <aside
 
-        knowledge={knowledge}
+        className={`
+          relative
+          ml-auto
+          flex
+          h-full
+          w-full
+          flex-col
+          bg-white
+          shadow-xl
+          md:w-[700px]
+          overflow-hidden
+          transform
+          transition-transform
+          duration-300
+          ease-out
+          ${
+            isOpen
+              ? "translate-x-0"
+              : "translate-x-full"
+          }
+        `}
 
-        selectedBlock={selectedBlock}
+      >
 
-        onReload={loadKnowledge}
+        {/* =============================================== */}
+        {/* CLOSE */}
+        {/* =============================================== */}
 
-      />
+        <button
 
-      <KnowledgeFooter
+          onClick={onClose}
 
-        entity={entity}
+          className="absolute right-4 top-4 z-20 rounded p-2 hover:bg-gray-100"
 
-        onReload={loadKnowledge}
+        >
 
-      />
+          <X size={18} />
+
+        </button>
+
+        {/* =============================================== */}
+        {/* LOADING */}
+        {/* =============================================== */}
+
+        {
+
+          loading && (
+
+            <div className="flex flex-1 items-center justify-center">
+
+              Loading...
+
+            </div>
+
+          )
+
+        }
+
+        {/* =============================================== */}
+        {/* ERROR */}
+        {/* =============================================== */}
+
+        {
+
+          !loading &&
+          !knowledge && (
+
+            <div className="flex flex-1 items-center justify-center">
+
+              Unable to load Knowledge.
+
+            </div>
+
+          )
+
+        }
+
+        {/* =============================================== */}
+        {/* CONTENT */}
+        {/* =============================================== */}
+
+        {
+
+          !loading &&
+          knowledge && (
+
+            <>
+
+              <KnowledgeSummary
+
+                entity={entity}
+
+                knowledge={knowledge}
+
+                onClose={onClose}
+
+              />
+
+              <KnowledgeTabs
+
+                selectedBlock={selectedBlock}
+
+                onChange={setSelectedBlock}
+
+              />
+
+              <KnowledgeBlockEditor
+
+                entity={entity}
+
+                knowledge={knowledge}
+
+                selectedBlock={selectedBlock}
+
+                onReload={loadKnowledge}
+
+              />
+
+              <KnowledgeFooter
+
+                entity={entity}
+
+                onReload={loadKnowledge}
+
+              />
+
+            </>
+
+          )
+
+        }
+
+      </aside>
 
     </div>
 
