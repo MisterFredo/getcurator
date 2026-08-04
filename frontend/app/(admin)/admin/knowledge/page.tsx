@@ -362,6 +362,65 @@ const [
 
           />
 
+          <div>
+
+            <label className="block text-sm font-medium mb-2">
+          
+              Knowledge Block
+          
+            </label>
+          
+            <select
+          
+              value={selectedBlock}
+          
+              onChange={(e) => {
+          
+                const block =
+                  e.target.value as keyof KnowledgeEntity;
+          
+                setSelectedBlock(
+                  block,
+                );
+          
+                setContent(
+          
+                  knowledge?.[
+                    block
+                  ]?.content || "",
+          
+                );
+          
+              }}
+          
+              className="border rounded px-3 py-2"
+          
+            >
+          
+              {
+          
+                BLOCKS.map((block) => (
+          
+                  <option
+          
+                    key={block.id}
+          
+                    value={block.id}
+          
+                  >
+          
+                    {block.label}
+          
+                  </option>
+          
+                ))
+          
+              }
+          
+            </select>
+          
+          </div>
+
           {/* =========================================== */}
 
           <div>
