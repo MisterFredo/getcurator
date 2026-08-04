@@ -63,19 +63,6 @@ def get_dashboard() -> KnowledgeDashboard:
 
 
 # ============================================================
-# EXPLORER
-# ============================================================
-
-def list_entities() -> KnowledgeExplorer:
-    """
-    Return every entity displayed in the
-    Knowledge Explorer.
-    """
-
-    raise NotImplementedError
-
-
-# ============================================================
 # ENTITY SUMMARY
 # ============================================================
 
@@ -88,3 +75,112 @@ def get_entity_summary(
     """
 
     raise NotImplementedError
+
+
+# ============================================================
+# COMPANIES
+# ============================================================
+
+def _get_companies(
+) -> list[KnowledgeEntitySummary]:
+    """
+    Return every Company displayed in the
+    Knowledge Explorer.
+    """
+
+    query = """
+    ...
+    """
+
+    rows = query_bq(
+        query,
+    ) or []
+
+    return [
+
+        KnowledgeEntitySummary(
+
+            entity_type="company",
+
+            entity_id=row["ID_COMPANY"],
+
+            name=row["NAME"],
+
+            contents_count=row["CONTENTS_COUNT"],
+
+            users_count=row["USERS_COUNT"],
+
+            experts_count=row["EXPERTS_COUNT"],
+
+            has_knowledge=row["HAS_KNOWLEDGE"],
+
+            last_build=row["LAST_BUILD"],
+
+        )
+
+        for row in rows
+
+    ]
+
+
+# ============================================================
+# TOPICS
+# ============================================================
+
+def _get_topics(
+) -> list[KnowledgeEntitySummary]:
+
+    raise NotImplementedError
+
+
+# ============================================================
+# SOLUTIONS
+# ============================================================
+
+def _get_solutions(
+) -> list[KnowledgeEntitySummary]:
+
+    raise NotImplementedError
+
+# ============================================================
+# EXPLORER
+# ============================================================
+
+def list_entities(
+) -> KnowledgeExplorer:
+    """
+    Return every entity displayed in the
+    Knowledge Explorer.
+    """
+
+    entities = []
+
+    entities.extend(
+        _get_companies()
+    )
+
+    entities.extend(
+        _get_topics()
+    )
+
+    entities.extend(
+        _get_solutions()
+    )
+
+    entities.sort(
+
+        key=lambda entity: (
+
+            -entity.contents_count,
+
+            entity.name,
+
+        ),
+
+    )
+
+    return KnowledgeExplorer(
+
+        entities=entities,
+
+    )
