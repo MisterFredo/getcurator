@@ -1,12 +1,16 @@
 type Props = {
 
+  entities: KnowledgeEntitySummary[];
+
   onOpen: (
-    entity: any,
+    entity: KnowledgeEntitySummary,
   ) => void;
 
 };
 
 export default function KnowledgeExplorer({
+
+  entities,
 
   onOpen,
 
@@ -14,9 +18,15 @@ export default function KnowledgeExplorer({
 
   return (
 
-    <div className="rounded-lg border bg-white p-6">
+    <div className="rounded-lg border bg-white">
 
-      Explorer
+      <KnowledgeExplorerTable
+
+        entities={entities}
+
+        onOpen={onOpen}
+
+      />
 
     </div>
 
