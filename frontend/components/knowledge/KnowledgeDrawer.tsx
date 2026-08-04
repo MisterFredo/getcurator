@@ -22,8 +22,6 @@ import KnowledgeTabs from "./KnowledgeTabs";
 import KnowledgeBlockEditor from "./KnowledgeBlockEditor";
 import KnowledgeFooter from "./KnowledgeFooter";
 
-console.log("KNOWLEDGE DRAWER", entity);
-
 /* ========================================================= */
 
 type Props = {
