@@ -1,6 +1,11 @@
+// frontend/app/(admin)/admin/knowledge/page.tsx
+
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import KnowledgeHeader from "@/components/knowledge/KnowledgeHeader";
 import KnowledgeDashboard from "@/components/knowledge/KnowledgeDashboard";
@@ -8,27 +13,43 @@ import KnowledgeToolbar from "@/components/knowledge/KnowledgeToolbar";
 import KnowledgeExplorer from "@/components/knowledge/KnowledgeExplorer";
 import KnowledgeDrawer from "@/components/knowledge/KnowledgeDrawer";
 
+import {
+  getKnowledgeDashboard,
+  getKnowledgeExplorer,
+} from "@/lib/knowledge";
+
+import type {
+  KnowledgeDashboard as Dashboard,
+  KnowledgeExplorer as Explorer,
+  KnowledgeEntitySummary,
+} from "@/types/knowledge";
+
+/* ========================================================= */
+
 export default function KnowledgePage() {
 
   const [
     dashboard,
     setDashboard,
-  ] = useState<KnowledgeDashboard | null>(
-    null,
-  );
-  
+  ] =
+    useState<Dashboard | null>(
+      null,
+    );
+
   const [
     explorer,
     setExplorer,
-  ] = useState<KnowledgeExplorer | null>(
-    null,
-  );
-  
+  ] =
+    useState<Explorer | null>(
+      null,
+    );
+
   const [
     loading,
     setLoading,
-  ] = useState(true);
-  
+  ] =
+    useState(true);
+
   const [
     selectedEntity,
     setSelectedEntity,
@@ -36,12 +57,110 @@ export default function KnowledgePage() {
     useState<KnowledgeEntitySummary | null>(
       null,
     );
-  
+
   const [
     drawerOpen,
     setDrawerOpen,
   ] =
     useState(false);
+
+  /* =======================================================
+     LOAD
+  ======================================================= */
+
+  useEffect(() => {
+
+    async function load() {
+
+      try {
+
+        const [
+
+          dashboard,
+
+          explorer,
+
+        ] = await Promise.all([
+
+          getKnowledgeDashboard(),
+
+          getKnowledgeExplorer(),
+
+        ]);
+
+        setDashboard(
+          dashboard,
+        );
+
+        setExplorer(
+          explorer,
+        );
+
+      } catch (e) {
+
+        console.error(e);
+
+        alert(
+          "Unable to load Knowledge Cockpit.",
+        );
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+      }
+
+    }
+
+    load();
+
+  }, []);
+
+  /* =======================================================
+     DRAWER
+  ======================================================= */
+
+  function openEntity(
+    entity: KnowledgeEntitySummary,
+  ) {
+
+    setSelectedEntity(
+      entity,
+    );
+
+    setDrawerOpen(
+      true,
+    );
+
+  }
+
+  function closeDrawer() {
+
+    setDrawerOpen(
+      false,
+    );
+
+    setSelectedEntity(
+      null,
+    );
+
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
+  if (loading) {
+
+    return (
+      <div>
+        Loading...
+      </div>
+    );
+
+  }
 
   return (
 
@@ -49,34 +168,56 @@ export default function KnowledgePage() {
 
       <KnowledgeHeader />
 
-      <KnowledgeDashboard />
+      {
+
+        dashboard && (
+
+          <KnowledgeDashboard
+
+            dashboard={
+              dashboard
+            }
+
+          />
+
+        )
+
+      }
 
       <KnowledgeToolbar />
 
-      <KnowledgeExplorer
+      {
 
-        onOpen={(entity) => {
+        explorer && (
 
-          setSelectedEntity(
-            entity,
-          );
+          <KnowledgeExplorer
 
-          setDrawerOpen(
-            true,
-          );
+            entities={
+              explorer.entities
+            }
 
-        }}
+            onOpen={
+              openEntity
+            }
 
-      />
+          />
+
+        )
+
+      }
 
       <KnowledgeDrawer
 
-        open={drawerOpen}
+        open={
+          drawerOpen
+        }
 
-        entity={selectedEntity}
+        entity={
+          selectedEntity
+        }
 
-        onClose={() =>
-          setDrawerOpen(false)
+        onClose={
+          closeDrawer
         }
 
       />
