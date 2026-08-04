@@ -2,9 +2,14 @@
 
 import type {
   KnowledgeEntity,
+  KnowledgeEntitySummary,
 } from "@/types/knowledge";
 
+/* ========================================================= */
+
 type Props = {
+
+  entity: KnowledgeEntitySummary;
 
   knowledge: KnowledgeEntity;
 
@@ -12,7 +17,11 @@ type Props = {
 
 };
 
+/* ========================================================= */
+
 export default function KnowledgeSummary({
+
+  entity,
 
   knowledge,
 
@@ -22,21 +31,83 @@ export default function KnowledgeSummary({
 
   return (
 
-    <div className="border-b bg-white px-6 py-4">
+    <div className="border-b bg-white px-6 py-5">
 
       <div className="flex items-start justify-between">
 
-        <div>
+        <div className="space-y-3">
 
-          <h2 className="text-2xl font-semibold text-ratecard-blue">
+          <div>
 
-            {knowledge.entity_id}
+            <h2 className="text-2xl font-semibold text-ratecard-blue">
 
-          </h2>
+              {entity.name}
 
-          <div className="mt-1 text-sm text-gray-500">
+            </h2>
 
-            {knowledge.entity_type}
+            <div className="mt-1 text-sm text-gray-500">
+
+              {entity.entity_type}
+
+            </div>
+
+          </div>
+
+          <div className="flex flex-wrap gap-6 text-sm">
+
+            <div>
+
+              <span className="font-semibold">
+
+                {entity.contents_count}
+
+              </span>
+
+              {" "}contents
+
+            </div>
+
+            <div>
+
+              <span className="font-semibold">
+
+                {entity.users_count}
+
+              </span>
+
+              {" "}users
+
+            </div>
+
+            <div>
+
+              <span className="font-semibold">
+
+                {entity.experts_count}
+
+              </span>
+
+              {" "}experts
+
+            </div>
+
+          </div>
+
+          <div className="text-xs text-gray-500">
+
+            Last build{" "}
+
+            {
+
+              entity.last_build
+
+                ? new Date(
+                    entity.last_build,
+                  ).toLocaleString()
+
+                : "Never"
+
+            }
 
           </div>
 
@@ -46,7 +117,7 @@ export default function KnowledgeSummary({
 
           onClick={onClose}
 
-          className="text-gray-400 hover:text-gray-700"
+          className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
 
         >
 
