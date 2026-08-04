@@ -8,6 +8,10 @@ from .block_service import (
     build_block,
 )
 
+from .entity_service import (
+    get_entity,
+)
+
 from .models import (
     KnowledgeEntityType,
 )
@@ -29,6 +33,25 @@ def build_entity(
     is generated.
     """
 
+    # ========================================================
+    # LOAD ENTITY
+    # ========================================================
+
+    entity = get_entity(
+
+        entity_type=entity_type,
+
+        entity_id=entity_id,
+
+    )
+
+    if entity is None:
+        return
+
+    # ========================================================
+    # BUILD SIGNAL
+    # ========================================================
+
     block_type = "signal_analytique"
 
     batches = load_batches(
@@ -45,6 +68,8 @@ def build_entity(
         return
 
     build_block(
+
+        entity_name=entity.name,
 
         entity_type=entity_type,
 
