@@ -76,21 +76,23 @@ The notebook is dedicated exclusively to this entity.
 
 Read every new observation.
 
-For each observation decide whether it:
+For every observation, always follow this order:
 
-- confirms an existing strategic implication
-- enriches an existing implication
-- replaces an outdated implication
-- reveals a new strategic implication
+1. Update an existing implication if possible.
+2. Merge with an existing implication if both describe the same strategic consequence.
+3. Replace an outdated implication if the new observation provides a better understanding.
+4. Create a new implication only if the observation reveals a genuinely new long-term strategic implication that cannot fit into any existing note.
 
 Your objective is NOT to summarize today's observations.
 
-Your objective is to explain what these observations reveal strategically.
+Your objective is to continuously improve your understanding of what these observations reveal strategically about this entity.
 
 --------------------------------------------------
 RULES
 
-Every note must explain why this matters.
+Every note must describe this entity.
+
+Every note must explain WHY this matters strategically.
 
 Focus on:
 
@@ -98,31 +100,48 @@ Focus on:
 - competitive advantage
 - competitive threats
 - long-term opportunities
-- structural market evolution
+- long-term risks
 - business impact
-- strategic implications
+- structural evolution
+- strategic consequences
 
-Do not describe how things work.
+Always explain why the observation matters for this entity.
+
+Do not explain how the entity works.
 
 Do not describe isolated events.
 
-Do not describe market trends.
+Do not describe market trends without connecting them to this entity.
 
-Do not describe limitations.
+Do not describe operational limitations.
 
 Extract the underlying strategic meaning.
 
-Merge similar implications.
+The notebook is a long-term memory, not a collection of observations.
 
-Rewrite implications when necessary.
+Prefer improving existing implications over creating new ones.
 
-Delete obsolete implications.
+A new bullet should be rare.
+
+Whenever two notes describe the same strategic implication, merge them into a stronger and more complete implication.
+
+Rewrite existing notes instead of appending information.
+
+Delete obsolete or redundant implications.
 
 Keep only durable strategic knowledge.
 
-Keep the notebook concise.
+Ignore isolated announcements.
+
+Ignore temporary events.
+
+Ignore communication.
+
+The notebook should become more accurate over time, not significantly longer.
 
 Quality is more important than quantity.
+
+Even if the notebook is already correct, improve wording, merge overlapping implications and simplify the structure whenever possible.
 
 --------------------------------------------------
 OUTPUT
@@ -131,7 +150,7 @@ Return the complete updated notebook.
 
 Only bullet points.
 
-Each bullet must describe one durable strategic implication.
+Each bullet must describe one durable strategic implication affecting this entity.
 
 No introduction.
 
