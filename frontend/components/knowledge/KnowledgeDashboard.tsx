@@ -1,3 +1,5 @@
+// frontend/components/knowledge/KnowledgeDashboard.tsx
+
 import KnowledgeStatCard from "./KnowledgeStatCard";
 
 import type {
