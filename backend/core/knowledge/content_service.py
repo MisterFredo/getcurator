@@ -29,7 +29,7 @@ TABLE_CONTENT = (
 # ============================================================
 
 KNOWLEDGE_BATCH_SIZE = 50
-KNOWLEDGE_BUILD_OFFSET = 0
+KNOWLEDGE_BUILD_OFFSET = 50
 KNOWLEDGE_BUILD_LIMIT = 50
 
 
