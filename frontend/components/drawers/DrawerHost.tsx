@@ -73,14 +73,11 @@ export default function DrawerHost() {
       {
 
         rightDrawer.type === "knowledge" &&
-        rightDrawer.id &&
-        rightDrawer.entityType && (
+        rightDrawer.knowledgeEntity && (
 
           <KnowledgeDrawer
 
-            entityId={rightDrawer.id}
-
-            entityType={rightDrawer.entityType}
+            entity={rightDrawer.knowledgeEntity}
 
             onClose={closeRightDrawer}
 
