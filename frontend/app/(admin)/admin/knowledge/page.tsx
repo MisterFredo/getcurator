@@ -16,6 +16,15 @@ import type {
   KnowledgeEntity,
 } from "@/types/knowledge";
 
+
+/* ========================================================= */
+
+type KnowledgeBlockKey =
+  | "signal_analytique"
+  | "mecanique_expliquee"
+  | "enjeu_strategique"
+  | "point_de_friction";
+
 /* ========================================================= */
 
 export default function KnowledgePage() {
@@ -43,9 +52,9 @@ export default function KnowledgePage() {
   const [
     selectedBlock,
     setSelectedBlock,
-  ] = useState<
-    keyof KnowledgeEntity
-  >("signal_analytique");
+  ] = useState<KnowledgeBlockKey>(
+    "signal_analytique",
+  );
 
   const BLOCKS = [
     {
