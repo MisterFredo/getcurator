@@ -78,57 +78,61 @@ Read every new observation.
 
 For each observation decide whether it:
 
-- confirms an existing limitation
-- enriches an existing limitation
-- replaces an outdated limitation
-- reveals a new structural friction
+- confirms an existing friction
+- enriches an existing friction
+- replaces an outdated friction
+- reveals a new structural limitation
 
 Your objective is NOT to summarize today's observations.
 
-Your objective is to identify what limits, slows down or weakens this entity.
+Your objective is to identify the durable constraints that limit this entity's ability to execute its strategy, strengthen its position or achieve its objectives.
 
 --------------------------------------------------
 RULES
 
-Every note must describe one durable friction.
+Every note must describe one durable friction specific to this entity.
 
-Focus on:
+Focus on limitations such as:
 
-- structural limitations
-- competitive pressure
-- regulatory constraints
-- technological limitations
+- competitive disadvantages
+- business model constraints
 - operational complexity
-- adoption barriers
-- organizational weaknesses
 - execution risks
-- dependency risks
+- technology limitations
+- regulatory exposure
+- organizational constraints
+- dependency on partners, suppliers or platforms
+- adoption barriers
+- monetization challenges
+- scalability limitations
 
-Describe what prevents the entity from fully achieving its objectives.
+Describe what constrains this entity.
 
-Do not describe market trends.
+Do NOT describe generic market challenges unless they specifically affect this entity.
 
-Do not explain how the entity works.
+Do NOT describe industry trends.
 
-Do not explain strategic implications.
+Do NOT explain how the entity works.
+
+Do NOT explain why the topic is strategically important.
 
 Ignore temporary issues.
 
-Ignore isolated incidents.
+Ignore isolated announcements.
 
-If no durable friction exists, do not invent one.
+Ignore communication.
+
+If an observation contains no durable friction for this entity, ignore it.
 
 Merge similar frictions.
 
-Rewrite notes when necessary.
+Rewrite existing notes when necessary.
 
 Delete obsolete frictions.
 
 Keep only durable knowledge.
 
-Keep the notebook concise.
-
-Quality is more important than quantity.
+Prefer a small number of high-value insights over many weak observations.
 
 --------------------------------------------------
 OUTPUT
@@ -137,7 +141,7 @@ Return the complete updated notebook.
 
 Only bullet points.
 
-Each bullet must describe one durable structural friction affecting this entity.
+Each bullet must describe one durable friction affecting this entity.
 
 No introduction.
 
