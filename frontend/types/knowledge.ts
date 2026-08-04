@@ -108,18 +108,18 @@ export type KnowledgeExplorer = {
 
 export type KnowledgeDashboard = {
 
-  companies: number;
+  total_companies: number;
 
-  topics: number;
+  total_topics: number;
 
-  solutions: number;
+  total_solutions: number;
 
-  entities: number;
+  total_entities: number;
 
-  knowledge_built: number;
+  total_knowledge: number;
 
-  users: number;
+  total_users: number;
 
-  experts: number;
+  total_experts: number;
 
 };
