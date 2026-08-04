@@ -229,57 +229,56 @@ const [
      SAVE
   ======================================================= */
 
-  async function saveSignal() {
+  async function saveBlock() {
 
     if (!selectedCompany) {
       return;
     }
-
+  
     setSaving(true);
-
+  
     try {
-
+  
       await api.put(
         "/knowledge/block",
         {
-
+  
           entity_type:
             "company",
-
+  
           entity_id:
             selectedCompany.id,
-
+  
           block_type:
-            "signal_analytique",
-
-          content:
-            signal,
-
+            selectedBlock,
+  
+          content,
+  
         },
       );
-
+  
       await loadKnowledge(
         selectedCompany.id,
       );
-
+  
       alert(
         "Saved."
       );
-
+  
     } catch (e) {
-
+  
       console.error(e);
-
+  
       alert(
         "Save failed."
       );
-
+  
     } finally {
-
+  
       setSaving(false);
-
+  
     }
-
+  
   }
 
     /* =======================================================
