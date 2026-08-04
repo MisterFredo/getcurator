@@ -1,10 +1,47 @@
+// frontend/lib/knowledge.ts
+
 import { api } from "@/lib/api";
 
 import type {
   KnowledgeEntity,
   KnowledgeRequest,
   KnowledgeBlockUpdateRequest,
+  KnowledgeDashboard,
+  KnowledgeExplorer,
+  KnowledgeEntityType,
 } from "@/types/knowledge";
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+export async function getKnowledgeDashboard(
+): Promise<KnowledgeDashboard> {
+
+  const res =
+    await api.get(
+      "/api/knowledge/dashboard",
+    );
+
+  return res.dashboard;
+
+}
+
+/* =========================================================
+   EXPLORER
+========================================================= */
+
+export async function getKnowledgeExplorer(
+): Promise<KnowledgeExplorer> {
+
+  const res =
+    await api.get(
+      "/api/knowledge/explorer",
+    );
+
+  return res.explorer;
+
+}
 
 /* =========================================================
    BUILD
@@ -26,7 +63,7 @@ export async function buildKnowledge(
 ========================================================= */
 
 export async function getKnowledge(
-  entityType: string,
+  entityType: KnowledgeEntityType,
   entityId: string,
 ): Promise<KnowledgeEntity | null> {
 
