@@ -25,6 +25,18 @@ from .prompts.signal import (
     build_signal_prompt,
 )
 
+from .prompts.mecanique import (
+    build_mecanique_prompt,
+)
+
+from .prompts.enjeu import (
+    build_enjeu_prompt,
+)
+
+from .prompts.friction import (
+    build_friction_prompt,
+)
+
 
 # ============================================================
 # BUILD BLOCK
@@ -175,32 +187,64 @@ def _build_prompt(
     match block_type:
 
         case "signal_analytique":
-
+    
             return build_signal_prompt(
-
+    
                 entity_name=entity_name,
-
+    
                 entity_type=entity_type,
-
+    
                 block=block,
-
+    
                 contents=batch,
-
+    
             )
-
+    
         case "mecanique_expliquee":
-
-            raise NotImplementedError
-
+    
+            return build_mecanique_prompt(
+    
+                entity_name=entity_name,
+    
+                entity_type=entity_type,
+    
+                block=block,
+    
+                contents=batch,
+    
+            )
+    
         case "enjeu_strategique":
-
-            raise NotImplementedError
-
+    
+            return build_enjeu_prompt(
+    
+                entity_name=entity_name,
+    
+                entity_type=entity_type,
+    
+                block=block,
+    
+                contents=batch,
+    
+            )
+    
         case "point_de_friction":
-
-            raise NotImplementedError
-
+    
+            return build_friction_prompt(
+    
+                entity_name=entity_name,
+    
+                entity_type=entity_type,
+    
+                block=block,
+    
+                contents=batch,
+    
+            )
+    
         case "chiffres":
+
+            # Handled by a dedicated Knowledge Agent
 
             raise NotImplementedError
 
