@@ -51,8 +51,6 @@ class KnowledgeEntity(BaseModel):
 
     entity_id: str
 
-    name: str
-
     signal_analytique: KnowledgeBlock
 
     mecanique_expliquee: KnowledgeBlock
