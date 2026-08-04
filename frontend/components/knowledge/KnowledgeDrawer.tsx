@@ -11,7 +11,7 @@ import {
 
 import type {
   KnowledgeEntity,
-  KnowledgeEntityType,
+  KnowledgeEntitySummary,
   KnowledgeBlockType,
 } from "@/types/knowledge";
 
@@ -24,9 +24,7 @@ import KnowledgeBlockEditor from "./KnowledgeBlockEditor";
 
 type Props = {
 
-  entityId: string;
-
-  entityType: KnowledgeEntityType;
+  entity: KnowledgeEntitySummary;
 
   onClose: () => void;
 
@@ -36,9 +34,7 @@ type Props = {
 
 export default function KnowledgeDrawer({
 
-  entityId,
-
-  entityType,
+  entity,
 
   onClose,
 
@@ -83,17 +79,21 @@ export default function KnowledgeDrawer({
 
     try {
 
-      const entity =
+      setLoading(
+        true,
+      );
+
+      const res =
         await getKnowledge(
 
-          entityType,
+          entity.entity_type,
 
-          entityId,
+          entity.entity_id,
 
         );
 
       setKnowledge(
-        entity,
+        res,
       );
 
     } finally {
@@ -112,9 +112,9 @@ export default function KnowledgeDrawer({
 
   }, [
 
-    entityId,
+    entity.entity_id,
 
-    entityType,
+    entity.entity_type,
 
   ]);
 
@@ -136,23 +136,15 @@ export default function KnowledgeDrawer({
 
   return (
 
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-white">
 
       <KnowledgeSummary
+
+        entity={entity}
 
         knowledge={knowledge}
 
         onClose={onClose}
-
-      />
-
-      <KnowledgeActions
-
-        entityId={entityId}
-
-        entityType={entityType}
-
-        onReload={loadKnowledge}
 
       />
 
@@ -168,11 +160,17 @@ export default function KnowledgeDrawer({
 
         knowledge={knowledge}
 
+        entity={entity}
+
         selectedBlock={selectedBlock}
 
-        entityId={entityId}
+        onReload={loadKnowledge}
 
-        entityType={entityType}
+      />
+
+      <KnowledgeActions
+
+        entity={entity}
 
         onReload={loadKnowledge}
 
