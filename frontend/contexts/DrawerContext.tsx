@@ -7,6 +7,10 @@ import {
   ReactNode,
 } from "react";
 
+import type {
+  KnowledgeEntitySummary,
+} from "@/types/knowledge";
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -37,6 +41,9 @@ type DrawerSlot = {
     | "company"
     | "topic"
     | "solution";
+
+  knowledgeEntity?:
+    | KnowledgeEntitySummary;
 
   mode: DrawerMode | null;
 
@@ -75,6 +82,9 @@ type DrawerContextType = {
       | "topic"
       | "solution",
 
+    knowledgeEntity?:
+      | KnowledgeEntitySummary,
+
   ) => void;
 
   openNewsletterDrawer: (
@@ -87,18 +97,14 @@ type DrawerContextType = {
 
 };
 
-/* =========================================================
-   CONTEXT
-========================================================= */
+/* ========================================================= */
 
 const DrawerContext =
   createContext<DrawerContextType | null>(
     null,
   );
 
-/* =========================================================
-   PROVIDER
-========================================================= */
+/* ========================================================= */
 
 export function DrawerProvider({
   children,
@@ -109,22 +115,26 @@ export function DrawerProvider({
   const [
     leftDrawer,
     setLeftDrawer,
-  ] = useState<DrawerSlot>({
-    type: null,
-    id: null,
-    entityType: undefined,
-    mode: null,
-  });
+  ] =
+    useState<DrawerSlot>({
+      type: null,
+      id: null,
+      entityType: undefined,
+      knowledgeEntity: undefined,
+      mode: null,
+    });
 
   const [
     rightDrawer,
     setRightDrawer,
-  ] = useState<DrawerSlot>({
-    type: null,
-    id: null,
-    entityType: undefined,
-    mode: null,
-  });
+  ] =
+    useState<DrawerSlot>({
+      type: null,
+      id: null,
+      entityType: undefined,
+      knowledgeEntity: undefined,
+      mode: null,
+    });
 
   /* =======================================================
      LEFT
@@ -144,6 +154,8 @@ export function DrawerProvider({
 
       entityType: undefined,
 
+      knowledgeEntity: undefined,
+
       mode,
 
     });
@@ -159,6 +171,8 @@ export function DrawerProvider({
       id: null,
 
       entityType: undefined,
+
+      knowledgeEntity: undefined,
 
       mode: null,
 
@@ -187,6 +201,9 @@ export function DrawerProvider({
       | "topic"
       | "solution",
 
+    knowledgeEntity?:
+      | KnowledgeEntitySummary,
+
   ) {
 
     setRightDrawer({
@@ -196,6 +213,8 @@ export function DrawerProvider({
       id,
 
       entityType,
+
+      knowledgeEntity,
 
       mode,
 
@@ -215,6 +234,8 @@ export function DrawerProvider({
 
       entityType: undefined,
 
+      knowledgeEntity: undefined,
+
       mode,
 
     });
@@ -231,6 +252,8 @@ export function DrawerProvider({
 
       entityType: undefined,
 
+      knowledgeEntity: undefined,
+
       mode: null,
 
     });
@@ -240,25 +263,15 @@ export function DrawerProvider({
   return (
 
     <DrawerContext.Provider
-
       value={{
-
         leftDrawer,
-
         rightDrawer,
-
         openLeftDrawer,
-
         openRightDrawer,
-
         openNewsletterDrawer,
-
         closeLeftDrawer,
-
         closeRightDrawer,
-
       }}
-
     >
 
       {children}
@@ -269,9 +282,7 @@ export function DrawerProvider({
 
 }
 
-/* =========================================================
-   HOOK
-========================================================= */
+/* ========================================================= */
 
 export function useDrawer() {
 
