@@ -1,18 +1,22 @@
+import KnowledgeExplorerTable from "./KnowledgeExplorerTable";
+
+import type {
+  KnowledgeEntitySummary,
+} from "@/types/knowledge";
+
+/* ========================================================= */
+
 type Props = {
 
   entities: KnowledgeEntitySummary[];
 
-  onOpen: (
-    entity: KnowledgeEntitySummary,
-  ) => void;
-
 };
+
+/* ========================================================= */
 
 export default function KnowledgeExplorer({
 
   entities,
-
-  onOpen,
 
 }: Props) {
 
@@ -23,8 +27,6 @@ export default function KnowledgeExplorer({
       <KnowledgeExplorerTable
 
         entities={entities}
-
-        onOpen={onOpen}
 
       />
 
