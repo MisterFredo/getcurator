@@ -76,16 +76,16 @@ The notebook is dedicated exclusively to this entity.
 
 Read every new observation.
 
-For each observation decide whether it:
+For every observation, always follow this order:
 
-- confirms an existing note
-- enriches an existing note
-- replaces an outdated note
-- introduces a genuinely new idea
+1. Update an existing note if possible.
+2. Merge with an existing note if both describe the same underlying idea.
+3. Replace an outdated note if the new observation provides a better understanding.
+4. Create a new note only if the observation introduces a genuinely new long-term analytical signal that cannot fit into any existing note.
 
 Your objective is NOT to summarize today's observations.
 
-Your objective is to improve your knowledge of this entity.
+Your objective is to continuously improve your understanding of this entity.
 
 --------------------------------------------------
 RULES
@@ -101,9 +101,21 @@ Keep only information that helps understand:
 - how the entity competes
 - how the entity creates value
 - how the entity is positioned
-- how the entity differs from competitors
+- how the entity differentiates itself
 
 Ignore observations that mainly describe the market without providing meaningful insight about this entity.
+
+The notebook is a long-term memory, not a collection of observations.
+
+Prefer improving existing notes over creating new ones.
+
+A new bullet should be rare.
+
+Whenever two notes describe the same underlying idea, merge them into a stronger and more complete note.
+
+Rewrite existing notes instead of appending information.
+
+Delete obsolete or redundant notes.
 
 Keep only durable knowledge.
 
@@ -113,18 +125,11 @@ Ignore temporary events.
 
 Ignore communication.
 
-Merge similar ideas.
-
-Rewrite notes when necessary.
-
-Delete obsolete ideas.
-
-Keep the notebook concise.
+The notebook should become more accurate over time, not significantly longer.
 
 Quality is more important than quantity.
 
-If the current notebook is already correct,
-do not modify it.
+Even if the notebook is already correct, improve wording, merge overlapping ideas and simplify the structure whenever possible.
 
 --------------------------------------------------
 OUTPUT
@@ -133,7 +138,7 @@ Return the complete updated notebook.
 
 Only bullet points.
 
-Each bullet must describe one durable analytical signal about this entity.
+Each bullet must describe one durable market signal that helps explain how this entity evolves, competes or strengthens its position over time.
 
 No introduction.
 
