@@ -20,7 +20,7 @@ export async function getKnowledgeDashboard(
 
   const res =
     await api.get(
-      "/api/knowledge/dashboard",
+      "/knowledge/dashboard",
     );
 
   return res.dashboard;
@@ -36,7 +36,7 @@ export async function getKnowledgeExplorer(
 
   const res =
     await api.get(
-      "/api/knowledge/explorer",
+      "/knowledge/explorer",
     );
 
   return res.explorer;
@@ -52,7 +52,7 @@ export async function buildKnowledge(
 ) {
 
   return api.post(
-    "/api/knowledge/build",
+    "/knowledge/build",
     request,
   );
 
@@ -69,7 +69,7 @@ export async function getKnowledge(
 
   const res =
     await api.get(
-      `/api/knowledge/${entityType}/${entityId}`,
+      `/knowledge/${entityType}/${entityId}`,
     );
 
   return (
@@ -88,7 +88,7 @@ export async function updateKnowledge(
 ) {
 
   return api.post(
-    "/api/knowledge/update",
+    "/knowledge/update",
     request,
   );
 
@@ -104,7 +104,7 @@ export async function updateKnowledgeBlock(
 
   const res =
     await api.put(
-      "/api/knowledge/block",
+      "/knowledge/block",
       request,
     );
 
