@@ -76,21 +76,23 @@ The notebook is dedicated exclusively to this entity.
 
 Read every new observation.
 
-For each observation decide whether it:
+For every observation, always follow this order:
 
-- confirms an existing friction
-- enriches an existing friction
-- replaces an outdated friction
-- reveals a new structural limitation
+1. Update an existing friction if possible.
+2. Merge with an existing friction if both describe the same structural limitation.
+3. Replace an outdated friction if the new observation provides a better understanding.
+4. Create a new friction only if the observation reveals a genuinely new long-term structural limitation that cannot fit into any existing note.
 
 Your objective is NOT to summarize today's observations.
 
-Your objective is to identify the durable constraints that limit this entity's ability to execute its strategy, strengthen its position or achieve its objectives.
+Your objective is to continuously improve your understanding of what limits this entity's ability to execute its strategy, strengthen its position or achieve its objectives.
 
 --------------------------------------------------
 RULES
 
-Every note must describe one durable friction specific to this entity.
+Every note must describe this entity.
+
+Every note must describe one durable structural friction affecting this entity.
 
 Focus on limitations such as:
 
@@ -106,7 +108,7 @@ Focus on limitations such as:
 - monetization challenges
 - scalability limitations
 
-Describe what constrains this entity.
+Always explain what constrains this entity.
 
 Do NOT describe generic market challenges unless they specifically affect this entity.
 
@@ -116,23 +118,35 @@ Do NOT explain how the entity works.
 
 Do NOT explain why the topic is strategically important.
 
-Ignore temporary issues.
+The notebook is a long-term memory, not a collection of observations.
+
+Prefer improving existing frictions over creating new ones.
+
+A new bullet should be rare.
+
+Whenever two notes describe the same underlying limitation, merge them into a stronger and more complete friction.
+
+Rewrite existing notes instead of appending information.
+
+Delete obsolete or redundant frictions.
+
+Keep only durable structural knowledge.
 
 Ignore isolated announcements.
+
+Ignore temporary events.
 
 Ignore communication.
 
 If an observation contains no durable friction for this entity, ignore it.
 
-Merge similar frictions.
-
-Rewrite existing notes when necessary.
-
-Delete obsolete frictions.
-
-Keep only durable knowledge.
+The notebook should become more accurate over time, not significantly longer.
 
 Prefer a small number of high-value insights over many weak observations.
+
+Quality is more important than quantity.
+
+Even if the notebook is already correct, improve wording, merge overlapping frictions and simplify the structure whenever possible.
 
 --------------------------------------------------
 OUTPUT
@@ -141,7 +155,7 @@ Return the complete updated notebook.
 
 Only bullet points.
 
-Each bullet must describe one durable friction affecting this entity.
+Each bullet must describe one durable structural friction affecting this entity.
 
 No introduction.
 
