@@ -23,6 +23,10 @@ type Props = {
 
   onReload: () => Promise<void>;
 
+  onSave?: () => Promise<void>;
+
+  saving?: boolean;
+
 };
 
 /* ========================================================= */
@@ -33,23 +37,21 @@ export default function KnowledgeFooter({
 
   onReload,
 
+  onSave,
+
+  saving = false,
+
 }: Props) {
 
   const [
-
     building,
-
     setBuilding,
-
   ] =
     useState(false);
 
   const [
-
     updating,
-
     setUpdating,
-
   ] =
     useState(false);
 
@@ -122,6 +124,20 @@ export default function KnowledgeFooter({
   }
 
   /* =======================================================
+     SAVE
+  ======================================================= */
+
+  async function handleSave() {
+
+    if (!onSave) {
+      return;
+    }
+
+    await onSave();
+
+  }
+
+  /* =======================================================
      RENDER
   ======================================================= */
 
@@ -177,21 +193,27 @@ export default function KnowledgeFooter({
 
       </div>
 
-      <div>
+      <button
 
-        <button
+        onClick={handleSave}
 
-          disabled
+        disabled={!onSave || saving}
 
-          className="rounded bg-ratecard-blue px-5 py-2 text-white opacity-50"
+        className="rounded bg-ratecard-blue px-5 py-2 text-white disabled:opacity-50"
 
-        >
+      >
 
-          Save
+        {
 
-        </button>
+          saving
 
-      </div>
+            ? "Saving..."
+
+            : "Save"
+
+        }
+
+      </button>
 
     </div>
 
