@@ -1,24 +1,32 @@
+"use client";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
 import type {
   KnowledgeEntitySummary,
 } from "@/types/knowledge";
+
+/* ========================================================= */
 
 type Props = {
 
   entity: KnowledgeEntitySummary;
 
-  onOpen: (
-    entity: KnowledgeEntitySummary,
-  ) => void;
-
 };
+
+/* ========================================================= */
 
 export default function KnowledgeExplorerRow({
 
   entity,
 
-  onOpen,
-
 }: Props) {
+
+  const {
+    openRightDrawer,
+  } = useDrawer();
 
   return (
 
@@ -26,7 +34,17 @@ export default function KnowledgeExplorerRow({
 
       onClick={() =>
 
-        onOpen(entity)
+        openRightDrawer(
+
+          "knowledge",
+
+          entity.entity_id,
+
+          "silent",
+
+          entity.entity_type,
+
+        )
 
       }
 
