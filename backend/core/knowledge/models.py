@@ -79,13 +79,9 @@ class KnowledgeEntitySummary(BaseModel):
 
     contents_count: int
 
-    signal_count: int
+    available_contents: int
 
-    mecanique_count: int
-
-    enjeu_count: int
-
-    friction_count: int
+    knowledge_coverage: int
 
     users_count: int
 
