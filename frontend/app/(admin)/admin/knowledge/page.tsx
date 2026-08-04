@@ -23,7 +23,8 @@ type KnowledgeBlockKey =
   | "signal_analytique"
   | "mecanique_expliquee"
   | "enjeu_strategique"
-  | "point_de_friction";
+  | "point_de_friction"
+  | "chiffres";
 
 /* ========================================================= */
 
