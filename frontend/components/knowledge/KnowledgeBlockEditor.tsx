@@ -13,21 +13,43 @@ import type {
 
   KnowledgeEntity,
 
-  KnowledgeBlockType,
+  KnowledgeEntitySummary,
 
-  KnowledgeEntityType,
+  KnowledgeBlockType,
 
 } from "@/types/knowledge";
 
 /* ========================================================= */
 
+const BLOCK_LABELS: Record<
+  KnowledgeBlockType,
+  string
+> = {
+
+  signal_analytique:
+    "Analytical Signal",
+
+  mecanique_expliquee:
+    "Mechanics",
+
+  enjeu_strategique:
+    "Strategic Implications",
+
+  point_de_friction:
+    "Structural Frictions",
+
+  chiffres:
+    "Key Numbers",
+
+};
+
+/* ========================================================= */
+
 type Props = {
 
+  entity: KnowledgeEntitySummary;
+
   knowledge: KnowledgeEntity;
-
-  entityId: string;
-
-  entityType: KnowledgeEntityType;
 
   selectedBlock: KnowledgeBlockType;
 
@@ -39,11 +61,9 @@ type Props = {
 
 export default function KnowledgeBlockEditor({
 
+  entity,
+
   knowledge,
-
-  entityId,
-
-  entityType,
 
   selectedBlock,
 
@@ -77,7 +97,7 @@ export default function KnowledgeBlockEditor({
 
     setContent(
 
-      knowledge?.[
+      knowledge[
         selectedBlock
       ]?.content || ""
 
@@ -105,11 +125,14 @@ export default function KnowledgeBlockEditor({
 
       await updateKnowledgeBlock({
 
-        entity_type: entityType,
+        entity_type:
+          entity.entity_type,
 
-        entity_id: entityId,
+        entity_id:
+          entity.entity_id,
 
-        block_type: selectedBlock,
+        block_type:
+          selectedBlock,
 
         content,
 
@@ -133,19 +156,49 @@ export default function KnowledgeBlockEditor({
 
   return (
 
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col overflow-hidden">
 
       <div className="flex items-center justify-between border-b px-6 py-4">
 
-        <div className="font-semibold">
+        <div>
 
-          {selectedBlock}
+          <div className="text-lg font-semibold">
+
+            {
+
+              BLOCK_LABELS[
+                selectedBlock
+              ]
+
+            }
+
+          </div>
+
+          <div className="mt-1 text-sm text-gray-500">
+
+            Last updated{" "}
+
+            {
+
+              new Date(
+
+                knowledge[
+                  selectedBlock
+                ].updated_at,
+
+              ).toLocaleString()
+
+            }
+
+          </div>
 
         </div>
 
         <div className="text-sm text-gray-500">
 
-          Version {
+          Version{" "}
+
+          {
 
             knowledge[
               selectedBlock
@@ -157,7 +210,7 @@ export default function KnowledgeBlockEditor({
 
       </div>
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 overflow-hidden p-6">
 
         <textarea
 
@@ -171,35 +224,18 @@ export default function KnowledgeBlockEditor({
 
           }
 
-          className="h-full w-full rounded border p-4 font-mono text-sm"
+          className="
+            h-full
+            w-full
+            rounded-lg
+            border
+            p-4
+            font-mono
+            text-sm
+            resize-none
+          "
 
         />
-
-      </div>
-
-      <div className="border-t bg-white px-6 py-4">
-
-        <button
-
-          onClick={save}
-
-          disabled={saving}
-
-          className="rounded bg-ratecard-blue px-5 py-2 text-white disabled:opacity-50"
-
-        >
-
-          {
-
-            saving
-
-              ? "Saving..."
-
-              : "Save"
-
-          }
-
-        </button>
 
       </div>
 
