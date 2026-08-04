@@ -45,12 +45,13 @@ class KnowledgeBlock(BaseModel):
 # ============================================================
 # KNOWLEDGE ENTITY
 # ============================================================
-
 class KnowledgeEntity(BaseModel):
 
     entity_type: KnowledgeEntityType
 
     entity_id: str
+
+    name: str
 
     signal_analytique: KnowledgeBlock
 
@@ -63,6 +64,70 @@ class KnowledgeEntity(BaseModel):
     chiffres: KnowledgeBlock
 
     updated_at: datetime
+
+# ============================================================
+# KNOWLEDGE ENTITY SUMMARY
+# ============================================================
+
+class KnowledgeEntitySummary(BaseModel):
+
+    entity_type: KnowledgeEntityType
+
+    entity_id: str
+
+    name: str
+
+    contents_count: int
+
+    signal_count: int
+
+    mecanique_count: int
+
+    enjeu_count: int
+
+    friction_count: int
+
+    users_count: int
+
+    experts_count: int
+
+    has_knowledge: bool
+
+    last_build: datetime | None
+
+# ============================================================
+# KNOWLEDGE EXPLORER
+# ============================================================
+
+class KnowledgeExplorer(BaseModel):
+
+    entities: list[
+        KnowledgeEntitySummary
+    ]
+
+# ============================================================
+# KNOWLEDGE DASHBOARD
+# ============================================================
+
+class KnowledgeDashboard(BaseModel):
+
+    companies_count: int
+
+    topics_count: int
+
+    solutions_count: int
+
+    users_count: int
+
+    experts_count: int
+
+    company_knowledge_count: int
+
+    topic_knowledge_count: int
+
+    solution_knowledge_count: int
+
+    total_contents: int
 
 
 # ============================================================
