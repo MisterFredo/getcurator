@@ -20,6 +20,7 @@ type DrawerTypeRight =
   | "analysis"
   | "newsletter"
   | "digest-preview"
+  | "knowledge"
   | null;
 
 type DrawerMode =
@@ -27,28 +28,53 @@ type DrawerMode =
   | "route";
 
 type DrawerSlot = {
+
   type: DrawerTypeLeft | DrawerTypeRight;
+
   id: string | null;
+
+  entityType?:
+    | "company"
+    | "topic"
+    | "solution";
+
   mode: DrawerMode | null;
+
 };
 
 type DrawerContextType = {
+
   leftDrawer: DrawerSlot;
+
   rightDrawer: DrawerSlot;
 
   openLeftDrawer: (
+
     type: "member",
+
     id: string,
+
     mode?: DrawerMode,
+
   ) => void;
 
   openRightDrawer: (
+
     type:
       | "news"
       | "analysis"
-      | "digest-preview",
+      | "digest-preview"
+      | "knowledge",
+
     id: string,
+
     mode?: DrawerMode,
+
+    entityType?:
+      | "company"
+      | "topic"
+      | "solution",
+
   ) => void;
 
   openNewsletterDrawer: (
@@ -56,7 +82,9 @@ type DrawerContextType = {
   ) => void;
 
   closeLeftDrawer: () => void;
+
   closeRightDrawer: () => void;
+
 };
 
 /* =========================================================
@@ -84,6 +112,7 @@ export function DrawerProvider({
   ] = useState<DrawerSlot>({
     type: null,
     id: null,
+    entityType: undefined,
     mode: null,
   });
 
@@ -93,6 +122,7 @@ export function DrawerProvider({
   ] = useState<DrawerSlot>({
     type: null,
     id: null,
+    entityType: undefined,
     mode: null,
   });
 
@@ -107,9 +137,15 @@ export function DrawerProvider({
   ) {
 
     setLeftDrawer({
+
       type,
+
       id,
+
+      entityType: undefined,
+
       mode,
+
     });
 
   }
@@ -117,9 +153,15 @@ export function DrawerProvider({
   function closeLeftDrawer() {
 
     setLeftDrawer({
+
       type: null,
+
       id: null,
+
+      entityType: undefined,
+
       mode: null,
+
     });
 
   }
@@ -129,18 +171,34 @@ export function DrawerProvider({
   ======================================================= */
 
   function openRightDrawer(
+
     type:
       | "news"
       | "analysis"
-      | "digest-preview",
+      | "digest-preview"
+      | "knowledge",
+
     id: string,
+
     mode: DrawerMode = "silent",
+
+    entityType?:
+      | "company"
+      | "topic"
+      | "solution",
+
   ) {
 
     setRightDrawer({
+
       type,
+
       id,
+
+      entityType,
+
       mode,
+
     });
 
   }
@@ -150,9 +208,15 @@ export function DrawerProvider({
   ) {
 
     setRightDrawer({
+
       type: "newsletter",
+
       id: null,
+
+      entityType: undefined,
+
       mode,
+
     });
 
   }
@@ -160,9 +224,15 @@ export function DrawerProvider({
   function closeRightDrawer() {
 
     setRightDrawer({
+
       type: null,
+
       id: null,
+
+      entityType: undefined,
+
       mode: null,
+
     });
 
   }
@@ -170,15 +240,25 @@ export function DrawerProvider({
   return (
 
     <DrawerContext.Provider
+
       value={{
+
         leftDrawer,
+
         rightDrawer,
+
         openLeftDrawer,
+
         openRightDrawer,
+
         openNewsletterDrawer,
+
         closeLeftDrawer,
+
         closeRightDrawer,
+
       }}
+
     >
 
       {children}
