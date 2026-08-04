@@ -16,9 +16,9 @@ import type {
 } from "@/types/knowledge";
 
 import KnowledgeSummary from "./KnowledgeSummary";
-import KnowledgeActions from "./KnowledgeActions";
 import KnowledgeTabs from "./KnowledgeTabs";
 import KnowledgeBlockEditor from "./KnowledgeBlockEditor";
+import KnowledgeFooter from "./KnowledgeFooter";
 
 /* ========================================================= */
 
@@ -41,31 +41,22 @@ export default function KnowledgeDrawer({
 }: Props) {
 
   const [
-
     knowledge,
-
     setKnowledge,
-
   ] =
     useState<KnowledgeEntity | null>(
       null,
     );
 
   const [
-
     loading,
-
     setLoading,
-
   ] =
     useState(true);
 
   const [
-
     selectedBlock,
-
     setSelectedBlock,
-
   ] =
     useState<KnowledgeBlockType>(
       "signal_analytique",
@@ -77,13 +68,13 @@ export default function KnowledgeDrawer({
 
   async function loadKnowledge() {
 
+    setLoading(
+      true,
+    );
+
     try {
 
-      setLoading(
-        true,
-      );
-
-      const res =
+      const knowledge =
         await getKnowledge(
 
           entity.entity_type,
@@ -93,7 +84,15 @@ export default function KnowledgeDrawer({
         );
 
       setKnowledge(
-        res,
+        knowledge,
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      setKnowledge(
+        null,
       );
 
     } finally {
@@ -124,13 +123,29 @@ export default function KnowledgeDrawer({
 
   if (loading) {
 
-    return null;
+    return (
+
+      <div className="flex h-full items-center justify-center">
+
+        Loading...
+
+      </div>
+
+    );
 
   }
 
   if (!knowledge) {
 
-    return null;
+    return (
+
+      <div className="flex h-full items-center justify-center">
+
+        Unable to load Knowledge.
+
+      </div>
+
+    );
 
   }
 
@@ -158,9 +173,9 @@ export default function KnowledgeDrawer({
 
       <KnowledgeBlockEditor
 
-        knowledge={knowledge}
-
         entity={entity}
+
+        knowledge={knowledge}
 
         selectedBlock={selectedBlock}
 
@@ -168,7 +183,7 @@ export default function KnowledgeDrawer({
 
       />
 
-      <KnowledgeActions
+      <KnowledgeFooter
 
         entity={entity}
 
