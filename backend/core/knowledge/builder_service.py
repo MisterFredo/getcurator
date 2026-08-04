@@ -28,9 +28,9 @@ def build_entity(
     """
     Bootstrap the Knowledge of one entity.
 
-    V1:
-    Only the Analytical Signal block
-    is generated.
+    Each Knowledge Block is built
+    independently from its own
+    observations.
     """
 
     # ========================================================
@@ -49,34 +49,44 @@ def build_entity(
         return
 
     # ========================================================
-    # BUILD SIGNAL
+    # BUILD BLOCKS
     # ========================================================
 
-    block_type = "signal_analytique"
+    for block_type in [
 
-    batches = load_batches(
+        "signal_analytique",
 
-        entity_type=entity_type,
+        "mecanique_expliquee",
 
-        entity_id=entity_id,
+        "enjeu_strategique",
 
-        block_type=block_type,
+        "point_de_friction",
 
-    )
+    ]:
 
-    if not batches:
-        return
+        batches = load_batches(
 
-    build_block(
+            entity_type=entity_type,
 
-        entity_name=entity.name,
+            entity_id=entity_id,
 
-        entity_type=entity_type,
+            block_type=block_type,
 
-        entity_id=entity_id,
+        )
 
-        block_type=block_type,
+        if not batches:
+            continue
 
-        batches=batches,
+        build_block(
 
-    )
+            entity_name=entity.name,
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+            block_type=block_type,
+
+            batches=batches,
+
+        )
