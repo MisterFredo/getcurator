@@ -88,8 +88,164 @@ def _get_companies(
     Knowledge Explorer.
     """
 
-    query = """
-    ...
+    query = f"""
+    WITH CONTENTS AS (
+
+        SELECT
+
+            company.id_company AS ENTITY_ID,
+
+            COUNT(*) AS CONTENTS_COUNT
+
+        FROM `{TABLE_CONTENT}` c
+
+        CROSS JOIN UNNEST(
+            c.COMPANIES
+        ) company
+
+        WHERE
+
+            c.STATUS = "PUBLISHED"
+
+        AND
+
+            c.IS_ACTIVE = TRUE
+
+        GROUP BY
+
+            company.id_company
+
+    ),
+
+    USERS AS (
+
+        SELECT
+
+            VALUE_ID AS ENTITY_ID,
+
+            COUNT(
+                DISTINCT p.ID_USER
+            ) AS USERS_COUNT
+
+        FROM `{TABLE_USER_PREFERENCES}` p
+
+        JOIN `{TABLE_USER}` u
+
+            ON u.ID_USER = p.ID_USER
+
+        WHERE
+
+            TYPE = "company"
+
+        AND
+
+            u.PROFILE_TYPE = "USER"
+
+        GROUP BY
+
+            VALUE_ID
+
+    ),
+
+    EXPERTS AS (
+
+        SELECT
+
+            VALUE_ID AS ENTITY_ID,
+
+            COUNT(
+                DISTINCT p.ID_USER
+            ) AS EXPERTS_COUNT
+
+        FROM `{TABLE_USER_PREFERENCES}` p
+
+        JOIN `{TABLE_USER}` u
+
+            ON u.ID_USER = p.ID_USER
+
+        WHERE
+
+            TYPE = "company"
+
+        AND
+
+            u.PROFILE_TYPE = "EXPERT"
+
+        GROUP BY
+
+            VALUE_ID
+
+    ),
+
+    KNOWLEDGE AS (
+
+        SELECT
+
+            ENTITY_ID,
+
+            MAX(UPDATED_AT) AS LAST_BUILD
+
+        FROM `{TABLE_KNOWLEDGE}`
+
+        WHERE
+
+            ENTITY_TYPE = "company"
+
+        GROUP BY
+
+            ENTITY_ID
+
+    )
+
+    SELECT
+
+        c.ID_COMPANY,
+
+        c.NAME,
+
+        COALESCE(
+            contents.CONTENTS_COUNT,
+            0
+        ) AS CONTENTS_COUNT,
+
+        COALESCE(
+            users.USERS_COUNT,
+            0
+        ) AS USERS_COUNT,
+
+        COALESCE(
+            experts.EXPERTS_COUNT,
+            0
+        ) AS EXPERTS_COUNT,
+
+        knowledge.LAST_BUILD,
+
+        knowledge.LAST_BUILD IS NOT NULL
+            AS HAS_KNOWLEDGE
+
+    FROM `{TABLE_COMPANY}` c
+
+    LEFT JOIN CONTENTS contents
+
+        ON contents.ENTITY_ID = c.ID_COMPANY
+
+    LEFT JOIN USERS users
+
+        ON users.ENTITY_ID = c.ID_COMPANY
+
+    LEFT JOIN EXPERTS experts
+
+        ON experts.ENTITY_ID = c.ID_COMPANY
+
+    LEFT JOIN KNOWLEDGE knowledge
+
+        ON knowledge.ENTITY_ID = c.ID_COMPANY
+
+    ORDER BY
+
+        CONTENTS_COUNT DESC,
+
+        NAME
     """
 
     rows = query_bq(
@@ -121,8 +277,6 @@ def _get_companies(
         for row in rows
 
     ]
-
-
 # ============================================================
 # TOPICS
 # ============================================================
