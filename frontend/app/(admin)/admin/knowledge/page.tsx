@@ -386,7 +386,7 @@ const [
               onChange={(e) => {
           
                 const block =
-                  e.target.value as keyof KnowledgeEntity;
+                  e.target.value as KnowledgeBlockKey;
           
                 setSelectedBlock(
                   block,
