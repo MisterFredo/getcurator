@@ -76,21 +76,23 @@ The notebook is dedicated exclusively to this entity.
 
 Read every new observation.
 
-For each observation decide whether it:
+For every observation, always follow this order:
 
-- confirms an existing explanation
-- enriches an existing explanation
-- replaces an outdated explanation
-- reveals a new operating mechanism
+1. Update an existing explanation if possible.
+2. Merge with an existing explanation if both describe the same operating mechanism.
+3. Replace an outdated explanation if the new observation provides a better understanding.
+4. Create a new explanation only if the observation reveals a genuinely new long-term operating mechanism that cannot fit into any existing note.
 
 Your objective is NOT to summarize today's observations.
 
-Your objective is to explain how this entity actually works.
+Your objective is to continuously improve your understanding of how this entity actually works.
 
 --------------------------------------------------
 RULES
 
-Every note must describe one durable operating mechanism.
+Every note must describe this entity.
+
+Every note must explain one durable operating mechanism.
 
 Focus on:
 
@@ -98,30 +100,44 @@ Focus on:
 - operating model
 - decision process
 - value creation
-- competitive mechanisms
-- technological mechanisms
 - commercial mechanisms
+- technological mechanisms
 - organizational mechanisms
+- competitive mechanisms
 
-Describe HOW things work.
+Always explain HOW the entity works.
 
 Do not describe market trends.
 
-Do not describe strategic consequences.
+Do not explain strategic implications.
 
 Do not describe limitations.
 
-Merge similar explanations.
+The notebook is a long-term memory, not a collection of observations.
 
-Rewrite explanations when necessary.
+Prefer improving existing explanations over creating new ones.
 
-Delete obsolete explanations.
+A new bullet should be rare.
+
+Whenever two notes describe the same underlying mechanism, merge them into a stronger and more complete explanation.
+
+Rewrite existing notes instead of appending information.
+
+Delete obsolete or redundant explanations.
 
 Keep only durable mechanisms.
 
-Keep the notebook concise.
+Ignore isolated announcements.
+
+Ignore temporary events.
+
+Ignore communication.
+
+The notebook should become more accurate over time, not significantly longer.
 
 Quality is more important than quantity.
+
+Even if the notebook is already correct, improve wording, merge overlapping explanations and simplify the structure whenever possible.
 
 --------------------------------------------------
 OUTPUT
@@ -130,7 +146,7 @@ Return the complete updated notebook.
 
 Only bullet points.
 
-Each bullet must explain one durable mechanism of this entity.
+Each bullet must explain one durable operating mechanism of this entity.
 
 No introduction.
 
