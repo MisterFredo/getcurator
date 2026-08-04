@@ -1,5 +1,3 @@
-// frontend/components/knowledge/KnowledgeDashboard.tsx
-
 import KnowledgeStatCard from "./KnowledgeStatCard";
 
 import type {
@@ -30,7 +28,7 @@ export default function KnowledgeDashboard({
 
         title="Companies"
 
-        value={dashboard.total_companies}
+        value={dashboard.companies}
 
       />
 
@@ -38,7 +36,7 @@ export default function KnowledgeDashboard({
 
         title="Topics"
 
-        value={dashboard.total_topics}
+        value={dashboard.topics}
 
       />
 
@@ -46,7 +44,7 @@ export default function KnowledgeDashboard({
 
         title="Solutions"
 
-        value={dashboard.total_solutions}
+        value={dashboard.solutions}
 
       />
 
@@ -54,7 +52,7 @@ export default function KnowledgeDashboard({
 
         title="Knowledge"
 
-        value={dashboard.total_knowledge}
+        value={dashboard.knowledge_built}
 
       />
 
@@ -62,7 +60,7 @@ export default function KnowledgeDashboard({
 
         title="Users"
 
-        value={dashboard.total_users}
+        value={dashboard.users}
 
       />
 
@@ -70,7 +68,7 @@ export default function KnowledgeDashboard({
 
         title="Experts"
 
-        value={dashboard.total_experts}
+        value={dashboard.experts}
 
       />
 
