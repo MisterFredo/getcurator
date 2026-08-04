@@ -93,9 +93,8 @@ class KnowledgeEntitySummary(BaseModel):
 
 class KnowledgeExplorer(BaseModel):
 
-    entities: list[
-        KnowledgeEntitySummary
-    ]
+    entities: list[KnowledgeEntitySummary]
+
 
 # ============================================================
 # KNOWLEDGE DASHBOARD
@@ -103,24 +102,19 @@ class KnowledgeExplorer(BaseModel):
 
 class KnowledgeDashboard(BaseModel):
 
-    companies_count: int
+    companies: int
 
-    topics_count: int
+    topics: int
 
-    solutions_count: int
+    solutions: int
 
-    users_count: int
+    entities: int
 
-    experts_count: int
+    knowledge_built: int
 
-    company_knowledge_count: int
+    users: int
 
-    topic_knowledge_count: int
-
-    solution_knowledge_count: int
-
-    total_contents: int
-
+    experts: int
 
 # ============================================================
 # KNOWLEDGE REQUEST
