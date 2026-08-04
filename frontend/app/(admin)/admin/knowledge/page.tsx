@@ -11,14 +11,37 @@ import KnowledgeDrawer from "@/components/knowledge/KnowledgeDrawer";
 export default function KnowledgePage() {
 
   const [
+    dashboard,
+    setDashboard,
+  ] = useState<KnowledgeDashboard | null>(
+    null,
+  );
+  
+  const [
+    explorer,
+    setExplorer,
+  ] = useState<KnowledgeExplorer | null>(
+    null,
+  );
+  
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+  
+  const [
     selectedEntity,
     setSelectedEntity,
-  ] = useState(null);
-
+  ] =
+    useState<KnowledgeEntitySummary | null>(
+      null,
+    );
+  
   const [
     drawerOpen,
     setDrawerOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   return (
 
