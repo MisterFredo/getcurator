@@ -44,6 +44,8 @@ export default function KnowledgeExplorerRow({
 
           entity.entity_type,
 
+          entity,
+
         )
 
       }
