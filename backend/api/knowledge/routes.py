@@ -16,8 +16,56 @@ from core.knowledge.service import (
     update_knowledge_block,
 )
 
+from core.knowledge.cockpit_service import (
+    get_dashboard,
+    list_entities,
+)
+
 
 router = APIRouter()
+
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+
+@router.get(
+    "/dashboard",
+)
+def get_dashboard_route():
+    """
+    Return global Knowledge statistics.
+    """
+
+    return {
+
+        "status": "ok",
+
+        "dashboard": get_dashboard(),
+
+    }
+
+
+# ============================================================
+# EXPLORER
+# ============================================================
+
+@router.get(
+    "/explorer",
+)
+def list_entities_route():
+    """
+    Return every entity displayed in the
+    Knowledge Explorer.
+    """
+
+    return {
+
+        "status": "ok",
+
+        "explorer": list_entities(),
+
+    }
 
 
 # ============================================================
@@ -44,35 +92,9 @@ def build_knowledge_route(
     )
 
     return {
+
         "status": "ok",
-    }
 
-
-# ============================================================
-# GET
-# ============================================================
-
-@router.get(
-    "/{entity_type}/{entity_id}",
-)
-def get_knowledge_route(
-    entity_type: str,
-    entity_id: str,
-):
-    """
-    Return the complete Knowledge
-    of one entity.
-    """
-
-    return {
-        "status": "ok",
-        "knowledge": get_knowledge(
-
-            entity_type=entity_type,
-
-            entity_id=entity_id,
-
-        ),
     }
 
 
@@ -100,7 +122,40 @@ def update_knowledge_route(
     )
 
     return {
+
         "status": "ok",
+
+    }
+
+
+# ============================================================
+# GET ENTITY
+# ============================================================
+
+@router.get(
+    "/{entity_type}/{entity_id}",
+)
+def get_knowledge_route(
+    entity_type: str,
+    entity_id: str,
+):
+    """
+    Return the complete Knowledge
+    of one entity.
+    """
+
+    return {
+
+        "status": "ok",
+
+        "knowledge": get_knowledge(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+        ),
+
     }
 
 
@@ -131,6 +186,9 @@ def update_knowledge_block_route(
     )
 
     return {
+
         "status": "ok",
+
         "block": block,
+
     }
