@@ -31,6 +31,7 @@ from .prompts.signal import (
 # ============================================================
 
 def build_block(
+    entity_name: str,
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
@@ -80,6 +81,10 @@ def build_block(
 
         block = _update_block(
 
+            entity_name=entity_name,
+
+            entity_type=entity_type,
+
             block=block,
 
             batch=batch,
@@ -104,6 +109,8 @@ def build_block(
 # ============================================================
 
 def _update_block(
+    entity_name: str,
+    entity_type: KnowledgeEntityType,
     block: KnowledgeBlock,
     batch: list[KnowledgeObservation],
 ) -> KnowledgeBlock:
@@ -113,6 +120,10 @@ def _update_block(
     """
 
     prompt = _build_prompt(
+
+        entity_name=entity_name,
+
+        entity_type=entity_type,
 
         block_type=block.block_type,
 
@@ -150,6 +161,8 @@ def _update_block(
 # ============================================================
 
 def _build_prompt(
+    entity_name: str,
+    entity_type: KnowledgeEntityType,
     block_type: KnowledgeBlockType,
     block: KnowledgeBlock,
     batch: list[KnowledgeObservation],
@@ -168,9 +181,9 @@ def _build_prompt(
                 entity_name=entity_name,
 
                 entity_type=entity_type,
-            
+
                 block=block,
-            
+
                 contents=batch,
 
             )
