@@ -49,33 +49,106 @@ TABLE_USER_PREFERENCES = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
 )
 
-
 # ============================================================
 # DASHBOARD
 # ============================================================
 
-def get_dashboard() -> KnowledgeDashboard:
+def get_dashboard(
+) -> KnowledgeDashboard:
     """
     Return global Knowledge statistics.
     """
 
-    raise NotImplementedError
+    companies = query_bq(
+        f"""
+        SELECT COUNT(*) AS TOTAL
+        FROM `{TABLE_COMPANY}`
+        """
+    )[0]["TOTAL"]
 
+    topics = query_bq(
+        f"""
+        SELECT COUNT(*) AS TOTAL
+        FROM `{TABLE_TOPIC}`
+        """
+    )[0]["TOTAL"]
 
-# ============================================================
-# ENTITY SUMMARY
-# ============================================================
+    solutions = query_bq(
+        f"""
+        SELECT COUNT(*) AS TOTAL
+        FROM `{TABLE_SOLUTION}`
+        """
+    )[0]["TOTAL"]
 
-def get_entity_summary(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
-) -> KnowledgeEntitySummary | None:
-    """
-    Return summary statistics for one entity.
-    """
+    knowledge_built = query_bq(
+        f"""
+        SELECT
 
-    raise NotImplementedError
+            COUNT(
+                DISTINCT CONCAT(
+                    ENTITY_TYPE,
+                    ":",
+                    ENTITY_ID
+                )
+            ) AS TOTAL
 
+        FROM `{TABLE_KNOWLEDGE}`
+        """
+    )[0]["TOTAL"]
+
+    users = query_bq(
+        f"""
+        SELECT COUNT(*) AS TOTAL
+
+        FROM `{TABLE_USER}`
+
+        WHERE
+
+            PROFILE_TYPE = "USER"
+
+        AND
+
+            IS_ACTIVE = TRUE
+        """
+    )[0]["TOTAL"]
+
+    experts = query_bq(
+        f"""
+        SELECT COUNT(*) AS TOTAL
+
+        FROM `{TABLE_USER}`
+
+        WHERE
+
+            PROFILE_TYPE = "EXPERT"
+
+        AND
+
+            IS_ACTIVE = TRUE
+        """
+    )[0]["TOTAL"]
+
+    return KnowledgeDashboard(
+
+        companies=companies,
+
+        topics=topics,
+
+        solutions=solutions,
+
+        entities=(
+            companies
+            + topics
+            + solutions
+        ),
+
+        knowledge_built=knowledge_built,
+
+        users=users,
+
+        experts=experts,
+
+    )
 
 # ============================================================
 # COMPANIES
