@@ -1,5 +1,3 @@
-// KnowledgeDrawer.tsx
-
 "use client";
 
 import {
@@ -14,7 +12,15 @@ import {
 import type {
   KnowledgeEntity,
   KnowledgeEntityType,
+  KnowledgeBlockType,
 } from "@/types/knowledge";
+
+import KnowledgeSummary from "./KnowledgeSummary";
+import KnowledgeActions from "./KnowledgeActions";
+import KnowledgeTabs from "./KnowledgeTabs";
+import KnowledgeBlockEditor from "./KnowledgeBlockEditor";
+
+/* ========================================================= */
 
 type Props = {
 
@@ -25,6 +31,8 @@ type Props = {
   onClose: () => void;
 
 };
+
+/* ========================================================= */
 
 export default function KnowledgeDrawer({
 
@@ -37,49 +45,70 @@ export default function KnowledgeDrawer({
 }: Props) {
 
   const [
+
     knowledge,
+
     setKnowledge,
+
   ] =
     useState<KnowledgeEntity | null>(
       null,
     );
 
   const [
+
     loading,
+
     setLoading,
+
   ] =
     useState(true);
 
-  useEffect(() => {
+  const [
 
-    async function load() {
+    selectedBlock,
 
-      try {
+    setSelectedBlock,
 
-        const entity =
-          await getKnowledge(
+  ] =
+    useState<KnowledgeBlockType>(
+      "signal_analytique",
+    );
 
-            entityType,
+  /* =======================================================
+     LOAD
+  ======================================================= */
 
-            entityId,
+  async function loadKnowledge() {
 
-          );
+    try {
 
-        setKnowledge(
-          entity,
+      const entity =
+        await getKnowledge(
+
+          entityType,
+
+          entityId,
+
         );
 
-      } finally {
+      setKnowledge(
+        entity,
+      );
 
-        setLoading(
-          false,
-        );
+    } finally {
 
-      }
+      setLoading(
+        false,
+      );
 
     }
 
-    load();
+  }
+
+  useEffect(() => {
+
+    loadKnowledge();
 
   }, [
 
@@ -89,7 +118,17 @@ export default function KnowledgeDrawer({
 
   ]);
 
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   if (loading) {
+
+    return null;
+
+  }
+
+  if (!knowledge) {
 
     return null;
 
@@ -97,9 +136,47 @@ export default function KnowledgeDrawer({
 
   return (
 
-    <div>
+    <div className="flex h-full flex-col">
 
-      Drawer
+      <KnowledgeSummary
+
+        knowledge={knowledge}
+
+        onClose={onClose}
+
+      />
+
+      <KnowledgeActions
+
+        entityId={entityId}
+
+        entityType={entityType}
+
+        onReload={loadKnowledge}
+
+      />
+
+      <KnowledgeTabs
+
+        selectedBlock={selectedBlock}
+
+        onChange={setSelectedBlock}
+
+      />
+
+      <KnowledgeBlockEditor
+
+        knowledge={knowledge}
+
+        selectedBlock={selectedBlock}
+
+        entityId={entityId}
+
+        entityType={entityType}
+
+        onReload={loadKnowledge}
+
+      />
 
     </div>
 
