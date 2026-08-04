@@ -468,7 +468,16 @@ const [
 
                     <h2 className="text-xl font-semibold">
 
-                      Signal Analytique
+                      {
+
+                        BLOCKS.find(
+                      
+                          b =>
+                            b.id === selectedBlock
+                      
+                        )?.label
+                      
+                      }
 
                     </h2>
 
@@ -480,9 +489,9 @@ const [
 
                           Version {
 
-                            knowledge
-                              .signal_analytique
-                              ?.version ?? 0
+                            knowledge?.[
+                              selectedBlock
+                            ]?.version
 
                           }
 
@@ -496,12 +505,12 @@ const [
 
                   <textarea
 
-                    value={signal}
+                    value={content}
 
                     onChange={(e) =>
 
-                      setSignal(
-                        e.target.value,
+                      setContent(
+                          e.target.value
                       )
 
                     }
@@ -521,7 +530,7 @@ const [
                   <button
 
                     onClick={
-                      saveSignal
+                      saveBlock
                     }
 
                     disabled={
