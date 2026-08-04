@@ -41,10 +41,39 @@ export default function KnowledgePage() {
     );
 
   const [
-    signal,
-    setSignal,
-  ] =
-    useState("");
+    selectedBlock,
+    setSelectedBlock,
+  ] = useState<
+    keyof KnowledgeEntity
+  >("signal_analytique");
+
+  const BLOCKS = [
+    {
+      id: "signal_analytique",
+      label: "Signal",
+    },
+  
+    {
+      id: "mecanique_expliquee",
+      label: "Mécanique",
+    },
+  
+    {
+      id: "enjeu_strategique",
+      label: "Enjeu",
+    },
+  
+    {
+      id: "point_de_friction",
+      label: "Friction",
+    },
+  
+  ] as const;
+
+const [
+  content,
+  setContent,
+] = useState("");
 
   const [
     loading,
@@ -125,9 +154,12 @@ export default function KnowledgePage() {
         entity,
       );
 
-      setSignal(
-        entity?.signal_analytique
-          ?.content || "",
+      setContent(
+
+        entity?.[
+          selectedBlock
+        ]?.content || "",
+      
       );
 
     } catch (e) {
