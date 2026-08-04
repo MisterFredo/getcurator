@@ -168,7 +168,7 @@ const [
 
       setKnowledge(null);
 
-      setSignal("");
+      setContent("");
 
     }
 
@@ -353,7 +353,7 @@ const [
                   null,
                 );
 
-                setSignal("");
+                setContent("");
 
               }
 
