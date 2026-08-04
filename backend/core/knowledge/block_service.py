@@ -165,8 +165,12 @@ def _build_prompt(
 
             return build_signal_prompt(
 
-                block=block,
+                entity_name=entity_name,
 
+                entity_type=entity_type,
+            
+                block=block,
+            
                 contents=batch,
 
             )
