@@ -11,7 +11,6 @@ import KnowledgeHeader from "@/components/knowledge/KnowledgeHeader";
 import KnowledgeDashboard from "@/components/knowledge/KnowledgeDashboard";
 import KnowledgeToolbar from "@/components/knowledge/KnowledgeToolbar";
 import KnowledgeExplorer from "@/components/knowledge/KnowledgeExplorer";
-import KnowledgeDrawer from "@/components/knowledge/KnowledgeDrawer";
 
 import {
   getKnowledgeDashboard,
@@ -21,7 +20,6 @@ import {
 import type {
   KnowledgeDashboard as Dashboard,
   KnowledgeExplorer as Explorer,
-  KnowledgeEntitySummary,
 } from "@/types/knowledge";
 
 /* ========================================================= */
@@ -49,20 +47,6 @@ export default function KnowledgePage() {
     setLoading,
   ] =
     useState(true);
-
-  const [
-    selectedEntity,
-    setSelectedEntity,
-  ] =
-    useState<KnowledgeEntitySummary | null>(
-      null,
-    );
-
-  const [
-    drawerOpen,
-    setDrawerOpen,
-  ] =
-    useState(false);
 
   /* =======================================================
      LOAD
@@ -119,36 +103,6 @@ export default function KnowledgePage() {
   }, []);
 
   /* =======================================================
-     DRAWER
-  ======================================================= */
-
-  function openEntity(
-    entity: KnowledgeEntitySummary,
-  ) {
-
-    setSelectedEntity(
-      entity,
-    );
-
-    setDrawerOpen(
-      true,
-    );
-
-  }
-
-  function closeDrawer() {
-
-    setDrawerOpen(
-      false,
-    );
-
-    setSelectedEntity(
-      null,
-    );
-
-  }
-
-  /* =======================================================
      RENDER
   ======================================================= */
 
@@ -174,9 +128,7 @@ export default function KnowledgePage() {
 
           <KnowledgeDashboard
 
-            dashboard={
-              dashboard
-            }
+            dashboard={dashboard}
 
           />
 
@@ -196,31 +148,11 @@ export default function KnowledgePage() {
               explorer.entities
             }
 
-            onOpen={
-              openEntity
-            }
-
           />
 
         )
 
       }
-
-      <KnowledgeDrawer
-
-        open={
-          drawerOpen
-        }
-
-        entity={
-          selectedEntity
-        }
-
-        onClose={
-          closeDrawer
-        }
-
-      />
 
     </div>
 
