@@ -28,6 +28,23 @@ export default function KnowledgeExplorerRow({
     openRightDrawer,
   } = useDrawer();
 
+  let status = "⚪ Not built";
+
+  if (
+    entity.processed_contents >= entity.contents_count &&
+    entity.contents_count > 0
+  ) {
+
+    status = "🟢 Ready";
+
+  } else if (
+    entity.processed_contents > 0
+  ) {
+
+    status = "🟡 Building";
+
+  }
+
   return (
 
     <tr
@@ -88,33 +105,15 @@ export default function KnowledgeExplorerRow({
 
       </td>
 
-      <td className="px-4 py-3 text-center">
+      <td className="px-4 py-3 text-center text-sm">
 
-        {
-
-          entity.has_knowledge
-
-            ? "🟢"
-
-            : "⚪"
-
-        }
+        {status}
 
       </td>
 
-      <td className="px-4 py-3 text-center text-sm text-gray-500">
+      <td className="px-4 py-3 text-center text-sm text-gray-600">
 
-        {
-
-          entity.last_build
-
-            ? new Date(
-                entity.last_build,
-              ).toLocaleDateString()
-
-            : "-"
-
-        }
+        {entity.processed_contents} / {entity.contents_count}
 
       </td>
 
