@@ -29,13 +29,30 @@ export default function KnowledgeSummary({
 
 }: Props) {
 
+  let status = "⚪ Not built";
+
+  if (
+    entity.processed_contents >= entity.contents_count &&
+    entity.contents_count > 0
+  ) {
+
+    status = "🟢 Ready";
+
+  } else if (
+    entity.processed_contents > 0
+  ) {
+
+    status = "🟡 Building";
+
+  }
+
   return (
 
     <div className="border-b bg-white px-6 py-5">
 
       <div className="flex items-start justify-between">
 
-        <div className="space-y-3">
+        <div className="space-y-4">
 
           <div>
 
@@ -93,16 +110,46 @@ export default function KnowledgeSummary({
 
           </div>
 
+          <div className="flex flex-wrap gap-8 text-sm">
+
+            <div>
+
+              <span className="font-semibold">
+                Status:
+              </span>
+
+              {" "}
+
+              {status}
+
+            </div>
+
+            <div>
+
+              <span className="font-semibold">
+                Progress:
+              </span>
+
+              {" "}
+
+              {entity.processed_contents}
+              {" / "}
+              {entity.contents_count}
+
+            </div>
+
+          </div>
+
           <div className="text-xs text-gray-500">
 
-            Last build{" "}
+            Last update{" "}
 
             {
 
-              entity.last_build
+              entity.updated_at
 
                 ? new Date(
-                    entity.last_build,
+                    entity.updated_at,
                   ).toLocaleString()
 
                 : "Never"
