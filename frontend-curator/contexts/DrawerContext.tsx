@@ -166,7 +166,6 @@ export function DrawerProvider({
         rightDrawer,
         openLeftDrawer,
         openRightDrawer,
-        openNewsletterDrawer,
         closeLeftDrawer,
         closeRightDrawer,
         setOnLeftClose, // 🔥 expose
