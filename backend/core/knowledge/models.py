@@ -124,6 +124,8 @@ class KnowledgeRequest(BaseModel):
 
     entity_id: str
 
+    limit: int | None = None
+
 
 # ============================================================
 # KNOWLEDGE OBSERVATION
