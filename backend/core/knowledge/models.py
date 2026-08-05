@@ -61,7 +61,7 @@ class KnowledgeEntity(BaseModel):
 
     chiffres: KnowledgeBlock
 
-    updated_at: datetime
+    updated_at: datetime | None = None
 
 # ============================================================
 # KNOWLEDGE ENTITY SUMMARY
