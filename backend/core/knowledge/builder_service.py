@@ -22,8 +22,10 @@ from .models import (
 # ============================================================
 
 def build_entity(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
+    entity_type,
+    entity_id,
+    offset=0,
+    limit=50,
 ):
     """
     Bootstrap the Knowledge of one entity.
@@ -71,6 +73,8 @@ def build_entity(
             entity_id=entity_id,
 
             block_type=block_type,
+            offset=offset,
+            limit=limit,
 
         )
 
