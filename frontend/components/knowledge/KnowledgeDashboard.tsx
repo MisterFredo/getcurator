@@ -52,7 +52,7 @@ export default function KnowledgeDashboard({
 
       <KnowledgeStatCard
 
-        title="Knowledge"
+        title="Built"
 
         value={dashboard.knowledge_built}
 
