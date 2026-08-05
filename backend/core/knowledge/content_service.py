@@ -98,10 +98,24 @@ def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    offset: int = 0,
-    limit: int | None = None,
-    last_content_date=None,
 ) -> list[KnowledgeObservation]:
+    """
+    Load contents used during a BUILD.
+    """
+
+    return _load_contents(
+
+        entity_type=entity_type,
+
+        entity_id=entity_id,
+
+        block_type=block_type,
+
+        offset=KNOWLEDGE_BUILD_OFFSET,
+
+        limit=KNOWLEDGE_BUILD_LIMIT,
+
+    )
 
 
 def load_new_contents(
@@ -110,6 +124,10 @@ def load_new_contents(
     block_type: KnowledgeBlockType,
     last_content_date,
 ) -> list[KnowledgeObservation]:
+    """
+    Load only new contents since
+    the last update.
+    """
 
     return _load_contents(
 
@@ -131,6 +149,8 @@ def _load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
+    offset: int = 0,
+    limit: int | None = None,
     last_content_date=None,
 ) -> list[KnowledgeObservation]:
 
@@ -214,15 +234,16 @@ def _load_contents(
     ) or []
 
     # ========================================================
-    # V1 LIMIT
+    # OFFSET / LIMIT
     # ========================================================
-
-    if KNOWLEDGE_BUILD_LIMIT is not None:
-
-        rows = rows[
-            KNOWLEDGE_BUILD_OFFSET:
-            KNOWLEDGE_BUILD_OFFSET + KNOWLEDGE_BUILD_LIMIT
-        ]
+    
+    if offset:
+    
+        rows = rows[offset:]
+    
+    if limit is not None:
+    
+        rows = rows[:limit]
 
     return [
 
