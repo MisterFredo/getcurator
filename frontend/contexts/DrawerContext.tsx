@@ -22,7 +22,6 @@ type DrawerTypeLeft =
 type DrawerTypeRight =
   | "news"
   | "analysis"
-  | "newsletter"
   | "digest-preview"
   | "knowledge"
   | null;
@@ -85,10 +84,6 @@ type DrawerContextType = {
     knowledgeEntity?:
       | KnowledgeEntitySummary,
 
-  ) => void;
-
-  openNewsletterDrawer: (
-    mode?: DrawerMode,
   ) => void;
 
   closeLeftDrawer: () => void;
@@ -215,26 +210,6 @@ export function DrawerProvider({
       entityType,
 
       knowledgeEntity,
-
-      mode,
-
-    });
-
-  }
-
-  function openNewsletterDrawer(
-    mode: DrawerMode = "silent",
-  ) {
-
-    setRightDrawer({
-
-      type: "newsletter",
-
-      id: null,
-
-      entityType: undefined,
-
-      knowledgeEntity: undefined,
 
       mode,
 
