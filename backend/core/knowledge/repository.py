@@ -25,6 +25,9 @@ TABLE_KNOWLEDGE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_KNOWLEDGE"
 )
 
+TABLE_KNOWLEDGE_STATUS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_KNOWLEDGE_STATUS"
+)
 
 # ============================================================
 # UPSERT BLOCK
@@ -380,4 +383,154 @@ def exists_entity(
 
     return bool(rows)
 
+# ============================================================
+# GET STATUS
+# ============================================================
 
+def get_last_content_date(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+):
+
+    rows = query_bq(
+
+        f"""
+        SELECT
+
+            LAST_CONTENT_DATE
+
+        FROM `{TABLE_KNOWLEDGE_STATUS}`
+
+        WHERE
+
+            ENTITY_TYPE = @entity_type
+
+        AND
+
+            ENTITY_ID = @entity_id
+
+        LIMIT 1
+        """,
+
+        {
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+        },
+
+    )
+
+    if not rows:
+
+        return None
+
+    return rows[0].get(
+        "LAST_CONTENT_DATE",
+    )
+
+# ============================================================
+# UPDATE STATUS
+# ============================================================
+
+def update_last_content(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+    content_id: str,
+    content_date,
+):
+    """
+    Update the last processed content
+    for one Knowledge entity.
+    """
+
+    query = f"""
+    MERGE `{TABLE_KNOWLEDGE_STATUS}` T
+
+    USING (
+
+        SELECT
+
+            @entity_type AS ENTITY_TYPE,
+
+            @entity_id AS ENTITY_ID,
+
+            @content_id AS LAST_CONTENT_ID,
+
+            @content_date AS LAST_CONTENT_DATE
+
+    ) S
+
+    ON
+
+        T.ENTITY_TYPE = S.ENTITY_TYPE
+
+    AND
+
+        T.ENTITY_ID = S.ENTITY_ID
+
+    WHEN MATCHED THEN
+
+        UPDATE SET
+
+            LAST_CONTENT_ID = S.LAST_CONTENT_ID,
+
+            LAST_CONTENT_DATE = S.LAST_CONTENT_DATE,
+
+            KNOWLEDGE_VERSION = COALESCE(
+                T.KNOWLEDGE_VERSION,
+                0
+            ) + 1,
+
+            UPDATED_AT = CURRENT_TIMESTAMP()
+
+    WHEN NOT MATCHED THEN
+
+        INSERT (
+
+            ENTITY_TYPE,
+
+            ENTITY_ID,
+
+            LAST_CONTENT_ID,
+
+            LAST_CONTENT_DATE,
+
+            KNOWLEDGE_VERSION,
+
+            UPDATED_AT
+
+        )
+
+        VALUES (
+
+            S.ENTITY_TYPE,
+
+            S.ENTITY_ID,
+
+            S.LAST_CONTENT_ID,
+
+            S.LAST_CONTENT_DATE,
+
+            1,
+
+            CURRENT_TIMESTAMP()
+
+        )
+    """
+
+    query_bq(
+
+        query,
+
+        {
+
+            "entity_type": entity_type,
+
+            "entity_id": entity_id,
+
+            "content_id": content_id,
+
+            "content_date": content_date,
+
+        },
+
+    )
