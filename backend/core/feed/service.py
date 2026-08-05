@@ -64,7 +64,6 @@ def search_filters(
     topic_ids: Optional[List[str]] = None,
     company_ids: Optional[List[str]] = None,
     solution_ids: Optional[List[str]] = None,
-    news_types: Optional[List[str]] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict]:
@@ -89,7 +88,6 @@ def search_filters(
     topic_ids = clean(topic_ids)
     company_ids = clean(company_ids)
     solution_ids = clean(solution_ids)
-    news_types = clean(news_types)
 
     sql = f"""
    
@@ -141,7 +139,6 @@ def search_filters(
         "topic_ids": topic_ids,
         "company_ids": company_ids,
         "solution_ids": solution_ids,
-        "news_types": news_types,
         "limit": limit,
         "offset": offset,
     })
@@ -192,16 +189,6 @@ def get_feed_meta() -> Dict:
 
     UNION ALL
 
-    SELECT
-        'news_type' AS type,
-        n.NEWS_TYPE AS id,
-        n.NEWS_TYPE AS label,
-        COUNT(*) AS count
-    FROM `{TABLE_NEWS}` n
-    WHERE n.STATUS = 'PUBLISHED'
-      AND n.NEWS_TYPE IS NOT NULL
-    GROUP BY n.NEWS_TYPE
-
     ORDER BY type, count DESC
     """
 
@@ -211,7 +198,6 @@ def get_feed_meta() -> Dict:
         "topics": [],
         "companies": [],
         "solutions": [],
-        "news_types": []
     }
 
     for r in rows:
@@ -232,9 +218,6 @@ def get_feed_meta() -> Dict:
 
         elif r["type"] == "solution":
             result["solutions"].append(item)
-
-        elif r["type"] == "news_type":
-            result["news_types"].append(item)
 
         return result
 
