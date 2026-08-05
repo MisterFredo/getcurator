@@ -21,7 +21,6 @@ type DrawerTypeLeft =
 type DrawerTypeRight =
   | "news"
   | "analysis"
-  | "newsletter"
   | "radar"
   | "numbers"
   | null;
@@ -51,9 +50,6 @@ type DrawerContextType = {
     mode?: DrawerMode,
     payload?: any
   ) => void;
-
-  openNewsletterDrawer: (mode?: DrawerMode) => void;
-
   closeLeftDrawer: () => void;
   closeRightDrawer: () => void;
 
@@ -151,17 +147,6 @@ export function DrawerProvider({
       id,
       mode,
       payload,
-    });
-  }
-
-  function openNewsletterDrawer(
-    mode: DrawerMode = "silent"
-  ) {
-    setRightDrawer({
-      type: "newsletter",
-      id: null,
-      mode,
-      payload: undefined,
     });
   }
 
