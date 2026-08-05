@@ -29,6 +29,16 @@ def build_knowledge(
     entity_type: KnowledgeEntityType,
     entity_id: str,
 ):
+    """
+    Build the next Knowledge batch
+    for one entity.
+
+    V1:
+    - read LAST_CONTENT_DATE from
+      RATECARD_KNOWLEDGE_STATUS
+    - process up to 50 contents
+    - update LAST_CONTENT_DATE
+    """
 
     build_entity(
         entity_type=entity_type,
@@ -59,8 +69,19 @@ def update_knowledge(
     entity_type: KnowledgeEntityType,
     entity_id: str,
 ):
+    """
+    Update an existing Knowledge
+    with newly published contents.
 
-    raise NotImplementedError
+    V1:
+    Same pipeline as Build,
+    starting from LAST_CONTENT_DATE.
+    """
+
+    build_entity(
+        entity_type=entity_type,
+        entity_id=entity_id,
+    )
 
 
 # ============================================================
