@@ -58,9 +58,6 @@ function mapItem(row: any): FeedItem {
     concepts: row.concepts,
 
     badges: row.badges,
-
-    news_type:
-      row.news_type,
   };
 }
 
