@@ -4,6 +4,8 @@ type Props = {
 
   value: number;
 
+  subtitle?: string;
+
 };
 
 export default function KnowledgeStatCard({
@@ -11,6 +13,8 @@ export default function KnowledgeStatCard({
   title,
 
   value,
+
+  subtitle,
 
 }: Props) {
 
@@ -29,6 +33,20 @@ export default function KnowledgeStatCard({
         {value}
 
       </div>
+
+      {
+
+        subtitle && (
+
+          <div className="mt-1 text-xs text-gray-500">
+
+            {subtitle}
+
+          </div>
+
+        )
+
+      }
 
     </div>
 
