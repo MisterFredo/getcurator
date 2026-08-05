@@ -8,8 +8,6 @@ type Props = {
   topics?: any[];
   companies?: any[];
   solutions?: any[];
-  news_type?: string | null;
-
   className?: string;
 };
 
@@ -19,7 +17,6 @@ export default function ContentBadges({
   topics,
   companies,
   solutions,
-  news_type,
   className = "",
 }: Props) {
 
@@ -36,10 +33,6 @@ export default function ContentBadges({
   ========================================================= */
 
   const badges: FeedBadge[] = [
-    ...(news_type
-      ? [{ label: news_type, type: "news_type" as const }]
-      : []),
-
     ...safeCompanies.map((c: any) => ({
       id: c.id_company,
       label: c.name,
@@ -67,8 +60,6 @@ export default function ContentBadges({
 
   function getBadgeClass(type?: string) {
     switch (type) {
-      case "news_type":
-        return "bg-black text-white";
       case "company":
         return "bg-blue-50 text-blue-600 border border-blue-100";
       case "solution":
