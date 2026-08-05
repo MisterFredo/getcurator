@@ -49,11 +49,11 @@ export default function KnowledgeExplorerTable({
           </th>
 
           <th className="px-4 py-3 text-center text-sm font-medium">
-            Knowledge
+            Status
           </th>
 
           <th className="px-4 py-3 text-center text-sm font-medium">
-            Updated
+            Progress
           </th>
 
         </tr>
