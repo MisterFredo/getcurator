@@ -41,6 +41,10 @@ TABLE_KNOWLEDGE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_KNOWLEDGE"
 )
 
+TABLE_KNOWLEDGE_STATUS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_KNOWLEDGE_STATUS"
+)
+
 TABLE_USER = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
 )
@@ -250,23 +254,21 @@ def _get_companies(
 
     ),
 
-    KNOWLEDGE AS (
+    STATUS AS (
 
         SELECT
 
             ENTITY_ID,
 
-            MAX(UPDATED_AT) AS LAST_BUILD
+            LAST_CONTENT_DATE,
 
-        FROM `{TABLE_KNOWLEDGE}`
+            UPDATED_AT
+
+        FROM `{TABLE_KNOWLEDGE_STATUS}`
 
         WHERE
 
             ENTITY_TYPE = "company"
-
-        GROUP BY
-
-            ENTITY_ID
 
     )
 
@@ -291,10 +293,45 @@ def _get_companies(
             0
         ) AS EXPERTS_COUNT,
 
-        knowledge.LAST_BUILD,
+        status.LAST_CONTENT_DATE,
 
-        knowledge.LAST_BUILD IS NOT NULL
-            AS HAS_KNOWLEDGE
+        status.UPDATED_AT,
+
+        CASE
+
+            WHEN status.LAST_CONTENT_DATE IS NULL
+
+            THEN 0
+
+            ELSE (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_CONTENT}` c2
+
+                CROSS JOIN UNNEST(
+                    c2.COMPANIES
+                ) company
+
+                WHERE
+
+                    company.id_company = c.ID_COMPANY
+
+                AND
+
+                    c2.STATUS = "PUBLISHED"
+
+                AND
+
+                    c2.IS_ACTIVE = TRUE
+
+                AND
+
+                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
+
+            )
+
+        END AS PROCESSED_CONTENTS
 
     FROM `{TABLE_COMPANY}` c
 
@@ -310,9 +347,9 @@ def _get_companies(
 
         ON experts.ENTITY_ID = c.ID_COMPANY
 
-    LEFT JOIN KNOWLEDGE knowledge
+    LEFT JOIN STATUS status
 
-        ON knowledge.ENTITY_ID = c.ID_COMPANY
+        ON status.ENTITY_ID = c.ID_COMPANY
 
     ORDER BY
 
@@ -337,13 +374,15 @@ def _get_companies(
 
             contents_count=row["CONTENTS_COUNT"],
 
+            processed_contents=row["PROCESSED_CONTENTS"],
+
             users_count=row["USERS_COUNT"],
 
             experts_count=row["EXPERTS_COUNT"],
 
-            has_knowledge=row["HAS_KNOWLEDGE"],
+            last_content_date=row["LAST_CONTENT_DATE"],
 
-            last_build=row["LAST_BUILD"],
+            updated_at=row["UPDATED_AT"],
 
         )
 
@@ -451,23 +490,21 @@ def _get_solutions(
 
     ),
 
-    KNOWLEDGE AS (
+    STATUS AS (
 
         SELECT
 
             ENTITY_ID,
 
-            MAX(UPDATED_AT) AS LAST_BUILD
+            LAST_CONTENT_DATE,
 
-        FROM `{TABLE_KNOWLEDGE}`
+            UPDATED_AT
+
+        FROM `{TABLE_KNOWLEDGE_STATUS}`
 
         WHERE
 
             ENTITY_TYPE = "solution"
-
-        GROUP BY
-
-            ENTITY_ID
 
     )
 
@@ -492,10 +529,45 @@ def _get_solutions(
             0
         ) AS EXPERTS_COUNT,
 
-        knowledge.LAST_BUILD,
+        status.LAST_CONTENT_DATE,
 
-        knowledge.LAST_BUILD IS NOT NULL
-            AS HAS_KNOWLEDGE
+        status.UPDATED_AT,
+
+        CASE
+
+            WHEN status.LAST_CONTENT_DATE IS NULL
+
+            THEN 0
+
+            ELSE (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_CONTENT}` c2
+
+                CROSS JOIN UNNEST(
+                    c2.SOLUTIONS
+                ) solution
+
+                WHERE
+
+                    solution.id_solution = s.ID_SOLUTION
+
+                AND
+
+                    c2.STATUS = "PUBLISHED"
+
+                AND
+
+                    c2.IS_ACTIVE = TRUE
+
+                AND
+
+                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
+
+            )
+
+        END AS PROCESSED_CONTENTS
 
     FROM `{TABLE_SOLUTION}` s
 
@@ -511,9 +583,9 @@ def _get_solutions(
 
         ON experts.ENTITY_ID = s.ID_SOLUTION
 
-    LEFT JOIN KNOWLEDGE knowledge
+    LEFT JOIN STATUS status
 
-        ON knowledge.ENTITY_ID = s.ID_SOLUTION
+        ON status.ENTITY_ID = s.ID_SOLUTION
 
     ORDER BY
 
@@ -538,20 +610,21 @@ def _get_solutions(
 
             contents_count=row["CONTENTS_COUNT"],
 
+            processed_contents=row["PROCESSED_CONTENTS"],
+
             users_count=row["USERS_COUNT"],
 
             experts_count=row["EXPERTS_COUNT"],
 
-            has_knowledge=row["HAS_KNOWLEDGE"],
+            last_content_date=row["LAST_CONTENT_DATE"],
 
-            last_build=row["LAST_BUILD"],
+            updated_at=row["UPDATED_AT"],
 
         )
 
         for row in rows
 
     ]
-
 
 # ============================================================
 # TOPICS
@@ -653,23 +726,21 @@ def _get_topics(
 
     ),
 
-    KNOWLEDGE AS (
+    STATUS AS (
 
         SELECT
 
             ENTITY_ID,
 
-            MAX(UPDATED_AT) AS LAST_BUILD
+            LAST_CONTENT_DATE,
 
-        FROM `{TABLE_KNOWLEDGE}`
+            UPDATED_AT
+
+        FROM `{TABLE_KNOWLEDGE_STATUS}`
 
         WHERE
 
             ENTITY_TYPE = "topic"
-
-        GROUP BY
-
-            ENTITY_ID
 
     )
 
@@ -694,10 +765,45 @@ def _get_topics(
             0
         ) AS EXPERTS_COUNT,
 
-        knowledge.LAST_BUILD,
+        status.LAST_CONTENT_DATE,
 
-        knowledge.LAST_BUILD IS NOT NULL
-            AS HAS_KNOWLEDGE
+        status.UPDATED_AT,
+
+        CASE
+
+            WHEN status.LAST_CONTENT_DATE IS NULL
+
+            THEN 0
+
+            ELSE (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_CONTENT}` c2
+
+                CROSS JOIN UNNEST(
+                    c2.TOPICS
+                ) topic
+
+                WHERE
+
+                    topic.id_topic = t.ID_TOPIC
+
+                AND
+
+                    c2.STATUS = "PUBLISHED"
+
+                AND
+
+                    c2.IS_ACTIVE = TRUE
+
+                AND
+
+                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
+
+            )
+
+        END AS PROCESSED_CONTENTS
 
     FROM `{TABLE_TOPIC}` t
 
@@ -713,9 +819,9 @@ def _get_topics(
 
         ON experts.ENTITY_ID = t.ID_TOPIC
 
-    LEFT JOIN KNOWLEDGE knowledge
+    LEFT JOIN STATUS status
 
-        ON knowledge.ENTITY_ID = t.ID_TOPIC
+        ON status.ENTITY_ID = t.ID_TOPIC
 
     ORDER BY
 
@@ -740,20 +846,21 @@ def _get_topics(
 
             contents_count=row["CONTENTS_COUNT"],
 
+            processed_contents=row["PROCESSED_CONTENTS"],
+
             users_count=row["USERS_COUNT"],
 
             experts_count=row["EXPERTS_COUNT"],
 
-            has_knowledge=row["HAS_KNOWLEDGE"],
+            last_content_date=row["LAST_CONTENT_DATE"],
 
-            last_build=row["LAST_BUILD"],
+            updated_at=row["UPDATED_AT"],
 
         )
 
         for row in rows
 
     ]
-
 # ============================================================
 # EXPLORER
 # ============================================================
