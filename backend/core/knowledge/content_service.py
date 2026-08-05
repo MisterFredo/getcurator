@@ -89,7 +89,6 @@ BLOCK_COLUMNS = {
 
 }
 
-
 # ============================================================
 # LOAD CONTENTS
 # ============================================================
@@ -98,6 +97,8 @@ def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
+    offset: int = 0,
+    limit: int | None = None,
 ) -> list[KnowledgeObservation]:
     """
     Load contents used during a BUILD.
@@ -111,9 +112,9 @@ def load_contents(
 
         block_type=block_type,
 
-        offset=KNOWLEDGE_BUILD_OFFSET,
+        offset=offset,
 
-        limit=KNOWLEDGE_BUILD_LIMIT,
+        limit=limit,
 
     )
 
