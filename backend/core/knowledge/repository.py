@@ -264,40 +264,38 @@ def get_entity(
     if not rows:
 
         return KnowledgeEntity(
-    
+
             entity_type=entity_type,
-    
+        
             entity_id=entity_id,
-    
-            name="",
-    
+        
             signal_analytique=_empty_block(
                 "signal_analytique",
             ),
-    
+        
             mecanique_expliquee=_empty_block(
                 "mecanique_expliquee",
             ),
-    
+        
             enjeu_strategique=_empty_block(
                 "enjeu_strategique",
             ),
-    
+        
             point_de_friction=_empty_block(
                 "point_de_friction",
             ),
-    
+        
             chiffres=_empty_block(
                 "chiffres",
             ),
-    
+        
             updated_at=None,
-    
+        
         )
 
     blocks = {}
 
-    updated_at = None
+    updated_at: datetime | None = None
 
     for row in rows:
 
