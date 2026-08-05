@@ -154,477 +154,280 @@ def get_dashboard(
 
     )
 
+
+# ============================================================
+# LIST ENTITIES
+# ============================================================
+
+def _list_entities(
+    *,
+    entity_type: KnowledgeEntityType,
+    table: str,
+    id_column: str,
+    name_column: str,
+    array_name: str,
+    array_id: str,
+) -> list[KnowledgeEntitySummary]:
+    """
+    Generic loader used by Companies,
+    Topics and Solutions.
+    """
+
+    query = f"""
+    WITH CONTENTS AS (
+
+        SELECT
+
+            entity.{array_id} AS ENTITY_ID,
+
+            COUNT(*) AS CONTENTS_COUNT
+
+        FROM `{TABLE_CONTENT}` c
+
+        CROSS JOIN UNNEST(
+            c.{array_name}
+        ) entity
+
+        WHERE
+
+            c.STATUS = "PUBLISHED"
+
+        AND
+
+            c.IS_ACTIVE = TRUE
+
+        GROUP BY
+
+            entity.{array_id}
+
+    ),
+
+    USERS AS (
+
+        SELECT
+
+            VALUE_ID AS ENTITY_ID,
+
+            COUNT(
+                DISTINCT p.ID_USER
+            ) AS USERS_COUNT
+
+        FROM `{TABLE_USER_PREFERENCES}` p
+
+        JOIN `{TABLE_USER}` u
+
+            ON u.ID_USER = p.ID_USER
+
+        WHERE
+
+            TYPE = @entity_type
+
+        AND
+
+            u.PROFILE_TYPE = "USER"
+
+        GROUP BY
+
+            VALUE_ID
+
+    ),
+
+    EXPERTS AS (
+
+        SELECT
+
+            VALUE_ID AS ENTITY_ID,
+
+            COUNT(
+                DISTINCT p.ID_USER
+            ) AS EXPERTS_COUNT
+
+        FROM `{TABLE_USER_PREFERENCES}` p
+
+        JOIN `{TABLE_USER}` u
+
+            ON u.ID_USER = p.ID_USER
+
+        WHERE
+
+            TYPE = @entity_type
+
+        AND
+
+            u.PROFILE_TYPE = "EXPERT"
+
+        GROUP BY
+
+            VALUE_ID
+
+    ),
+
+    KNOWLEDGE_STATUS AS (
+
+        SELECT
+
+            ENTITY_ID,
+
+            LAST_CONTENT_DATE,
+
+            UPDATED_AT
+
+        FROM `{TABLE_KNOWLEDGE_STATUS}`
+
+        WHERE
+
+            ENTITY_TYPE = @entity_type
+
+    )
+
+    SELECT
+
+        e.{id_column} AS ENTITY_ID,
+
+        e.{name_column} AS NAME,
+
+        COALESCE(
+            contents.CONTENTS_COUNT,
+            0
+        ) AS CONTENTS_COUNT,
+
+        COALESCE(
+            users.USERS_COUNT,
+            0
+        ) AS USERS_COUNT,
+
+        COALESCE(
+            experts.EXPERTS_COUNT,
+            0
+        ) AS EXPERTS_COUNT,
+
+        ks.LAST_CONTENT_DATE,
+
+        ks.UPDATED_AT,
+
+        CASE
+
+            WHEN ks.LAST_CONTENT_DATE IS NULL
+
+            THEN 0
+
+            ELSE (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_CONTENT}` c2
+
+                CROSS JOIN UNNEST(
+                    c2.{array_name}
+                ) entity
+
+                WHERE
+
+                    entity.{array_id} = e.{id_column}
+
+                AND
+
+                    c2.STATUS = "PUBLISHED"
+
+                AND
+
+                    c2.IS_ACTIVE = TRUE
+
+                AND
+
+                    c2.PUBLISHED_AT <= ks.LAST_CONTENT_DATE
+
+            )
+
+        END AS PROCESSED_CONTENTS
+
+    FROM `{table}` e
+
+    LEFT JOIN CONTENTS contents
+
+        ON contents.ENTITY_ID = e.{id_column}
+
+    LEFT JOIN USERS users
+
+        ON users.ENTITY_ID = e.{id_column}
+
+    LEFT JOIN EXPERTS experts
+
+        ON experts.ENTITY_ID = e.{id_column}
+
+    LEFT JOIN KNOWLEDGE_STATUS ks
+
+        ON ks.ENTITY_ID = e.{id_column}
+
+    ORDER BY
+
+        CONTENTS_COUNT DESC,
+
+        NAME
+    """
+
+    rows = query_bq(
+
+        query,
+
+        {
+
+            "entity_type": entity_type,
+
+        },
+
+    ) or []
+
+    return [
+
+        KnowledgeEntitySummary(
+
+            entity_type=entity_type,
+
+            entity_id=row["ENTITY_ID"],
+
+            name=row["NAME"],
+
+            contents_count=row["CONTENTS_COUNT"],
+
+            processed_contents=row["PROCESSED_CONTENTS"],
+
+            users_count=row["USERS_COUNT"],
+
+            experts_count=row["EXPERTS_COUNT"],
+
+            last_content_date=row["LAST_CONTENT_DATE"],
+
+            updated_at=row["UPDATED_AT"],
+
+        )
+
+        for row in rows
+
+    ]
+
 # ============================================================
 # COMPANIES
 # ============================================================
 
 def _get_companies(
 ) -> list[KnowledgeEntitySummary]:
-    """
-    Return every Company displayed in the
-    Knowledge Explorer.
-    """
 
-    query = f"""
-    WITH CONTENTS AS (
+    return _list_entities(
 
-        SELECT
+        entity_type="company",
 
-            company.id_company AS ENTITY_ID,
+        table=TABLE_COMPANY,
 
-            COUNT(*) AS CONTENTS_COUNT
+        id_column="ID_COMPANY",
 
-        FROM `{TABLE_CONTENT}` c
+        name_column="NAME",
 
-        CROSS JOIN UNNEST(
-            c.COMPANIES
-        ) company
+        array_name="COMPANIES",
 
-        WHERE
-
-            c.STATUS = "PUBLISHED"
-
-        AND
-
-            c.IS_ACTIVE = TRUE
-
-        GROUP BY
-
-            company.id_company
-
-    ),
-
-    USERS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS USERS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "company"
-
-        AND
-
-            u.PROFILE_TYPE = "USER"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    EXPERTS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS EXPERTS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "company"
-
-        AND
-
-            u.PROFILE_TYPE = "EXPERT"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    STATUS AS (
-
-        SELECT
-
-            ENTITY_ID,
-
-            LAST_CONTENT_DATE,
-
-            UPDATED_AT
-
-        FROM `{TABLE_KNOWLEDGE_STATUS}`
-
-        WHERE
-
-            ENTITY_TYPE = "company"
+        array_id="id_company",
 
     )
-
-    SELECT
-
-        c.ID_COMPANY,
-
-        c.NAME,
-
-        COALESCE(
-            contents.CONTENTS_COUNT,
-            0
-        ) AS CONTENTS_COUNT,
-
-        COALESCE(
-            users.USERS_COUNT,
-            0
-        ) AS USERS_COUNT,
-
-        COALESCE(
-            experts.EXPERTS_COUNT,
-            0
-        ) AS EXPERTS_COUNT,
-
-        status.LAST_CONTENT_DATE,
-
-        status.UPDATED_AT,
-
-        CASE
-
-            WHEN status.LAST_CONTENT_DATE IS NULL
-
-            THEN 0
-
-            ELSE (
-
-                SELECT COUNT(*)
-
-                FROM `{TABLE_CONTENT}` c2
-
-                CROSS JOIN UNNEST(
-                    c2.COMPANIES
-                ) company
-
-                WHERE
-
-                    company.id_company = c.ID_COMPANY
-
-                AND
-
-                    c2.STATUS = "PUBLISHED"
-
-                AND
-
-                    c2.IS_ACTIVE = TRUE
-
-                AND
-
-                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
-
-            )
-
-        END AS PROCESSED_CONTENTS
-
-    FROM `{TABLE_COMPANY}` c
-
-    LEFT JOIN CONTENTS contents
-
-        ON contents.ENTITY_ID = c.ID_COMPANY
-
-    LEFT JOIN USERS users
-
-        ON users.ENTITY_ID = c.ID_COMPANY
-
-    LEFT JOIN EXPERTS experts
-
-        ON experts.ENTITY_ID = c.ID_COMPANY
-
-    LEFT JOIN STATUS status
-
-        ON status.ENTITY_ID = c.ID_COMPANY
-
-    ORDER BY
-
-        CONTENTS_COUNT DESC,
-
-        NAME
-    """
-
-    rows = query_bq(
-        query,
-    ) or []
-
-    return [
-
-        KnowledgeEntitySummary(
-
-            entity_type="company",
-
-            entity_id=row["ID_COMPANY"],
-
-            name=row["NAME"],
-
-            contents_count=row["CONTENTS_COUNT"],
-
-            processed_contents=row["PROCESSED_CONTENTS"],
-
-            users_count=row["USERS_COUNT"],
-
-            experts_count=row["EXPERTS_COUNT"],
-
-            last_content_date=row["LAST_CONTENT_DATE"],
-
-            updated_at=row["UPDATED_AT"],
-
-        )
-
-        for row in rows
-
-    ]
-
-# ============================================================
-# SOLUTIONS
-# ============================================================
-
-def _get_solutions(
-) -> list[KnowledgeEntitySummary]:
-    """
-    Return every Solution displayed in the
-    Knowledge Explorer.
-    """
-
-    query = f"""
-    WITH CONTENTS AS (
-
-        SELECT
-
-            solution.id_solution AS ENTITY_ID,
-
-            COUNT(*) AS CONTENTS_COUNT
-
-        FROM `{TABLE_CONTENT}` c
-
-        CROSS JOIN UNNEST(
-            c.SOLUTIONS
-        ) solution
-
-        WHERE
-
-            c.STATUS = "PUBLISHED"
-
-        AND
-
-            c.IS_ACTIVE = TRUE
-
-        GROUP BY
-
-            solution.id_solution
-
-    ),
-
-    USERS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS USERS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "solution"
-
-        AND
-
-            u.PROFILE_TYPE = "USER"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    EXPERTS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS EXPERTS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "solution"
-
-        AND
-
-            u.PROFILE_TYPE = "EXPERT"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    STATUS AS (
-
-        SELECT
-
-            ENTITY_ID,
-
-            LAST_CONTENT_DATE,
-
-            UPDATED_AT
-
-        FROM `{TABLE_KNOWLEDGE_STATUS}`
-
-        WHERE
-
-            ENTITY_TYPE = "solution"
-
-    )
-
-    SELECT
-
-        s.ID_SOLUTION,
-
-        s.NAME,
-
-        COALESCE(
-            contents.CONTENTS_COUNT,
-            0
-        ) AS CONTENTS_COUNT,
-
-        COALESCE(
-            users.USERS_COUNT,
-            0
-        ) AS USERS_COUNT,
-
-        COALESCE(
-            experts.EXPERTS_COUNT,
-            0
-        ) AS EXPERTS_COUNT,
-
-        status.LAST_CONTENT_DATE,
-
-        status.UPDATED_AT,
-
-        CASE
-
-            WHEN status.LAST_CONTENT_DATE IS NULL
-
-            THEN 0
-
-            ELSE (
-
-                SELECT COUNT(*)
-
-                FROM `{TABLE_CONTENT}` c2
-
-                CROSS JOIN UNNEST(
-                    c2.SOLUTIONS
-                ) solution
-
-                WHERE
-
-                    solution.id_solution = s.ID_SOLUTION
-
-                AND
-
-                    c2.STATUS = "PUBLISHED"
-
-                AND
-
-                    c2.IS_ACTIVE = TRUE
-
-                AND
-
-                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
-
-            )
-
-        END AS PROCESSED_CONTENTS
-
-    FROM `{TABLE_SOLUTION}` s
-
-    LEFT JOIN CONTENTS contents
-
-        ON contents.ENTITY_ID = s.ID_SOLUTION
-
-    LEFT JOIN USERS users
-
-        ON users.ENTITY_ID = s.ID_SOLUTION
-
-    LEFT JOIN EXPERTS experts
-
-        ON experts.ENTITY_ID = s.ID_SOLUTION
-
-    LEFT JOIN STATUS status
-
-        ON status.ENTITY_ID = s.ID_SOLUTION
-
-    ORDER BY
-
-        CONTENTS_COUNT DESC,
-
-        NAME
-    """
-
-    rows = query_bq(
-        query,
-    ) or []
-
-    return [
-
-        KnowledgeEntitySummary(
-
-            entity_type="solution",
-
-            entity_id=row["ID_SOLUTION"],
-
-            name=row["NAME"],
-
-            contents_count=row["CONTENTS_COUNT"],
-
-            processed_contents=row["PROCESSED_CONTENTS"],
-
-            users_count=row["USERS_COUNT"],
-
-            experts_count=row["EXPERTS_COUNT"],
-
-            last_content_date=row["LAST_CONTENT_DATE"],
-
-            updated_at=row["UPDATED_AT"],
-
-        )
-
-        for row in rows
-
-    ]
 
 # ============================================================
 # TOPICS
@@ -632,235 +435,45 @@ def _get_solutions(
 
 def _get_topics(
 ) -> list[KnowledgeEntitySummary]:
-    """
-    Return every Topic displayed in the
-    Knowledge Explorer.
-    """
 
-    query = f"""
-    WITH CONTENTS AS (
+    return _list_entities(
 
-        SELECT
+        entity_type="topic",
 
-            topic.id_topic AS ENTITY_ID,
+        table=TABLE_TOPIC,
 
-            COUNT(*) AS CONTENTS_COUNT
+        id_column="ID_TOPIC",
 
-        FROM `{TABLE_CONTENT}` c
+        name_column="LABEL",
 
-        CROSS JOIN UNNEST(
-            c.TOPICS
-        ) topic
+        array_name="TOPICS",
 
-        WHERE
-
-            c.STATUS = "PUBLISHED"
-
-        AND
-
-            c.IS_ACTIVE = TRUE
-
-        GROUP BY
-
-            topic.id_topic
-
-    ),
-
-    USERS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS USERS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "topic"
-
-        AND
-
-            u.PROFILE_TYPE = "USER"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    EXPERTS AS (
-
-        SELECT
-
-            VALUE_ID AS ENTITY_ID,
-
-            COUNT(
-                DISTINCT p.ID_USER
-            ) AS EXPERTS_COUNT
-
-        FROM `{TABLE_USER_PREFERENCES}` p
-
-        JOIN `{TABLE_USER}` u
-
-            ON u.ID_USER = p.ID_USER
-
-        WHERE
-
-            TYPE = "topic"
-
-        AND
-
-            u.PROFILE_TYPE = "EXPERT"
-
-        GROUP BY
-
-            VALUE_ID
-
-    ),
-
-    STATUS AS (
-
-        SELECT
-
-            ENTITY_ID,
-
-            LAST_CONTENT_DATE,
-
-            UPDATED_AT
-
-        FROM `{TABLE_KNOWLEDGE_STATUS}`
-
-        WHERE
-
-            ENTITY_TYPE = "topic"
+        array_id="id_topic",
 
     )
 
-    SELECT
+# ============================================================
+# SOLUTIONS
+# ============================================================
 
-        t.ID_TOPIC,
+def _get_solutions(
+) -> list[KnowledgeEntitySummary]:
 
-        t.LABEL,
+    return _list_entities(
 
-        COALESCE(
-            contents.CONTENTS_COUNT,
-            0
-        ) AS CONTENTS_COUNT,
+        entity_type="solution",
 
-        COALESCE(
-            users.USERS_COUNT,
-            0
-        ) AS USERS_COUNT,
+        table=TABLE_SOLUTION,
 
-        COALESCE(
-            experts.EXPERTS_COUNT,
-            0
-        ) AS EXPERTS_COUNT,
+        id_column="ID_SOLUTION",
 
-        status.LAST_CONTENT_DATE,
+        name_column="NAME",
 
-        status.UPDATED_AT,
+        array_name="SOLUTIONS",
 
-        CASE
+        array_id="id_solution",
 
-            WHEN status.LAST_CONTENT_DATE IS NULL
-
-            THEN 0
-
-            ELSE (
-
-                SELECT COUNT(*)
-
-                FROM `{TABLE_CONTENT}` c2
-
-                CROSS JOIN UNNEST(
-                    c2.TOPICS
-                ) topic
-
-                WHERE
-
-                    topic.id_topic = t.ID_TOPIC
-
-                AND
-
-                    c2.STATUS = "PUBLISHED"
-
-                AND
-
-                    c2.IS_ACTIVE = TRUE
-
-                AND
-
-                    c2.PUBLISHED_AT <= status.LAST_CONTENT_DATE
-
-            )
-
-        END AS PROCESSED_CONTENTS
-
-    FROM `{TABLE_TOPIC}` t
-
-    LEFT JOIN CONTENTS contents
-
-        ON contents.ENTITY_ID = t.ID_TOPIC
-
-    LEFT JOIN USERS users
-
-        ON users.ENTITY_ID = t.ID_TOPIC
-
-    LEFT JOIN EXPERTS experts
-
-        ON experts.ENTITY_ID = t.ID_TOPIC
-
-    LEFT JOIN STATUS status
-
-        ON status.ENTITY_ID = t.ID_TOPIC
-
-    ORDER BY
-
-        CONTENTS_COUNT DESC,
-
-        LABEL
-    """
-
-    rows = query_bq(
-        query,
-    ) or []
-
-    return [
-
-        KnowledgeEntitySummary(
-
-            entity_type="topic",
-
-            entity_id=row["ID_TOPIC"],
-
-            name=row["LABEL"],
-
-            contents_count=row["CONTENTS_COUNT"],
-
-            processed_contents=row["PROCESSED_CONTENTS"],
-
-            users_count=row["USERS_COUNT"],
-
-            experts_count=row["EXPERTS_COUNT"],
-
-            last_content_date=row["LAST_CONTENT_DATE"],
-
-            updated_at=row["UPDATED_AT"],
-
-        )
-
-        for row in rows
-
-    ]
+    )
 # ============================================================
 # EXPLORER
 # ============================================================
