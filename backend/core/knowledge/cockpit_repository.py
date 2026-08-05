@@ -477,7 +477,6 @@ def _get_solutions(
 # ============================================================
 # EXPLORER
 # ============================================================
-
 def list_entities(
 ) -> KnowledgeExplorer:
     """
@@ -485,18 +484,14 @@ def list_entities(
     Knowledge Explorer.
     """
 
-    entities = []
+    entities = (
 
-    entities.extend(
         _get_companies()
-    )
 
-    entities.extend(
-        _get_topics()
-    )
+        + _get_topics()
 
-    entities.extend(
-        _get_solutions()
+        + _get_solutions()
+
     )
 
     entities.sort(
