@@ -98,12 +98,10 @@ def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
+    offset: int = 0,
+    limit: int | None = None,
+    last_content_date=None,
 ) -> list[KnowledgeObservation]:
-    return _load_contents(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        block_type=block_type,
-    )
 
 
 def load_new_contents(
