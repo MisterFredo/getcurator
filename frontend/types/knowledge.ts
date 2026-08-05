@@ -90,13 +90,15 @@ export type KnowledgeEntitySummary = {
 
   contents_count: number;
 
+  processed_contents: number;
+
   users_count: number;
 
   experts_count: number;
 
-  has_knowledge: boolean;
+  last_content_date: string | null;
 
-  last_build: string | null;
+  updated_at: string | null;
 
 };
 
