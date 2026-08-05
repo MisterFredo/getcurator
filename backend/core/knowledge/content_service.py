@@ -1,5 +1,5 @@
 # backend/core/knowledge/content_service.py
-
+from datetime import datetime
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -17,7 +17,7 @@ from .models import (
 
 
 # ============================================================
-# TABLE
+# TABLES
 # ============================================================
 
 TABLE_CONTENT = (
@@ -29,7 +29,6 @@ TABLE_CONTENT = (
 # ============================================================
 
 KNOWLEDGE_BATCH_SIZE = 50
-KNOWLEDGE_BUILD_OFFSET = 50
 KNOWLEDGE_BUILD_LIMIT = 50
 
 
@@ -97,37 +96,11 @@ def load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    offset: int = 0,
-    limit: int | None = None,
+    last_content_date: datetime | None = None,
+    limit: int = KNOWLEDGE_BUILD_LIMIT,
 ) -> list[KnowledgeObservation]:
     """
-    Load contents used during a BUILD.
-    """
-
-    return _load_contents(
-
-        entity_type=entity_type,
-
-        entity_id=entity_id,
-
-        block_type=block_type,
-
-        offset=offset,
-
-        limit=limit,
-
-    )
-
-
-def load_new_contents(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
-    block_type: KnowledgeBlockType,
-    last_content_date,
-) -> list[KnowledgeObservation]:
-    """
-    Load only new contents since
-    the last update.
+    Load contents for a Knowledge Build.
     """
 
     return _load_contents(
@@ -140,6 +113,8 @@ def load_new_contents(
 
         last_content_date=last_content_date,
 
+        limit=limit,
+
     )
 
 # ============================================================
@@ -150,9 +125,8 @@ def _load_contents(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    offset: int = 0,
+    last_content_date: datetime | None = None,
     limit: int | None = None,
-    last_content_date=None,
 ) -> list[KnowledgeObservation]:
 
     config = ENTITY_CONFIG[
@@ -235,12 +209,8 @@ def _load_contents(
     ) or []
 
     # ========================================================
-    # OFFSET / LIMIT
+    # LIMIT
     # ========================================================
-    
-    if offset:
-    
-        rows = rows[offset:]
     
     if limit is not None:
     
@@ -274,10 +244,11 @@ def load_batches(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    offset: int = 0,
-    limit: int | None = None,
+    last_content_date: datetime | None = None,
+    limit: int = KNOWLEDGE_BUILD_LIMIT,
     batch_size: int = KNOWLEDGE_BATCH_SIZE,
 ) -> list[list[KnowledgeObservation]]:
+    
     """
     Load contents and split them into
     chronological batches.
@@ -286,15 +257,15 @@ def load_batches(
     contents = load_contents(
 
         entity_type=entity_type,
-
+    
         entity_id=entity_id,
-
+    
         block_type=block_type,
-
-        offset=offset,
-
+    
+        last_content_date=last_content_date,
+    
         limit=limit,
-
+    
     )
 
     if not contents:
