@@ -13,9 +13,6 @@ const GCS_BASE_URL =
 type FeedItem = {
 
   id: string;
-
-  type: "news" | "analysis";
-
   id_primary_company?:
     string | null;
 
@@ -38,8 +35,6 @@ type FeedItem = {
   solutions?: any[];
 
   universes?: any[];
-
-  news_type?: string | null;
 };
 
 type Props = {
@@ -69,14 +64,6 @@ function getBadgeClass(
 ) {
 
   switch (type) {
-
-    case "news_type":
-
-      return `
-        bg-black
-        text-white
-      `;
-
     case "company":
 
       return `
@@ -142,19 +129,6 @@ function buildBadges(
       : [];
 
   return [
-
-    ...(item.news_type
-
-      ? [{
-          label:
-            item.news_type,
-
-          type:
-            "news_type" as const,
-        }]
-
-      : []),
-
     ...universes.map(
       (u: any) => ({
 
@@ -237,9 +211,6 @@ export default function FeedItemCard({
         )
 
       : null;
-
-  const isNews =
-    item.type === "news";
 
   /* =========================================================
      TRANSLATION
@@ -428,51 +399,7 @@ export default function FeedItemCard({
           flex-1
           min-w-0
         ">
-
-          {/* =================================================
-              TYPE
-          ================================================= */}
-
-          <div className="
-            mb-2
-          ">
-
-            <span
-              className={`
-                inline-flex
-                items-center
-                text-[10px]
-                uppercase
-                tracking-wide
-                px-2
-                py-[3px]
-                rounded-full
-                font-medium
-
-                ${
-                  isNews
-
-                    ? `
-                      bg-blue-50
-                      text-blue-700
-                    `
-
-                    : `
-                      bg-gray-100
-                      text-gray-700
-                    `
-                }
-              `}
-            >
-
-              {isNews
-                ? "News"
-                : "Analysis"}
-
-            </span>
-
-          </div>
-
+          
           {/* =================================================
               TITLE
           ================================================= */}
