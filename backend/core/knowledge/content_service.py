@@ -273,6 +273,8 @@ def load_batches(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
+    offset: int = 0,
+    limit: int | None = None,
     batch_size: int = KNOWLEDGE_BATCH_SIZE,
 ) -> list[list[KnowledgeObservation]]:
     """
@@ -281,9 +283,17 @@ def load_batches(
     """
 
     contents = load_contents(
+
         entity_type=entity_type,
+
         entity_id=entity_id,
+
         block_type=block_type,
+
+        offset=offset,
+
+        limit=limit,
+
     )
 
     if not contents:
