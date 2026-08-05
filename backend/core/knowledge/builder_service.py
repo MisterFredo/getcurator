@@ -14,6 +14,7 @@ from .entity_service import (
 
 from .models import (
     KnowledgeEntityType,
+    KnowledgeObservation,
 )
 
 
@@ -22,17 +23,18 @@ from .models import (
 # ============================================================
 
 def build_entity(
-    entity_type,
-    entity_id,
-    offset=0,
-    limit=50,
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+    last_content_date=None,
 ):
     """
-    Bootstrap the Knowledge of one entity.
+    Build the next Knowledge batch
+    for one entity.
 
-    Each Knowledge Block is built
-    independently from its own
-    observations.
+    Returns
+    -------
+    The last processed observation,
+    or None if no new content exists.
     """
 
     # ========================================================
@@ -48,7 +50,9 @@ def build_entity(
     )
 
     if entity is None:
-        return
+        return None
+
+    last_observation: KnowledgeObservation | None = None
 
     # ========================================================
     # BUILD BLOCKS
@@ -73,8 +77,8 @@ def build_entity(
             entity_id=entity_id,
 
             block_type=block_type,
-            offset=offset,
-            limit=limit,
+
+            last_content_date=last_content_date,
 
         )
 
@@ -94,3 +98,15 @@ def build_entity(
             batches=batches,
 
         )
+
+        # ====================================================
+        # KEEP LAST OBSERVATION
+        # ====================================================
+
+        last_batch = batches[-1]
+
+        if last_batch:
+
+            last_observation = last_batch[-1]
+
+    return last_observation
