@@ -77,14 +77,15 @@ class KnowledgeEntitySummary(BaseModel):
 
     contents_count: int
 
+    processed_contents: int
+
     users_count: int
 
     experts_count: int
 
-    has_knowledge: bool
+    last_content_date: datetime | None
 
-    last_build: datetime | None
-
+    updated_at: datetime | None
 # ============================================================
 # KNOWLEDGE EXPLORER
 # ============================================================
