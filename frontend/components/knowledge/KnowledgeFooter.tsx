@@ -44,16 +44,34 @@ export default function KnowledgeFooter({
 }: Props) {
 
   const [
+
     building,
+
     setBuilding,
-  ] =
-    useState(false);
+
+  ] = useState(false);
 
   const [
+
     updating,
+
     setUpdating,
-  ] =
-    useState(false);
+
+  ] = useState(false);
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  const isBuilt =
+
+    entity.contents_count > 0 &&
+
+    entity.processed_contents >= entity.contents_count;
+
+  const hasStarted =
+
+    entity.processed_contents > 0;
 
   /* =======================================================
      BUILD
@@ -61,19 +79,15 @@ export default function KnowledgeFooter({
 
   async function handleBuild() {
 
-    setBuilding(
-      true,
-    );
+    setBuilding(true);
 
     try {
 
       await buildKnowledge({
 
-        entity_type:
-          entity.entity_type,
+        entity_type: entity.entity_type,
 
-        entity_id:
-          entity.entity_id,
+        entity_id: entity.entity_id,
 
       });
 
@@ -81,9 +95,7 @@ export default function KnowledgeFooter({
 
     } finally {
 
-      setBuilding(
-        false,
-      );
+      setBuilding(false);
 
     }
 
@@ -95,19 +107,15 @@ export default function KnowledgeFooter({
 
   async function handleUpdate() {
 
-    setUpdating(
-      true,
-    );
+    setUpdating(true);
 
     try {
 
       await updateKnowledge({
 
-        entity_type:
-          entity.entity_type,
+        entity_type: entity.entity_type,
 
-        entity_id:
-          entity.entity_id,
+        entity_id: entity.entity_id,
 
       });
 
@@ -115,9 +123,7 @@ export default function KnowledgeFooter({
 
     } finally {
 
-      setUpdating(
-        false,
-      );
+      setUpdating(false);
 
     }
 
@@ -145,51 +151,65 @@ export default function KnowledgeFooter({
 
     <div className="flex items-center justify-between border-t bg-white px-6 py-4">
 
-      <div className="flex gap-3">
+      <div>
 
-        <button
+        {
 
-          onClick={handleBuild}
+          isBuilt ? (
 
-          disabled={building}
+            <button
 
-          className="rounded bg-ratecard-green px-4 py-2 text-white disabled:opacity-50"
+              onClick={handleUpdate}
 
-        >
+              disabled={updating}
 
-          {
+              className="rounded bg-ratecard-blue px-5 py-2 text-white disabled:opacity-50"
 
-            building
+            >
 
-              ? "Building..."
+              {
 
-              : "Build"
+                updating
 
-          }
+                  ? "Updating..."
 
-        </button>
+                  : "Update"
 
-        <button
+              }
 
-          onClick={handleUpdate}
+            </button>
 
-          disabled={updating}
+          ) : (
 
-          className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50"
+            <button
 
-        >
+              onClick={handleBuild}
 
-          {
+              disabled={building}
 
-            updating
+              className="rounded bg-ratecard-green px-5 py-2 text-white disabled:opacity-50"
 
-              ? "Updating..."
+            >
 
-              : "Update"
+              {
 
-          }
+                building
 
-        </button>
+                  ? "Building..."
+
+                  : hasStarted
+
+                    ? "Continue Build"
+
+                    : "Build"
+
+              }
+
+            </button>
+
+          )
+
+        }
 
       </div>
 
