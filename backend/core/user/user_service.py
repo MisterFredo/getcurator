@@ -656,3 +656,18 @@ def assign_universes(user_id: str, universes: list[str]):
                 "universe": u,
             },
         )
+
+# ============================================================
+# 🔥 USER FILTER FACTO (UNIVERSES)
+# ============================================================
+
+def build_user_filter(alias: str = "c") -> str:
+    return f"""
+    AND EXISTS (
+        SELECT 1
+        FROM UNNEST({alias}.universes) u
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE` uu
+          ON uu.ID_UNIVERSE = u.id_universe
+        WHERE uu.ID_USER = @user_id
+    )
+    """
