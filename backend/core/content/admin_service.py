@@ -60,6 +60,168 @@ TABLE_SOURCE = (
 )
 
 # ============================================================
+# DATETIME
+# ============================================================
+
+def _map_datetime(
+    value,
+):
+
+    return (
+        value.isoformat()
+        if value
+        else None
+    )
+
+# ============================================================
+# LOAD RELATIONS
+# ============================================================
+
+def _load_content_relations(
+    id_content: str,
+) -> Dict:
+
+    # ========================================================
+    # TOPICS
+    # ========================================================
+
+    topic_rows = query_bq(
+        f"""
+        SELECT
+            T.ID_TOPIC,
+            T.LABEL,
+            T.TOPIC_AXIS
+        FROM `{TABLE_CONTENT_TOPIC}` CT
+        JOIN `{TABLE_TOPIC}` T
+          ON CT.ID_TOPIC = T.ID_TOPIC
+        WHERE CT.ID_CONTENT = @id
+        """,
+        {
+            "id": id_content,
+        },
+    )
+
+    topics = [
+
+        {
+            "id_topic": r["ID_TOPIC"],
+            "label": r["LABEL"],
+            "topic_axis": r.get(
+                "TOPIC_AXIS"
+            ),
+        }
+
+        for r in topic_rows
+
+    ]
+
+    # ========================================================
+    # COMPANIES
+    # ========================================================
+
+    company_rows = query_bq(
+        f"""
+        SELECT
+            C.ID_COMPANY,
+            C.NAME
+        FROM `{TABLE_CONTENT_COMPANY}` CC
+        JOIN `{TABLE_COMPANY}` C
+          ON CC.ID_COMPANY = C.ID_COMPANY
+        WHERE CC.ID_CONTENT = @id
+        """,
+        {
+            "id": id_content,
+        },
+    )
+
+    companies = [
+
+        {
+            "id_company": r["ID_COMPANY"],
+            "name": r["NAME"],
+        }
+
+        for r in company_rows
+
+    ]
+
+    # ========================================================
+    # SOLUTIONS
+    # ========================================================
+
+    solution_rows = query_bq(
+        f"""
+        SELECT
+            S.ID_SOLUTION,
+            S.NAME
+        FROM `{TABLE_CONTENT_SOLUTION}` CS
+        JOIN `{TABLE_SOLUTION}` S
+          ON CS.ID_SOLUTION = S.ID_SOLUTION
+        WHERE CS.ID_CONTENT = @id
+        """,
+        {
+            "id": id_content,
+        },
+    )
+
+    solutions = [
+
+        {
+            "id_solution": r["ID_SOLUTION"],
+            "name": r["NAME"],
+        }
+
+        for r in solution_rows
+
+    ]
+
+    # ========================================================
+    # CONCEPTS
+    # ========================================================
+
+    concept_rows = query_bq(
+        f"""
+        SELECT
+            C.ID_CONCEPT,
+            C.LABEL
+        FROM `{TABLE_CONTENT_CONCEPT}` CC
+        JOIN `{TABLE_CONCEPT}` C
+          ON CC.ID_CONCEPT = C.ID_CONCEPT
+        WHERE CC.ID_CONTENT = @id
+        """,
+        {
+            "id": id_content,
+        },
+    )
+
+    concepts = [
+
+        {
+            "id_concept": r["ID_CONCEPT"],
+            "label": r["LABEL"],
+        }
+
+        for r in concept_rows
+
+    ]
+
+    return {
+
+        "topics": topics,
+
+        "companies": companies,
+
+        "solutions": solutions,
+
+        "concepts": concepts,
+
+    }
+
+# ============================================================
+# LIST CONTENTS ADMIN
+# ============================================================
+
+# ============================================================
 # LIST CONTENTS ADMIN
 # ============================================================
 
@@ -68,46 +230,46 @@ def list_contents_admin():
     rows = query_bq(
         f"""
         SELECT
-          c.ID_CONTENT,
+            c.ID_CONTENT,
 
-          -- 🔥 NEW
-          c.ID_PRIMARY_COMPANY,
+            c.ID_PRIMARY_COMPANY,
 
-          pc.NAME AS PRIMARY_COMPANY_NAME,
+            pc.NAME AS PRIMARY_COMPANY_NAME,
 
-          c.TITLE,
-          c.TITLE_EN,
+            c.TITLE,
+            c.TITLE_EN,
 
-          c.EXCERPT,
-          c.EXCERPT_EN,
+            c.EXCERPT,
+            c.EXCERPT_EN,
 
-          c.STATUS,
+            c.STATUS,
 
-          c.SOURCE_DATE,
-          c.SOURCE_URL,
-          c.SOURCE_TITLE,
+            c.SOURCE_DATE,
+            c.SOURCE_URL,
+            c.SOURCE_TITLE,
 
-          c.PUBLISHED_AT,
-          c.UPDATED_AT
+            c.PUBLISHED_AT,
+            c.UPDATED_AT
 
         FROM `{TABLE_CONTENT}` c
 
-        -- 🔥 NEW
         LEFT JOIN `{TABLE_COMPANY}` pc
           ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
 
-        WHERE c.IS_ACTIVE = TRUE
+        WHERE
+            c.IS_ACTIVE = TRUE
 
-        ORDER BY c.UPDATED_AT DESC
+        ORDER BY
+            c.UPDATED_AT DESC
         """
     )
 
     return [
 
         {
+
             "id_content": r["ID_CONTENT"],
 
-            # 🔥 NEW
             "id_primary_company": r.get(
                 "ID_PRIMARY_COMPANY"
             ),
@@ -127,81 +289,94 @@ def list_contents_admin():
             "title": r["TITLE"],
             "title_en": r["TITLE_EN"],
 
-            "excerpt": r["EXCERPT"],
-            "excerpt_en": r["EXCERPT_EN"],
-
-            "status": r["STATUS"],
-
-            "source_date": (
-
-                r["SOURCE_DATE"].isoformat()
-
-                if r.get("SOURCE_DATE")
-
-                else None
+            "excerpt": r.get(
+                "EXCERPT"
             ),
 
-            "published_at": (
-
-                r["PUBLISHED_AT"].isoformat()
-
-                if r.get("PUBLISHED_AT")
-
-                else None
+            "excerpt_en": r.get(
+                "EXCERPT_EN"
             ),
 
-            "updated_at": (
-
-                r["UPDATED_AT"].isoformat()
-
-                if r.get("UPDATED_AT")
-
-                else None
+            "status": r.get(
+                "STATUS"
             ),
+
+            "source_date": _map_datetime(
+                r.get("SOURCE_DATE")
+            ),
+
+            "published_at": _map_datetime(
+                r.get("PUBLISHED_AT")
+            ),
+
+            "updated_at": _map_datetime(
+                r.get("UPDATED_AT")
+            ),
+
         }
 
         for r in rows
+
     ]
 
 # ============================================================
 # GET CONTENT
 # ============================================================
 
-def get_content_admin(id_content: str):
+# ============================================================
+# GET CONTENT ADMIN
+# ============================================================
+
+def get_content_admin(
+    id_content: str,
+):
 
     rows = query_bq(
         f"""
         SELECT
-          ID_CONTENT,
+            ID_CONTENT,
 
-          -- 🔥 NEW
-          ID_PRIMARY_COMPANY,
+            ID_PRIMARY_COMPANY,
 
-          STATUS,
-          SOURCE_ID,
-          ID_RAW,
-          SOURCE_URL,
-          SOURCE_TITLE,
-          TITLE,
-          TITLE_EN,
-          EXCERPT,
-          EXCERPT_EN,
-          CONTENT_BODY,
-          CHIFFRES,
-          ACTEURS_CITES,
-          CONCEPTS_LLM,
-          SOLUTIONS_LLM,
-          TOPICS_LLM,
-          MECANIQUE_EXPLIQUEE,
-          ENJEU_STRATEGIQUE,
-          POINT_DE_FRICTION,
-          SIGNAL_ANALYTIQUE,
-          PUBLISHED_AT
+            STATUS,
+            SOURCE_ID,
+            ID_RAW,
+
+            SOURCE_URL,
+            SOURCE_TITLE,
+
+            TITLE,
+            TITLE_EN,
+
+            EXCERPT,
+            EXCERPT_EN,
+
+            CONTENT_BODY,
+
+            CHIFFRES,
+            ACTEURS_CITES,
+
+            CONCEPTS_LLM,
+            SOLUTIONS_LLM,
+            TOPICS_LLM,
+
+            MECANIQUE_EXPLIQUEE,
+            ENJEU_STRATEGIQUE,
+            POINT_DE_FRICTION,
+            SIGNAL_ANALYTIQUE,
+
+            PUBLISHED_AT
+
         FROM `{TABLE_CONTENT}`
-        WHERE ID_CONTENT = @id
+
+        WHERE
+            ID_CONTENT = @id
+
         LIMIT 1
         """,
-        {"id": id_content},
+        {
+            "id": id_content,
+        },
     )
 
     if not rows:
@@ -209,139 +384,149 @@ def get_content_admin(id_content: str):
 
     row = rows[0]
 
-    def map_dt(value):
-        return value.isoformat() if value else None
-
     content = {
+
+        # ====================================================
+        # IDENTIFICATION
+        # ====================================================
+
         "id_content": row["ID_CONTENT"],
 
-        # 🔥 NEW
-        "id_primary_company": row.get("ID_PRIMARY_COMPANY"),
+        "id_primary_company": row.get(
+            "ID_PRIMARY_COMPANY"
+        ),
 
-        "status": row.get("STATUS"),
-        "source_id": row.get("SOURCE_ID"),
-        "id_raw": row.get("ID_RAW"),
-        "source_url": row.get("SOURCE_URL"),
-        "source_title": row.get("SOURCE_TITLE"),
+        "status": row.get(
+            "STATUS"
+        ),
 
-        "title": row.get("TITLE"),
-        "title_en": row.get("TITLE_EN"),
-        "excerpt": row.get("EXCERPT"),
-        "excerpt_en": row.get("EXCERPT_EN"),
-        "content_body": row.get("CONTENT_BODY"),
+        "source_id": row.get(
+            "SOURCE_ID"
+        ),
 
-        "chiffres": row.get("CHIFFRES") or [],
-        "acteurs_cites": row.get("ACTEURS_CITES") or [],
+        "id_raw": row.get(
+            "ID_RAW"
+        ),
 
-        "concepts_llm": row.get("CONCEPTS_LLM") or [],
-        "solutions_llm": row.get("SOLUTIONS_LLM") or [],
-        "topics_llm": row.get("TOPICS_LLM") or [],
+        # ====================================================
+        # SOURCE
+        # ====================================================
 
-        "mecanique_expliquee": row.get("MECANIQUE_EXPLIQUEE"),
-        "enjeu_strategique": row.get("ENJEU_STRATEGIQUE"),
-        "point_de_friction": row.get("POINT_DE_FRICTION"),
-        "signal_analytique": row.get("SIGNAL_ANALYTIQUE"),
+        "source_url": row.get(
+            "SOURCE_URL"
+        ),
 
-        "published_at": map_dt(row.get("PUBLISHED_AT")),
+        "source_title": row.get(
+            "SOURCE_TITLE"
+        ),
+
+        # ====================================================
+        # CONTENT
+        # ====================================================
+
+        "title": row.get(
+            "TITLE"
+        ),
+
+        "title_en": row.get(
+            "TITLE_EN"
+        ),
+
+        "excerpt": row.get(
+            "EXCERPT"
+        ),
+
+        "excerpt_en": row.get(
+            "EXCERPT_EN"
+        ),
+
+        "content_body": row.get(
+            "CONTENT_BODY"
+        ),
+
+        # ====================================================
+        # ANALYSIS
+        # ====================================================
+
+        "signal_analytique": row.get(
+            "SIGNAL_ANALYTIQUE"
+        ),
+
+        "mecanique_expliquee": row.get(
+            "MECANIQUE_EXPLIQUEE"
+        ),
+
+        "enjeu_strategique": row.get(
+            "ENJEU_STRATEGIQUE"
+        ),
+
+        "point_de_friction": row.get(
+            "POINT_DE_FRICTION"
+        ),
+
+        # ====================================================
+        # RAW EXTRACTIONS
+        # ====================================================
+
+        "chiffres": row.get(
+            "CHIFFRES"
+        ) or [],
+
+        "acteurs_cites": row.get(
+            "ACTEURS_CITES"
+        ) or [],
+
+        "topics_llm": row.get(
+            "TOPICS_LLM"
+        ) or [],
+
+        "solutions_llm": row.get(
+            "SOLUTIONS_LLM"
+        ) or [],
+
+        "concepts_llm": row.get(
+            "CONCEPTS_LLM"
+        ) or [],
+
+        # ====================================================
+        # DATES
+        # ====================================================
+
+        "published_at": _map_datetime(
+            row.get(
+                "PUBLISHED_AT"
+            )
+        ),
+
     }
 
-    # ============================================================
-    # RELATIONS — MAPPING SNAKE_CASE
-    # ============================================================
+    # ========================================================
+    # RELATIONS
+    # ========================================================
 
-    topic_rows = query_bq(
-        f"""
-        SELECT T.ID_TOPIC, T.LABEL, T.TOPIC_AXIS
-        FROM `{TABLE_CONTENT_TOPIC}` CT
-        JOIN `{TABLE_TOPIC}` T
-          ON CT.ID_TOPIC = T.ID_TOPIC
-        WHERE CT.ID_CONTENT = @id
-        """,
-        {"id": id_content},
+    content.update(
+        _load_content_relations(
+            id_content,
+        )
     )
 
-    content["topics"] = [
-        {
-            "id_topic": r["ID_TOPIC"],
-            "label": r["LABEL"],
-            "topic_axis": r.get("TOPIC_AXIS"),
-        }
-        for r in topic_rows
-    ]
-
-    company_rows = query_bq(
-        f"""
-        SELECT C.ID_COMPANY, C.NAME
-        FROM `{TABLE_CONTENT_COMPANY}` CC
-        JOIN `{TABLE_COMPANY}` C
-          ON CC.ID_COMPANY = C.ID_COMPANY
-        WHERE CC.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    content["companies"] = [
-        {
-            "id_company": r["ID_COMPANY"],
-            "name": r["NAME"],
-        }
-        for r in company_rows
-    ]
-
-    # ============================================================
+    # ========================================================
     # PRIMARY COMPANY
-    # ============================================================
+    # ========================================================
 
-    primary_company = next(
+    content["primary_company"] = next(
         (
-            c for c in content["companies"]
-            if c["id_company"] == content["id_primary_company"]
+            company
+            for company in content["companies"]
+            if (
+                company["id_company"]
+                == content["id_primary_company"]
+            )
         ),
-        None
+        None,
     )
-
-    content["primary_company"] = primary_company
-
-    concept_rows = query_bq(
-        f"""
-        SELECT C.ID_CONCEPT, C.LABEL
-        FROM `{TABLE_CONTENT_CONCEPT}` CC
-        JOIN `{TABLE_CONCEPT}` C
-          ON CC.ID_CONCEPT = C.ID_CONCEPT
-        WHERE CC.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    content["concepts"] = [
-        {
-            "id_concept": r["ID_CONCEPT"],
-            "label": r["LABEL"],
-        }
-        for r in concept_rows
-    ]
-
-    solution_rows = query_bq(
-        f"""
-        SELECT S.ID_SOLUTION, S.NAME
-        FROM `{TABLE_CONTENT_SOLUTION}` CS
-        JOIN `{TABLE_SOLUTION}` S
-          ON CS.ID_SOLUTION = S.ID_SOLUTION
-        WHERE CS.ID_CONTENT = @id
-        """,
-        {"id": id_content},
-    )
-
-    content["solutions"] = [
-        {
-            "id_solution": r["ID_SOLUTION"],
-            "name": r["NAME"],
-        }
-        for r in solution_rows
-    ]
 
     return content
-
 
 
 # ============================================================
