@@ -19,16 +19,44 @@ TABLE_CONTENT = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
 )
 
-TABLE_COMPANY = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+TABLE_CONTENT_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
 )
 
-TABLE_SOURCE = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
+TABLE_CONTENT_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
+)
+
+TABLE_CONTENT_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
+)
+
+TABLE_CONTENT_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
 )
 
 TABLE_CONTENT_RAW = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
+)
+
+TABLE_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+)
+
+TABLE_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
+)
+
+TABLE_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
+)
+
+TABLE_SOURCE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
 )
 
 # ============================================================
@@ -139,7 +167,7 @@ def list_contents_admin():
 # GET CONTENT MOVE FROM SERVICE
 # ============================================================
 
-def get_content(id_content: str):
+def get_content_admin(id_content: str):
 
     rows = query_bq(
         f"""
@@ -402,87 +430,3 @@ def get_content_stats():
             0
         ),
     }
-
-
-def get_source_monitoring():
-
-    from utils.bigquery_utils import query_bq
-
-    query = """
-    WITH ranked AS (
-
-      SELECT
-        r.SOURCE_ID,
-
-        r.DATE_SOURCE,
-        r.SOURCE_URL,
-        r.SOURCE_TITLE,
-
-        ROW_NUMBER() OVER (
-          PARTITION BY r.SOURCE_ID
-          ORDER BY r.DATE_SOURCE DESC
-        ) AS rn
-
-      FROM `adex-5555.RATECARD_PROD.RATECARD_CONTENT_RAW` r
-    ),
-
-    last_article AS (
-
-      SELECT
-        SOURCE_ID,
-        DATE_SOURCE AS LAST_ARTICLE_DATE,
-        SOURCE_URL AS LAST_ARTICLE_URL,
-        SOURCE_TITLE AS LAST_ARTICLE_TITLE
-
-      FROM ranked
-
-      WHERE rn = 1
-    ),
-
-    agg AS (
-
-      SELECT
-        SOURCE_ID,
-
-        MAX(CREATED_AT) AS LAST_IMPORT_AT,
-
-        COUNTIF(
-          CREATED_AT >= TIMESTAMP_SUB(
-            CURRENT_TIMESTAMP(),
-            INTERVAL 7 DAY
-          )
-        ) AS NB_IMPORTED_7D
-
-      FROM `adex-5555.RATECARD_PROD.RATECARD_CONTENT_RAW`
-
-      GROUP BY
-        SOURCE_ID
-    )
-
-    SELECT
-
-      s.SOURCE_ID,
-
-      s.NAME AS SOURCE_NAME,
-
-      la.LAST_ARTICLE_DATE,
-      la.LAST_ARTICLE_URL,
-      la.LAST_ARTICLE_TITLE,
-
-      agg.LAST_IMPORT_AT,
-      agg.NB_IMPORTED_7D
-
-    FROM `adex-5555.RATECARD_PROD.RATECARD_SOURCE` s
-
-    LEFT JOIN last_article la
-      ON s.SOURCE_ID = la.SOURCE_ID
-
-    LEFT JOIN agg
-      ON s.SOURCE_ID = agg.SOURCE_ID
-
-    ORDER BY agg.LAST_IMPORT_AT DESC
-    """
-
-    rows = query_bq(query)
-
-    return rows
