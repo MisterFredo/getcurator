@@ -31,8 +31,6 @@ from core.content.sync_service import (
     sync_all_numbers,
 )
 
-from core.content.search_service import search_contents
-
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
