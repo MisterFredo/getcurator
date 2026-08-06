@@ -1,3 +1,56 @@
+from datetime import datetime, timezone
+from typing import List, Dict, Optional
+
+from config import BQ_PROJECT, BQ_DATASET
+
+from utils.bigquery_utils import (
+    query_bq,
+    insert_bq,
+)
+
+from core.numbers.service import (
+    get_numbers_from_content,
+)
+
+from core.numbers.backlog_llm import (
+    process_backlog_row,
+)
+
+from core.numbers.backlog_insert_service import (
+    insert_backlog_batch,
+)
+
+from core.matching.resolver import (
+    normalize,
+    resolve_company_alias,
+    resolve_solution_alias,
+)
+
+# ============================================================
+# TABLES
+# ============================================================
+
+TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
+TABLE_CONTENT_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
+)
+
+TABLE_CONTENT_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
+)
+
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
+)
+
+TABLE_SOLUTION_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION_ALIAS"
+)
 
 
 # ============================================================
