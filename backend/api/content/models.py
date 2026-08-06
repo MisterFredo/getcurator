@@ -242,3 +242,8 @@ class ContentListResponse(BaseModel):
     page_size: int
 
     total_pages: int
+
+class BulkIdsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ids: List[str]
