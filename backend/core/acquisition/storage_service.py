@@ -1,6 +1,12 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 import uuid
+from datetime import date
+from utils.bigquery_utils import (
+    get_bigquery_client,
+    query_bq,
+    update_bq,
+)
 
 from google.cloud import bigquery
 
@@ -9,16 +15,16 @@ from config import (
     BQ_DATASET,
 )
 
-from utils.bigquery_utils import (
-    get_bigquery_client,
-)
-
 # ============================================================
 # TABLES
 # ============================================================
 
 TABLE_CONTENT_RAW = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 )
 
 # ============================================================
@@ -142,68 +148,24 @@ def store_raw_content(
     source_title: str,
     raw_text: str,
     source_url: Optional[str] = None,
-    
     date_source: Optional[date] = None,
-
-    # 🔥 NEW
     id_primary_company: Optional[str] = None,
-) -> str:
+):
 
-    if not source_id:
-        raise ValueError("source_id obligatoire")
-
-    if not source_title or not source_title.strip():
-        raise ValueError("source_title obligatoire")
-
-    if not raw_text or not raw_text.strip():
-        raise ValueError("raw_text vide")
-
-    raw_id = str(uuid.uuid4())
-
-    now_iso = datetime.utcnow().isoformat()
-
-    row = [{
-
-        "ID_RAW": raw_id,
-
-        # 🔥 NEW
-        "ID_PRIMARY_COMPANY": id_primary_company,
-
-        "SOURCE_ID": source_id,
-
-        "SOURCE_TITLE": source_title.strip(),
-        "SOURCE_URL": source_url,
-
-        "RAW_TEXT": raw_text.strip(),
-
-        "DATE_SOURCE": (
-            date_source.isoformat()
-            if date_source
-            else None
-        ),
-
-        "STATUS": "STORED",
-
-        "CREATED_AT": now_iso,
-
-        "PROCESSED_AT": None,
-
-        "GENERATED_CONTENT_ID": None,
-
-        "ERROR_MESSAGE": None,
-    }]
-
-    client = get_bigquery_client()
-
-    client.load_table_from_json(
-        row,
-        TABLE_CONTENT_RAW,
-        job_config=bigquery.LoadJobConfig(
-            write_disposition="WRITE_APPEND"
-        ),
-    ).result()
-
-    return raw_id
+    return insert_raw_rows(
+        rows=[
+            {
+                "TITLE": source_title,
+                "DATE_SOURCE": date_source,
+                "RAW_TEXT": raw_text,
+                "SOURCE_URL": source_url,
+                "ID_PRIMARY_COMPANY": id_primary_company,
+            }
+        ],
+        id_source=source_id,
+        import_type="API",
+        id_primary_company=id_primary_company,
+    )
 
 def list_raw_stock(
     status: Optional[str] = None,
@@ -329,3 +291,259 @@ def list_raw_stock(
 
         "total": total,
     }
+
+def delete_raw_content(id_raw: str) -> None:
+
+    if not id_raw:
+        raise ValueError("id_raw obligatoire")
+
+    query = f"""
+        DELETE FROM `{TABLE_CONTENT_RAW}`
+        WHERE ID_RAW = @id_raw
+    """
+
+    query_bq(
+        query,
+        {"id_raw": id_raw}
+    )
+
+def retry_raw_content(id_raw: str) -> None:
+
+    if not id_raw:
+        raise ValueError("id_raw obligatoire")
+
+    # Vérifier que le RAW est bien en ERROR
+    check_query = f"""
+        SELECT STATUS
+        FROM `{TABLE_CONTENT_RAW}`
+        WHERE ID_RAW = @id_raw
+    """
+
+    rows = query_bq(check_query, {"id_raw": id_raw})
+
+    if not rows:
+        raise ValueError("RAW introuvable")
+
+    if rows[0]["STATUS"] != "ERROR":
+        raise ValueError("Retry autorisé uniquement pour les ERROR")
+
+    # Reset propre
+    update_bq(
+        TABLE_CONTENT_RAW,
+        {
+            "STATUS": "STORED",
+            "ERROR_MESSAGE": None,
+        },
+        where={"ID_RAW": id_raw}
+    )
+
+def get_raw_detail(id_raw: str):
+
+    if not id_raw:
+        raise ValueError("id_raw obligatoire")
+
+    query = f"""
+        SELECT
+            r.ID_RAW,
+
+            -- 🔥 NEW
+            r.ID_PRIMARY_COMPANY,
+
+            c.NAME AS PRIMARY_COMPANY_NAME,
+
+            r.SOURCE_ID,
+            r.SOURCE_TITLE,
+            r.SOURCE_URL,
+
+            r.DATE_SOURCE,
+
+            r.RAW_TEXT,
+
+            r.STATUS,
+            r.ERROR_MESSAGE,
+
+            r.IMPORT_TYPE,
+
+            r.CREATED_AT
+
+        FROM `{TABLE_CONTENT_RAW}` r
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` c
+            ON r.ID_PRIMARY_COMPANY = c.ID_COMPANY
+
+        WHERE r.ID_RAW = @id_raw
+
+        LIMIT 1
+    """
+
+    rows = query_bq(query, {"id_raw": id_raw})
+
+    if not rows:
+        return None
+
+    r = rows[0]
+
+    return {
+
+        "id_raw": r["ID_RAW"],
+
+        # 🔥 NEW
+        "id_primary_company": r.get(
+            "ID_PRIMARY_COMPANY"
+        ),
+
+        "primary_company_name": r.get(
+            "PRIMARY_COMPANY_NAME"
+        ),
+
+        "source_id": r["SOURCE_ID"],
+
+        "source_title": r["SOURCE_TITLE"],
+        "source_url": r.get("SOURCE_URL"),
+
+        "date_source": r.get("DATE_SOURCE"),
+
+        "raw_text": r.get("RAW_TEXT"),
+
+        "status": r["STATUS"],
+
+        "error_message": r.get("ERROR_MESSAGE"),
+
+        "import_type": r.get("IMPORT_TYPE"),
+
+        "created_at": r["CREATED_AT"],
+    }
+
+
+
+def update_raw_content(
+    id_raw: str,
+    date_source: Optional[str],
+    source_title: Optional[str],
+    source_url: Optional[str] = None,
+    raw_text: Optional[str] = None,
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None,
+):
+
+    client = get_bigquery_client()
+
+    table_id = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
+
+    query = f"""
+        UPDATE `{table_id}`
+        SET
+            DATE_SOURCE = @date_source,
+
+            SOURCE_TITLE = @source_title,
+            SOURCE_URL = @source_url,
+
+            RAW_TEXT = @raw_text,
+
+            -- 🔥 NEW
+            ID_PRIMARY_COMPANY = @id_primary_company
+
+        WHERE ID_RAW = @id_raw
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+
+            bigquery.ScalarQueryParameter(
+                "date_source",
+                "DATE",
+                date_source
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "source_title",
+                "STRING",
+                source_title
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "source_url",
+                "STRING",
+                source_url
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "raw_text",
+                "STRING",
+                raw_text
+            ),
+
+            # 🔥 NEW
+            bigquery.ScalarQueryParameter(
+                "id_primary_company",
+                "STRING",
+                id_primary_company
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "id_raw",
+                "STRING",
+                id_raw
+            ),
+        ]
+    )
+
+    client.query(
+        query,
+        job_config=job_config
+    ).result()
+
+def get_raw_stats() -> dict:
+
+    query = f"""
+        SELECT
+
+            COUNT(*) AS total,
+
+            SUM(
+                CASE WHEN STATUS = 'STORED'
+                THEN 1 ELSE 0 END
+            ) AS total_stored,
+
+            SUM(
+                CASE WHEN STATUS = 'PROCESSING'
+                THEN 1 ELSE 0 END
+            ) AS total_processing,
+
+            SUM(
+                CASE WHEN STATUS = 'ERROR'
+                THEN 1 ELSE 0 END
+            ) AS total_error,
+
+        FROM `{TABLE_CONTENT_RAW}`
+    """
+
+    rows = query_bq(query)
+
+    if not rows:
+        return {
+            "total": 0,
+            "total_stored": 0,
+            "total_processing": 0,
+            "total_error": 0,
+        }
+
+    r = rows[0]
+
+    return {
+
+        "total": r.get("total", 0),
+
+        "total_stored": r.get("total_stored", 0),
+
+        "total_processing": r.get("total_processing", 0),
+
+        "total_error": r.get("total_error", 0),
+
+        # 🔥 NEW
+
+    }
+
+
