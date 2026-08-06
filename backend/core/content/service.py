@@ -1,16 +1,11 @@
-import re
 import uuid
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime, timezone, date
 from typing import Optional, Dict, Any, List
-from urllib.parse import urljoin
 
 from google.cloud import bigquery
 
 from config import BQ_PROJECT, BQ_DATASET
 from api.content.models import ContentCreate, ContentUpdate
-from core.content.ai import generate_summary
 from core.content.news_ai import generate_news
 from utils.bigquery_utils import (
     query_bq,
@@ -22,18 +17,6 @@ from utils.bigquery_utils import (
 from core.numbers.service import get_numbers_from_content
 from core.numbers.backlog_llm import process_backlog_row
 from core.numbers.backlog_insert_service import insert_backlog_batch
-from core.content.publish_sync_service import (
-    after_publish_sync,
-)
-
-# ============================================================
-# TABLE
-# ============================================================
-
-TABLE_CONTENT = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-)
-
 
 # ============================================================
 # TABLES
@@ -60,7 +43,7 @@ TABLE_SOURCE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
 # UTILS
 # ============================================================
 
-def normalize_array(value):
+def _normalize_array(value):
     if value is None:
         return []
 
@@ -282,7 +265,7 @@ def create_content(data: ContentCreate) -> str:
 # RESET RELATIONS
 # ============================================================
 
-def reset_and_insert(table, id_field, id_content, values):
+def _reset_relations(table, id_field, id_content, values):
 
     client = get_bigquery_client()
     now = datetime.now(timezone.utc).isoformat()
