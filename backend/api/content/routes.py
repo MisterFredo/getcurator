@@ -6,13 +6,7 @@ from api.content.models import (
     ContentUpdate,
     ContentPublish,
     ContentSummaryRequest,
-    ContentRawCreate,
-    ContentRawOut,
-    ContentRawUpdate,
-    ContentRawDestockRequest,
     ContentSearchRequest,
-    ImportUrlsRequest,
-    ImportCsvRequest,
     BulkIdsRequest,
 )
 
@@ -25,24 +19,10 @@ from core.content.service import (
     delete_content,
     publish_content,
     get_content_stats,
-    list_active_sources,
-    store_raw_content,
-    list_raw_stock,
-    get_raw_detail,
-    destock_raw_contents,
-    destock_all_raw_contents,
-    delete_raw_content,
-    retry_raw_content,
-    get_source_monitoring,
-    get_raw_stats,
     mark_content_ready,
     bulk_publish,
     bulk_ready,
 )
-
-# ============================================================
-# 🔥 NEW — SYNC SERVICES
-# ============================================================
 
 from core.content.sync_service import (
     sync_content,
@@ -51,11 +31,6 @@ from core.content.sync_service import (
     sync_all_numbers,
 )
 
-from core.content.ai import generate_summary
-from core.content.news_ai import generate_news
-from core.content.raw_import_service import import_raw_content
-from core.content.raw_import_service import import_urls_batch
-from core.content.raw_import_service import import_urls_csv
 from core.content.search_service import search_contents
 
 from config import (
