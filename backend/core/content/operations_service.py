@@ -66,7 +66,7 @@ def rebuild_content_company():
 
 
 # ============================================================
-# PUBLISH CONTENT MOVE FROM SERVICE
+# PUBLISH CONTENT
 # ============================================================
 
 def publish_content(
@@ -79,7 +79,7 @@ def publish_content(
     )
 
     # ========================================================
-    # 1️⃣ CHECK
+    # CHECK CONTENT
     # ========================================================
 
     rows = query_bq(
@@ -92,11 +92,10 @@ def publish_content(
         """,
         {
             "id_content": id_content,
-        }
+        },
     )
 
     if not rows:
-
         raise ValueError(
             "Content introuvable"
         )
@@ -106,13 +105,12 @@ def publish_content(
     source_date = rows[0]["SOURCE_DATE"]
 
     if current_status != "READY":
-
         raise ValueError(
             "Content must be READY before publish"
         )
 
     # ========================================================
-    # 2️⃣ DATE
+    # PUBLISHED DATE
     # ========================================================
 
     if published_at is None:
@@ -122,42 +120,34 @@ def publish_content(
             or now_dt
         )
 
-    # ========================================================
-    # DATE → DATETIME
-    # ========================================================
-
     if (
         isinstance(published_at, date)
         and not isinstance(
             published_at,
-            datetime
+            datetime,
         )
     ):
 
         published_at = datetime.combine(
             published_at,
             datetime.min.time(),
-            tzinfo=timezone.utc
+            tzinfo=timezone.utc,
         )
-
-    # ========================================================
-    # NAIVE DATETIME → UTC
-    # ========================================================
 
     elif (
         isinstance(
             published_at,
-            datetime
+            datetime,
         )
         and published_at.tzinfo is None
     ):
 
         published_at = published_at.replace(
-            tzinfo=timezone.utc
+            tzinfo=timezone.utc,
         )
 
     # ========================================================
-    # 3️⃣ STATUS
+    # STATUS
     # ========================================================
 
     status = (
@@ -167,7 +157,7 @@ def publish_content(
     )
 
     # ========================================================
-    # 4️⃣ UPDATE CONTENT
+    # UPDATE CONTENT
     # ========================================================
 
     update_bq(
@@ -182,15 +172,23 @@ def publish_content(
         },
     )
 
+    # ========================================================
+    # SYNC
+    # ========================================================
+
+    after_publish_sync(
+        id_content=id_content,
+    )
+
     print(
         "🚀 CONTENT PUBLISHED:",
         {
             "id_content": id_content,
             "status": status,
             "published_at": str(
-                published_at
+                published_at,
             ),
-        }
+        },
     )
 
     return status
