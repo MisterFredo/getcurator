@@ -34,8 +34,6 @@ def clean_raw_file(text: str) -> str:
     RAW_TEXT :
     """
 
-    import re
-
     text = text.replace("\r\n", "\n")
 
     blocs = re.split(r"\n?\s*TITLE\s*:", text)
@@ -220,7 +218,7 @@ def parse_raw_blocks(text: str) -> List[Dict]:
                 # fallback si format non FR
                 if not date_source:
                     try:
-                        date_source = parse(date_str, dayfirst=True, fuzzy=True).date()
+                        date_source = parse_date(date_str)
                     except Exception:
                         pass
 
