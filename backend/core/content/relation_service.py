@@ -10,8 +10,6 @@ from utils.bigquery_utils import (
 from core.matching.resolver import (
     resolve_company_alias,
     resolve_solution_alias,
-    resolve_topic_alias,
-    resolve_concept_alias,
 )
 
 # ============================================================
@@ -36,6 +34,14 @@ TABLE_CONTENT_TOPIC = (
 
 TABLE_CONTENT_CONCEPT = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
+)
+
+TABLE_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
+)
+
+TABLE_CONCEPT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
 )
 
 # ============================================================
@@ -80,6 +86,58 @@ def _insert_relation(
     )
 
 
+def _lookup_topic_id(
+    label: str,
+):
+
+    rows = query_bq(
+        f"""
+        SELECT ID_TOPIC
+
+        FROM `{TABLE_TOPIC}`
+
+        WHERE LABEL = @label
+
+        LIMIT 1
+        """,
+        {
+            "label": label,
+        },
+    )
+
+    return (
+        rows[0]["ID_TOPIC"]
+        if rows
+        else None
+    )
+
+
+def _lookup_concept_id(
+    label: str,
+):
+
+    rows = query_bq(
+        f"""
+        SELECT ID_CONCEPT
+
+        FROM `{TABLE_CONCEPT}`
+
+        WHERE LABEL = @label
+
+        LIMIT 1
+        """,
+        {
+            "label": label,
+        },
+    )
+
+    return (
+        rows[0]["ID_CONCEPT"]
+        if rows
+        else None
+    )
+
+
 # ============================================================
 # COMPANIES
 # ============================================================
@@ -91,18 +149,19 @@ def resolve_companies(
 
     for actor in acteurs:
 
-        id_company = resolve_company_alias(
+        company = resolve_company_alias(
             actor,
         )
 
-        if id_company:
+        if not company:
+            continue
 
-            _insert_relation(
-                TABLE_CONTENT_COMPANY,
-                "ID_COMPANY",
-                id_content,
-                id_company,
-            )
+        _insert_relation(
+            TABLE_CONTENT_COMPANY,
+            "ID_COMPANY",
+            id_content,
+            company["id_company"],
+        )
 
 
 # ============================================================
@@ -116,18 +175,19 @@ def resolve_solutions(
 
     for solution in solutions:
 
-        id_solution = resolve_solution_alias(
+        resolved = resolve_solution_alias(
             solution,
         )
 
-        if id_solution:
+        if not resolved:
+            continue
 
-            _insert_relation(
-                TABLE_CONTENT_SOLUTION,
-                "ID_SOLUTION",
-                id_content,
-                id_solution,
-            )
+        _insert_relation(
+            TABLE_CONTENT_SOLUTION,
+            "ID_SOLUTION",
+            id_content,
+            resolved["id_solution"],
+        )
 
 
 # ============================================================
@@ -141,18 +201,19 @@ def resolve_topics(
 
     for topic in topics:
 
-        id_topic = resolve_topic_alias(
+        id_topic = _lookup_topic_id(
             topic,
         )
 
-        if id_topic:
+        if not id_topic:
+            continue
 
-            _insert_relation(
-                TABLE_CONTENT_TOPIC,
-                "ID_TOPIC",
-                id_content,
-                id_topic,
-            )
+        _insert_relation(
+            TABLE_CONTENT_TOPIC,
+            "ID_TOPIC",
+            id_content,
+            id_topic,
+        )
 
 
 # ============================================================
@@ -166,18 +227,19 @@ def resolve_concepts(
 
     for concept in concepts:
 
-        id_concept = resolve_concept_alias(
+        id_concept = _lookup_concept_id(
             concept,
         )
 
-        if id_concept:
+        if not id_concept:
+            continue
 
-            _insert_relation(
-                TABLE_CONTENT_CONCEPT,
-                "ID_CONCEPT",
-                id_content,
-                id_concept,
-            )
+        _insert_relation(
+            TABLE_CONTENT_CONCEPT,
+            "ID_CONCEPT",
+            id_content,
+            id_concept,
+        )
 
 
 # ============================================================
