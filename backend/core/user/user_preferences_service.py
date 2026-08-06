@@ -410,3 +410,42 @@ def set_user_preferences(
             pref_type="TOPIC",
             value_id=topic_id,
         )
+
+# ============================================================
+# 🔥 LOAD USER PREFS
+# ============================================================
+
+def load_user_preferences(
+    user_id: Optional[str]
+):
+
+    if not user_id:
+        return [], [], []
+
+    from core.user.user_preferences_service import (
+        get_user_preferences_grouped
+    )
+
+    prefs = (
+        get_user_preferences_grouped(user_id)
+        or {}
+    )
+
+    fav_companies = (
+        prefs.get("COMPANY", [])
+    )
+
+    fav_topics = (
+        prefs.get("TOPIC", [])
+    )
+
+    fav_solutions = (
+        prefs.get("SOLUTION", [])
+    )
+
+    return (
+        fav_companies,
+        fav_topics,
+        fav_solutions,
+    )
+
