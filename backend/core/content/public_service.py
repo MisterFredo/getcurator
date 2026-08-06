@@ -199,129 +199,152 @@ def _map_content(
 
 
 # ============================================================
-# LIST CONTENTS (CURATOR FEED)
+# LIST CONTENTS
 # ============================================================
 
 def list_contents(
     limit: int = 20,
     offset: int = 0,
+    company_id: Optional[str] = None,
     topic_id: Optional[str] = None,
-    id_primary_company: Optional[str] = None,
-):
+    solution_id: Optional[str] = None,
+    concept_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+) -> List[Dict]:
+
+    where = [
+        "status = 'PUBLISHED'",
+        "is_active = TRUE",
+    ]
 
     params = {
         "limit": limit,
         "offset": offset,
     }
 
-    join = ""
+    # ========================================================
+    # COMPANY
+    # ========================================================
 
-    where_topic = ""
-    where_primary_company = ""
+    if company_id:
 
-    # ============================================================
-    # TOPIC FILTER
-    # ============================================================
+        where.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(companies) company
+                WHERE company.id_company = @company_id
+            )
+            """
+        )
+
+        params["company_id"] = company_id
+
+    # ========================================================
+    # TOPIC
+    # ========================================================
 
     if topic_id:
 
-        join += f"""
-            JOIN `{TABLE_CONTENT_TOPIC}` ct
-              ON c.ID_CONTENT = ct.ID_CONTENT
-        """
-
-        where_topic = "AND ct.ID_TOPIC = @topic_id"
+        where.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(topics) topic
+                WHERE topic.id_topic = @topic_id
+            )
+            """
+        )
 
         params["topic_id"] = topic_id
 
+    # ========================================================
+    # SOLUTION
+    # ========================================================
 
-    # ============================================================
-    # PRIMARY COMPANY FILTER
-    # ============================================================
+    if solution_id:
 
-    if id_primary_company:
+        where.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(solutions) solution
+                WHERE solution.id_solution = @solution_id
+            )
+            """
+        )
 
-        where_primary_company = """
-            AND c.ID_PRIMARY_COMPANY = @id_primary_company
-        """
+        params["solution_id"] = solution_id
 
-        params["id_primary_company"] = id_primary_company
+    # ========================================================
+    # CONCEPT
+    # ========================================================
 
-    # ============================================================
+    if concept_id:
+
+        where.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(concepts) concept
+                WHERE concept.id_concept = @concept_id
+            )
+            """
+        )
+
+        params["concept_id"] = concept_id
+
+    # ========================================================
+    # UNIVERSE
+    # ========================================================
+
+    if universe_id:
+
+        where.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(universes) universe
+                WHERE universe.id_universe = @universe_id
+            )
+            """
+        )
+
+        params["universe_id"] = universe_id
+
+    # ========================================================
     # QUERY
-    # ============================================================
+    # ========================================================
 
     sql = f"""
-        SELECT
-            c.ID_CONTENT,
+    SELECT *
 
-            c.TITLE,
-            c.TITLE_EN,
+    FROM `{TABLE_CONTENT_ENRICHED}`
 
-            c.EXCERPT,
-            c.EXCERPT_EN,
+    WHERE
 
-            -- 🔥 NEW
-            c.ID_PRIMARY_COMPANY,
+        {" AND ".join(where)}
 
-            pc.NAME AS PRIMARY_COMPANY_NAME,
+    ORDER BY published_at DESC
 
-            c.SIGNAL_ANALYTIQUE,
+    LIMIT @limit
 
-            c.PUBLISHED_AT
-
-        FROM `{TABLE_CONTENT}` c
-
-        -- 🔥 NEW
-        LEFT JOIN `{TABLE_COMPANY}` pc
-          ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
-
-        {join}
-
-        WHERE
-            c.STATUS = 'PUBLISHED'
-            AND c.IS_ACTIVE = TRUE
-
-            {where_topic}
-
-            {where_primary_company}
-
-        ORDER BY c.PUBLISHED_AT DESC
-
-        LIMIT @limit
-        OFFSET @offset
+    OFFSET @offset
     """
 
-    rows = query_bq(sql, params)
-
-    # ============================================================
-    # RETURN
-    # ============================================================
+    rows = query_bq(
+        sql,
+        params,
+    )
 
     return [
-        {
-            "id": r["ID_CONTENT"],
 
-            "title": r["TITLE"],
-            "title_en": r["TITLE_EN"],
+        _map_content_summary(
+            row,
+        )
 
-            "excerpt": r.get("EXCERPT"),
-            "excerpt_en": r.get("EXCERPT_EN"),
+        for row in rows
 
-            # 🔥 NEW
-            "id_primary_company": r.get(
-                "ID_PRIMARY_COMPANY"
-            ),
-
-            "primary_company_name": r.get(
-                "PRIMARY_COMPANY_NAME"
-            ),
-
-            "signal": r.get("SIGNAL_ANALYTIQUE"),
-
-            "published_at": r["PUBLISHED_AT"],
-        }
-        for r in rows
     ]
 
 
@@ -329,120 +352,48 @@ def list_contents(
 # READ CONTENT (DRAWER CURATOR)
 # ============================================================
 
-def get_content(id_content: str) -> Dict:
+def get_contents(
+    content_ids: List[str],
+) -> List[Dict]:
 
-    rows = query_bq(
-        f"""
-        SELECT *
-        FROM `{TABLE_CONTENT_ENRICHED}`
-        WHERE id_content = @id_content
-        LIMIT 1
-        """,
-        {"id_content": id_content},
-    )
+    if not content_ids:
+        return []
 
-    if not rows:
-        return None
+    client = get_bigquery_client()
 
-    r = rows[0]
+    query = f"""
+    SELECT *
+    FROM `{TABLE_CONTENT_ENRICHED}`
+    WHERE id_content IN UNNEST(@content_ids)
+    """
 
+    rows = client.query(
 
-    # ============================================================
-    # PRIMARY COMPANY
-    # ============================================================
+        query,
 
-    primary_company = None
+        job_config=bigquery.QueryJobConfig(
 
-    id_primary_company = r.get(
-        "id_primary_company"
-    )
+            query_parameters=[
 
-    companies = r.get("companies") or []
-
-    if id_primary_company:
-
-        primary_company = next(
-            (
-                c for c in companies
-                if (
-                    c.get("id_company")
-                    == id_primary_company
+                bigquery.ArrayQueryParameter(
+                    "content_ids",
+                    "STRING",
+                    content_ids,
                 )
-            ),
-            None
+
+            ]
+
+        ),
+
+    ).result()
+
+    return [
+
+        _map_content(
+            dict(row)
         )
 
-    # ============================================================
-    # RETURN
-    # ============================================================
+        for row in rows
 
-    return {
-
-        # ========================================================
-        # CORE
-        # ========================================================
-
-        "id_content": r.get("id_content"),
-
-        "title": r.get("title"),
-        "title_en": r.get("title_en"),
-
-        "excerpt": r.get("excerpt"),
-        "excerpt_en": r.get("excerpt_en"),
-
-        "content_body": r.get("content_body"),
-
-        "published_at": r.get("published_at"),
-
-
-        # ========================================================
-        # PRIMARY COMPANY
-        # ========================================================
-
-        "id_primary_company": id_primary_company,
-
-        "primary_company": primary_company,
-
-        # ========================================================
-        # ANALYSIS
-        # ========================================================
-
-        "signal": r.get("signal_analytique"),
-
-        "mecanique_expliquee": r.get(
-            "mecanique_expliquee"
-        ),
-
-        "enjeu_strategique": r.get(
-            "enjeu_strategique"
-        ),
-
-        "point_de_friction": r.get(
-            "point_de_friction"
-        ),
-
-        # ========================================================
-        # RAW EXTRACTIONS
-        # ========================================================
-
-        "chiffres": r.get("chiffres") or [],
-
-        "acteurs_cites": r.get("acteurs_cites") or [],
-
-        "concepts_llm": r.get("concepts_llm") or [],
-
-        # ========================================================
-        # ENRICHED RELATIONS
-        # ========================================================
-
-        "topics": r.get("topics") or [],
-
-        "companies": companies,
-
-        "solutions": r.get("solutions") or [],
-
-        "concepts": r.get("concepts") or [],
-
-        "universes": r.get("universes") or [],
-    }
+    ]
 
