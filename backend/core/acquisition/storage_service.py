@@ -90,3 +90,27 @@ def insert_raw_rows(
     print("[RAW_IMPORT] Insertion BigQuery OK")
 
     return len(payload)
+
+def url_already_exists(url: str) -> bool:
+
+    client = get_bigquery_client()
+
+    query = f"""
+        SELECT 1
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.{TABLE}`
+        WHERE SOURCE_URL = @url
+        LIMIT 1
+    """
+
+    from google.cloud import bigquery
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("url", "STRING", url)
+        ]
+    )
+
+    rows = list(client.query(query, job_config=job_config))
+
+    return len(rows) > 0
+
