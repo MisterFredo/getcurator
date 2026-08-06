@@ -107,6 +107,15 @@ RAW_TEXT :
         cleaned_blocks.append(cleaned_block.strip())
 
     return "\n\n".join(cleaned_blocks)
+    
+
+def clean_urls(urls_text: str) -> List[str]:
+
+    urls = list(
+        {u.strip() for u in urls_text.split("\n") if u.strip()}
+    )
+
+    return urls
 
 # ============================================================
 # PARSE DATE (FR → ISO)
