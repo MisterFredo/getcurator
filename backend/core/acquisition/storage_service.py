@@ -1,3 +1,21 @@
+import re
+import uuid
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timezone, date
+from typing import Optional, Dict, Any, List
+from utils.bigquery_utils import get_bigquery_client
+from google.cloud import bigquery
+from config import BQ_PROJECT, BQ_DATASET
+
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+TABLE = "RATECARD_CONTENT_RAW"
+
+
 # ============================================================
 # INSERT BIGQUERY
 # ============================================================
