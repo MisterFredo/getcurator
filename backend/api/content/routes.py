@@ -17,6 +17,7 @@ from core.content.service import (
     archive_content,
     delete_content,
     publish_content,
+    generate_summary,
     get_content_stats,
     mark_content_ready,
     bulk_publish,
