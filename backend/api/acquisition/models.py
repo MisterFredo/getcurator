@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import (
@@ -8,7 +8,63 @@ from pydantic import (
 
 
 # ============================================================
-# IMPORT TEXT
+# RAW
+# ============================================================
+
+class ContentRawCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_id: str
+
+    source_title: str
+
+    source_url: Optional[str] = None
+
+    discovery_id: Optional[str] = None
+
+    raw_text: str
+
+    date_source: Optional[date] = None
+
+    id_primary_company: Optional[str] = None
+
+
+class ContentRawUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_title: Optional[str] = None
+
+    source_url: Optional[str] = None
+
+    raw_text: Optional[str] = None
+
+    date_source: Optional[date] = None
+
+    id_primary_company: Optional[str] = None
+
+
+class ContentRawOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id_raw: str
+
+    source_id: str
+
+    source_title: str
+
+    source_url: Optional[str] = None
+
+    date_source: Optional[date] = None
+
+    status: str
+
+    created_at: datetime
+
+    id_primary_company: Optional[str] = None
+
+
+# ============================================================
+# IMPORTS
 # ============================================================
 
 class ImportTextRequest(BaseModel):
@@ -21,10 +77,6 @@ class ImportTextRequest(BaseModel):
     id_primary_company: Optional[str] = None
 
 
-# ============================================================
-# IMPORT URLS
-# ============================================================
-
 class ImportUrlsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -34,10 +86,6 @@ class ImportUrlsRequest(BaseModel):
 
     id_primary_company: Optional[str] = None
 
-
-# ============================================================
-# IMPORT CSV
-# ============================================================
 
 class ImportCsvRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
