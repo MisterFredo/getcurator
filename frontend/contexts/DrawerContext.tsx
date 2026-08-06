@@ -20,7 +20,6 @@ type DrawerTypeLeft =
   | null;
 
 type DrawerTypeRight =
-  | "news"
   | "analysis"
   | "digest-preview"
   | "knowledge"
@@ -67,7 +66,6 @@ type DrawerContextType = {
   openRightDrawer: (
 
     type:
-      | "news"
       | "analysis"
       | "digest-preview"
       | "knowledge",
@@ -182,7 +180,6 @@ export function DrawerProvider({
   function openRightDrawer(
 
     type:
-      | "news"
       | "analysis"
       | "digest-preview"
       | "knowledge",
