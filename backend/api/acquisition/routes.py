@@ -10,7 +10,6 @@ from api.acquisition.models import (
 
 from core.acquisition.service import (
     list_active_sources,
-    store_raw_content,
     list_raw_stock,
     get_raw_detail,
     destock_raw_contents,
