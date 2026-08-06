@@ -3,9 +3,7 @@ from typing import List, Dict, Optional
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
-from core.company.service import get_company
 from core.user.user_service import get_user_context
-from core.user.user_preferences_service import get_user_preferences_grouped
 
 
 # ============================================================
@@ -16,16 +14,13 @@ TABLE_CONTENT_ENRICHED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
 
-
 VIEW_STATS_TOPIC = (
     f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_TOPIC"
 )
 
-
 TABLE_TOPIC = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
 )
-
 
 TABLE_COMPANY_UNIVERSE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE"
@@ -37,22 +32,17 @@ TABLE_USER_UNIVERSE = (
 
 
 # ============================================================
-# 🔥 GENERIC FEED BUILDER
+# FEED
 # ============================================================
 
-def _get_entity_feed(
-    where_clause_content: str,
-    params: Dict,
+def _get_topic_feed(
+    topic_id: str,
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
     lang: str = "fr",
 ) -> List[Dict]:
-
-    # ============================================================
-    # 🔐 USER FILTER
-    # ============================================================
 
     user_filter = ""
 
@@ -73,10 +63,6 @@ def _get_entity_feed(
         )
         """
 
-    # ============================================================
-    # 🌍 UNIVERSE FILTER
-    # ============================================================
-
     universe_filter = ""
 
     if universe_id:
@@ -93,26 +79,10 @@ def _get_entity_feed(
         )
         """
 
-    # ============================================================
-    # QUERY
-    # ============================================================
-
     sql = f"""
     SELECT
 
         c.id_content AS id,
-
-        -- ========================================================
-        -- 🔥 FRONT OBJECT TYPE
-        -- ========================================================
-
-        'content' AS type,
-
-        -- ========================================================
-        -- META
-        -- ========================================================
-
-        c.id_primary_company,
 
         c.title,
         c.title_en,
@@ -120,23 +90,19 @@ def _get_entity_feed(
         c.excerpt,
         c.excerpt_en,
 
-        c.published_at,
-
-        c.topics,
-
-        c.companies,
-
-        c.solutions,
-
-        c.concepts,
-
-        c.universes,
-
-        c.source_id
+        c.published_at
 
     FROM `{TABLE_CONTENT_ENRICHED}` c
 
-    WHERE {where_clause_content}
+    WHERE EXISTS (
+
+        SELECT 1
+
+        FROM UNNEST(c.topics) t
+
+        WHERE t.id_topic = @topic_id
+
+    )
 
     {user_filter}
 
@@ -148,67 +114,42 @@ def _get_entity_feed(
     OFFSET @offset
     """
 
-    query_params = {
-        **params,
-        "limit": limit,
-        "offset": offset,
-        "user_id": user_id,
-    }
-
-    if universe_id:
-        query_params["universe_id"] = universe_id
-
-    rows = query_bq(sql, query_params)
+    rows = query_bq(
+        sql,
+        {
+            "topic_id": topic_id,
+            "limit": limit,
+            "offset": offset,
+            "user_id": user_id,
+            "universe_id": universe_id,
+        },
+    )
 
     return [
-        _map_feed_row(r, lang)
-        for r in rows
+        _map_content(
+            row,
+            lang,
+        )
+        for row in rows
     ]
 
 
 # ============================================================
-# TOPIC
+# PUBLIC VIEW
 # ============================================================
-
-def get_topic_feed(
-    topic_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    user_id: Optional[str] = None,
-    universe_id: Optional[str] = None,
-    lang: str = "fr",
-) -> List[Dict]:
-
-    return _get_entity_feed(
-        where_clause_content="""
-            EXISTS (
-                SELECT 1
-                FROM UNNEST(c.topics) t
-                WHERE t.id_topic = @topic_id
-            )
-        """,
-        params={
-            "topic_id": topic_id
-        },
-        limit=limit,
-        offset=offset,
-        user_id=user_id,
-        universe_id=universe_id,
-        lang=lang,
-    )
-
 
 def get_topic_view(
     topic_id: str,
     limit: int = 50,
     offset: int = 0,
     user_id: Optional[str] = None,
-    universe_id: Optional[str] = None
-) -> Dict:
+    universe_id: Optional[str] = None,
+) -> Optional[Dict]:
 
     topic_rows = query_bq(
         f"""
         SELECT
+
             ID_TOPIC,
             LABEL,
             TOPIC_AXIS,
@@ -221,20 +162,21 @@ def get_topic_view(
         LIMIT 1
         """,
         {
-            "topic_id": topic_id
-        }
+            "topic_id": topic_id,
+        },
     )
 
-    topic = topic_rows[0] if topic_rows else {}
+    if not topic_rows:
+        return None
 
-    # ============================================================
-    # STATS
-    # ============================================================
+    topic = topic_rows[0]
 
     stats_rows = query_bq(
         f"""
         SELECT
+
             COALESCE(total, 0) AS NB_ANALYSES,
+
             COALESCE(last_30_days, 0) AS DELTA_30D
 
         FROM `{VIEW_STATS_TOPIC}`
@@ -244,31 +186,25 @@ def get_topic_view(
         LIMIT 1
         """,
         {
-            "topic_id": topic_id
-        }
+            "topic_id": topic_id,
+        },
     )
 
     stats = stats_rows[0] if stats_rows else {}
 
-    # ============================================================
-    # USER CONTEXT
-    # ============================================================
-
     context = (
         get_user_context(user_id)
-        if user_id else None
+        if user_id
+        else None
     )
 
     lang = (
         context["lang"]
-        if context else "fr"
+        if context
+        else "fr"
     )
 
-    # ============================================================
-    # ITEMS
-    # ============================================================
-
-    items = get_topic_feed(
+    items = _get_topic_feed(
         topic_id=topic_id,
         limit=limit,
         offset=offset,
@@ -277,183 +213,63 @@ def get_topic_view(
         lang=lang,
     )
 
-    # ============================================================
-    # USER CONTEXT
-    # ============================================================
-
-    prefs = (
-        get_user_preferences_grouped(user_id)
-        if user_id else None
-    )
-
-    # ============================================================
-    # PRIORITIZATION
-    # ============================================================
-
-    if prefs:
-
-        def score(item):
-            score = 0
-
-            for c in item.get("companies", []):
-                if c.get("id_company") in prefs["COMPANY"]:
-                    score += 2
-
-            for t in item.get("topics", []):
-                if t.get("id_topic") in prefs["TOPIC"]:
-                    score += 1
-
-            for s in item.get("solutions", []):
-                if s.get("id_solution") in prefs["SOLUTION"]:
-                    score += 1
-
-            return score
-
-        items = sorted(items, key=score, reverse=True)
-
-    # ============================================================
-    # RETURN
-    # ============================================================
-
     return {
+
         "id_topic": topic_id,
+
         "label": topic.get("LABEL"),
+
         "topic_axis": topic.get("TOPIC_AXIS"),
+
         "description": topic.get("DESCRIPTION"),
-        "nb_analyses": stats.get("NB_ANALYSES", 0),
-        "delta_30d": stats.get("DELTA_30D", 0),
-        "items": items
+
+        "nb_analyses": stats.get(
+            "NB_ANALYSES",
+            0,
+        ),
+
+        "delta_30d": stats.get(
+            "DELTA_30D",
+            0,
+        ),
+
+        "items": items,
     }
 
 
-
-
 # ============================================================
-# DEDUPE HELPERS
+# CONTENT MAPPER
 # ============================================================
 
-def _dedupe_entities(
-    items: List[Dict],
-    id_key: str,
-    label_key: str,
-) -> List[Dict]:
+def _map_content(
+    row: Dict,
+    lang: str = "fr",
+) -> Dict:
 
-    if not items:
-        return []
-
-    seen = set()
-
-    cleaned = []
-
-    for item in items:
-
-        if not item:
-            continue
-
-        unique_id = item.get(id_key)
-
-        if unique_id:
-
-            key = f"{id_key}:{unique_id}"
-
-        else:
-
-            key = (
-                item.get(label_key, "")
-                .strip()
-                .lower()
-            )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        cleaned.append(item)
-
-    return cleaned
-
-
-# ============================================================
-# MAPPER
-# ============================================================
-
-def _map_feed_row(
-    r: Dict,
-    lang: str = "fr"
-):
-
-    def fmt(dt):
-        return dt.isoformat() if dt else None
+    def fmt(value):
+        return value.isoformat() if value else None
 
     return {
 
-        "id": r.get("id"),
-
-
-        # ========================================================
-        # CONTENT
-        # ========================================================
+        "id": row.get("id"),
 
         "title": (
-
-            r.get("title_en")
-
+            row.get("title_en")
             if lang == "en"
-
             else None
+        ) or row.get("title"),
 
-        ) or r.get("title"),
-
-        "title_en": r.get("title_en"),
+        "title_en": row.get("title_en"),
 
         "excerpt": (
-
-            r.get("excerpt_en")
-
+            row.get("excerpt_en")
             if lang == "en"
-
             else None
+        ) or row.get("excerpt"),
 
-        ) or r.get("excerpt"),
-
-        "excerpt_en": r.get("excerpt_en"),
+        "excerpt_en": row.get("excerpt_en"),
 
         "published_at": fmt(
-            r.get("published_at")
-        ),
-
-        # ========================================================
-        # ENTITIES
-        # ========================================================
-
-        "topics": _dedupe_entities(
-            r.get("topics") or [],
-            "id_topic",
-            "label",
-        ),
-
-        "companies": _dedupe_entities(
-            r.get("companies") or [],
-            "id_company",
-            "name",
-        ),
-
-        "solutions": _dedupe_entities(
-            r.get("solutions") or [],
-            "id_solution",
-            "name",
-        ),
-
-        "concepts": _dedupe_entities(
-            r.get("concepts") or [],
-            "id_concept",
-            "label",
-        ),
-
-        "universes": _dedupe_entities(
-            r.get("universes") or [],
-            "id_universe",
-            "label",
+            row.get("published_at")
         ),
     }
