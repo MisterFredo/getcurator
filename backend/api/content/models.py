@@ -255,10 +255,10 @@ class ContentOut(BaseModel):
 
 
 # ============================================================
-# SEARCH
+# CONTENT LIST
 # ============================================================
 
-class ContentSearchFilters(BaseModel):
+class ContentFilters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     search: Optional[str] = None
@@ -275,11 +275,11 @@ class ContentSearchFilters(BaseModel):
     only_numbers: bool = False
 
 
-class ContentSearchRequest(BaseModel):
+class ContentListRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    filters: ContentSearchFilters = Field(
-        default_factory=ContentSearchFilters
+    filters: ContentFilters = Field(
+        default_factory=ContentFilters,
     )
 
     page: int = Field(
@@ -294,7 +294,7 @@ class ContentSearchRequest(BaseModel):
     )
 
 
-class ContentSearchItem(BaseModel):
+class ContentListItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id_content: str
@@ -308,10 +308,10 @@ class ContentSearchItem(BaseModel):
     published_at: Optional[datetime] = None
 
 
-class ContentSearchResponse(BaseModel):
+class ContentListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contents: List[ContentSearchItem]
+    contents: List[ContentListItem]
 
     total_results: int
 
