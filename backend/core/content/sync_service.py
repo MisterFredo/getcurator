@@ -20,10 +20,8 @@ from core.numbers.backlog_insert_service import (
     insert_backlog_batch,
 )
 
-from core.matching.resolver import (
-    normalize,
-    resolve_company_alias,
-    resolve_solution_alias,
+from core.content.materialization_service import (
+    build_content_enriched_row,
 )
 
 # ============================================================
@@ -31,10 +29,6 @@ from core.matching.resolver import (
 # ============================================================
 
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-
-TABLE_CONTENT_ENRICHED = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
-)
 
 TABLE_CONTENT_COMPANY = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
@@ -335,7 +329,7 @@ def sync_content(
         id_content=id_content,
     )
 
-    rebuild_content_enriched_row(
+    build_content_enriched_row(
         id_content=id_content,
     )
 
