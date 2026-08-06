@@ -1,39 +1,40 @@
-import re
+from datetime import datetime
+from typing import Dict, List, Optional
 import uuid
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime, timezone, date
-from typing import Optional, Dict, Any, List
-from utils.bigquery_utils import get_bigquery_client
+
 from google.cloud import bigquery
-from config import BQ_PROJECT, BQ_DATASET
 
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    get_bigquery_client,
+)
 
 # ============================================================
-# CONFIG
+# TABLES
 # ============================================================
 
-TABLE = "RATECARD_CONTENT_RAW"
-
+TABLE_CONTENT_RAW = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
+)
 
 # ============================================================
-# INSERT BIGQUERY
+# INSERT RAW ROWS
 # ============================================================
 
 def insert_raw_rows(
     rows: List[Dict],
     id_source: str,
     import_type: str = "FILE",
-
-    # 🔥 NEW
     id_primary_company: Optional[str] = None,
 ):
 
     print("[RAW_IMPORT] Début insertion BigQuery")
 
     client = get_bigquery_client()
-
-    table_id = f"{BQ_PROJECT}.{BQ_DATASET}.{TABLE}"
 
     payload = []
 
@@ -47,10 +48,9 @@ def insert_raw_rows(
 
                 "STATUS": "STORED",
 
-                # 🔥 NEW
                 "ID_PRIMARY_COMPANY": r.get(
                     "ID_PRIMARY_COMPANY",
-                    id_primary_company
+                    id_primary_company,
                 ),
 
                 "SOURCE_TITLE": r["TITLE"],
@@ -67,22 +67,25 @@ def insert_raw_rows(
 
                 "SOURCE_ID": id_source,
 
-                # 🔥 IMPORTANT
-                "SOURCE_URL": r.get("SOURCE_URL"),
+                "SOURCE_URL": r.get(
+                    "SOURCE_URL"
+                ),
             }
         )
 
-    print(f"[RAW_IMPORT] Nombre de lignes à insérer : {len(payload)}")
-
-    job_config = bigquery.LoadJobConfig(
-        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-        write_disposition="WRITE_APPEND",
+    print(
+        f"[RAW_IMPORT] Nombre de lignes à insérer : {len(payload)}"
     )
 
     job = client.load_table_from_json(
         payload,
-        table_id,
-        job_config=job_config,
+        TABLE_CONTENT_RAW,
+        job_config=bigquery.LoadJobConfig(
+            source_format=(
+                bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+            ),
+            write_disposition="WRITE_APPEND",
+        ),
     )
 
     job.result()
@@ -91,26 +94,41 @@ def insert_raw_rows(
 
     return len(payload)
 
-def url_already_exists(url: str) -> bool:
+
+# ============================================================
+# URL EXISTS
+# ============================================================
+
+def url_already_exists(
+    url: str,
+) -> bool:
 
     client = get_bigquery_client()
 
     query = f"""
         SELECT 1
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.{TABLE}`
-        WHERE SOURCE_URL = @url
+
+        FROM `{TABLE_CONTENT_RAW}`
+
+        WHERE
+            SOURCE_URL = @url
+
         LIMIT 1
     """
 
-    from google.cloud import bigquery
-
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("url", "STRING", url)
-        ]
+    rows = list(
+        client.query(
+            query,
+            job_config=bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter(
+                        "url",
+                        "STRING",
+                        url,
+                    )
+                ]
+            ),
+        )
     )
 
-    rows = list(client.query(query, job_config=job_config))
-
     return len(rows) > 0
-
