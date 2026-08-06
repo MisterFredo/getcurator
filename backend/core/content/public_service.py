@@ -58,6 +58,9 @@ def _map_content_summary(
         "signal": r.get(
             "signal_analytique"
         ),
+        "companies": companies,
+        "topics": r.get("topics") or [],
+        "solutions": r.get("solutions") or [],
 
         "source_title": r.get(
             "source_title"
@@ -317,7 +320,28 @@ def list_contents(
     # ========================================================
 
     sql = f"""
-    SELECT *
+    SELECT
+
+        id_content,
+    
+        title,
+        title_en,
+    
+        excerpt,
+        excerpt_en,
+    
+        signal_analytique,
+    
+        published_at,
+    
+        source_title,
+        source_url,
+    
+        id_primary_company,
+    
+        companies,
+        topics,
+        solutions
 
     FROM `{TABLE_CONTENT_ENRICHED}`
 
@@ -347,53 +371,86 @@ def list_contents(
 
     ]
 
+# ============================================================
+# READ CONTENT
+# ============================================================
+
+def get_content(
+    id_content: str,
+) -> Optional[Dict]:
+
+    contents = get_contents(
+        [id_content]
+    )
+
+    return (
+        contents[0]
+        if contents
+        else None
+    )
 
 # ============================================================
-# READ CONTENT (DRAWER CURATOR)
+# READ CONTENTS
 # ============================================================
 
 def get_contents(
-    content_ids: List[str],
+    ids: List[str],
 ) -> List[Dict]:
 
-    if not content_ids:
+    if not ids:
         return []
 
-    client = get_bigquery_client()
+    rows = query_bq(
+        f"""
+        SELECT *
+        FROM `{TABLE_CONTENT_ENRICHED}`
+        WHERE id_content IN UNNEST(@ids)
+        """,
+        {
+            "ids": ids,
+        },
+    )
 
-    query = f"""
-    SELECT *
-    FROM `{TABLE_CONTENT_ENRICHED}`
-    WHERE id_content IN UNNEST(@content_ids)
-    """
-
-    rows = client.query(
-
-        query,
-
-        job_config=bigquery.QueryJobConfig(
-
-            query_parameters=[
-
-                bigquery.ArrayQueryParameter(
-                    "content_ids",
-                    "STRING",
-                    content_ids,
-                )
-
-            ]
-
-        ),
-
-    ).result()
-
-    return [
-
-        _map_content(
-            dict(row)
-        )
-
+    contents = [
+        _map_content(row)
         for row in rows
-
     ]
 
+    # ========================================================
+    # KEEP INPUT ORDER
+    # ========================================================
+
+    by_id = {
+        c["id"]: c
+        for c in contents
+    }
+
+    return [
+        by_id[id_content]
+        for id_content in ids
+        if id_content in by_id
+    ]
+
+
+# ============================================================
+# LATEST CONTENTS
+# ============================================================
+
+def get_latest_contents(
+    limit: int = 20,
+    company_id: Optional[str] = None,
+    topic_id: Optional[str] = None,
+    solution_id: Optional[str] = None,
+    concept_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+) -> List[Dict]:
+
+    return list_contents(
+        limit=limit,
+        offset=0,
+        company_id=company_id,
+        topic_id=topic_id,
+        solution_id=solution_id,
+        concept_id=concept_id,
+        universe_id=universe_id,
+    )
