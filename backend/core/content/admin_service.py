@@ -164,7 +164,7 @@ def list_contents_admin():
     ]
 
 # ============================================================
-# GET CONTENT MOVE FROM SERVICE
+# GET CONTENT
 # ============================================================
 
 def get_content_admin(id_content: str):
