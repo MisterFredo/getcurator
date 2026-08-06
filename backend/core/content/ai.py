@@ -6,6 +6,10 @@ from config import BQ_PROJECT, BQ_DATASET
 from utils.llm import run_llm
 from utils.bigquery_utils import query_bq
 
+from core.content.prompts import (
+    build_summary_prompt,
+)
+
 
 # ============================================================
 # UTILS — NORMALISATION HEADER
