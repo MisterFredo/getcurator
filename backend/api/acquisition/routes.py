@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import List, Dict, Optional
 
-from api.content.models import (
+from api.acquisition.models import (
     ContentRawCreate,
     ContentRawOut,
     ContentRawUpdate,
@@ -35,73 +35,14 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-
-# ============================================================
-# STORE RAW CONTENT
-# ============================================================
-
-@router.post("/store-raw")
-def store_raw_route(
-    payload: ContentRawCreate
-):
-
-    try:
-
-        raw_id = store_raw_content(
-
-            source_id=payload.source_id,
-
-            source_title=payload.source_title,
-
-            source_url=payload.source_url,
-
-            raw_text=payload.raw_text,
-
-            date_source=payload.date_source,
-
-            id_primary_company=payload.id_primary_company,
-        )
-
-        # =====================================================
-        # DISCOVERY -> STORED
-        # =====================================================
-
-        if payload.discovery_id:
-
-            sql = f"""
-                UPDATE `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_DISCOVERY`
-                SET STATUS = 'STORED'
-                WHERE ID_DISCOVERY = @id
-            """
-
-            query_bq(
-                sql,
-                {
-                    "id": payload.discovery_id,
-                },
-            )
-
-        return {
-            "status": "ok",
-            "id_raw": raw_id
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Erreur stockage raw content"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
 # ============================================================
 # IMPORT RAW CONTENT
 # ============================================================
 
 @router.post("/raw/import")
-def import_raw_route(payload: dict):
+def import_raw_route(
+    payload: ImportTextRequest,
+)
 
     text = payload.get("text")
 
