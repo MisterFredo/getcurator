@@ -261,3 +261,71 @@ def parse_raw_blocks(text: str) -> List[Dict]:
 
     return results
 
+def parse_article_from_url(url: str) -> Dict[str, Any]:
+
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # --------------------------------------------------
+    # TITLE (robuste mais sans fallback artificiel)
+    # --------------------------------------------------
+    title = None
+
+    if soup.title:
+        title = soup.title.get_text(strip=True)
+
+    # 👉 on garde le comportement historique :
+    # si pas de titre exploitable → on rejette
+    if not title:
+        raise Exception("TITLE vide")
+
+    # --------------------------------------------------
+    # DATE (ajout minimal sans casser le reste)
+    # --------------------------------------------------
+    date_source = None
+
+    # 1️⃣ meta (historique)
+    meta_date = soup.find("meta", {"property": "article:published_time"})
+    if meta_date and meta_date.get("content"):
+        try:
+            date_source = parse(meta_date["content"]).date()
+        except Exception:
+            pass
+
+    # 2️⃣ fallback <time> (ajout contrôlé)
+    if not date_source:
+        time_tag = soup.find("time")
+        if time_tag:
+            try:
+                date_source = parse(time_tag.get_text(), dayfirst=True, fuzzy=True).date()
+            except Exception:
+                pass
+
+    # --------------------------------------------------
+    # RAW TEXT (STRICTEMENT logique d’avant)
+    # --------------------------------------------------
+    paragraphs = soup.find_all("p")
+
+    raw_text = "\n".join(
+        p.get_text(strip=True)
+        for p in paragraphs
+        if p.get_text(strip=True)
+    ).strip()
+
+    # 👉 comportement historique : on rejette si vide
+    if not raw_text:
+        raise Exception("RAW_TEXT vide")
+
+    # --------------------------------------------------
+    # RETURN
+    # --------------------------------------------------
+    return {
+        "TITLE": title,
+        "DATE_SOURCE": date_source,
+        "RAW_TEXT": raw_text,
+        "SOURCE_URL": url
+    }
+
+
