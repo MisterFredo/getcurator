@@ -247,6 +247,135 @@ def get_solution_view(
     }
 
 
+def list_solutions_for_user(
+    user_id: str,
+) -> List[Dict]:
+
+    rows = query_bq(
+        f"""
+        SELECT
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
+
+            s.MEDIA_LOGO_RECTANGLE_ID
+                AS SOLUTION_LOGO,
+
+            c.NAME
+                AS COMPANY_NAME,
+
+            c.MEDIA_LOGO_RECTANGLE_ID,
+
+            CAST(
+                c.IS_PARTNER AS BOOL
+            ) AS IS_PARTNER,
+
+            s.CREATED_AT,
+            s.UPDATED_AT,
+
+            ns.ID_SOLUTION IS NOT NULL
+                AS HAS_NUMBERS,
+
+            ARRAY_AGG(
+                DISTINCT u.LABEL
+                IGNORE NULLS
+            ) AS UNIVERSES
+
+        FROM `{TABLE_SOLUTION}` s
+
+        JOIN `{TABLE_COMPANY}` c
+            ON c.ID_COMPANY = s.ID_COMPANY
+
+        JOIN `{TABLE_COMPANY_UNIVERSE}` cu
+            ON cu.ID_COMPANY = c.ID_COMPANY
+
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_UNIVERSE` u
+            ON u.ID_UNIVERSE = cu.ID_UNIVERSE
+
+        JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE` uu
+            ON uu.ID_UNIVERSE = cu.ID_UNIVERSE
+
+        LEFT JOIN (
+            SELECT DISTINCT ID_SOLUTION
+            FROM `{TABLE_NUMBERS_SOLUTION}`
+        ) ns
+            ON ns.ID_SOLUTION = s.ID_SOLUTION
+
+        WHERE
+            s.IS_ACTIVE = TRUE
+            AND uu.ID_USER = @user_id
+
+        GROUP BY
+            s.ID_SOLUTION,
+            s.NAME,
+            s.ID_COMPANY,
+            s.MEDIA_LOGO_RECTANGLE_ID,
+            c.NAME,
+            c.MEDIA_LOGO_RECTANGLE_ID,
+            c.IS_PARTNER,
+            s.CREATED_AT,
+            s.UPDATED_AT,
+            ns.ID_SOLUTION
+
+        ORDER BY
+            UPPER(s.NAME)
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+    return [
+        {
+            "id_solution": r["ID_SOLUTION"],
+
+            "name": r["NAME"],
+
+            "id_company": r["ID_COMPANY"],
+
+            "company_name": r.get(
+                "COMPANY_NAME"
+            ),
+
+            "media_logo_rectangle_id": (
+                r.get("SOLUTION_LOGO")
+                or r.get(
+                    "MEDIA_LOGO_RECTANGLE_ID"
+                )
+            ),
+
+            "logo_type": (
+                "solution"
+                if r.get("SOLUTION_LOGO")
+                else "company"
+            ),
+
+            "is_partner": r.get(
+                "IS_PARTNER",
+                False,
+            ),
+
+            "created_at": r.get(
+                "CREATED_AT",
+            ),
+
+            "updated_at": r.get(
+                "UPDATED_AT",
+            ),
+
+            "has_numbers": r.get(
+                "HAS_NUMBERS",
+                False,
+            ),
+
+            "universes": (
+                r.get("UNIVERSES")
+                or []
+            ),
+        }
+        for r in rows
+    ]
+
 # ============================================================
 # CONTENT MAPPER
 # ============================================================
