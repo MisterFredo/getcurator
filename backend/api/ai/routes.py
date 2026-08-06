@@ -4,6 +4,9 @@ from typing import List, Dict, Optional
 from core.content.ai import generate_summary
 import logging
 
+from api.content.models import (
+    ContentSummaryRequest,
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
