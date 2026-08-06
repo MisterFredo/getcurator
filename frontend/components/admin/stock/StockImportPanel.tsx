@@ -27,11 +27,6 @@ export default function StockImportPanel({
   const [sourceId, setSourceId] =
     useState("");
 
-  const [contentType, setContentType] =
-    useState<"ANALYSIS" | "NEWS">(
-      "ANALYSIS"
-    );
-
   const [loadingCsv, setLoadingCsv] =
     useState(false);
 
@@ -205,29 +200,6 @@ export default function StockImportPanel({
             {s.label}
           </option>
         ))}
-      </select>
-
-      {/* CONTENT TYPE */}
-
-      <select
-        value={contentType}
-        onChange={(e) =>
-          setContentType(
-            e.target
-              .value as
-              | "ANALYSIS"
-              | "NEWS"
-          )
-        }
-        className="border rounded px-3 py-2"
-      >
-        <option value="ANALYSIS">
-          Analysis
-        </option>
-
-        <option value="NEWS">
-          News
-        </option>
       </select>
 
       {/* CSV IMPORT */}
