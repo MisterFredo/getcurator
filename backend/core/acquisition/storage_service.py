@@ -204,3 +204,128 @@ def store_raw_content(
     ).result()
 
     return raw_id
+
+def list_raw_stock(
+    status: Optional[str] = None,
+    source_id: Optional[str] = None,
+    
+    import_type: Optional[str] = None,
+
+    # 🔥 NEW
+    id_primary_company: Optional[str] = None,
+
+    limit: int = 50,
+    offset: int = 0,
+):
+
+    conditions = []
+    params = {}
+
+    if status:
+        conditions.append("r.STATUS = @status")
+        params["status"] = status
+
+    if source_id:
+        conditions.append("r.SOURCE_ID = @source_id")
+        params["source_id"] = source_id
+
+    if import_type:
+        conditions.append("r.IMPORT_TYPE = @import_type")
+        params["import_type"] = import_type
+
+    # 🔥 NEW
+    if id_primary_company:
+        conditions.append(
+            "r.ID_PRIMARY_COMPANY = @id_primary_company"
+        )
+        params["id_primary_company"] = id_primary_company
+
+    where_clause = ""
+
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    query = f"""
+        SELECT
+            r.ID_RAW,
+
+            -- 🔥 NEW
+            r.ID_PRIMARY_COMPANY,
+
+            c.NAME AS PRIMARY_COMPANY_NAME,
+
+            r.SOURCE_ID,
+            s.NAME AS SOURCE_NAME,
+
+            r.SOURCE_TITLE,
+            r.SOURCE_URL,
+            r.DATE_SOURCE,
+
+            r.STATUS,
+            r.ERROR_MESSAGE,
+
+            r.CREATED_AT,
+            r.IMPORT_TYPE,
+
+            COUNT(*) OVER() AS TOTAL_COUNT
+
+        FROM `{TABLE_CONTENT_RAW}` r
+
+        LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE` s
+            ON r.SOURCE_ID = s.SOURCE_ID
+
+        -- 🔥 NEW
+        LEFT JOIN `{TABLE_COMPANY}` c
+            ON r.ID_PRIMARY_COMPANY = c.ID_COMPANY
+
+        {where_clause}
+
+        ORDER BY r.CREATED_AT DESC
+
+        LIMIT @limit
+        OFFSET @offset
+    """
+
+    params["limit"] = limit
+    params["offset"] = offset
+
+    rows = query_bq(query, params)
+
+    total = rows[0]["TOTAL_COUNT"] if rows else 0
+
+    return {
+        "rows": [
+            {
+                "id_raw": r["ID_RAW"],
+
+                # 🔥 NEW
+                "id_primary_company": r.get(
+                    "ID_PRIMARY_COMPANY"
+                ),
+
+                "primary_company_name": r.get(
+                    "PRIMARY_COMPANY_NAME"
+                ),
+
+                "source_id": r["SOURCE_ID"],
+
+                "source_name": r.get("SOURCE_NAME"),
+
+                "source_title": r["SOURCE_TITLE"],
+                "source_url": r.get("SOURCE_URL"),
+
+                "date_source": r.get("DATE_SOURCE"),
+
+                "status": r["STATUS"],
+
+                "error_message": r.get("ERROR_MESSAGE"),
+
+                "created_at": r["CREATED_AT"],
+
+                "import_type": r.get("IMPORT_TYPE"),
+            }
+            for r in rows
+        ],
+
+        "total": total,
+    }
