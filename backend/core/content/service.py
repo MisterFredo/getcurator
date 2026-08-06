@@ -457,74 +457,7 @@ def get_content(id_content: str):
 
     return content
 
-# ============================================================
-# LIST CONTENTS (PUBLIC)
-# ============================================================
 
-def list_contents():
-
-    rows = query_bq(
-        f"""
-        SELECT
-          c.ID_CONTENT,
-
-          -- 🔥 NEW
-          c.ID_PRIMARY_COMPANY,
-
-          pc.NAME AS PRIMARY_COMPANY_NAME,
-
-          c.TITLE,
-          c.TITLE_EN,
-          c.EXCERPT,
-          c.EXCERPT_EN,
-          c.SOURCE_URL,
-          c.SOURCE_TITLE,
-          c.PUBLISHED_AT
-
-        FROM `{TABLE_CONTENT}` c
-
-        -- 🔥 NEW
-        LEFT JOIN `{TABLE_COMPANY}` pc
-          ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
-
-        WHERE
-          c.STATUS = 'PUBLISHED'
-          AND c.IS_ACTIVE = TRUE
-
-        ORDER BY c.PUBLISHED_AT DESC
-        """
-    )
-
-    def map_dt(value):
-        return value.isoformat() if value else None
-
-    return [
-        {
-            "id_content": r["ID_CONTENT"],
-            "source_url": r.get("SOURCE_URL"),
-            "source_title": r.get("SOURCE_TITLE"),
-
-            # 🔥 NEW
-            "id_primary_company": r.get(
-                "ID_PRIMARY_COMPANY"
-            ),
-
-            "primary_company_name": r.get(
-                "PRIMARY_COMPANY_NAME"
-            ),
-
-            "title": r["TITLE"],
-            "title_en": r["TITLE_EN"],
-
-            "excerpt": r.get("EXCERPT"),
-            "excerpt_en": r.get("EXCERPT_EN"),
-
-            "published_at": map_dt(
-                r.get("PUBLISHED_AT")
-            ),
-        }
-        for r in rows
-    ]
 
 def list_active_sources():
 
