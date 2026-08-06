@@ -24,17 +24,16 @@ def normalize_key(text: str) -> str:
 
 
 # ============================================================
-# LOAD ALLOWED TOPICS
+# LOAD TOPICS TEXT
 # ============================================================
 
-def _load_allowed_topics(
+def _load_topics_text(
     source_id: str,
-):
+) -> str:
 
     rows = query_bq(
         f"""
-        SELECT
-            t.ID_TOPIC,
+        SELECT DISTINCT
             t.LABEL
 
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE` su
@@ -48,6 +47,8 @@ def _load_allowed_topics(
         WHERE
             su.ID_SOURCE = @source_id
             AND COALESCE(t.IS_ACTIVE, TRUE) = TRUE
+
+        ORDER BY t.LABEL
         """,
         {
             "source_id": source_id,
@@ -55,59 +56,40 @@ def _load_allowed_topics(
     )
 
     if not rows:
-
         raise ValueError(
             f"Aucun topic disponible pour la source {source_id}"
         )
 
-    allowed = {
-
-        row["LABEL"]: row["ID_TOPIC"]
-
+    return "\n".join(
+        f"- {row['LABEL']}"
         for row in rows
-
-    }
-
-    text = "\n".join(
-        f"- {label}"
-        for label in allowed.keys()
     )
 
-    return allowed, text
 
 # ============================================================
-# LOAD ALLOWED CONCEPTS
+# LOAD CONCEPTS TEXT
 # ============================================================
 
-def _load_allowed_concepts():
+def _load_concepts_text() -> str:
 
     rows = query_bq(
         f"""
         SELECT
-            ID_CONCEPT,
             LABEL
 
         FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT`
 
         WHERE
-            COALESCE(IS_ACTIVE, TRUE)=TRUE
+            COALESCE(IS_ACTIVE, TRUE) = TRUE
+
+        ORDER BY LABEL
         """
     )
 
-    allowed = {
-
-        row["LABEL"]: row["ID_CONCEPT"]
-
+    return "\n".join(
+        f"- {row['LABEL']}"
         for row in rows
-
-    }
-
-    text = "\n".join(
-        f"- {label}"
-        for label in allowed.keys()
     )
-
-    return allowed, text
 
 # ============================================================
 # PARSE LLM SECTIONS
@@ -236,65 +218,6 @@ def _build_body(
         + "</ul>"
     )
 
-# ============================================================
-# RESOLVE TOPICS
-# ============================================================
-
-def _resolve_topics(
-    block: str,
-    allowed_topics,
-):
-
-    raw_topics = _parse_list(
-        block
-    )
-
-    ids = []
-
-    for topic in raw_topics:
-
-        for label, id_topic in allowed_topics.items():
-
-            if label.lower() == topic.lower():
-
-                ids.append(
-                    id_topic
-                )
-
-                break
-
-    return ids
-
-# ============================================================
-# RESOLVE CONCEPTS
-# ============================================================
-
-def _resolve_concepts(
-    block: str,
-    allowed_concepts,
-):
-
-    raw_concepts = _parse_list(
-        block
-    )
-
-    ids = []
-
-    for concept in raw_concepts:
-
-        for label, id_concept in allowed_concepts.items():
-
-            if label.lower() == concept.lower():
-
-                ids.append(
-                    id_concept
-                )
-
-                break
-
-    return ids
-
-
 
 # ============================================================
 # GENERATE SUMMARY
@@ -319,21 +242,17 @@ def generate_summary(
     # REFERENTIALS
     # ========================================================
 
-    allowed_topics, topics_list_text = (
-        _load_allowed_topics(
-            source_id,
-        )
+    topics_list_text = _load_topics_text(
+        source_id,
     )
 
-    allowed_concepts, concepts_list_text = (
-        _load_allowed_concepts()
-    )
+    concepts_list_text = _load_concepts_text()
 
     # ========================================================
     # PROMPT
     # ========================================================
 
-    prompt = _build_summary_prompt(
+    prompt = build_summary_prompt(
 
         source_id=source_id,
 
@@ -367,34 +286,6 @@ def generate_summary(
     )
 
     # ========================================================
-    # BODY
-    # ========================================================
-
-    body = _build_body(
-        sections["POINTS CLES"],
-    )
-
-    # ========================================================
-    # REFERENTIAL RESOLUTION
-    # ========================================================
-
-    topic_ids = _resolve_topics(
-
-        sections["TOPICS"],
-
-        allowed_topics,
-
-    )
-
-    concept_ids = _resolve_concepts(
-
-        sections["CONCEPTS"],
-
-        allowed_concepts,
-
-    )
-
-    # ========================================================
     # RETURN
     # ========================================================
 
@@ -404,23 +295,29 @@ def generate_summary(
 
         "excerpt": sections["EXCERPT"].strip(),
 
-        "content_body": body,
+        "content_body": _build_body(
+            sections["POINTS CLES"],
+        ),
 
         "chiffres": _parse_list(
-            sections["CHIFFRES"]
+            sections["CHIFFRES"],
         ),
 
         "acteurs_cites": _parse_list(
-            sections["ACTEURS"]
+            sections["ACTEURS"],
         ),
 
-        "solutions": _parse_list(
-            sections["SOLUTIONS"]
+        "solutions_llm": _parse_list(
+            sections["SOLUTIONS"],
         ),
 
-        "topics": topic_ids,
+        "topics_llm": _parse_list(
+            sections["TOPICS"],
+        ),
 
-        "concepts": concept_ids,
+        "concepts_llm": _parse_list(
+            sections["CONCEPTS"],
+        ),
 
         "mecanique_expliquee": sections[
             "MECANIQUE"
@@ -439,5 +336,4 @@ def generate_summary(
         ].strip(),
 
     }
-
 
