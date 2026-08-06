@@ -1,62 +1,60 @@
 import re
-import uuid
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime, timezone, date
-from typing import Optional, Dict, Any, List
-from urllib.parse import urljoin
 
-from google.cloud import bigquery
-
-from config import BQ_PROJECT, BQ_DATASET
-from api.content.models import ContentCreate, ContentUpdate
-from core.content.ai import generate_summary
-from core.content.news_ai import generate_news
-from utils.bigquery_utils import (
-    query_bq,
-    insert_bq,
-    update_bq,
-    get_bigquery_client,
+from datetime import (
+    datetime,
+    date,
 )
 
-from core.numbers.service import get_numbers_from_content
-from core.numbers.backlog_llm import process_backlog_row
-from core.numbers.backlog_insert_service import insert_backlog_batch
-from core.content.publish_sync_service import (
+from typing import (
+    Optional,
+    Dict,
+    Any,
+)
+
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from api.content.models import (
+    ContentCreate,
+)
+
+from core.content.ai import (
+    generate_summary,
+)
+
+from core.content.service import (
+    create_content,
+)
+
+from core.numbers.service import (
+    get_numbers_from_content,
+)
+
+from core.numbers.backlog_insert_service import (
+    insert_backlog_batch,
+)
+
+from core.numbers.backlog_llm import (
+    process_backlog_row,
+)
+
+from core.content.sync_service import (
     after_publish_sync,
 )
 
-# ============================================================
-# TABLE
-# ============================================================
-
-TABLE_CONTENT = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
+from utils.bigquery_utils import (
+    query_bq,
+    update_bq,
 )
-
 
 # ============================================================
 # TABLES
 # ============================================================
 
 TABLE_CONTENT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
-
-TABLE_CONTENT_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC"
-TABLE_CONTENT_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_COMPANY"
-
-TABLE_CONTENT_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT"
-TABLE_CONTENT_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_SOLUTION"
 TABLE_CONTENT_RAW = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
-
-TABLE_TOPIC = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
-TABLE_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
-TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
-TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
-TABLE_SOURCE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
-
-
-
-
 
 def normalize_llm_list(values):
     output = []
