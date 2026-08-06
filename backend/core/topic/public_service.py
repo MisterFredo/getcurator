@@ -236,6 +236,46 @@ def get_topic_view(
         "items": items,
     }
 
+# ============================================================
+# LIST CURATOR
+# ============================================================
+
+def list_topics_for_user(user_id: str):
+
+    sql = f"""
+    SELECT
+        t.ID_TOPIC,
+        t.LABEL
+    FROM `{TABLE_TOPIC}` t
+    JOIN `{TABLE_TOPIC_UNIVERSE}` tu
+        ON tu.ID_TOPIC = t.ID_TOPIC
+    JOIN `{TABLE_USER_UNIVERSE}` uu
+        ON uu.ID_UNIVERSE = tu.ID_UNIVERSE
+    WHERE
+        t.IS_ACTIVE = TRUE
+        AND uu.ID_USER = @user_id
+    GROUP BY
+        t.ID_TOPIC,
+        t.LABEL
+    ORDER BY UPPER(t.LABEL)
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "user_id": user_id,
+        },
+    )
+
+    return [
+        {
+            "id_topic": r["ID_TOPIC"],
+            "label": r["LABEL"],
+        }
+        for r in rows
+    ]
+
+
 
 # ============================================================
 # CONTENT MAPPER
