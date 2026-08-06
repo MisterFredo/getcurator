@@ -1,10 +1,24 @@
 import re
 import unicodedata
-from typing import Dict, Any, Optional, List
 
-from config import BQ_PROJECT, BQ_DATASET
-from utils.llm import run_llm
-from utils.bigquery_utils import query_bq
+from typing import (
+    Dict,
+    Any,
+    Optional,
+)
+
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
+from utils.llm import (
+    run_llm,
+)
 
 from core.content.prompts import (
     build_summary_prompt,
