@@ -80,7 +80,7 @@ def _map_content_summary(
 # CONTENT
 # ============================================================
 
-def _map_content(
+def _map_content_detail(
     r: Dict,
 ) -> Dict:
 
@@ -454,3 +454,132 @@ def get_latest_contents(
         concept_id=concept_id,
         universe_id=universe_id,
     )
+
+# ============================================================
+# CONTENTS BY COMPANY
+# ============================================================
+
+def get_contents_by_company(
+    company_id: str,
+    limit: int = 20,
+) -> List[Dict]:
+
+    return list_contents(
+        company_id=company_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# CONTENTS BY TOPIC
+# ============================================================
+
+def get_contents_by_topic(
+    topic_id: str,
+    limit: int = 20,
+) -> List[Dict]:
+
+    return list_contents(
+        topic_id=topic_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# CONTENTS BY SOLUTION
+# ============================================================
+
+def get_contents_by_solution(
+    solution_id: str,
+    limit: int = 20,
+) -> List[Dict]:
+
+    return list_contents(
+        solution_id=solution_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# CONTENTS BY CONCEPT
+# ============================================================
+
+def get_contents_by_concept(
+    concept_id: str,
+    limit: int = 20,
+) -> List[Dict]:
+
+    return list_contents(
+        concept_id=concept_id,
+        limit=limit,
+    )
+
+
+# ============================================================
+# CONTENTS BY UNIVERSE
+# ============================================================
+
+def get_contents_by_universe(
+    universe_id: str,
+    limit: int = 20,
+) -> List[Dict]:
+
+    return list_contents(
+        universe_id=universe_id,
+        limit=limit,
+    )
+
+# ============================================================
+# RELATED CONTENTS
+# ============================================================
+
+def get_related_contents(
+    id_content: str,
+    limit: int = 10,
+) -> List[Dict]:
+
+    content = get_content(
+        id_content,
+    )
+
+    if not content:
+        return []
+
+    # ========================================================
+    # PRIORITY
+    # ========================================================
+
+    if content["companies"]:
+
+        return [
+            c
+            for c in get_contents_by_company(
+                company_id=content["companies"][0]["id_company"],
+                limit=limit + 1,
+            )
+            if c["id"] != id_content
+        ][:limit]
+
+    if content["topics"]:
+
+        return [
+            c
+            for c in get_contents_by_topic(
+                topic_id=content["topics"][0]["id_topic"],
+                limit=limit + 1,
+            )
+            if c["id"] != id_content
+        ][:limit]
+
+    if content["solutions"]:
+
+        return [
+            c
+            for c in get_contents_by_solution(
+                solution_id=content["solutions"][0]["id_solution"],
+                limit=limit + 1,
+            )
+            if c["id"] != id_content
+        ][:limit]
+
+    return []
