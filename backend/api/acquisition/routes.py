@@ -72,32 +72,6 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# LIST SOURCES
-# ============================================================
-
-@router.get("/source/list")
-def list_sources():
-
-    try:
-
-        rows = list_active_sources()
-
-        return {
-            "status": "ok",
-            "sources": rows
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Erreur liste sources"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
 
 # ============================================================
 # STORE RAW CONTENT
@@ -490,6 +464,58 @@ def raw_stats_route():
             str(e)
         )
 
+# ============================================================
+# RETRY RAW CONTENT
+# ============================================================
+
+@router.post("/raw/retry/{id_raw}")
+def retry_raw_route(id_raw: str):
+
+    try:
+
+        retry_raw_content(id_raw)
+
+        return {
+            "status": "ok"
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur retry raw"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
+
+# ============================================================
+# LIST SOURCES
+# ============================================================
+
+@router.get("/source/list")
+def list_sources():
+
+    try:
+
+        rows = list_active_sources()
+
+        return {
+            "status": "ok",
+            "sources": rows
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur liste sources"
+        )
+
+        raise HTTPException(
+            400,
+            str(e)
+        )
 
 # ============================================================
 # SOURCE MONITORING
@@ -518,51 +544,4 @@ def source_monitoring_route():
             str(e)
         )
 
-# ============================================================
-# MARK READY
-# ============================================================
 
-@router.post("/ready/{id_content}")
-def mark_ready_route(id_content: str):
-
-    try:
-
-        mark_content_ready(id_content)
-
-        return {
-            "status": "ok"
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# RETRY RAW CONTENT
-# ============================================================
-
-@router.post("/raw/retry/{id_raw}")
-def retry_raw_route(id_raw: str):
-
-    try:
-
-        retry_raw_content(id_raw)
-
-        return {
-            "status": "ok"
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Erreur retry raw"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
