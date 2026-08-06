@@ -1,23 +1,14 @@
-
 import re
-import uuid
+
 import requests
+
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone, date
+
+from datetime import datetime
+
 from dateutil.parser import parse
-from typing import Optional, Dict, Any, List
-from urllib.parse import urljoin
 
-from utils.bigquery_utils import get_bigquery_client
-from google.cloud import bigquery
-from config import BQ_PROJECT, BQ_DATASET
-
-
-# ============================================================
-# CONFIG
-# ============================================================
-
-TABLE = "RATECARD_CONTENT_RAW"
+from typing import Any, Dict, List
 
 # ============================================================
 # SCRAPING CONFIG
