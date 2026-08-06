@@ -4,17 +4,6 @@ from datetime import datetime, date
 
 
 # ============================================================
-# PERSON LINK (avec rôle)
-# ============================================================
-
-class ContentPerson(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id_person: str
-    role: Optional[str] = None
-
-
-# ============================================================
 # IA — SUMMARY REQUEST
 # ============================================================
 
