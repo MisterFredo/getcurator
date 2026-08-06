@@ -64,45 +64,9 @@ class ContentCreate(BaseModel):
     # ========================================================
 
     mecanique_expliquee: Optional[str] = None
-
     enjeu_strategique: Optional[str] = None
-
     point_de_friction: Optional[str] = None
-
     signal_analytique: Optional[str] = None
-
-    # ========================================================
-    # ENTITÉS MÉTIER
-    # ========================================================
-
-    topics: List[str] = Field(default_factory=list)
-
-    events: List[str] = Field(default_factory=list)
-
-    companies: List[str] = Field(default_factory=list)
-
-    persons: List[ContentPerson] = Field(default_factory=list)
-
-    # ========================================================
-    # TAGGING ANALYTIQUE
-    # ========================================================
-
-    concepts: List[str] = Field(default_factory=list)
-
-    solutions: List[str] = Field(default_factory=list)
-
-    # ========================================================
-    # SEO
-    # ========================================================
-
-    seo_title: Optional[str] = None
-    seo_description: Optional[str] = None
-
-    # ========================================================
-    # META
-    # ========================================================
-
-    author: Optional[str] = None
 
 # ============================================================
 # UPDATE
@@ -159,38 +123,6 @@ class ContentUpdate(BaseModel):
     point_de_friction: Optional[str] = None
     signal_analytique: Optional[str] = None
 
-    # ========================================================
-    # ENTITÉS MÉTIER
-    # ========================================================
-
-    topics: Optional[List[str]] = None
-    events: Optional[List[str]] = None
-    companies: Optional[List[str]] = None
-
-    persons: Optional[
-        List[ContentPerson]
-    ] = None
-
-    # ========================================================
-    # TAGGING ANALYTIQUE
-    # ========================================================
-
-    concepts: Optional[List[str]] = None
-    solutions: Optional[List[str]] = None
-
-    # ========================================================
-    # SEO
-    # ========================================================
-
-    seo_title: Optional[str] = None
-    seo_description: Optional[str] = None
-
-    # ========================================================
-    # META
-    # ========================================================
-
-    author: Optional[str] = None
-
 
 # ============================================================
 # PUBLISH
@@ -200,18 +132,6 @@ class ContentPublish(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     publish_at: Optional[datetime] = None
-
-# ============================================================
-# IA — SUMMARY REQUEST
-# ============================================================
-
-class ContentSummaryRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    source_id: Optional[str] = None
-    source_text: str
-    id_primary_company: Optional[str] = None
-
 
 # ============================================================
 # OUT
@@ -254,15 +174,6 @@ class ContentOut(BaseModel):
     topics_llm: List[str] = Field(default_factory=list)
 
     published_at: Optional[datetime] = None
-
-    topics: List[str] = Field(default_factory=list)
-    events: List[str] = Field(default_factory=list)
-    companies: List[str] = Field(default_factory=list)
-
-    persons: List[ContentPerson] = Field(default_factory=list)
-
-    concepts: List[str] = Field(default_factory=list)
-    solutions: List[str] = Field(default_factory=list)
 
 
 # ============================================================
