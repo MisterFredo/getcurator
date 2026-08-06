@@ -278,20 +278,6 @@ def create_content(data: ContentCreate) -> str:
 
     return content_id
 
-def list_active_sources():
-
-    rows = query_bq(f"""
-        SELECT
-            SOURCE_ID as id_source,
-            NAME as label
-        FROM `{TABLE_SOURCE}`
-        ORDER BY NAME
-    """)
-
-    return rows
-
-
-
 # ============================================================
 # RESET RELATIONS
 # ============================================================
