@@ -1,3 +1,13 @@
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from typing import List, Dict, Optional
+
+from core.content.ai import generate_summary
+import logging
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
 # ============================================================
 # IA — GENERATE CONTENT
 # ============================================================
