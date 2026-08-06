@@ -449,3 +449,32 @@ def load_user_preferences(
         fav_solutions,
     )
 
+
+# ============================================================
+# 🔥 MY FEED FILTER
+# ============================================================
+
+def build_preferences_filter() -> str:
+    return """
+    AND (
+
+        EXISTS (
+            SELECT 1
+            FROM UNNEST(c.companies) co
+            WHERE co.id_company IN UNNEST(@fav_companies)
+        )
+
+        OR EXISTS (
+            SELECT 1
+            FROM UNNEST(c.topics) t
+            WHERE t.id_topic IN UNNEST(@fav_topics)
+        )
+
+        OR EXISTS (
+            SELECT 1
+            FROM UNNEST(c.solutions) s
+            WHERE s.id_solution IN UNNEST(@fav_solutions)
+        )
+    )
+    """
+
