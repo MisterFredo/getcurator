@@ -1,21 +1,20 @@
-import re
-import uuid
-import requests
-from datetime import datetime, timezone, date
-from typing import Optional, Dict, Any, List
-
-
-from utils.bigquery_utils import get_bigquery_client
-from google.cloud import bigquery
-from config import BQ_PROJECT, BQ_DATASET
-
-
 # ============================================================
-# CONFIG
+# IMPORTS
 # ============================================================
 
-TABLE = "RATECARD_CONTENT_RAW"
+from typing import Optional
 
+from core.acquisition.parser_service import (
+    clean_raw_file,
+    clean_urls,
+    parse_raw_blocks,
+    parse_article_from_url,
+)
+
+from core.acquisition.storage_service import (
+    insert_raw_rows,
+    url_already_exists,
+)
 # ============================================================
 # MAIN SERVICE
 # ============================================================
