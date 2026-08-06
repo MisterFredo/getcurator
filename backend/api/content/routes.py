@@ -6,7 +6,6 @@ from api.content.models import (
     ContentUpdate,
     ContentPublish,
     ContentSummaryRequest,
-    ContentSearchRequest,
     BulkIdsRequest,
 )
 
@@ -100,20 +99,6 @@ def list_route():
             400,
             str(e)
         )
-
-@router.post("/search")
-def search_route(
-    request: ContentSearchRequest
-):
-    try:
-        return search_contents(request)
-
-    except Exception as e:
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
 
 # ============================================================
 # CONTENT STATS (ADMIN)
