@@ -13,10 +13,6 @@ from core.content.service import (
     update_content,
     archive_content,
     delete_content,
-    publish_content,
-    mark_content_ready,
-    bulk_publish,
-    bulk_ready,
 )
 
 from core.content.admin_service import (
@@ -34,6 +30,14 @@ from core.content.sync_service import (
 
 from core.content.public_service import (
     get_content,
+)
+
+from core.content.operations_service import (
+    publish_content,
+    mark_content_ready,
+    rebuild_content_company,
+    bulk_publish,
+    bulk_ready,
 )
 
 from config import (
