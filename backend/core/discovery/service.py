@@ -14,7 +14,7 @@ from utils.bigquery_utils import (
     get_bigquery_client,
 )
 
-from core.content.raw_import_service import (
+from core.acquisition.raw_import_service import (
     parse_article_from_url,
     insert_raw_rows,
 )
