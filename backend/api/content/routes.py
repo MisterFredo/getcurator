@@ -5,6 +5,7 @@ from api.content.models import (
     ContentCreate,
     ContentUpdate,
     ContentPublish,
+    ContentSearchRequest,
     BulkIdsRequest,
 )
 
