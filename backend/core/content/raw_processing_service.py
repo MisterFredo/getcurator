@@ -40,10 +40,6 @@ from core.numbers.backlog_llm import (
     process_backlog_row,
 )
 
-from core.content.sync_service import (
-    after_publish_sync,
-)
-
 from utils.bigquery_utils import (
     query_bq,
     update_bq,
