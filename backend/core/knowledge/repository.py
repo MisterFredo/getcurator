@@ -4,7 +4,7 @@ from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
-
+from datetime import datetime
 from utils.bigquery_utils import (
     query_bq,
 )
