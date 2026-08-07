@@ -6,7 +6,6 @@ from api.company.models import CompanyCreate, CompanyUpdate, CompanyOut
 from core.company.service import (
     create_company,
     list_companies,
-    list_companies_for_user,
     list_company_types,
     get_company,
     update_company,
@@ -16,8 +15,13 @@ from core.company.service import (
     delete_company_alias,
 )
 
-from core.curator.entity_service import get_company_view
-from core.company.ai import suggest_company_aliases
+from core.company.service import (
+    get_company_view,
+    list_companies_for_user,
+)
+
+from core.curator.entity_service import 
+
 
 # 🔐 AUTH
 from utils.auth import get_user_id_from_request
