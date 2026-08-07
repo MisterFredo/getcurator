@@ -179,25 +179,6 @@ def publish_content(
         },
     )
 
-    # ========================================================
-    # SYNC
-    # ========================================================
-
-    after_publish_sync(
-        id_content=id_content,
-    )
-
-    print(
-        "🚀 CONTENT PUBLISHED:",
-        {
-            "id_content": id_content,
-            "status": status,
-            "published_at": str(
-                published_at,
-            ),
-        },
-    )
-
     return status
 
 
