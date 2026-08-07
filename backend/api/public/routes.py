@@ -6,7 +6,7 @@ import requests
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import query_bq
 
-from core.content.service import list_contents, get_content
+from core.content.public_service import list_contents, get_content
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
