@@ -50,7 +50,6 @@ def import_raw_route(
     id_source = payload.id_source
 
     id_primary_company = payload.id_primary_company
-    )
 
     count = import_raw_content(
         text=text,
@@ -59,8 +58,9 @@ def import_raw_route(
     )
 
     return {
-        "imported": count
+        "imported": count,
     }
+
 
 @router.post("/raw/import-csv")
 def import_csv_route(
