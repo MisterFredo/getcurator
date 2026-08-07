@@ -2,7 +2,6 @@ from typing import Dict, List
 
 from utils.bigquery_utils import query_bq
 
-from core.feed.service import search_text
 from core.numbers.insight_service import get_numbers_by_ids
 from core.mcp.suggestions import build_suggestions
 from config import BQ_PROJECT, BQ_DATASET
