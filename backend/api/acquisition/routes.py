@@ -4,12 +4,18 @@ from typing import Optional
 from api.acquisition.models import (
     ContentRawUpdate,
     ContentRawDestockRequest,
+    ImportTextRequest,
+    ImportCsvRequest,
+    ImportUrlsRequest,
 )
 
 from core.acquisition.service import (
     list_active_sources,
     list_raw_stock,
     get_raw_detail,
+    import_raw_content,
+    import_urls_batch,
+    import_urls_csv,
     destock_raw_contents,
     destock_all_raw_contents,
     delete_raw_content,
@@ -32,12 +38,11 @@ def import_raw_route(
     payload: ImportTextRequest,
 ):
 
-    text = payload.get("text")
+    text = payload.text
 
-    id_source = payload.get("id_source")
+    id_source = payload.id_source
 
-    id_primary_company = payload.get(
-        "id_primary_company"
+    id_primary_company = payload.id_primary_company
     )
 
     count = import_raw_content(
