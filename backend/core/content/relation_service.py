@@ -12,6 +12,8 @@ from core.matching.resolver import (
     resolve_solution_alias,
 )
 
+from typing import List, Dict, Optional
+
 # ============================================================
 # TABLES
 # ============================================================
