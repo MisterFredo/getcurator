@@ -7,6 +7,7 @@ from utils.bigquery_utils import (
     query_bq,
 )
 from typing import List, Dict, Optional
+from datetime import datetime, timezone, date
 
 # ============================================================
 # TABLES
