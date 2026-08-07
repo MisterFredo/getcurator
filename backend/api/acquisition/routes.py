@@ -9,19 +9,22 @@ from api.acquisition.models import (
     ImportUrlsRequest,
 )
 
-from core.acquisition.service import (
-    list_active_sources,
-    list_raw_stock,
+from core.acquisition.storage_service import (
     get_raw_detail,
-    destock_raw_contents,
-    destock_all_raw_contents,
     delete_raw_content,
     retry_raw_content,
-    get_source_monitoring,
     get_raw_stats,
 )
 
-from core.acquisition.import.service import (
+
+    list_active_sources,
+    list_raw_stock,
+    insert_raw_rows
+    destock_raw_contents,
+    destock_all_raw_contents,
+    get_source_monitoring,
+
+from core.acquisition.import_service import (
     import_raw_content,
     import_urls_batch,
     import_urls_csv,
