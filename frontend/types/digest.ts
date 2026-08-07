@@ -35,6 +35,7 @@ export type Campaign = {
 
   status:
     | "created"
+      "prepared"
     | "generating"
     | "generated"
     | "sending"
@@ -77,6 +78,7 @@ export type Digest = {
 
   status:
     | "created"
+      "prepared"
     | "generating"
     | "generated"
     | "sending"
@@ -86,7 +88,7 @@ export type Digest = {
   total_contents: number;
   analyzed_contents: number;
 
-  knowledge: any;
+  knowledge: Record<string, unknown>;
 
   document: DigestDocument;
 
