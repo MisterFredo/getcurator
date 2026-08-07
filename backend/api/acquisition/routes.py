@@ -21,10 +21,9 @@ from core.acquisition.storage_service import (
 )
 
 from core.content.raw_processing_service import (
-    list_active_sources,
     destock_raw_contents,
     destock_all_raw_contents,
-    get_source_monitoring,
+)
 
 from core.acquisition.import_service import (
     import_raw_content,
@@ -394,59 +393,4 @@ def retry_raw_route(id_raw: str):
             400,
             str(e)
         )
-
-# ============================================================
-# LIST SOURCES
-# ============================================================
-
-@router.get("/source/list")
-def list_sources():
-
-    try:
-
-        rows = list_active_sources()
-
-        return {
-            "status": "ok",
-            "sources": rows
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Erreur liste sources"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-# ============================================================
-# SOURCE MONITORING
-# ============================================================
-
-@router.get("/source/monitoring")
-def source_monitoring_route():
-
-    try:
-
-        rows = get_source_monitoring()
-
-        return {
-            "status": "ok",
-            "sources": rows
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Erreur source monitoring"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
 
