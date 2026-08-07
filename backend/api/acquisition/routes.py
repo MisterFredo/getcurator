@@ -13,15 +13,18 @@ from core.acquisition.service import (
     list_active_sources,
     list_raw_stock,
     get_raw_detail,
-    import_raw_content,
-    import_urls_batch,
-    import_urls_csv,
     destock_raw_contents,
     destock_all_raw_contents,
     delete_raw_content,
     retry_raw_content,
     get_source_monitoring,
     get_raw_stats,
+)
+
+from core.acquisition.import.service import (
+    import_raw_content,
+    import_urls_batch,
+    import_urls_csv,
 )
 
 import logging
