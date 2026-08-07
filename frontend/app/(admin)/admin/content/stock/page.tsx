@@ -129,7 +129,7 @@ export default function ContentStockPage() {
     async function loadSources() {
       try {
 
-        const res = await api.get("/content/source/list");
+        const res = await api.get("/source/list");
         setSources(res.sources || []);
 
       } catch (e) {
