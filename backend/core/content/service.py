@@ -6,7 +6,6 @@ from google.cloud import bigquery
 
 from config import BQ_PROJECT, BQ_DATASET
 from api.content.models import ContentCreate, ContentUpdate
-from core.content.news_ai import generate_news
 from utils.bigquery_utils import (
     query_bq,
     insert_bq,
