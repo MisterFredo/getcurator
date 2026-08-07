@@ -15,7 +15,7 @@ from core.company.service import (
     delete_company_alias,
 )
 
-from core.company.service import (
+from core.company.public_service import (
     get_company_view,
     list_companies_for_user,
 )
