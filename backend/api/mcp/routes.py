@@ -11,9 +11,6 @@ from core.mcp.handlers.company import handle_company
 from core.mcp.handlers.numbers import handle_numbers
 from core.mcp.handlers.benchmark import handle_benchmark
 
-# moteur recherche
-from core.curator.service import search
-
 # insight + suggestions
 from core.mcp.suggestions import build_suggestions
 
