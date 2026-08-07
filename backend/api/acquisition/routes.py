@@ -11,7 +11,6 @@ from api.acquisition.models import (
 
 from core.acquisition.storage_service import (
     get_raw_detail,
-    delete_raw_content,
     retry_raw_content,
     update_raw_content,
     delete_raw_content,
@@ -307,12 +306,8 @@ def import_urls_route(
 @router.put("/raw/update/{id_raw}")
 def update_raw(
     id_raw: str,
-    payload: ContentRawUpdate
+    payload: ContentRawUpdate,
 ):
-
-    from core.content.service import (
-        update_raw_content
-    )
 
     try:
 
@@ -327,19 +322,24 @@ def update_raw(
             raw_text=payload.raw_text,
 
             id_primary_company=payload.id_primary_company,
+
         )
 
         return {
-            "status": "ok"
+
+            "status": "ok",
+
         }
 
     except Exception as e:
 
         raise HTTPException(
-            400,
-            str(e)
-        )
 
+            400,
+
+            str(e),
+
+        )
 
 # ============================================================
 # RAW STATS (ADMIN)
