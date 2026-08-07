@@ -21,8 +21,9 @@ from core.content.admin_service import (
     get_content_stats,
 )
 
-from core.content.sync_service import (
+from core.content.pipeline import (
     sync_content,
+    sync_content_entities,
     bulk_sync_contents,
     sync_all_published_contents,
     sync_all_numbers,
