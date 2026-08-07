@@ -85,7 +85,7 @@ export default function StockImportPanel({
         await csvFile.text();
 
       const res = await api.post(
-        "/content/raw/import-csv",
+        "/acquisition/raw/import-csv",
         {
           id_source: sourceId,
 
@@ -138,7 +138,7 @@ export default function StockImportPanel({
     try {
 
       const res = await api.post(
-        "/content/raw/import-urls",
+        "/acquisition/raw/import-urls",
         {
           id_source:
             sourceId,
