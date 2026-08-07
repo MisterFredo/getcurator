@@ -1,4 +1,5 @@
 from utils.bigquery_utils import query_bq
+from typing import List, Dict, Optional
 
 TABLE_CONTENT = \
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT"
