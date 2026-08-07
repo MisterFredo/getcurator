@@ -10,7 +10,6 @@ from api.content.models import (
 
 from core.content.service import (
     create_content,
-    get_content,
     update_content,
     archive_content,
     delete_content,
@@ -31,6 +30,10 @@ from core.content.sync_service import (
     bulk_sync_contents,
     sync_all_published_contents,
     sync_all_numbers,
+)
+
+from core.content.public_service import (
+    get_content,
 )
 
 from config import (
