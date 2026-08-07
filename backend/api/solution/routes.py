@@ -10,7 +10,6 @@ from api.solution.models import (
 from core.solution.service import (
     create_solution,
     list_solutions,
-    list_solutions_for_user,
     get_solution,
     update_solution,
     delete_solution,
@@ -19,8 +18,9 @@ from core.solution.service import (
     delete_solution_alias,
 )
 
-from core.curator.entity_service import (
+from core.solution.public_service import (
     get_solution_view,
+    list_solutions_for_user,
 )
 
 from utils.auth import (
