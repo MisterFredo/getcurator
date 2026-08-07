@@ -38,7 +38,7 @@ export default function AdminHome() {
           rawRes,
           contentRes,
         ] = await Promise.all([
-          api.get("/content/raw/admin/stats"),
+          api.get("/acquisition/raw/admin/stats"),
           api.get("/content/admin/stats"),
         ]);
 
