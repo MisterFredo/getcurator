@@ -1,6 +1,5 @@
 from typing import Dict, List
 
-from core.feed.service import search_text
 from utils.bigquery_utils import query_bq
 from config import BQ_PROJECT, BQ_DATASET
 
