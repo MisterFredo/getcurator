@@ -10,32 +10,20 @@ from api.content.models import (
 
 from core.content.service import (
     create_content,
-    list_contents_admin,
     get_content,
     update_content,
     archive_content,
     delete_content,
     publish_content,
-    generate_summary,
-    get_content_stats,
     mark_content_ready,
     bulk_publish,
     bulk_ready,
 )
 
 from core.content.admin_service import (
-    create_content,
     list_contents_admin,
-    get_content,
-    update_content,
-    archive_content,
-    delete_content,
-    publish_content,
-    generate_summary,
+    get_content_admin,
     get_content_stats,
-    mark_content_ready,
-    bulk_publish,
-    bulk_ready,
 )
 
 from core.content.sync_service import (
@@ -340,7 +328,7 @@ def bulk_sync_route(payload: BulkIdsRequest):
 @router.get("/{id_content}")
 def get_route(id_content: str):
 
-    content = get_content(id_content)
+    content = get_content_admin(id_content)
 
     if not content:
 
