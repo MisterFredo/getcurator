@@ -21,7 +21,6 @@ from .query_builder import (
 # ============================================================
 # SELECT CONTENTS
 # ============================================================
-
 def select_contents(
     profile: ExpertiseProfile,
     period_start: str | None = None,
@@ -48,17 +47,6 @@ def select_contents(
         params=params,
 
     )
-
-    print("=" * 80)
-    print("ROWS RETURNED :", len(rows))
-
-    if rows:
-        print("FIRST ROW")
-        print(rows[0])
-    else:
-        print("NO ROWS RETURNED")
-
-    print("=" * 80)
 
     return normalize_contents(
         rows
