@@ -30,7 +30,21 @@ def build_selection_query(
         profile
     )
 
-    params: dict = {}
+    params: dict = {
+
+        "company_ids": (
+            profile.preferences.companies
+        ),
+
+        "solution_ids": (
+            profile.preferences.solutions
+        ),
+
+        "topic_ids": (
+            profile.preferences.topics
+        ),
+
+    }
 
     date_filter_sql = ""
 
@@ -74,7 +88,7 @@ def build_selection_query(
 
         COALESCE(
             TITLE_EN,
-            title
+            TITLE
         ) AS title
 
         """
@@ -83,7 +97,7 @@ def build_selection_query(
 
         COALESCE(
             EXCERPT_EN,
-            excerpt
+            EXCERPT
         ) AS excerpt
 
         """
@@ -92,47 +106,65 @@ def build_selection_query(
 
         title_sql = """
 
-        title AS title
+        TITLE AS title
 
         """
 
         excerpt_sql = """
 
-        excerpt AS excerpt
+        EXCERPT AS excerpt
 
         """
 
     sql = f"""
 
     SELECT
-        id_content AS id,
+
+        ID_CONTENT AS id,
+
         {title_sql},
+
         {excerpt_sql},
 
-        published_at,
-        source_url,
-        source_title,
-        source_id,
+        PUBLISHED_AT AS published_at,
+
+        SOURCE_URL AS source_url,
+
+        SOURCE_TITLE AS source_title,
+
+        SOURCE_ID AS source_id,
+
         ID_PRIMARY_COMPANY,
-        content_body,
-        signal_analytique,
-        mecanique_expliquee,
-        enjeu_strategique,
-        point_de_friction,
-        chiffres,
-        companies,
-        solutions,
-        topics,
-        universes,
-        concepts
+
+        CONTENT_BODY AS content_body,
+
+        SIGNAL_ANALYTIQUE AS signal_analytique,
+
+        MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
+
+        ENJEU_STRATEGIQUE AS enjeu_strategique,
+
+        POINT_DE_FRICTION AS point_de_friction,
+
+        CHIFFRES AS chiffres,
+
+        COMPANIES AS companies,
+
+        SOLUTIONS AS solutions,
+
+        TOPICS AS topics,
+
+        UNIVERSES AS universes,
+
+        CONCEPTS AS concepts
 
     FROM `{TABLE_CONTENT_ENRICHED}`
 
     WHERE
 
-        is_active = TRUE
+        IS_ACTIVE = TRUE
 
-        AND status = "PUBLISHED"
+        AND STATUS = "PUBLISHED"
 
         {date_filter_sql}
 
@@ -148,11 +180,12 @@ def build_selection_query(
 
     ORDER BY
 
-        published_at DESC
+        PUBLISHED_AT DESC
 
     {limit_sql}
 
     """
+
     return sql, params
 
 
@@ -166,17 +199,11 @@ def build_selection_filters(
 
     filters_sql = build_filters_sql(
 
-        company_ids=(
-            profile.preferences.companies
-        ),
+        company_ids=profile.preferences.companies,
 
-        solution_ids=(
-            profile.preferences.solutions
-        ),
+        solution_ids=profile.preferences.solutions,
 
-        topic_ids=(
-            profile.preferences.topics
-        ),
+        topic_ids=profile.preferences.topics,
 
     )
 
@@ -185,6 +212,7 @@ def build_selection_filters(
     )
 
     if not keywords_sql:
+
         keywords_sql = "FALSE"
 
     return SelectionFilters(
@@ -194,7 +222,6 @@ def build_selection_filters(
         keywords_sql=keywords_sql,
 
     )
-
 
 # ============================================================
 # BUILD FILTERS SQL
@@ -210,56 +237,42 @@ def build_filters_sql(
 
     if company_ids:
 
-        ids = ",".join(
-            f"'{x}'"
-            for x in company_ids
-        )
-
         filters.append(
-            f"""
+            """
             EXISTS (
                 SELECT 1
                 FROM UNNEST(companies) c
-                WHERE c.id_company IN ({ids})
+                WHERE c.id_company IN UNNEST(@company_ids)
             )
             """
         )
 
     if solution_ids:
 
-        ids = ",".join(
-            f"'{x}'"
-            for x in solution_ids
-        )
-
         filters.append(
-            f"""
+            """
             EXISTS (
                 SELECT 1
                 FROM UNNEST(solutions) s
-                WHERE s.id_solution IN ({ids})
+                WHERE s.id_solution IN UNNEST(@solution_ids)
             )
             """
         )
 
     if topic_ids:
 
-        ids = ",".join(
-            f"'{x}'"
-            for x in topic_ids
-        )
-
         filters.append(
-            f"""
+            """
             EXISTS (
                 SELECT 1
                 FROM UNNEST(topics) t
-                WHERE t.id_topic IN ({ids})
+                WHERE t.id_topic IN UNNEST(@topic_ids)
             )
             """
         )
 
     if not filters:
+
         return "1 = 0"
 
     return " OR ".join(filters)
@@ -274,6 +287,7 @@ def build_keywords_sql(
 ) -> str:
 
     if not keywords:
+
         return ""
 
     conditions = []
@@ -309,6 +323,7 @@ def build_keywords_sql(
         )
 
         if not keyword:
+
             continue
 
         field_conditions = [
