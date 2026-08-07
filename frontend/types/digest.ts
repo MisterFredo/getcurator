@@ -35,7 +35,7 @@ export type Campaign = {
 
   status:
     | "created"
-      "prepared"
+    | "prepared"
     | "generating"
     | "generated"
     | "sending"
@@ -78,7 +78,7 @@ export type Digest = {
 
   status:
     | "created"
-      "prepared"
+    | "prepared"
     | "generating"
     | "generated"
     | "sending"
