@@ -72,8 +72,8 @@ export default function ContentStockPage() {
       queryParams.append("offset", offset.toString());
 
       const [listRes, statsRes] = await Promise.all([
-        api.get(`/content/raw/stock?${queryParams.toString()}`),
-        api.get("/content/raw/admin/stats"),
+        api.get(`/acquisition/raw/stock?${queryParams.toString()}`),
+        api.get("/acquisition/raw/admin/stats"),
       ]);
 
       setRaws(listRes.rows || []);
@@ -178,7 +178,7 @@ export default function ContentStockPage() {
     try {
 
       await api.post(
-        "/content/raw/destock",
+        "/acquisition/raw/destock",
         id ? { id_raw: id } : { limit: 50 }
       );
 
@@ -200,7 +200,7 @@ export default function ContentStockPage() {
 
     try {
 
-      await api.post(`/content/raw/retry/${id}`, {});
+      await api.post(`/acquisition/raw/retry/${id}`, {});
       await load();
 
     } catch (e) {
@@ -217,7 +217,7 @@ export default function ContentStockPage() {
 
     try {
 
-      await api.delete(`/content/raw/delete/${id}`);
+      await api.delete(`/acquisition/raw/delete/${id}`);
       await load();
 
     } catch (e) {
