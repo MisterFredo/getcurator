@@ -14,9 +14,12 @@ from utils.bigquery_utils import (
     get_bigquery_client,
 )
 
-from core.acquisition.raw_import_service import (
-    parse_article_from_url,
+from core.acquisition.storage_service import (
     insert_raw_rows,
+)
+
+from core.acquisition.parser_service import (
+    parse_article_from_url,
 )
 
 from google.cloud import bigquery
