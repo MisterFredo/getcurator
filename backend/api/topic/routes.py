@@ -8,14 +8,14 @@ from api.topic.models import (
 from core.topic.service import (
     create_topic,
     list_topics,
-    list_topics_for_user,
     get_topic,
     update_topic,
     delete_topic,
 )
 
-from core.curator.entity_service import (
+from core.topic.public_service import (
     get_topic_view,
+    list_topics_for_user,
 )
 
 from utils.auth import (
