@@ -1,9 +1,7 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from typing import List, Dict, Optional
+from fastapi import APIRouter, HTTPException
+from typing import Optional
 
 from api.acquisition.models import (
-    ContentRawCreate,
-    ContentRawOut,
     ContentRawUpdate,
     ContentRawDestockRequest,
 )
@@ -20,15 +18,6 @@ from core.acquisition.service import (
     get_raw_stats,
 )
 
-from config import (
-    BQ_PROJECT,
-    BQ_DATASET,
-)
-
-from utils.bigquery_utils import (
-    query_bq,
-)
-
 import logging
 
 router = APIRouter()
@@ -41,7 +30,7 @@ logger = logging.getLogger(__name__)
 @router.post("/raw/import")
 def import_raw_route(
     payload: ImportTextRequest,
-)
+):
 
     text = payload.get("text")
 
