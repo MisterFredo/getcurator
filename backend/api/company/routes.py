@@ -20,8 +20,6 @@ from core.company.public_service import (
     list_companies_for_user,
 )
 
-from core.curator.entity_service import 
-
 
 # 🔐 AUTH
 from utils.auth import get_user_id_from_request
