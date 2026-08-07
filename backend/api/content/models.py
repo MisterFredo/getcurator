@@ -247,3 +247,71 @@ class BulkIdsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ids: List[str]
+
+
+# ============================================================
+# SEARCH
+# ============================================================
+
+class ContentSearchFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    search: Optional[str] = None
+
+    company_id: Optional[str] = None
+    solution_id: Optional[str] = None
+    topic_id: Optional[str] = None
+    concept_id: Optional[str] = None
+    source_id: Optional[str] = None
+
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+
+    only_numbers: bool = False
+
+
+class ContentSearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filters: ContentSearchFilters = Field(
+        default_factory=ContentSearchFilters
+    )
+
+    page: int = Field(
+        default=1,
+        ge=1,
+    )
+
+    page_size: int = Field(
+        default=100,
+        ge=1,
+        le=500,
+    )
+
+
+class ContentSearchItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id_content: str
+
+    title: Optional[str] = None
+
+    source_title: Optional[str] = None
+
+    source_date: Optional[date] = None
+
+    published_at: Optional[datetime] = None
+
+
+class ContentSearchResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contents: List[ContentSearchItem]
+
+    total_results: int
+
+    page: int
+
+    page_size: int
+
+    total_pages: int
