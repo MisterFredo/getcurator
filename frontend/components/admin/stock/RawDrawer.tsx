@@ -87,7 +87,7 @@ export default function RawDrawer({
       try {
         setLoadingDetail(true);
 
-        const res = await api.get(`/content/raw/detail/${raw.id_raw}`);
+        const res = await api.get(`/acquisition/raw/detail/${raw.id_raw}`);
 
         setRawText(res.raw_text || "");
 
@@ -113,7 +113,7 @@ export default function RawDrawer({
     try {
       setLoading(true);
 
-      await api.put(`/content/raw/update/${raw.id_raw}`, {
+      await api.put(`/acquisition/raw/update/${raw.id_raw}`, {
         source_title: title,
         date_source: date || null,
         raw_text: rawText,
