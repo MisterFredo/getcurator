@@ -42,6 +42,10 @@ from core.content.operations_service import (
     bulk_ready,
 )
 
+from core.content.search_service import (
+    search_contents,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
