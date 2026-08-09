@@ -7,7 +7,7 @@ from fastapi import (
 from core.watch.watch_service import (
     latest,
     search,
-    get_content,
+    get_watch_content,
 )
 
 from core.watch.workspace_service import (
@@ -95,14 +95,13 @@ def content_route(
 
 ):
 
-    return get_content(
+    return get_watch_content(
 
         content_id=content_id,
 
         user_id=user_id,
 
     )
-
 
 # ============================================================
 # WORKSPACE
