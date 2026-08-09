@@ -5,15 +5,18 @@ from fastapi import APIRouter
 from core.watch.watch_service import (
     latest,
     search,
-    get_item,
-    get_item_detail,
-    add_to_workspace,
+    get_content,
+)
+
+from core.watch.workspace_service import (
+    add_content,
+    remove_content,
 )
 
 router = APIRouter()
 
 # ============================================================
-# LATEST
+# WATCH
 # ============================================================
 
 @router.get("/latest")
@@ -31,31 +34,31 @@ def search_route():
 
 
 # ============================================================
-# ITEM
+# CONTENT (DRAWER)
 # ============================================================
 
-@router.get("/{item_id}")
-def item_route(
-    item_id: str,
+@router.get("/content/{content_id}")
+def content_route(
+    content_id: str,
 ):
-    return get_item(item_id)
-
-
-# ============================================================
-# DETAIL
-# ============================================================
-
-@router.get("/{item_id}/detail")
-def detail_route(
-    item_id: str,
-):
-    return get_item_detail(item_id)
+    return get_content(
+        content_id,
+    )
 
 
 # ============================================================
 # WORKSPACE
 # ============================================================
 
-@router.post("/workspace")
-def workspace_route():
-    return add_to_workspace()
+@router.post("/workspace/add")
+def add_workspace_route():
+    return add_content()
+
+
+@router.delete("/workspace/{content_id}")
+def remove_workspace_route(
+    content_id: str,
+):
+    return remove_content(
+        content_id,
+    )
