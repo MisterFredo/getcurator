@@ -208,7 +208,7 @@ export default function CuratorShell({
           mb-2
           px-3
         ">
-          Data
+          Watch
         </div>
 
         <nav className="
