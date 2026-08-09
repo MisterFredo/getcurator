@@ -75,6 +75,7 @@ include_router("api.source", "/api/source", "SOURCE")
 include_router("api.universe", "/api/universe", "UNIVERSE")
 include_router("api.translation", "/api/translation", "TRANSLATION")
 include_router("api.vector", "/api/vector", "VECTOR")
+include_router("api.watch", "/api/watch", "WATCH")
 include_router("api.workspace", "/api/workspace", "WORKSPACE")
 
 # --- FRONT PUBLIC (MEDIA)
