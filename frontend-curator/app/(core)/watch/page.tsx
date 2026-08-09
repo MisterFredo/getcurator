@@ -52,7 +52,7 @@ export default function WatchPage() {
         await watchLatest({
 
           user_id:
-            user.id,
+            user.user_id,
 
         });
 
