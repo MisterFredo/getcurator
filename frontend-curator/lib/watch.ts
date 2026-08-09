@@ -1,110 +1,301 @@
-// frontend-curator/types/watch.ts
+// frontend-curator/lib/watch.ts
 
-/* =========================================================
-   BADGES
-========================================================= */
+import { api } from "@/lib/api";
 
-export type WatchBadge = {
-  type:
-    | "company"
-    | "topic"
-    | "solution"
-    | "concept"
-    | "universe";
+import type {
+  WatchItem,
+  WatchContent,
+  WatchResponse,
+} from "@/types/watch";
 
-  id?: string;
+/* ========================================================= */
 
-  label: string;
-};
+type WatchParams = {
 
-/* =========================================================
-   ITEM
-========================================================= */
+  user_id: string;
 
-export type WatchItem = {
+  limit?: number;
 
-  id: string;
+  offset?: number;
 
-  title: string;
-
-  excerpt: string;
-
-  published_at: string | null;
-
-  source_title?: string;
-
-  source_url?: string;
-
-  primary_company_logo?: string | null;
-
-  companies: any[];
-
-  topics: any[];
-
-  solutions: any[];
-
-  concepts: any[];
-
-  badges: WatchBadge[];
+  universe_id?: string | null;
 
 };
 
-/* =========================================================
-   RESPONSE
-========================================================= */
+type SearchParams = WatchParams & {
 
-export type WatchResponse = {
-
-  items: WatchItem[];
-
-  count: number;
+  query: string;
 
 };
 
+/* ========================================================= */
+
+function mapItem(
+  row: any,
+): WatchItem {
+
+  return {
+
+    id: row.id,
+
+    title: row.title,
+
+    excerpt: row.excerpt,
+
+    published_at:
+      row.published_at,
+
+    source_title:
+      row.source_title,
+
+    source_url:
+      row.source_url,
+
+    primary_company_logo:
+      row.primary_company_logo,
+
+    companies:
+      row.companies ?? [],
+
+    topics:
+      row.topics ?? [],
+
+    solutions:
+      row.solutions ?? [],
+
+    concepts:
+      row.concepts ?? [],
+
+    badges:
+      row.badges ?? [],
+
+  };
+
+}
+
+/* ========================================================= */
+
+function mapContent(
+  row: any,
+): WatchContent {
+
+  return {
+
+    id_content:
+      row.id_content,
+
+    title:
+      row.title,
+
+    title_en:
+      row.title_en,
+
+    excerpt:
+      row.excerpt,
+
+    excerpt_en:
+      row.excerpt_en,
+
+    content_body:
+      row.content_body,
+
+    signal_analytique:
+      row.signal_analytique,
+
+    mecanique_expliquee:
+      row.mecanique_expliquee,
+
+    enjeu_strategique:
+      row.enjeu_strategique,
+
+    point_de_friction:
+      row.point_de_friction,
+
+    chiffres:
+      row.chiffres ?? [],
+
+    source_title:
+      row.source_title,
+
+    source_url:
+      row.source_url,
+
+    published_at:
+      row.published_at,
+
+    id_primary_company:
+      row.id_primary_company,
+
+    companies:
+      row.companies ?? [],
+
+    topics:
+      row.topics ?? [],
+
+    solutions:
+      row.solutions ?? [],
+
+    universes:
+      row.universes ?? [],
+
+    concepts:
+      row.concepts ?? [],
+
+  };
+
+}
+
 /* =========================================================
-   CONTENT (DRAWER)
+   LATEST
 ========================================================= */
 
-export type WatchContent = {
+export async function watchLatest(
+  params: WatchParams,
+): Promise<WatchResponse> {
 
-  id_content: string;
+  const query =
+    new URLSearchParams();
 
-  title: string;
+  query.append(
+    "user_id",
+    params.user_id,
+  );
 
-  title_en?: string;
+  query.append(
+    "limit",
+    String(
+      params.limit ?? 20,
+    ),
+  );
 
-  excerpt: string;
+  query.append(
+    "offset",
+    String(
+      params.offset ?? 0,
+    ),
+  );
 
-  excerpt_en?: string;
+  if (params.universe_id) {
 
-  content_body: string;
+    query.append(
+      "universe_id",
+      params.universe_id,
+    );
 
-  signal_analytique?: string;
+  }
 
-  mecanique_expliquee?: string;
+  const res =
+    await api.get(
+      `/watch/latest?${query.toString()}`,
+    );
 
-  enjeu_strategique?: string;
+  return {
 
-  point_de_friction?: string;
+    items:
+      (res.items ?? []).map(
+        mapItem,
+      ),
 
-  chiffres?: string[];
+    count:
+      res.count ?? 0,
 
-  source_title?: string;
+  };
 
-  source_url?: string;
+}
 
-  published_at?: string | null;
+/* =========================================================
+   SEARCH
+========================================================= */
 
-  id_primary_company?: string;
+export async function watchSearch(
+  params: SearchParams,
+): Promise<WatchResponse> {
 
-  companies: any[];
+  const query =
+    new URLSearchParams();
 
-  topics: any[];
+  query.append(
+    "user_id",
+    params.user_id,
+  );
 
-  solutions: any[];
+  query.append(
+    "query",
+    params.query,
+  );
 
-  universes: any[];
+  query.append(
+    "limit",
+    String(
+      params.limit ?? 20,
+    ),
+  );
 
-  concepts: any[];
+  query.append(
+    "offset",
+    String(
+      params.offset ?? 0,
+    ),
+  );
 
-};
+  if (params.universe_id) {
+
+    query.append(
+      "universe_id",
+      params.universe_id,
+    );
+
+  }
+
+  const res =
+    await api.get(
+      `/watch/search?${query.toString()}`,
+    );
+
+  return {
+
+    items:
+      (res.items ?? []).map(
+        mapItem,
+      ),
+
+    count:
+      res.count ?? 0,
+
+  };
+
+}
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+export async function getWatchContent(
+  contentId: string,
+  userId?: string,
+): Promise<WatchContent> {
+
+  const query =
+    new URLSearchParams();
+
+  if (userId) {
+
+    query.append(
+      "user_id",
+      userId,
+    );
+
+  }
+
+  const res =
+    await api.get(
+
+      `/watch/content/${contentId}?${query.toString()}`,
+
+    );
+
+  return mapContent(
+    res,
+  );
+
+}
