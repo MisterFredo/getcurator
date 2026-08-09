@@ -1,5 +1,3 @@
-// frontend-curator/app/(core)/watch/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,11 +6,29 @@ import { useUser } from "@/hooks/useUser";
 
 import {
   watchLatest,
+  watchSearch,
 } from "@/lib/watch";
+
+import WatchHeader from "@/components/watch/WatchHeader";
+import WatchList from "@/components/watch/WatchList";
 
 import type {
   WatchItem,
 } from "@/types/watch";
+
+/* ========================================================= */
+
+type Universe = {
+
+  id: string;
+
+  label: string;
+
+  count?: number;
+
+};
+
+/* ========================================================= */
 
 export default function WatchPage() {
 
@@ -30,21 +46,58 @@ export default function WatchPage() {
     setLoading,
   ] = useState(true);
 
+  const [
+    query,
+    setQuery,
+  ] = useState("");
+
+  const [
+    selectedUniverse,
+    setSelectedUniverse,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
+
+  // TODO
+  const universes: Universe[] = [];
+
+  /* ===================================================== */
+
   useEffect(() => {
 
-    if (!user) return;
+    if (!user) {
 
-    load();
+      return;
+
+    }
+
+    loadLatest();
 
   }, [
     user,
+    selectedUniverse,
   ]);
 
-  async function load() {
+  /* =====================================================
+     LATEST
+  ===================================================== */
 
-    if (!user) return;
+  async function loadLatest() {
 
-    setLoading(true);
+    if (!user) {
+
+      return;
+
+    }
+
+    setLoading(
+      true,
+    );
 
     try {
 
@@ -54,73 +107,150 @@ export default function WatchPage() {
           user_id:
             user.user_id,
 
+          universe_id:
+            selectedUniverse,
+
         });
 
       setItems(
         res.items,
       );
 
+      setTotal(
+        res.count,
+      );
+
     } finally {
 
-      setLoading(false);
+      setLoading(
+        false,
+      );
 
     }
 
   }
 
-  if (loading) {
+  /* =====================================================
+     SEARCH
+  ===================================================== */
 
-    return (
-      <div className="p-8">
-        Loading...
-      </div>
+  async function handleSearch(
+    value: string,
+  ) {
+
+    if (!user) {
+
+      return;
+
+    }
+
+    setQuery(
+      value,
     );
+
+    setLoading(
+      true,
+    );
+
+    try {
+
+      const res =
+        await watchSearch({
+
+          user_id:
+            user.user_id,
+
+          query: value,
+
+          universe_id:
+            selectedUniverse,
+
+        });
+
+      setItems(
+        res.items,
+      );
+
+      setTotal(
+        res.count,
+      );
+
+    } finally {
+
+      setLoading(
+        false,
+      );
+
+    }
 
   }
 
+  /* =====================================================
+     OPEN DRAWER
+  ===================================================== */
+
+  function openContent(
+    item: WatchItem,
+  ) {
+
+    console.log(
+      item.id,
+    );
+
+    // prochaine étape :
+    // ouverture du drawer
+
+  }
+
+  /* ===================================================== */
+
   return (
 
-    <div className="p-8">
+    <div className="space-y-8">
 
-      <h1 className="text-2xl font-semibold mb-6">
+      <WatchHeader
 
-        Watch
+        query={query}
 
-      </h1>
+        onSearch={
+          handleSearch
+        }
 
-      <div className="space-y-4">
+        universes={
+          universes
+        }
 
-        {items.map(
+        selectedUniverse={
+          selectedUniverse
+        }
 
-          item => (
+        onSelectUniverse={
+          setSelectedUniverse
+        }
 
-            <div
+        loading={loading}
 
-              key={item.id}
+      />
 
-              className="rounded-lg border p-4"
+      <WatchList
 
-            >
+        title="Results"
 
-              <h2 className="font-semibold">
+        total={total}
 
-                {item.title}
+        items={items}
 
-              </h2>
+        loading={loading}
 
-              <p className="text-sm text-gray-600 mt-2">
+        hasMore={false}
 
-                {item.excerpt}
+        onLoadMore={() => {}}
 
-              </p>
+        onSelect={
+          openContent
+        }
 
-            </div>
-
-          )
-
-        )}
-
-      </div>
+      />
 
     </div>
 
