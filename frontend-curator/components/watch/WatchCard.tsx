@@ -1,6 +1,6 @@
 "use client";
 
-import ContentBadges from "@/components/content/ContentBadges";
+import ContentBadges from "@/components/watch/ContentBadges";
 
 import type {
   WatchItem,
