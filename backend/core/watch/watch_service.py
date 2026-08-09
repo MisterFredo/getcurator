@@ -1,25 +1,22 @@
-# backend/core/watch/watch_service.py
+# ============================================================
+# LATEST
+# ============================================================
 
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
 
-from .watch_utils import (
+from core.watch.watch_utils import (
     paginate,
     serialize_contents,
 )
 
-
-# ============================================================
-# LATEST
-# ============================================================
 
 def latest(
     user_id: str,
     limit: int = 20,
     offset: int = 0,
     universe_id: str | None = None,
-    feed_mode: str = "all",
 ):
 
     expertise = generate_expertise_from_profile(
@@ -28,11 +25,13 @@ def latest(
 
         limit=limit + offset,
 
+        universe_id=universe_id,
+
     )
 
     contents = paginate(
 
-        expertise.contents,
+        contents=expertise.contents,
 
         limit=limit,
 
