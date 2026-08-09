@@ -21,11 +21,14 @@ from .query_builder import (
 # ============================================================
 # SELECT CONTENTS
 # ============================================================
+
 def select_contents(
     profile: ExpertiseProfile,
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
+    universe_id: str | None = None,
+    query: str | None = None,
 ) -> list[ExpertiseContent]:
 
     sql, params = build_selection_query(
@@ -38,6 +41,10 @@ def select_contents(
 
         limit=limit,
 
+        universe_id=universe_id,
+
+        query=query,
+
     )
 
     rows = query_bq(
@@ -49,5 +56,5 @@ def select_contents(
     )
 
     return normalize_contents(
-        rows
+        rows,
     )
