@@ -1,6 +1,8 @@
 # backend/api/watch/routes.py
 
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+)
 
 from core.watch.watch_service import (
     latest,
@@ -15,13 +17,35 @@ from core.watch.workspace_service import (
 
 router = APIRouter()
 
+
 # ============================================================
 # WATCH
 # ============================================================
 
 @router.get("/latest")
-def latest_route():
-    return latest()
+def latest_route(
+
+    user_id: str,
+
+    limit: int = 20,
+
+    offset: int = 0,
+
+    universe_id: str | None = None,
+
+):
+
+    return latest(
+
+        user_id=user_id,
+
+        limit=limit,
+
+        offset=offset,
+
+        universe_id=universe_id,
+
+    )
 
 
 # ============================================================
@@ -29,8 +53,33 @@ def latest_route():
 # ============================================================
 
 @router.get("/search")
-def search_route():
-    return search()
+def search_route(
+
+    user_id: str,
+
+    query: str,
+
+    limit: int = 20,
+
+    offset: int = 0,
+
+    universe_id: str | None = None,
+
+):
+
+    return search(
+
+        user_id=user_id,
+
+        query=query,
+
+        limit=limit,
+
+        offset=offset,
+
+        universe_id=universe_id,
+
+    )
 
 
 # ============================================================
@@ -39,10 +88,19 @@ def search_route():
 
 @router.get("/content/{content_id}")
 def content_route(
+
     content_id: str,
+
+    user_id: str | None = None,
+
 ):
+
     return get_content(
-        content_id,
+
+        content_id=content_id,
+
+        user_id=user_id,
+
     )
 
 
@@ -52,6 +110,7 @@ def content_route(
 
 @router.post("/workspace/add")
 def add_workspace_route():
+
     return add_content()
 
 
@@ -59,6 +118,7 @@ def add_workspace_route():
 def remove_workspace_route(
     content_id: str,
 ):
+
     return remove_content(
         content_id,
     )
