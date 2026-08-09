@@ -35,6 +35,9 @@ TABLE_COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 TABLE_CONCEPT = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT"
 TABLE_SOLUTION = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
 TABLE_SOURCE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE"
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
 
 
 
@@ -455,6 +458,89 @@ def update_content(id_content: str, data: ContentUpdate):
     )
     
     return True
+
+# ============================================================
+# GET CONTENT
+# ============================================================
+
+
+def get_content(
+    content_id: str,
+) -> dict | None:
+
+    sql = f"""
+    SELECT
+
+        ID_CONTENT,
+
+        SOURCE_ID,
+        SOURCE_TITLE,
+        SOURCE_URL,
+
+        TITLE,
+        TITLE_EN,
+
+        EXCERPT,
+        EXCERPT_EN,
+
+        CONTENT_BODY,
+
+        SIGNAL_ANALYTIQUE,
+
+        MECANIQUE_EXPLIQUEE,
+
+        ENJEU_STRATEGIQUE,
+
+        POINT_DE_FRICTION,
+
+        CHIFFRES,
+
+        ACTEURS_CITES,
+
+        ID_PRIMARY_COMPANY,
+
+        COMPANIES,
+
+        SOLUTIONS,
+
+        TOPICS,
+
+        UNIVERSES,
+
+        CONCEPTS,
+
+        PUBLISHED_AT
+
+    FROM `{TABLE_CONTENT_ENRICHED}`
+
+    WHERE
+
+        ID_CONTENT = @content_id
+
+        AND IS_ACTIVE = TRUE
+
+        AND STATUS = "PUBLISHED"
+
+    LIMIT 1
+    """
+
+    rows = query_bq(
+
+        sql,
+
+        {
+
+            "content_id": content_id,
+
+        },
+
+    )
+
+    if not rows:
+
+        return None
+
+    return rows[0]
 
 # ============================================================
 # ARCHIVE CONTENT
