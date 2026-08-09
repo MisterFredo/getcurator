@@ -14,6 +14,103 @@ TABLE_CONTENT_ENRICHED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
 
+# ============================================================
+# BUILD UNIVERSE SQL
+# ============================================================
+
+def build_universe_sql(
+    universe_id: str | None,
+) -> str:
+
+    if not universe_id:
+
+        return ""
+
+    return """
+
+    AND EXISTS (
+
+        SELECT 1
+
+        FROM UNNEST(universes) u
+
+        WHERE u.id_universe = @universe_id
+
+    )
+
+    """
+
+# ============================================================
+# BUILD SEARCH SQL
+# ============================================================
+
+def build_search_sql(
+    query: str | None,
+) -> str:
+
+    if not query:
+
+        return ""
+
+    return """
+
+    AND (
+
+        LOWER(COALESCE(TITLE,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(TITLE_EN,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(EXCERPT,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(EXCERPT_EN,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(CONTENT_BODY,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(SIGNAL_ANALYTIQUE,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(MECANIQUE_EXPLIQUEE,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(ENJEU_STRATEGIQUE,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(POINT_DE_FRICTION,''))
+
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+    )
+
+    """
 
 # ============================================================
 # BUILD SELECTION QUERY
@@ -24,10 +121,18 @@ def build_selection_query(
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
+    universe_id: str | None = None,
+    query: str | None = None,
 ) -> tuple[str, dict]:
 
     selection = build_selection_filters(
-        profile
+        profile,
+    )
+
+    query = (
+        query.strip()
+        if query
+        else None
     )
 
     params: dict = {
@@ -46,13 +151,41 @@ def build_selection_query(
 
     }
 
+    if universe_id:
+
+        params["universe_id"] = (
+            universe_id
+        )
+
+    if query:
+
+        params["query"] = (
+            query
+        )
+
+    # ========================================================
+    # FILTERS
+    # ========================================================
+
+    universe_filter_sql = (
+        build_universe_sql(
+            universe_id,
+        )
+    )
+
+    search_filter_sql = (
+        build_search_sql(
+            query,
+        )
+    )
+
     date_filter_sql = ""
 
     if period_start:
 
         date_filter_sql += """
 
-        AND published_at >= @period_start
+        AND PUBLISHED_AT >= @period_start
 
         """
 
@@ -64,13 +197,17 @@ def build_selection_query(
 
         date_filter_sql += """
 
-        AND published_at < @period_end
+        AND PUBLISHED_AT < @period_end
 
         """
 
         params["period_end"] = (
             period_end
         )
+
+    # ========================================================
+    # LIMIT
+    # ========================================================
 
     limit_sql = ""
 
@@ -81,6 +218,10 @@ def build_selection_query(
         LIMIT {limit}
 
         """
+
+    # ========================================================
+    # LANGUAGE
+    # ========================================================
 
     if profile.language == "en":
 
@@ -116,6 +257,10 @@ def build_selection_query(
 
         """
 
+    # ========================================================
+    # QUERY
+    # ========================================================
+
     sql = f"""
 
     SELECT
@@ -128,11 +273,11 @@ def build_selection_query(
 
         PUBLISHED_AT AS published_at,
 
-        SOURCE_URL AS source_url,
+        SOURCE_ID AS source_id,
 
         SOURCE_TITLE AS source_title,
 
-        SOURCE_ID AS source_id,
+        SOURCE_URL AS source_url,
 
         ID_PRIMARY_COMPANY,
 
@@ -166,6 +311,10 @@ def build_selection_query(
 
         AND STATUS = "PUBLISHED"
 
+        {universe_filter_sql}
+
+        {search_filter_sql}
+
         {date_filter_sql}
 
         AND (
@@ -187,7 +336,6 @@ def build_selection_query(
     """
 
     return sql, params
-
 
 # ============================================================
 # BUILD SELECTION FILTERS
