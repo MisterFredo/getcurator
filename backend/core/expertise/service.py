@@ -43,11 +43,17 @@ def build_expertise(
 # GENERATE EXPERTISE
 # ============================================================
 
+# ============================================================
+# GENERATE EXPERTISE
+# ============================================================
+
 def generate_expertise_from_profile(
     user_id: str,
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
+    universe_id: str | None = None,
+    query: str | None = None,
 ) -> Expertise:
 
     profile = load_profile(
@@ -55,10 +61,19 @@ def generate_expertise_from_profile(
     )
 
     contents = select_contents(
+
         profile=profile,
+
         period_start=period_start,
+
         period_end=period_end,
+
         limit=limit,
+
+        universe_id=universe_id,
+
+        query=query,
+
     )
 
     return build_expertise(
