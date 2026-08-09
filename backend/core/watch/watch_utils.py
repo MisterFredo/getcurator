@@ -141,11 +141,14 @@ def serialize_content(
     data = content.model_dump()
 
     data["badges"] = build_badges(
-        content
+        content,
+    )
+
+    data["primary_company_logo"] = (
+        content.primary_company_logo
     )
 
     return data
-
 
 # ============================================================
 # SERIALIZE CONTENTS
