@@ -1,4 +1,14 @@
-from typing import Optional
+# backend/core/watch/watch_service.py
+
+from core.expertise.service import (
+    generate_expertise_from_profile,
+)
+
+from .serializer import (
+    serialize_watch_contents,
+    serialize_watch_content,
+)
+
 
 # ============================================================
 # LATEST
@@ -8,13 +18,27 @@ def latest(
     user_id: str,
     limit: int = 20,
     offset: int = 0,
-    universe_id: Optional[str] = None,
+    universe_id: str | None = None,
     feed_mode: str = "all",
 ):
-    """
-    Return the latest contents for Watch.
-    """
-    raise NotImplementedError
+
+    expertise = generate_expertise_from_profile(
+
+        user_id=user_id,
+
+        limit=limit,
+
+    )
+
+    return serialize_watch_contents(
+
+        expertise.contents,
+
+        offset=offset,
+
+        limit=limit,
+
+    )
 
 
 # ============================================================
@@ -26,12 +50,10 @@ def search(
     user_id: str,
     limit: int = 20,
     offset: int = 0,
-    universe_id: Optional[str] = None,
+    universe_id: str | None = None,
     feed_mode: str = "all",
 ):
-    """
-    Search contents inside Watch.
-    """
+
     raise NotImplementedError
 
 
@@ -41,9 +63,7 @@ def search(
 
 def get_content(
     content_id: str,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
 ):
-    """
-    Return one content for the Drawer.
-    """
+
     raise NotImplementedError
