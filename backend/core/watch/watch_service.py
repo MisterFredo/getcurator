@@ -7,6 +7,18 @@ from .watch_utils import (
     serialize_contents,
 )
 
+from core.content.content_service import (
+    get_content,
+)
+
+from core.user.user_service import (
+    get_user,
+)
+
+from core.translation.drawer_translation_service import (
+    translate_fields,
+)
+
 
 # ============================================================
 # LATEST
@@ -104,4 +116,79 @@ def get_content(
     user_id: str | None = None,
 ):
 
-    raise NotImplementedError
+    content = get_content(
+        content_id,
+    )
+
+    if not content:
+
+        return None
+
+    if not user_id:
+
+        return content
+
+    user = get_user(
+        user_id,
+    )
+
+    if not user:
+
+        return content
+
+    language = (
+        user.get("LANGUAGE")
+        or "fr"
+    )
+
+    if language == "fr":
+
+        return content
+
+    translated = translate_fields(
+
+        {
+
+            "content_body":
+                content.get(
+                    "content_body",
+                    "",
+                ),
+
+            "signal":
+                content.get(
+                    "signal",
+                    "",
+                ),
+
+            "mecanique":
+                content.get(
+                    "mecanique",
+                    "",
+                ),
+
+            "enjeu":
+                content.get(
+                    "enjeu",
+                    "",
+                ),
+
+            "friction":
+                content.get(
+                    "friction",
+                    "",
+                ),
+
+        },
+
+        language,
+
+    )
+
+    return {
+
+        **content,
+
+        **translated,
+
+    }
