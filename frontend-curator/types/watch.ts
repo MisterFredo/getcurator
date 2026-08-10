@@ -102,6 +102,9 @@ export type Content = {
 
   id_primary_company?: string;
 
+  // 🔥 NEW
+  primary_company_logo?: string | null;
+
   companies?: Company[];
 
   solutions?: Solution[];
@@ -117,6 +120,9 @@ export type Content = {
   }[];
 
   concepts?: Concept[];
+
+  // 🔥 NEW
+  badges?: WatchBadge[];
 
 };
 
