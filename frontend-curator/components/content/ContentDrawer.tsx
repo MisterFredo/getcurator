@@ -11,7 +11,7 @@ import { useUser } from "@/hooks/useUser";
 import { getContent } from "@/lib/watch";
 
 import type {
-  WatchContent,
+  Content,
 } from "@/types/watch";
 
 /* ========================================================= */
