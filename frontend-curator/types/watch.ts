@@ -70,7 +70,7 @@ export type WatchItem = {
    CONTENT (DRAWER)
 ========================================================= */
 
-export type WatchContent = {
+export type Content = {
 
   id_content: string;
 
