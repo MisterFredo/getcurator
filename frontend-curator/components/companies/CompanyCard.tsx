@@ -38,7 +38,6 @@ export default function CompanyCard({
   totalNews,
   delta30d,
   universes,
-  lastRadar,
   isLoading,
   isFavorite = false,
   onClick,
@@ -293,23 +292,6 @@ export default function CompanyCard({
           ">
             {totalContent} contents
           </p>
-
-        )}
-
-        {lastRadar && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              text-[10px]
-              text-gray-400
-              opacity-0
-              group-hover:opacity-100
-              transition
-            "
-          >
-            Voir la veille →
-          </div>
 
         )}
 
