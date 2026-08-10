@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { api } from "@/lib/api";
+import { useUser } from "@/hooks/useUser";
+
+import {
+  getContent,
+} from "@/lib/watch";
 import { X, ExternalLink } from "lucide-react";
 import { useDrawer } from "@/contexts/DrawerContext";
 
@@ -64,7 +68,13 @@ type Props = {
 
 /* ========================================================= */
 
-export default function AnalysisDrawer({ id, onClose }: Props) {
+export default function ContentDrawer({
+
+    contentId,
+  
+    onClose,
+  
+  }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -100,7 +110,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
         requestAnimationFrame(() => setIsOpen(true));
       } catch (e) {
-        console.error("❌ AnalysisDrawer load error", e);
+        console.error("❌ ContentDrawer load error", e);
       }
     }
 
