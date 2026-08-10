@@ -198,12 +198,11 @@ export default function WatchPage() {
     item: WatchItem,
   ) {
   
+    console.log("OPEN CONTENT", item.id);
+  
     openRightDrawer(
-  
       "content",
-  
       item.id,
-  
     );
   
   }
