@@ -44,7 +44,6 @@ export default function TopicDrawer({ id, onClose }: any) {
   const [data, setData] = useState<TopicData | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [numbers, setNumbers] = useState<any[]>([]);
-  const [radar, setRadar] = useState<any>(null);
   const [userLang, setUserLang] = useState("fr");
 
   function close() {
@@ -68,18 +67,6 @@ export default function TopicDrawer({ id, onClose }: any) {
     }
 
     load();
-  }, [id]);
-
-  /* LOAD RADAR */
-  useEffect(() => {
-    async function loadRadar() {
-      const res = await api.get(
-        `/radar/latest?entity_type=topic&entity_id=${id}`
-      );
-      setRadar(res?.insight ?? null);
-    }
-
-    loadRadar();
   }, [id]);
 
   /* LOAD NUMBERS */
@@ -152,8 +139,6 @@ export default function TopicDrawer({ id, onClose }: any) {
         entityId={id}
         entityType="topic"
       />
-
-      <RadarBlock radar={radar} />
 
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
