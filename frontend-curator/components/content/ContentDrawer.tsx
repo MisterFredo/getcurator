@@ -118,17 +118,17 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
   }
 
   const badges = [
-    ...(data.companies ?? []).map((c) => ({
+    ...(content.companies ?? []).map((c) => ({
       label: c.name,
       type: "company",
     })),
 
-    ...(data.topics ?? []).map((t) => ({
+    ...(content.topics ?? []).map((t) => ({
       label: t.label,
       type: "topic",
     })),
 
-    ...(data.solutions ?? []).map((s) => ({
+    ...(content.solutions ?? []).map((s) => ({
       label: s.name,
       type: "solution",
     })),
@@ -168,7 +168,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 space-y-3">
           <div className="flex justify-between items-start">
             <h1 className="text-xl font-semibold text-gray-900 max-w-xl">
-              {data.title}
+              {content.title}
             </h1>
 
             <button onClick={close}>
@@ -193,10 +193,10 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </div>
           )}
 
-          {data.source_url && (
+          {content.source_url && (
             <div className="flex items-center">
               <a
-                href={data.source_url}
+                href={content.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
@@ -208,7 +208,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
               >
                 <ExternalLink size={12} />
 
-                {data.source_title || "Read source article"}
+                {content.source_title || "Read source article"}
               </a>
             </div>
           )}
@@ -216,42 +216,42 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
         <div className="px-5 py-6 space-y-8">
 
-          {data.excerpt && (
+          {content.excerpt && (
             <p className="text-base font-medium text-gray-800 max-w-2xl">
-              {data.excerpt}
+              {content.excerpt}
             </p>
           )}
 
-          {data.content_body && (
+          {content.content_body && (
             <div
               className="prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{
-                __html: data.content_body,
+                __html: content.content_body,
               }}
             />
           )}
 
-          {data.signal_analytique && (
+          {content.signal_analytique && (
             <div className="bg-teal-50 border border-teal-100 p-4 rounded">
               <h3 className="text-xs uppercase text-teal-600 mb-1">
                 Insight
               </h3>
 
               <p className="text-sm text-teal-800">
-                {data.signal_analytique}
+                {content.signal_analytique}
               </p>
             </div>
           )}
 
           {/* 🔥 CONCEPTS STRUCTURÉS UNIQUEMENT */}
-          {data.concepts?.length > 0 && (
+          {content.concepts?.length > 0 && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Key Concepts
               </h3>
 
               <div className="flex flex-wrap gap-2">
-                {data.concepts.map((c) => (
+                {content.concepts.map((c) => (
                   <span
                     key={c.id_concept}
                     className="
@@ -266,43 +266,43 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </div>
           )}
 
-          {data.mecanique_expliquee && (
+          {content.mecanique_expliquee && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Mechanism Explained
               </h3>
 
               <p className="text-sm text-gray-700">
-                {data.mecanique_expliquee}
+                {content.mecanique_expliquee}
               </p>
             </div>
           )}
 
-          {data.enjeu_strategique && (
+          {content.enjeu_strategique && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Strategic Implication
               </h3>
 
               <p className="text-sm text-gray-700">
-                {data.enjeu_strategique}
+                {content.enjeu_strategique}
               </p>
             </div>
           )}
 
-          {data.point_de_friction && (
+          {content.point_de_friction && (
             <div>
               <h3 className="text-xs uppercase text-gray-500 mb-2">
                 Friction Point
               </h3>
 
               <p className="text-sm text-gray-700">
-                {data.point_de_friction}
+                {content.point_de_friction}
               </p>
             </div>
           )}
 
-          {data.chiffres?.length > 0 && (
+          {content.chiffres?.length > 0 && (
             <div>
               {/* HEADER + LEGEND */}
               <div className="flex items-center justify-between mb-2">
@@ -327,7 +327,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
               {/* LIST */}
               <ul className="space-y-2">
-                {data.chiffres.map((c, i) => {
+                {content.chiffres.map((c, i) => {
                   const parts = c
                     .split("|")
                     .map((p) => p.trim());
@@ -363,17 +363,17 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
             </div>
           )}
 
-          {data.acteurs_cites?.length > 0 && (
+          {content.acteurs_cites?.length > 0 && (
             <div className="text-sm text-gray-600">
               <strong>Actors:</strong>{" "}
-              {data.acteurs_cites.join(", ")}
+              {content.acteurs_cites.join(", ")}
             </div>
           )}
 
-          {data.published_at && (
+          {content.published_at && (
             <div className="pt-4 border-t text-xs text-gray-400">
               Published on{" "}
-              {new Date(data.published_at).toLocaleDateString("en-GB")}
+              {new Date(content.published_at).toLocaleDateString("en-GB")}
             </div>
           )}
         </div>
