@@ -27,13 +27,13 @@ type Props = {
 /* ========================================================= */
 
 export default function ContentDrawer({
-  console.log("CONTENT DRAWER MOUNT");
+  
   contentId,
 
   onClose,
 
 }: Props) {
-
+  console.log("CONTENT DRAWER MOUNT");
   const {
     user,
   } = useUser();
