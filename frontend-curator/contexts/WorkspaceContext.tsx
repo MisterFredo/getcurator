@@ -7,12 +7,9 @@ import {
   useState,
 } from "react";
 
-/* ========================================================= */
-
-type ContentItem = {
-  id: string;
-  [key: string]: any;
-};
+import type {
+  WatchItem,
+} from "@/types/watch";
 
 type NumberItem = {
   ID_NUMBER: string;
@@ -23,8 +20,8 @@ type NumberItem = {
 
 type WorkspaceContextType = {
   /* CONTENT */
-  selectedContentItems: ContentItem[];
-  toggleContent: (item: ContentItem) => void;
+  selectedContentItems: WatchItem[];
+  toggleContent: (item: WatchItem) => void;
   removeContent: (id: string) => void;
 
   /* NUMBERS */
@@ -65,7 +62,7 @@ export function WorkspaceProvider({
   ========================================================= */
 
   const [selectedContentItems, setSelectedContentItems] =
-    useState<ContentItem[]>([]);
+    useState<WatchItem[]>([]);
 
   /* =========================================================
      NUMBERS
@@ -91,7 +88,7 @@ export function WorkspaceProvider({
      CONTENT ACTIONS
   ========================================================= */
 
-  function toggleContent(item: ContentItem) {
+  function toggleContent(item: WatchItem) {
     setSelectedContentItems((prev) => {
       const exists = prev.find((i) => i.id === item.id);
 
