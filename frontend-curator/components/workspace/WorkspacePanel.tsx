@@ -61,62 +61,62 @@ export default function WorkspacePanel() {
   /* =========================================================
      GENERATE OUTPUT
   ========================================================= */
-
+  
   async function generateOutput(
     capability:
       | "key_points"
       | "structure"
       | "implications"
-  )
-
+  ) {
+  
     if (
       !selectedContentItems.length &&
       !selectedNumberItems.length
     ) {
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
-
+  
       const res: any =
         await api.post(
           "/workspace/generate",
           {
             capability,
-        
+  
             content_ids:
               selectedContentItems.map(
                 (i) => i.id
               ),
-        
+  
             number_ids:
               selectedNumberItems.map(
                 (i) => i.ID_NUMBER
               ),
           }
         );
-
+  
       setAnalysis(
         res.result || ""
       );
-
-      // 🔥 AUTO SWITCH
+  
       setTab("output");
-
+  
     } catch (e) {
-
+  
       console.error(
         "❌ workspace generate error",
         e
       );
-
+  
     } finally {
-
+  
       setLoading(false);
-
+  
     }
+  
   }
 
   /* =========================================================
