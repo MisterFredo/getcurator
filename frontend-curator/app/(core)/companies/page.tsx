@@ -14,24 +14,11 @@ export const fetchCache = "force-no-store";
 
 type Company = {
   id_company: string;
-
   name: string;
-
   media_logo_rectangle_id?: string | null;
-
-  type?: string;
-
-  is_partner?: boolean;
-
-  aliases?: {
-    alias: string;
-  }[];
-
+  nb_analyses: number;
+  delta_30d: number;
   universes: string[];
-
-  // temporaire
-  nb_analyses?: number;
-  delta_30d?: number;
 };
 
 type SortMode = "alpha" | "activity" | "growth";
@@ -50,26 +37,13 @@ async function fetchCompanies(): Promise<Company[]> {
 
     return data.map((c: any) => ({
       id_company: c.id_company,
-    
       name: c.name,
-    
-      type: c.type,
-    
-      is_partner: c.is_partner,
-    
-      aliases: c.aliases ?? [],
-    
-      media_logo_rectangle_id:
-        c.media_logo_rectangle_id,
-    
-      universes:
-        c.universes ?? [],
-    
-      // temporaire
-      nb_analyses: 0,
-    
-      delta_30d: 0,
+      media_logo_rectangle_id: c.media_logo_rectangle_id,
+      nb_analyses: c.nb_analyses ?? 0,
+      delta_30d: c.delta_30d ?? 0,
+      universes: c.universes ?? [],
     }));
+
   } catch (e: any) {
     console.error("❌ fetchCompanies error:", e);
 
