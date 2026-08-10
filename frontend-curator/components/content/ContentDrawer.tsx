@@ -12,6 +12,12 @@ import {
   getContent,
 } from "@/lib/watch";
 
+import ContentHeader from "@/components/content/ContentHeader";
+import ContentSummary from "@/components/content/ContentSummary";
+import ContentInsights from "@/components/content/ContentInsights";
+import ContentNumbers from "@/components/content/ContentNumbers";
+import ContentBody from "@/components/content/ContentBody";
+
 import type {
   Content,
 } from "@/types/watch";
@@ -93,7 +99,7 @@ export default function ContentDrawer({
 
           contentId,
 
-          user!.user_id,
+          user.user_id,
 
         );
 
@@ -156,14 +162,14 @@ export default function ContentDrawer({
       >
 
         {/* ===================================================
-            HEADER
+            HEADER BAR
         =================================================== */}
 
         <div
           className="
             sticky
             top-0
-            z-10
+            z-20
             flex
             items-center
             justify-between
@@ -186,9 +192,7 @@ export default function ContentDrawer({
           </h2>
 
           <button
-
             onClick={onClose}
-
           >
 
             <X size={20} />
@@ -204,12 +208,19 @@ export default function ContentDrawer({
         <div
           className="
             p-6
+            space-y-8
           "
         >
 
           {loading && (
 
-            <div>
+            <div
+              className="
+                py-20
+                text-center
+                text-gray-400
+              "
+            >
 
               Loading...
 
@@ -222,16 +233,47 @@ export default function ContentDrawer({
 
             <>
 
-              <h1
-                className="
-                  text-2xl
-                  font-semibold
-                "
-              >
+              <ContentHeader
+                content={content}
+              />
 
-                {content.title}
+              <ContentSummary
+                excerpt={
+                  content.excerpt
+                }
+              />
 
-              </h1>
+              <ContentInsights
+
+                signal={
+                  content.signal_analytique
+                }
+
+                mecanique={
+                  content.mecanique_expliquee
+                }
+
+                enjeu={
+                  content.enjeu_strategique
+                }
+
+                friction={
+                  content.point_de_friction
+                }
+
+              />
+
+              <ContentNumbers
+                chiffres={
+                  content.chiffres
+                }
+              />
+
+              <ContentBody
+                content={
+                  content.content_body
+                }
+              />
 
             </>
 
