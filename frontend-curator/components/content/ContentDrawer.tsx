@@ -8,7 +8,9 @@ import { X } from "lucide-react";
 
 import { useUser } from "@/hooks/useUser";
 
-import { getContent } from "@/lib/watch";
+import {
+  getContent,
+} from "@/lib/watch";
 
 import type {
   Content,
@@ -27,13 +29,13 @@ type Props = {
 /* ========================================================= */
 
 export default function ContentDrawer({
-  
+
   contentId,
 
   onClose,
 
 }: Props) {
-  console.log("CONTENT DRAWER MOUNT");
+
   const {
     user,
   } = useUser();
@@ -62,21 +64,23 @@ export default function ContentDrawer({
 
   useEffect(() => {
 
+    if (!user) {
+
+      return;
+
+    }
+
     loadContent();
 
   }, [
 
     contentId,
 
+    user,
+
   ]);
 
   async function loadContent() {
-
-    if (!user) {
-
-      return;
-
-    }
 
     setLoading(
       true,
@@ -86,12 +90,13 @@ export default function ContentDrawer({
 
       const result =
         await getContent(
-      
+
           contentId,
-      
-          user?.user_id,
-      
+
+          user!.user_id,
+
         );
+
       setContent(
         result,
       );
@@ -114,9 +119,9 @@ export default function ContentDrawer({
 
     <>
 
-      {/* ===============================================
+      {/* =====================================================
           OVERLAY
-      =============================================== */}
+      ===================================================== */}
 
       <div
 
@@ -131,9 +136,9 @@ export default function ContentDrawer({
 
       />
 
-      {/* ===============================================
+      {/* =====================================================
           PANEL
-      =============================================== */}
+      ===================================================== */}
 
       <aside
         className="
@@ -150,9 +155,9 @@ export default function ContentDrawer({
         "
       >
 
-        {/* ===========================================
+        {/* ===================================================
             HEADER
-        =========================================== */}
+        =================================================== */}
 
         <div
           className="
@@ -192,9 +197,9 @@ export default function ContentDrawer({
 
         </div>
 
-        {/* ===========================================
+        {/* ===================================================
             CONTENT
-        =========================================== */}
+        =================================================== */}
 
         <div
           className="
