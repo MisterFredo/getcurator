@@ -16,12 +16,6 @@ type Props = {
   isPartner?: boolean;
 
   hasNumbers?: boolean;
-
-  lastRadar?: {
-    id_insight: string;
-    key_points: string[];
-  };
-
   isLoading?: boolean;
 
   onClick?: () => void;
@@ -46,7 +40,6 @@ export default function SolutionCard({
   delta30d,
   isPartner,
   hasNumbers,
-  lastRadar,
   isLoading,
   onClick,
 
@@ -105,24 +98,7 @@ export default function SolutionCard({
       { scroll: false }
     );
   }
-
-  function handleRadarClick(
-    e: React.MouseEvent
-  ) {
-
-    e.stopPropagation();
-
-    if (
-      lastRadar?.id_insight
-    ) {
-
-      openRightDrawer(
-        "radar",
-        lastRadar.id_insight
-      );
-    }
-  }
-
+  
   /* =====================================================
      FAVORITE
   ===================================================== */
@@ -316,38 +292,6 @@ export default function SolutionCard({
 
         )}
 
-        {/* RADAR OVERLAY */}
-
-        {lastRadar?.key_points?.[0] && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              absolute inset-0
-              bg-black/0
-              group-hover:bg-black/60
-              transition duration-200
-              flex items-end p-3
-              opacity-0
-              group-hover:opacity-100
-            "
-          >
-
-            <p className="
-              text-[11px]
-              text-white
-              leading-snug
-              line-clamp-3
-            ">
-              {lastRadar.key_points[0]}
-            </p>
-
-          </div>
-
-        )}
-
-      </div>
-
       {/* CONTENT */}
 
       <div className="
@@ -375,24 +319,6 @@ export default function SolutionCard({
           </p>
 
         )}
-
-        {lastRadar && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              text-[10px]
-              text-gray-400
-              opacity-0
-              group-hover:opacity-100
-              transition
-            "
-          >
-            Voir la veille →
-          </div>
-
-        )}
-
       </div>
 
     </div>
