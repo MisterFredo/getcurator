@@ -19,11 +19,6 @@ type Props = {
 
   universes?: string[];
 
-  lastRadar?: {
-    id_insight: string;
-    key_points: string[];
-  };
-
   isLoading?: boolean;
   isFavorite?: boolean;
 
@@ -97,23 +92,6 @@ export default function CompanyCard({
       `${pathname}?company_id=${id}`,
       { scroll: false }
     );
-  }
-
-  function handleRadarClick(
-    e: React.MouseEvent
-  ) {
-
-    e.stopPropagation();
-
-    if (
-      lastRadar?.id_insight
-    ) {
-
-      openRightDrawer(
-        "radar",
-        lastRadar.id_insight
-      );
-    }
   }
 
   /* =====================================================
@@ -288,38 +266,6 @@ export default function CompanyCard({
           </div>
 
         )}
-
-        {/* RADAR */}
-
-        {lastRadar?.key_points?.[0] && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              absolute inset-0
-              bg-black/0
-              group-hover:bg-black/60
-              transition duration-200
-              flex items-end p-3
-              opacity-0
-              group-hover:opacity-100
-            "
-          >
-
-            <p className="
-              text-[11px]
-              text-white
-              leading-snug
-              line-clamp-3
-            ">
-              {lastRadar.key_points[0]}
-            </p>
-
-          </div>
-
-        )}
-
-      </div>
 
       {/* CONTENT */}
 
