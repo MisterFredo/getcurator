@@ -29,8 +29,6 @@ export default function CompanyCard({
   name,
   visualRectId,
   totalAnalyses,
-  totalNews,
-  delta30d,
   universes,
   isLoading,
   isFavorite = false,
@@ -56,10 +54,6 @@ export default function CompanyCard({
     visualRectId
       ? `${GCS_BASE_URL}/companies/${visualRectId}`
       : null;
-
-  const totalContent =
-    (totalAnalyses ?? 0)
-    + (totalNews ?? 0);
 
   const mainUniverse =
     universes?.[0];
