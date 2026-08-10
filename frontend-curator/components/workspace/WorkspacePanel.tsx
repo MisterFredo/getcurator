@@ -63,11 +63,11 @@ export default function WorkspacePanel() {
   ========================================================= */
 
   async function generateOutput(
-    outputType:
+    capability:
       | "key_points"
       | "structure"
       | "implications"
-  ) {
+  )
 
     if (
       !selectedContentItems.length &&
@@ -84,18 +84,16 @@ export default function WorkspacePanel() {
         await api.post(
           "/workspace/generate",
           {
-            output_type:
-              outputType,
-
+            capability,
+        
             content_ids:
               selectedContentItems.map(
                 (i) => i.id
               ),
-
+        
             number_ids:
               selectedNumberItems.map(
-                (i) =>
-                  i.ID_NUMBER
+                (i) => i.ID_NUMBER
               ),
           }
         );
