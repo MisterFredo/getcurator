@@ -9,7 +9,6 @@ import DrawerHeader from "@/components/drawers/DrawerHeader";
 import FeedGroupedByMonth from "@/components/feed/FeedGroupedByMonth";
 
 import NumbersBlock from "@/components/drawers/blocks/NumbersBlock";
-import RadarBlock from "@/components/drawers/blocks/RadarBlock";
 
 import { useDrawer } from "@/contexts/DrawerContext";
 
