@@ -31,6 +31,7 @@ export default function DrawerHost() {
     closeRightDrawer,
 
   } = useDrawer();
+   console.log("RIGHT DRAWER", rightDrawer);
 
   return (
 
