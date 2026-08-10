@@ -11,12 +11,6 @@ type Props = {
   name: string;
 
   visualRectId?: string | null;
-
-  totalAnalyses?: number;
-  totalNews?: number;
-
-  delta30d?: number;
-
   universes?: string[];
 
   isLoading?: boolean;
