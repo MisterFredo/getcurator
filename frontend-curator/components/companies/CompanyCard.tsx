@@ -265,6 +265,7 @@ export default function CompanyCard({
           </div>
 
         )}
+      </div>
 
       {/* CONTENT */}
 
