@@ -29,32 +29,33 @@ export default function ContentNumbers({
 
     <section
       className="
-        rounded-xl
-        border
+        pt-8
+        border-t
         border-gray-200
-        bg-white
-        p-6
       "
     >
 
-      <div
+      <h2
         className="
           text-xs
-          font-semibold
           uppercase
           tracking-wide
+          font-semibold
           text-gray-500
-          mb-4
+          mb-5
         "
       >
 
         Chiffres clés
 
-      </div>
+      </h2>
 
       <div
         className="
-          space-y-3
+          rounded-xl
+          border
+          border-gray-200
+          overflow-hidden
         "
       >
 
@@ -66,30 +67,25 @@ export default function ContentNumbers({
 
               key={index}
 
-              className="
-                flex
-                items-start
-                gap-3
-              "
+              className={`
+                px-5
+                py-4
+
+                ${
+                  index !==
+                  chiffres.length - 1
+                    ? "border-b border-gray-100"
+                    : ""
+                }
+              `}
 
             >
 
               <div
                 className="
-                  mt-2
-                  h-2
-                  w-2
-                  rounded-full
-                  bg-black
-                  shrink-0
-                "
-              />
-
-              <div
-                className="
-                  text-[15px]
-                  leading-7
-                  text-gray-800
+                  text-[16px]
+                  leading-8
+                  text-gray-900
                 "
               >
 
