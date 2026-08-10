@@ -7,187 +7,328 @@ import {
   ReactNode,
 } from "react";
 
-/* =========================================================
+/* ============================================================
    TYPES
-========================================================= */
+============================================================ */
 
-type DrawerTypeLeft =
+type LeftDrawerType =
   | "member"
   | "company"
   | "topic"
   | "solution"
   | null;
 
-type DrawerTypeRight =
-  | "news"
-  | "analysis"
-  | "radar"
+type RightDrawerType =
+  | "content"
   | "numbers"
   | null;
 
-type DrawerMode = "silent" | "route";
+type DrawerMode =
+  | "silent"
+  | "route";
 
-type DrawerSlot = {
-  type: DrawerTypeLeft | DrawerTypeRight;
+type DrawerSlot<T> = {
+
+  type: T;
+
   id: string | null;
+
   mode: DrawerMode | null;
+
   payload?: any;
+
 };
 
 type DrawerContextType = {
-  leftDrawer: DrawerSlot;
-  rightDrawer: DrawerSlot;
+
+  leftDrawer: DrawerSlot<LeftDrawerType>;
+
+  rightDrawer: DrawerSlot<RightDrawerType>;
 
   openLeftDrawer: (
-    type: "member" | "company" | "topic" | "solution",
+
+    type:
+      | "member"
+      | "company"
+      | "topic"
+      | "solution",
+
     id: string,
-    mode?: DrawerMode
+
+    mode?: DrawerMode,
+
   ) => void;
 
   openRightDrawer: (
-    type: "news" | "analysis" | "radar" | "numbers",
+
+    type:
+      | "content"
+      | "numbers",
+
     id: string,
+
     mode?: DrawerMode,
-    payload?: any
+
+    payload?: any,
+
   ) => void;
+
   closeLeftDrawer: () => void;
+
   closeRightDrawer: () => void;
 
-  // 🔥 NEW
-  setOnLeftClose: (fn: (() => void) | null) => void;
+  setOnLeftClose: (
+    fn: (() => void) | null,
+  ) => void;
+
 };
 
-/* =========================================================
+/* ============================================================
    CONTEXT
-========================================================= */
+============================================================ */
 
-const DrawerContext = createContext<DrawerContextType | null>(
-  null
-);
+const DrawerContext =
+  createContext<
+    DrawerContextType | null
+  >(null);
 
-/* =========================================================
+/* ============================================================
    PROVIDER
-========================================================= */
+============================================================ */
 
 export function DrawerProvider({
+
   children,
+
 }: {
+
   children: ReactNode;
+
 }) {
-  const [leftDrawer, setLeftDrawer] = useState<DrawerSlot>({
+
+  const [
+
+    leftDrawer,
+
+    setLeftDrawer,
+
+  ] = useState<
+    DrawerSlot<LeftDrawerType>
+  >({
+
     type: null,
+
     id: null,
+
     mode: null,
-    payload: undefined,
+
   });
 
-  const [rightDrawer, setRightDrawer] = useState<DrawerSlot>({
+  const [
+
+    rightDrawer,
+
+    setRightDrawer,
+
+  ] = useState<
+    DrawerSlot<RightDrawerType>
+  >({
+
     type: null,
+
     id: null,
+
     mode: null,
-    payload: undefined,
+
   });
 
-  // 🔥 NEW CALLBACK
-  const [onLeftClose, setOnLeftCloseState] = useState<
+  const [
+
+    onLeftClose,
+
+    setOnLeftCloseState,
+
+  ] = useState<
     (() => void) | null
   >(null);
 
-  function setOnLeftClose(fn: (() => void) | null) {
-    setOnLeftCloseState(() => fn);
+  /* ========================================================
+     CALLBACK
+  ======================================================== */
+
+  function setOnLeftClose(
+    fn: (() => void) | null,
+  ) {
+
+    setOnLeftCloseState(
+      () => fn,
+    );
+
   }
 
-  /* -----------------------------
-     OPEN / CLOSE — LEFT
-  ----------------------------- */
+  /* ========================================================
+     LEFT
+  ======================================================== */
 
   function openLeftDrawer(
-    type: "member" | "company" | "topic" | "solution",
+
+    type:
+      | "member"
+      | "company"
+      | "topic"
+      | "solution",
+
     id: string,
-    mode: DrawerMode = "silent"
+
+    mode: DrawerMode =
+      "silent",
+
   ) {
+
     setLeftDrawer({
+
       type,
+
       id,
+
       mode,
-      payload: undefined,
+
     });
+
   }
 
   function closeLeftDrawer() {
-    // 🔥 trigger callback AVANT reset
+
     if (onLeftClose) {
+
       try {
+
         onLeftClose();
+
       } catch (e) {
-        console.error("❌ onLeftClose error", e);
+
+        console.error(e);
+
       }
+
     }
 
     setLeftDrawer({
+
       type: null,
+
       id: null,
+
       mode: null,
-      payload: undefined,
+
     });
+
   }
 
-  /* -----------------------------
-     OPEN / CLOSE — RIGHT
-  ----------------------------- */
+  /* ========================================================
+     RIGHT
+  ======================================================== */
 
   function openRightDrawer(
-    type: "news" | "analysis" | "radar" | "numbers",
+
+    type:
+      | "content"
+      | "numbers",
+
     id: string,
-    mode: DrawerMode = "silent",
-    payload?: any
+
+    mode: DrawerMode =
+      "silent",
+
+    payload?: any,
+
   ) {
+
     setRightDrawer({
+
       type,
+
       id,
+
       mode,
+
       payload,
+
     });
+
   }
 
   function closeRightDrawer() {
+
     setRightDrawer({
+
       type: null,
+
       id: null,
+
       mode: null,
-      payload: undefined,
+
     });
+
   }
+
+  /* ========================================================
+     PROVIDER
+  ======================================================== */
 
   return (
+
     <DrawerContext.Provider
+
       value={{
+
         leftDrawer,
+
         rightDrawer,
+
         openLeftDrawer,
+
         openRightDrawer,
+
         closeLeftDrawer,
+
         closeRightDrawer,
-        setOnLeftClose, // 🔥 expose
+
+        setOnLeftClose,
+
       }}
+
     >
+
       {children}
+
     </DrawerContext.Provider>
+
   );
+
 }
 
-/* =========================================================
+/* ============================================================
    HOOK
-========================================================= */
+============================================================ */
 
 export function useDrawer() {
-  const ctx = useContext(DrawerContext);
 
-  if (!ctx) {
-    throw new Error(
-      "useDrawer must be used within DrawerProvider"
+  const context =
+    useContext(
+      DrawerContext,
     );
+
+  if (!context) {
+
+    throw new Error(
+
+      "useDrawer must be used within DrawerProvider",
+
+    );
+
   }
 
-  return ctx;
+  return context;
+
 }
