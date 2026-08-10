@@ -70,7 +70,7 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
 
   const { rightDrawer, closeRightDrawer } = useDrawer();
 
-  const [data, setData] = useState<AnalysisData | null>(null);
+  const [data, setData] = useState<Content | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   function close() {
