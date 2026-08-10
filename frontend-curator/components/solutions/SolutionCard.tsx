@@ -291,6 +291,7 @@ export default function SolutionCard({
           </div>
 
         )}
+      </div>
 
       {/* CONTENT */}
 
