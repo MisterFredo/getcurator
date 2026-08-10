@@ -26,11 +26,7 @@ export default function ContentBody({
 
     <section
       className="
-        rounded-xl
-        border
-        border-gray-200
-        bg-white
-        p-6
+        pt-2
       "
     >
 
@@ -41,7 +37,7 @@ export default function ContentBody({
           uppercase
           tracking-wide
           text-gray-500
-          mb-4
+          mb-5
         "
       >
 
@@ -52,8 +48,8 @@ export default function ContentBody({
       <div
         className="
           whitespace-pre-wrap
-          text-[16px]
-          leading-8
+          text-[17px]
+          leading-9
           text-gray-800
         "
       >
