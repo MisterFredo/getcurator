@@ -46,7 +46,6 @@ export default function CompanyDrawer({ id, onClose }: any) {
   const [data, setData] = useState<CompanyData | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [numbers, setNumbers] = useState<any[]>([]);
-  const [radar, setRadar] = useState<any>(null);
   const [userLang, setUserLang] = useState("fr");
 
   // 🔥 description state
@@ -82,17 +81,6 @@ export default function CompanyDrawer({ id, onClose }: any) {
     }
 
     load();
-  }, [id]);
-
-  useEffect(() => {
-    async function loadRadar() {
-      const res = await api.get(
-        `/radar/latest?entity_type=company&entity_id=${id}`
-      );
-      setRadar(res?.insight ?? null);
-    }
-
-    loadRadar();
   }, [id]);
 
   useEffect(() => {
@@ -208,9 +196,6 @@ export default function CompanyDrawer({ id, onClose }: any) {
         entityId={id}
         entityType="company"
       />
-
-      {/* RADAR */}
-      <RadarBlock radar={radar} />
 
       {/* FEED */}
       <section className="space-y-4">
