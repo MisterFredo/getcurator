@@ -2,86 +2,134 @@
 
 import { useDrawer } from "@/contexts/DrawerContext";
 
+// ============================================================
 // LEFT DRAWERS
-import CompanyDrawer from "@/components/drawers/CompanyDrawer";
-import TopicDrawer from "@/components/drawers/TopicDrawer";
-import SolutionDrawer from "@/components/drawers/SolutionDrawer";
+// ============================================================
 
+import CompanyDrawer from "@/components/company/CompanyDrawer";
+import TopicDrawer from "@/components/topic/TopicDrawer";
+import SolutionDrawer from "@/components/solution/SolutionDrawer";
+
+// ============================================================
 // RIGHT DRAWERS
-import AnalysisDrawer from "@/components/drawers/AnalysisDrawer";
-import NumberDrawer from "@/components/drawers/NumberDrawer"; // ✅ NEW
+// ============================================================
 
-/* =========================================================
-   HOST — CURATOR
-========================================================= */
+import ContentDrawer from "@/components/content/ContentDrawer";
+import NumberDrawer from "@/components/numbers/NumberDrawer";
+
+/* ============================================================
+   DRAWER HOST
+============================================================ */
 
 export default function DrawerHost() {
+
   const {
+
     leftDrawer,
+
     rightDrawer,
+
     closeLeftDrawer,
+
     closeRightDrawer,
+
   } = useDrawer();
 
-  const leftType = leftDrawer.type;
-  const leftId = leftDrawer.id;
-
-  const rightType = rightDrawer.type;
-  const rightId = rightDrawer.id;
-  const rightPayload = rightDrawer.payload; // ✅ NEW
-
   return (
+
     <>
-      {/* =========================================
+
+      {/* =====================================================
           LEFT — COMPANY
-      ========================================= */}
-      {leftType === "company" && leftId && (
+      ===================================================== */}
+
+      {leftDrawer.type === "company"
+        && leftDrawer.id && (
+
         <CompanyDrawer
-          id={leftId}
+
+          companyId={leftDrawer.id}
+
           onClose={closeLeftDrawer}
+
         />
+
       )}
 
-      {/* =========================================
+      {/* =====================================================
           LEFT — TOPIC
-      ========================================= */}
-      {leftType === "topic" && leftId && (
+      ===================================================== */}
+
+      {leftDrawer.type === "topic"
+        && leftDrawer.id && (
+
         <TopicDrawer
-          id={leftId}
+
+          topicId={leftDrawer.id}
+
           onClose={closeLeftDrawer}
+
         />
+
       )}
 
-      {/* =========================================
+      {/* =====================================================
           LEFT — SOLUTION
-      ========================================= */}
-      {leftType === "solution" && leftId && (
+      ===================================================== */}
+
+      {leftDrawer.type === "solution"
+        && leftDrawer.id && (
+
         <SolutionDrawer
-          id={leftId}
+
+          solutionId={leftDrawer.id}
+
           onClose={closeLeftDrawer}
+
         />
+
       )}
 
-      {/* =========================================
-          RIGHT — ANALYSIS
-      ========================================= */}
-      {rightType === "analysis" && rightId && (
-        <AnalysisDrawer
-          id={rightId}
+      {/* =====================================================
+          RIGHT — CONTENT
+      ===================================================== */}
+
+      {rightDrawer.type === "content"
+        && rightDrawer.id && (
+
+        <ContentDrawer
+
+          contentId={rightDrawer.id}
+
           onClose={closeRightDrawer}
+
         />
+
       )}
 
-      {/* =========================================
-          RIGHT — NUMBERS ✅ NEW
-      ========================================= */}
-      {rightType === "numbers" && rightId && (
+      {/* =====================================================
+          RIGHT — NUMBERS
+      ===================================================== */}
+
+      {rightDrawer.type === "numbers"
+        && rightDrawer.id && (
+
         <NumberDrawer
-          id={rightId}
-          entityType={rightPayload?.entityType} // ✅ clé
+
+          id={rightDrawer.id}
+
+          entityType={
+            rightDrawer.payload?.entityType
+          }
+
           onClose={closeRightDrawer}
+
         />
+
       )}
+
     </>
+
   );
+
 }
