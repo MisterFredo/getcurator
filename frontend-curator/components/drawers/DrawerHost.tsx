@@ -6,16 +6,13 @@ import { useDrawer } from "@/contexts/DrawerContext";
 // LEFT DRAWERS
 // ============================================================
 
-import CompanyDrawer from "@/components/company/CompanyDrawer";
-import TopicDrawer from "@/components/topic/TopicDrawer";
-import SolutionDrawer from "@/components/solution/SolutionDrawer";
-
-// ============================================================
-// RIGHT DRAWERS
-// ============================================================
+import CompanyDrawer from "@/components/drawers/CompanyDrawer";
+import TopicDrawer from "@/components/drawers/TopicDrawer";
+import SolutionDrawer from "@/components/drawers/SolutionDrawer";
 
 import ContentDrawer from "@/components/content/ContentDrawer";
-import NumberDrawer from "@/components/numbers/NumberDrawer";
+
+import NumberDrawer from "@/components/drawers/NumberDrawer";
 
 /* ============================================================
    DRAWER HOST
