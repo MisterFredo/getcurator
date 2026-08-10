@@ -45,7 +45,7 @@ export default function ContentDrawer({
     setContent,
 
   ] = useState<
-    WatchContent | null
+    Content | null
   >(null);
 
   const [
