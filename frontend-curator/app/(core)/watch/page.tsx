@@ -11,6 +11,7 @@ import {
 
 import WatchHeader from "@/components/watch/WatchHeader";
 import WatchList from "@/components/watch/WatchList";
+import { useDrawer } from "@/contexts/DrawerContext";
 
 import type {
   WatchItem,
@@ -35,6 +36,10 @@ export default function WatchPage() {
   const {
     user,
   } = useUser();
+
+  const {
+    openRightDrawer,
+  } = useDrawer();
 
   const [
     items,
@@ -192,14 +197,15 @@ export default function WatchPage() {
   function openContent(
     item: WatchItem,
   ) {
-
-    console.log(
+  
+    openRightDrawer(
+  
+      "content",
+  
       item.id,
+  
     );
-
-    // prochaine étape :
-    // ouverture du drawer
-
+  
   }
 
   /* ===================================================== */
