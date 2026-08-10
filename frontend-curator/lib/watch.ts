@@ -82,64 +82,64 @@ function mapContent(
   return {
 
     id_content:
-      row.id_content,
+      row.ID_CONTENT,
 
     title:
-      row.title,
+      row.TITLE,
 
     title_en:
-      row.title_en,
+      row.TITLE_EN,
 
     excerpt:
-      row.excerpt,
+      row.EXCERPT,
 
     excerpt_en:
-      row.excerpt_en,
+      row.EXCERPT_EN,
 
     content_body:
-      row.content_body,
+      row.CONTENT_BODY,
 
     signal_analytique:
-      row.signal_analytique,
+      row.SIGNAL_ANALYTIQUE,
 
     mecanique_expliquee:
-      row.mecanique_expliquee,
+      row.MECANIQUE_EXPLIQUEE,
 
     enjeu_strategique:
-      row.enjeu_strategique,
+      row.ENJEU_STRATEGIQUE,
 
     point_de_friction:
-      row.point_de_friction,
+      row.POINT_DE_FRICTION,
 
     chiffres:
-      row.chiffres ?? [],
+      row.CHIFFRES ?? [],
 
     source_title:
-      row.source_title,
+      row.SOURCE_TITLE,
 
     source_url:
-      row.source_url,
+      row.SOURCE_URL,
 
     published_at:
-      row.published_at,
+      row.PUBLISHED_AT,
 
     id_primary_company:
-      row.id_primary_company,
+      row.ID_PRIMARY_COMPANY,
 
     companies:
-      row.companies ?? [],
+      row.COMPANIES ?? [],
 
     topics:
-      row.topics ?? [],
+      row.TOPICS ?? [],
 
     solutions:
-      row.solutions ?? [],
+      row.SOLUTIONS ?? [],
 
     universes:
-      row.universes ?? [],
+      row.UNIVERSES ?? [],
 
     concepts:
-      row.concepts ?? [],
+      row.CONCEPTS ?? [],
 
   };
 
