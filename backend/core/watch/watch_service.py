@@ -127,75 +127,205 @@ def get_watch_content(
     # USER LANGUAGE
     # ========================================================
 
-    if not user_id:
+    if user_id:
 
-        return content
+        user = get_user(
+            user_id,
+        )
 
-    user = get_user(
-        user_id,
-    )
+        if user:
 
-    if not user:
+            language = (
+                user.get("LANGUAGE")
+                or "fr"
+            )
 
-        return content
+            if language != "fr":
 
-    language = (
-        user.get("LANGUAGE")
-        or "fr"
-    )
+                translated = translate_fields(
 
-    if language == "fr":
+                    {
 
-        return content
+                        "content_body":
+                            content.get(
+                                "CONTENT_BODY",
+                                "",
+                            ),
+
+                        "signal_analytique":
+                            content.get(
+                                "SIGNAL_ANALYTIQUE",
+                                "",
+                            ),
+
+                        "mecanique_expliquee":
+                            content.get(
+                                "MECANIQUE_EXPLIQUEE",
+                                "",
+                            ),
+
+                        "enjeu_strategique":
+                            content.get(
+                                "ENJEU_STRATEGIQUE",
+                                "",
+                            ),
+
+                        "point_de_friction":
+                            content.get(
+                                "POINT_DE_FRICTION",
+                                "",
+                            ),
+
+                    },
+
+                    language,
+
+                )
+
+                content = {
+
+                    **content,
+
+                    **translated,
+
+                }
 
     # ========================================================
-    # TRANSLATION
+    # API MODEL
     # ========================================================
-
-    translated = translate_fields(
-
-        {
-
-            "content_body":
-                content.get(
-                    "CONTENT_BODY",
-                    "",
-                ),
-
-            "signal_analytique":
-                content.get(
-                    "SIGNAL_ANALYTIQUE",
-                    "",
-                ),
-
-            "mecanique_expliquee":
-                content.get(
-                    "MECANIQUE_EXPLIQUEE",
-                    "",
-                ),
-
-            "enjeu_strategique":
-                content.get(
-                    "ENJEU_STRATEGIQUE",
-                    "",
-                ),
-
-            "point_de_friction":
-                content.get(
-                    "POINT_DE_FRICTION",
-                    "",
-                ),
-
-        },
-
-        language,
-
-    )
 
     return {
 
-        **content,
+        "id_content":
+            content.get(
+                "ID_CONTENT",
+            ),
 
-        **translated,
+        "source_id":
+            content.get(
+                "SOURCE_ID",
+            ),
+
+        "source_title":
+            content.get(
+                "SOURCE_TITLE",
+            ),
+
+        "source_url":
+            content.get(
+                "SOURCE_URL",
+            ),
+
+        "title":
+            content.get(
+                "TITLE",
+            ),
+
+        "title_en":
+            content.get(
+                "TITLE_EN",
+            ),
+
+        "excerpt":
+            content.get(
+                "EXCERPT",
+            ),
+
+        "excerpt_en":
+            content.get(
+                "EXCERPT_EN",
+            ),
+
+        "content_body":
+            content.get(
+                "content_body",
+                content.get(
+                    "CONTENT_BODY",
+                ),
+            ),
+
+        "signal_analytique":
+            content.get(
+                "signal_analytique",
+                content.get(
+                    "SIGNAL_ANALYTIQUE",
+                ),
+            ),
+
+        "mecanique_expliquee":
+            content.get(
+                "mecanique_expliquee",
+                content.get(
+                    "MECANIQUE_EXPLIQUEE",
+                ),
+            ),
+
+        "enjeu_strategique":
+            content.get(
+                "enjeu_strategique",
+                content.get(
+                    "ENJEU_STRATEGIQUE",
+                ),
+            ),
+
+        "point_de_friction":
+            content.get(
+                "point_de_friction",
+                content.get(
+                    "POINT_DE_FRICTION",
+                ),
+            ),
+
+        "chiffres":
+            content.get(
+                "CHIFFRES",
+                [],
+            ),
+
+        "acteurs_cites":
+            content.get(
+                "ACTEURS_CITES",
+                [],
+            ),
+
+        "published_at":
+            content.get(
+                "PUBLISHED_AT",
+            ),
+
+        "id_primary_company":
+            content.get(
+                "ID_PRIMARY_COMPANY",
+            ),
+
+        "companies":
+            content.get(
+                "COMPANIES",
+                [],
+            ),
+
+        "solutions":
+            content.get(
+                "SOLUTIONS",
+                [],
+            ),
+
+        "topics":
+            content.get(
+                "TOPICS",
+                [],
+            ),
+
+        "universes":
+            content.get(
+                "UNIVERSES",
+                [],
+            ),
+
+        "concepts":
+            content.get(
+                "CONCEPTS",
+                [],
+            ),
 
     }
