@@ -275,6 +275,8 @@ export async function getContent(
   userId?: string,
 ): Promise<Content> {
 
+  console.log("GET CONTENT", contentId, userId);
+
   const query =
     new URLSearchParams();
 
@@ -289,10 +291,10 @@ export async function getContent(
 
   const res =
     await api.get(
-
       `/watch/content/${contentId}?${query.toString()}`,
-
     );
+
+  console.log("API RESPONSE", res);
 
   return mapContent(
     res,
