@@ -270,7 +270,7 @@ export async function watchSearch(
    CONTENT
 ========================================================= */
 
-export async function getWatchContent(
+export async function getContent(
   contentId: string,
   userId?: string,
 ): Promise<WatchContent> {
