@@ -89,8 +89,9 @@ export default function AnalysisDrawer({ id, onClose }: Props) {
   useEffect(() => {
     async function load() {
       try {
-        const res = await api.get(
-          `/curator/item/${id}/detail?type=analysis`
+        const res = await getContent(
+            contentId,
+            user.user_id,
         );
 
         const payload = res?.data ?? res;
