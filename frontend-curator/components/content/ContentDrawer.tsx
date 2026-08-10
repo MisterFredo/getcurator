@@ -27,7 +27,7 @@ type Props = {
 /* ========================================================= */
 
 export default function ContentDrawer({
-
+  console.log("CONTENT DRAWER MOUNT");
   contentId,
 
   onClose,
