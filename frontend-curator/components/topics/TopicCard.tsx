@@ -260,7 +260,6 @@ export default function TopicCard({
         ">
           analyses
         </div>
-
       {/* CONTENT */}
 
       <div className="
@@ -288,6 +287,7 @@ export default function TopicCard({
           </p>
 
         )}
+
       </div>
 
     </div>
