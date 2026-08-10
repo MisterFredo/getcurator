@@ -136,20 +136,19 @@ def generate_digest(
         # DELIVERY
         # ====================================================
 
-        knowledge = deliver_knowledge(
+        knowledge = generate_knowledge(
 
             KnowledgeRequest(
-
+        
                 user_id=digest.user_id,
-
+        
                 capabilities=DIGEST_CAPABILITIES,
-
+        
                 expertise=expertise,
-
+        
             )
-
+        
         )
-
         # ====================================================
         # BUILD DOCUMENT
         # ====================================================
