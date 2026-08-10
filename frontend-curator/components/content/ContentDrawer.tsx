@@ -32,33 +32,6 @@ type Concept = {
   label: string;
 };
 
-type Content = {
-  id_content: string;
-  title: string;
-
-  source_url?: string;
-  source_title?: string;
-
-  excerpt?: string;
-  content_body?: string;
-
-  mecanique_expliquee?: string;
-  enjeu_strategique?: string;
-  point_de_friction?: string;
-  signal_analytique?: string;
-
-  chiffres?: string[];
-  citations?: string[];
-  acteurs_cites?: string[];
-
-  topics?: Topic[];
-  companies?: Company[];
-  solutions?: Solution[];
-  concepts?: Concept[];
-
-  published_at?: string;
-};
-
 /* ========================================================= */
 
 type Props = {
