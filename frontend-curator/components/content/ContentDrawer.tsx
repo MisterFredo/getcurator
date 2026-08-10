@@ -139,7 +139,13 @@ export default function ContentDrawer({
     }
 
     load();
-  }, [id]);
+  }, [
+
+    contentId,
+  
+    user,
+  
+  ]);
 
   if (!data) {
     return (
