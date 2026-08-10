@@ -87,11 +87,9 @@ export default function ContentDrawer({
       const result =
         await getContent({
 
-          content_id:
-            contentId,
+          contentId,
 
-          user_id:
-            user.user_id,
+          user?.user_id,
 
         });
 
