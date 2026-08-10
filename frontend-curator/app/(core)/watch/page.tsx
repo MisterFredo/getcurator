@@ -12,7 +12,7 @@ import {
 import WatchHeader from "@/components/watch/WatchHeader";
 import WatchList from "@/components/watch/WatchList";
 import { useDrawer } from "@/contexts/DrawerContext";
-
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import type {
   WatchItem,
 } from "@/types/watch";
@@ -40,6 +40,11 @@ export default function WatchPage() {
   const {
     openRightDrawer,
   } = useDrawer();
+
+  const {
+    selectedContentItems,
+    toggleContent,
+  } = useWorkspace();
 
   const [
     items,
@@ -207,6 +212,21 @@ export default function WatchPage() {
   
   }
 
+  const selectedIds =
+    selectedContentItems.map(
+      (item) => item.id,
+    );
+  
+  function toggleSelect(
+    item: WatchItem,
+  ) {
+  
+    toggleContent(
+      item,
+    );
+  
+  }
+
   /* ===================================================== */
 
   return (
@@ -237,24 +257,32 @@ export default function WatchPage() {
 
       />
 
-      <WatchList
+     <WatchList
 
         title="Results"
-
+      
         total={total}
-
+      
         items={items}
-
+      
         loading={loading}
-
+      
         hasMore={false}
-
+      
         onLoadMore={() => {}}
-
+      
         onSelect={
           openContent
         }
-
+      
+        selectedIds={
+          selectedIds
+        }
+      
+        onToggleSelect={
+          toggleSelect
+        }
+      
       />
 
     </div>
