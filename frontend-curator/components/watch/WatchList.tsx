@@ -277,15 +277,23 @@ export default function WatchList({
             <WatchCard
 
               key={item.id}
-
+            
               item={item}
-
+            
               onClick={() =>
-                onSelect(
-                  item,
+                onSelect(item)
+              }
+            
+              selected={
+                selectedIds.includes(
+                  item.id,
                 )
               }
-
+            
+              onToggleSelect={
+                onToggleSelect
+              }
+            
             />
 
           )
