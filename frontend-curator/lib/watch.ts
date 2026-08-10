@@ -77,7 +77,7 @@ function mapItem(
 
 function mapContent(
   row: any,
-): WatchContent {
+): Content {
 
   return {
 
@@ -273,7 +273,7 @@ export async function watchSearch(
 export async function getContent(
   contentId: string,
   userId?: string,
-): Promise<WatchContent> {
+): Promise<Content> {
 
   const query =
     new URLSearchParams();
