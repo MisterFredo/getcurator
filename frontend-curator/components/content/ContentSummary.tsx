@@ -26,34 +26,31 @@ export default function ContentSummary({
 
     <section
       className="
-        rounded-xl
-        border
-        border-gray-200
-        bg-gray-50
-        p-6
+        pt-2
       "
     >
 
-      <div
+      <h2
         className="
           text-xs
-          font-semibold
           uppercase
           tracking-wide
+          font-semibold
           text-gray-500
-          mb-3
+          mb-5
         "
       >
 
         Executive Summary
 
-      </div>
+      </h2>
 
       <p
         className="
-          text-[16px]
-          leading-8
-          text-gray-800
+          text-[20px]
+          leading-10
+          text-gray-900
+          font-light
         "
       >
 
