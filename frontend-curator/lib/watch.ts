@@ -73,77 +73,6 @@ function mapItem(
 
 }
 
-/* ========================================================= */
-
-function mapContent(
-  row: any,
-): Content {
-
-  return {
-
-    id_content:
-      row.ID_CONTENT,
-
-    title:
-      row.TITLE,
-
-    title_en:
-      row.TITLE_EN,
-
-    excerpt:
-      row.EXCERPT,
-
-    excerpt_en:
-      row.EXCERPT_EN,
-
-    content_body:
-      row.CONTENT_BODY,
-
-    signal_analytique:
-      row.SIGNAL_ANALYTIQUE,
-
-    mecanique_expliquee:
-      row.MECANIQUE_EXPLIQUEE,
-
-    enjeu_strategique:
-      row.ENJEU_STRATEGIQUE,
-
-    point_de_friction:
-      row.POINT_DE_FRICTION,
-
-    chiffres:
-      row.CHIFFRES ?? [],
-
-    source_title:
-      row.SOURCE_TITLE,
-
-    source_url:
-      row.SOURCE_URL,
-
-    published_at:
-      row.PUBLISHED_AT,
-
-    id_primary_company:
-      row.ID_PRIMARY_COMPANY,
-
-    companies:
-      row.COMPANIES ?? [],
-
-    topics:
-      row.TOPICS ?? [],
-
-    solutions:
-      row.SOLUTIONS ?? [],
-
-    universes:
-      row.UNIVERSES ?? [],
-
-    concepts:
-      row.CONCEPTS ?? [],
-
-  };
-
-}
 
 /* =========================================================
    LATEST
@@ -275,8 +204,6 @@ export async function getContent(
   userId?: string,
 ): Promise<Content> {
 
-  console.log("GET CONTENT", contentId, userId);
-
   const query =
     new URLSearchParams();
 
@@ -294,10 +221,7 @@ export async function getContent(
       `/watch/content/${contentId}?${query.toString()}`,
     );
 
-  console.log("API RESPONSE", res);
+  return res as Content;
 
-  return mapContent(
-    res,
-  );
-
+}
 }
