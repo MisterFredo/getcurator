@@ -61,12 +61,8 @@ export default function WatchCard({
 
       : null;
 
-  function handleToggleSelect(
-    e: React.MouseEvent,
-  ) {
-  
-    e.stopPropagation();
-  
+  function handleToggleSelect() {
+
     onToggleSelect?.(
       item,
     );
