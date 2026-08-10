@@ -1,13 +1,47 @@
 /* =========================================================
-   REUSE FEED ENTITIES
+   ENTITIES
 ========================================================= */
 
-import type {
-  Topic,
-  Company,
-  Solution,
-  Concept,
-} from "./feed";
+export type Topic = {
+
+  id_topic: string;
+
+  label: string;
+
+};
+
+export type Company = {
+
+  id_company: string;
+
+  name: string;
+
+  media_logo_rectangle_id?: string | null;
+
+};
+
+export type Solution = {
+
+  id_solution: string;
+
+  name: string;
+
+  id_company?: string;
+
+  company_name?: string;
+
+  media_logo_rectangle_id?: string | null;
+
+};
+
+export type Concept = {
+
+  id_concept: string;
+
+  label: string;
+
+};
+
 
 /* =========================================================
    BADGES
@@ -32,7 +66,7 @@ export type WatchBadge = {
 
 
 /* =========================================================
-   ITEM (WATCH LIST)
+   ITEM (WATCH)
 ========================================================= */
 
 export type WatchItem = {
@@ -94,6 +128,10 @@ export type Content = {
 
   chiffres?: string[];
 
+  acteurs_cites?: string[];
+
+  citations?: string[];
+
   source_title?: string;
 
   source_url?: string;
@@ -102,7 +140,6 @@ export type Content = {
 
   id_primary_company?: string;
 
-  // 🔥 NEW
   primary_company_logo?: string | null;
 
   companies?: Company[];
@@ -121,7 +158,6 @@ export type Content = {
 
   concepts?: Concept[];
 
-  // 🔥 NEW
   badges?: WatchBadge[];
 
 };
