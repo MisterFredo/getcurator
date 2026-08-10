@@ -18,14 +18,6 @@ from .selection_engine import (
     select_contents,
 )
 
-from core.delivery.service import (
-    deliver_knowledge,
-)
-
-from core.delivery.models import (
-    KnowledgeRequest,
-    KnowledgeResult,
-)
 
 # ============================================================
 # BUILD EXPERTISE
@@ -45,6 +37,11 @@ def build_expertise(
         count=len(contents),
 
     )
+
+
+# ============================================================
+# GENERATE EXPERTISE
+# ============================================================
 
 # ============================================================
 # GENERATE EXPERTISE
@@ -111,57 +108,4 @@ def generate_expertise_from_contents(
 
         contents=contents,
 
-    )
-
-# ============================================================
-# GENERATE CAPABILITY
-# ============================================================
-
-def generate_capability(
-    user_id: str,
-    capability: str,
-    content_ids: list[str] | None = None,
-    number_ids: list[str] | None = None,
-) -> str:
-
-    request = KnowledgeRequest(
-
-        user_id=user_id,
-
-        content_ids=content_ids or [],
-
-        number_ids=number_ids or [],
-
-        capabilities=[
-            capability,
-        ],
-
-    )
-
-    result = deliver_knowledge(
-        request,
-    )
-
-    return result.capability_results.get(
-        capability,
-        "",
-    )
-
-
-# ============================================================
-# GENERATE KNOWLEDGE
-# ============================================================
-
-def generate_knowledge(
-    request: KnowledgeRequest,
-) -> KnowledgeResult:
-    """
-    Generate one or more capabilities from an Expertise.
-
-    This is the public entry point used by Workspace,
-    Digests and future MCP conversations.
-    """
-
-    return deliver_knowledge(
-        request,
     )
