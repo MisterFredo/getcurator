@@ -120,7 +120,7 @@ export default function ContentDrawer({
     
           );
     
-        setData(
+        setContent(
           res,
         );
     
@@ -148,7 +148,7 @@ export default function ContentDrawer({
   
   ]);
 
-  if (!data) {
+  if (!content) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
         <div className="bg-white px-4 py-2 rounded text-sm">
