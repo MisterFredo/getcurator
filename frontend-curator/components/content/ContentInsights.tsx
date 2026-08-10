@@ -1,5 +1,3 @@
-// frontend-curator/components/content/ContentInsights.tsx
-
 "use client";
 
 /* ========================================================= */
@@ -46,22 +44,20 @@ function InsightBlock({
 
     <section
       className="
-        rounded-xl
-        border
+        pt-8
+        border-t
         border-gray-200
-        bg-white
-        p-6
       "
     >
 
       <h2
         className="
-          text-sm
-          font-semibold
+          text-xs
           uppercase
           tracking-wide
+          font-semibold
           text-gray-500
-          mb-4
+          mb-5
         "
       >
 
@@ -72,8 +68,8 @@ function InsightBlock({
       <div
         className="
           whitespace-pre-wrap
-          text-[15px]
-          leading-8
+          text-[17px]
+          leading-9
           text-gray-800
         "
       >
@@ -104,7 +100,7 @@ export default function ContentInsights({
 
   return (
 
-    <div className="space-y-6">
+    <div>
 
       <InsightBlock
 
