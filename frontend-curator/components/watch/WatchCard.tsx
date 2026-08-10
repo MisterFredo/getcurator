@@ -19,6 +19,12 @@ type Props = {
 
   onClick: () => void;
 
+  selected?: boolean;
+
+  onToggleSelect?: (
+    item: WatchItem,
+  ) => void;
+
 };
 
 /* ========================================================= */
@@ -28,6 +34,10 @@ export default function WatchCard({
   item,
 
   onClick,
+
+  selected = false,
+
+  onToggleSelect,
 
 }: Props) {
 
@@ -51,6 +61,18 @@ export default function WatchCard({
 
       : null;
 
+  function handleToggleSelect(
+    e: React.MouseEvent,
+  ) {
+  
+    e.stopPropagation();
+  
+    onToggleSelect?.(
+      item,
+    );
+  
+  }
+
   return (
 
     <div
@@ -68,6 +90,43 @@ export default function WatchCard({
         items-start
         gap-5
       ">
+
+        {/* ===================================================
+            SELECT
+        =================================================== */}
+        
+        <div
+          className="
+            w-8
+            flex
+            justify-center
+            pt-1
+          "
+        >
+        
+          <input
+        
+            type="checkbox"
+        
+            checked={selected}
+        
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+        
+            onChange={
+              handleToggleSelect
+            }
+        
+            className="
+              h-4
+              w-4
+              cursor-pointer
+            "
+        
+          />
+        
+        </div>
 
         {/* ===================================================
             LEFT
