@@ -14,9 +14,9 @@ import {
 
 import ContentHeader from "@/components/content/ContentHeader";
 import ContentSummary from "@/components/content/ContentSummary";
+import ContentBody from "@/components/content/ContentBody";
 import ContentInsights from "@/components/content/ContentInsights";
 import ContentNumbers from "@/components/content/ContentNumbers";
-import ContentBody from "@/components/content/ContentBody";
 
 import type {
   Content,
@@ -47,21 +47,15 @@ export default function ContentDrawer({
   } = useUser();
 
   const [
-
     content,
-
     setContent,
-
   ] = useState<
     Content | null
   >(null);
 
   const [
-
     loading,
-
     setLoading,
-
   ] = useState(true);
 
   /* =========================================================
@@ -162,7 +156,7 @@ export default function ContentDrawer({
       >
 
         {/* ===================================================
-            HEADER BAR
+            CLOSE BAR
         =================================================== */}
 
         <div
@@ -171,28 +165,23 @@ export default function ContentDrawer({
             top-0
             z-20
             flex
-            items-center
-            justify-between
+            justify-end
             border-b
-            bg-white
+            border-gray-100
+            bg-white/95
+            backdrop-blur
             px-6
             py-4
           "
         >
 
-          <h2
-            className="
-              text-lg
-              font-semibold
-            "
-          >
-
-            Content
-
-          </h2>
-
           <button
             onClick={onClose}
+            className="
+              text-gray-500
+              hover:text-black
+              transition
+            "
           >
 
             <X size={20} />
@@ -207,8 +196,9 @@ export default function ContentDrawer({
 
         <div
           className="
-            p-6
-            space-y-8
+            px-10
+            py-8
+            space-y-12
           "
         >
 
@@ -243,6 +233,12 @@ export default function ContentDrawer({
                 }
               />
 
+              <ContentBody
+                content={
+                  content.content_body
+                }
+              />
+
               <ContentInsights
 
                 signal={
@@ -266,12 +262,6 @@ export default function ContentDrawer({
               <ContentNumbers
                 chiffres={
                   content.chiffres
-                }
-              />
-
-              <ContentBody
-                content={
-                  content.content_body
                 }
               />
 
