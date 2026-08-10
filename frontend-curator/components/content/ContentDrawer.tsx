@@ -7,6 +7,10 @@ import { useUser } from "@/hooks/useUser";
 import {
   getContent,
 } from "@/lib/watch";
+
+import type {
+  Content,
+} from "@/types/watch";
 import { X, ExternalLink } from "lucide-react";
 import { useDrawer } from "@/contexts/DrawerContext";
 
