@@ -17,12 +17,6 @@ type Props = {
   delta30d?: number;
 
   hasNumbers?: boolean;
-
-  lastRadar?: {
-    id_insight: string;
-    key_points?: string[];
-  };
-
   isLoading?: boolean;
 
   onClick?: () => void;
@@ -41,7 +35,6 @@ export default function TopicCard({
   nbAnalyses,
   delta30d,
   hasNumbers,
-  lastRadar,
   isLoading,
   onClick,
 
@@ -70,9 +63,6 @@ export default function TopicCard({
   const isTrending =
     typeof delta30d === "number"
     && delta30d > 0;
-
-  const radarText =
-    lastRadar?.key_points?.[0];
 
   /* =========================================================
      CLICK
@@ -107,27 +97,6 @@ export default function TopicCard({
         scroll: false,
       }
     );
-  }
-
-  /* =========================================================
-     RADAR
-  ========================================================= */
-
-  function handleRadarClick(
-    e: React.MouseEvent
-  ) {
-
-    e.stopPropagation();
-
-    if (
-      lastRadar?.id_insight
-    ) {
-
-      openRightDrawer(
-        "radar",
-        lastRadar.id_insight
-      );
-    }
   }
 
   /* =========================================================
@@ -292,38 +261,6 @@ export default function TopicCard({
           analyses
         </div>
 
-        {/* RADAR OVERLAY */}
-
-        {radarText && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              absolute inset-0
-              bg-black/0
-              group-hover:bg-black/60
-              transition duration-200
-              flex items-end p-3
-              opacity-0
-              group-hover:opacity-100
-            "
-          >
-
-            <p className="
-              text-[11px]
-              text-white
-              leading-snug
-              line-clamp-3
-            ">
-              {radarText}
-            </p>
-
-          </div>
-
-        )}
-
-      </div>
-
       {/* CONTENT */}
 
       <div className="
@@ -351,24 +288,6 @@ export default function TopicCard({
           </p>
 
         )}
-
-        {lastRadar && (
-
-          <div
-            onClick={handleRadarClick}
-            className="
-              text-[10px]
-              text-gray-400
-              opacity-0
-              group-hover:opacity-100
-              transition
-            "
-          >
-            Voir la veille →
-          </div>
-
-        )}
-
       </div>
 
     </div>
