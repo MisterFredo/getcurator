@@ -260,6 +260,7 @@ export default function TopicCard({
         ">
           analyses
         </div>
+      </div>
       {/* CONTENT */}
 
       <div className="
