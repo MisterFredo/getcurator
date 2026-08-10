@@ -27,8 +27,9 @@ from core.delivery.models import (
     KnowledgeRequest,
 )
 
-from core.delivery.service import (
-    deliver_knowledge,
+from core.expertise.service import (
+    generate_expertise_from_profile,
+    generate_knowledge,
 )
 
 from core.expertise.capabilities import (
