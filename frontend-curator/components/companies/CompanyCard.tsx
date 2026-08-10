@@ -11,6 +11,12 @@ type Props = {
   name: string;
 
   visualRectId?: string | null;
+
+  totalAnalyses?: number;
+  totalNews?: number;
+
+  delta30d?: number;
+
   universes?: string[];
 
   isLoading?: boolean;
@@ -29,6 +35,8 @@ export default function CompanyCard({
   name,
   visualRectId,
   totalAnalyses,
+  totalNews,
+  delta30d,
   universes,
   isLoading,
   isFavorite = false,
@@ -54,6 +62,10 @@ export default function CompanyCard({
     visualRectId
       ? `${GCS_BASE_URL}/companies/${visualRectId}`
       : null;
+
+  const totalContent =
+    (totalAnalyses ?? 0)
+    + (totalNews ?? 0);
 
   const mainUniverse =
     universes?.[0];
@@ -271,6 +283,17 @@ export default function CompanyCard({
         ">
           {name}
         </h3>
+
+        {(typeof totalAnalyses === "number"
+          || typeof totalNews === "number") && (
+
+          <p className="
+            text-[10px]
+            text-gray-400
+          ">
+            {totalContent} contents
+          </p>
+
         )}
 
       </div>
