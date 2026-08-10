@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 
 import type {
   WatchItem,
-  WatchContent,
+  Content,
   WatchResponse,
 } from "@/types/watch";
 
