@@ -50,74 +50,63 @@ export default function ContentHeader({
 
   return (
 
-    <div className="space-y-5">
+    <header className="space-y-5">
 
-      {/* =====================================================
-          META
-      ===================================================== */}
+      {/* DATE */}
 
-      <div className="
-        flex
-        items-center
-        gap-4
-      ">
+      {formattedDate && (
+
+        <div
+          className="
+            text-xs
+            uppercase
+            tracking-wide
+            text-gray-400
+          "
+        >
+
+          {formattedDate}
+
+        </div>
+
+      )}
+
+      {/* TITLE */}
+
+      <div
+        className="
+          flex
+          items-start
+          gap-4
+        "
+      >
 
         {logoUrl && (
 
-          <div
+          <img
+            src={logoUrl}
+            alt=""
             className="
-              w-14
-              h-14
-              rounded-xl
+              w-12
+              h-12
+              rounded-lg
+              object-contain
+              shrink-0
               border
               border-gray-200
               bg-white
-              overflow-hidden
-              flex
-              items-center
-              justify-center
-              shrink-0
             "
-          >
-
-            <img
-              src={logoUrl}
-              alt={content.title}
-              className="
-                w-full
-                h-full
-                object-contain
-              "
-            />
-
-          </div>
+          />
 
         )}
 
-        <div className="
-          flex-1
-          min-w-0
-        ">
-
-          {formattedDate && (
-
-            <div className="
-              text-xs
-              text-gray-400
-              mb-1
-            ">
-
-              {formattedDate}
-
-            </div>
-
-          )}
+        <div className="flex-1">
 
           <h1
             className="
-              text-2xl
-              font-semibold
+              text-[38px]
               leading-tight
+              font-semibold
               text-gray-900
             "
           >
@@ -126,27 +115,11 @@ export default function ContentHeader({
 
           </h1>
 
-          {content.source_title && (
-
-            <div className="
-              mt-2
-              text-sm
-              text-gray-500
-            ">
-
-              {content.source_title}
-
-            </div>
-
-          )}
-
         </div>
 
       </div>
 
-      {/* =====================================================
-          BADGES
-      ===================================================== */}
+      {/* BADGES */}
 
       {content.badges &&
         content.badges.length > 0 && (
@@ -157,7 +130,24 @@ export default function ContentHeader({
 
       )}
 
-    </div>
+      {/* SOURCE */}
+
+      {content.source_title && (
+
+        <div
+          className="
+            text-sm
+            text-gray-500
+          "
+        >
+
+          {content.source_title}
+
+        </div>
+
+      )}
+
+    </header>
 
   );
 
