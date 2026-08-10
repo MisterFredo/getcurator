@@ -1,10 +1,17 @@
 "use client";
 
-/* ========================================================= */
+import type {
+  WatchItem,
+} from "@/types/watch";
 
 type Props = {
-  items: any[];
-  onRemove: (id: string) => void;
+
+  items: WatchItem[];
+
+  onRemove: (
+    id: string,
+  ) => void;
+
 };
 
 /* ========================================================= */
