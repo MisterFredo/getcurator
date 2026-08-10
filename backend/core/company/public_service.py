@@ -27,6 +27,14 @@ TABLE_USER_UNIVERSE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
 )
 
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+)
+
+TABLE_COMPANY_ALIAS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
+)
+
 
 # ============================================================
 # FEED
