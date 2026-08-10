@@ -224,4 +224,3 @@ export async function getContent(
   return res as Content;
 
 }
-}
