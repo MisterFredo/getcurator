@@ -83,7 +83,8 @@ export default function ContentDrawer({
     user,
   } = useUser();
 
-  const [data, setData] = useState<Content | null>(null);
+  const [content, setContent] =
+    useState<Content | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   function close() {
