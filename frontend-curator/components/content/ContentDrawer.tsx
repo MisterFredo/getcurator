@@ -89,14 +89,18 @@ export default function ContentDrawer({
 
   function close() {
     setIsOpen(false);
-    onClose?.();
+    onClose();
     closeRightDrawer();
 
-    if (
-      rightDrawer.mode === "route" &&
-      pathname.startsWith("/")
-    ) {
-      router.replace(pathname, { scroll: false });
+    if (rightDrawer.mode === "route") {
+
+      router.replace(
+        pathname,
+        {
+          scroll: false,
+        },
+      );
+    
     }
   }
 
