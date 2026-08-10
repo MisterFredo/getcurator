@@ -21,7 +21,6 @@ type FeedItem = {
 };
 
 type NumberCategory = any;
-type Radar = any;
 
 type SolutionData = {
   id_solution: string;
@@ -50,7 +49,6 @@ export default function SolutionDrawer({ id, onClose }: any) {
   const [data, setData] = useState<SolutionData | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [numbers, setNumbers] = useState<NumberCategory[]>([]);
-  const [radar, setRadar] = useState<Radar | null>(null);
   const [userLang, setUserLang] = useState("fr");
 
   function close() {
@@ -74,18 +72,6 @@ export default function SolutionDrawer({ id, onClose }: any) {
     }
 
     load();
-  }, [id]);
-
-  /* LOAD RADAR */
-  useEffect(() => {
-    async function loadRadar() {
-      const res = await api.get(
-        `/radar/latest?entity_type=solution&entity_id=${id}`
-      );
-      setRadar(res?.insight ?? null);
-    }
-
-    loadRadar();
   }, [id]);
 
   /* LOAD NUMBERS */
@@ -154,7 +140,6 @@ export default function SolutionDrawer({ id, onClose }: any) {
         entityType="solution"
       />
 
-      <RadarBlock radar={radar} />
 
       <section className="space-y-4">
         <h2 className="text-xs font-semibold uppercase text-gray-400">
