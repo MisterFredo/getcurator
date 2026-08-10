@@ -27,9 +27,8 @@ from core.delivery.models import (
     KnowledgeRequest,
 )
 
-from core.expertise.service import (
-    generate_expertise_from_profile,
-    generate_knowledge,
+from core.delivery.service import (
+    deliver_knowledge,
 )
 
 from core.expertise.capabilities import (
@@ -136,19 +135,20 @@ def generate_digest(
         # DELIVERY
         # ====================================================
 
-        knowledge = generate_knowledge(
+        knowledge = deliver_knowledge(
 
             KnowledgeRequest(
-        
+
                 user_id=digest.user_id,
-        
+
                 capabilities=DIGEST_CAPABILITIES,
-        
+
                 expertise=expertise,
-        
+
             )
-        
+
         )
+
         # ====================================================
         # BUILD DOCUMENT
         # ====================================================
