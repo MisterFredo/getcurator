@@ -226,7 +226,7 @@ export default function CompanyDrawer({ id, onClose }: any) {
 
           onClickItem={(item) =>
             openRightDrawer(
-              "analysis",
+              "content",
               item.id,
               "silent"
             )
