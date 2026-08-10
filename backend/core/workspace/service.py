@@ -4,8 +4,8 @@ from core.delivery.models import (
     KnowledgeRequest,
 )
 
-from core.delivery.service import (
-    deliver_knowledge,
+from core.expertise.service import (
+    generate_knowledge,
 )
 
 
@@ -44,8 +44,8 @@ def generate_workspace_output(
         ],
     )
 
-    result = deliver_knowledge(
-        request
+    result = generate_knowledge(
+        request,
     )
 
     return result.capability_results.get(
