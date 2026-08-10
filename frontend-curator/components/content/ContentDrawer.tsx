@@ -79,6 +79,9 @@ export default function ContentDrawer({
   const pathname = usePathname();
 
   const { rightDrawer, closeRightDrawer } = useDrawer();
+  const {
+    user,
+  } = useUser();
 
   const [data, setData] = useState<Content | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -98,20 +101,41 @@ export default function ContentDrawer({
 
   useEffect(() => {
     async function load() {
-      try {
-        const res = await getContent(
-            contentId,
-            user.user_id,
-        );
 
-        const payload = res?.data ?? res;
-
-        setData(payload);
-
-        requestAnimationFrame(() => setIsOpen(true));
-      } catch (e) {
-        console.error("❌ ContentDrawer load error", e);
+      if (!user) {
+    
+        return;
+    
       }
+    
+      try {
+    
+        const res =
+          await getContent(
+    
+            contentId,
+    
+            user.user_id,
+    
+          );
+    
+        setData(
+          res,
+        );
+    
+        requestAnimationFrame(
+          () => setIsOpen(true),
+        );
+    
+      } catch (e) {
+    
+        console.error(
+          "❌ ContentDrawer load error",
+          e,
+        );
+    
+      }
+    
     }
 
     load();
