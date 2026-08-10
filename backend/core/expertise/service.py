@@ -19,6 +19,16 @@ from .selection_engine import (
 )
 
 
+from core.delivery.models import (
+    KnowledgeRequest,
+)
+
+from core.delivery.service import (
+    deliver_knowledge,
+)
+
+
+
 # ============================================================
 # BUILD EXPERTISE
 # ============================================================
@@ -37,11 +47,6 @@ def build_expertise(
         count=len(contents),
 
     )
-
-
-# ============================================================
-# GENERATE EXPERTISE
-# ============================================================
 
 # ============================================================
 # GENERATE EXPERTISE
@@ -108,4 +113,38 @@ def generate_expertise_from_contents(
 
         contents=contents,
 
+    )
+
+# ============================================================
+# GENERATE CAPABILITY
+# ============================================================
+
+def generate_capability(
+    user_id: str,
+    capability: str,
+    content_ids: list[str] | None = None,
+    number_ids: list[str] | None = None,
+) -> str:
+
+    request = KnowledgeRequest(
+
+        user_id=user_id,
+
+        content_ids=content_ids or [],
+
+        number_ids=number_ids or [],
+
+        capabilities=[
+            capability,
+        ],
+
+    )
+
+    result = deliver_knowledge(
+        request,
+    )
+
+    return result.capability_results.get(
+        capability,
+        "",
     )
