@@ -24,6 +24,13 @@ type Props = {
     item: WatchItem,
   ) => void;
 
+  // NEW
+  selectedIds: string[];
+
+  onToggleSelect: (
+    item: WatchItem,
+  ) => void;
+
   title?: string;
 
   total?: number;
@@ -43,6 +50,10 @@ export default function WatchList({
   onLoadMore,
 
   onSelect,
+
+  selectedIds,
+
+  onToggleSelect,
 
   title,
 
