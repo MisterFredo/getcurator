@@ -271,17 +271,6 @@ export default function CompanyCard({
         ">
           {name}
         </h3>
-
-        {(typeof totalAnalyses === "number"
-          || typeof totalNews === "number") && (
-
-          <p className="
-            text-[10px]
-            text-gray-400
-          ">
-            {totalContent} contents
-          </p>
-
         )}
 
       </div>
