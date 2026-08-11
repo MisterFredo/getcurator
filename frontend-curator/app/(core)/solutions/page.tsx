@@ -36,6 +36,7 @@ type Solution = {
   media_logo_rectangle_id?: string | null;
 
   logo_type?: "solution" | "company";
+  content_count: number;
 
   is_partner?: boolean;
 
@@ -80,6 +81,8 @@ async function fetchSolutions():
 
         logo_type:
           solution.logo_type,
+        content_count:
+          c.content_count ?? 0,
 
         is_partner:
           solution.is_partner ?? false,
@@ -535,6 +538,9 @@ export default function SolutionsPage() {
                   visualRectId={
                     solution.media_logo_rectangle_id
                   }
+                  contentCount={
+                    solution.content_count
+                  }
 
                   visualType={
                     solution.logo_type
@@ -689,6 +695,10 @@ export default function SolutionsPage() {
 
                             name={
                               solution.name
+                            }
+
+                            contentCount={
+                              solution.content_count
                             }
 
                             visualRectId={
