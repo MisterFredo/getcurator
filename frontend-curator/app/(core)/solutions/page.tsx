@@ -82,7 +82,7 @@ async function fetchSolutions():
         logo_type:
           solution.logo_type,
         content_count:
-          c.content_count ?? 0,
+          solution.content_count ?? 0,
 
         is_partner:
           solution.is_partner ?? false,
