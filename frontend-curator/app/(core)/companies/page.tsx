@@ -572,10 +572,6 @@ export default function CompaniesPage() {
                     company.media_logo_rectangle_id
                   }
 
-                  universes={
-                    company.universes
-                  }
-
                   isLoading={
                     loadingId
                     === company.id_company
@@ -731,10 +727,6 @@ export default function CompaniesPage() {
 
                           visualRectId={
                             company.media_logo_rectangle_id
-                          }
-
-                          universes={
-                            company.universes
                           }
 
                           isLoading={
