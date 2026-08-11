@@ -356,23 +356,8 @@ export default function CompanyDrawer({
       header={
 
         <DrawerHeader
-
-          title={
-            data.name
-          }
-
-          nbAnalyses={
-            data.nb_analyses
-          }
-
-          delta30d={
-            data.delta_30d
-          }
-
-          onClose={
-            close
-          }
-
+          title={data.name}
+          onClose={close}
         />
 
       }
