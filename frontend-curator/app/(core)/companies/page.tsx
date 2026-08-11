@@ -39,6 +39,7 @@ type Company = {
 
   media_logo_rectangle_id?:
     string | null;
+  content_count: number;
 
   universes: string[];
 
@@ -95,6 +96,9 @@ async function fetchCompanies():
 
           media_logo_rectangle_id:
             c.media_logo_rectangle_id,
+
+          content_count:
+            c.content_count ?? 0,
 
           universes:
             c.universes ?? [],
@@ -727,6 +731,10 @@ export default function CompaniesPage() {
 
                           visualRectId={
                             company.media_logo_rectangle_id
+                          }
+
+                          contentCount={
+                            company.content_count
                           }
 
                           isLoading={
