@@ -305,7 +305,7 @@ export default function TopicCard({
           group-hover:underline
         ">
       
-          {name}
+          {label}
       
         </h3>
       
