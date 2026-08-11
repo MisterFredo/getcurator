@@ -28,8 +28,6 @@ type Props = {
 
   visualRectId?: string | null;
 
-  universes?: string[];
-
   isLoading?: boolean;
 
   isFavorite?: boolean;
@@ -90,9 +88,6 @@ export default function CompanyCard({
       ? `${GCS_BASE_URL}/companies/${visualRectId}`
 
       : null;
-
-  const mainUniverse =
-    universes?.[0];
 
 
   /* =========================================================
@@ -279,33 +274,6 @@ export default function CompanyCard({
         </div>
 
       )}
-
-
-      {/* =====================================================
-          UNIVERSE
-      ===================================================== */}
-
-      {mainUniverse && (
-
-        <div className="
-          absolute
-          top-2
-          left-9
-          z-10
-          text-[9px]
-          px-2
-          py-0.5
-          rounded
-          bg-gray-900
-          text-white
-        ">
-
-          {mainUniverse}
-
-        </div>
-
-      )}
-
 
       {/* =====================================================
           VISUAL
