@@ -336,140 +336,31 @@ def build_selection_query(
     topic_id: str | None = None,
 ) -> tuple[str, dict]:
 
-    selection = build_selection_filters(
-        profile,
-    )
-
-    query = (
-        query.strip()
-        if query
-        else None
-    )
-
-    params: dict = {
-
-        "company_ids":
-            profile.preferences.companies,
-
-        "solution_ids":
-            profile.preferences.solutions,
-
-        "topic_ids":
-            profile.preferences.topics,
-
-    }
-
-    if universe_id:
-
-        params["universe_id"] = (
-            universe_id
-        )
-
-    if query:
-
-        params["query"] = (
-            query
-        )
-
-    if company_id:
-
-        params["company_id"] = (
-            company_id
-        )
-
-    if solution_id:
-
-        params["solution_id"] = (
-            solution_id
-        )
-
-    if topic_id:
-
-        params["topic_id"] = (
-            topic_id
-        )
-
     # ========================================================
-    # FILTERS
+    # COMMON FILTERS
     # ========================================================
 
-    universe_filter_sql = (
-        build_universe_sql(
-            universe_id,
-        )
-    )
+    filters_sql, params = (
+        build_selection_context(
 
-    search_filter_sql = (
-        build_search_sql(
-            query,
-        )
-    )
+            profile=profile,
 
-    entity_filter_sql = (
-        build_entity_sql(
+            period_start=period_start,
+
+            period_end=period_end,
+
+            universe_id=universe_id,
+
+            query=query,
+
             company_id=company_id,
+
             solution_id=solution_id,
+
             topic_id=topic_id,
+
         )
     )
-
-    date_filter_sql = ""
-
-    if period_start:
-
-        date_filter_sql += """
-
-        AND PUBLISHED_AT >= @period_start
-
-        """
-
-        params["period_start"] = (
-            period_start
-        )
-
-    if period_end:
-
-        date_filter_sql += """
-
-        AND PUBLISHED_AT < @period_end
-
-        """
-
-        params["period_end"] = (
-            period_end
-        )
-
-    # ========================================================
-    # SELECTION MODE
-    # ========================================================
-
-    if entity_filter_sql:
-
-        selection_sql = f"""
-
-        AND (
-
-            {entity_filter_sql}
-
-        )
-
-        """
-
-    else:
-
-        selection_sql = f"""
-
-        AND (
-
-            ({selection.filters_sql})
-
-            OR
-
-            ({selection.keywords_sql})
-
-        )
-
-        """
 
     # ========================================================
     # PAGINATION
@@ -587,13 +478,7 @@ def build_selection_query(
 
         AND STATUS = "PUBLISHED"
 
-        {universe_filter_sql}
-
-        {search_filter_sql}
-
-        {date_filter_sql}
-
-        {selection_sql}
+        {filters_sql}
 
     ORDER BY
 
@@ -607,7 +492,6 @@ def build_selection_query(
         sql,
         params,
     )
-
 
 # ============================================================
 # BUILD SELECTION COUNT QUERY
