@@ -20,6 +20,12 @@ type WatchParams = {
 
   universe_id?: string | null;
 
+  company_id?: string | null;
+
+  solution_id?: string | null;
+
+  topic_id?: string | null;
+
 };
 
 type SearchParams = WatchParams & {
@@ -51,6 +57,9 @@ function mapItem(
     source_url:
       row.source_url,
 
+    id_primary_company:
+      row.id_primary_company,
+
     primary_company_logo:
       row.primary_company_logo,
 
@@ -75,15 +84,13 @@ function mapItem(
 
 
 /* =========================================================
-   LATEST
+   PARAMS
 ========================================================= */
 
-export async function watchLatest(
+function appendWatchParams(
+  query: URLSearchParams,
   params: WatchParams,
-): Promise<WatchResponse> {
-
-  const query =
-    new URLSearchParams();
+) {
 
   query.append(
     "user_id",
@@ -112,6 +119,52 @@ export async function watchLatest(
     );
 
   }
+
+  if (params.company_id) {
+
+    query.append(
+      "company_id",
+      params.company_id,
+    );
+
+  }
+
+  if (params.solution_id) {
+
+    query.append(
+      "solution_id",
+      params.solution_id,
+    );
+
+  }
+
+  if (params.topic_id) {
+
+    query.append(
+      "topic_id",
+      params.topic_id,
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LATEST
+========================================================= */
+
+export async function watchLatest(
+  params: WatchParams,
+): Promise<WatchResponse> {
+
+  const query =
+    new URLSearchParams();
+
+  appendWatchParams(
+    query,
+    params,
+  );
 
   const res =
     await api.get(
@@ -132,6 +185,7 @@ export async function watchLatest(
 
 }
 
+
 /* =========================================================
    SEARCH
 ========================================================= */
@@ -143,38 +197,15 @@ export async function watchSearch(
   const query =
     new URLSearchParams();
 
-  query.append(
-    "user_id",
-    params.user_id,
+  appendWatchParams(
+    query,
+    params,
   );
 
   query.append(
     "query",
     params.query,
   );
-
-  query.append(
-    "limit",
-    String(
-      params.limit ?? 20,
-    ),
-  );
-
-  query.append(
-    "offset",
-    String(
-      params.offset ?? 0,
-    ),
-  );
-
-  if (params.universe_id) {
-
-    query.append(
-      "universe_id",
-      params.universe_id,
-    );
-
-  }
 
   const res =
     await api.get(
@@ -194,6 +225,7 @@ export async function watchSearch(
   };
 
 }
+
 
 /* =========================================================
    CONTENT
