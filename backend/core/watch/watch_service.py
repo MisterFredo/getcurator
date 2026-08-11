@@ -6,7 +6,6 @@ from core.expertise.service import (
 
 from .watch_utils import (
     paginate,
-    serialize_contents,
 )
 
 from core.user.user_service import (
@@ -40,7 +39,9 @@ def latest(
 
         user_id=user_id,
 
-        limit=limit + offset,
+        limit=limit,
+
+        offset=offset,
 
         universe_id=universe_id,
 
@@ -52,26 +53,15 @@ def latest(
 
     )
 
-    contents = paginate(
-
-        contents=expertise.contents,
-
-        limit=limit,
-
-        offset=offset,
-
-    )
-
     return {
 
         "items": serialize_contents(
-            contents,
+            expertise.contents,
         ),
 
         "count": expertise.count,
 
     }
-
 
 # ============================================================
 # SEARCH
@@ -94,7 +84,9 @@ def search(
 
         query=query,
 
-        limit=limit + offset,
+        limit=limit,
+
+        offset=offset,
 
         universe_id=universe_id,
 
@@ -106,20 +98,10 @@ def search(
 
     )
 
-    contents = paginate(
-
-        contents=expertise.contents,
-
-        limit=limit,
-
-        offset=offset,
-
-    )
-
     return {
 
         "items": serialize_contents(
-            contents,
+            expertise.contents,
         ),
 
         "count": expertise.count,
