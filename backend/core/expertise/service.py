@@ -26,6 +26,7 @@ from .selection_engine import (
 def build_expertise(
     profile: ExpertiseProfile,
     contents: list[ExpertiseContent],
+    count: int | None = None,
 ) -> Expertise:
 
     return Expertise(
@@ -34,7 +35,11 @@ def build_expertise(
 
         contents=contents,
 
-        count=len(contents),
+        count=(
+            count
+            if count is not None
+            else len(contents)
+        ),
 
     )
 
@@ -48,6 +53,7 @@ def generate_expertise_from_profile(
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
+    offset: int = 0,
     universe_id: str | None = None,
     query: str | None = None,
     company_id: str | None = None,
@@ -59,7 +65,7 @@ def generate_expertise_from_profile(
         user_id=user_id,
     )
 
-    contents = select_contents(
+    contents, total = select_contents(
 
         profile=profile,
 
@@ -68,6 +74,8 @@ def generate_expertise_from_profile(
         period_end=period_end,
 
         limit=limit,
+
+        offset=offset,
 
         universe_id=universe_id,
 
@@ -86,6 +94,8 @@ def generate_expertise_from_profile(
         profile=profile,
 
         contents=contents,
+
+        count=total,
 
     )
 
