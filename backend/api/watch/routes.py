@@ -24,23 +24,41 @@ router = APIRouter()
 
 @router.get("/latest")
 def latest_route(
+
     user_id: str,
+
     limit: int = 20,
+
     offset: int = 0,
+
     universe_id: str | None = None,
+
     company_id: str | None = None,
+
     solution_id: str | None = None,
+
     topic_id: str | None = None,
+
 ):
+
     return latest(
+
         user_id=user_id,
+
         limit=limit,
+
         offset=offset,
+
         universe_id=universe_id,
+
         company_id=company_id,
+
         solution_id=solution_id,
+
         topic_id=topic_id,
+
     )
+
 
 # ============================================================
 # SEARCH
@@ -59,6 +77,12 @@ def search_route(
 
     universe_id: str | None = None,
 
+    company_id: str | None = None,
+
+    solution_id: str | None = None,
+
+    topic_id: str | None = None,
+
 ):
 
     return search(
@@ -72,6 +96,12 @@ def search_route(
         offset=offset,
 
         universe_id=universe_id,
+
+        company_id=company_id,
+
+        solution_id=solution_id,
+
+        topic_id=topic_id,
 
     )
 
@@ -96,6 +126,7 @@ def content_route(
         user_id=user_id,
 
     )
+
 
 # ============================================================
 # WORKSPACE
