@@ -442,48 +442,59 @@ def build_selection_query(
     # ========================================================
     # SELECTION MODE
     # ========================================================
-    
+
     if entity_filter_sql:
-    
+
         selection_sql = f"""
+
         AND (
+
             {entity_filter_sql}
+
         )
+
         """
-    
+
     else:
-    
+
         selection_sql = f"""
+
         AND (
+
             ({selection.filters_sql})
+
             OR
+
             ({selection.keywords_sql})
+
         )
+
         """
 
     # ========================================================
     # PAGINATION
     # ========================================================
-    
+
     pagination_sql = ""
-    
+
     if limit is not None:
-    
+
         pagination_sql = """
-    
+
         LIMIT @limit
-    
+
         OFFSET @offset
-    
+
         """
-    
+
         params["limit"] = (
             limit
         )
-    
+
         params["offset"] = (
             offset
         )
+
     # ========================================================
     # LANGUAGE
     # ========================================================
@@ -592,8 +603,62 @@ def build_selection_query(
 
     """
 
-    return sql, params
+    return (
+        sql,
+        params,
+    )
 
+
+# ============================================================
+# BUILD SELECTION COUNT QUERY
+# ============================================================
+
+def build_selection_count_query(
+    profile: ExpertiseProfile,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    universe_id: str | None = None,
+    query: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
+) -> tuple[str, dict]:
+
+    filters_sql, params = (
+        build_selection_context(
+            profile=profile,
+            period_start=period_start,
+            period_end=period_end,
+            universe_id=universe_id,
+            query=query,
+            company_id=company_id,
+            solution_id=solution_id,
+            topic_id=topic_id,
+        )
+    )
+
+    sql = f"""
+
+    SELECT
+
+        COUNT(*) AS total
+
+    FROM `{TABLE_CONTENT_ENRICHED}`
+
+    WHERE
+
+        IS_ACTIVE = TRUE
+
+        AND STATUS = "PUBLISHED"
+
+        {filters_sql}
+
+    """
+
+    return (
+        sql,
+        params,
+    )
 
 # ============================================================
 # BUILD SELECTION FILTERS
