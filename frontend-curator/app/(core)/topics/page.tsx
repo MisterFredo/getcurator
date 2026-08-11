@@ -513,7 +513,7 @@ export default function TopicsPage() {
                   }
 
                   contentCount={
-                    company.content_count
+                    topic.content_count
                   }
 
                   isLoading={
@@ -664,7 +664,7 @@ export default function TopicsPage() {
                             }
 
                             contentCount={
-                              company.content_count
+                              topic.content_count
                             }
 
                             isLoading={
