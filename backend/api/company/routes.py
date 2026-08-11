@@ -1,7 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query, Request
-from typing import List, Dict, Optional
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Request,
+)
 
-from api.company.models import CompanyCreate, CompanyUpdate, CompanyOut
+from api.company.models import (
+    CompanyCreate,
+    CompanyUpdate,
+    CompanyOut,
+)
 
 from core.company.service import (
     create_company,
@@ -20,22 +27,31 @@ from core.company.public_service import (
     list_companies_for_user,
 )
 
-
-# 🔐 AUTH
-from utils.auth import get_user_id_from_request
+from utils.auth import (
+    get_user_id_from_request,
+)
 
 router = APIRouter()
 
 
 # ============================================================
-# AUTH HELPER (SAFE)
+# AUTH HELPER
 # ============================================================
 
-def require_user(request: Request) -> str:
-    user_id = get_user_id_from_request(request)
+def require_user(
+    request: Request,
+) -> str:
+
+    user_id = get_user_id_from_request(
+        request
+    )
 
     if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
 
     return user_id
 
@@ -45,26 +61,52 @@ def require_user(request: Request) -> str:
 # ============================================================
 
 @router.post("/create")
-def create_route(data: CompanyCreate):
+def create_route(
+    data: CompanyCreate,
+):
+
     try:
-        company_id = create_company(data)
-        return {"status": "ok", "id_company": company_id}
+
+        company_id = create_company(
+            data
+        )
+
+        return {
+            "status": "ok",
+            "id_company": company_id,
+        }
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur création société : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur création société : {e}",
+        )
+
 
 @router.post("/suggest-alias")
-def suggest_alias_route(data: dict):
+def suggest_alias_route(
+    data: dict,
+):
 
-    name = data.get("name")
+    name = data.get(
+        "name"
+    )
 
     if not name:
-        raise HTTPException(400, "name required")
 
-    aliases = suggest_company_aliases(name)
+        raise HTTPException(
+            400,
+            "name required",
+        )
+
+    aliases = suggest_company_aliases(
+        name
+    )
 
     return {
         "status": "ok",
-        "aliases": aliases
+        "aliases": aliases,
     }
 
 
@@ -74,11 +116,22 @@ def suggest_alias_route(data: dict):
 
 @router.get("/list")
 def list_route():
+
     try:
+
         companies = list_companies()
-        return {"status": "ok", "companies": companies}
+
+        return {
+            "status": "ok",
+            "companies": companies,
+        }
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur liste sociétés : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur liste sociétés : {e}",
+        )
 
 
 # ============================================================
@@ -87,11 +140,22 @@ def list_route():
 
 @router.get("/types")
 def list_types_route():
+
     try:
+
         types = list_company_types()
-        return {"status": "ok", "types": types}
+
+        return {
+            "status": "ok",
+            "types": types,
+        }
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur récupération types sociétés : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur récupération types sociétés : {e}",
+        )
 
 
 # ============================================================
@@ -99,30 +163,49 @@ def list_types_route():
 # ============================================================
 
 @router.get("/list-curator")
-def list_companies_curator(request: Request):
-    try:
-        user_id = require_user(request)
+def list_companies_curator(
+    request: Request,
+):
 
-        companies = list_companies_for_user(user_id)
+    try:
+
+        user_id = require_user(
+            request
+        )
+
+        companies = list_companies_for_user(
+            user_id
+        )
 
         return {
             "status": "ok",
             "companies": companies,
         }
 
+    except HTTPException:
+
+        raise
+
     except Exception as e:
-        print(f"❌ Companies curator error: {e}")
+
+        print(
+            f"❌ Companies curator error: {e}"
+        )
+
         raise HTTPException(
             status_code=500,
-            detail="Internal error"
+            detail="Internal error",
         )
+
 
 # ============================================================
 # ALIASES
 # ============================================================
 
 @router.get("/{id_company}/aliases")
-def get_aliases_route(id_company: str):
+def get_aliases_route(
+    id_company: str,
+):
 
     try:
 
@@ -139,7 +222,7 @@ def get_aliases_route(id_company: str):
 
         raise HTTPException(
             400,
-            f"Erreur récupération aliases : {e}"
+            f"Erreur récupération aliases : {e}",
         )
 
 
@@ -160,7 +243,7 @@ def create_alias_route(
 
             raise HTTPException(
                 400,
-                "alias required"
+                "alias required",
             )
 
         create_company_alias(
@@ -174,20 +257,23 @@ def create_alias_route(
         }
 
     except HTTPException:
+
         raise
 
     except Exception as e:
 
         raise HTTPException(
             400,
-            f"Erreur création alias : {e}"
+            f"Erreur création alias : {e}",
         )
+
 
 @router.delete("/{id_company}/alias")
 def delete_alias_route(
     id_company: str,
     alias: str,
 ):
+
     try:
 
         delete_company_alias(
@@ -204,7 +290,7 @@ def delete_alias_route(
 
         raise HTTPException(
             400,
-            f"Erreur suppression alias : {e}"
+            f"Erreur suppression alias : {e}",
         )
 
 
@@ -216,32 +302,40 @@ def delete_alias_route(
 def get_view_route(
     request: Request,
     id_company: str,
-    limit: int = 50,
-    offset: int = 0,
-    universe_id: Optional[str] = Query(None),
 ):
+
     try:
-        user_id = require_user(request)
+
+        require_user(
+            request
+        )
 
         company = get_company_view(
             company_id=id_company,
-            limit=limit,
-            offset=offset,
-            universe_id=universe_id if universe_id else None,
-            user_id=user_id,
         )
 
         if not company:
-            raise HTTPException(404, "Company introuvable")
+
+            raise HTTPException(
+                404,
+                "Company introuvable",
+            )
 
         return company
 
     except HTTPException:
+
         raise
+
     except Exception as e:
+
+        print(
+            f"❌ Company view error: {e}"
+        )
+
         raise HTTPException(
             status_code=500,
-            detail="Internal error"
+            detail="Internal error",
         )
 
 
@@ -250,53 +344,102 @@ def get_view_route(
 # ============================================================
 
 @router.put("/update/{id_company}")
-def update_route(id_company: str, data: CompanyUpdate):
+def update_route(
+    id_company: str,
+    data: CompanyUpdate,
+):
+
     try:
-        updated = update_company(id_company, data)
+
+        updated = update_company(
+            id_company,
+            data,
+        )
 
         if not updated:
+
             raise HTTPException(
                 404,
-                "Société introuvable ou aucune modification"
+                "Société introuvable ou aucune modification",
             )
 
-        return {"status": "ok", "updated": True}
+        return {
+            "status": "ok",
+            "updated": True,
+        }
 
     except HTTPException:
+
         raise
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur mise à jour société : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur mise à jour société : {e}",
+        )
 
 
 # ============================================================
-# DELETE (SOFT)
+# DELETE
 # ============================================================
 
 @router.delete("/{id_company}")
-def delete_route(id_company: str):
+def delete_route(
+    id_company: str,
+):
+
     try:
-        deleted = delete_company(id_company)
+
+        deleted = delete_company(
+            id_company
+        )
 
         if not deleted:
-            raise HTTPException(404, "Société introuvable")
 
-        return {"status": "ok", "deleted": True}
+            raise HTTPException(
+                404,
+                "Société introuvable",
+            )
+
+        return {
+            "status": "ok",
+            "deleted": True,
+        }
 
     except HTTPException:
+
         raise
+
     except Exception as e:
-        raise HTTPException(400, f"Erreur suppression société : {e}")
+
+        raise HTTPException(
+            400,
+            f"Erreur suppression société : {e}",
+        )
+
 
 # ============================================================
 # GET ONE
 # ============================================================
 
-@router.get("/{id_company}", response_model=CompanyOut)
-def get_route(id_company: str):
+@router.get(
+    "/{id_company}",
+    response_model=CompanyOut,
+)
+def get_route(
+    id_company: str,
+):
 
-    company = get_company(id_company)
+    company = get_company(
+        id_company
+    )
 
     if not company:
-        raise HTTPException(404, "Société introuvable")
+
+        raise HTTPException(
+            404,
+            "Société introuvable",
+        )
 
     return company
