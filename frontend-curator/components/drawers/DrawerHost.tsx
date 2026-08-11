@@ -43,17 +43,16 @@ export default function DrawerHost() {
 
       {leftDrawer.type === "company"
         && leftDrawer.id && (
-
+      
         <CompanyDrawer
-
-          companyId={leftDrawer.id}
-
+      
+          id={leftDrawer.id}
+      
           onClose={closeLeftDrawer}
-
+      
         />
-
+      
       )}
-
       {/* =====================================================
           LEFT — TOPIC
       ===================================================== */}
