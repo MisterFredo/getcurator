@@ -278,6 +278,73 @@ export default function CompanyDrawer({
     user,
   ]);
 
+
+  async function loadMoreContents() {
+
+    if (!user) {
+  
+      return;
+  
+    }
+  
+    const res =
+      await watchLatest({
+  
+        user_id:
+          user.user_id,
+  
+        company_id:
+          id,
+  
+        limit:
+          PAGE_SIZE,
+  
+        offset,
+  
+      });
+  
+    setItems(
+      (previous) => {
+  
+        const existingIds =
+          new Set(
+            previous.map(
+              (item) =>
+                item.id,
+            ),
+          );
+  
+        const newItems =
+          res.items.filter(
+            (item) =>
+              !existingIds.has(
+                item.id,
+              ),
+          );
+  
+        return [
+          ...previous,
+          ...newItems,
+        ];
+  
+      },
+    );
+  
+    setTotal(
+      res.count,
+    );
+  
+    setOffset(
+      (previous) =>
+        previous
+        + res.items.length,
+    );
+  
+  }
+
+  const hasMore =
+    items.length < total;
+
   /* =========================================================
      DESCRIPTION OVERFLOW
   ========================================================= */
@@ -487,40 +554,42 @@ export default function CompanyDrawer({
         pt-4
       ">
 
-        <WatchList
+        <WatchGroupedByMonth
 
           title="Key Contents"
-
+        
           total={
             total
           }
-
+        
           items={
             items
           }
-
+        
           loading={
             loading
           }
-
+        
           hasMore={
-            false
+            hasMore
           }
-
-          onLoadMore={() => {}}
-
+        
+          onLoadMore={
+            loadMoreContents
+          }
+        
           onSelect={
             openContent
           }
-
+        
           selectedIds={
             selectedIds
           }
-
+        
           onToggleSelect={
             toggleSelect
           }
-
+        
         />
 
       </section>
