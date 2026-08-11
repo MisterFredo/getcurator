@@ -54,11 +54,6 @@ type CompanyData = {
   linkedin_url?: string | null;
 
   universes?: any[];
-
-  nb_analyses?: number;
-
-  delta_30d?: number;
-
 };
 
 /* ========================================================= */
