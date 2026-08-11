@@ -1,222 +1,541 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+
 import { api } from "@/lib/api";
+
+import {
+  watchLatest,
+} from "@/lib/watch";
+
+import type {
+  WatchItem,
+} from "@/types/watch";
 
 import EntityDrawer from "@/components/drawers/EntityDrawer";
 import DrawerHeader from "@/components/drawers/DrawerHeader";
-import FeedGroupedByMonth from "@/components/feed/FeedGroupedByMonth";
-
-import NumbersBlock from "@/components/drawers/blocks/NumbersBlock";
+import WatchList from "@/components/watch/WatchList";
 
 import { useDrawer } from "@/contexts/DrawerContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useUser } from "@/hooks/useUser";
 
 /* ========================================================= */
 
-const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
+const GCS_BASE_URL =
+  process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 
 /* ========================================================= */
-
-type FeedItem = {
-  id: string;
-  type: "news" | "analysis";
-  title: string;
-};
 
 type CompanyData = {
+
   id_company: string;
+
   name: string;
+
+  type?: string | null;
+
   description?: string | null;
-  media_logo_rectangle_id?: string | null;
+
+  media_logo_rectangle_id?:
+    string | null;
+
+  website_url?: string | null;
+
+  linkedin_url?: string | null;
+
+  universes?: any[];
 
   nb_analyses?: number;
+
   delta_30d?: number;
 
-  items?: FeedItem[];
 };
 
 /* ========================================================= */
 
-export default function CompanyDrawer({ id, onClose }: any) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { leftDrawer, openRightDrawer, closeLeftDrawer } = useDrawer();
+export default function CompanyDrawer({
+  id,
+  onClose,
+}: any) {
 
-  const [data, setData] = useState<CompanyData | null>(null);
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [numbers, setNumbers] = useState<any[]>([]);
-  const [userLang, setUserLang] = useState("fr");
+  const router =
+    useRouter();
 
-  // 🔥 description state
-  const [expanded, setExpanded] = useState(false);
-  const [showToggle, setShowToggle] = useState(false);
-  const descRef = useRef<HTMLDivElement | null>(null);
+  const pathname =
+    usePathname();
 
-  /* ========================================================= */
-  /* CLOSE */
-  /* ========================================================= */
+  const {
+    user,
+  } = useUser();
+
+  const {
+    leftDrawer,
+    openRightDrawer,
+    closeLeftDrawer,
+  } = useDrawer();
+
+  const {
+    selectedContentItems,
+    toggleContent,
+  } = useWorkspace();
+
+  const [
+    data,
+    setData,
+  ] = useState<CompanyData | null>(
+    null,
+  );
+
+  const [
+    items,
+    setItems,
+  ] = useState<WatchItem[]>([]);
+
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  /* =========================================================
+     DESCRIPTION
+  ========================================================= */
+
+  const [
+    expanded,
+    setExpanded,
+  ] = useState(false);
+
+  const [
+    showToggle,
+    setShowToggle,
+  ] = useState(false);
+
+  const descRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  /* =========================================================
+     CLOSE
+  ========================================================= */
 
   function close() {
+
     onClose?.();
+
     closeLeftDrawer();
 
     if (
-      leftDrawer.mode === "route" &&
-      pathname.startsWith("/companies")
+      leftDrawer.mode === "route"
+      && pathname.startsWith(
+        "/companies",
+      )
     ) {
-      router.push("/companies", { scroll: false });
+
+      router.push(
+        "/companies",
+        {
+          scroll: false,
+        },
+      );
+
     }
+
   }
 
-  /* ========================================================= */
-  /* LOAD DATA */
-  /* ========================================================= */
+  /* =========================================================
+     LOAD COMPANY
+  ========================================================= */
 
   useEffect(() => {
-    async function load() {
-      const res = await api.get(`/company/${id}/view`);
-      setData(res);
-      setItems(res.items ?? []);
-    }
 
-    load();
-  }, [id]);
-
-  useEffect(() => {
-    async function loadNumbers() {
-      const res = await api.get(
-        `/numbers/entity?entity_type=company&entity_id=${id}&limit=4`
-      );
-      setNumbers(Array.isArray(res?.items) ? res.items : []);
-    }
-
-    loadNumbers();
-  }, [id]);
-
-  useEffect(() => {
-    async function loadUserLang() {
+    async function loadCompany() {
 
       try {
 
-        const res = await api.get(
-          "/user/preferences"
+        const res =
+          await api.get(
+            `/company/${id}/view`,
+          );
+
+        setData(
+          res,
         );
 
-        const lang =
-          res?.lang
-          || "fr";
+      } catch (e) {
 
-        setUserLang(lang);
+        console.error(
+          "❌ Company load error:",
+          e,
+        );
 
-      } catch {
-
-        setUserLang("fr");
+        setData(
+          null,
+        );
 
       }
+
     }
 
-    loadUserLang();
+    loadCompany();
 
-  }, []);
+  }, [
+    id,
+  ]);
 
-  /* ========================================================= */
-  /* DETECT OVERFLOW DESCRIPTION */
-  /* ========================================================= */
+  /* =========================================================
+     LOAD WATCH
+  ========================================================= */
 
   useEffect(() => {
-    if (!data?.description) {
-      setShowToggle(false);
+
+    if (!user) {
+
       return;
+
     }
 
-    setShowToggle(data.description.length > 350);
-  }, [data?.description]);
+    async function loadContents() {
+
+      setLoading(
+        true,
+      );
+
+      try {
+
+        const res =
+          await watchLatest({
+
+            user_id:
+              user.user_id,
+
+            company_id:
+              id,
+
+            limit:
+              20,
+
+          });
+
+        setItems(
+          res.items,
+        );
+
+        setTotal(
+          res.count,
+        );
+
+      } catch (e) {
+
+        console.error(
+          "❌ Company contents error:",
+          e,
+        );
+
+        setItems(
+          [],
+        );
+
+        setTotal(
+          0,
+        );
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+      }
+
+    }
+
+    loadContents();
+
+  }, [
+    id,
+    user,
+  ]);
+
+  /* =========================================================
+     DESCRIPTION OVERFLOW
+  ========================================================= */
+
+  useEffect(() => {
+
+    if (!data?.description) {
+
+      setShowToggle(
+        false,
+      );
+
+      return;
+
+    }
+
+    setShowToggle(
+      data.description.length > 350,
+    );
+
+  }, [
+    data?.description,
+  ]);
+
+  /* =========================================================
+     CONTENT
+  ========================================================= */
+
+  function openContent(
+    item: WatchItem,
+  ) {
+
+    openRightDrawer(
+      "content",
+      item.id,
+    );
+
+  }
+
+  const selectedIds =
+    selectedContentItems.map(
+      (item) => item.id,
+    );
+
+  function toggleSelect(
+    item: WatchItem,
+  ) {
+
+    toggleContent(
+      item,
+    );
+
+  }
 
   /* ========================================================= */
 
-  if (!data) return null;
+  if (!data) {
 
-  const logoUrl = data.media_logo_rectangle_id
-    ? `${GCS_BASE_URL}/companies/${data.media_logo_rectangle_id}`
-    : null;
+    return null;
 
-  /* ========================================================= */
+  }
+
+  const logoUrl =
+    data.media_logo_rectangle_id
+
+      ? `${GCS_BASE_URL}/companies/${data.media_logo_rectangle_id}`
+
+      : null;
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
+
     <EntityDrawer
-      onClose={close}
-      header={
-        <DrawerHeader
-          title={data.name}
-          nbAnalyses={data.nb_analyses}
-          delta30d={data.delta_30d}
-          onClose={close}
-        />
+
+      onClose={
+        close
       }
+
+      header={
+
+        <DrawerHeader
+
+          title={
+            data.name
+          }
+
+          nbAnalyses={
+            data.nb_analyses
+          }
+
+          delta30d={
+            data.delta_30d
+          }
+
+          onClose={
+            close
+          }
+
+        />
+
+      }
+
     >
-      {/* LOGO */}
+
+      {/* =====================================================
+          LOGO
+      ===================================================== */}
+
       {logoUrl && (
-        <div className="w-full border-b border-gray-200 flex justify-center py-4">
+
+        <div className="
+          w-full
+          border-b
+          border-gray-200
+          flex
+          justify-center
+          py-4
+        ">
+
           <img
-            src={logoUrl}
-            alt={data.name}
-            className="h-16 object-contain"
+
+            src={
+              logoUrl
+            }
+
+            alt={
+              data.name
+            }
+
+            className="
+              h-16
+              object-contain
+            "
+
           />
+
         </div>
+
       )}
 
-      {/* DESCRIPTION */}
+      {/* =====================================================
+          DESCRIPTION
+      ===================================================== */}
+
       {data.description && (
-        <div className="border-b border-gray-200 py-4">
+
+        <div className="
+          border-b
+          border-gray-200
+          py-4
+        ">
+
           <div
-            ref={descRef}
-            className={`prose prose-sm max-w-none transition-all duration-300 ${
-              expanded ? "" : "max-h-32 overflow-hidden"
-            }`}
+
+            ref={
+              descRef
+            }
+
+            className={`
+              prose
+              prose-sm
+              max-w-none
+              transition-all
+              duration-300
+
+              ${
+                expanded
+                  ? ""
+                  : "max-h-32 overflow-hidden"
+              }
+            `}
+
             dangerouslySetInnerHTML={{
-              __html: data.description,
+              __html:
+                data.description,
             }}
+
           />
 
           {showToggle && (
+
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="mt-3 text-xs font-medium text-ratecard-blue hover:underline"
+
+              onClick={() =>
+                setExpanded(
+                  !expanded,
+                )
+              }
+
+              className="
+                mt-3
+                text-xs
+                font-medium
+                text-ratecard-blue
+                hover:underline
+              "
+
             >
-              {expanded ? "Voir moins" : "Voir plus"}
+
+              {
+                expanded
+                  ? "Voir moins"
+                  : "Voir plus"
+              }
+
             </button>
+
           )}
+
         </div>
+
       )}
 
-      {/* NUMBERS */}
-      <NumbersBlock
-        numbers={numbers}
-        entityId={id}
-        entityType="company"
-      />
+      {/* =====================================================
+          CONTENTS
+      ===================================================== */}
 
-      {/* FEED */}
-      <section className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase text-gray-400">
-          Key Contents
-        </h2>
+      <section className="
+        pt-4
+      ">
 
-        <FeedGroupedByMonth
-          userLang={userLang}
+        <WatchList
 
-          items={items}
+          title="Key Contents"
 
-          onClickItem={(item) =>
-            openRightDrawer(
-              "content",
-              item.id,
-              "silent"
-            )
+          total={
+            total
           }
+
+          items={
+            items
+          }
+
+          loading={
+            loading
+          }
+
+          hasMore={
+            false
+          }
+
+          onLoadMore={() => {}}
+
+          onSelect={
+            openContent
+          }
+
+          selectedIds={
+            selectedIds
+          }
+
+          onToggleSelect={
+            toggleSelect
+          }
+
         />
+
       </section>
+
     </EntityDrawer>
+
   );
+
 }
