@@ -29,6 +29,9 @@ def select_contents(
     limit: int | None = None,
     universe_id: str | None = None,
     query: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
 ) -> list[ExpertiseContent]:
 
     sql, params = build_selection_query(
@@ -44,6 +47,12 @@ def select_contents(
         universe_id=universe_id,
 
         query=query,
+
+        company_id=company_id,
+
+        solution_id=solution_id,
+
+        topic_id=topic_id,
 
     )
 
