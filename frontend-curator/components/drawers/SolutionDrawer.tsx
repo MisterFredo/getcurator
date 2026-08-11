@@ -1,165 +1,483 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+
 import { api } from "@/lib/api";
+
+import {
+  watchLatest,
+} from "@/lib/watch";
+
+import type {
+  WatchItem,
+} from "@/types/watch";
 
 import EntityDrawer from "@/components/drawers/EntityDrawer";
 import DrawerHeader from "@/components/drawers/DrawerHeader";
-import FeedGroupedByMonth from "@/components/feed/FeedGroupedByMonth";
-
-import NumbersBlock from "@/components/drawers/blocks/NumbersBlock";
+import WatchGroupedByMonth from "@/components/watch/WatchGroupedByMonth";
 
 import { useDrawer } from "@/contexts/DrawerContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { useUser } from "@/hooks/useUser";
 
 /* ========================================================= */
 
-type FeedItem = {
-  id: string;
-  type: "news" | "analysis";
-  title: string;
-};
+const PAGE_SIZE = 20;
 
-type NumberCategory = any;
+/* ========================================================= */
 
 type SolutionData = {
+
   id_solution: string;
+
   name: string;
 
   company_name?: string;
 
-  // 🔥 logo + type
   media_logo_rectangle_id?: string | null;
+
   logo_type?: "solution" | "company";
 
-  nb_analyses?: number;
-  delta_30d?: number;
-
-  items?: FeedItem[];
 };
 
 /* ========================================================= */
 
-export default function SolutionDrawer({ id, onClose }: any) {
+export default function SolutionDrawer({
+  id,
+  onClose,
+}: any) {
 
-  const router = useRouter();
-  const pathname = usePathname();
-  const { leftDrawer, openRightDrawer, closeLeftDrawer } = useDrawer();
+  const router =
+    useRouter();
 
-  const [data, setData] = useState<SolutionData | null>(null);
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [numbers, setNumbers] = useState<NumberCategory[]>([]);
-  const [userLang, setUserLang] = useState("fr");
+  const pathname =
+    usePathname();
+
+  const {
+    user,
+  } = useUser();
+
+  const {
+    leftDrawer,
+    openRightDrawer,
+    closeLeftDrawer,
+  } = useDrawer();
+
+  const {
+    selectedContentItems,
+    toggleContent,
+  } = useWorkspace();
+
+  const [
+    data,
+    setData,
+  ] = useState<SolutionData | null>(
+    null,
+  );
+
+  const [
+    items,
+    setItems,
+  ] = useState<WatchItem[]>([]);
+
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
+
+  const [
+    offset,
+    setOffset,
+  ] = useState(0);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  /* =========================================================
+     CLOSE
+  ========================================================= */
 
   function close() {
+
     onClose?.();
+
     closeLeftDrawer();
 
     if (
-      leftDrawer.mode === "route" &&
-      pathname.startsWith("/solutions")
+      leftDrawer.mode === "route"
+      && pathname.startsWith(
+        "/solutions",
+      )
     ) {
-      router.push("/solutions", { scroll: false });
+
+      router.push(
+        "/solutions",
+        {
+          scroll: false,
+        },
+      );
+
     }
+
   }
 
-  /* LOAD DATA */
-  useEffect(() => {
-    async function load() {
-      const res = await api.get(`/solution/${id}/view`);
-      setData(res);
-      setItems(res.items ?? []);
-    }
-
-    load();
-  }, [id]);
-
-  /* LOAD NUMBERS */
-  useEffect(() => {
-    async function loadNumbers() {
-      const res = await api.get(
-        `/numbers/entity?entity_type=solution&entity_id=${id}&limit=4`
-      );
-      setNumbers(res.items ?? []);
-    }
-
-    loadNumbers();
-  }, [id]);
+  /* =========================================================
+     LOAD SOLUTION
+  ========================================================= */
 
   useEffect(() => {
 
-    async function loadUserLang() {
+    async function loadSolution() {
 
       try {
 
-        const res = await api.get(
-          "/user/preferences"
+        const res =
+          await api.get(
+            `/solution/${id}/view`,
+          );
+
+        setData(
+          res,
         );
 
-        const lang =
-          res?.user?.lang
-          || "fr";
+      } catch (e) {
 
-        setUserLang(lang);
+        console.error(
+          "❌ Solution load error:",
+          e,
+        );
 
-      } catch {
-
-        setUserLang("fr");
+        setData(
+          null,
+        );
 
       }
+
     }
 
-    loadUserLang();
+    loadSolution();
 
-  }, []);
+  }, [
+    id,
+  ]);
 
-  if (!data) return null;
+  /* =========================================================
+     LOAD WATCH
+  ========================================================= */
+
+  useEffect(() => {
+
+    if (!user) {
+
+      return;
+
+    }
+
+    async function loadContents() {
+
+      setLoading(
+        true,
+      );
+
+      setItems(
+        [],
+      );
+
+      setTotal(
+        0,
+      );
+
+      setOffset(
+        0,
+      );
+
+      try {
+
+        const res =
+          await watchLatest({
+
+            user_id:
+              user.user_id,
+
+            solution_id:
+              id,
+
+            limit:
+              PAGE_SIZE,
+
+            offset:
+              0,
+
+          });
+
+        setItems(
+          res.items,
+        );
+
+        setTotal(
+          res.count,
+        );
+
+        setOffset(
+          res.items.length,
+        );
+
+      } catch (e) {
+
+        console.error(
+          "❌ Solution contents error:",
+          e,
+        );
+
+        setItems(
+          [],
+        );
+
+        setTotal(
+          0,
+        );
+
+        setOffset(
+          0,
+        );
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+      }
+
+    }
+
+    loadContents();
+
+  }, [
+    id,
+    user,
+  ]);
+
+  /* =========================================================
+     LOAD MORE
+  ========================================================= */
+
+  async function loadMoreContents() {
+
+    if (!user) {
+
+      return;
+
+    }
+
+    try {
+
+      const res =
+        await watchLatest({
+
+          user_id:
+            user.user_id,
+
+          solution_id:
+            id,
+
+          limit:
+            PAGE_SIZE,
+
+          offset,
+
+        });
+
+      setItems(
+        (previous) => {
+
+          const existingIds =
+            new Set(
+              previous.map(
+                (item) =>
+                  item.id,
+              ),
+            );
+
+          const newItems =
+            res.items.filter(
+              (item) =>
+                !existingIds.has(
+                  item.id,
+                ),
+            );
+
+          return [
+            ...previous,
+            ...newItems,
+          ];
+
+        },
+      );
+
+      setTotal(
+        res.count,
+      );
+
+      setOffset(
+        (previous) =>
+          previous
+          + res.items.length,
+      );
+
+    } catch (e) {
+
+      console.error(
+        "❌ Solution load more error:",
+        e,
+      );
+
+    }
+
+  }
+
+  const hasMore =
+    items.length < total;
+
+  /* =========================================================
+     CONTENT
+  ========================================================= */
+
+  function openContent(
+    item: WatchItem,
+  ) {
+
+    openRightDrawer(
+      "content",
+      item.id,
+    );
+
+  }
+
+  const selectedIds =
+    selectedContentItems.map(
+      (item) =>
+        item.id,
+    );
+
+  function toggleSelect(
+    item: WatchItem,
+  ) {
+
+    toggleContent(
+      item,
+    );
+
+  }
+
+  /* ========================================================= */
+
+  if (!data) {
+
+    return null;
+
+  }
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
-    <EntityDrawer
-      onClose={close}
-      header={
-        <DrawerHeader
-          title={data.name}
-          subtitle={data.company_name}
 
-          // 🔥 IMPORTANT
-          logoId={data.media_logo_rectangle_id}
-          logoType={data.logo_type}
+    <EntityDrawer
+
+      onClose={
+        close
+      }
+
+      header={
+
+        <DrawerHeader
+
+          title={
+            data.name
+          }
+
+          subtitle={
+            data.company_name
+          }
+
+          logoId={
+            data.media_logo_rectangle_id
+          }
+
+          logoType={
+            data.logo_type
+          }
 
           variant="solution"
-          nbAnalyses={data.nb_analyses}
-          delta30d={data.delta_30d}
-          onClose={close}
-        />
-      }
-    >
-      <NumbersBlock
-        numbers={numbers}
-        entityId={id}
-        entityType="solution"
-      />
 
-
-      <section className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase text-gray-400">
-          Key Contents
-        </h2>
-
-        <FeedGroupedByMonth
-          userLang={userLang}
-
-          items={items}
-
-          onClickItem={(item) =>
-            openRightDrawer(
-              "content",
-              item.id,
-              "silent"
-            )
+          onClose={
+            close
           }
+
         />
+
+      }
+
+    >
+
+      <section className="
+        pt-4
+      ">
+
+        <WatchGroupedByMonth
+
+          title="Key Contents"
+
+          total={
+            total
+          }
+
+          items={
+            items
+          }
+
+          loading={
+            loading
+          }
+
+          hasMore={
+            hasMore
+          }
+
+          onLoadMore={
+            loadMoreContents
+          }
+
+          onSelect={
+            openContent
+          }
+
+          selectedIds={
+            selectedIds
+          }
+
+          onToggleSelect={
+            toggleSelect
+          }
+
+        />
+
       </section>
+
     </EntityDrawer>
+
   );
+
 }
