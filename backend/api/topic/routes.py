@@ -174,25 +174,18 @@ def get_route(
 
 @router.get("/{id_topic}/view")
 def get_view_route(
-
+    request: Request,
     id_topic: str,
-
-    limit: int = 20,
-
-    offset: int = 0,
-
 ):
 
     try:
 
+        require_user(
+            request
+        )
+
         topic = get_topic_view(
-
-            id_topic,
-
-            limit=limit,
-
-            offset=offset,
-
+            topic_id=id_topic,
         )
 
         if not topic:
@@ -209,11 +202,14 @@ def get_view_route(
 
     except Exception as e:
 
-        raise HTTPException(
-            400,
-            f"Erreur récupération topic : {e}",
+        print(
+            f"❌ Topic view error: {e}"
         )
 
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error",
+        )
 
 # ============================================================
 # UPDATE
