@@ -200,68 +200,79 @@ export default function CompanyDrawer({
   useEffect(() => {
 
     if (!user) {
-
+  
       return;
-
+  
     }
-
+  
     async function loadContents() {
-
+  
       setLoading(
         true,
       );
-
+  
       try {
-
+  
         const res =
           await watchLatest({
-
+  
             user_id:
               user.user_id,
-
+  
             company_id:
               id,
-
+  
             limit:
-              20,
-
+              PAGE_SIZE,
+  
+            offset:
+              0,
+  
           });
-
+  
         setItems(
           res.items,
         );
-
+  
         setTotal(
           res.count,
         );
-
+  
+        setOffset(
+          res.items.length,
+        );
+  
       } catch (e) {
-
+  
         console.error(
           "❌ Company contents error:",
           e,
         );
-
+  
         setItems(
           [],
         );
-
+  
         setTotal(
           0,
         );
-
+  
+        setOffset(
+          0,
+        );
+  
       } finally {
-
+  
         setLoading(
           false,
         );
-
+  
       }
-
+  
     }
-
+  
     loadContents();
-
+  
   }, [
     id,
     user,
