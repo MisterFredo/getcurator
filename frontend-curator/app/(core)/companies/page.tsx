@@ -59,32 +59,55 @@ async function fetchCompanies():
         "/company/list-curator",
       );
 
+    console.log(
+      "COMPANIES RAW",
+      json,
+    );
+
     const data =
       json?.companies ?? [];
 
+    console.log(
+      "COMPANIES DATA",
+      data,
+    );
+
     if (!Array.isArray(data)) {
+
+      console.warn(
+        "COMPANIES is not an array",
+        data,
+      );
 
       return [];
 
     }
 
-    return data.map(
-      (c: any) => ({
+    const companies =
+      data.map(
+        (c: any) => ({
 
-        id_company:
-          c.id_company,
+          id_company:
+            c.id_company,
 
-        name:
-          c.name,
+          name:
+            c.name,
 
-        media_logo_rectangle_id:
-          c.media_logo_rectangle_id,
+          media_logo_rectangle_id:
+            c.media_logo_rectangle_id,
 
-        universes:
-          c.universes ?? [],
+          universes:
+            c.universes ?? [],
 
-      }),
+        }),
+      );
+
+    console.log(
+      "COMPANIES MAPPED",
+      companies,
     );
+
+    return companies;
 
   } catch (e: any) {
 
@@ -109,8 +132,6 @@ async function fetchCompanies():
   }
 
 }
-
-
 /* =========================================================
    SORT
 ========================================================= */
