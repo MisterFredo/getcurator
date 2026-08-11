@@ -109,6 +109,11 @@ def list_topics_for_user(
 
         t.LABEL,
 
+        COALESCE(
+            tc.CONTENT_COUNT,
+            0
+        ) AS CONTENT_COUNT,
+
         ARRAY_AGG(
             DISTINCT u.LABEL
             IGNORE NULLS
@@ -131,6 +136,39 @@ def list_topics_for_user(
         ON uu.ID_UNIVERSE =
             tu.ID_UNIVERSE
 
+    LEFT JOIN (
+
+        SELECT
+
+            topic.id_topic
+                AS ID_TOPIC,
+
+            COUNT(
+                DISTINCT content.ID_CONTENT
+            ) AS CONTENT_COUNT
+
+        FROM `{TABLE_CONTENT_ENRICHED}` content,
+
+        UNNEST(
+            content.TOPICS
+        ) topic
+
+        WHERE
+
+            content.IS_ACTIVE = TRUE
+
+            AND content.STATUS =
+                "PUBLISHED"
+
+        GROUP BY
+
+            topic.id_topic
+
+    ) tc
+
+        ON tc.ID_TOPIC =
+            t.ID_TOPIC
+
     WHERE
 
         t.IS_ACTIVE = TRUE
@@ -142,7 +180,9 @@ def list_topics_for_user(
 
         t.ID_TOPIC,
 
-        t.LABEL
+        t.LABEL,
+
+        tc.CONTENT_COUNT
 
     ORDER BY
 
@@ -168,6 +208,12 @@ def list_topics_for_user(
 
             "label":
                 row["LABEL"],
+
+            "content_count":
+                row.get(
+                    "CONTENT_COUNT",
+                    0,
+                ),
 
             "universes":
                 row.get(
