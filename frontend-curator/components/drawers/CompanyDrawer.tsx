@@ -291,12 +291,6 @@ export default function CompanyDrawer({
     if (!user) {
       return;
     }
-
-    setLoading(true);
-
-    setItems([]);
-    setTotal(0);
-    setOffset(0);
   
     try {
   
