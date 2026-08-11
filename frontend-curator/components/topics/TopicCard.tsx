@@ -24,6 +24,8 @@ type Props = {
 
   label: string;
 
+  universe?: string;
+
   isLoading?: boolean;
 
   onClick?: () => void;
@@ -46,6 +48,8 @@ export default function TopicCard({
   id,
 
   label,
+
+  universe,
 
   isLoading,
 
@@ -186,9 +190,7 @@ export default function TopicCard({
 
     >
 
-      {/* =====================================================
-          FAVORITE
-      ===================================================== */}
+      {/* FAVORITE */}
 
       <button
 
@@ -215,12 +217,6 @@ export default function TopicCard({
           }
         `}
 
-        aria-label={
-          isFavorite
-            ? "Retirer des favoris"
-            : "Ajouter aux favoris"
-        }
-
       >
 
         {
@@ -231,9 +227,7 @@ export default function TopicCard({
 
       </button>
 
-      {/* =====================================================
-          LOADING
-      ===================================================== */}
+      {/* LOADING */}
 
       {isLoading && (
 
@@ -262,16 +256,13 @@ export default function TopicCard({
 
       )}
 
-      {/* =====================================================
-          VISUAL
-      ===================================================== */}
+      {/* UNIVERSE */}
 
       <div className="
         relative
         h-24
         w-full
         bg-ratecard-light
-        overflow-hidden
         flex
         items-center
         justify-center
@@ -279,22 +270,22 @@ export default function TopicCard({
       ">
 
         <div className="
+          text-xs
+          font-semibold
+          uppercase
+          tracking-wide
+          text-gray-500
           text-center
-          text-sm
-          font-medium
-          text-gray-700
-          line-clamp-3
+          line-clamp-2
         ">
 
-          {label}
+          {universe || "Topic"}
 
         </div>
 
       </div>
 
-      {/* =====================================================
-          LABEL
-      ===================================================== */}
+      {/* TOPIC */}
 
       <div className="
         p-3
