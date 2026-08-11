@@ -169,6 +169,11 @@ def list_solutions_for_user(
 
             s.UPDATED_AT,
 
+            COALESCE(
+                sc.CONTENT_COUNT,
+                0
+            ) AS CONTENT_COUNT,
+
             ARRAY_AGG(
                 DISTINCT u.LABEL
                 IGNORE NULLS
@@ -196,6 +201,39 @@ def list_solutions_for_user(
             ON uu.ID_UNIVERSE =
                 cu.ID_UNIVERSE
 
+        LEFT JOIN (
+
+            SELECT
+
+                solution.id_solution
+                    AS ID_SOLUTION,
+
+                COUNT(
+                    DISTINCT content.ID_CONTENT
+                ) AS CONTENT_COUNT
+
+            FROM `{TABLE_CONTENT_ENRICHED}` content,
+
+            UNNEST(
+                content.SOLUTIONS
+            ) solution
+
+            WHERE
+
+                content.IS_ACTIVE = TRUE
+
+                AND content.STATUS =
+                    "PUBLISHED"
+
+            GROUP BY
+
+                solution.id_solution
+
+        ) sc
+
+            ON sc.ID_SOLUTION =
+                s.ID_SOLUTION
+
         WHERE
 
             s.IS_ACTIVE = TRUE
@@ -221,7 +259,9 @@ def list_solutions_for_user(
 
             s.CREATED_AT,
 
-            s.UPDATED_AT
+            s.UPDATED_AT,
+
+            sc.CONTENT_COUNT
 
         ORDER BY
 
@@ -286,6 +326,12 @@ def list_solutions_for_user(
             "updated_at":
                 row.get(
                     "UPDATED_AT",
+                ),
+
+            "content_count":
+                row.get(
+                    "CONTENT_COUNT",
+                    0,
                 ),
 
             "universes":
