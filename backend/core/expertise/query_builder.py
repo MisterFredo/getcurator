@@ -292,15 +292,17 @@ def build_selection_query(
     # ========================================================
     # SELECTION MODE
     # ========================================================
-
+    
     if entity_filter_sql:
-
-        selection_sql = (
-            entity_filter_sql
+    
+        selection_sql = f"""
+        AND (
+            {entity_filter_sql}
         )
-
+        """
+    
     else:
-
+    
         selection_sql = f"""
         AND (
             ({selection.filters_sql})
