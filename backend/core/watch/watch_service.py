@@ -5,7 +5,7 @@ from core.expertise.service import (
 )
 
 from .watch_utils import (
-    paginate,
+    serialize_contents,
 )
 
 from core.user.user_service import (
