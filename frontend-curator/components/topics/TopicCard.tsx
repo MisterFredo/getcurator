@@ -1,22 +1,29 @@
 "use client";
 
 import {
-  useRouter,
   usePathname,
+  useRouter,
   useSearchParams,
 } from "next/navigation";
 
-import { useDrawer } from "@/contexts/DrawerContext";
-import { api } from "@/lib/api";
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import {
+  api,
+} from "@/lib/api";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Props = {
+
   id: string;
+
   label: string;
 
-  nbAnalyses?: number;
-  delta30d?: number;
-
-  hasNumbers?: boolean;
   isLoading?: boolean;
 
   onClick?: () => void;
@@ -25,25 +32,33 @@ type Props = {
 
   onToggleFavorite?: (
     id: string,
-    isFavorite: boolean
+    isFavorite: boolean,
   ) => void;
+
 };
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function TopicCard({
+
   id,
+
   label,
-  nbAnalyses,
-  delta30d,
-  hasNumbers,
+
   isLoading,
+
   onClick,
 
   isFavorite = false,
+
   onToggleFavorite,
 
 }: Props) {
 
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const pathname =
     usePathname();
@@ -53,16 +68,7 @@ export default function TopicCard({
 
   const {
     openLeftDrawer,
-    openRightDrawer,
   } = useDrawer();
-
-  /* =========================================================
-     SAFE DATA
-  ========================================================= */
-
-  const isTrending =
-    typeof delta30d === "number"
-    && delta30d > 0;
 
   /* =========================================================
      CLICK
@@ -70,33 +76,36 @@ export default function TopicCard({
 
   function handleClick() {
 
-    if (isLoading) return;
+    if (isLoading) {
 
-    if (onClick) {
-      onClick();
+      return;
+
     }
+
+    onClick?.();
 
     openLeftDrawer(
       "topic",
-      id
+      id,
     );
 
     const params =
       new URLSearchParams(
-        searchParams.toString()
+        searchParams.toString(),
       );
 
     params.set(
       "topic_id",
-      id
+      id,
     );
 
     router.replace(
       `${pathname}?${params.toString()}`,
       {
         scroll: false,
-      }
+      },
     );
+
   }
 
   /* =========================================================
@@ -104,7 +113,7 @@ export default function TopicCard({
   ========================================================= */
 
   async function handleFavoriteClick(
-    e: React.MouseEvent
+    e: React.MouseEvent,
   ) {
 
     e.stopPropagation();
@@ -118,7 +127,7 @@ export default function TopicCard({
           {
             type: "TOPIC",
             value_id: id,
-          }
+          },
         );
 
       } else {
@@ -128,25 +137,25 @@ export default function TopicCard({
           {
             type: "TOPIC",
             value_id: id,
-          }
+          },
         );
+
       }
 
-      if (onToggleFavorite) {
-
-        onToggleFavorite(
-          id,
-          isFavorite
-        );
-      }
+      onToggleFavorite?.(
+        id,
+        isFavorite,
+      );
 
     } catch (e) {
 
       console.error(
         "❌ favorite error",
-        e
+        e,
       );
+
     }
+
   }
 
   /* =========================================================
@@ -156,142 +165,159 @@ export default function TopicCard({
   return (
 
     <div
-      onClick={handleClick}
+
+      onClick={
+        handleClick
+      }
+
       className="
-        group cursor-pointer rounded-xl
-        border border-ratecard-border
-        bg-white shadow-card transition
-        hover:shadow-cardHover overflow-hidden
+        group
+        cursor-pointer
+        rounded-xl
+        border
+        border-ratecard-border
+        bg-white
+        shadow-card
+        transition
+        hover:shadow-cardHover
+        overflow-hidden
         relative
       "
+
     >
 
-      {/* FAVORITE */}
+      {/* =====================================================
+          FAVORITE
+      ===================================================== */}
 
-      <div
-        onClick={handleFavoriteClick}
+      <button
+
+        type="button"
+
+        onClick={
+          handleFavoriteClick
+        }
+
         className={`
-          absolute top-2 left-2 z-20
+          absolute
+          top-2
+          left-2
+          z-20
           cursor-pointer
           leading-none
           transition
+          text-[20px]
+
           ${
             isFavorite
-              ? "text-[20px]"
-              : "text-[20px] text-gray-700 hover:text-black"
+              ? ""
+              : "text-gray-700 hover:text-black"
           }
         `}
-      >
-        {isFavorite ? "⭐" : "☆"}
-      </div>
 
-      {/* LOADING */}
+        aria-label={
+          isFavorite
+            ? "Retirer des favoris"
+            : "Ajouter aux favoris"
+        }
+
+      >
+
+        {
+          isFavorite
+            ? "⭐"
+            : "☆"
+        }
+
+      </button>
+
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
 
       {isLoading && (
 
         <div className="
-          absolute inset-0 z-20
-          bg-white/70 backdrop-blur-sm
-          flex items-center justify-center
+          absolute
+          inset-0
+          z-30
+          bg-white/70
+          backdrop-blur-sm
+          flex
+          items-center
+          justify-center
         ">
 
           <div className="
-            text-xs text-gray-500
+            text-xs
+            text-gray-500
             animate-pulse
           ">
+
             Chargement...
+
           </div>
 
         </div>
 
       )}
 
-      {/* NUMBERS */}
-
-      {hasNumbers && (
-
-        <div className="
-          absolute top-2 left-7 z-10
-          text-[10px]
-          px-2 py-0.5 rounded
-          bg-blue-50 text-blue-600
-          border border-blue-100
-        ">
-          #
-        </div>
-
-      )}
-
-      {/* DELTA */}
-
-      {isTrending && (
-
-        <div className="
-          absolute top-2 right-2 z-10
-          text-[9px]
-          px-2 py-0.5 rounded
-          bg-orange-100 text-orange-600
-        ">
-          +{delta30d}
-        </div>
-
-      )}
-
-      {/* VISUAL */}
+      {/* =====================================================
+          VISUAL
+      ===================================================== */}
 
       <div className="
-        relative h-24 w-full
+        relative
+        h-24
+        w-full
         bg-ratecard-light
         overflow-hidden
-        flex flex-col
-        items-center justify-center
+        flex
+        items-center
+        justify-center
+        px-4
       ">
 
         <div className="
-          text-2xl font-semibold
-          text-gray-800
+          text-center
+          text-sm
+          font-medium
+          text-gray-700
+          line-clamp-3
         ">
-          {nbAnalyses ?? 0}
+
+          {label}
+
         </div>
 
-        <div className="
-          text-[10px]
-          text-gray-400
-        ">
-          analyses
-        </div>
       </div>
-      {/* CONTENT */}
+
+      {/* =====================================================
+          LABEL
+      ===================================================== */}
 
       <div className="
-        p-3 space-y-1
+        p-3
         text-center
       ">
 
         <h3 className="
-          text-xs font-semibold
+          text-xs
+          font-semibold
           text-gray-900
           leading-snug
           line-clamp-2
           group-hover:underline
         ">
+
           {label}
+
         </h3>
-
-        {typeof nbAnalyses === "number" && (
-
-          <p className="
-            text-[10px]
-            text-gray-400
-          ">
-            {nbAnalyses} analyses
-          </p>
-
-        )}
 
       </div>
 
     </div>
 
   );
+
 }
