@@ -32,10 +32,10 @@ TABLE_COMPANY_ALIAS = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_ALIAS"
 )
 
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
 
-# ============================================================
-# PUBLIC VIEW
-# ============================================================
 
 # ============================================================
 # PUBLIC VIEW
@@ -56,10 +56,6 @@ def get_company_view(
     return company
 
 
-# ============================================================
-# LIST FOR USER
-# ============================================================
-
 def list_companies_for_user(
     user_id: str,
 ) -> List[Dict]:
@@ -78,6 +74,11 @@ def list_companies_for_user(
         ) AS IS_PARTNER,
 
         c.MEDIA_LOGO_RECTANGLE_ID,
+
+        COALESCE(
+            cc.CONTENT_COUNT,
+            0
+        ) AS CONTENT_COUNT,
 
         ARRAY_AGG(
             DISTINCT u.LABEL
@@ -101,6 +102,39 @@ def list_companies_for_user(
         ON uu.ID_UNIVERSE =
             cu.ID_UNIVERSE
 
+    LEFT JOIN (
+
+        SELECT
+
+            company.id_company
+                AS ID_COMPANY,
+
+            COUNT(
+                DISTINCT content.ID_CONTENT
+            ) AS CONTENT_COUNT
+
+        FROM `{TABLE_CONTENT_ENRICHED}` content,
+
+        UNNEST(
+            content.COMPANIES
+        ) company
+
+        WHERE
+
+            content.IS_ACTIVE = TRUE
+
+            AND content.STATUS =
+                "PUBLISHED"
+
+        GROUP BY
+
+            company.id_company
+
+    ) cc
+
+        ON cc.ID_COMPANY =
+            c.ID_COMPANY
+
     WHERE
 
         c.IS_ACTIVE = TRUE
@@ -118,7 +152,9 @@ def list_companies_for_user(
 
         c.IS_PARTNER,
 
-        c.MEDIA_LOGO_RECTANGLE_ID
+        c.MEDIA_LOGO_RECTANGLE_ID,
+
+        cc.CONTENT_COUNT
 
     ORDER BY
 
@@ -182,6 +218,12 @@ def list_companies_for_user(
             "media_logo_rectangle_id":
                 row.get(
                     "MEDIA_LOGO_RECTANGLE_ID",
+                ),
+
+            "content_count":
+                row.get(
+                    "CONTENT_COUNT",
+                    0,
                 ),
 
             "aliases":
