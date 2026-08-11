@@ -27,6 +27,7 @@ type Props = {
   universe?: string;
 
   isLoading?: boolean;
+  contentCount?: number;
 
   onClick?: () => void;
 
@@ -50,6 +51,7 @@ export default function TopicCard({
   label,
 
   universe,
+  contentCount,
 
   isLoading,
 
@@ -285,13 +287,15 @@ export default function TopicCard({
 
       </div>
 
-      {/* TOPIC */}
-
+      {/* =====================================================
+          TOPIC
+      ===================================================== */}
+      
       <div className="
         p-3
         text-center
       ">
-
+      
         <h3 className="
           text-xs
           font-semibold
@@ -300,11 +304,25 @@ export default function TopicCard({
           line-clamp-2
           group-hover:underline
         ">
-
-          {label}
-
+      
+          {name}
+      
         </h3>
-
+      
+        {typeof contentCount === "number" && (
+      
+          <p className="
+            mt-1
+            text-[10px]
+            text-gray-400
+          ">
+      
+            {contentCount} contents
+      
+          </p>
+      
+        )}
+      
       </div>
 
     </div>
