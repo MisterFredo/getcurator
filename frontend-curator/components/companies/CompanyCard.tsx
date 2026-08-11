@@ -53,9 +53,6 @@ export default function CompanyCard({
   name,
 
   visualRectId,
-
-  universes,
-
   isLoading,
 
   isFavorite = false,
