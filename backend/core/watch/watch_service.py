@@ -1,3 +1,5 @@
+# backend/core/watch/watch_service.py
+
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
@@ -19,6 +21,7 @@ from core.content.service import (
     get_content as load_content,
 )
 
+
 # ============================================================
 # LATEST
 # ============================================================
@@ -28,6 +31,9 @@ def latest(
     limit: int = 20,
     offset: int = 0,
     universe_id: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
 ):
 
     expertise = generate_expertise_from_profile(
@@ -37,6 +43,12 @@ def latest(
         limit=limit + offset,
 
         universe_id=universe_id,
+
+        company_id=company_id,
+
+        solution_id=solution_id,
+
+        topic_id=topic_id,
 
     )
 
@@ -71,6 +83,9 @@ def search(
     limit: int = 20,
     offset: int = 0,
     universe_id: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
 ):
 
     expertise = generate_expertise_from_profile(
@@ -82,6 +97,12 @@ def search(
         limit=limit + offset,
 
         universe_id=universe_id,
+
+        company_id=company_id,
+
+        solution_id=solution_id,
+
+        topic_id=topic_id,
 
     )
 
@@ -145,81 +166,81 @@ def get_watch_content(
                 # ====================================================
                 # PRE-TRANSLATED FIELDS
                 # ====================================================
-            
+
                 content["TITLE"] = (
-            
+
                     content.get(
                         "TITLE_EN",
                     )
-            
+
                     or content.get(
                         "TITLE",
                     )
-            
+
                 )
-            
+
                 content["EXCERPT"] = (
-            
+
                     content.get(
                         "EXCERPT_EN",
                     )
-            
+
                     or content.get(
                         "EXCERPT",
                     )
-            
+
                 )
-            
+
                 # ====================================================
                 # LIVE TRANSLATION
                 # ====================================================
-            
+
                 translated = translate_fields(
-            
+
                     {
-            
+
                         "content_body":
                             content.get(
                                 "CONTENT_BODY",
                                 "",
                             ),
-            
+
                         "signal_analytique":
                             content.get(
                                 "SIGNAL_ANALYTIQUE",
                                 "",
                             ),
-            
+
                         "mecanique_expliquee":
                             content.get(
                                 "MECANIQUE_EXPLIQUEE",
                                 "",
                             ),
-            
+
                         "enjeu_strategique":
                             content.get(
                                 "ENJEU_STRATEGIQUE",
                                 "",
                             ),
-            
+
                         "point_de_friction":
                             content.get(
                                 "POINT_DE_FRICTION",
                                 "",
                             ),
-            
+
                     },
-            
+
                     language,
-            
+
                 )
-            
+
                 content = {
-            
+
                     **content,
-            
+
                     **translated,
-            
+
                 }
 
     # ========================================================
