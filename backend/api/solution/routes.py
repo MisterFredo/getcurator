@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Request
-from typing import Optional
+from fastapi import APIRouter, HTTPException, Request
 
 from api.solution.models import (
     SolutionCreate,
@@ -265,32 +264,25 @@ def get_route(
 
 @router.get("/{id_solution}/view")
 def get_solution_view_route(
+    request: Request,
     id_solution: str,
-    limit: int = 20,
-    offset: int = 0,
-    universe_id: Optional[str] = Query(
-        None
-    ),
 ):
 
     try:
 
+        require_user(
+            request
+        )
+
         solution = get_solution_view(
             solution_id=id_solution,
-            limit=limit,
-            offset=offset,
-            universe_id=(
-                universe_id
-                if universe_id
-                else None
-            ),
         )
 
         if not solution:
 
             raise HTTPException(
                 404,
-                "Solution introuvable"
+                "Solution introuvable",
             )
 
         return solution
@@ -300,11 +292,14 @@ def get_solution_view_route(
 
     except Exception as e:
 
-        raise HTTPException(
-            400,
-            f"Erreur récupération solution view : {e}"
+        print(
+            f"❌ Solution view error: {e}"
         )
 
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error",
+        )
 
 # ============================================================
 # UPDATE
