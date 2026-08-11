@@ -27,6 +27,7 @@ type Props = {
   name: string;
 
   visualRectId?: string | null;
+  contentCount?: number;
 
   isLoading?: boolean;
 
@@ -53,6 +54,7 @@ export default function CompanyCard({
   name,
 
   visualRectId,
+  contentCount,
   isLoading,
 
   isFavorite = false,
@@ -334,12 +336,12 @@ export default function CompanyCard({
       {/* =====================================================
           NAME
       ===================================================== */}
-
+      
       <div className="
         p-3
         text-center
       ">
-
+      
         <h3 className="
           text-xs
           font-semibold
@@ -348,11 +350,25 @@ export default function CompanyCard({
           line-clamp-2
           group-hover:underline
         ">
-
+      
           {name}
-
+      
         </h3>
-
+      
+        {typeof contentCount === "number" && (
+      
+          <p className="
+            mt-1
+            text-[10px]
+            text-gray-400
+          ">
+      
+            {contentCount} contents
+      
+          </p>
+      
+        )}
+      
       </div>
 
     </div>
