@@ -505,6 +505,10 @@ export default function TopicsPage() {
                     topic.label
                   }
 
+                  universe={
+                    topic.universes?.[0]
+                  }
+
                   isLoading={
                     loadingId
                     === topic.id_topic
@@ -646,6 +650,10 @@ export default function TopicsPage() {
 
                             label={
                               topic.label
+                            }
+
+                            universe={
+                              universe
                             }
 
                             isLoading={
