@@ -576,6 +576,10 @@ export default function CompaniesPage() {
                     company.media_logo_rectangle_id
                   }
 
+                  contentCount={
+                    company.content_count
+                  }
+
                   isLoading={
                     loadingId
                     === company.id_company
