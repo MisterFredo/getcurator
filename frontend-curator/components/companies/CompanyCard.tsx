@@ -1,104 +1,135 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useDrawer } from "@/contexts/DrawerContext";
-import { api } from "@/lib/api";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
 
-const GCS_BASE_URL = process.env.NEXT_PUBLIC_GCS_BASE_URL!;
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import {
+  api,
+} from "@/lib/api";
+
+const GCS_BASE_URL =
+  process.env.NEXT_PUBLIC_GCS_BASE_URL!;
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Props = {
+
   id: string;
+
   name: string;
 
   visualRectId?: string | null;
 
-  totalAnalyses?: number;
-  totalNews?: number;
-
-  delta30d?: number;
-
   universes?: string[];
 
   isLoading?: boolean;
+
   isFavorite?: boolean;
 
   onClick?: () => void;
 
   onToggleFavorite?: (
     id: string,
-    isFavorite: boolean
+    isFavorite: boolean,
   ) => void;
+
 };
 
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function CompanyCard({
+
   id,
+
   name,
+
   visualRectId,
-  totalAnalyses,
-  totalNews,
-  delta30d,
+
   universes,
+
   isLoading,
+
   isFavorite = false,
+
   onClick,
+
   onToggleFavorite,
+
 }: Props) {
 
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const pathname =
     usePathname();
 
   const {
     openLeftDrawer,
-    openRightDrawer,
   } = useDrawer();
 
-  /* =====================================================
+
+  /* =========================================================
      VISUAL
-  ===================================================== */
+  ========================================================= */
 
   const visualUrl =
-    visualRectId
-      ? `${GCS_BASE_URL}/companies/${visualRectId}`
-      : null;
 
-  const totalContent =
-    (totalAnalyses ?? 0)
-    + (totalNews ?? 0);
+    visualRectId
+
+      ? `${GCS_BASE_URL}/companies/${visualRectId}`
+
+      : null;
 
   const mainUniverse =
     universes?.[0];
 
-  /* =====================================================
-     HANDLERS
-  ===================================================== */
+
+  /* =========================================================
+     OPEN
+  ========================================================= */
 
   function handleClick() {
 
-    if (isLoading) return;
+    if (isLoading) {
 
-    if (onClick) {
-      onClick();
+      return;
+
     }
+
+    onClick?.();
 
     openLeftDrawer(
       "company",
-      id
+      id,
     );
 
     router.replace(
       `${pathname}?company_id=${id}`,
-      { scroll: false }
+      {
+        scroll: false,
+      },
     );
+
   }
 
-  /* =====================================================
+
+  /* =========================================================
      FAVORITE
-  ===================================================== */
+  ========================================================= */
 
   async function handleFavoriteClick(
-    e: React.MouseEvent
+    e: React.MouseEvent,
   ) {
 
     e.stopPropagation();
@@ -112,7 +143,7 @@ export default function CompanyCard({
           {
             type: "COMPANY",
             value_id: id,
-          }
+          },
         );
 
       } else {
@@ -122,119 +153,168 @@ export default function CompanyCard({
           {
             type: "COMPANY",
             value_id: id,
-          }
+          },
         );
+
       }
 
-      if (onToggleFavorite) {
-
-        onToggleFavorite(
-          id,
-          isFavorite
-        );
-      }
+      onToggleFavorite?.(
+        id,
+        isFavorite,
+      );
 
     } catch (e) {
 
       console.error(
         "❌ favorite error",
-        e
+        e,
       );
+
     }
+
   }
 
-  /* =====================================================
+
+  /* =========================================================
      RENDER
-  ===================================================== */
+  ========================================================= */
 
   return (
 
     <div
-      onClick={handleClick}
+
+      onClick={
+        handleClick
+      }
+
       className="
-        group cursor-pointer rounded-xl
-        border border-ratecard-border
-        bg-white shadow-card transition
-        hover:shadow-cardHover overflow-hidden
+        group
+        cursor-pointer
+        rounded-xl
+        border
+        border-ratecard-border
+        bg-white
+        shadow-card
+        transition
+        hover:shadow-cardHover
+        overflow-hidden
         relative
       "
+
     >
 
-      {/* FAVORITE */}
+      {/* =====================================================
+          FAVORITE
+      ===================================================== */}
 
-      <div
-        onClick={handleFavoriteClick}
+      <button
+
+        type="button"
+
+        onClick={
+          handleFavoriteClick
+        }
+
         className={`
-          absolute top-2 left-2 z-20
+          absolute
+          top-2
+          left-2
+          z-20
           cursor-pointer
           leading-none
           transition
+          text-[20px]
+
           ${
             isFavorite
-              ? "text-[20px]"
-              : "text-[20px] text-gray-700 hover:text-black"
+              ? ""
+              : "text-gray-700 hover:text-black"
           }
         `}
-      >
-        {isFavorite ? "⭐" : "☆"}
-      </div>
 
-      {/* LOADING */}
+        aria-label={
+          isFavorite
+            ? "Retirer des favoris"
+            : "Ajouter aux favoris"
+        }
+
+      >
+
+        {
+          isFavorite
+            ? "⭐"
+            : "☆"
+        }
+
+      </button>
+
+
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
 
       {isLoading && (
 
         <div className="
-          absolute inset-0 z-20
-          bg-white/70 backdrop-blur-sm
-          flex items-center justify-center
+          absolute
+          inset-0
+          z-30
+          bg-white/70
+          backdrop-blur-sm
+          flex
+          items-center
+          justify-center
         ">
 
           <div className="
-            text-xs text-gray-500
+            text-xs
+            text-gray-500
             animate-pulse
           ">
+
             Chargement...
+
           </div>
 
         </div>
 
       )}
 
-      {/* UNIVERSE */}
+
+      {/* =====================================================
+          UNIVERSE
+      ===================================================== */}
 
       {mainUniverse && (
 
         <div className="
-          absolute top-2 left-7 z-10
+          absolute
+          top-2
+          left-9
+          z-10
           text-[9px]
-          px-2 py-0.5 rounded
-          bg-gray-900 text-white
+          px-2
+          py-0.5
+          rounded
+          bg-gray-900
+          text-white
         ">
+
           {mainUniverse}
+
         </div>
 
       )}
 
-      {/* DELTA */}
 
-      {typeof delta30d === "number"
-        && delta30d > 0 && (
-
-        <div className="
-          absolute top-2 right-2 z-10
-          text-[9px]
-          px-2 py-0.5 rounded
-          bg-green-100 text-green-600
-        ">
-          +{delta30d}
-        </div>
-
-      )}
-
-      {/* VISUAL */}
+      {/* =====================================================
+          VISUAL
+      ===================================================== */}
 
       <div className="
-        relative h-24 w-full
+        relative
+        h-24
+        w-full
         bg-ratecard-light
         overflow-hidden
       ">
@@ -242,63 +322,76 @@ export default function CompanyCard({
         {visualUrl ? (
 
           <img
-            src={visualUrl}
-            alt={name}
+
+            src={
+              visualUrl
+            }
+
+            alt={
+              name
+            }
+
             className="
-              h-full w-full object-contain
-              p-4 transition-transform
+              h-full
+              w-full
+              object-contain
+              p-4
+              transition-transform
               duration-300
               group-hover:scale-[1.02]
             "
+
           />
 
         ) : (
 
           <div className="
-            h-full w-full
-            flex items-center justify-center
+            h-full
+            w-full
+            flex
+            items-center
+            justify-center
             text-[10px]
             text-gray-400
-            px-2 text-center
+            px-2
+            text-center
           ">
+
             {name}
+
           </div>
 
         )}
+
       </div>
 
-      {/* CONTENT */}
+
+      {/* =====================================================
+          NAME
+      ===================================================== */}
 
       <div className="
-        p-3 space-y-1
+        p-3
         text-center
       ">
 
         <h3 className="
-          text-xs font-semibold
+          text-xs
+          font-semibold
           text-gray-900
           leading-snug
           line-clamp-2
           group-hover:underline
         ">
+
           {name}
+
         </h3>
-
-        {(typeof totalAnalyses === "number"
-          || typeof totalNews === "number") && (
-
-          <p className="
-            text-[10px]
-            text-gray-400
-          ">
-            {totalContent} contents
-          </p>
-
-        )}
 
       </div>
 
     </div>
 
   );
+
 }
