@@ -34,6 +34,8 @@ import { useUser } from "@/hooks/useUser";
 const GCS_BASE_URL =
   process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 
+const PAGE_SIZE = 20;
+
 /* ========================================================= */
 
 type CompanyData = {
@@ -99,6 +101,11 @@ export default function CompanyDrawer({
   const [
     total,
     setTotal,
+  ] = useState(0);
+
+  const [
+    offset,
+    setOffset,
   ] = useState(0);
 
   const [
@@ -282,63 +289,78 @@ export default function CompanyDrawer({
   async function loadMoreContents() {
 
     if (!user) {
-  
       return;
+    }
+
+    setLoading(true);
+
+    setItems([]);
+    setTotal(0);
+    setOffset(0);
+  
+    try {
+  
+      const res =
+        await watchLatest({
+  
+          user_id:
+            user.user_id,
+  
+          company_id:
+            id,
+  
+          limit:
+            PAGE_SIZE,
+  
+          offset,
+  
+        });
+  
+      setItems(
+        (previous) => {
+  
+          const existingIds =
+            new Set(
+              previous.map(
+                (item) =>
+                  item.id,
+              ),
+            );
+  
+          const newItems =
+            res.items.filter(
+              (item) =>
+                !existingIds.has(
+                  item.id,
+                ),
+            );
+  
+          return [
+            ...previous,
+            ...newItems,
+          ];
+  
+        },
+      );
+  
+      setTotal(
+        res.count,
+      );
+  
+      setOffset(
+        (previous) =>
+          previous
+          + res.items.length,
+      );
+  
+    } catch (e) {
+  
+      console.error(
+        "❌ Company load more error:",
+        e,
+      );
   
     }
-  
-    const res =
-      await watchLatest({
-  
-        user_id:
-          user.user_id,
-  
-        company_id:
-          id,
-  
-        limit:
-          PAGE_SIZE,
-  
-        offset,
-  
-      });
-  
-    setItems(
-      (previous) => {
-  
-        const existingIds =
-          new Set(
-            previous.map(
-              (item) =>
-                item.id,
-            ),
-          );
-  
-        const newItems =
-          res.items.filter(
-            (item) =>
-              !existingIds.has(
-                item.id,
-              ),
-          );
-  
-        return [
-          ...previous,
-          ...newItems,
-        ];
-  
-      },
-    );
-  
-    setTotal(
-      res.count,
-    );
-  
-    setOffset(
-      (previous) =>
-        previous
-        + res.items.length,
-    );
   
   }
 
