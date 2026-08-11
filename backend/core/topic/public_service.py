@@ -26,6 +26,10 @@ TABLE_USER_UNIVERSE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
 )
 
+TABLE_CONTENT_ENRICHED = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
+)
+
 
 # ============================================================
 # PUBLIC VIEW
