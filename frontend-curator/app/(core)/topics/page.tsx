@@ -1,83 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useEntityDrawer } from "@/hooks/useEntityDrawer";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useSearchParams,
+} from "next/navigation";
+
+import {
+  useEntityDrawer,
+} from "@/hooks/useEntityDrawer";
+
 import TopicCard from "@/components/topics/TopicCard";
 import FavoritesStrip from "@/components/favorites/FavoritesStrip";
-import { api } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+import {
+  api,
+} from "@/lib/api";
 
-/* ========================================================= */
+export const dynamic =
+  "force-dynamic";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Topic = {
+
   id_topic: string;
+
   label: string;
-  universe: string;
 
-  nb_analyses: number;
-  delta_30d: number;
+  universes: string[];
+
 };
-
-type SortMode = "alpha" | "activity" | "growth";
 
 /* =========================================================
    FETCH
 ========================================================= */
 
-async function fetchTopics(): Promise<Topic[]> {
-  try {
-    const userId = localStorage.getItem("user_id");
+async function fetchTopics():
+  Promise<Topic[]> {
 
-    if (!userId) {
-      console.warn("❌ No user_id");
+  try {
+
+    const json =
+      await api.get(
+        "/topic/list-curator",
+      );
+
+    const data =
+      json?.topics ?? [];
+
+    if (!Array.isArray(data)) {
+
       return [];
+
     }
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/topic/list-for-user`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId,
-        },
-        cache: "no-store",
-      }
+    return data.map(
+      (topic: any) => ({
+
+        id_topic:
+          topic.id_topic,
+
+        label:
+          topic.label,
+
+        universes:
+          topic.universes ?? [],
+
+      }),
     );
 
-    if (!res.ok) {
-      console.error("❌ API ERROR:", res.status);
-      return [];
-    }
-
-    const json = await res.json();
-
-    if (json.status !== "ok") {
-      console.error("❌ API BAD STATUS:", json);
-      return [];
-    }
-
-    return (json.topics || []).map((t: any) => ({
-      id_topic: t.id_topic ?? t.ID_TOPIC,
-      label: t.label ?? t.LABEL,
-
-      universe:
-        (t.universes?.[0] &&
-          (typeof t.universes[0] === "string"
-            ? t.universes[0]
-            : t.universes[0].label)) ||
-        "Autres",
-
-      nb_analyses: t.nb_analyses ?? t.NB_ANALYSES ?? 0,
-      delta_30d: t.delta_30d ?? t.DELTA_30D ?? 0,
-    }));
-
   } catch (e) {
-    console.error("❌ fetchTopics error:", e);
+
+    console.error(
+      "❌ fetchTopics error:",
+      e,
+    );
+
     return [];
+
   }
+
 }
 
 /* =========================================================
@@ -85,41 +93,21 @@ async function fetchTopics(): Promise<Topic[]> {
 ========================================================= */
 
 function sortTopics(
-  items: Topic[],
-  mode: SortMode,
-  favorites: string[]
-) {
-  const copy = [...items];
+  topics: Topic[],
+): Topic[] {
 
-  // 🔥 PRIORITÉ FAVORIS
-  copy.sort((a, b) => {
-    const aFav = favorites.includes(a.id_topic);
-    const bFav = favorites.includes(b.id_topic);
+  return [...topics].sort(
+    (a, b) =>
+      a.label.localeCompare(
+        b.label,
+        "fr",
+        {
+          sensitivity:
+            "base",
+        },
+      ),
+  );
 
-    if (aFav && !bFav) return -1;
-    if (!aFav && bFav) return 1;
-    return 0;
-  });
-
-  switch (mode) {
-
-    case "activity":
-      return copy.sort(
-        (a, b) => (b.nb_analyses ?? 0) - (a.nb_analyses ?? 0)
-      );
-
-    case "growth":
-      return copy.sort(
-        (a, b) => (b.delta_30d ?? 0) - (a.delta_30d ?? 0)
-      );
-
-    default:
-      return copy.sort((a, b) =>
-        a.label.localeCompare(b.label, "fr", {
-          sensitivity: "base",
-        })
-      );
-  }
 }
 
 /* =========================================================
@@ -128,23 +116,54 @@ function sortTopics(
 
 function groupByUniverse(
   topics: Topic[],
-  mode: SortMode,
-  favorites: string[]
 ) {
-  const map: Record<string, Topic[]> = {};
 
-  topics.forEach((t) => {
-    const u = t.universe || "Autres";
+  const map:
+    Record<
+      string,
+      Topic[]
+    > = {};
 
-    if (!map[u]) map[u] = [];
-    map[u].push(t);
-  });
+  topics.forEach(
+    (topic) => {
 
-  Object.keys(map).forEach((u) => {
-    map[u] = sortTopics(map[u], mode, favorites);
-  });
+      (
+        topic.universes
+        || []
+      ).forEach(
+        (universe) => {
+
+          if (!map[universe]) {
+
+            map[universe] = [];
+
+          }
+
+          map[universe].push(
+            topic,
+          );
+
+        },
+      );
+
+    },
+  );
+
+  Object.keys(
+    map,
+  ).forEach(
+    (universe) => {
+
+      map[universe] =
+        sortTopics(
+          map[universe],
+        );
+
+    },
+  );
 
   return map;
+
 }
 
 /* =========================================================
@@ -153,150 +172,184 @@ function groupByUniverse(
 
 export default function TopicsPage() {
 
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [
+    topics,
+    setTopics,
+  ] = useState<Topic[]>([]);
 
-  const [sortMode, setSortMode] =
-    useState<SortMode>("activity");
+  const [
+    favorites,
+    setFavorites,
+  ] = useState<string[]>([]);
 
-  const [openUniverses, setOpenUniverses] =
-    useState<Record<string, boolean>>({});
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [favorites, setFavorites] =
-    useState<string[]>([]);
+  const [
+    openUniverses,
+    setOpenUniverses,
+  ] = useState<
+    Record<string, boolean>
+  >({});
 
-  const searchParams = useSearchParams();
+  const searchParams =
+    useSearchParams();
 
-  const { loadingId, setLoadingId } =
-    useEntityDrawer(
-      "topic",
-      "topic_id"
-    );
+  const {
+    loadingId,
+    setLoadingId,
+  } = useEntityDrawer(
+    "topic",
+    "topic_id",
+  );
 
-  /* ---------------------------------------------------------
-     LOAD TOPICS
-  --------------------------------------------------------- */
+  /* =========================================================
+     LOAD
+  ========================================================= */
 
   useEffect(() => {
 
     async function load() {
 
-      setLoading(true);
+      setLoading(
+        true,
+      );
 
-      const data = await fetchTopics();
+      try {
 
-      setTopics(data);
+        const [
+          data,
+          prefsRes,
+        ] = await Promise.all([
 
-      setLoading(false);
+          fetchTopics(),
+
+          api.get(
+            "/user/preferences",
+          ),
+
+        ]);
+
+        setTopics(
+          data,
+        );
+
+        const topicPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.TOPIC,
+          )
+            ? prefsRes.preferences.TOPIC
+            : [];
+
+        setFavorites(
+          topicPrefs,
+        );
+
+      } catch (e) {
+
+        console.error(
+          "❌ Topics load error:",
+          e,
+        );
+
+        setTopics(
+          [],
+        );
+
+        setFavorites(
+          [],
+        );
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+      }
+
     }
 
     load();
 
   }, []);
 
-  /* ---------------------------------------------------------
-     LOAD PREFS
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-
-    async function loadPrefs() {
-
-      try {
-
-        const res = await api.get(
-          "/user/preferences"
-        );
-
-        const topicPrefs =
-          Array.isArray(
-            res?.preferences?.TOPIC
-          )
-            ? res.preferences.TOPIC
-            : [];
-
-        setFavorites(topicPrefs);
-
-      } catch (e) {
-
-        console.error(
-          "❌ prefs error",
-          e
-        );
-      }
-    }
-
-    loadPrefs();
-
-  }, []);
-
-  /* ---------------------------------------------------------
-     AUTO OPEN ALL UNIVERS
-  --------------------------------------------------------- */
-
-  useEffect(() => {
-
-    if (!topics.length) return;
-
-    const universes = Array.from(
-      new Set(
-        topics.map((t) => t.universe)
-      )
-    );
-
-    const initial: Record<string, boolean> = {};
-
-    universes.forEach((u) => {
-      initial[u] = true;
-    });
-
-    setOpenUniverses(initial);
-
-  }, [topics]);
-
-  /* ---------------------------------------------------------
-     AUTO OPEN CURRENT
-  --------------------------------------------------------- */
+  /* =========================================================
+     AUTO OPEN CURRENT UNIVERSE
+  ========================================================= */
 
   useEffect(() => {
 
     const topicId =
-      searchParams.get("topic_id");
+      searchParams.get(
+        "topic_id",
+      );
 
-    if (!topicId) return;
+    if (!topicId) {
 
-    const topic = topics.find(
-      (t) => t.id_topic === topicId
+      return;
+
+    }
+
+    const topic =
+      topics.find(
+        (item) =>
+          item.id_topic
+          === topicId,
+      );
+
+    if (!topic) {
+
+      return;
+
+    }
+
+    const universe =
+      topic.universes?.[0];
+
+    if (!universe) {
+
+      return;
+
+    }
+
+    setOpenUniverses(
+      (previous) => ({
+
+        ...previous,
+
+        [universe]:
+          true,
+
+      }),
     );
 
-    if (!topic) return;
+  }, [
+    topics,
+    searchParams,
+  ]);
 
-    setOpenUniverses((prev) => ({
-      ...prev,
-      [topic.universe]: true,
-    }));
-
-  }, [topics, searchParams]);
-
-  /* ---------------------------------------------------------
-     FAVORITE TOGGLE
-  --------------------------------------------------------- */
+  /* =========================================================
+     TOGGLE FAVORITE
+  ========================================================= */
 
   async function handleToggleFavorite(
     id: string,
-    isFav: boolean
+    isFavorite: boolean,
   ) {
 
     try {
 
-      if (isFav) {
+      if (isFavorite) {
 
         await api.post(
           "/user/preferences/remove",
           {
             type: "TOPIC",
             value_id: id,
-          }
+          },
         );
 
       } else {
@@ -306,149 +359,176 @@ export default function TopicsPage() {
           {
             type: "TOPIC",
             value_id: id,
-          }
+          },
         );
+
       }
 
-      setFavorites((prev) =>
-        isFav
-          ? prev.filter((p) => p !== id)
-          : [...prev, id]
+      setFavorites(
+        (previous) =>
+          isFavorite
+            ? previous.filter(
+                (value) =>
+                  value !== id,
+              )
+            : [
+                ...previous,
+                id,
+              ],
       );
 
     } catch (e) {
 
       console.error(
         "❌ favorite error",
-        e
+        e,
       );
+
     }
+
   }
 
-  /* ---------------------------------------------------------
+  /* =========================================================
      HELPERS
-  --------------------------------------------------------- */
+  ========================================================= */
 
-  function toggleUniverse(u: string) {
+  function toggleUniverse(
+    universe: string,
+  ) {
 
-    setOpenUniverses((prev) => ({
-      ...prev,
-      [u]: !prev[u],
-    }));
+    setOpenUniverses(
+      (previous) => ({
+
+        ...previous,
+
+        [universe]:
+          !previous[universe],
+
+      }),
+    );
+
   }
 
-  /* ---------------------------------------------------------
+  /* =========================================================
      DATA
-  --------------------------------------------------------- */
+  ========================================================= */
 
-  const favoriteTopics = topics.filter((t) =>
-    favorites.includes(t.id_topic)
-  );
+  const favoriteTopics =
+    sortTopics(
+      topics.filter(
+        (topic) =>
+          favorites.includes(
+            topic.id_topic,
+          ),
+      ),
+    );
 
-  const otherTopics = topics.filter((t) =>
-    !favorites.includes(t.id_topic)
-  );
+  const otherTopics =
+    topics.filter(
+      (topic) =>
+        !favorites.includes(
+          topic.id_topic,
+        ),
+    );
 
-  const grouped = groupByUniverse(
-    otherTopics,
-    sortMode,
-    favorites
-  );
+  const groupedTopics =
+    groupByUniverse(
+      otherTopics,
+    );
 
-  const hasContent = topics.length > 0;
+  const hasContent =
+    topics.length > 0;
 
   /* =========================================================
      RENDER
   ========================================================= */
 
   return (
-    <div className="space-y-8">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
+    <div className="
+      space-y-8
+    ">
 
-        <div>
+      <div>
 
-          <h1 className="text-lg font-semibold text-gray-900">
-            Topics
-          </h1>
-        </div>
-
-        <div className="flex gap-2 text-xs">
-
-          {[
-            { key: "activity", label: "Activité" },
-            { key: "growth", label: "Croissance" },
-            { key: "alpha", label: "A → Z" },
-          ].map((s) => (
-
-            <button
-              key={s.key}
-              onClick={() =>
-                setSortMode(s.key as SortMode)
-              }
-              className={`
-                px-3 py-1 rounded border
-                ${
-                  sortMode === s.key
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                }
-              `}
-            >
-              {s.label}
-            </button>
-
-          ))}
-
-        </div>
+        <h1 className="
+          text-lg
+          font-semibold
+          text-gray-900
+        ">
+          Topics
+        </h1>
 
       </div>
 
-      {/* ⭐ FAVORITES */}
+      {loading && (
 
-      {!loading && favoriteTopics.length > 0 && (
+        <p className="
+          text-sm
+          text-gray-400
+        ">
+          Loading topics...
+        </p>
+
+      )}
+
+      {!loading
+        && favoriteTopics.length > 0
+        && (
 
         <FavoritesStrip>
+
           <div className="
-            grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8
+            grid
+            grid-cols-3
+            sm:grid-cols-4
+            md:grid-cols-6
+            lg:grid-cols-7
+            xl:grid-cols-8
             gap-3
           ">
 
-            {sortTopics(
-              favoriteTopics,
-              sortMode,
-              favorites
-            ).map((t) => {
-
-              const isFav =
-                favorites.includes(t.id_topic);
-
-              return (
+            {favoriteTopics.map(
+              (topic) => (
 
                 <TopicCard
-                  key={t.id_topic}
-                  id={t.id_topic}
-                  label={t.label}
-                  nbAnalyses={t.nb_analyses}
-                  delta30d={t.delta_30d}
-                  isLoading={loadingId === t.id_topic}
-                  onClick={() =>
-                    setLoadingId(t.id_topic)
+
+                  key={
+                    topic.id_topic
                   }
 
-                  isFavorite={isFav}
+                  id={
+                    topic.id_topic
+                  }
+
+                  label={
+                    topic.label
+                  }
+
+                  isLoading={
+                    loadingId
+                    === topic.id_topic
+                  }
+
+                  onClick={() =>
+                    setLoadingId(
+                      topic.id_topic,
+                    )
+                  }
+
+                  isFavorite
 
                   onToggleFavorite={() =>
                     handleToggleFavorite(
-                      t.id_topic,
-                      isFav
+                      topic.id_topic,
+                      true,
                     )
                   }
+
                 />
 
-              );
-            })}
+              ),
+            )}
 
           </div>
 
@@ -456,98 +536,158 @@ export default function TopicsPage() {
 
       )}
 
-      {/* CONTENT */}
+      {!loading
+        && hasContent
+        && Object.entries(
+          groupedTopics,
+        )
+          .sort(
+            ([a], [b]) =>
+              a.localeCompare(
+                b,
+              ),
+          )
+          .map(
+            ([
+              universe,
+              items,
+            ]) => (
 
-      {!loading && hasContent &&
-        Object.entries(grouped)
-          .sort(([a], [b]) => {
+              <section
 
-            if (a === "Autres") return 1;
-            if (b === "Autres") return -1;
-
-            return a.localeCompare(b);
-
-          })
-          .map(([universe, items]) => (
-
-            <section
-              key={universe}
-              className="space-y-2"
-            >
-
-              <div
-                onClick={() =>
-                  toggleUniverse(universe)
+                key={
+                  universe
                 }
+
                 className="
-                  flex items-center justify-between
-                  cursor-pointer
-                  py-2 px-1
-                  border-b border-gray-100
-                  hover:bg-gray-50
+                  space-y-2
                 "
+
               >
 
-                <h2 className="text-xs font-semibold uppercase text-gray-500">
-                  {universe}
-                </h2>
+                <div
 
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span>{items.length}</span>
-                </div>
+                  onClick={() =>
+                    toggleUniverse(
+                      universe,
+                    )
+                  }
 
-              </div>
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    cursor-pointer
+                    py-2
+                    px-1
+                    border-b
+                    border-gray-100
+                    hover:bg-gray-50
+                  "
 
-              {openUniverses[universe] && (
+                >
 
-                <div className="pt-2">
-
-                  <div className="
-                    grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8
-                    gap-3
+                  <h2 className="
+                    text-xs
+                    font-semibold
+                    uppercase
+                    text-gray-500
                   ">
 
-                    {items.map((t) => {
+                    {universe}
 
-                      const isFav =
-                        favorites.includes(t.id_topic);
+                  </h2>
 
-                      return (
+                  <span className="
+                    text-xs
+                    text-gray-400
+                  ">
 
-                        <TopicCard
-                          key={t.id_topic}
-                          id={t.id_topic}
-                          label={t.label}
-                          nbAnalyses={t.nb_analyses}
-                          delta30d={t.delta_30d}
-                          isLoading={loadingId === t.id_topic}
-                          onClick={() =>
-                            setLoadingId(t.id_topic)
-                          }
+                    {items.length}
 
-                          isFavorite={isFav}
+                  </span>
 
-                          onToggleFavorite={() =>
-                            handleToggleFavorite(
-                              t.id_topic,
-                              isFav
-                            )
-                          }
-                        />
+                </div>
 
-                      );
-                    })}
+                {openUniverses[
+                  universe
+                ] && (
+
+                  <div className="
+                    grid
+                    grid-cols-3
+                    sm:grid-cols-4
+                    md:grid-cols-6
+                    lg:grid-cols-7
+                    xl:grid-cols-8
+                    gap-3
+                    pt-2
+                  ">
+
+                    {items.map(
+                      (topic) => {
+
+                        const isFavorite =
+                          favorites.includes(
+                            topic.id_topic,
+                          );
+
+                        return (
+
+                          <TopicCard
+
+                            key={
+                              topic.id_topic
+                            }
+
+                            id={
+                              topic.id_topic
+                            }
+
+                            label={
+                              topic.label
+                            }
+
+                            isLoading={
+                              loadingId
+                              === topic.id_topic
+                            }
+
+                            onClick={() =>
+                              setLoadingId(
+                                topic.id_topic,
+                              )
+                            }
+
+                            isFavorite={
+                              isFavorite
+                            }
+
+                            onToggleFavorite={() =>
+                              handleToggleFavorite(
+                                topic.id_topic,
+                                isFavorite,
+                              )
+                            }
+
+                          />
+
+                        );
+
+                      },
+                    )}
 
                   </div>
 
-                </div>
+                )}
 
-              )}
+              </section>
 
-            </section>
-
-          ))}
+            ),
+          )}
 
     </div>
+
   );
+
 }
