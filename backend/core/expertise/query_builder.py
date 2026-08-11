@@ -14,6 +14,7 @@ TABLE_CONTENT_ENRICHED = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_ENRICHED"
 )
 
+
 # ============================================================
 # BUILD UNIVERSE SQL
 # ============================================================
@@ -39,6 +40,62 @@ def build_universe_sql(
     )
 
     """
+
+
+# ============================================================
+# BUILD ENTITY SQL
+# ============================================================
+
+def build_entity_sql(
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
+) -> str:
+
+    filters = []
+
+    if company_id:
+
+        filters.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(companies) c
+                WHERE c.id_company = @company_id
+            )
+            """
+        )
+
+    if solution_id:
+
+        filters.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(solutions) s
+                WHERE s.id_solution = @solution_id
+            )
+            """
+        )
+
+    if topic_id:
+
+        filters.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(topics) t
+                WHERE t.id_topic = @topic_id
+            )
+            """
+        )
+
+    if not filters:
+
+        return ""
+
+    return " AND ".join(filters)
+
 
 # ============================================================
 # BUILD SEARCH SQL
@@ -112,6 +169,7 @@ def build_search_sql(
 
     """
 
+
 # ============================================================
 # BUILD SELECTION QUERY
 # ============================================================
@@ -123,6 +181,9 @@ def build_selection_query(
     limit: int | None = None,
     universe_id: str | None = None,
     query: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
 ) -> tuple[str, dict]:
 
     selection = build_selection_filters(
@@ -137,17 +198,14 @@ def build_selection_query(
 
     params: dict = {
 
-        "company_ids": (
-            profile.preferences.companies
-        ),
+        "company_ids":
+            profile.preferences.companies,
 
-        "solution_ids": (
-            profile.preferences.solutions
-        ),
+        "solution_ids":
+            profile.preferences.solutions,
 
-        "topic_ids": (
-            profile.preferences.topics
-        ),
+        "topic_ids":
+            profile.preferences.topics,
 
     }
 
@@ -163,6 +221,24 @@ def build_selection_query(
             query
         )
 
+    if company_id:
+
+        params["company_id"] = (
+            company_id
+        )
+
+    if solution_id:
+
+        params["solution_id"] = (
+            solution_id
+        )
+
+    if topic_id:
+
+        params["topic_id"] = (
+            topic_id
+        )
+
     # ========================================================
     # FILTERS
     # ========================================================
@@ -176,6 +252,14 @@ def build_selection_query(
     search_filter_sql = (
         build_search_sql(
             query,
+        )
+    )
+
+    entity_filter_sql = (
+        build_entity_sql(
+            company_id=company_id,
+            solution_id=solution_id,
+            topic_id=topic_id,
         )
     )
 
@@ -204,6 +288,26 @@ def build_selection_query(
         params["period_end"] = (
             period_end
         )
+
+    # ========================================================
+    # SELECTION MODE
+    # ========================================================
+
+    if entity_filter_sql:
+
+        selection_sql = (
+            entity_filter_sql
+        )
+
+    else:
+
+        selection_sql = f"""
+        AND (
+            ({selection.filters_sql})
+            OR
+            ({selection.keywords_sql})
+        )
+        """
 
     # ========================================================
     # LIMIT
@@ -317,15 +421,7 @@ def build_selection_query(
 
         {date_filter_sql}
 
-        AND (
-
-            ({selection.filters_sql})
-
-            OR
-
-            ({selection.keywords_sql})
-
-        )
+        {selection_sql}
 
     ORDER BY
 
@@ -337,6 +433,7 @@ def build_selection_query(
 
     return sql, params
 
+
 # ============================================================
 # BUILD SELECTION FILTERS
 # ============================================================
@@ -347,11 +444,14 @@ def build_selection_filters(
 
     filters_sql = build_filters_sql(
 
-        company_ids=profile.preferences.companies,
+        company_ids=
+            profile.preferences.companies,
 
-        solution_ids=profile.preferences.solutions,
+        solution_ids=
+            profile.preferences.solutions,
 
-        topic_ids=profile.preferences.topics,
+        topic_ids=
+            profile.preferences.topics,
 
     )
 
@@ -370,6 +470,7 @@ def build_selection_filters(
         keywords_sql=keywords_sql,
 
     )
+
 
 # ============================================================
 # BUILD FILTERS SQL
@@ -442,23 +543,23 @@ def build_keywords_sql(
 
     fields = [
 
-        "title",
+        "TITLE",
 
         "TITLE_EN",
 
-        "excerpt",
+        "EXCERPT",
 
         "EXCERPT_EN",
 
-        "content_body",
+        "CONTENT_BODY",
 
-        "signal_analytique",
+        "SIGNAL_ANALYTIQUE",
 
-        "mecanique_expliquee",
+        "MECANIQUE_EXPLIQUEE",
 
-        "enjeu_strategique",
+        "ENJEU_STRATEGIQUE",
 
-        "point_de_friction",
+        "POINT_DE_FRICTION",
 
     ]
 
@@ -479,7 +580,6 @@ def build_keywords_sql(
             f"LOWER(COALESCE({field}, '')) LIKE LOWER('%{keyword}%')"
 
             for field in fields
-
         ]
 
         conditions.append(
@@ -491,7 +591,6 @@ def build_keywords_sql(
             )
 
             + ")"
-
         )
 
     return " OR ".join(
