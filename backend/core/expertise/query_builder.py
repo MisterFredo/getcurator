@@ -179,6 +179,7 @@ def build_selection_query(
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
+    offset: int = 0,
     universe_id: str | None = None,
     query: str | None = None,
     company_id: str | None = None,
@@ -312,19 +313,28 @@ def build_selection_query(
         """
 
     # ========================================================
-    # LIMIT
+    # PAGINATION
     # ========================================================
-
-    limit_sql = ""
-
-    if limit:
-
-        limit_sql = f"""
-
-        LIMIT {limit}
-
+    
+    pagination_sql = ""
+    
+    if limit is not None:
+    
+        pagination_sql = """
+    
+        LIMIT @limit
+    
+        OFFSET @offset
+    
         """
-
+    
+        params["limit"] = (
+            limit
+        )
+    
+        params["offset"] = (
+            offset
+        )
     # ========================================================
     # LANGUAGE
     # ========================================================
