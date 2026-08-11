@@ -73,7 +73,7 @@ async function fetchTopics():
         universes:
           topic.universes ?? [],
         content_count:
-          c.content_count ?? 0,
+          topic.content_count ?? 0,
 
       }),
     );
