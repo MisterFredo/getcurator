@@ -34,6 +34,7 @@ type Topic = {
   label: string;
 
   universes: string[];
+  content_count: number;
 
 };
 
@@ -71,6 +72,8 @@ async function fetchTopics():
 
         universes:
           topic.universes ?? [],
+        content_count:
+          c.content_count ?? 0,
 
       }),
     );
@@ -509,6 +512,10 @@ export default function TopicsPage() {
                     topic.universes?.[0]
                   }
 
+                  contentCount={
+                    company.content_count
+                  }
+
                   isLoading={
                     loadingId
                     === topic.id_topic
@@ -654,6 +661,10 @@ export default function TopicsPage() {
 
                             universe={
                               universe
+                            }
+
+                            contentCount={
+                              company.content_count
                             }
 
                             isLoading={
