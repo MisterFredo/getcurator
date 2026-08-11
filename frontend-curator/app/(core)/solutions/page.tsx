@@ -78,9 +78,8 @@ async function fetchSolutions():
         media_logo_rectangle_id:
           solution.media_logo_rectangle_id,
 
-        visualType={
-          solution.logo_type
-        }
+        logo_type:
+          solution.logo_type,
 
         is_partner:
           solution.is_partner ?? false,
