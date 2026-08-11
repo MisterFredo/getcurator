@@ -1,21 +1,32 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useDrawer } from "@/contexts/DrawerContext";
-import { api } from "@/lib/api";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import {
+  api,
+} from "@/lib/api";
+
+/* ========================================================= */
 
 type Props = {
+
   id: string;
+
   name: string;
 
   visualRectId?: string | null;
+
   visualType?: "solution" | "company";
 
-  nbAnalyses?: number;
-  delta30d?: number;
   isPartner?: boolean;
 
-  hasNumbers?: boolean;
   isLoading?: boolean;
 
   onClick?: () => void;
@@ -24,46 +35,56 @@ type Props = {
 
   onToggleFavorite?: (
     id: string,
-    isFavorite: boolean
+    isFavorite: boolean,
   ) => void;
+
 };
+
+/* ========================================================= */
 
 const GCS_BASE_URL =
   process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 
+/* ========================================================= */
+
 export default function SolutionCard({
+
   id,
+
   name,
+
   visualRectId,
+
   visualType,
-  nbAnalyses,
-  delta30d,
+
   isPartner,
-  hasNumbers,
+
   isLoading,
+
   onClick,
 
   isFavorite = false,
+
   onToggleFavorite,
 
 }: Props) {
 
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const pathname =
     usePathname();
 
   const {
     openLeftDrawer,
-    openRightDrawer,
   } = useDrawer();
 
   /* =====================================================
      VISUAL URL
   ===================================================== */
 
-  let visualUrl: string | null =
-    null;
+  let visualUrl:
+    string | null = null;
 
   if (visualRectId) {
 
@@ -74,37 +95,43 @@ export default function SolutionCard({
 
     visualUrl =
       `${GCS_BASE_URL}/${folder}/${visualRectId}`;
+
   }
 
   /* =====================================================
-     HANDLERS
+     CLICK
   ===================================================== */
 
   function handleClick() {
 
-    if (isLoading) return;
+    if (isLoading) {
 
-    if (onClick) {
-      onClick();
+      return;
+
     }
+
+    onClick?.();
 
     openLeftDrawer(
       "solution",
-      id
+      id,
     );
 
     router.replace(
       `${pathname}?solution_id=${id}`,
-      { scroll: false }
+      {
+        scroll: false,
+      },
     );
+
   }
-  
+
   /* =====================================================
      FAVORITE
   ===================================================== */
 
   async function handleFavoriteClick(
-    e: React.MouseEvent
+    e: React.MouseEvent,
   ) {
 
     e.stopPropagation();
@@ -118,7 +145,7 @@ export default function SolutionCard({
           {
             type: "SOLUTION",
             value_id: id,
-          }
+          },
         );
 
       } else {
@@ -128,25 +155,25 @@ export default function SolutionCard({
           {
             type: "SOLUTION",
             value_id: id,
-          }
+          },
         );
+
       }
 
-      if (onToggleFavorite) {
-
-        onToggleFavorite(
-          id,
-          isFavorite
-        );
-      }
+      onToggleFavorite?.(
+        id,
+        isFavorite,
+      );
 
     } catch (e) {
 
       console.error(
         "❌ favorite error",
-        e
+        e,
       );
+
     }
+
   }
 
   /* =====================================================
@@ -156,47 +183,88 @@ export default function SolutionCard({
   return (
 
     <div
-      onClick={handleClick}
+
+      onClick={
+        handleClick
+      }
+
       className="
-        group cursor-pointer rounded-xl
-        border border-ratecard-border
-        bg-white shadow-card transition
-        hover:shadow-cardHover overflow-hidden
+        group
+        cursor-pointer
+        rounded-xl
+        border
+        border-ratecard-border
+        bg-white
+        shadow-card
+        transition
+        hover:shadow-cardHover
+        overflow-hidden
         relative
       "
+
     >
 
       {/* FAVORITE */}
 
-      <div
-        onClick={handleFavoriteClick}
+      <button
+
+        type="button"
+
+        onClick={
+          handleFavoriteClick
+        }
+
         className={`
-          absolute top-2 left-2 z-20
+          absolute
+          top-2
+          left-2
+          z-20
           cursor-pointer
           leading-none
           transition
+          text-[20px]
+
           ${
             isFavorite
-              ? "text-[20px]"
-              : "text-[20px] text-gray-700 hover:text-black"
+              ? ""
+              : "text-gray-700 hover:text-black"
           }
         `}
+
+        aria-label={
+          isFavorite
+            ? "Retirer des favoris"
+            : "Ajouter aux favoris"
+        }
+
       >
-        {isFavorite ? "⭐" : "☆"}
-      </div>
+
+        {
+          isFavorite
+            ? "⭐"
+            : "☆"
+        }
+
+      </button>
 
       {/* LOADING */}
 
       {isLoading && (
 
         <div className="
-          absolute inset-0 z-20
-          bg-white/70 backdrop-blur-sm
-          flex items-center justify-center
+          absolute
+          inset-0
+          z-30
+          bg-white/70
+          backdrop-blur-sm
+          flex
+          items-center
+          justify-center
         ">
 
           <div className="
-            text-xs text-gray-500
+            text-xs
+            text-gray-500
             animate-pulse
           ">
             Chargement...
@@ -206,61 +274,38 @@ export default function SolutionCard({
 
       )}
 
-      {/* NUMBERS */}
+      {/* PARTNER */}
 
-      {hasNumbers && (
+      {isPartner && (
 
         <div className="
-          absolute top-2 left-7 z-10
-          text-[10px]
-          px-2 py-0.5 rounded
-          bg-blue-50 text-blue-600
-          border border-blue-100
+          absolute
+          top-2
+          right-2
+          z-10
         ">
-          #
-        </div>
-
-      )}
-
-      {/* BADGES */}
-
-      <div className="
-        absolute top-2 right-2
-        flex gap-1 z-10
-      ">
-
-        {isPartner && (
 
           <span className="
             text-[9px]
-            px-2 py-0.5 rounded
-            bg-teal-600 text-white
+            px-2
+            py-0.5
+            rounded
+            bg-teal-600
+            text-white
           ">
             Partner
           </span>
 
-        )}
+        </div>
 
-        {typeof delta30d === "number"
-          && delta30d > 0 && (
-
-          <span className="
-            text-[9px]
-            px-2 py-0.5 rounded
-            bg-orange-100
-            text-orange-600
-          ">
-            +{delta30d}
-          </span>
-
-        )}
-
-      </div>
+      )}
 
       {/* VISUAL */}
 
       <div className="
-        relative h-24 w-full
+        relative
+        h-24
+        w-full
         bg-ratecard-light
         overflow-hidden
       ">
@@ -268,61 +313,73 @@ export default function SolutionCard({
         {visualUrl ? (
 
           <img
-            src={visualUrl}
-            alt={name}
+
+            src={
+              visualUrl
+            }
+
+            alt={
+              name
+            }
+
             className="
-              h-full w-full object-contain
-              p-4 transition-transform
+              h-full
+              w-full
+              object-contain
+              p-4
+              transition-transform
               duration-300
               group-hover:scale-[1.02]
             "
+
           />
 
         ) : (
 
           <div className="
-            h-full w-full
-            flex items-center justify-center
+            h-full
+            w-full
+            flex
+            items-center
+            justify-center
             text-[10px]
             text-gray-400
-            px-2 text-center
+            px-2
+            text-center
           ">
+
             {name}
+
           </div>
 
         )}
+
       </div>
 
-      {/* CONTENT */}
+      {/* NAME */}
 
       <div className="
-        p-3 space-y-1
+        p-3
         text-center
       ">
 
         <h3 className="
-          text-xs font-semibold
+          text-xs
+          font-semibold
           text-gray-900
           leading-snug
           line-clamp-2
           group-hover:underline
         ">
+
           {name}
+
         </h3>
 
-        {typeof nbAnalyses === "number" && (
-
-          <p className="
-            text-[10px]
-            text-gray-400
-          ">
-            {nbAnalyses} analyses
-          </p>
-
-        )}
       </div>
 
     </div>
 
   );
+
 }
