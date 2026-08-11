@@ -61,12 +61,9 @@ export default function DrawerHost() {
         && leftDrawer.id && (
 
         <TopicDrawer
-
-          topicId={leftDrawer.id}
-
-          onClose={closeLeftDrawer}
-
-        />
+           id={leftDrawer.id}
+           onClose={closeLeftDrawer}
+         />
 
       )}
 
@@ -78,12 +75,9 @@ export default function DrawerHost() {
         && leftDrawer.id && (
 
         <SolutionDrawer
-
-          solutionId={leftDrawer.id}
-
-          onClose={closeLeftDrawer}
-
-        />
+           id={leftDrawer.id}
+           onClose={closeLeftDrawer}
+         />
 
       )}
 
