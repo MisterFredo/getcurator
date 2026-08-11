@@ -24,6 +24,7 @@ type Props = {
   visualRectId?: string | null;
 
   visualType?: "solution" | "company";
+  contentCount?: number;
 
   isPartner?: boolean;
 
@@ -52,6 +53,7 @@ export default function SolutionCard({
   id,
 
   name,
+  contentCount,
 
   visualRectId,
 
@@ -356,13 +358,15 @@ export default function SolutionCard({
 
       </div>
 
-      {/* NAME */}
-
+      {/* =====================================================
+          NAME
+      ===================================================== */}
+      
       <div className="
         p-3
         text-center
       ">
-
+      
         <h3 className="
           text-xs
           font-semibold
@@ -371,11 +375,25 @@ export default function SolutionCard({
           line-clamp-2
           group-hover:underline
         ">
-
+      
           {name}
-
+      
         </h3>
-
+      
+        {typeof contentCount === "number" && (
+      
+          <p className="
+            mt-1
+            text-[10px]
+            text-gray-400
+          ">
+      
+            {contentCount} contents
+      
+          </p>
+      
+        )}
+      
       </div>
 
     </div>
