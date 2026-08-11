@@ -20,10 +20,6 @@ from core.company.service import (
 # TABLES / VIEWS
 # ============================================================
 
-VIEW_STATS_COMPANY = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.V_CONTENT_STATS_COMPANY"
-)
-
 TABLE_COMPANY_UNIVERSE = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_UNIVERSE"
 )
@@ -41,6 +37,10 @@ TABLE_COMPANY_ALIAS = (
 # PUBLIC VIEW
 # ============================================================
 
+# ============================================================
+# PUBLIC VIEW
+# ============================================================
+
 def get_company_view(
     company_id: str,
 ) -> Optional[Dict]:
@@ -53,55 +53,7 @@ def get_company_view(
 
         return None
 
-    stats_rows = query_bq(
-        f"""
-        SELECT
-
-            COALESCE(
-                total,
-                0
-            ) AS NB_ANALYSES,
-
-            COALESCE(
-                last_30_days,
-                0
-            ) AS DELTA_30D
-
-        FROM `{VIEW_STATS_COMPANY}`
-
-        WHERE id_company = @company_id
-
-        LIMIT 1
-        """,
-        {
-            "company_id":
-                company_id,
-        },
-    )
-
-    stats = (
-        stats_rows[0]
-        if stats_rows
-        else {}
-    )
-
-    return {
-
-        **company,
-
-        "nb_analyses":
-            stats.get(
-                "NB_ANALYSES",
-                0,
-            ),
-
-        "delta_30d":
-            stats.get(
-                "DELTA_30D",
-                0,
-            ),
-
-    }
+    return company
 
 
 # ============================================================
