@@ -78,8 +78,9 @@ async function fetchSolutions():
         media_logo_rectangle_id:
           solution.media_logo_rectangle_id,
 
-        logo_type:
-          solution.logo_type,
+        visualType={
+          solution.logo_type
+        }
 
         is_partner:
           solution.is_partner ?? false,
@@ -536,7 +537,7 @@ export default function SolutionsPage() {
                     solution.media_logo_rectangle_id
                   }
 
-                  logoType={
+                  visualType={
                     solution.logo_type
                   }
 
@@ -695,7 +696,7 @@ export default function SolutionsPage() {
                               solution.media_logo_rectangle_id
                             }
 
-                            logoType={
+                            visualType={
                               solution.logo_type
                             }
 
