@@ -23,7 +23,7 @@ import type {
 
 import EntityDrawer from "@/components/drawers/EntityDrawer";
 import DrawerHeader from "@/components/drawers/DrawerHeader";
-import WatchList from "@/components/watch/WatchList";
+import WatchGroupedByMonth from "@/components/watch/WatchGroupedByMonth";
 
 import { useDrawer } from "@/contexts/DrawerContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
