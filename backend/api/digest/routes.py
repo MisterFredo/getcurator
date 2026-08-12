@@ -3,6 +3,7 @@
 from fastapi import (
     APIRouter,
     HTTPException,
+    Request,
 )
 
 from core.digest.models import (
@@ -21,10 +22,19 @@ from core.digest.digest_service import (
     get_digest,
     generate_digest,
     send_digest,
+    list_digests_for_profile,
 )
 
 from core.digest.html_service import (
     render_digest_html,
+)
+
+from core.user.user_expert_service import (
+    get_user_experts,
+)
+
+from utils.auth import (
+    get_user_id_from_request,
 )
 
 
@@ -99,6 +109,109 @@ def send_campaign_route(
         ),
     }
 
+# ============================================================
+# PUBLIC DIGESTS — CURRENT USER
+# ============================================================
+
+@router.get("/me")
+def list_my_digests_route(
+    request: Request,
+):
+
+    user_id = get_user_id_from_request(
+        request,
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    return {
+        "status": "ok",
+        "profile_id": user_id,
+        "digests": list_digests_for_profile(
+            user_id,
+        ),
+    }
+
+
+# ============================================================
+# PUBLIC DIGESTS — PROFILE / EXPERT
+# ============================================================
+
+@router.get(
+    "/profiles/{profile_id}",
+)
+def list_profile_digests_route(
+    profile_id: str,
+    request: Request,
+):
+
+    user_id = get_user_id_from_request(
+        request,
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    # ========================================================
+    # OWN PROFILE
+    # ========================================================
+
+    if profile_id == user_id:
+
+        return {
+            "status": "ok",
+            "profile_id": profile_id,
+            "digests":
+                list_digests_for_profile(
+                    profile_id,
+                ),
+        }
+
+    # ========================================================
+    # ACCESSIBLE EXPERTS
+    # ========================================================
+
+    experts = get_user_experts(
+        user_id,
+    )
+
+    allowed = any(
+
+        expert.get("ID_USER")
+            == profile_id
+
+        and expert.get(
+            "IS_SELECTED"
+        )
+
+        for expert in experts
+
+    )
+
+    if not allowed:
+
+        raise HTTPException(
+            status_code=403,
+            detail="Profile not available",
+        )
+
+    return {
+        "status": "ok",
+        "profile_id": profile_id,
+        "digests":
+            list_digests_for_profile(
+                profile_id,
+            ),
+    }
 
 # ============================================================
 # GET DIGEST
