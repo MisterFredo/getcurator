@@ -12,6 +12,7 @@ from core.digest.models import (
 from core.digest.repository import (
     fetch_digest,
     fetch_campaign,
+    fetch_digests_for_user,
     update_digest,
 )
 
@@ -305,3 +306,16 @@ def send_digest(
         )
 
     return digest
+
+
+def list_digests_for_user(
+    user_id: str,
+) -> list[Digest]:
+    """
+    Return available Digests
+    for a user/profile.
+    """
+
+    return fetch_digests_for_user(
+        user_id,
+    )
