@@ -10,9 +10,8 @@ import CompanyDrawer from "@/components/drawers/CompanyDrawer";
 import TopicDrawer from "@/components/drawers/TopicDrawer";
 import SolutionDrawer from "@/components/drawers/SolutionDrawer";
 import ExpertDrawer from "@/components/expert/ExpertDrawer";
-
+import DigestDrawer from "@/components/digest/DigestDrawer";
 import ContentDrawer from "@/components/content/ContentDrawer";
-
 import NumberDrawer from "@/components/drawers/NumberDrawer";
 
 /* ============================================================
@@ -121,6 +120,27 @@ export default function DrawerHost() {
 
         />
 
+      )}
+
+       {/* =====================================================
+          RIGHT — DIGEST
+      ===================================================== */}
+      
+      {rightDrawer.type === "digest"
+        && rightDrawer.id && (
+      
+        <DigestDrawer
+      
+          digestId={
+            rightDrawer.id
+          }
+      
+          onClose={
+            closeRightDrawer
+          }
+      
+        />
+      
       )}
 
       {/* =====================================================
