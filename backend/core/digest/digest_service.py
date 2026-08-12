@@ -308,12 +308,15 @@ def send_digest(
     return digest
 
 
-def list_digests_for_user(
+# ============================================================
+# LIST FOR PROFILE
+# ============================================================
+
+def list_digests_for_profile(
     user_id: str,
 ) -> list[Digest]:
     """
-    Return available Digests
-    for a user/profile.
+    Return generated Digests for a profile.
     """
 
     return fetch_digests_for_user(
