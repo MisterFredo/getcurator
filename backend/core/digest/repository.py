@@ -560,3 +560,46 @@ def fetch_digests_for_user(
         _map_digest(row)
         for row in rows
     ]
+
+def fetch_digest_history(
+    user_id: str,
+) -> list[dict]:
+
+    sql = f"""
+        SELECT
+
+            d.ID,
+            d.CAMPAIGN_ID,
+            d.USER_ID,
+            d.STATUS,
+            d.TOTAL_CONTENTS,
+            d.ANALYZED_CONTENTS,
+            d.GENERATED_AT,
+            d.SENT_AT,
+
+            c.FREQUENCY,
+            c.AUDIENCE,
+            c.PERIOD_START,
+            c.PERIOD_END
+
+        FROM `{TABLE_DIGEST}` d
+
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
+
+        WHERE d.USER_ID = @user_id
+
+          AND d.STATUS IN (
+              "generated",
+              "sent"
+          )
+
+        ORDER BY d.GENERATED_AT DESC
+    """
+
+    return query_bq(
+        sql,
+        {
+            "user_id": user_id,
+        },
+    ) or []
