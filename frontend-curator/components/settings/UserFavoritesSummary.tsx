@@ -21,17 +21,17 @@ type Entity = {
 };
 
 type Preferences = {
-  COMPANY: Entity[];
-  SOLUTION: Entity[];
-  TOPIC: Entity[];
+  companies: Entity[];
+  solutions: Entity[];
+  topics: Entity[];
 };
 
 /* ========================================================= */
 
 const EMPTY_PREFERENCES: Preferences = {
-  COMPANY: [],
-  SOLUTION: [],
-  TOPIC: [],
+  companies: [],
+  solutions: [],
+  topics: [],
 };
 
 /* =========================================================
@@ -166,37 +166,26 @@ export default function UserFavoritesSummary() {
         const raw =
           res?.preferences ?? {};
 
-        /*
-         * IMPORTANT
-         *
-         * The detailed preferences endpoint
-         * may omit a category when the user
-         * has no preference for that category.
-         *
-         * We normalize every category
-         * independently to avoid undefined.length.
-         */
-
         setPreferences({
-          COMPANY:
+          companies:
             Array.isArray(
-              raw.COMPANY,
+              raw.companies,
             )
-              ? raw.COMPANY
+              ? raw.companies
               : [],
 
-          SOLUTION:
+          solutions:
             Array.isArray(
-              raw.SOLUTION,
+              raw.solutions,
             )
-              ? raw.SOLUTION
+              ? raw.solutions
               : [],
 
-          TOPIC:
+          topics:
             Array.isArray(
-              raw.TOPIC,
+              raw.topics,
             )
-              ? raw.TOPIC
+              ? raw.topics
               : [],
         });
 
@@ -236,9 +225,9 @@ export default function UserFavoritesSummary() {
   ===================================================== */
 
   const total =
-    preferences.COMPANY.length +
-    preferences.SOLUTION.length +
-    preferences.TOPIC.length;
+    preferences.companies.length +
+    preferences.solutions.length +
+    preferences.topics.length;
 
   if (total === 0) {
     return null;
@@ -256,7 +245,7 @@ export default function UserFavoritesSummary() {
           COMPANIES
       ===================================================== */}
 
-      {preferences.COMPANY.length > 0 && (
+      {preferences.companies.length > 0 && (
 
         <div>
 
@@ -280,7 +269,7 @@ export default function UserFavoritesSummary() {
             "
           >
 
-            {preferences.COMPANY.map(
+            {preferences.companies.map(
               (item) => (
 
                 <EntityCard
@@ -301,7 +290,7 @@ export default function UserFavoritesSummary() {
           SOLUTIONS
       ===================================================== */}
 
-      {preferences.SOLUTION.length > 0 && (
+      {preferences.solutions.length > 0 && (
 
         <div>
 
@@ -325,7 +314,7 @@ export default function UserFavoritesSummary() {
             "
           >
 
-            {preferences.SOLUTION.map(
+            {preferences.solutions.map(
               (item) => (
 
                 <EntityCard
@@ -346,7 +335,7 @@ export default function UserFavoritesSummary() {
           TOPICS
       ===================================================== */}
 
-      {preferences.TOPIC.length > 0 && (
+      {preferences.topics.length > 0 && (
 
         <div>
 
@@ -368,7 +357,7 @@ export default function UserFavoritesSummary() {
             "
           >
 
-            {preferences.TOPIC.map(
+            {preferences.topics.map(
               (item) => (
 
                 <div
