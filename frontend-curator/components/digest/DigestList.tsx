@@ -140,12 +140,13 @@ export default function DigestList({
             <span
               className="
                 inline-flex
+                items-center
                 rounded-full
                 bg-emerald-50
-                px-2.5
+                px-3
                 py-1
                 text-xs
-                font-medium
+                font-semibold
                 text-emerald-700
               "
             >
