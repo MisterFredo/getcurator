@@ -7,6 +7,9 @@ import {
 
 import { api } from "@/lib/api";
 
+import ExpertCard
+  from "@/components/expert/ExpertCard";
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -14,9 +17,9 @@ import { api } from "@/lib/api";
 type Expert = {
   id: string;
   displayName: string;
-  description: string;
-  frequency?: string;
-  isSelected: boolean;
+  company?: string | null;
+  description?: string | null;
+  isFavorite: boolean;
   isActive: boolean;
 };
 
@@ -30,16 +33,21 @@ function normalizeExpert(
 
   return {
     id: row.ID_USER,
+
     displayName:
       row.DISPLAY_NAME ??
       row.NAME ??
       "Expert",
+
+    company:
+      row.COMPANY ?? null,
+
     description:
-      row.DESCRIPTION ?? "",
-    frequency:
-      row.FREQUENCY ?? "",
-    isSelected:
+      row.DESCRIPTION ?? null,
+
+    isFavorite:
       !!row.IS_SELECTED,
+
     isActive:
       row.IS_ACTIVE !== false,
   };
@@ -62,109 +70,80 @@ export default function UserExperts() {
      LOAD
   ===================================================== */
 
-  async function loadExperts() {
+  useEffect(() => {
 
-    try {
+    async function loadExperts() {
 
-      setLoading(true);
+      try {
 
-      const res =
-        await api.get(
-          "/user/experts",
+        setLoading(true);
+
+        const res =
+          await api.get(
+            "/user/experts",
+          );
+
+        const rows =
+          Array.isArray(res)
+            ? res
+            : res?.experts ?? [];
+
+        setExperts(
+          rows.map(
+            normalizeExpert,
+          ),
         );
 
-      /*
-       * Public route currently returns
-       * get_user_experts() directly.
-       *
-       * We accept both formats so the
-       * component remains robust:
-       *
-       * [...]
-       *
-       * or
-       *
-       * { experts: [...] }
-       */
+      } catch (e) {
 
-      const rows =
-        Array.isArray(res)
-          ? res
-          : res?.experts ?? [];
-
-      setExperts(
-        rows.map(
-          normalizeExpert,
-        ),
-      );
-
-    } catch (e) {
-
-      console.error(
-        "experts load error",
-        e,
-      );
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  }
-
-  /* =====================================================
-     TOGGLE
-  ===================================================== */
-
-  async function toggleExpert(
-    expert: Expert,
-  ) {
-
-    try {
-
-      if (expert.isSelected) {
-
-        await api.delete(
-          `/user/experts/${expert.id}`,
+        console.error(
+          "experts load error",
+          e,
         );
 
-      } else {
+        setExperts([]);
 
-        await api.post(
-          `/user/experts/${expert.id}`,
-          {},
-        );
+      } finally {
+
+        setLoading(false);
 
       }
 
-      setExperts(
-        previous =>
-          previous.map(item => {
+    }
+
+    loadExperts();
+
+  }, []);
+
+  /* =====================================================
+     FAVORITE UPDATE
+  ===================================================== */
+
+  function handleToggleFavorite(
+    id: string,
+    isFavorite: boolean,
+  ) {
+
+    setExperts(
+      previous =>
+        previous.map(
+          expert => {
 
             if (
-              item.id !== expert.id
+              expert.id !== id
             ) {
-              return item;
+              return expert;
             }
 
             return {
-              ...item,
-              isSelected:
-                !item.isSelected,
+              ...expert,
+              isFavorite:
+                !isFavorite,
             };
 
-          }),
-      );
-
-    } catch (e) {
-
-      console.error(
-        "expert toggle error",
-        e,
-      );
-
-    }
+          },
+        ),
+    );
 
   }
 
@@ -229,7 +208,7 @@ export default function UserExperts() {
             text-gray-900
           "
         >
-          My Experts
+          Experts
         </div>
 
         <div
@@ -240,8 +219,7 @@ export default function UserExperts() {
           "
         >
           Select the Experts you want
-          to add to your GetCurator
-          experience.
+          to follow.
         </div>
 
       </div>
@@ -253,201 +231,46 @@ export default function UserExperts() {
           grid
           grid-cols-1
           gap-4
-          md:grid-cols-2
+          sm:grid-cols-2
+          lg:grid-cols-3
+          xl:grid-cols-4
         "
       >
 
         {experts.map(
           expert => (
 
-            <div
+            <ExpertCard
+
               key={expert.id}
-              className={`
-                rounded-xl
-                border
-                p-5
-                transition
 
-                ${
-                  expert.isSelected
-                    ? `
-                      border-emerald-300
-                      bg-emerald-50/40
-                    `
-                    : `
-                      border-gray-200
-                      bg-white
-                    `
-                }
-              `}
-            >
+              id={expert.id}
 
-              {/* TOP */}
-
-              <div
-                className="
-                  flex
-                  items-start
-                  justify-between
-                  gap-4
-                "
-              >
-
-                <div
-                  className="
-                    min-w-0
-                  "
-                >
-
-                  <div
-                    className="
-                      font-semibold
-                      text-gray-900
-                    "
-                  >
-                    {
-                      expert.displayName
-                    }
-                  </div>
-
-                  {
-                    expert.frequency && (
-
-                      <div
-                        className="
-                          mt-2
-                          inline-flex
-                          rounded-full
-                          bg-gray-100
-                          px-2.5
-                          py-1
-                          text-xs
-                          text-gray-600
-                        "
-                      >
-                        {
-                          expert.frequency
-                        }
-                      </div>
-
-                    )
-                  }
-
-                </div>
-
-                {
-                  expert.isSelected && (
-
-                    <div
-                      className="
-                        shrink-0
-                        rounded-full
-                        bg-emerald-100
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        text-emerald-700
-                      "
-                    >
-                      Selected
-                    </div>
-
-                  )
-                }
-
-              </div>
-
-              {/* DESCRIPTION */}
-
-              {
-                expert.description && (
-
-                  <div
-                    className="
-                      mt-4
-                      text-sm
-                      leading-6
-                      text-gray-600
-                    "
-                  >
-                    {
-                      expert.description
-                    }
-                  </div>
-
-                )
+              displayName={
+                expert.displayName
               }
 
-              {/* ACTION */}
+              company={
+                expert.company
+              }
 
-              <div
-                className="
-                  mt-5
-                  border-t
-                  border-gray-100
-                  pt-4
-                "
-              >
+              description={
+                expert.description
+              }
 
-                <button
-                  type="button"
-                  disabled={
-                    !expert.isActive
-                  }
-                  onClick={() =>
-                    toggleExpert(
-                      expert,
-                    )
-                  }
-                  className={`
-                    rounded-lg
-                    px-4
-                    py-2
-                    text-sm
-                    font-medium
-                    transition
+              isFavorite={
+                expert.isFavorite
+              }
 
-                    ${
-                      expert.isSelected
-                        ? `
-                          border
-                          border-gray-200
-                          bg-white
-                          text-gray-700
-                          hover:bg-gray-50
-                        `
-                        : `
-                          bg-emerald-600
-                          text-white
-                          hover:bg-emerald-700
-                        `
-                    }
+              isLoading={
+                !expert.isActive
+              }
 
-                    ${
-                      !expert.isActive
-                        ? `
-                          cursor-not-allowed
-                          opacity-50
-                        `
-                        : ""
-                    }
-                  `}
-                >
+              onToggleFavorite={
+                handleToggleFavorite
+              }
 
-                  {
-                    !expert.isActive
-                      ? "Unavailable"
-                      : expert.isSelected
-                        ? "Remove"
-                        : "Add Expert"
-                  }
-
-                </button>
-
-              </div>
-
-            </div>
+            />
 
           ),
         )}
