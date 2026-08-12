@@ -16,6 +16,13 @@ from core.digest.repository import (
     update_digest,
 )
 
+from core.digest.repository import (
+    fetch_digest,
+    fetch_campaign,
+    fetch_digest_history,
+    update_digest,
+)
+
 from core.digest.document_service import (
     build_digest_document,
 )
@@ -321,4 +328,20 @@ def list_digests_for_profile(
 
     return fetch_digests_for_user(
         user_id,
+    )
+
+# ============================================================
+# HISTORY
+# ============================================================
+
+def list_digest_history(
+    profile_id: str,
+) -> list[dict]:
+    """
+    Return available Digest history
+    for a user/profile.
+    """
+
+    return fetch_digest_history(
+        profile_id,
     )
