@@ -225,7 +225,7 @@ def search_digests_route(
         default=None,
     ),
 
-    user_id: str | None = Query(
+    target_user_id: str | None = Query(
         default=None,
     ),
 
@@ -246,13 +246,11 @@ def search_digests_route(
     # AUTH
     # ========================================================
 
-    current_user_id = (
-        get_user_id_from_request(
-            request,
-        )
+    user_id = get_user_id_from_request(
+        request,
     )
 
-    if not current_user_id:
+    if not user_id:
 
         raise HTTPException(
             status_code=401,
@@ -267,7 +265,7 @@ def search_digests_route(
 
         query=query,
 
-        user_id=user_id,
+        user_id=target_user_id,
 
         company_id=company_id,
 
@@ -282,10 +280,12 @@ def search_digests_route(
     # ========================================================
 
     return {
-        "status": "ok",
-        "digests": digests,
-    }
 
+        "status": "ok",
+
+        "digests": digests,
+
+    }
 
 # ============================================================
 # GET DIGEST
