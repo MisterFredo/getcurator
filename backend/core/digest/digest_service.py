@@ -20,6 +20,7 @@ from core.digest.repository import (
     fetch_digest,
     fetch_campaign,
     fetch_digest_history,
+    search_digest_history,
     update_digest,
 )
 
@@ -344,4 +345,20 @@ def list_digest_history(
 
     return fetch_digest_history(
         profile_id,
+    )
+
+def search_digests(
+    query: str | None = None,
+    user_id: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
+) -> list[dict]:
+
+    return search_digest_history(
+        query=query,
+        user_id=user_id,
+        company_id=company_id,
+        solution_id=solution_id,
+        topic_id=topic_id,
     )
