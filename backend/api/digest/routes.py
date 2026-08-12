@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     HTTPException,
     Request,
+    Query,
 )
 
 from core.digest.models import (
@@ -23,6 +24,7 @@ from core.digest.digest_service import (
     generate_digest,
     send_digest,
     list_digest_history,
+    search_digests,
 )
 
 from core.digest.html_service import (
@@ -209,6 +211,79 @@ def list_user_digests_route(
         "digests": list_digest_history(
             target_user_id,
         ),
+    }
+
+# ============================================================
+# PUBLIC DIGESTS — SEARCH
+# ============================================================
+
+@router.get("/search")
+def search_digests_route(
+    request: Request,
+
+    query: str | None = Query(
+        default=None,
+    ),
+
+    user_id: str | None = Query(
+        default=None,
+    ),
+
+    company_id: str | None = Query(
+        default=None,
+    ),
+
+    solution_id: str | None = Query(
+        default=None,
+    ),
+
+    topic_id: str | None = Query(
+        default=None,
+    ),
+):
+
+    # ========================================================
+    # AUTH
+    # ========================================================
+
+    current_user_id = (
+        get_user_id_from_request(
+            request,
+        )
+    )
+
+    if not current_user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    # ========================================================
+    # SEARCH
+    # ========================================================
+
+    digests = search_digests(
+
+        query=query,
+
+        user_id=user_id,
+
+        company_id=company_id,
+
+        solution_id=solution_id,
+
+        topic_id=topic_id,
+
+    )
+
+    # ========================================================
+    # RETURN
+    # ========================================================
+
+    return {
+        "status": "ok",
+        "digests": digests,
     }
 
 
