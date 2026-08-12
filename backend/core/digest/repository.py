@@ -28,12 +28,36 @@ from core.digest.models import (
 # TABLES
 # ============================================================
 
+# ============================================================
+# TABLES
+# ============================================================
+
 TABLE_CAMPAIGN = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CAMPAIGN"
 )
 
 TABLE_DIGEST = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST"
+)
+
+TABLE_USER = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
+)
+
+TABLE_USER_PREFERENCES = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+)
+
+TABLE_COMPANY = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+)
+
+TABLE_SOLUTION = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOLUTION"
+)
+
+TABLE_TOPIC = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC"
 )
 
 # ============================================================
