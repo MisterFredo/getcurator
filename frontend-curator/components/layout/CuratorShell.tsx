@@ -6,14 +6,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  Home,
   X,
   Building2,
   Box,
   Hash,
-  Settings,
   Sparkles,
   PlayCircle,
+  Users,
+  Newspaper,
+  MessageSquare,
 } from "lucide-react";
 
 import Header from "./Header";
@@ -71,89 +72,134 @@ export default function CuratorShell({
 
     return (
       clean === path ||
-      clean.startsWith(path + "/")
+      clean.startsWith(
+        path + "/"
+      )
     );
+
   }
 
-  /* ========================================================= */
+  /* =========================================================
+     GETCURATOR
+  ========================================================= */
 
-  const navData = [
+  const navMain = [
+
     {
       href: "/watch",
       label: "Watch",
       icon: Sparkles,
     },
+
+    {
+      href: "/digests",
+      label: "Digests",
+      icon: Newspaper,
+    },
+
+    {
+      href: "/conversation",
+      label: "Conversation",
+      icon: MessageSquare,
+    },
+
+    /*
     {
       href: "/numbers",
       label: "Numbers",
       icon: Hash,
     },
-    {
-      href: "/settings",
-      label: "Settings",
-      icon: Settings,
-    },
-    
+    */
+
   ];
 
-  /* ========================================================= */
+  /* =========================================================
+     EXPLORE
+  ========================================================= */
 
-  const navEntities = [
+  const navExplore = [
+
+    {
+      href: "/settings",
+      label: "Experts",
+      icon: Users,
+    },
+
     {
       href: "/companies",
       label: "Companies",
       icon: Building2,
     },
+
     {
       href: "/solutions",
       label: "Solutions",
       icon: Box,
     },
 
-    // 🔥 TOPICS RÉACTIVÉ
     {
       href: "/topics",
       label: "Topics",
       icon: Hash,
     },
+
   ];
 
+  /* ========================================================= */
+
   const navLearn = [
+
     {
       href: "/product-tour",
       label: "Product Tour",
       icon: PlayCircle,
     },
+
   ];
 
   /* ========================================================= */
 
   const renderNav = (
-    items: any[]
+    items: any[],
   ) =>
     items.map((item) => {
 
-      const Icon = item.icon;
+      const Icon =
+        item.icon;
 
       const active =
         isActive(item.href);
 
       return (
+
         <Link
+
           key={item.href}
+
           href={item.href}
+
           onClick={() =>
             setMobileOpen(false)
           }
+
           className={`
-            flex items-center gap-2 px-3 py-2 rounded-md transition
+            flex
+            items-center
+            gap-2
+            px-3
+            py-2
+            rounded-md
+            transition
+
             ${
               active
                 ? "bg-emerald-100 text-emerald-800 font-semibold"
                 : "text-gray-700 hover:bg-emerald-50"
             }
           `}
+
         >
+
           <Icon size={18} />
 
           <span>
@@ -161,89 +207,103 @@ export default function CuratorShell({
           </span>
 
         </Link>
+
       );
+
     });
 
   /* ========================================================= */
 
   const Sidebar = (
+
     <>
 
+      {/* =====================================================
+          GETCURATOR (HOME)
+      ===================================================== */}
+
       <Link
+
         href="/"
+
         onClick={() =>
           setMobileOpen(false)
         }
+
         className="
           mb-10
           flex
           items-center
           gap-3
         "
+
       >
 
         <img
           src={LOGO_URL}
           className="w-8 h-8"
+          alt="GetCurator"
         />
 
-        <span className="
-          text-lg
-          font-semibold
-          text-gray-900
-        ">
+        <span
+          className="
+            text-lg
+            font-semibold
+            text-gray-900
+          "
+        >
           GetCurator
         </span>
 
       </Link>
 
-      {/* DATA */}
-      <div>
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
 
-        <div className="
-          text-xs
-          font-semibold
-          text-gray-400
-          uppercase
-          mb-2
-          px-3
-        ">
-          Watch
-        </div>
-
-        <nav className="
+      <nav
+        className="
           space-y-2
           text-sm
-        ">
-          {renderNav(navData)}
-        </nav>
+        "
+      >
+        {renderNav(navMain)}
+      </nav>
 
-      </div>
+      {/* =====================================================
+          EXPLORE
+      ===================================================== */}
 
-      {/* ENTITIES */}
       <div className="mt-8">
 
-        <div className="
-          text-xs
-          font-semibold
-          text-gray-400
-          uppercase
-          mb-2
-          px-3
-        ">
-          Entities
+        <div
+          className="
+            text-xs
+            font-semibold
+            text-gray-400
+            uppercase
+            mb-2
+            px-3
+          "
+        >
+          Explore
         </div>
 
-        <nav className="
-          space-y-2
-          text-sm
-        ">
-          {renderNav(navEntities)}
+        <nav
+          className="
+            space-y-2
+            text-sm
+          "
+        >
+          {renderNav(navExplore)}
         </nav>
 
       </div>
 
-      {/* LEARN */}
+      {/* =====================================================
+          LEARN
+      ===================================================== */}
+
       <div className="mt-8">
 
         <div
@@ -271,25 +331,27 @@ export default function CuratorShell({
       </div>
 
       {/* =====================================================
-         🔥 MCP ASSISTANT (STAND-BY)
+          MCP ASSISTANT (STAND-BY)
       ===================================================== */}
 
       {/*
       <div className="mt-10">
 
-        <div className="
-          text-xs
-          font-semibold
-          text-gray-400
-          uppercase
-          mb-2
-          px-3
-        ">
+        <div
+          className="
+            text-xs
+            font-semibold
+            text-gray-400
+            uppercase
+            mb-2
+            px-3
+          "
+        >
           AI
         </div>
 
         <a
-          href="https://chatgpt.com/g/g-69c5cc7fed548191a395a92fe0fe3dbd-get-curator"
+          href="https://chatgpt.com/g/..."
           target="_blank"
           rel="noopener noreferrer"
           className="
@@ -314,6 +376,7 @@ export default function CuratorShell({
       */}
 
     </>
+
   );
 
   /* =========================================================
@@ -321,59 +384,75 @@ export default function CuratorShell({
   ========================================================= */
 
   return (
+
     <div className="min-h-screen flex">
 
-      {/* SIDEBAR DESKTOP */}
-      <aside className="
-        hidden
-        md:flex
-        w-56
-        bg-white
-        border-r
-        p-6
-        flex-col
-      ">
+      {/* DESKTOP */}
+
+      <aside
+        className="
+          hidden
+          md:flex
+          w-56
+          bg-white
+          border-r
+          p-6
+          flex-col
+        "
+      >
         {Sidebar}
       </aside>
 
       {/* MOBILE */}
+
       {mobileOpen && (
-        <div className="
-          fixed
-          inset-0
-          z-50
-          flex
-          md:hidden
-        ">
+
+        <div
+          className="
+            fixed
+            inset-0
+            z-50
+            flex
+            md:hidden
+          "
+        >
 
           <div
+
             className="
               absolute
               inset-0
               bg-black/40
             "
+
             onClick={() =>
               setMobileOpen(false)
             }
+
           />
 
-          <aside className="
-            relative
-            w-4/5
-            max-w-xs
-            bg-white
-            p-6
-          ">
+          <aside
+            className="
+              relative
+              w-4/5
+              max-w-xs
+              bg-white
+              p-6
+            "
+          >
 
             <button
+
               onClick={() =>
                 setMobileOpen(false)
               }
+
               className="
                 absolute
                 top-4
                 right-4
               "
+
             >
               <X />
             </button>
@@ -383,33 +462,35 @@ export default function CuratorShell({
           </aside>
 
         </div>
+
       )}
 
       {/* MAIN */}
-      <main className="
-        flex-1
-        bg-gray-50
-      ">
+
+      <main
+        className="
+          flex-1
+          bg-gray-50
+        "
+      >
 
         <Header user={user} />
 
         {loading ? (
 
-          <div className="
-            p-6
-            text-sm
-            text-gray-500
-          ">
-            Chargement…
+          <div className="p-6 text-sm text-gray-500">
+            Loading...
           </div>
 
         ) : (
 
-          <div className="
-            p-4
-            md:p-8
-            h-[calc(100vh-72px)]
-          ">
+          <div
+            className="
+              p-4
+              md:p-8
+              h-[calc(100vh-72px)]
+            "
+          >
 
             <div
               className={`
@@ -419,26 +500,30 @@ export default function CuratorShell({
               `}
             >
 
-              {/* CONTENT */}
-              <div className="
-                flex-1
-                min-w-0
-                overflow-auto
-              ">
+              <div
+                className="
+                  flex-1
+                  min-w-0
+                  overflow-auto
+                "
+              >
                 {children}
               </div>
 
-              {/* WORKSPACE */}
-                {!hideWorkspace && (
-                  <aside className="
+              {!hideWorkspace && (
+
+                <aside
+                  className="
                     hidden
                     xl:block
                     w-[380px]
                     shrink-0
-                  ">
-                    <WorkspacePanel />
-                  </aside>
-                )}
+                  "
+                >
+                  <WorkspacePanel />
+                </aside>
+
+              )}
 
             </div>
 
@@ -449,5 +534,7 @@ export default function CuratorShell({
       </main>
 
     </div>
+
   );
+
 }
