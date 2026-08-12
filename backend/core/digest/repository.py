@@ -603,3 +603,258 @@ def fetch_digest_history(
             "user_id": user_id,
         },
     ) or []
+
+def search_digest_history(
+    query: str | None = None,
+    user_id: str | None = None,
+    company_id: str | None = None,
+    solution_id: str | None = None,
+    topic_id: str | None = None,
+) -> list[dict]:
+    """
+    Search available Digest history.
+
+    A Digest is always linked to a user/profile.
+
+    Search can be performed through:
+    - user / expert identity
+    - company preferences
+    - solution preferences
+    - topic preferences
+    """
+
+    table_user = (
+        f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
+    )
+
+    table_preferences = (
+        f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+    )
+
+    sql = f"""
+        SELECT DISTINCT
+
+            d.ID,
+            d.CAMPAIGN_ID,
+            d.USER_ID,
+            d.STATUS,
+
+            d.TOTAL_CONTENTS,
+            d.ANALYZED_CONTENTS,
+
+            d.GENERATED_AT,
+            d.SENT_AT,
+
+            c.FREQUENCY,
+            c.AUDIENCE,
+            c.PERIOD_START,
+            c.PERIOD_END,
+
+            u.NAME,
+            u.DISPLAY_NAME,
+            u.COMPANY,
+            u.DESCRIPTION,
+            u.PROFILE_TYPE
+
+        FROM `{TABLE_DIGEST}` d
+
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
+
+        JOIN `{table_user}` u
+          ON u.ID_USER = d.USER_ID
+
+        WHERE
+            d.STATUS IN (
+                "generated",
+                "sent"
+            )
+
+            AND (
+                @user_id IS NULL
+                OR d.USER_ID = @user_id
+            )
+
+            AND (
+                @query IS NULL
+
+                OR LOWER(
+                    COALESCE(
+                        u.DISPLAY_NAME,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR LOWER(
+                    COALESCE(
+                        u.NAME,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR LOWER(
+                    COALESCE(
+                        u.COMPANY,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR EXISTS (
+
+                    SELECT 1
+
+                    FROM `{table_preferences}` p
+
+                    LEFT JOIN `{TABLE_COMPANY}` co
+                      ON p.TYPE = "COMPANY"
+                     AND p.VALUE_ID = co.ID_COMPANY
+
+                    LEFT JOIN `{TABLE_SOLUTION}` s
+                      ON p.TYPE = "SOLUTION"
+                     AND p.VALUE_ID = s.ID_SOLUTION
+
+                    LEFT JOIN `{TABLE_TOPIC}` t
+                      ON p.TYPE = "TOPIC"
+                     AND p.VALUE_ID = t.ID_TOPIC
+
+                    WHERE
+                        p.ID_USER = d.USER_ID
+
+                        AND (
+
+                            LOWER(
+                                COALESCE(
+                                    co.NAME,
+                                    ""
+                                )
+                            )
+                            LIKE CONCAT(
+                                "%",
+                                LOWER(@query),
+                                "%"
+                            )
+
+                            OR LOWER(
+                                COALESCE(
+                                    s.NAME,
+                                    ""
+                                )
+                            )
+                            LIKE CONCAT(
+                                "%",
+                                LOWER(@query),
+                                "%"
+                            )
+
+                            OR LOWER(
+                                COALESCE(
+                                    t.LABEL,
+                                    ""
+                                )
+                            )
+                            LIKE CONCAT(
+                                "%",
+                                LOWER(@query),
+                                "%"
+                            )
+
+                        )
+
+                )
+
+            )
+
+            AND (
+                @company_id IS NULL
+
+                OR EXISTS (
+
+                    SELECT 1
+
+                    FROM `{table_preferences}` p
+
+                    WHERE
+                        p.ID_USER = d.USER_ID
+                        AND p.TYPE = "COMPANY"
+                        AND p.VALUE_ID = @company_id
+
+                )
+
+            )
+
+            AND (
+                @solution_id IS NULL
+
+                OR EXISTS (
+
+                    SELECT 1
+
+                    FROM `{table_preferences}` p
+
+                    WHERE
+                        p.ID_USER = d.USER_ID
+                        AND p.TYPE = "SOLUTION"
+                        AND p.VALUE_ID = @solution_id
+
+                )
+
+            )
+
+            AND (
+                @topic_id IS NULL
+
+                OR EXISTS (
+
+                    SELECT 1
+
+                    FROM `{table_preferences}` p
+
+                    WHERE
+                        p.ID_USER = d.USER_ID
+                        AND p.TYPE = "TOPIC"
+                        AND p.VALUE_ID = @topic_id
+
+                )
+
+            )
+
+        ORDER BY
+            d.GENERATED_AT DESC
+    """
+
+    return query_bq(
+        sql,
+        {
+            "query":
+                query.strip()
+                if query
+                else None,
+
+            "user_id":
+                user_id,
+
+            "company_id":
+                company_id,
+
+            "solution_id":
+                solution_id,
+
+            "topic_id":
+                topic_id,
+        },
+    ) or []
