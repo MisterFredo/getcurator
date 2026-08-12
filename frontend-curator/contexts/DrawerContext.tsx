@@ -16,6 +16,7 @@ type LeftDrawerType =
   | "company"
   | "topic"
   | "solution"
+  | "expert"
   | null;
 
 type RightDrawerType =
@@ -51,7 +52,8 @@ type DrawerContextType = {
       | "member"
       | "company"
       | "topic"
-      | "solution",
+      | "solution"
+      | "expert",
 
     id: string,
 
@@ -176,7 +178,8 @@ export function DrawerProvider({
       | "member"
       | "company"
       | "topic"
-      | "solution",
+      | "solution"
+      | "expert",
 
     id: string,
 
