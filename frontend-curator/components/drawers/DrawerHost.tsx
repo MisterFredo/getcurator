@@ -9,6 +9,7 @@ import { useDrawer } from "@/contexts/DrawerContext";
 import CompanyDrawer from "@/components/drawers/CompanyDrawer";
 import TopicDrawer from "@/components/drawers/TopicDrawer";
 import SolutionDrawer from "@/components/drawers/SolutionDrawer";
+import ExpertDrawer from "@/components/expert/ExpertDrawer";
 
 import ContentDrawer from "@/components/content/ContentDrawer";
 
@@ -31,7 +32,11 @@ export default function DrawerHost() {
     closeRightDrawer,
 
   } = useDrawer();
-   console.log("RIGHT DRAWER", rightDrawer);
+
+  console.log(
+    "RIGHT DRAWER",
+    rightDrawer,
+  );
 
   return (
 
@@ -43,16 +48,17 @@ export default function DrawerHost() {
 
       {leftDrawer.type === "company"
         && leftDrawer.id && (
-      
+
         <CompanyDrawer
-      
+
           id={leftDrawer.id}
-      
+
           onClose={closeLeftDrawer}
-      
+
         />
-      
+
       )}
+
       {/* =====================================================
           LEFT — TOPIC
       ===================================================== */}
@@ -61,9 +67,12 @@ export default function DrawerHost() {
         && leftDrawer.id && (
 
         <TopicDrawer
-           id={leftDrawer.id}
-           onClose={closeLeftDrawer}
-         />
+
+          id={leftDrawer.id}
+
+          onClose={closeLeftDrawer}
+
+        />
 
       )}
 
@@ -75,9 +84,25 @@ export default function DrawerHost() {
         && leftDrawer.id && (
 
         <SolutionDrawer
-           id={leftDrawer.id}
-           onClose={closeLeftDrawer}
-         />
+
+          id={leftDrawer.id}
+
+          onClose={closeLeftDrawer}
+
+        />
+
+      )}
+
+      {/* =====================================================
+          LEFT — EXPERT
+      ===================================================== */}
+
+      {leftDrawer.type === "expert"
+        && leftDrawer.id && (
+
+        <ExpertDrawer
+          expertId={leftDrawer.id}
+        />
 
       )}
 
