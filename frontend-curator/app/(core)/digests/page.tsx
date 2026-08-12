@@ -7,7 +7,8 @@ import {
 
 import { api } from "@/lib/api";
 
-import DigestList from "@/components/digest/DigestList";
+import DigestList
+  from "@/components/digest/DigestList";
 
 import {
   useDrawer,
@@ -29,7 +30,9 @@ type Expert = {
   IS_SELECTED?: boolean;
 };
 
-/* ========================================================= */
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default function DigestsPage() {
 
@@ -48,18 +51,28 @@ export default function DigestsPage() {
   const [
     experts,
     setExperts,
-  ] = useState<Expert[]>([]);
-
-  const [
-    activeUserId,
-    setActiveUserId,
   ] = useState<
-    string | null
-  >(null);
+    Expert[]
+  >([]);
 
   const [
     currentUserId,
     setCurrentUserId,
+  ] = useState<
+    string | null
+  >(null);
+
+  /*
+   * null = All
+   *
+   * currentUserId = Me
+   *
+   * expert ID = selected Expert
+   */
+
+  const [
+    activeUserId,
+    setActiveUserId,
   ] = useState<
     string | null
   >(null);
@@ -106,8 +119,14 @@ export default function DigestsPage() {
           userId,
         );
 
+        /*
+         * IMPORTANT
+         *
+         * All is the default filter.
+         */
+
         setActiveUserId(
-          userId,
+          null,
         );
 
         const rows =
@@ -141,35 +160,85 @@ export default function DigestsPage() {
   }, []);
 
   /* =====================================================
+     BUILD SEARCH PATH
+  ===================================================== */
+
+  function buildSearchPath(
+    queryValue?: string,
+  ) {
+
+    const params =
+      new URLSearchParams();
+
+    /* -----------------------------------------------------
+       USER / EXPERT FILTER
+    ----------------------------------------------------- */
+
+    if (activeUserId) {
+
+      params.set(
+        "target_user_id",
+        activeUserId,
+      );
+
+    }
+
+    /* -----------------------------------------------------
+       TEXT SEARCH
+    ----------------------------------------------------- */
+
+    const value =
+      queryValue?.trim();
+
+    if (value) {
+
+      params.set(
+        "query",
+        value,
+      );
+
+    }
+
+    /* -----------------------------------------------------
+       PATH
+    ----------------------------------------------------- */
+
+    const queryString =
+      params.toString();
+
+    return queryString
+      ? `/digest/search?${queryString}`
+      : "/digest/search";
+
+  }
+
+  /* =====================================================
      LOAD DIGESTS
   ===================================================== */
 
   useEffect(() => {
 
-    if (!activeUserId) {
-      return;
-    }
-
     async function loadDigests() {
 
       try {
 
-        setLoading(true);
+        setLoading(
+          true,
+        );
+
+        const path =
+          buildSearchPath(
+            search,
+          );
 
         const res =
-          activeUserId ===
-          currentUserId
-
-            ? await api.get(
-                "/digest/me",
-              )
-
-            : await api.get(
-                `/digest/users/${activeUserId}`,
-              );
+          await api.get(
+            path,
+          );
 
         setDigests(
-          res?.digests ?? [],
+          res?.digests ??
+          [],
         );
 
       } catch (e) {
@@ -179,11 +248,15 @@ export default function DigestsPage() {
           e,
         );
 
-        setDigests([]);
+        setDigests(
+          [],
+        );
 
       } finally {
 
-        setLoading(false);
+        setLoading(
+          false,
+        );
 
       }
 
@@ -193,7 +266,6 @@ export default function DigestsPage() {
 
   }, [
     activeUserId,
-    currentUserId,
   ]);
 
   /* =====================================================
@@ -202,54 +274,25 @@ export default function DigestsPage() {
 
   async function runSearch() {
 
-    const value =
-      search.trim();
-
-    if (!value) {
-
-      if (activeUserId) {
-
-        const res =
-          activeUserId ===
-          currentUserId
-
-            ? await api.get(
-                "/digest/me",
-              )
-
-            : await api.get(
-                `/digest/users/${activeUserId}`,
-              );
-
-        setDigests(
-          res?.digests ?? [],
-        );
-
-      }
-
-      return;
-
-    }
-
     try {
 
-      setLoading(true);
-
-      const params =
-        new URLSearchParams();
-
-      params.set(
-        "query",
-        value,
+      setLoading(
+        true,
       );
+
+      const path =
+        buildSearchPath(
+          search,
+        );
 
       const res =
         await api.get(
-          `/digest/search?${params.toString()}`,
+          path,
         );
 
       setDigests(
-        res?.digests ?? [],
+        res?.digests ??
+        [],
       );
 
     } catch (e) {
@@ -259,11 +302,65 @@ export default function DigestsPage() {
         e,
       );
 
-      setDigests([]);
+      setDigests(
+        [],
+      );
 
     } finally {
 
-      setLoading(false);
+      setLoading(
+        false,
+      );
+
+    }
+
+  }
+
+  /* =====================================================
+     RESET SEARCH
+  ===================================================== */
+
+  async function clearSearch() {
+
+    setSearch("");
+
+    try {
+
+      setLoading(
+        true,
+      );
+
+      const path =
+        buildSearchPath(
+          "",
+        );
+
+      const res =
+        await api.get(
+          path,
+        );
+
+      setDigests(
+        res?.digests ??
+        [],
+      );
+
+    } catch (e) {
+
+      console.error(
+        "digest reset error",
+        e,
+      );
+
+      setDigests(
+        [],
+      );
+
+    } finally {
+
+      setLoading(
+        false,
+      );
 
     }
 
@@ -275,9 +372,15 @@ export default function DigestsPage() {
 
   return (
 
-    <div className="space-y-6">
+    <div
+      className="
+        space-y-6
+      "
+    >
 
-      {/* HEADER */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
       <div>
 
@@ -298,13 +401,16 @@ export default function DigestsPage() {
             text-gray-500
           "
         >
-          Browse your Digests and
-          those of your selected Experts.
+          Browse your Digests
+          and those of your
+          selected Experts.
         </div>
 
       </div>
 
-      {/* USER SELECTOR */}
+      {/* =====================================================
+          USER FILTERS
+      ===================================================== */}
 
       <div
         className="
@@ -313,6 +419,44 @@ export default function DigestsPage() {
           gap-2
         "
       >
+
+        {/* ALL */}
+
+        <button
+          type="button"
+          onClick={() =>
+            setActiveUserId(
+              null,
+            )
+          }
+          className={`
+            rounded-full
+            border
+            px-4
+            py-2
+            text-sm
+            font-medium
+            transition
+
+            ${
+              activeUserId === null
+                ? `
+                  border-emerald-600
+                  bg-emerald-600
+                  text-white
+                `
+                : `
+                  bg-white
+                  text-gray-700
+                  hover:bg-gray-50
+                `
+            }
+          `}
+        >
+          All
+        </button>
+
+        {/* ME */}
 
         {currentUserId && (
 
@@ -330,6 +474,7 @@ export default function DigestsPage() {
               py-2
               text-sm
               font-medium
+              transition
 
               ${
                 activeUserId ===
@@ -342,6 +487,7 @@ export default function DigestsPage() {
                   : `
                     bg-white
                     text-gray-700
+                    hover:bg-gray-50
                   `
               }
             `}
@@ -350,6 +496,8 @@ export default function DigestsPage() {
           </button>
 
         )}
+
+        {/* EXPERTS */}
 
         {experts.map(
           expert => {
@@ -362,15 +510,19 @@ export default function DigestsPage() {
             return (
 
               <button
+
                 key={
                   expert.ID_USER
                 }
+
                 type="button"
+
                 onClick={() =>
                   setActiveUserId(
                     expert.ID_USER,
                   )
                 }
+
                 className={`
                   rounded-full
                   border
@@ -378,6 +530,7 @@ export default function DigestsPage() {
                   py-2
                   text-sm
                   font-medium
+                  transition
 
                   ${
                     activeUserId ===
@@ -390,9 +543,11 @@ export default function DigestsPage() {
                       : `
                         bg-white
                         text-gray-700
+                        hover:bg-gray-50
                       `
                   }
                 `}
+
               >
                 {label}
               </button>
@@ -404,7 +559,9 @@ export default function DigestsPage() {
 
       </div>
 
-      {/* SEARCH */}
+      {/* =====================================================
+          SEARCH
+      ===================================================== */}
 
       <div
         className="
@@ -414,22 +571,35 @@ export default function DigestsPage() {
       >
 
         <input
-          value={search}
+
+          value={
+            search
+          }
+
           onChange={e =>
             setSearch(
               e.target.value,
             )
           }
+
           onKeyDown={e => {
 
             if (
-              e.key === "Enter"
+              e.key ===
+              "Enter"
             ) {
+
               runSearch();
+
             }
 
           }}
-          placeholder="Search experts, companies, topics or solutions..."
+
+          placeholder="
+            Search experts, companies,
+            topics or solutions...
+          "
+
           className="
             flex-1
             rounded-lg
@@ -439,7 +609,31 @@ export default function DigestsPage() {
             py-2.5
             text-sm
           "
+
         />
+
+        {search && (
+
+          <button
+            type="button"
+            onClick={
+              clearSearch
+            }
+            className="
+              rounded-lg
+              border
+              bg-white
+              px-4
+              text-sm
+              font-medium
+              text-gray-600
+              hover:bg-gray-50
+            "
+          >
+            Clear
+          </button>
+
+        )}
 
         <button
           type="button"
@@ -453,6 +647,7 @@ export default function DigestsPage() {
             text-sm
             font-medium
             text-white
+            hover:bg-emerald-700
           "
         >
           Search
@@ -460,7 +655,9 @@ export default function DigestsPage() {
 
       </div>
 
-      {/* RESULTS */}
+      {/* =====================================================
+          RESULTS
+      ===================================================== */}
 
       {loading ? (
 
@@ -493,20 +690,32 @@ export default function DigestsPage() {
 
       ) : (
 
-        <div className="space-y-2">
+        <div
+          className="
+            space-y-2
+          "
+        >
 
           {digests.map(
             digest => (
 
               <DigestList
-                key={digest.ID}
-                digest={digest}
+
+                key={
+                  digest.ID
+                }
+
+                digest={
+                  digest
+                }
+
                 onClick={() =>
                   openRightDrawer(
                     "digest",
                     digest.ID,
                   )
                 }
+
               />
 
             ),
