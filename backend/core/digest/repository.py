@@ -533,9 +533,6 @@ def fetch_digests(
 def fetch_digests_for_user(
     user_id: str,
 ) -> list[Digest]:
-    """
-    Return Digest history for a user/profile.
-    """
 
     sql = f"""
         SELECT *
@@ -544,10 +541,10 @@ def fetch_digests_for_user(
 
         WHERE USER_ID = @user_id
 
-        AND STATUS IN (
-            "generated",
-            "sent"
-        )
+          AND STATUS IN (
+              "generated",
+              "sent"
+          )
 
         ORDER BY GENERATED_AT DESC
     """
@@ -560,8 +557,6 @@ def fetch_digests_for_user(
     )
 
     return [
-        _map_digest(
-            row,
-        )
+        _map_digest(row)
         for row in rows
     ]
