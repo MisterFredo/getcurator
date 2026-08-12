@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import { api } from "@/lib/api";
 
 /* ========================================================= */
@@ -24,6 +28,14 @@ type Preferences = {
 
 /* ========================================================= */
 
+const EMPTY_PREFERENCES: Preferences = {
+  COMPANY: [],
+  SOLUTION: [],
+  TOPIC: [],
+};
+
+/* ========================================================= */
+
 function EntityCard({
   item,
 }: {
@@ -36,7 +48,6 @@ function EntityCard({
       : null;
 
   return (
-
     <div
       className="
         bg-white
@@ -46,7 +57,6 @@ function EntityCard({
         text-center
       "
     >
-
       <div
         className="
           h-20
@@ -56,9 +66,7 @@ function EntityCard({
           bg-gray-50
         "
       >
-
         {logoUrl ? (
-
           <img
             src={logoUrl}
             alt={item.label}
@@ -68,9 +76,7 @@ function EntityCard({
               object-contain
             "
           />
-
         ) : (
-
           <div
             className="
               text-xs
@@ -80,9 +86,7 @@ function EntityCard({
           >
             {item.label}
           </div>
-
         )}
-
       </div>
 
       <div
@@ -96,9 +100,7 @@ function EntityCard({
       >
         {item.label}
       </div>
-
     </div>
-
   );
 }
 
@@ -110,11 +112,13 @@ export default function UserFavoritesSummary() {
     useState(true);
 
   const [preferences, setPreferences] =
-    useState<Preferences>({
-      COMPANY: [],
-      SOLUTION: [],
-      TOPIC: [],
-    });
+    useState<Preferences>(
+      EMPTY_PREFERENCES,
+    );
+
+  /* =====================================================
+     LOAD
+  ===================================================== */
 
   useEffect(() => {
 
@@ -122,31 +126,46 @@ export default function UserFavoritesSummary() {
 
       try {
 
-        const userId =
-          localStorage.getItem(
-            "user_id"
-          );
-
-        if (!userId) return;
-
         const res =
           await api.get(
-            `/user/preferences/${userId}`
+            "/user/preferences",
           );
 
-        setPreferences(
-          res?.preferences || {
-            COMPANY: [],
-            SOLUTION: [],
-            TOPIC: [],
-          }
-        );
+        const raw =
+          res?.preferences ?? {};
+
+        setPreferences({
+          COMPANY:
+            Array.isArray(
+              raw.COMPANY,
+            )
+              ? raw.COMPANY
+              : [],
+
+          SOLUTION:
+            Array.isArray(
+              raw.SOLUTION,
+            )
+              ? raw.SOLUTION
+              : [],
+
+          TOPIC:
+            Array.isArray(
+              raw.TOPIC,
+            )
+              ? raw.TOPIC
+              : [],
+        });
 
       } catch (e) {
 
         console.error(
           "favorites load error",
-          e
+          e,
+        );
+
+        setPreferences(
+          EMPTY_PREFERENCES,
         );
 
       } finally {
@@ -154,15 +173,24 @@ export default function UserFavoritesSummary() {
         setLoading(false);
 
       }
+
     }
 
     load();
 
   }, []);
 
+  /* =====================================================
+     LOADING
+  ===================================================== */
+
   if (loading) {
     return null;
   }
+
+  /* =====================================================
+     EMPTY
+  ===================================================== */
 
   const total =
     preferences.COMPANY.length +
@@ -173,8 +201,11 @@ export default function UserFavoritesSummary() {
     return null;
   }
 
-  return (
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
+  return (
     <div className="space-y-6">
 
       {/* =====================================================
@@ -182,7 +213,6 @@ export default function UserFavoritesSummary() {
       ===================================================== */}
 
       {preferences.COMPANY.length > 0 && (
-
         <div>
 
           <h3
@@ -204,7 +234,6 @@ export default function UserFavoritesSummary() {
               gap-3
             "
           >
-
             {preferences.COMPANY.map(
               (item) => (
                 <EntityCard
@@ -213,11 +242,9 @@ export default function UserFavoritesSummary() {
                 />
               )
             )}
-
           </div>
 
         </div>
-
       )}
 
       {/* =====================================================
@@ -225,7 +252,6 @@ export default function UserFavoritesSummary() {
       ===================================================== */}
 
       {preferences.SOLUTION.length > 0 && (
-
         <div>
 
           <h3
@@ -247,7 +273,6 @@ export default function UserFavoritesSummary() {
               gap-3
             "
           >
-
             {preferences.SOLUTION.map(
               (item) => (
                 <EntityCard
@@ -256,11 +281,9 @@ export default function UserFavoritesSummary() {
                 />
               )
             )}
-
           </div>
 
         </div>
-
       )}
 
       {/* =====================================================
@@ -268,7 +291,6 @@ export default function UserFavoritesSummary() {
       ===================================================== */}
 
       {preferences.TOPIC.length > 0 && (
-
         <div>
 
           <h3
@@ -288,10 +310,8 @@ export default function UserFavoritesSummary() {
               gap-2
             "
           >
-
             {preferences.TOPIC.map(
               (item) => (
-
                 <div
                   key={item.id}
                   className="
@@ -304,17 +324,13 @@ export default function UserFavoritesSummary() {
                 >
                   {item.label}
                 </div>
-
               )
             )}
-
           </div>
 
         </div>
-
       )}
 
     </div>
-
   );
 }
