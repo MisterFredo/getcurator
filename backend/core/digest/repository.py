@@ -528,3 +528,40 @@ def fetch_digests(
         for row in rows
 
     ]
+
+
+def fetch_digests_for_user(
+    user_id: str,
+) -> list[Digest]:
+    """
+    Return Digest history for a user/profile.
+    """
+
+    sql = f"""
+        SELECT *
+
+        FROM `{TABLE_DIGEST}`
+
+        WHERE USER_ID = @user_id
+
+        AND STATUS IN (
+            "generated",
+            "sent"
+        )
+
+        ORDER BY GENERATED_AT DESC
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "user_id": user_id,
+        },
+    )
+
+    return [
+        _map_digest(
+            row,
+        )
+        for row in rows
+    ]
