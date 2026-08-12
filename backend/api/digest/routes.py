@@ -22,7 +22,7 @@ from core.digest.digest_service import (
     get_digest,
     generate_digest,
     send_digest,
-    list_digests_for_profile,
+    list_digest_history,
 )
 
 from core.digest.html_service import (
@@ -207,10 +207,9 @@ def list_profile_digests_route(
     return {
         "status": "ok",
         "profile_id": profile_id,
-        "digests":
-            list_digests_for_profile(
-                profile_id,
-            ),
+        "digests": list_digest_history(
+            profile_id,
+        ),
     }
 
 # ============================================================
