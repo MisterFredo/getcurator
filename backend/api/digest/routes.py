@@ -131,22 +131,22 @@ def list_my_digests_route(
 
     return {
         "status": "ok",
-        "profile_id": user_id,
-        "digests": list_digests_for_profile(
+        "user_id": user_id,
+        "digests": list_digest_history(
             user_id,
         ),
     }
 
 
 # ============================================================
-# PUBLIC DIGESTS — PROFILE / EXPERT
+# PUBLIC DIGESTS — USER / EXPERT
 # ============================================================
 
 @router.get(
-    "/profiles/{profile_id}",
+    "/users/{target_user_id}",
 )
-def list_profile_digests_route(
-    profile_id: str,
+def list_user_digests_route(
+    target_user_id: str,
     request: Request,
 ):
 
@@ -162,22 +162,21 @@ def list_profile_digests_route(
         )
 
     # ========================================================
-    # OWN PROFILE
+    # OWN DIGESTS
     # ========================================================
 
-    if profile_id == user_id:
+    if target_user_id == user_id:
 
         return {
             "status": "ok",
-            "profile_id": profile_id,
-            "digests":
-                list_digests_for_profile(
-                    profile_id,
-                ),
+            "user_id": target_user_id,
+            "digests": list_digest_history(
+                target_user_id,
+            ),
         }
 
     # ========================================================
-    # ACCESSIBLE EXPERTS
+    # SELECTED EXPERTS
     # ========================================================
 
     experts = get_user_experts(
@@ -187,7 +186,7 @@ def list_profile_digests_route(
     allowed = any(
 
         expert.get("ID_USER")
-            == profile_id
+            == target_user_id
 
         and expert.get(
             "IS_SELECTED"
@@ -201,16 +200,17 @@ def list_profile_digests_route(
 
         raise HTTPException(
             status_code=403,
-            detail="Profile not available",
+            detail="User not available",
         )
 
     return {
         "status": "ok",
-        "profile_id": profile_id,
+        "user_id": target_user_id,
         "digests": list_digest_history(
-            profile_id,
+            target_user_id,
         ),
     }
+
 
 # ============================================================
 # GET DIGEST
