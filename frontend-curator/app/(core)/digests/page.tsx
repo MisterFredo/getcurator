@@ -7,12 +7,9 @@ import {
 
 import { api } from "@/lib/api";
 
-import DigestList
-  from "@/components/digest/DigestList";
-
-import type {
-  DigestHistoryItem,
-} from "@/types/digest";
+import DigestList from "@/components/digest/DigestList";
+import {useDrawer,} from "@/contexts/DrawerContext";
+import type {DigestHistoryItem,} from "@/types/digest";
 
 /* =========================================================
    TYPES
@@ -72,6 +69,10 @@ export default function DigestsPage() {
   ] = useState<
     string | null
   >(null);
+
+  const {
+    openRightDrawer,
+  } = useDrawer();
 
   /* =====================================================
      LOAD CURRENT USER + EXPERTS
@@ -499,14 +500,11 @@ export default function DigestsPage() {
             digest => (
 
               <DigestList
-                key={
-                  digest.ID
-                }
-                digest={
-                  digest
-                }
+                key={digest.ID}
+                digest={digest}
                 onClick={() =>
-                  setSelectedDigestId(
+                  openRightDrawer(
+                    "digest",
                     digest.ID,
                   )
                 }
@@ -516,19 +514,6 @@ export default function DigestsPage() {
           )}
 
         </div>
-
-      )}
-
-      {/* DRAWER TEMPORAIRE */}
-
-      {selectedDigestId && (
-
-        <div>
-          {/* DigestDrawer arrive juste après */}
-        </div>
-
-      )}
-
     </div>
 
   );
