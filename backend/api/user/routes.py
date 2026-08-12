@@ -531,24 +531,6 @@ def assign_universes_route(payload: AssignUniversePayload):
     }
 
 # =========================================================
-# GET USER (BY ID)
-# =========================================================
-
-@router.get("/{user_id}")
-def get_user(user_id: str):
-    user = get_user_by_id(user_id)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    universes = get_user_universes(user_id)
-
-    return {
-        "user": user,
-        "universes": universes,
-    }
-
-# =========================================================
 # ADMIN / EXPERTS
 # =========================================================
 
@@ -630,6 +612,24 @@ def list_expert_users(
     return get_expert_users(
         expert_id
     )
+
+# =========================================================
+# GET USER (BY ID)
+# =========================================================
+
+@router.get("/{user_id}")
+def get_user(user_id: str):
+    user = get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    universes = get_user_universes(user_id)
+
+    return {
+        "user": user,
+        "universes": universes,
+    }
 
 
 # =========================================================
