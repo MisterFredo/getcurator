@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import { api } from "@/lib/api";
 
 /* ========================================================= */
@@ -23,6 +27,16 @@ type Preferences = {
 };
 
 /* ========================================================= */
+
+const EMPTY_PREFERENCES: Preferences = {
+  COMPANY: [],
+  SOLUTION: [],
+  TOPIC: [],
+};
+
+/* =========================================================
+   ENTITY CARD
+========================================================= */
 
 function EntityCard({
   item,
@@ -100,21 +114,28 @@ function EntityCard({
     </div>
 
   );
+
 }
 
-/* ========================================================= */
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function UserFavoritesSummary() {
 
   const [loading, setLoading] =
     useState(true);
 
-  const [preferences, setPreferences] =
-    useState<Preferences>({
-      COMPANY: [],
-      SOLUTION: [],
-      TOPIC: [],
-    });
+  const [
+    preferences,
+    setPreferences,
+  ] = useState<Preferences>(
+    EMPTY_PREFERENCES,
+  );
+
+  /* =====================================================
+     LOAD
+  ===================================================== */
 
   useEffect(() => {
 
@@ -124,29 +145,70 @@ export default function UserFavoritesSummary() {
 
         const userId =
           localStorage.getItem(
-            "user_id"
+            "user_id",
           );
 
-        if (!userId) return;
+        if (!userId) {
+
+          setPreferences(
+            EMPTY_PREFERENCES,
+          );
+
+          return;
+
+        }
 
         const res =
           await api.get(
-            `/user/preferences/${userId}`
+            `/user/preferences/${userId}`,
           );
 
-        setPreferences(
-          res?.preferences || {
-            COMPANY: [],
-            SOLUTION: [],
-            TOPIC: [],
-          }
-        );
+        const raw =
+          res?.preferences ?? {};
+
+        /*
+         * IMPORTANT
+         *
+         * The detailed preferences endpoint
+         * may omit a category when the user
+         * has no preference for that category.
+         *
+         * We normalize every category
+         * independently to avoid undefined.length.
+         */
+
+        setPreferences({
+          COMPANY:
+            Array.isArray(
+              raw.COMPANY,
+            )
+              ? raw.COMPANY
+              : [],
+
+          SOLUTION:
+            Array.isArray(
+              raw.SOLUTION,
+            )
+              ? raw.SOLUTION
+              : [],
+
+          TOPIC:
+            Array.isArray(
+              raw.TOPIC,
+            )
+              ? raw.TOPIC
+              : [],
+        });
 
       } catch (e) {
 
         console.error(
           "favorites load error",
-          e
+          e,
+        );
+
+        setPreferences(
+          EMPTY_PREFERENCES,
         );
 
       } finally {
@@ -154,15 +216,24 @@ export default function UserFavoritesSummary() {
         setLoading(false);
 
       }
+
     }
 
     load();
 
   }, []);
 
+  /* =====================================================
+     LOADING
+  ===================================================== */
+
   if (loading) {
     return null;
   }
+
+  /* =====================================================
+     TOTAL
+  ===================================================== */
 
   const total =
     preferences.COMPANY.length +
@@ -172,6 +243,10 @@ export default function UserFavoritesSummary() {
   if (total === 0) {
     return null;
   }
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
 
@@ -207,10 +282,12 @@ export default function UserFavoritesSummary() {
 
             {preferences.COMPANY.map(
               (item) => (
+
                 <EntityCard
                   key={item.id}
                   item={item}
                 />
+
               )
             )}
 
@@ -250,10 +327,12 @@ export default function UserFavoritesSummary() {
 
             {preferences.SOLUTION.map(
               (item) => (
+
                 <EntityCard
                   key={item.id}
                   item={item}
                 />
+
               )
             )}
 
@@ -317,4 +396,5 @@ export default function UserFavoritesSummary() {
     </div>
 
   );
+
 }
