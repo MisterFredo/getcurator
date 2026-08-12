@@ -7,8 +7,8 @@ import {
 
 import { api } from "@/lib/api";
 
-import DigestCard
-  from "@/components/digest/DigestCard";
+import DigestList
+  from "@/components/digest/DigestList";
 
 import type {
   DigestHistoryItem,
@@ -505,7 +505,7 @@ export default function DigestsPage() {
           {digests.map(
             digest => (
 
-              <DigestCard
+              <DigestList
                 key={
                   digest.ID
                 }
