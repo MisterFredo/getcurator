@@ -22,6 +22,7 @@ type LeftDrawerType =
 type RightDrawerType =
   | "content"
   | "numbers"
+  | "digest"
   | null;
 
 type DrawerMode =
@@ -65,14 +66,15 @@ type DrawerContextType = {
 
     type:
       | "content"
-      | "numbers",
-
+      | "numbers"
+      | "digest",
+  
     id: string,
-
+  
     mode?: DrawerMode,
-
+  
     payload?: any,
-
+  
   ) => void;
 
   closeLeftDrawer: () => void;
@@ -236,29 +238,30 @@ export function DrawerProvider({
 
     type:
       | "content"
-      | "numbers",
-
+      | "numbers"
+      | "digest",
+  
     id: string,
-
+  
     mode: DrawerMode =
       "silent",
-
+  
     payload?: any,
-
+  
   ) {
-
+  
     setRightDrawer({
-
+  
       type,
-
+  
       id,
-
+  
       mode,
-
+  
       payload,
-
+  
     });
-
+  
   }
 
   function closeRightDrawer() {
