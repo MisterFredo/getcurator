@@ -321,7 +321,9 @@ def update_user(payload):
     query_bq(
         f"""
         UPDATE `{TABLE_USER}`
+
         SET
+
             EMAIL = COALESCE(
                 @email,
                 EMAIL
@@ -370,6 +372,7 @@ def update_user(payload):
 
         WHERE ID_USER = @user_id
         """,
+
         {
             "user_id": payload.user_id,
 
@@ -381,15 +384,21 @@ def update_user(payload):
             "language": payload.language or "fr",
 
             "role": payload.role,
-            "profile_type": payload.profile_type,
-            "display_name": payload.display_name,
-            "description": payload.description,
-            "frequency": payload.frequency,
-            "is_active": (
-                None
-                if payload.is_active is None
-                else int(payload.is_active)
-            ),
+
+            "profile_type":
+                payload.profile_type,
+
+            "display_name":
+                payload.display_name,
+
+            "description":
+                payload.description,
+
+            "frequency":
+                payload.frequency,
+
+            "is_active":
+                payload.is_active,
         },
     )
 
@@ -403,6 +412,8 @@ def update_user(payload):
             payload.user_id,
             payload.universes,
         )
+
+
 # =========================================================
 # LIST USERS
 # =========================================================
