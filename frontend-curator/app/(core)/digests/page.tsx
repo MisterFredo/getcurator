@@ -8,8 +8,14 @@ import {
 import { api } from "@/lib/api";
 
 import DigestList from "@/components/digest/DigestList";
-import {useDrawer,} from "@/contexts/DrawerContext";
-import type {DigestHistoryItem,} from "@/types/digest";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import type {
+  DigestHistoryItem,
+} from "@/types/digest";
 
 /* =========================================================
    TYPES
@@ -62,13 +68,6 @@ export default function DigestsPage() {
     search,
     setSearch,
   ] = useState("");
-
-  const [
-    selectedDigestId,
-    setSelectedDigestId,
-  ] = useState<
-    string | null
-  >(null);
 
   const {
     openRightDrawer,
@@ -514,6 +513,9 @@ export default function DigestsPage() {
           )}
 
         </div>
+
+      )}
+
     </div>
 
   );
