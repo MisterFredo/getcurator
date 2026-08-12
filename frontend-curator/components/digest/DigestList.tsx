@@ -49,7 +49,7 @@ function formatDate(
    COMPONENT
 ========================================================= */
 
-export default function DigestCard({
+export default function DigestList({
   digest,
   onClick,
 }: Props) {
@@ -97,10 +97,10 @@ export default function DigestCard({
       className="
         group
         w-full
-        bg-white
+        rounded-xl
         border
         border-ratecard-border
-        rounded-xl
+        bg-white
         px-5
         py-4
         text-left
@@ -119,7 +119,7 @@ export default function DigestCard({
       >
 
         {/* =================================================
-            IDENTITY
+            LEFT
         ================================================= */}
 
         <div
@@ -129,58 +129,51 @@ export default function DigestCard({
           "
         >
 
+          {/* EXPERT */}
+
           <div
             className="
-              flex
-              items-center
-              gap-2
+              mb-2
             "
           >
 
-            <div
+            <span
               className="
-                truncate
+                inline-flex
+                rounded-full
+                bg-emerald-50
+                px-2.5
+                py-1
+                text-xs
+                font-medium
+                text-emerald-700
+              "
+            >
+              {displayName}
+            </span>
+
+          </div>
+
+          {/* DIGEST */}
+
+          <div
+            className="
+              flex
+              flex-wrap
+              items-center
+              gap-x-2
+              gap-y-1
+            "
+          >
+
+            <span
+              className="
                 text-sm
                 font-semibold
                 text-gray-900
                 group-hover:underline
               "
             >
-              {displayName}
-            </div>
-
-            {digest.COMPANY && (
-
-              <div
-                className="
-                  hidden
-                  truncate
-                  text-xs
-                  text-gray-400
-                  sm:block
-                "
-              >
-                · {digest.COMPANY}
-              </div>
-
-            )}
-
-          </div>
-
-          <div
-            className="
-              mt-1
-              flex
-              flex-wrap
-              items-center
-              gap-x-2
-              gap-y-1
-              text-xs
-              text-gray-500
-            "
-          >
-
-            <span>
               {frequency}
             </span>
 
@@ -188,11 +181,21 @@ export default function DigestCard({
               periodEnd) && (
 
               <>
-                <span>
-                  ·
+
+                <span
+                  className="
+                    text-gray-300
+                  "
+                >
+                  •
                 </span>
 
-                <span>
+                <span
+                  className="
+                    text-sm
+                    text-gray-500
+                  "
+                >
                   {periodStart}
 
                   {periodStart &&
@@ -200,12 +203,30 @@ export default function DigestCard({
                     " → "}
 
                   {periodEnd}
+
                 </span>
+
               </>
 
             )}
 
           </div>
+
+          {/* COMPANY */}
+
+          {digest.COMPANY && (
+
+            <div
+              className="
+                mt-2
+                text-sm
+                text-gray-500
+              "
+            >
+              {digest.COMPANY}
+            </div>
+
+          )}
 
         </div>
 
@@ -225,14 +246,11 @@ export default function DigestCard({
               px-3
               py-1
               text-xs
-              text-gray-500
+              text-gray-600
               md:block
             "
           >
-            {
-              digest.TOTAL_CONTENTS
-            }{" "}
-            contents
+            {digest.TOTAL_CONTENTS} contents
           </div>
 
         )}
@@ -247,10 +265,8 @@ export default function DigestCard({
             shrink-0
             text-gray-300
             transition
-            group-hover:
-              translate-x-0.5
-            group-hover:
-              text-gray-500
+            group-hover:translate-x-0.5
+            group-hover:text-gray-500
           "
         />
 
