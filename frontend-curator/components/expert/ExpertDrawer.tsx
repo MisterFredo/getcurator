@@ -7,6 +7,12 @@ import {
 
 import { api } from "@/lib/api";
 
+import EntityDrawer
+  from "@/components/drawers/EntityDrawer";
+
+import DrawerHeader
+  from "@/components/drawers/DrawerHeader";
+
 import {
   useDrawer,
 } from "@/contexts/DrawerContext";
@@ -281,7 +287,9 @@ export default function ExpertDrawer({
 
     load();
 
-  }, [expertId]);
+  }, [
+    expertId,
+  ]);
 
   /* =====================================================
      FAVORITE
@@ -329,32 +337,40 @@ export default function ExpertDrawer({
   if (loading) {
 
     return (
-      <div
-        className="
-          p-6
-          text-sm
-          text-gray-500
-        "
+
+      <EntityDrawer
+        onClose={
+          closeLeftDrawer
+        }
+        header={
+          <DrawerHeader
+            title="Expert"
+            onClose={
+              closeLeftDrawer
+            }
+          />
+        }
       >
-        Loading...
-      </div>
+
+        <div
+          className="
+            py-8
+            text-sm
+            text-gray-500
+          "
+        >
+          Loading...
+        </div>
+
+      </EntityDrawer>
+
     );
 
   }
 
   if (!expert) {
 
-    return (
-      <div
-        className="
-          p-6
-          text-sm
-          text-gray-500
-        "
-      >
-        Expert not found.
-      </div>
-    );
+    return null;
 
   }
 
@@ -373,68 +389,70 @@ export default function ExpertDrawer({
 
   return (
 
-    <div
-      className="
-        h-full
-        overflow-y-auto
-        bg-white
-      "
+    <EntityDrawer
+      onClose={
+        closeLeftDrawer
+      }
+      header={
+        <DrawerHeader
+          title={
+            displayName
+          }
+          onClose={
+            closeLeftDrawer
+          }
+        />
+      }
     >
 
       {/* =====================================================
-          HEADER
+          IDENTITY
       ===================================================== */}
 
-      <div
+      <section
         className="
-          sticky
-          top-0
-          z-20
-          flex
-          items-start
-          justify-between
-          gap-4
           border-b
-          bg-white
-          p-6
+          border-gray-200
+          py-4
         "
       >
-
-        <div>
-
-          <div
-            className="
-              text-xl
-              font-semibold
-              text-gray-900
-            "
-          >
-            {displayName}
-          </div>
-
-          {expert.COMPANY && (
-
-            <div
-              className="
-                mt-1
-                text-sm
-                text-gray-500
-              "
-            >
-              {expert.COMPANY}
-            </div>
-
-          )}
-
-        </div>
 
         <div
           className="
             flex
-            items-center
-            gap-3
+            items-start
+            justify-between
+            gap-4
           "
         >
+
+          <div>
+
+            <div
+              className="
+                text-lg
+                font-semibold
+                text-gray-900
+              "
+            >
+              {displayName}
+            </div>
+
+            {expert.COMPANY && (
+
+              <div
+                className="
+                  mt-1
+                  text-sm
+                  text-gray-500
+                "
+              >
+                {expert.COMPANY}
+              </div>
+
+            )}
+
+          </div>
 
           <button
             type="button"
@@ -453,251 +471,261 @@ export default function ExpertDrawer({
             }
           </button>
 
-          <button
-            type="button"
-            onClick={
-              closeLeftDrawer
-            }
-            className="
-              text-xl
-              text-gray-400
-              hover:text-gray-700
-            "
-          >
-            ×
-          </button>
-
         </div>
 
-      </div>
+      </section>
 
       {/* =====================================================
-          CONTENT
+          DESCRIPTION
       ===================================================== */}
 
-      <div
-        className="
-          space-y-8
-          p-6
-        "
-      >
+      {expert.DESCRIPTION && (
 
-        {/* DESCRIPTION */}
+        <section
+          className="
+            border-b
+            border-gray-200
+            py-4
+          "
+        >
 
-        {expert.DESCRIPTION && (
+          <div
+            className="
+              mb-2
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Description
+          </div>
 
-          <section>
+          <div
+            className="
+              text-sm
+              leading-6
+              text-gray-700
+              whitespace-pre-wrap
+            "
+          >
+            {expert.DESCRIPTION}
+          </div>
 
-            <div
-              className="
-                mb-2
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-400
-              "
-            >
-              Description
-            </div>
+        </section>
 
-            <div
-              className="
-                text-sm
-                leading-6
-                text-gray-700
-                whitespace-pre-wrap
-              "
-            >
-              {expert.DESCRIPTION}
-            </div>
+      )}
 
-          </section>
+      {/* =====================================================
+          PROFESSIONAL PROFILE
+      ===================================================== */}
 
-        )}
+      {profile?.profile_text && (
 
-        {/* PROFESSIONAL PROFILE */}
+        <section
+          className="
+            border-b
+            border-gray-200
+            py-4
+          "
+        >
 
-        {profile?.profile_text && (
+          <div
+            className="
+              mb-2
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Professional Profile
+          </div>
 
-          <section>
+          <div
+            className="
+              rounded-lg
+              bg-gray-50
+              p-4
+              text-sm
+              leading-6
+              text-gray-700
+              whitespace-pre-wrap
+            "
+          >
+            {profile.profile_text}
+          </div>
 
-            <div
-              className="
-                mb-2
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-400
-              "
-            >
-              Professional Profile
-            </div>
+        </section>
 
-            <div
-              className="
-                rounded-lg
-                border
-                bg-gray-50
-                p-4
-                text-sm
-                leading-6
-                text-gray-700
-                whitespace-pre-wrap
-              "
-            >
-              {profile.profile_text}
-            </div>
+      )}
 
-          </section>
+      {/* =====================================================
+          COMPANIES
+      ===================================================== */}
 
-        )}
+      {preferences.companies.length > 0 && (
 
-        {/* COMPANIES */}
+        <section
+          className="
+            border-b
+            border-gray-200
+            py-4
+          "
+        >
 
-        {preferences.companies.length > 0 && (
+          <div
+            className="
+              mb-3
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Companies
+          </div>
 
-          <section>
+          <div
+            className="
+              grid
+              grid-cols-2
+              gap-3
+            "
+          >
 
-            <div
-              className="
-                mb-3
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-400
-              "
-            >
-              Companies
-            </div>
+            {preferences.companies.map(
+              item => (
 
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-3
-              "
-            >
+                <EntityCard
+                  key={item.id}
+                  item={item}
+                />
 
-              {preferences.companies.map(
-                item => (
+              ),
+            )}
 
-                  <EntityCard
-                    key={item.id}
-                    item={item}
-                  />
+          </div>
 
-                ),
-              )}
+        </section>
 
-            </div>
+      )}
 
-          </section>
+      {/* =====================================================
+          SOLUTIONS
+      ===================================================== */}
 
-        )}
+      {preferences.solutions.length > 0 && (
 
-        {/* SOLUTIONS */}
+        <section
+          className="
+            border-b
+            border-gray-200
+            py-4
+          "
+        >
 
-        {preferences.solutions.length > 0 && (
+          <div
+            className="
+              mb-3
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Solutions
+          </div>
 
-          <section>
+          <div
+            className="
+              grid
+              grid-cols-2
+              gap-3
+            "
+          >
 
-            <div
-              className="
-                mb-3
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-400
-              "
-            >
-              Solutions
-            </div>
+            {preferences.solutions.map(
+              item => (
 
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-3
-              "
-            >
+                <EntityCard
+                  key={item.id}
+                  item={item}
+                />
 
-              {preferences.solutions.map(
-                item => (
+              ),
+            )}
 
-                  <EntityCard
-                    key={item.id}
-                    item={item}
-                  />
+          </div>
 
-                ),
-              )}
+        </section>
 
-            </div>
+      )}
 
-          </section>
+      {/* =====================================================
+          TOPICS
+      ===================================================== */}
 
-        )}
+      {preferences.topics.length > 0 && (
 
-        {/* TOPICS */}
+        <section
+          className="
+            py-4
+          "
+        >
 
-        {preferences.topics.length > 0 && (
+          <div
+            className="
+              mb-3
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Topics
+          </div>
 
-          <section>
+          <div
+            className="
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
 
-            <div
-              className="
-                mb-3
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-400
-              "
-            >
-              Topics
-            </div>
+            {preferences.topics.map(
+              item => (
 
-            <div
-              className="
-                flex
-                flex-wrap
-                gap-2
-              "
-            >
+                <div
+                  key={item.id}
+                  className="
+                    rounded-full
+                    bg-gray-100
+                    px-3
+                    py-1.5
+                    text-sm
+                    text-gray-700
+                  "
+                >
+                  {item.label}
+                </div>
 
-              {preferences.topics.map(
-                item => (
+              ),
+            )}
 
-                  <div
-                    key={item.id}
-                    className="
-                      rounded-full
-                      bg-gray-100
-                      px-3
-                      py-1.5
-                      text-sm
-                      text-gray-700
-                    "
-                  >
-                    {item.label}
-                  </div>
+          </div>
 
-                ),
-              )}
+        </section>
 
-            </div>
+      )}
 
-          </section>
-
-        )}
-
-      </div>
-
-    </div>
+    </EntityDrawer>
 
   );
 
