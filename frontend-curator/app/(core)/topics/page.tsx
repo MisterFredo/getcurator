@@ -23,6 +23,8 @@ import {
 export const dynamic =
   "force-dynamic";
 
+const MAX_FAVORITES = 10;
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -34,6 +36,7 @@ type Topic = {
   label: string;
 
   universes: string[];
+
   content_count: number;
 
 };
@@ -72,6 +75,7 @@ async function fetchTopics():
 
         universes:
           topic.universes ?? [],
+
         content_count:
           topic.content_count ?? 0,
 
@@ -186,6 +190,18 @@ export default function TopicsPage() {
   ] = useState<string[]>([]);
 
   const [
+    totalFavorites,
+    setTotalFavorites,
+  ] = useState(0);
+
+  const [
+    favoriteMessage,
+    setFavoriteMessage,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -239,6 +255,13 @@ export default function TopicsPage() {
           data,
         );
 
+        const companyPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.COMPANY,
+          )
+            ? prefsRes.preferences.COMPANY
+            : [];
+
         const topicPrefs =
           Array.isArray(
             prefsRes?.preferences?.TOPIC,
@@ -246,8 +269,21 @@ export default function TopicsPage() {
             ? prefsRes.preferences.TOPIC
             : [];
 
+        const solutionPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.SOLUTION,
+          )
+            ? prefsRes.preferences.SOLUTION
+            : [];
+
         setFavorites(
           topicPrefs,
+        );
+
+        setTotalFavorites(
+          companyPrefs.length +
+          topicPrefs.length +
+          solutionPrefs.length,
         );
 
       } catch (e) {
@@ -263,6 +299,10 @@ export default function TopicsPage() {
 
         setFavorites(
           [],
+        );
+
+        setTotalFavorites(
+          0,
         );
 
       } finally {
@@ -335,6 +375,29 @@ export default function TopicsPage() {
   ]);
 
   /* =========================================================
+     FAVORITE LIMIT MESSAGE
+  ========================================================= */
+
+  function showFavoriteLimitMessage() {
+
+    setFavoriteMessage(
+      `You can select up to ${MAX_FAVORITES} favorites.`,
+    );
+
+    window.setTimeout(
+      () => {
+
+        setFavoriteMessage(
+          null,
+        );
+
+      },
+      2500,
+    );
+
+  }
+
+  /* =========================================================
      TOGGLE FAVORITE
   ========================================================= */
 
@@ -357,6 +420,17 @@ export default function TopicsPage() {
 
       } else {
 
+        if (
+          totalFavorites >=
+          MAX_FAVORITES
+        ) {
+
+          showFavoriteLimitMessage();
+
+          return;
+
+        }
+
         await api.post(
           "/user/preferences/add",
           {
@@ -378,6 +452,19 @@ export default function TopicsPage() {
                 ...previous,
                 id,
               ],
+      );
+
+      setTotalFavorites(
+        (previous) =>
+          isFavorite
+            ? Math.max(
+                0,
+                previous - 1,
+              )
+            : Math.min(
+                MAX_FAVORITES,
+                previous + 1,
+              ),
       );
 
     } catch (e) {
@@ -416,6 +503,9 @@ export default function TopicsPage() {
      DATA
   ========================================================= */
 
+  const maxFavoritesReached =
+    totalFavorites >= MAX_FAVORITES;
+
   const favoriteTopics =
     sortTopics(
       topics.filter(
@@ -452,6 +542,10 @@ export default function TopicsPage() {
       space-y-8
     ">
 
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <div>
 
         <h1 className="
@@ -464,6 +558,33 @@ export default function TopicsPage() {
 
       </div>
 
+      {/* =====================================================
+          FAVORITE MESSAGE
+      ===================================================== */}
+
+      {favoriteMessage && (
+
+        <div className="
+          rounded-lg
+          border
+          border-amber-200
+          bg-amber-50
+          px-4
+          py-3
+          text-sm
+          text-amber-700
+        ">
+
+          {favoriteMessage}
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
+
       {loading && (
 
         <p className="
@@ -474,6 +595,10 @@ export default function TopicsPage() {
         </p>
 
       )}
+
+      {/* =====================================================
+          FAVORITES
+      ===================================================== */}
 
       {!loading
         && favoriteTopics.length > 0
@@ -546,6 +671,10 @@ export default function TopicsPage() {
         </FavoritesStrip>
 
       )}
+
+      {/* =====================================================
+          OTHER TOPICS
+      ===================================================== */}
 
       {!loading
         && hasContent
@@ -680,6 +809,14 @@ export default function TopicsPage() {
 
                             isFavorite={
                               isFavorite
+                            }
+
+                            maxFavoritesReached={
+                              maxFavoritesReached
+                            }
+
+                            onFavoriteLimitReached={
+                              showFavoriteLimitMessage
                             }
 
                             onToggleFavorite={() =>
