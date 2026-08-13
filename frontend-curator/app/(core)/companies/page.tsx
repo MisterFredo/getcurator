@@ -778,6 +778,10 @@ export default function CompaniesPage() {
                             )
                           }
 
+                          maxFavoritesReached={
+                            maxFavoritesReached
+                          }
+
                           onToggleFavorite={(
                             id,
                             isFavorite,
