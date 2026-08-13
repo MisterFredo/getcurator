@@ -12,8 +12,13 @@ from core.user.user_preferences_service import (
 
 from .models import (
     ConversationContext,
+    ConversationInterlocutorProfile,
     ConversationKnowledgeBlock,
     ConversationKnowledgeEntity,
+)
+
+from core.user.user_profile_service import (
+    get_user_profile,
 )
 
 
@@ -24,10 +29,46 @@ from .models import (
 def get_interlocutor_context(
     interlocutor_id: str,
 ) -> ConversationContext:
-    """
-    Build the complete Knowledge context
-    available for one interlocutor.
-    """
+
+    # ========================================================
+    # PROFILE
+    # ========================================================
+
+    raw_profile = get_user_profile(
+        interlocutor_id,
+    )
+
+    profile = None
+
+    if raw_profile:
+
+        profile = (
+            ConversationInterlocutorProfile(
+                geography_1=
+                    raw_profile.get(
+                        "geography_1",
+                    ),
+
+                geography_2=
+                    raw_profile.get(
+                        "geography_2",
+                    ),
+
+                geography_3=
+                    raw_profile.get(
+                        "geography_3",
+                    ),
+
+                profile_text=
+                    raw_profile.get(
+                        "profile_text",
+                    ),
+            )
+        )
+
+    # ========================================================
+    # PREFERENCES
+    # ========================================================
 
     preferences = (
         get_user_preferences_grouped(
@@ -35,10 +76,6 @@ def get_interlocutor_context(
         )
         or {}
     )
-
-    entities: list[
-        ConversationKnowledgeEntity
-    ] = []
 
     # ========================================================
     # COMPANIES
