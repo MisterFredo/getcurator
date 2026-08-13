@@ -26,7 +26,7 @@ export const dynamic =
 export const fetchCache =
   "force-no-store";
 
-
+const MAX_FAVORITES = 10;
 
 
 /* =========================================================
@@ -470,6 +470,9 @@ export default function CompaniesPage() {
      DATA
   ========================================================= */
 
+  const maxFavoritesReached =
+    totalFavorites >= MAX_FAVORITES;
+  
   const favorites =
     sortCompanies(
       companies.filter(
