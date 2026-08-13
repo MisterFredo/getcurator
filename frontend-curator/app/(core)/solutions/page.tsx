@@ -23,6 +23,8 @@ import {
 export const dynamic =
   "force-dynamic";
 
+const MAX_FAVORITES = 10;
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -33,9 +35,12 @@ type Solution = {
 
   name: string;
 
-  media_logo_rectangle_id?: string | null;
+  media_logo_rectangle_id?:
+    string | null;
 
-  logo_type?: "solution" | "company";
+  logo_type?:
+    "solution" | "company";
+
   content_count: number;
 
   is_partner?: boolean;
@@ -81,6 +86,7 @@ async function fetchSolutions():
 
         logo_type:
           solution.logo_type,
+
         content_count:
           solution.content_count ?? 0,
 
@@ -201,6 +207,18 @@ export default function SolutionsPage() {
   ] = useState<string[]>([]);
 
   const [
+    totalFavorites,
+    setTotalFavorites,
+  ] = useState(0);
+
+  const [
+    favoriteMessage,
+    setFavoriteMessage,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -254,6 +272,20 @@ export default function SolutionsPage() {
           data,
         );
 
+        const companyPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.COMPANY,
+          )
+            ? prefsRes.preferences.COMPANY
+            : [];
+
+        const topicPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.TOPIC,
+          )
+            ? prefsRes.preferences.TOPIC
+            : [];
+
         const solutionPrefs =
           Array.isArray(
             prefsRes?.preferences?.SOLUTION,
@@ -263,6 +295,12 @@ export default function SolutionsPage() {
 
         setFavorites(
           solutionPrefs,
+        );
+
+        setTotalFavorites(
+          companyPrefs.length +
+          topicPrefs.length +
+          solutionPrefs.length,
         );
 
       } catch (e) {
@@ -278,6 +316,10 @@ export default function SolutionsPage() {
 
         setFavorites(
           [],
+        );
+
+        setTotalFavorites(
+          0,
         );
 
       } finally {
@@ -350,6 +392,29 @@ export default function SolutionsPage() {
   ]);
 
   /* =========================================================
+     FAVORITE LIMIT MESSAGE
+  ========================================================= */
+
+  function showFavoriteLimitMessage() {
+
+    setFavoriteMessage(
+      `You can select up to ${MAX_FAVORITES} favorites.`,
+    );
+
+    window.setTimeout(
+      () => {
+
+        setFavoriteMessage(
+          null,
+        );
+
+      },
+      2500,
+    );
+
+  }
+
+  /* =========================================================
      TOGGLE FAVORITE
   ========================================================= */
 
@@ -372,6 +437,17 @@ export default function SolutionsPage() {
 
       } else {
 
+        if (
+          totalFavorites >=
+          MAX_FAVORITES
+        ) {
+
+          showFavoriteLimitMessage();
+
+          return;
+
+        }
+
         await api.post(
           "/user/preferences/add",
           {
@@ -393,6 +469,19 @@ export default function SolutionsPage() {
                 ...previous,
                 id,
               ],
+      );
+
+      setTotalFavorites(
+        (previous) =>
+          isFavorite
+            ? Math.max(
+                0,
+                previous - 1,
+              )
+            : Math.min(
+                MAX_FAVORITES,
+                previous + 1,
+              ),
       );
 
     } catch (e) {
@@ -430,6 +519,9 @@ export default function SolutionsPage() {
   /* =========================================================
      DATA
   ========================================================= */
+
+  const maxFavoritesReached =
+    totalFavorites >= MAX_FAVORITES;
 
   const favoriteSolutions =
     sortSolutions(
@@ -482,6 +574,29 @@ export default function SolutionsPage() {
         </h1>
 
       </div>
+
+      {/* =====================================================
+          FAVORITE MESSAGE
+      ===================================================== */}
+
+      {favoriteMessage && (
+
+        <div className="
+          rounded-lg
+          border
+          border-amber-200
+          bg-amber-50
+          px-4
+          py-3
+          text-sm
+          text-amber-700
+        ">
+
+          {favoriteMessage}
+
+        </div>
+
+      )}
 
       {/* =====================================================
           LOADING
@@ -538,6 +653,7 @@ export default function SolutionsPage() {
                   visualRectId={
                     solution.media_logo_rectangle_id
                   }
+
                   contentCount={
                     solution.content_count
                   }
@@ -726,6 +842,14 @@ export default function SolutionsPage() {
 
                             isFavorite={
                               isFavorite
+                            }
+
+                            maxFavoritesReached={
+                              maxFavoritesReached
+                            }
+
+                            onFavoriteLimitReached={
+                              showFavoriteLimitMessage
                             }
 
                             onToggleFavorite={() =>
