@@ -2,12 +2,16 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
 import {
   api,
 } from "@/lib/api";
+
+import InterlocutorCard
+  from "@/components/conversation/InterlocutorCard";
 
 /* =========================================================
    TYPES
@@ -23,11 +27,46 @@ type ConversationResponse = {
   answer: string;
 };
 
+type Interlocutor = {
+  id: string;
+  displayName: string;
+  company?: string | null;
+  description?: string | null;
+  type: "self" | "expert";
+};
+
+type ExpertRow = {
+  ID_USER: string;
+  DISPLAY_NAME?: string | null;
+  NAME?: string | null;
+  COMPANY?: string | null;
+  DESCRIPTION?: string | null;
+  IS_SELECTED?: boolean;
+  IS_ACTIVE?: boolean;
+};
+
 /* =========================================================
    PAGE
 ========================================================= */
 
 export default function ConversationPage() {
+
+  const [
+    interlocutors,
+    setInterlocutors,
+  ] = useState<Interlocutor[]>([]);
+
+  const [
+    selectedInterlocutorId,
+    setSelectedInterlocutorId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    interlocutorsLoading,
+    setInterlocutorsLoading,
+  ] = useState(true);
 
   const [
     question,
@@ -52,6 +91,201 @@ export default function ConversationPage() {
   );
 
   /* =========================================================
+     LOAD INTERLOCUTORS
+  ========================================================= */
+
+  useEffect(() => {
+
+    async function loadInterlocutors() {
+
+      setInterlocutorsLoading(
+        true,
+      );
+
+      try {
+
+        const [
+          meRes,
+          expertsRes,
+        ] = await Promise.all([
+
+          api.get(
+            "/user/me",
+          ),
+
+          api.get(
+            "/user/experts",
+          ),
+
+        ]);
+
+        const user =
+          meRes?.user;
+
+        if (!user?.ID_USER) {
+
+          setError(
+            "Unable to identify the current user.",
+          );
+
+          return;
+
+        }
+
+        /* ===============================================
+           SELF
+        =============================================== */
+
+        const self:
+          Interlocutor = {
+
+          id:
+            user.ID_USER,
+
+          displayName:
+            "Moi augmenté",
+
+          company:
+            user.COMPANY ?? null,
+
+          description:
+            "Your profile, interests and accumulated knowledge.",
+
+          type:
+            "self",
+        };
+
+        /* ===============================================
+           EXPERTS
+        =============================================== */
+
+        const expertRows:
+          ExpertRow[] =
+          Array.isArray(
+            expertsRes,
+          )
+            ? expertsRes
+            : expertsRes?.experts ?? [];
+
+        const experts:
+          Interlocutor[] =
+          expertRows
+            .filter(
+              expert =>
+                expert.IS_SELECTED === true &&
+                expert.IS_ACTIVE !== false,
+            )
+            .map(
+              expert => ({
+
+                id:
+                  expert.ID_USER,
+
+                displayName:
+                  expert.DISPLAY_NAME
+                  ??
+                  expert.NAME
+                  ??
+                  "Expert",
+
+                company:
+                  expert.COMPANY
+                  ?? null,
+
+                description:
+                  expert.DESCRIPTION
+                  ?? null,
+
+                type:
+                  "expert",
+              }),
+            );
+
+        const available = [
+          self,
+          ...experts,
+        ];
+
+        setInterlocutors(
+          available,
+        );
+
+        setSelectedInterlocutorId(
+          self.id,
+        );
+
+      } catch (e) {
+
+        console.error(
+          "❌ Interlocutors load error:",
+          e,
+        );
+
+        setError(
+          "Unable to load interlocutors.",
+        );
+
+      } finally {
+
+        setInterlocutorsLoading(
+          false,
+        );
+
+      }
+
+    }
+
+    loadInterlocutors();
+
+  }, []);
+
+  /* =========================================================
+     SELECT INTERLOCUTOR
+  ========================================================= */
+
+  function handleSelectInterlocutor(
+    id: string,
+  ) {
+
+    if (
+      id ===
+      selectedInterlocutorId
+    ) {
+
+      return;
+
+    }
+
+    setSelectedInterlocutorId(
+      id,
+    );
+
+    setMessages(
+      [],
+    );
+
+    setQuestion(
+      "",
+    );
+
+    setError(
+      null,
+    );
+
+  }
+
+  /* =========================================================
+     CURRENT INTERLOCUTOR
+  ========================================================= */
+
+  const selectedInterlocutor =
+    interlocutors.find(
+      interlocutor =>
+        interlocutor.id ===
+        selectedInterlocutorId,
+    ) ?? null;
+
+  /* =========================================================
      SEND
   ========================================================= */
 
@@ -66,23 +300,9 @@ export default function ConversationPage() {
 
     if (
       !cleanQuestion ||
-      loading
+      loading ||
+      !selectedInterlocutorId
     ) {
-
-      return;
-
-    }
-
-    const userId =
-      localStorage.getItem(
-        "user_id",
-      );
-
-    if (!userId) {
-
-      setError(
-        "Unable to identify the current user.",
-      );
 
       return;
 
@@ -103,9 +323,17 @@ export default function ConversationPage() {
       ],
     );
 
-    setQuestion("");
-    setError(null);
-    setLoading(true);
+    setQuestion(
+      "",
+    );
+
+    setError(
+      null,
+    );
+
+    setLoading(
+      true,
+    );
 
     try {
 
@@ -115,7 +343,7 @@ export default function ConversationPage() {
           "/conversation/",
           {
             interlocutor_id:
-              userId,
+              selectedInterlocutorId,
 
             question:
               cleanQuestion,
@@ -126,7 +354,9 @@ export default function ConversationPage() {
 
       const assistantMessage:
         Message = {
-          role: "assistant",
+          role:
+            "assistant",
+
           content:
             response.answer,
         };
@@ -151,7 +381,9 @@ export default function ConversationPage() {
 
     } finally {
 
-      setLoading(false);
+      setLoading(
+        false,
+      );
 
     }
 
@@ -166,8 +398,8 @@ export default function ConversationPage() {
     <div
       className="
         mx-auto
-        max-w-4xl
-        space-y-6
+        max-w-5xl
+        space-y-8
       "
     >
 
@@ -194,10 +426,168 @@ export default function ConversationPage() {
             text-gray-500
           "
         >
-          Ask questions to your augmented self.
+          Choose who you want to talk to.
         </p>
 
       </div>
+
+      {/* =====================================================
+          INTERLOCUTORS
+      ===================================================== */}
+
+      <div
+        className="
+          space-y-3
+        "
+      >
+
+        <div
+          className="
+            text-sm
+            font-medium
+            text-gray-700
+          "
+        >
+          Interlocutors
+        </div>
+
+        {interlocutorsLoading ? (
+
+          <div
+            className="
+              text-sm
+              text-gray-400
+            "
+          >
+            Loading interlocutors...
+          </div>
+
+        ) : (
+
+          <div
+            className="
+              grid
+              grid-cols-1
+              gap-3
+              sm:grid-cols-2
+              lg:grid-cols-3
+              xl:grid-cols-4
+            "
+          >
+
+            {interlocutors.map(
+              interlocutor => (
+
+                <InterlocutorCard
+
+                  key={
+                    interlocutor.id
+                  }
+
+                  id={
+                    interlocutor.id
+                  }
+
+                  displayName={
+                    interlocutor.displayName
+                  }
+
+                  company={
+                    interlocutor.company
+                  }
+
+                  description={
+                    interlocutor.description
+                  }
+
+                  isSelf={
+                    interlocutor.type ===
+                    "self"
+                  }
+
+                  isSelected={
+                    interlocutor.id ===
+                    selectedInterlocutorId
+                  }
+
+                  onSelect={
+                    handleSelectInterlocutor
+                  }
+
+                />
+
+              ),
+            )}
+
+          </div>
+
+        )}
+
+      </div>
+
+      {/* =====================================================
+          ACTIVE INTERLOCUTOR
+      ===================================================== */}
+
+      {selectedInterlocutor && (
+
+        <div
+          className="
+            border-b
+            border-gray-200
+            pb-4
+          "
+        >
+
+          <div
+            className="
+              text-xs
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Conversation with
+          </div>
+
+          <div
+            className="
+              mt-1
+              text-lg
+              font-semibold
+              text-gray-900
+            "
+          >
+            {
+              selectedInterlocutor
+                .displayName
+            }
+          </div>
+
+          {
+            selectedInterlocutor
+              .description
+            && (
+
+            <p
+              className="
+                mt-1
+                max-w-2xl
+                text-sm
+                text-gray-500
+              "
+            >
+              {
+                selectedInterlocutor
+                  .description
+              }
+            </p>
+
+          )}
+
+        </div>
+
+      )}
 
       {/* =====================================================
           CONVERSATION
@@ -247,9 +637,8 @@ export default function ConversationPage() {
                   text-gray-400
                 "
               >
-                Your answers are based on
-                your selected interests and
-                their Knowledge.
+                Ask your interlocutor
+                about their areas of expertise.
               </div>
 
             </div>
@@ -277,7 +666,8 @@ export default function ConversationPage() {
                 <div
                   key={index}
                   className={
-                    message.role === "user"
+                    message.role ===
+                    "user"
                       ? "flex justify-end"
                       : "flex justify-start"
                   }
@@ -293,7 +683,8 @@ export default function ConversationPage() {
                       leading-relaxed
 
                       ${
-                        message.role === "user"
+                        message.role ===
+                        "user"
 
                           ? `
                             bg-gray-900
@@ -313,7 +704,9 @@ export default function ConversationPage() {
                         whitespace-pre-wrap
                       "
                     >
-                      {message.content}
+                      {
+                        message.content
+                      }
                     </div>
 
                   </div>
@@ -409,12 +802,15 @@ export default function ConversationPage() {
               )
           }
 
-          placeholder="
-            Ask a question...
-          "
+          placeholder={
+            selectedInterlocutor
+              ? `Ask ${selectedInterlocutor.displayName}...`
+              : "Ask a question..."
+          }
 
           disabled={
-            loading
+            loading ||
+            !selectedInterlocutorId
           }
 
           className="
@@ -440,7 +836,8 @@ export default function ConversationPage() {
 
           disabled={
             loading ||
-            !question.trim()
+            !question.trim() ||
+            !selectedInterlocutorId
           }
 
           className="
