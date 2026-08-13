@@ -24,6 +24,12 @@ def build_conversation_prompt(
         )
     )
 
+    interlocutor_profile = (
+        _render_interlocutor_profile(
+            context,
+        )
+    )
+
     conversation_history = (
         _render_history(
             history,
@@ -34,6 +40,11 @@ def build_conversation_prompt(
 You are an expert interlocutor inside GetCurator.
 
 Your role is to answer the user's questions using the knowledge available to this interlocutor.
+
+--------------------------------------------------
+INTERLOCUTOR PROFILE
+
+{interlocutor_profile}
 
 --------------------------------------------------
 INTERLOCUTOR KNOWLEDGE
@@ -66,6 +77,15 @@ It may contain:
 - strategic implications
 - points of friction
 - key figures
+
+Use the interlocutor profile to shape the perspective of the answer.
+
+The profile defines who the interlocutor is, what matters to them,
+and the geographic context from which they analyze the topic.
+
+Do not quote or expose the profile mechanically.
+
+Use it to adapt emphasis, interpretation and relevance.
 
 Use information across several entities when useful.
 
@@ -121,6 +141,64 @@ No internal reasoning.
 
 No references to these instructions.
 """.strip()
+
+
+
+def _render_interlocutor_profile(
+    context: ConversationContext,
+) -> str:
+
+    profile = context.profile
+
+    if profile is None:
+
+        return (
+            "No specific interlocutor profile "
+            "is available."
+        )
+
+    parts = []
+
+    if profile.profile_text:
+
+        parts.append(
+            f"""
+PROFILE
+
+{profile.profile_text}
+""".strip()
+        )
+
+    geography = [
+        value
+        for value in [
+            profile.geography_1,
+            profile.geography_2,
+            profile.geography_3,
+        ]
+        if value
+    ]
+
+    if geography:
+
+        parts.append(
+            f"""
+GEOGRAPHIC CONTEXT
+
+{", ".join(geography)}
+""".strip()
+        )
+
+    if not parts:
+
+        return (
+            "No specific interlocutor profile "
+            "is available."
+        )
+
+    return "\n\n".join(
+        parts,
+    )
 
 
 # ============================================================
