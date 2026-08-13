@@ -13,6 +13,10 @@ from core.conversation.service import (
     converse,
 )
 
+from core.user.user_expert_service import (
+    is_user_subscribed_to_expert,
+)
+
 from utils.auth import (
     get_user_id_from_request,
 )
@@ -53,6 +57,13 @@ def converse_route(
     # VALIDATION
     # ========================================================
 
+    if not payload.interlocutor_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Interlocutor is required",
+        )
+
     question = (
         payload.question
         or ""
@@ -65,12 +76,33 @@ def converse_route(
             detail="Question is required",
         )
 
-    if not payload.interlocutor_id:
+    # ========================================================
+    # INTERLOCUTOR ACCESS
+    # ========================================================
 
-        raise HTTPException(
-            status_code=400,
-            detail="Interlocutor is required",
+    if payload.interlocutor_id != user_id:
+
+        allowed = is_user_subscribed_to_expert(
+            user_id=user_id,
+            expert_id=payload.interlocutor_id,
         )
+
+        if not allowed:
+
+            raise HTTPException(
+                status_code=403,
+                detail="Interlocutor not available",
+            )
+
+    # ========================================================
+    # CLEAN REQUEST
+    # ========================================================
+
+    clean_payload = payload.model_copy(
+        update={
+            "question": question,
+        },
+    )
 
     # ========================================================
     # CONVERSATION
@@ -79,7 +111,7 @@ def converse_route(
     try:
 
         return converse(
-            payload,
+            clean_payload,
         )
 
     except ValueError as e:
