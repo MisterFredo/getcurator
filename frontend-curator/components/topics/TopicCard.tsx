@@ -35,6 +35,8 @@ type Props = {
 
   maxFavoritesReached?: boolean;
 
+  onFavoriteLimitReached?: () => void;
+
   onToggleFavorite?: (
     id: string,
     isFavorite: boolean,
@@ -62,6 +64,8 @@ export default function TopicCard({
   isFavorite = false,
 
   maxFavoritesReached = false,
+
+  onFavoriteLimitReached,
 
   onToggleFavorite,
 
@@ -136,6 +140,8 @@ export default function TopicCard({
       !isFavorite &&
       maxFavoritesReached
     ) {
+
+      onFavoriteLimitReached?.();
 
       return;
 
@@ -217,11 +223,6 @@ export default function TopicCard({
 
         onClick={
           handleFavoriteClick
-        }
-
-        disabled={
-          !isFavorite &&
-          maxFavoritesReached
         }
 
         className={`
