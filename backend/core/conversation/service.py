@@ -17,6 +17,28 @@ from .prompt_service import (
 
 
 # ============================================================
+# SYSTEM PROMPT
+# ============================================================
+
+CONVERSATION_SYSTEM_PROMPT = """
+You are a senior expert consultant.
+
+You answer questions by analyzing the structured knowledge
+available to the selected interlocutor.
+
+Your role is not to summarize information mechanically.
+
+Your role is to interpret it, connect it, explain it,
+and draw useful strategic conclusions from it.
+
+Be precise, analytical and concise.
+
+Never invent facts that are not supported by the
+available context.
+""".strip()
+
+
+# ============================================================
 # CONVERSE
 # ============================================================
 
@@ -32,7 +54,8 @@ def converse(
     # ========================================================
 
     context = get_interlocutor_context(
-        interlocutor_id=request.interlocutor_id,
+        interlocutor_id=
+            request.interlocutor_id,
     )
 
     # ========================================================
@@ -52,6 +75,8 @@ def converse(
     answer = run_llm(
         prompt=prompt,
         temperature=0.2,
+        system_prompt=
+            CONVERSATION_SYSTEM_PROMPT,
     )
 
     # ========================================================
@@ -59,6 +84,8 @@ def converse(
     # ========================================================
 
     return ConversationResponse(
-        interlocutor_id=request.interlocutor_id,
+        interlocutor_id=
+            request.interlocutor_id,
+
         answer=answer,
     )
