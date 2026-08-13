@@ -257,7 +257,6 @@ def _build_content_payload(
             "signal_analytique"
         ),
 
-        author=None,
     )
 
 # ============================================================
