@@ -86,20 +86,40 @@ def get_preferences(request: Request):
 
 
 @router.post("/preferences/add")
-def add_preference(request: Request, payload: dict):
+def add_preference(
+    request: Request,
+    payload: dict,
+):
 
-    user_id = get_user_id_from_request(request)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    add_user_preference(
-        user_id,
-        payload.get("type"),
-        payload.get("value_id")
+    user_id = get_user_id_from_request(
+        request
     )
 
-    return {"status": "ok"}
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    try:
+
+        add_user_preference(
+            user_id,
+            payload.get("type"),
+            payload.get("value_id"),
+        )
+
+        return {
+            "status": "ok",
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
 
 
 @router.post("/preferences/remove")
