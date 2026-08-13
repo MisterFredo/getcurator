@@ -2,9 +2,15 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import { api } from "@/lib/api";
+import {
+  api,
+} from "@/lib/api";
 
 import {
   EMPTY_TOPIC,
@@ -14,16 +20,24 @@ import {
 
 import TopicIdentity from "./TopicIdentity";
 import TopicKnowledge from "./TopicKnowledge";
-import TopicVisuals from "./TopicVisuals";
 
-/* ========================================================= */
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Props = {
+
   mode: "create" | "edit";
+
   topicId?: string;
+
 };
 
-/* ========================================================= */
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function TopicForm({
 
@@ -34,6 +48,7 @@ export default function TopicForm({
 
   const isCreate =
     mode === "create";
+
 
   /* =======================================================
      ENTITY
@@ -53,6 +68,7 @@ export default function TopicForm({
     initialTopicId ?? null
   );
 
+
   /* =======================================================
      REFERENCES
   ======================================================= */
@@ -62,23 +78,6 @@ export default function TopicForm({
     setAvailableUniverses,
   ] = useState<Universe[]>([]);
 
-  /* =======================================================
-     VISUALS
-  ======================================================= */
-
-  const [
-    squareFilename,
-    setSquareFilename,
-  ] = useState<string | null>(
-    null
-  );
-
-  const [
-    rectangleFilename,
-    setRectangleFilename,
-  ] = useState<string | null>(
-    null
-  );
 
   /* =======================================================
      UI
@@ -93,6 +92,7 @@ export default function TopicForm({
     saving,
     setSaving,
   ] = useState(false);
+
 
   /* =======================================================
      LOAD REFERENCES
@@ -111,6 +111,7 @@ export default function TopicForm({
 
   }
 
+
   /* =======================================================
      LOAD TOPIC
   ======================================================= */
@@ -121,10 +122,21 @@ export default function TopicForm({
       return;
     }
 
-    const t =
+    const res =
       await api.get(
         `/topic/${topicId}`
       );
+
+    const t =
+      res.topic;
+
+    if (!t) {
+
+      throw new Error(
+        "Topic not found."
+      );
+
+    }
 
     setTopic({
 
@@ -134,12 +146,6 @@ export default function TopicForm({
       description:
         t.description ?? "",
 
-      seo_title:
-        t.seo_title ?? "",
-
-      seo_description:
-        t.seo_description ?? "",
-
       universes:
         (t.universes ?? []).map(
           (u: Universe) =>
@@ -148,15 +154,8 @@ export default function TopicForm({
 
     });
 
-    setSquareFilename(
-      t.media_square_id ?? null
-    );
-
-    setRectangleFilename(
-      t.media_rectangle_id ?? null
-    );
-
   }
+
 
   /* =======================================================
      LOAD
@@ -197,6 +196,7 @@ export default function TopicForm({
 
   }, [load]);
 
+
   /* =======================================================
      PAYLOAD
   ======================================================= */
@@ -211,18 +211,13 @@ export default function TopicForm({
       description:
         topic.description || null,
 
-      seo_title:
-        topic.seo_title || null,
-
-      seo_description:
-        topic.seo_description || null,
-
       universe_ids:
         topic.universes,
 
     };
 
   }
+
 
   /* =======================================================
      CREATE
@@ -248,6 +243,7 @@ export default function TopicForm({
 
   }
 
+
   /* =======================================================
      UPDATE
   ======================================================= */
@@ -269,6 +265,7 @@ export default function TopicForm({
     await loadTopic();
 
   }
+
 
   /* =======================================================
      SAVE
@@ -311,8 +308,6 @@ export default function TopicForm({
           newId
         );
 
-        await load();
-
       } else {
 
         await handleUpdate();
@@ -335,15 +330,6 @@ export default function TopicForm({
 
   }
 
-  /* =======================================================
-     VISUAL UPDATED
-  ======================================================= */
-
-  async function handleVisualUpdated() {
-
-    await loadTopic();
-
-  }
 
   /* =======================================================
      RENDER
@@ -365,7 +351,9 @@ export default function TopicForm({
 
       <TopicIdentity
 
-        label={topic.label}
+        label={
+          topic.label
+        }
 
         setLabel={(label) =>
           setTopic((prev) => ({
@@ -408,59 +396,26 @@ export default function TopicForm({
           }))
         }
 
-        seoTitle={
-          topic.seo_title
-        }
-
-        setSeoTitle={(
-          seo_title
-        ) =>
-          setTopic((prev) => ({
-            ...prev,
-            seo_title,
-          }))
-        }
-
-        seoDescription={
-          topic.seo_description
-        }
-
-        setSeoDescription={(
-          seo_description
-        ) =>
-          setTopic((prev) => ({
-            ...prev,
-            seo_description,
-          }))
-        }
-
       />
 
-      <TopicVisuals
-
-        topicId={topicId}
-
-        squareFilename={
-          squareFilename
-        }
-
-        rectangleFilename={
-          rectangleFilename
-        }
-
-        onUpdated={
-          handleVisualUpdated
-        }
-
-      />
-
-      <div className="flex justify-end pt-8 border-t">
+      <div
+        className="
+          flex
+          justify-end
+          pt-8
+          border-t
+        "
+      >
 
         <button
 
-          onClick={handleSave}
+          onClick={
+            handleSave
+          }
 
-          disabled={saving}
+          disabled={
+            saving
+          }
 
           className="
             bg-ratecard-blue
@@ -470,14 +425,15 @@ export default function TopicForm({
             rounded
             disabled:opacity-50
           "
-
         >
 
-          {saving
-            ? "Saving..."
-            : isCreate
-              ? "Create topic"
-              : "Save changes"}
+          {
+            saving
+              ? "Saving..."
+              : isCreate
+                ? "Create topic"
+                : "Save changes"
+          }
 
         </button>
 
