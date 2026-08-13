@@ -1,5 +1,3 @@
-# backend/core/digest/html_sections.py
-
 from core.digest.models import (
     DigestDocument,
     DigestSection,
@@ -44,7 +42,7 @@ DISPLAY_TITLES = {
 
 
 # ============================================================
-# SECTIONS
+# SECTIONS — FULL
 # ============================================================
 
 def render_sections(
@@ -52,6 +50,10 @@ def render_sections(
 ) -> str:
     """
     Render all digest sections.
+
+    Used for:
+    - email
+    - admin preview
     """
 
     html = ""
@@ -122,6 +124,101 @@ def render_sections(
             section.title = display_title
 
             html += render_articles_section(
+                section,
+            )
+
+        # ====================================================
+        # DEFAULT
+        # ====================================================
+
+        else:
+
+            section.title = display_title
+
+            html += render_default_section(
+                section,
+            )
+
+    return html
+
+
+# ============================================================
+# SECTIONS — FRONT
+# ============================================================
+
+def render_front_sections(
+    document: DigestDocument,
+) -> str:
+    """
+    Render Digest sections for the public front.
+
+    Same analytical output as the full Digest,
+    but Supporting Articles are intentionally hidden.
+    """
+
+    html = ""
+
+    for section in document.sections:
+
+        # ====================================================
+        # ARTICLES — NOT DISPLAYED ON FRONT
+        # ====================================================
+
+        if section.title == "Articles":
+            continue
+
+        display_title = DISPLAY_TITLES.get(
+            section.title,
+            section.title,
+        )
+
+        # ====================================================
+        # EXECUTIVE SUMMARY
+        # ====================================================
+
+        if section.title == "Executive Summary":
+
+            html += f"""
+<tr>
+
+<td class="section">
+
+<h2>
+
+{display_title}
+
+</h2>
+
+</td>
+
+</tr>
+"""
+
+            html += render_summary_section(
+                section,
+            )
+
+        # ====================================================
+        # KEY POINTS
+        # ====================================================
+
+        elif section.title == "Key Points":
+
+            section.title = display_title
+
+            html += render_key_points_section(
+                section,
+            )
+
+        # ====================================================
+        # STRATEGIC IMPLICATIONS
+        # ====================================================
+
+        elif section.title == "Strategic Implications":
+
+            section.title = display_title
+
+            html += render_implications_section(
                 section,
             )
 
