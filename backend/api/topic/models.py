@@ -17,10 +17,6 @@ class TopicCreate(BaseModel):
 
     description: Optional[str] = None
 
-    seo_title: Optional[str] = None
-
-    seo_description: Optional[str] = None
-
     universe_ids: List[str] = Field(
         default_factory=list,
     )
@@ -39,14 +35,6 @@ class TopicUpdate(BaseModel):
 
     description: Optional[str] = None
 
-    seo_title: Optional[str] = None
-
-    seo_description: Optional[str] = None
-
-    media_square_id: Optional[str] = None
-
-    media_rectangle_id: Optional[str] = None
-
     universe_ids: Optional[List[str]] = None
 
     class Config:
@@ -64,14 +52,6 @@ class TopicOut(BaseModel):
     label: str
 
     description: Optional[str] = None
-
-    seo_title: Optional[str] = None
-
-    seo_description: Optional[str] = None
-
-    media_square_id: Optional[str] = None
-
-    media_rectangle_id: Optional[str] = None
 
     universes: List[dict] = Field(
         default_factory=list,
