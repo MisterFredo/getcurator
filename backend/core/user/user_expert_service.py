@@ -196,3 +196,37 @@ def get_expert_users(
             "expert_id": expert_id,
         },
     ) or []
+
+
+# =========================================================
+# CHECK USER -> EXPERT
+# =========================================================
+
+def is_user_subscribed_to_expert(
+    user_id: str,
+    expert_id: str,
+) -> bool:
+
+    if not user_id or not expert_id:
+        return False
+
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_USER_EXPERT}`
+
+        WHERE
+            ID_USER = @user_id
+        AND
+            ID_EXPERT = @expert_id
+
+        LIMIT 1
+        """,
+        {
+            "user_id": user_id,
+            "expert_id": expert_id,
+        },
+    )
+
+    return bool(rows)
