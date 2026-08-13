@@ -29,7 +29,7 @@ from core.digest.digest_service import (
 
 from core.digest.html_service import (
     render_digest_html,
-    render_front_digest_html,
+    render_digest_front_html,
 )
 
 from core.user.user_expert_service import (
