@@ -60,7 +60,7 @@ export default function DigestDrawer({
 
         const res =
           await api.get(
-            `/digest/digests/${digestId}/preview`,
+            `/digest/digests/${digestId}/front-preview`,
           );
 
         setHtml(
