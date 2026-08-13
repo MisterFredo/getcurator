@@ -27,6 +27,8 @@ export const fetchCache =
   "force-no-store";
 
 
+
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -228,6 +230,11 @@ export default function CompaniesPage() {
   ] = useState<string[]>([]);
 
   const [
+    totalFavorites,
+    setTotalFavorites,
+  ] = useState(0);
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -325,11 +332,30 @@ export default function CompaniesPage() {
           )
             ? prefsRes.preferences.COMPANY
             : [];
-
+        
+        const topicPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.TOPIC,
+          )
+            ? prefsRes.preferences.TOPIC
+            : [];
+        
+        const solutionPrefs =
+          Array.isArray(
+            prefsRes?.preferences?.SOLUTION,
+          )
+            ? prefsRes.preferences.SOLUTION
+            : [];
+        
         setPreferences(
           companyPrefs,
         );
-
+        
+        setTotalFavorites(
+          companyPrefs.length +
+          topicPrefs.length +
+          solutionPrefs.length,
+        );
       } catch (e) {
 
         console.error(
