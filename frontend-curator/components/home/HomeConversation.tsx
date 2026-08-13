@@ -206,7 +206,7 @@ export default function HomeConversation({
     <section
       className="
         flex
-        min-h-[800px]
+        min-h-[650px]
         flex-col
         rounded-2xl
         border
