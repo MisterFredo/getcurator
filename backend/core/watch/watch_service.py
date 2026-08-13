@@ -1,5 +1,7 @@
 # backend/core/watch/watch_service.py
 
+from time import perf_counter
+
 from core.expertise.service import (
     generate_expertise_from_profile,
 )
@@ -35,6 +37,8 @@ def latest(
     topic_id: str | None = None,
 ):
 
+    t0 = perf_counter()
+
     expertise = generate_expertise_from_profile(
 
         user_id=user_id,
@@ -53,15 +57,51 @@ def latest(
 
     )
 
+    t1 = perf_counter()
+
+    items = serialize_contents(
+        expertise.contents,
+    )
+
+    t2 = perf_counter()
+
+    print(
+        "⏱️ WATCH generate_expertise:",
+        round(
+            t1 - t0,
+            3,
+        ),
+        "s",
+    )
+
+    print(
+        "⏱️ WATCH serialize_contents:",
+        round(
+            t2 - t1,
+            3,
+        ),
+        "s",
+    )
+
+    print(
+        "⏱️ WATCH service TOTAL:",
+        round(
+            t2 - t0,
+            3,
+        ),
+        "s",
+    )
+
     return {
 
-        "items": serialize_contents(
-            expertise.contents,
-        ),
+        "items":
+            items,
 
-        "count": expertise.count,
+        "count":
+            expertise.count,
 
     }
+
 
 # ============================================================
 # SEARCH
@@ -77,6 +117,8 @@ def search(
     solution_id: str | None = None,
     topic_id: str | None = None,
 ):
+
+    t0 = perf_counter()
 
     expertise = generate_expertise_from_profile(
 
@@ -98,16 +140,50 @@ def search(
 
     )
 
+    t1 = perf_counter()
+
+    items = serialize_contents(
+        expertise.contents,
+    )
+
+    t2 = perf_counter()
+
+    print(
+        "⏱️ WATCH SEARCH generate_expertise:",
+        round(
+            t1 - t0,
+            3,
+        ),
+        "s",
+    )
+
+    print(
+        "⏱️ WATCH SEARCH serialize_contents:",
+        round(
+            t2 - t1,
+            3,
+        ),
+        "s",
+    )
+
+    print(
+        "⏱️ WATCH SEARCH service TOTAL:",
+        round(
+            t2 - t0,
+            3,
+        ),
+        "s",
+    )
+
     return {
 
-        "items": serialize_contents(
-            expertise.contents,
-        ),
+        "items":
+            items,
 
-        "count": expertise.count,
+        "count":
+            expertise.count,
 
     }
-
 
 # ============================================================
 # CONTENT (DRAWER)
