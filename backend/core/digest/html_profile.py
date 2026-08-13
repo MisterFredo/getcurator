@@ -149,6 +149,82 @@ def render_profile_description(
 </p>
 """
 
+# ============================================================
+# PROFILE — FRONT
+# ============================================================
+
+def render_front_profile(
+    document: DigestDocument,
+) -> str:
+    """
+    Render the monitoring profile for the public front.
+    """
+
+    profile = document.profile
+
+    company = (
+        f"""
+<div class="profile-company">
+
+{profile.company}
+
+</div>
+"""
+        if profile.company
+        else ""
+    )
+
+    return f"""
+<tr>
+
+<td class="profile">
+
+<div class="profile-box">
+
+<div class="profile-header">
+
+<div class="profile-identity">
+
+<div class="profile-name">
+
+{profile.name}
+
+</div>
+
+{company}
+
+</div>
+
+</div>
+
+{render_profile_description(profile)}
+
+{render_profile_badges(
+    "Companies",
+    profile.companies,
+)}
+
+{render_profile_badges(
+    "Topics",
+    profile.topics,
+)}
+
+{render_profile_badges(
+    "Solutions",
+    profile.solutions,
+)}
+
+{render_keywords(
+    profile.keywords,
+)}
+
+</div>
+
+</td>
+
+</tr>
+"""
+
 
 # ============================================================
 # PROFILE BADGES
