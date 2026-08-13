@@ -4,6 +4,18 @@ from datetime import datetime
 
 
 # ============================================================
+# ALIAS
+# ============================================================
+
+class SolutionAliasOut(BaseModel):
+
+    alias: str
+
+    class Config:
+        extra = "forbid"
+
+
+# ============================================================
 # CREATE
 # ============================================================
 
@@ -17,7 +29,9 @@ class SolutionCreate(BaseModel):
 
     content: Optional[str] = None
 
-    aliases: List[str] = Field(default_factory=list)
+    aliases: List[str] = Field(
+        default_factory=list
+    )
 
     class Config:
         extra = "forbid"
@@ -55,13 +69,19 @@ class SolutionOut(BaseModel):
 
     id_company: str
 
+    company_name: Optional[str] = None
+
     description: Optional[str] = None
 
     content: Optional[str] = None
 
     media_logo_rectangle_id: Optional[str] = None
 
-    aliases: List[str] = Field(default_factory=list)
+    logo_type: Optional[str] = None
+
+    aliases: List[SolutionAliasOut] = Field(
+        default_factory=list
+    )
 
     created_at: Optional[datetime] = None
 
