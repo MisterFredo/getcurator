@@ -35,6 +35,8 @@ type Props = {
 
   maxFavoritesReached?: boolean;
 
+  onFavoriteLimitReached?: () => void;
+
   onClick?: () => void;
 
   onToggleFavorite?: (
@@ -62,6 +64,8 @@ export default function CompanyCard({
   isFavorite = false,
 
   maxFavoritesReached = false,
+
+  onFavoriteLimitReached,
 
   onClick,
 
@@ -140,6 +144,8 @@ export default function CompanyCard({
       !isFavorite &&
       maxFavoritesReached
     ) {
+
+      onFavoriteLimitReached?.();
 
       return;
 
@@ -224,11 +230,6 @@ export default function CompanyCard({
 
         onClick={
           handleFavoriteClick
-        }
-
-        disabled={
-          !isFavorite &&
-          maxFavoritesReached
         }
 
         className={`
