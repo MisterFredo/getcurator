@@ -1,5 +1,7 @@
 # backend/api/watch/routes.py
 
+from time import perf_counter
+
 from fastapi import (
     APIRouter,
 )
@@ -41,7 +43,22 @@ def latest_route(
 
 ):
 
-    return latest(
+    t0 = perf_counter()
+
+    print(
+        "⏱️ WATCH /latest START",
+        {
+            "user_id": user_id,
+            "limit": limit,
+            "offset": offset,
+            "universe_id": universe_id,
+            "company_id": company_id,
+            "solution_id": solution_id,
+            "topic_id": topic_id,
+        },
+    )
+
+    result = latest(
 
         user_id=user_id,
 
@@ -58,6 +75,17 @@ def latest_route(
         topic_id=topic_id,
 
     )
+
+    print(
+        "⏱️ WATCH /latest TOTAL:",
+        round(
+            perf_counter() - t0,
+            3,
+        ),
+        "s",
+    )
+
+    return result
 
 
 # ============================================================
@@ -85,7 +113,23 @@ def search_route(
 
 ):
 
-    return search(
+    t0 = perf_counter()
+
+    print(
+        "⏱️ WATCH /search START",
+        {
+            "user_id": user_id,
+            "query": query,
+            "limit": limit,
+            "offset": offset,
+            "universe_id": universe_id,
+            "company_id": company_id,
+            "solution_id": solution_id,
+            "topic_id": topic_id,
+        },
+    )
+
+    result = search(
 
         user_id=user_id,
 
@@ -105,6 +149,17 @@ def search_route(
 
     )
 
+    print(
+        "⏱️ WATCH /search TOTAL:",
+        round(
+            perf_counter() - t0,
+            3,
+        ),
+        "s",
+    )
+
+    return result
+
 
 # ============================================================
 # CONTENT (DRAWER)
@@ -119,13 +174,26 @@ def content_route(
 
 ):
 
-    return get_watch_content(
+    t0 = perf_counter()
+
+    result = get_watch_content(
 
         content_id=content_id,
 
         user_id=user_id,
 
     )
+
+    print(
+        "⏱️ WATCH /content TOTAL:",
+        round(
+            perf_counter() - t0,
+            3,
+        ),
+        "s",
+    )
+
+    return result
 
 
 # ============================================================
