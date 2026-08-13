@@ -20,6 +20,12 @@ import type {
   SolutionOption,
 } from "@/types/solution";
 
+/* =========================================================
+   CONSTANTS
+========================================================= */
+
+const MAX_PREFERENCES = 10;
+
 /* ========================================================= */
 
 type Props = {
@@ -92,6 +98,18 @@ export default function ProfilePreferencesEditor({
     selectedSolutions,
     setSelectedSolutions,
   ] = useState<SelectOption[]>([]);
+
+  /* =======================================================
+     LIMIT
+  ======================================================= */
+
+  const totalSelected =
+    selectedCompanies.length +
+    selectedTopics.length +
+    selectedSolutions.length;
+
+  const limitReached =
+    totalSelected >= MAX_PREFERENCES;
 
   /* =======================================================
      LOAD
@@ -222,6 +240,75 @@ export default function ProfilePreferencesEditor({
   }, [userId]);
 
   /* =======================================================
+     UPDATE COMPANIES
+  ======================================================= */
+
+  function updateCompanies(
+    values: SelectOption[],
+  ) {
+
+    const total =
+      values.length +
+      selectedTopics.length +
+      selectedSolutions.length;
+
+    if (total > MAX_PREFERENCES) {
+      return;
+    }
+
+    setSelectedCompanies(
+      values
+    );
+
+  }
+
+  /* =======================================================
+     UPDATE TOPICS
+  ======================================================= */
+
+  function updateTopics(
+    values: SelectOption[],
+  ) {
+
+    const total =
+      selectedCompanies.length +
+      values.length +
+      selectedSolutions.length;
+
+    if (total > MAX_PREFERENCES) {
+      return;
+    }
+
+    setSelectedTopics(
+      values
+    );
+
+  }
+
+  /* =======================================================
+     UPDATE SOLUTIONS
+  ======================================================= */
+
+  function updateSolutions(
+    values: SelectOption[],
+  ) {
+
+    const total =
+      selectedCompanies.length +
+      selectedTopics.length +
+      values.length;
+
+    if (total > MAX_PREFERENCES) {
+      return;
+    }
+
+    setSelectedSolutions(
+      values
+    );
+
+  }
+
+  /* =======================================================
      SAVE
   ======================================================= */
 
@@ -292,7 +379,7 @@ export default function ProfilePreferencesEditor({
 
   }
 
-    /* =======================================================
+  /* =======================================================
      RENDER
   ======================================================= */
 
@@ -334,6 +421,21 @@ export default function ProfilePreferencesEditor({
           solutions followed by this user.
         </p>
 
+        <p
+          className={`
+            text-sm
+            mt-2
+
+            ${
+              limitReached
+                ? "text-amber-600 font-medium"
+                : "text-gray-500"
+            }
+          `}
+        >
+          {totalSelected} / {MAX_PREFERENCES} selected
+        </p>
+
       </div>
 
       {/* ===================================================
@@ -350,7 +452,7 @@ export default function ProfilePreferencesEditor({
 
         values={selectedCompanies}
 
-        onChange={setSelectedCompanies}
+        onChange={updateCompanies}
 
       />
 
@@ -368,7 +470,7 @@ export default function ProfilePreferencesEditor({
 
         values={selectedTopics}
 
-        onChange={setSelectedTopics}
+        onChange={updateTopics}
 
       />
 
@@ -386,7 +488,7 @@ export default function ProfilePreferencesEditor({
 
         values={selectedSolutions}
 
-        onChange={setSelectedSolutions}
+        onChange={updateSolutions}
 
       />
 
@@ -406,7 +508,11 @@ export default function ProfilePreferencesEditor({
 
           onClick={save}
 
-          disabled={loading || saving}
+          disabled={
+            loading ||
+            saving
+          }
+
           className={`
             px-4
             py-2
