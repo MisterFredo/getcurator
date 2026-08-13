@@ -1,3 +1,7 @@
+from utils.llm import (
+    run_llm,
+)
+
 from .models import (
     ConversationRequest,
     ConversationResponse,
@@ -45,8 +49,9 @@ def converse(
     # LLM
     # ========================================================
 
-    answer = _generate_answer(
+    answer = run_llm(
         prompt=prompt,
+        temperature=0.2,
     )
 
     # ========================================================
@@ -56,23 +61,4 @@ def converse(
     return ConversationResponse(
         interlocutor_id=request.interlocutor_id,
         answer=answer,
-    )
-
-
-# ============================================================
-# GENERATE ANSWER
-# ============================================================
-
-def _generate_answer(
-    prompt: str,
-) -> str:
-    """
-    Generate the final Conversation answer.
-
-    This function must use the existing
-    GetCurator LLM infrastructure.
-    """
-
-    raise NotImplementedError(
-        "Conversation LLM adapter is not connected yet."
     )
