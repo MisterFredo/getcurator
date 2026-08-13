@@ -33,6 +33,8 @@ type Props = {
 
   isFavorite?: boolean;
 
+  maxFavoritesReached?: boolean;
+
   onClick?: () => void;
 
   onToggleFavorite?: (
@@ -58,6 +60,8 @@ export default function CompanyCard({
   isLoading,
 
   isFavorite = false,
+
+  maxFavoritesReached = false,
 
   onClick,
 
@@ -127,6 +131,19 @@ export default function CompanyCard({
   ) {
 
     e.stopPropagation();
+
+    /* =====================================================
+       LIMIT
+    ===================================================== */
+
+    if (
+      !isFavorite &&
+      maxFavoritesReached
+    ) {
+
+      return;
+
+    }
 
     try {
 
@@ -209,15 +226,26 @@ export default function CompanyCard({
           handleFavoriteClick
         }
 
+        disabled={
+          !isFavorite &&
+          maxFavoritesReached
+        }
+
         className={`
           absolute
           top-2
           left-2
           z-20
-          cursor-pointer
           leading-none
           transition
           text-[20px]
+
+          ${
+            !isFavorite &&
+            maxFavoritesReached
+              ? "cursor-not-allowed opacity-30"
+              : "cursor-pointer"
+          }
 
           ${
             isFavorite
@@ -229,7 +257,16 @@ export default function CompanyCard({
         aria-label={
           isFavorite
             ? "Retirer des favoris"
-            : "Ajouter aux favoris"
+            : maxFavoritesReached
+              ? "Maximum de 10 favoris atteint"
+              : "Ajouter aux favoris"
+        }
+
+        title={
+          !isFavorite &&
+          maxFavoritesReached
+            ? "Maximum de 10 favoris atteint"
+            : undefined
         }
 
       >
@@ -273,6 +310,7 @@ export default function CompanyCard({
         </div>
 
       )}
+
 
       {/* =====================================================
           VISUAL
@@ -336,12 +374,12 @@ export default function CompanyCard({
       {/* =====================================================
           NAME
       ===================================================== */}
-      
+
       <div className="
         p-3
         text-center
       ">
-      
+
         <h3 className="
           text-xs
           font-semibold
@@ -350,25 +388,25 @@ export default function CompanyCard({
           line-clamp-2
           group-hover:underline
         ">
-      
+
           {name}
-      
+
         </h3>
-      
+
         {typeof contentCount === "number" && (
-      
+
           <p className="
             mt-1
             text-[10px]
             text-gray-400
           ">
-      
+
             {contentCount} contents
-      
+
           </p>
-      
+
         )}
-      
+
       </div>
 
     </div>
