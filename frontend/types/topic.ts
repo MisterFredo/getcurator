@@ -1,56 +1,74 @@
 // frontend/types/topic.ts
 
-/* ========================================================= */
+/* =========================================================
+   UNIVERSE
+========================================================= */
 
 export type Universe = {
+
   id_universe: string;
+
   label: string;
+
 };
 
-/* ========================================================= */
+
+/* =========================================================
+   TOPIC FORM
+========================================================= */
 
 export type TopicFormData = {
+
   label: string;
 
   description: string;
 
-  seo_title: string;
-
-  seo_description: string;
-
   universes: string[];
+
 };
+
+
+/* =========================================================
+   TOPIC OPTION
+========================================================= */
 
 export type TopicOption = {
+
   id_topic: string;
+
   label: string;
+
 };
 
 
-/* ========================================================= */
+/* =========================================================
+   EMPTY TOPIC
+========================================================= */
 
 export const EMPTY_TOPIC: TopicFormData = {
+
   label: "",
 
   description: "",
 
-  seo_title: "",
-
-  seo_description: "",
-
   universes: [],
+
 };
 
-/* ========================================================= */
 
-export type TopicDetail = TopicFormData & {
-  id_topic: string;
+/* =========================================================
+   TOPIC DETAIL
+========================================================= */
 
-  media_square_id: string | null;
+export type TopicDetail =
+  TopicFormData & {
 
-  media_rectangle_id: string | null;
+    id_topic: string;
 
-  created_at?: string | null;
+    is_active?: boolean;
 
-  updated_at?: string | null;
-};
+    created_at?: string | null;
+
+    updated_at?: string | null;
+
+  };
