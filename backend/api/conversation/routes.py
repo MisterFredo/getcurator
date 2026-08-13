@@ -30,7 +30,7 @@ router = APIRouter()
 # ============================================================
 
 @router.post(
-    "",
+    "/",
     response_model=ConversationResponse,
 )
 def converse_route(
