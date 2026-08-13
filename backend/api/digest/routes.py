@@ -376,3 +376,34 @@ def preview_digest_route(
         "status": "ok",
         "html": html,
     }
+
+# ============================================================
+# FRONT PREVIEW
+# ============================================================
+
+@router.get(
+    "/digests/{digest_id}/front-preview",
+)
+def front_preview_digest_route(
+    digest_id: str,
+):
+
+    digest = get_digest(
+        digest_id,
+    )
+
+    if digest.document is None:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Digest has not been generated.",
+        )
+
+    html = render_digest_front_html(
+        digest.document,
+    )
+
+    return {
+        "status": "ok",
+        "html": html,
+    }
