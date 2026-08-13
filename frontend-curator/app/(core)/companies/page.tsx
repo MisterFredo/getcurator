@@ -41,6 +41,7 @@ type Company = {
 
   media_logo_rectangle_id?:
     string | null;
+
   content_count: number;
 
   universes: string[];
@@ -138,6 +139,8 @@ async function fetchCompanies():
   }
 
 }
+
+
 /* =========================================================
    SORT
 ========================================================= */
@@ -233,6 +236,13 @@ export default function CompaniesPage() {
     totalFavorites,
     setTotalFavorites,
   ] = useState(0);
+
+  const [
+    favoriteMessage,
+    setFavoriteMessage,
+  ] = useState<string | null>(
+    null,
+  );
 
   const [
     loading,
@@ -332,30 +342,31 @@ export default function CompaniesPage() {
           )
             ? prefsRes.preferences.COMPANY
             : [];
-        
+
         const topicPrefs =
           Array.isArray(
             prefsRes?.preferences?.TOPIC,
           )
             ? prefsRes.preferences.TOPIC
             : [];
-        
+
         const solutionPrefs =
           Array.isArray(
             prefsRes?.preferences?.SOLUTION,
           )
             ? prefsRes.preferences.SOLUTION
             : [];
-        
+
         setPreferences(
           companyPrefs,
         );
-        
+
         setTotalFavorites(
           companyPrefs.length +
           topicPrefs.length +
           solutionPrefs.length,
         );
+
       } catch (e) {
 
         console.error(
@@ -369,6 +380,10 @@ export default function CompaniesPage() {
 
         setPreferences(
           [],
+        );
+
+        setTotalFavorites(
+          0,
         );
 
       } finally {
@@ -467,12 +482,36 @@ export default function CompaniesPage() {
 
 
   /* =========================================================
+     FAVORITE LIMIT MESSAGE
+  ========================================================= */
+
+  function showFavoriteLimitMessage() {
+
+    setFavoriteMessage(
+      `You can select up to ${MAX_FAVORITES} favorites.`,
+    );
+
+    window.setTimeout(
+      () => {
+
+        setFavoriteMessage(
+          null,
+        );
+
+      },
+      2500,
+    );
+
+  }
+
+
+  /* =========================================================
      DATA
   ========================================================= */
 
   const maxFavoritesReached =
     totalFavorites >= MAX_FAVORITES;
-  
+
   const favorites =
     sortCompanies(
       companies.filter(
@@ -546,6 +585,30 @@ export default function CompaniesPage() {
         </h1>
 
       </div>
+
+
+      {/* =====================================================
+          FAVORITE MESSAGE
+      ===================================================== */}
+
+      {favoriteMessage && (
+
+        <div className="
+          rounded-lg
+          border
+          border-amber-200
+          bg-amber-50
+          px-4
+          py-3
+          text-sm
+          text-amber-700
+        ">
+
+          {favoriteMessage}
+
+        </div>
+
+      )}
 
 
       {/* =====================================================
@@ -641,11 +704,14 @@ export default function CompaniesPage() {
                     setTotalFavorites(
                       (prev) =>
                         isFavorite
-                          ? Math.max(0, prev - 1)
+                          ? Math.max(
+                              0,
+                              prev - 1,
+                            )
                           : Math.min(
                               MAX_FAVORITES,
                               prev + 1,
-                            )
+                            ),
                     );
 
                   }}
@@ -795,6 +861,10 @@ export default function CompaniesPage() {
                             maxFavoritesReached
                           }
 
+                          onFavoriteLimitReached={
+                            showFavoriteLimitMessage
+                          }
+
                           onToggleFavorite={(
                             id,
                             isFavorite,
@@ -820,11 +890,14 @@ export default function CompaniesPage() {
                             setTotalFavorites(
                               (prev) =>
                                 isFavorite
-                                  ? Math.max(0, prev - 1)
+                                  ? Math.max(
+                                      0,
+                                      prev - 1,
+                                    )
                                   : Math.min(
                                       MAX_FAVORITES,
                                       prev + 1,
-                                    )
+                                    ),
                             );
 
                           }}
