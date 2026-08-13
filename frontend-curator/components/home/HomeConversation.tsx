@@ -286,7 +286,6 @@ export default function HomeConversation({
             className="
               flex
               h-full
-              min-h-[360px]
               items-center
               justify-center
               text-center
