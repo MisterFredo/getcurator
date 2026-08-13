@@ -14,6 +14,7 @@ from core.digest.html_header import (
 
 from core.digest.html_profile import (
     render_profile,
+    render_front_profile,
 )
 
 from core.digest.html_sections import (
@@ -127,7 +128,7 @@ def render_digest_front_html(
 
 {render_header(document)}
 
-{render_profile(document)}
+{render_front_profile(document)}
 
 {render_front_sections(document)}
 
