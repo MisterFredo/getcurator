@@ -78,7 +78,6 @@ def create_content(data: ContentCreate) -> str:
         "ID_PRIMARY_COMPANY": data.id_primary_company,
         "STATUS": "DRAFT",
         "IS_ACTIVE": True,
-        "AUTHOR": data.author,
         "SOURCE_ID": data.source_id,
         "SOURCE_PUBLISHED_AT": (
             data.source_published_at.isoformat()
@@ -324,9 +323,6 @@ def update_content(id_content: str, data: ContentUpdate):
     if data.source_url is not None:
         fields["SOURCE_URL"] = data.source_url
 
-    if data.source_author is not None:
-        fields["SOURCE_AUTHOR"] = data.source_author
-
     if data.source_published_at is not None:
         fields["SOURCE_PUBLISHED_AT"] = data.source_published_at
 
@@ -397,9 +393,6 @@ def update_content(id_content: str, data: ContentUpdate):
     # ============================================================
     # META
     # ============================================================
-
-    if data.author is not None:
-        fields["AUTHOR"] = data.author
 
     # Toujours mettre à jour UPDATED_AT
     fields["UPDATED_AT"] = now
