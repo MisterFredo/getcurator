@@ -233,6 +233,8 @@ export default function UserFavoritesSummary() {
     return null;
   }
 
+  const MAX_PREFERENCES = 10;
+
   /* =====================================================
      RENDER
   ===================================================== */
@@ -240,6 +242,51 @@ export default function UserFavoritesSummary() {
   return (
 
     <div className="space-y-6">
+
+      <div
+        className="
+          flex
+          items-center
+          justify-between
+        "
+      >
+        <div>
+          <h2
+            className="
+              text-base
+              font-semibold
+            "
+          >
+            Your favorites
+          </h2>
+      
+          <p
+            className="
+              text-sm
+              text-gray-500
+              mt-1
+            "
+          >
+            These favorites personalize your
+            GetCurator experience.
+          </p>
+        </div>
+      
+        <div
+          className={`
+            text-sm
+            font-medium
+      
+            ${
+              total >= MAX_PREFERENCES
+                ? "text-amber-600"
+                : "text-gray-500"
+            }
+          `}
+        >
+          {total} / {MAX_PREFERENCES}
+        </div>
+      </div>
 
       {/* =====================================================
           COMPANIES
