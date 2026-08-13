@@ -297,6 +297,22 @@ def _mark_raw_processed(
         },
     )
 
+def _mark_raw_error(
+    raw_id: str,
+    error: Exception,
+):
+
+    update_bq(
+        TABLE_CONTENT_RAW,
+        {
+            "STATUS": "ERROR",
+            "ERROR_MESSAGE": str(error),
+        },
+        where={
+            "ID_RAW": raw_id,
+        },
+    )
+
 
 
 # ============================================================
