@@ -95,6 +95,21 @@ class ConversationKnowledgeEntity(BaseModel):
         default_factory=list,
     )
 
+# ============================================================
+# INTERLOCUTOR PROFILE
+# ============================================================
+
+class ConversationInterlocutorProfile(BaseModel):
+
+    geography_1: str | None = None
+
+    geography_2: str | None = None
+
+    geography_3: str | None = None
+
+    profile_text: str | None = None
+
+
 
 # ============================================================
 # CONTEXT
@@ -134,16 +149,3 @@ class ConversationResponse(BaseModel):
     answer: str
 
 
-# ============================================================
-# INTERLOCUTOR PROFILE
-# ============================================================
-
-class ConversationInterlocutorProfile(BaseModel):
-
-    geography_1: str | None = None
-
-    geography_2: str | None = None
-
-    geography_3: str | None = None
-
-    profile_text: str | None = None
