@@ -40,6 +40,12 @@ TABLE_SOLUTION = (
 
 
 # ============================================================
+# LIMITS
+# ============================================================
+
+MAX_USER_PREFERENCES = 10
+
+# ============================================================
 # GET USER PREFERENCES
 # ============================================================
 
@@ -86,6 +92,27 @@ def add_user_preference(
         or not value_id
     ):
         return
+
+    current_preferences = get_user_preferences(
+        user_id
+    )
+
+    # Already selected -> MERGE remains idempotent
+    already_exists = any(
+        row.get("TYPE") == pref_type
+        and row.get("VALUE_ID") == value_id
+        for row in current_preferences
+    )
+
+    if (
+        not already_exists
+        and len(current_preferences) >= MAX_USER_PREFERENCES
+    ):
+        raise ValueError(
+            f"Maximum {MAX_USER_PREFERENCES} preferences allowed"
+        )
+
+    # ... MERGE actuel inchangé
 
     query = f"""
     MERGE `{TABLE_USER_PREFERENCES}` T
@@ -361,6 +388,21 @@ def set_user_preferences(
 
     if not user_id:
         return
+
+    companies = companies or []
+    solutions = solutions or []
+    topics = topics or []
+
+    total_preferences = (
+        len(companies)
+        + len(solutions)
+        + len(topics)
+    )
+
+    if total_preferences > MAX_USER_PREFERENCES:
+        raise ValueError(
+            f"Maximum {MAX_USER_PREFERENCES} preferences allowed"
+        )
 
     # ========================================================
     # CLEAR EXISTING PREFERENCES
