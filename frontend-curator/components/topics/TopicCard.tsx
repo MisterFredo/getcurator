@@ -33,6 +33,8 @@ type Props = {
 
   isFavorite?: boolean;
 
+  maxFavoritesReached?: boolean;
+
   onToggleFavorite?: (
     id: string,
     isFavorite: boolean,
@@ -58,6 +60,8 @@ export default function TopicCard({
   onClick,
 
   isFavorite = false,
+
+  maxFavoritesReached = false,
 
   onToggleFavorite,
 
@@ -123,6 +127,19 @@ export default function TopicCard({
   ) {
 
     e.stopPropagation();
+
+    /* =====================================================
+       LIMIT
+    ===================================================== */
+
+    if (
+      !isFavorite &&
+      maxFavoritesReached
+    ) {
+
+      return;
+
+    }
 
     try {
 
@@ -202,15 +219,26 @@ export default function TopicCard({
           handleFavoriteClick
         }
 
+        disabled={
+          !isFavorite &&
+          maxFavoritesReached
+        }
+
         className={`
           absolute
           top-2
           left-2
           z-20
-          cursor-pointer
           leading-none
           transition
           text-[20px]
+
+          ${
+            !isFavorite &&
+            maxFavoritesReached
+              ? "cursor-not-allowed opacity-30"
+              : "cursor-pointer"
+          }
 
           ${
             isFavorite
@@ -218,6 +246,21 @@ export default function TopicCard({
               : "text-gray-700 hover:text-black"
           }
         `}
+
+        aria-label={
+          isFavorite
+            ? "Retirer des favoris"
+            : maxFavoritesReached
+              ? "Maximum de 10 favoris atteint"
+              : "Ajouter aux favoris"
+        }
+
+        title={
+          !isFavorite &&
+          maxFavoritesReached
+            ? "Maximum de 10 favoris atteint"
+            : undefined
+        }
 
       >
 
@@ -290,12 +333,12 @@ export default function TopicCard({
       {/* =====================================================
           TOPIC
       ===================================================== */}
-      
+
       <div className="
         p-3
         text-center
       ">
-      
+
         <h3 className="
           text-xs
           font-semibold
@@ -304,25 +347,25 @@ export default function TopicCard({
           line-clamp-2
           group-hover:underline
         ">
-      
+
           {label}
-      
+
         </h3>
-      
+
         {typeof contentCount === "number" && (
-      
+
           <p className="
             mt-1
             text-[10px]
             text-gray-400
           ">
-      
+
             {contentCount} contents
-      
+
           </p>
-      
+
         )}
-      
+
       </div>
 
     </div>
