@@ -1,24 +1,38 @@
 # backend/core/expertise/profile_service.py
 
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
 from api.expertise.models import (
     ExpertisePreferences,
     ExpertiseProfile,
 )
 
-from core.user.user_keyword_service import (
-    get_user_keywords,
+
+# ============================================================
+# TABLES
+# ============================================================
+
+TABLE_USER = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
 )
 
-from core.user.user_profile_service import (
-    get_user_profile,
+TABLE_USER_PROFILE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE"
 )
 
-from core.user.user_preferences_service import (
-    get_user_preferences_grouped,
+TABLE_USER_PREFERENCES = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
 )
 
-from core.user.user_service import (
-    get_user,
+TABLE_USER_KEYWORD = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD"
 )
 
 
@@ -30,49 +44,144 @@ def load_profile(
     user_id: str,
 ) -> ExpertiseProfile:
 
-    # ========================================================
-    # USER
-    # ========================================================
+    rows = query_bq(
+        f"""
+        WITH preferences AS (
 
-    user = (
-        get_user(
-            user_id,
+            SELECT
+
+                ID_USER,
+
+                ARRAY_AGG(
+                    IF(
+                        TYPE = "COMPANY",
+                        VALUE_ID,
+                        NULL
+                    )
+                    IGNORE NULLS
+                ) AS COMPANIES,
+
+                ARRAY_AGG(
+                    IF(
+                        TYPE = "SOLUTION",
+                        VALUE_ID,
+                        NULL
+                    )
+                    IGNORE NULLS
+                ) AS SOLUTIONS,
+
+                ARRAY_AGG(
+                    IF(
+                        TYPE = "TOPIC",
+                        VALUE_ID,
+                        NULL
+                    )
+                    IGNORE NULLS
+                ) AS TOPICS
+
+            FROM `{TABLE_USER_PREFERENCES}`
+
+            WHERE ID_USER = @user_id
+
+            GROUP BY ID_USER
+        ),
+
+        keywords AS (
+
+            SELECT
+
+                ID_USER,
+
+                ARRAY_AGG(
+                    KEYWORD
+                    ORDER BY KEYWORD
+                ) AS KEYWORDS
+
+            FROM `{TABLE_USER_KEYWORD}`
+
+            WHERE ID_USER = @user_id
+
+            GROUP BY ID_USER
         )
-        or {}
+
+        SELECT
+
+            u.ID_USER,
+
+            u.LANGUAGE,
+
+            p.GEOGRAPHY_1,
+            p.GEOGRAPHY_2,
+            p.GEOGRAPHY_3,
+            p.PROFILE_TEXT,
+
+            COALESCE(
+                pref.COMPANIES,
+                []
+            ) AS COMPANIES,
+
+            COALESCE(
+                pref.SOLUTIONS,
+                []
+            ) AS SOLUTIONS,
+
+            COALESCE(
+                pref.TOPICS,
+                []
+            ) AS TOPICS,
+
+            COALESCE(
+                k.KEYWORDS,
+                []
+            ) AS KEYWORDS
+
+        FROM `{TABLE_USER}` u
+
+        LEFT JOIN `{TABLE_USER_PROFILE}` p
+
+            ON p.ID_USER = u.ID_USER
+
+        LEFT JOIN preferences pref
+
+            ON pref.ID_USER = u.ID_USER
+
+        LEFT JOIN keywords k
+
+            ON k.ID_USER = u.ID_USER
+
+        WHERE
+
+            u.ID_USER = @user_id
+
+        LIMIT 1
+        """,
+        {
+            "user_id": user_id,
+        },
     )
 
-    # ========================================================
-    # PROFILE
-    # ========================================================
+    if not rows:
 
-    profile = (
-        get_user_profile(
-            user_id,
+        return ExpertiseProfile(
+
+            id=user_id,
+
+            language="fr",
+
+            preferences=ExpertisePreferences(
+                companies=[],
+                solutions=[],
+                topics=[],
+            ),
+
+            keywords=[],
+
+            geographies=[],
+
+            profile_text="",
         )
-        or {}
-    )
 
-    # ========================================================
-    # PREFERENCES
-    # ========================================================
-
-    preferences = (
-        get_user_preferences_grouped(
-            user_id,
-        )
-        or {}
-    )
-
-    # ========================================================
-    # KEYWORDS
-    # ========================================================
-
-    keywords = (
-        get_user_keywords(
-            user_id,
-        )
-        or []
-    )
+    row = rows[0]
 
     # ========================================================
     # GEOGRAPHIES
@@ -84,16 +193,16 @@ def load_profile(
 
         for geography in (
 
-            profile.get(
-                "geography_1",
+            row.get(
+                "GEOGRAPHY_1",
             ),
 
-            profile.get(
-                "geography_2",
+            row.get(
+                "GEOGRAPHY_2",
             ),
 
-            profile.get(
-                "geography_3",
+            row.get(
+                "GEOGRAPHY_3",
             ),
 
         )
@@ -111,7 +220,7 @@ def load_profile(
         id=user_id,
 
         language=(
-            user.get(
+            row.get(
                 "LANGUAGE",
             )
             or "fr"
@@ -119,30 +228,41 @@ def load_profile(
 
         preferences=ExpertisePreferences(
 
-            companies=preferences.get(
-                "COMPANY",
-                [],
+            companies=(
+                row.get(
+                    "COMPANIES",
+                )
+                or []
             ),
 
-            solutions=preferences.get(
-                "SOLUTION",
-                [],
+            solutions=(
+                row.get(
+                    "SOLUTIONS",
+                )
+                or []
             ),
 
-            topics=preferences.get(
-                "TOPIC",
-                [],
+            topics=(
+                row.get(
+                    "TOPICS",
+                )
+                or []
             ),
 
         ),
 
-        keywords=keywords,
+        keywords=(
+            row.get(
+                "KEYWORDS",
+            )
+            or []
+        ),
 
         geographies=geographies,
 
         profile_text=(
-            profile.get(
-                "profile_text",
+            row.get(
+                "PROFILE_TEXT",
             )
             or ""
         ),
