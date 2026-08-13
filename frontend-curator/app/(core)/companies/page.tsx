@@ -635,6 +635,16 @@ export default function CompaniesPage() {
 
                     );
 
+                    setTotalFavorites(
+                      (prev) =>
+                        isFavorite
+                          ? Math.max(0, prev - 1)
+                          : Math.min(
+                              MAX_FAVORITES,
+                              prev + 1,
+                            )
+                    );
+
                   }}
 
                 />
@@ -802,6 +812,16 @@ export default function CompaniesPage() {
                                       id,
                                     ],
 
+                            );
+
+                            setTotalFavorites(
+                              (prev) =>
+                                isFavorite
+                                  ? Math.max(0, prev - 1)
+                                  : Math.min(
+                                      MAX_FAVORITES,
+                                      prev + 1,
+                                    )
                             );
 
                           }}
