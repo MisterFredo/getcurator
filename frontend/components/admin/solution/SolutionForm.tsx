@@ -122,35 +122,46 @@ export default function SolutionForm({
     if (!solutionId) {
       return;
     }
-
-    const s =
+  
+    const res =
       await api.get(
         `/solution/${solutionId}`
       );
-
+  
+    const s =
+      res.solution;
+  
+    if (!s) {
+  
+      throw new Error(
+        "Solution not found."
+      );
+  
+    }
+  
     setSolution({
-
+  
       name:
         s.name ?? "",
-
+  
       id_company:
         s.id_company ?? "",
-
+  
       description:
         s.description ?? "",
-
+  
       content:
         s.content ?? "",
-
+  
       aliases:
         s.aliases ?? [],
-
+  
     });
-
+  
     setLogoFilename(
       s.media_logo_rectangle_id ?? null
     );
-
+  
   }
 
   /* =======================================================
