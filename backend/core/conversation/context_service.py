@@ -22,10 +22,6 @@ from core.user.user_profile_service import (
 )
 
 
-# ============================================================
-# GET INTERLOCUTOR CONTEXT
-# ============================================================
-
 def get_interlocutor_context(
     interlocutor_id: str,
 ) -> ConversationContext:
@@ -78,6 +74,14 @@ def get_interlocutor_context(
     )
 
     # ========================================================
+    # ENTITIES
+    # ========================================================
+
+    entities: list[
+        ConversationKnowledgeEntity
+    ] = []
+
+    # ========================================================
     # COMPANIES
     # ========================================================
 
@@ -92,6 +96,7 @@ def get_interlocutor_context(
         )
 
         if entity:
+
             entities.append(
                 entity,
             )
@@ -111,6 +116,7 @@ def get_interlocutor_context(
         )
 
         if entity:
+
             entities.append(
                 entity,
             )
@@ -130,13 +136,20 @@ def get_interlocutor_context(
         )
 
         if entity:
+
             entities.append(
                 entity,
             )
 
     return ConversationContext(
-        interlocutor_id=interlocutor_id,
-        entities=entities,
+        interlocutor_id=
+            interlocutor_id,
+
+        profile=
+            profile,
+
+        entities=
+            entities,
     )
 
 
