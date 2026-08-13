@@ -102,18 +102,22 @@ class ConversationKnowledgeEntity(BaseModel):
 
 class ConversationContext(BaseModel):
     """
-    Complete Knowledge context available
+    Complete context available
     for one interlocutor.
     """
 
     interlocutor_id: str
+
+    profile: (
+        ConversationInterlocutorProfile
+        | None
+    ) = None
 
     entities: list[
         ConversationKnowledgeEntity
     ] = Field(
         default_factory=list,
     )
-
 
 # ============================================================
 # RESPONSE
@@ -128,3 +132,18 @@ class ConversationResponse(BaseModel):
     interlocutor_id: str
 
     answer: str
+
+
+# ============================================================
+# INTERLOCUTOR PROFILE
+# ============================================================
+
+class ConversationInterlocutorProfile(BaseModel):
+
+    geography_1: str | None = None
+
+    geography_2: str | None = None
+
+    geography_3: str | None = None
+
+    profile_text: str | None = None
