@@ -34,6 +34,8 @@ type Props = {
 
   isFavorite?: boolean;
 
+  maxFavoritesReached?: boolean;
+
   onToggleFavorite?: (
     id: string,
     isFavorite: boolean,
@@ -66,6 +68,8 @@ export default function SolutionCard({
   onClick,
 
   isFavorite = false,
+
+  maxFavoritesReached = false,
 
   onToggleFavorite,
 
@@ -137,6 +141,19 @@ export default function SolutionCard({
   ) {
 
     e.stopPropagation();
+
+    /* =====================================================
+       LIMIT
+    ===================================================== */
+
+    if (
+      !isFavorite &&
+      maxFavoritesReached
+    ) {
+
+      return;
+
+    }
 
     try {
 
@@ -216,15 +233,26 @@ export default function SolutionCard({
           handleFavoriteClick
         }
 
+        disabled={
+          !isFavorite &&
+          maxFavoritesReached
+        }
+
         className={`
           absolute
           top-2
           left-2
           z-20
-          cursor-pointer
           leading-none
           transition
           text-[20px]
+
+          ${
+            !isFavorite &&
+            maxFavoritesReached
+              ? "cursor-not-allowed opacity-30"
+              : "cursor-pointer"
+          }
 
           ${
             isFavorite
@@ -236,7 +264,16 @@ export default function SolutionCard({
         aria-label={
           isFavorite
             ? "Retirer des favoris"
-            : "Ajouter aux favoris"
+            : maxFavoritesReached
+              ? "Maximum de 10 favoris atteint"
+              : "Ajouter aux favoris"
+        }
+
+        title={
+          !isFavorite &&
+          maxFavoritesReached
+            ? "Maximum de 10 favoris atteint"
+            : undefined
         }
 
       >
@@ -361,12 +398,12 @@ export default function SolutionCard({
       {/* =====================================================
           NAME
       ===================================================== */}
-      
+
       <div className="
         p-3
         text-center
       ">
-      
+
         <h3 className="
           text-xs
           font-semibold
@@ -375,25 +412,25 @@ export default function SolutionCard({
           line-clamp-2
           group-hover:underline
         ">
-      
+
           {name}
-      
+
         </h3>
-      
+
         {typeof contentCount === "number" && (
-      
+
           <p className="
             mt-1
             text-[10px]
             text-gray-400
           ">
-      
+
             {contentCount} contents
-      
+
           </p>
-      
+
         )}
-      
+
       </div>
 
     </div>
