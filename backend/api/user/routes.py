@@ -144,17 +144,25 @@ def update_preferences(
     payload: UserPreferencesPayload,
 ):
 
-    set_user_preferences(
-        user_id=payload.user_id,
-        companies=payload.companies,
-        solutions=payload.solutions,
-        topics=payload.topics,
-    )
+    try:
 
-    return {
-        "status": "ok",
-    }
+        set_user_preferences(
+            user_id=payload.user_id,
+            companies=payload.companies,
+            solutions=payload.solutions,
+            topics=payload.topics,
+        )
 
+        return {
+            "status": "ok",
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
 
 # =========================================================
 # USER KEYWORDS
