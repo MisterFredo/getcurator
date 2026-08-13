@@ -15,6 +15,10 @@ import {
   useDrawer,
 } from "@/contexts/DrawerContext";
 
+import {
+  useWorkspace,
+} from "@/contexts/WorkspaceContext";
+
 import WatchList
   from "@/components/watch/WatchList";
 
@@ -63,6 +67,11 @@ export default function HomeContents({
     openRightDrawer,
   } = useDrawer();
 
+  const {
+    selectedContentItems,
+    toggleContent,
+  } = useWorkspace();
+
   /* =========================================================
      LOAD
   ========================================================= */
@@ -73,8 +82,14 @@ export default function HomeContents({
 
       if (!interlocutorId) {
 
-        setItems([]);
-        setTotal(0);
+        setItems(
+          [],
+        );
+
+        setTotal(
+          0,
+        );
+
         return;
 
       }
@@ -87,6 +102,7 @@ export default function HomeContents({
 
         const res =
           await watchLatest({
+
             user_id:
               interlocutorId,
 
@@ -95,6 +111,7 @@ export default function HomeContents({
 
             offset:
               0,
+
           });
 
         setItems(
@@ -147,6 +164,25 @@ export default function HomeContents({
     openRightDrawer(
       "content",
       item.id,
+    );
+
+  }
+
+  /* =========================================================
+     WORKSPACE
+  ========================================================= */
+
+  const selectedIds =
+    selectedContentItems.map(
+      item => item.id,
+    );
+
+  function toggleSelect(
+    item: WatchItem,
+  ) {
+
+    toggleContent(
+      item,
     );
 
   }
@@ -288,10 +324,12 @@ export default function HomeContents({
             }
 
             selectedIds={
-              []
+              selectedIds
             }
 
-            onToggleSelect={() => {}}
+            onToggleSelect={
+              toggleSelect
+            }
 
           />
 
