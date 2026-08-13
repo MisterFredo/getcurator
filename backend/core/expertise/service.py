@@ -1,5 +1,7 @@
 # backend/core/expertise/service.py
 
+from time import perf_counter
+
 from api.expertise.models import (
     Expertise,
     ExpertiseContent,
@@ -61,9 +63,30 @@ def generate_expertise_from_profile(
     topic_id: str | None = None,
 ) -> Expertise:
 
+    t0 = perf_counter()
+
+    # ========================================================
+    # PROFILE
+    # ========================================================
+
     profile = load_profile(
         user_id=user_id,
     )
+
+    t1 = perf_counter()
+
+    print(
+        "⏱️ EXPERTISE load_profile:",
+        round(
+            t1 - t0,
+            3,
+        ),
+        "s",
+    )
+
+    # ========================================================
+    # CONTENT SELECTION
+    # ========================================================
 
     contents, total = select_contents(
 
@@ -89,7 +112,22 @@ def generate_expertise_from_profile(
 
     )
 
-    return build_expertise(
+    t2 = perf_counter()
+
+    print(
+        "⏱️ EXPERTISE select_contents:",
+        round(
+            t2 - t1,
+            3,
+        ),
+        "s",
+    )
+
+    # ========================================================
+    # BUILD
+    # ========================================================
+
+    expertise = build_expertise(
 
         profile=profile,
 
@@ -98,6 +136,28 @@ def generate_expertise_from_profile(
         count=total,
 
     )
+
+    t3 = perf_counter()
+
+    print(
+        "⏱️ EXPERTISE build_expertise:",
+        round(
+            t3 - t2,
+            3,
+        ),
+        "s",
+    )
+
+    print(
+        "⏱️ EXPERTISE TOTAL:",
+        round(
+            t3 - t0,
+            3,
+        ),
+        "s",
+    )
+
+    return expertise
 
 
 # ============================================================
