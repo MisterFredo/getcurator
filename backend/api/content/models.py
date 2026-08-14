@@ -258,6 +258,13 @@ class ContentSearchFilters(BaseModel):
 
     search: Optional[str] = None
 
+    status: Optional[
+        Literal[
+            "DRAFT",
+            "PUBLISHED",
+        ]
+    ] = None
+
     company_id: Optional[str] = None
     solution_id: Optional[str] = None
     topic_id: Optional[str] = None
