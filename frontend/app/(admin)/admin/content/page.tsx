@@ -14,6 +14,7 @@ import type { SolutionOption } from "@/types/solution";
 import type { TopicOption } from "@/types/topic";
 import type { ConceptOption } from "@/types/concept";
 import type { SourceOption } from "@/types/source";
+import Link from "next/link";
 
 import { useContentSearch } from "@/hooks/useContentSearch";
 
@@ -175,21 +176,38 @@ export default function ContentPage() {
 
     <div className="space-y-8">
 
-      {/* =================================================== */}
-      {/* HEADER */}
-      {/* =================================================== */}
-
-      <div>
-
-        <h1 className="text-3xl font-semibold">
-          Contents
-        </h1>
-
-        <p className="text-gray-500 mt-1">
-          Browse, search and edit published contents.
-        </p>
-
-      </div>
+            {/* =================================================== */}
+            {/* HEADER */}
+            {/* =================================================== */}
+      
+            <div className="flex items-center justify-between">
+      
+              <div>
+      
+                <h1 className="text-3xl font-semibold">
+                  Contents
+                </h1>
+      
+                <p className="text-gray-500 mt-1">
+                  Browse, search and edit contents.
+                </p>
+      
+              </div>
+      
+              <Link
+                href="/admin/content/new"
+                className="
+                  bg-ratecard-blue
+                  text-white
+                  px-4
+                  py-2
+                  rounded
+                "
+              >
+                New content
+              </Link>
+      
+            </div>
 
       {/* =================================================== */}
       {/* FILTERS */}
