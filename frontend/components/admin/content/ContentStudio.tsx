@@ -364,48 +364,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
 
         <div className="bg-white border rounded p-4">
 
-          <div className="text-sm font-medium mb-3">
-            Type de contenu
-          </div>
-
-          <div className="flex gap-6">
-
-            <label className="flex items-center gap-2 text-sm">
-
-              <input
-                type="radio"
-                checked={
-                  contentType === "ANALYSIS"
-                }
-                onChange={() =>
-                  setContentType("ANALYSIS")
-                }
-              />
-
-              Analysis
-
-            </label>
-
-            <label className="flex items-center gap-2 text-sm">
-
-              <input
-                type="radio"
-                checked={
-                  contentType === "NEWS"
-                }
-                onChange={() =>
-                  setContentType("NEWS")
-                }
-              />
-
-              News
-
-            </label>
-
-          </div>
-
-          {/* 🔥 NEW */}
-
           <div className="mt-4">
 
             <label className="block text-sm font-medium mb-2">
