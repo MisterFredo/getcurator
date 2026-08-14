@@ -323,6 +323,7 @@ def search_contents(
     SELECT
 
         c.ID_CONTENT,
+        c.STATUS,
 
         c.TITLE,
 
@@ -365,36 +366,30 @@ def search_contents(
     # ========================================================
 
     contents = [
-
         {
-
-            "id_content":
-                r["ID_CONTENT"],
-
-            "title":
-                r.get(
-                    "TITLE"
-                ),
-
-            "source_title":
-                r.get(
-                    "SOURCE_TITLE"
-                ),
-
-            "source_date":
-                r.get(
-                    "SOURCE_DATE"
-                ),
-
-            "published_at":
-                r.get(
-                    "PUBLISHED_AT"
-                ),
-
+            "id_content": r["ID_CONTENT"],
+    
+            "status": r.get(
+                "STATUS"
+            ),
+    
+            "title": r.get(
+                "TITLE"
+            ),
+    
+            "source_title": r.get(
+                "SOURCE_TITLE"
+            ),
+    
+            "source_date": r.get(
+                "SOURCE_DATE"
+            ),
+    
+            "published_at": r.get(
+                "PUBLISHED_AT"
+            ),
         }
-
         for r in rows
-
     ]
 
 
