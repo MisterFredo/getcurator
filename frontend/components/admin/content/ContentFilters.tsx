@@ -90,6 +90,43 @@ export default function ContentFilters({
 
       </div>
 
+            {/* =================================================== */}
+            {/* STATUS */}
+            {/* =================================================== */}
+      
+            <div className="max-w-xs">
+      
+              <label className="block text-sm font-medium mb-2">
+                Status
+              </label>
+      
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  update(
+                    "status",
+                    e.target.value as ContentFilters["status"],
+                  )
+                }
+                className="w-full border rounded px-3 py-2 bg-white"
+              >
+      
+                <option value="">
+                  All statuses
+                </option>
+      
+                <option value="DRAFT">
+                  Draft
+                </option>
+      
+                <option value="PUBLISHED">
+                  Published
+                </option>
+      
+              </select>
+      
+            </div>
+
       {/* =================================================== */}
       {/* ENTITIES */}
       {/* =================================================== */}
