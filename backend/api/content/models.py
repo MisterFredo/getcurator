@@ -261,6 +261,8 @@ class ContentSearchFilters(BaseModel):
     status: Optional[
         Literal[
             "DRAFT",
+            "READY",
+            "SCHEDULED",
             "PUBLISHED",
         ]
     ] = None
