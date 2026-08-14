@@ -110,8 +110,16 @@ export default function ContentFilters({
               Draft
             </option>
 
+            <option value="READY">
+              Ready
+            </option>
+
             <option value="PUBLISHED">
               Published
+            </option>
+
+            <option value="SCHEDULED">
+              Scheduled
             </option>
           </select>
         </div>
