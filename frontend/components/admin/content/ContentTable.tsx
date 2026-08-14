@@ -29,6 +29,10 @@ export default function ContentTable({
   onSelectionChange,
 }: Props) {
 
+  /* =======================================================
+     SELECTION
+  ======================================================= */
+
   function toggle(
     id: string,
   ) {
@@ -43,23 +47,29 @@ export default function ContentTable({
         ),
       );
 
-    } else {
-
-      onSelectionChange([
-        ...selectedIds,
-        id,
-      ]);
+      return;
 
     }
+
+    onSelectionChange([
+      ...selectedIds,
+      id,
+    ]);
 
   }
 
   function toggleAll() {
 
-    if (
-      selectedIds.length ===
-      contents.length
-    ) {
+    const allSelected =
+      contents.length > 0 &&
+      contents.every(
+        (content) =>
+          selectedIds.includes(
+            content.id_content,
+          ),
+      );
+
+    if (allSelected) {
 
       onSelectionChange([]);
 
@@ -69,13 +79,70 @@ export default function ContentTable({
 
     onSelectionChange(
       contents.map(
-        (c) => c.id_content,
+        (content) =>
+          content.id_content,
       ),
     );
 
   }
 
-  /* ===================================================== */
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  function renderStatus(
+    status: ContentRow["status"],
+  ) {
+
+    switch (status) {
+
+      case "PUBLISHED":
+
+        return (
+          <span className="inline-flex px-2 py-1 rounded bg-green-100 text-green-700 text-xs">
+            Published
+          </span>
+        );
+
+      case "SCHEDULED":
+
+        return (
+          <span className="inline-flex px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
+            Scheduled
+          </span>
+        );
+
+      case "READY":
+
+        return (
+          <span className="inline-flex px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs">
+            Ready
+          </span>
+        );
+
+      case "DRAFT":
+
+        return (
+          <span className="inline-flex px-2 py-1 rounded bg-yellow-100 text-yellow-700 text-xs">
+            Draft
+          </span>
+        );
+
+      default:
+
+        return (
+          <span className="inline-flex px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs">
+            {status || "—"}
+          </span>
+        );
+
+    }
+
+  }
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
   if (loading) {
 
@@ -86,6 +153,10 @@ export default function ContentTable({
     );
 
   }
+
+  /* =======================================================
+     EMPTY
+  ======================================================= */
 
   if (
     contents.length === 0
@@ -99,7 +170,22 @@ export default function ContentTable({
 
   }
 
-  /* ===================================================== */
+  /* =======================================================
+     SELECT ALL STATE
+  ======================================================= */
+
+  const allSelected =
+    contents.length > 0 &&
+    contents.every(
+      (content) =>
+        selectedIds.includes(
+          content.id_content,
+        ),
+    );
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -115,11 +201,7 @@ export default function ContentTable({
 
               <input
                 type="checkbox"
-                checked={
-                  contents.length > 0 &&
-                  selectedIds.length ===
-                    contents.length
-                }
+                checked={allSelected}
                 onChange={toggleAll}
               />
 
@@ -171,9 +253,11 @@ export default function ContentTable({
 
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(
-                      content.id_content,
-                    )}
+                    checked={
+                      selectedIds.includes(
+                        content.id_content,
+                      )
+                    }
                     onChange={() =>
                       toggle(
                         content.id_content,
@@ -185,18 +269,8 @@ export default function ContentTable({
 
                 <td className="p-3">
 
-                  {content.published_at ? (
-
-                    <span className="inline-flex px-2 py-1 rounded bg-green-100 text-green-700 text-xs">
-                      Published
-                    </span>
-
-                  ) : (
-
-                    <span className="inline-flex px-2 py-1 rounded bg-yellow-100 text-yellow-700 text-xs">
-                      Draft
-                    </span>
-
+                  {renderStatus(
+                    content.status,
                   )}
 
                 </td>
@@ -204,7 +278,7 @@ export default function ContentTable({
                 <td className="p-3">
 
                   <div className="font-medium">
-                    {content.title}
+                    {content.title || "—"}
                   </div>
 
                 </td>
