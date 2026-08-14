@@ -41,6 +41,10 @@ TABLE_CONTENT_CONCEPT = (
 # SEARCH
 # ============================================================
 
+# ============================================================
+# SEARCH
+# ============================================================
+
 def search_contents(
     request: ContentSearchRequest,
 ):
@@ -58,6 +62,7 @@ def search_contents(
     ]
 
     params = {}
+
 
     # ========================================================
     # SEARCH
@@ -88,19 +93,21 @@ def search_contents(
             f"%{filters.search}%"
         )
 
-        # ========================================================
-        # STATUS
-        # ========================================================
-    
-        if filters.status:
-    
-            where.append(
-                "c.STATUS = @status"
-            )
-    
-            params["status"] = (
-                filters.status
-            )
+
+    # ========================================================
+    # STATUS
+    # ========================================================
+
+    if filters.status:
+
+        where.append(
+            "c.STATUS = @status"
+        )
+
+        params["status"] = (
+            filters.status
+        )
+
 
     # ========================================================
     # COMPANY
@@ -117,6 +124,7 @@ def search_contents(
 
                 WHERE
                     cc.ID_CONTENT = c.ID_CONTENT
+
                 AND
                     cc.ID_COMPANY = @company_id
             )
@@ -126,6 +134,7 @@ def search_contents(
         params["company_id"] = (
             filters.company_id
         )
+
 
     # ========================================================
     # SOLUTION
@@ -142,6 +151,7 @@ def search_contents(
 
                 WHERE
                     cs.ID_CONTENT = c.ID_CONTENT
+
                 AND
                     cs.ID_SOLUTION = @solution_id
             )
@@ -151,6 +161,7 @@ def search_contents(
         params["solution_id"] = (
             filters.solution_id
         )
+
 
     # ========================================================
     # TOPIC
@@ -167,6 +178,7 @@ def search_contents(
 
                 WHERE
                     ct.ID_CONTENT = c.ID_CONTENT
+
                 AND
                     ct.ID_TOPIC = @topic_id
             )
@@ -176,6 +188,7 @@ def search_contents(
         params["topic_id"] = (
             filters.topic_id
         )
+
 
     # ========================================================
     # CONCEPT
@@ -192,6 +205,7 @@ def search_contents(
 
                 WHERE
                     cc.ID_CONTENT = c.ID_CONTENT
+
                 AND
                     cc.ID_CONCEPT = @concept_id
             )
@@ -201,6 +215,7 @@ def search_contents(
         params["concept_id"] = (
             filters.concept_id
         )
+
 
     # ========================================================
     # SOURCE
@@ -215,6 +230,7 @@ def search_contents(
         params["source_id"] = (
             filters.source_id
         )
+
 
     # ========================================================
     # DATES
@@ -240,6 +256,7 @@ def search_contents(
             filters.date_to
         )
 
+
     # ========================================================
     # NUMBERS
     # ========================================================
@@ -253,6 +270,7 @@ def search_contents(
             """
         )
 
+
     # ========================================================
     # WHERE
     # ========================================================
@@ -261,17 +279,20 @@ def search_contents(
         where
     )
 
+
     # ========================================================
     # COUNT
     # ========================================================
 
     total_sql = f"""
     SELECT
+
         COUNT(*) AS TOTAL
 
     FROM `{TABLE_CONTENT}` c
 
     WHERE
+
         {where_sql}
     """
 
@@ -293,6 +314,7 @@ def search_contents(
         ),
     )
 
+
     # ========================================================
     # DATA
     # ========================================================
@@ -313,6 +335,7 @@ def search_contents(
     FROM `{TABLE_CONTENT}` c
 
     WHERE
+
         {where_sql}
 
     ORDER BY
@@ -336,31 +359,70 @@ def search_contents(
         params,
     )
 
+
+    # ========================================================
+    # SERIALIZE
+    # ========================================================
+
     contents = [
+
         {
-            "id_content": r["ID_CONTENT"],
-            "title": r.get(
-                "TITLE"
-            ),
-            "source_title": r.get(
-                "SOURCE_TITLE"
-            ),
-            "source_date": r.get(
-                "SOURCE_DATE"
-            ),
-            "published_at": r.get(
-                "PUBLISHED_AT"
-            ),
+
+            "id_content":
+                r["ID_CONTENT"],
+
+            "title":
+                r.get(
+                    "TITLE"
+                ),
+
+            "source_title":
+                r.get(
+                    "SOURCE_TITLE"
+                ),
+
+            "source_date":
+                r.get(
+                    "SOURCE_DATE"
+                ),
+
+            "published_at":
+                r.get(
+                    "PUBLISHED_AT"
+                ),
+
         }
+
         for r in rows
+
     ]
 
+
+    # ========================================================
+    # RESULT
+    # ========================================================
+
     return {
-        "contents": contents,
-        "page": request.page,
-        "page_size": limit,
-        "total_results": total_results,
-        "total_pages": total_pages,
-        "has_next": request.page < total_pages,
-        "has_previous": request.page > 1,
+
+        "contents":
+            contents,
+
+        "page":
+            request.page,
+
+        "page_size":
+            limit,
+
+        "total_results":
+            total_results,
+
+        "total_pages":
+            total_pages,
+
+        "has_next":
+            request.page < total_pages,
+
+        "has_previous":
+            request.page > 1,
+
     }
