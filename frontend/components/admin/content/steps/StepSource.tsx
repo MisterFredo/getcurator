@@ -10,7 +10,6 @@ type Source = {
 };
 
 type Props = {
-  // 🔥 NEW
   primaryCompanyId?: string | null;
 
   onCreate: (data: {
@@ -22,11 +21,6 @@ type Props = {
 
 export default function StepSource({
   onCreate,
-
-  // 🔥 NEW
-  contentType,
-
-  // 🔥 NEW
   primaryCompanyId,
 }: Props) {
 
