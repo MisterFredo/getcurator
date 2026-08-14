@@ -5,6 +5,8 @@
 export type ContentStatus =
   | ""
   | "DRAFT"
+  | "READY"
+  | "SCHEDULED"
   | "PUBLISHED";
 
 
