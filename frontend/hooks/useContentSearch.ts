@@ -28,6 +28,9 @@ function cleanFilters(
     search:
       filters.search || null,
 
+    status:
+      filters.status || null,
+
     company_id:
       filters.company_id || null,
 
@@ -177,3 +180,5 @@ export function useContentSearch({
   };
 
 }
+
+
