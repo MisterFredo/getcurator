@@ -1,22 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { api } from "@/lib/api";
+import Link from "next/link";
+
+import {
+  api,
+} from "@/lib/api";
 
 import {
   EMPTY_CONTENT_FILTERS,
   type ContentFilters,
 } from "@/types/content";
 
-import type { CompanyOption } from "@/types/company";
-import type { SolutionOption } from "@/types/solution";
-import type { TopicOption } from "@/types/topic";
-import type { ConceptOption } from "@/types/concept";
-import type { SourceOption } from "@/types/source";
-import Link from "next/link";
+import type {
+  CompanyOption,
+} from "@/types/company";
 
-import { useContentSearch } from "@/hooks/useContentSearch";
+import type {
+  SolutionOption,
+} from "@/types/solution";
+
+import type {
+  TopicOption,
+} from "@/types/topic";
+
+import type {
+  ConceptOption,
+} from "@/types/concept";
+
+import type {
+  SourceOption,
+} from "@/types/source";
+
+import {
+  useContentSearch,
+} from "@/hooks/useContentSearch";
 
 import ContentFiltersPanel from "@/components/admin/content/ContentFilters";
 import ContentTable from "@/components/admin/content/ContentTable";
@@ -30,7 +52,7 @@ export default function ContentPage() {
     filters,
     setFilters,
   ] = useState<ContentFilters>(
-    EMPTY_CONTENT_FILTERS
+    EMPTY_CONTENT_FILTERS,
   );
 
   const [
@@ -42,6 +64,11 @@ export default function ContentPage() {
     selectedIds,
     setSelectedIds,
   ] = useState<string[]>([]);
+
+  const [
+    bulkLoading,
+    setBulkLoading,
+  ] = useState(false);
 
   const [
     companies,
@@ -77,6 +104,7 @@ export default function ContentPage() {
     loading,
     total_results,
     total_pages,
+    refresh,
   } = useContentSearch({
     filters,
     page,
@@ -94,49 +122,53 @@ export default function ContentPage() {
       try {
 
         const [
-
           companiesRes,
-
           solutionsRes,
-
           topicsRes,
-
           conceptsRes,
-
           sourcesRes,
-
         ] = await Promise.all([
 
-          api.get("/company/list"),
+          api.get(
+            "/company/list",
+          ),
 
-          api.get("/solution/list"),
+          api.get(
+            "/solution/list",
+          ),
 
-          api.get("/topic/list"),
+          api.get(
+            "/topic/list",
+          ),
 
-          api.get("/concept/list"),
+          api.get(
+            "/concept/list",
+          ),
 
-          api.get("/source/list"),
+          api.get(
+            "/source/list",
+          ),
 
         ]);
 
         setCompanies(
-          companiesRes.companies || []
+          companiesRes.companies || [],
         );
 
         setSolutions(
-          solutionsRes.solutions || []
+          solutionsRes.solutions || [],
         );
 
         setTopics(
-          topicsRes.topics || []
+          topicsRes.topics || [],
         );
 
         setConcepts(
-          conceptsRes.concepts || []
+          conceptsRes.concepts || [],
         );
 
         setSources(
-          sourcesRes.sources || []
+          sourcesRes.sources || [],
         );
 
       } catch (e) {
@@ -170,44 +202,149 @@ export default function ContentPage() {
 
   }
 
-  /* ======================================================= */
+  /* =======================================================
+     BULK READY
+  ======================================================= */
+
+  async function handleBulkReady() {
+
+    if (
+      selectedIds.length === 0
+    ) {
+      return;
+    }
+
+    try {
+
+      setBulkLoading(true);
+
+      await api.post(
+        "/content/bulk/ready",
+        {
+          ids: selectedIds,
+        },
+      );
+
+      setSelectedIds([]);
+
+      await refresh();
+
+    } catch (e) {
+
+      console.error(
+        "Bulk ready error",
+        e,
+      );
+
+      alert(
+        "Unable to mark contents as ready.",
+      );
+
+    } finally {
+
+      setBulkLoading(false);
+
+    }
+
+  }
+
+  /* =======================================================
+     BULK PUBLISH
+  ======================================================= */
+
+  async function handleBulkPublish() {
+
+    if (
+      selectedIds.length === 0
+    ) {
+      return;
+    }
+
+    try {
+
+      setBulkLoading(true);
+
+      const result =
+        await api.post(
+          "/content/bulk/publish",
+          {
+            ids: selectedIds,
+          },
+        );
+
+      setSelectedIds([]);
+
+      await refresh();
+
+      if (
+        result.skipped > 0
+      ) {
+
+        alert(
+          `${result.updated} published, ${result.skipped} skipped.`,
+        );
+
+      }
+
+    } catch (e) {
+
+      console.error(
+        "Bulk publish error",
+        e,
+      );
+
+      alert(
+        "Unable to publish contents.",
+      );
+
+    } finally {
+
+      setBulkLoading(false);
+
+    }
+
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
     <div className="space-y-8">
 
-            {/* =================================================== */}
-            {/* HEADER */}
-            {/* =================================================== */}
-      
-            <div className="flex items-center justify-between">
-      
-              <div>
-      
-                <h1 className="text-3xl font-semibold">
-                  Contents
-                </h1>
-      
-                <p className="text-gray-500 mt-1">
-                  Browse, search and edit contents.
-                </p>
-      
-              </div>
-      
-              <Link
-                href="/admin/content/new"
-                className="
-                  bg-ratecard-blue
-                  text-white
-                  px-4
-                  py-2
-                  rounded
-                "
-              >
-                New content
-              </Link>
-      
-            </div>
+      {/* =================================================== */}
+      {/* HEADER */}
+      {/* =================================================== */}
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <h1 className="text-3xl font-semibold">
+            Contents
+          </h1>
+
+          <p className="text-gray-500 mt-1">
+            Browse, search and edit contents.
+          </p>
+
+        </div>
+
+        <Link
+          href="/admin/content/new"
+          className="
+            bg-ratecard-blue
+            text-white
+            px-4
+            py-2
+            rounded
+          "
+        >
+          New content
+        </Link>
+
+      </div>
 
       {/* =================================================== */}
       {/* FILTERS */}
@@ -217,7 +354,9 @@ export default function ContentPage() {
 
         filters={filters}
 
-        onChange={handleFiltersChange}
+        onChange={
+          handleFiltersChange
+        }
 
         companies={companies}
 
@@ -236,7 +375,7 @@ export default function ContentPage() {
           setSelectedIds([]);
 
           setFilters(
-            EMPTY_CONTENT_FILTERS
+            EMPTY_CONTENT_FILTERS,
           );
 
         }}
@@ -258,12 +397,77 @@ export default function ContentPage() {
             </h2>
 
             <p className="text-sm text-gray-500">
+
               {total_results} contents found
+
             </p>
 
           </div>
 
+          {/* =============================================== */}
+          {/* BULK ACTIONS */}
+          {/* =============================================== */}
+
+          {selectedIds.length > 0 && (
+
+            <div className="flex items-center gap-3">
+
+              <span className="text-sm text-gray-500">
+
+                {selectedIds.length} selected
+
+              </span>
+
+              <button
+                type="button"
+                onClick={
+                  handleBulkReady
+                }
+                disabled={
+                  bulkLoading
+                }
+                className="
+                  px-4
+                  py-2
+                  border
+                  rounded
+                  bg-white
+                  hover:bg-gray-50
+                  disabled:opacity-50
+                "
+              >
+                Mark as ready
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleBulkPublish
+                }
+                disabled={
+                  bulkLoading
+                }
+                className="
+                  px-4
+                  py-2
+                  rounded
+                  bg-ratecard-blue
+                  text-white
+                  disabled:opacity-50
+                "
+              >
+                Publish
+              </button>
+
+            </div>
+
+          )}
+
         </div>
+
+        {/* ================================================= */}
+        {/* TABLE */}
+        {/* ================================================= */}
 
         <ContentTable
 
@@ -271,21 +475,43 @@ export default function ContentPage() {
 
           loading={loading}
 
-          selectedIds={selectedIds}
+          selectedIds={
+            selectedIds
+          }
 
-          onSelectionChange={setSelectedIds}
+          onSelectionChange={
+            setSelectedIds
+          }
 
         />
+
+        {/* ================================================= */}
+        {/* PAGINATION */}
+        {/* ================================================= */}
 
         <ContentPagination
 
           page={page}
 
-          totalPages={total_pages}
+          totalPages={
+            total_pages
+          }
 
-          totalResults={total_results}
+          totalResults={
+            total_results
+          }
 
-          onPageChange={setPage}
+          onPageChange={(
+            nextPage,
+          ) => {
+
+            setSelectedIds([]);
+
+            setPage(
+              nextPage,
+            );
+
+          }}
 
         />
 
