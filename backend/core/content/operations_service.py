@@ -1,4 +1,7 @@
-from utils.bigquery_utils import query_bq
+from utils.bigquery_utils import (
+    query_bq,
+    update_bq,
+)
 from typing import List, Dict, Optional
 from datetime import datetime, timezone, date
 
