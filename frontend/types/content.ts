@@ -2,8 +2,19 @@
 
 /* ========================================================= */
 
+export type ContentStatus =
+  | ""
+  | "DRAFT"
+  | "PUBLISHED";
+
+
+/* ========================================================= */
+
 export type ContentFilters = {
+
   search: string;
+
+  status: ContentStatus;
 
   company_id: string;
   solution_id: string;
@@ -15,12 +26,17 @@ export type ContentFilters = {
   date_to: string;
 
   only_numbers: boolean;
+
 };
+
 
 /* ========================================================= */
 
 export const EMPTY_CONTENT_FILTERS: ContentFilters = {
+
   search: "",
+
+  status: "",
 
   company_id: "",
   solution_id: "",
@@ -32,11 +48,14 @@ export const EMPTY_CONTENT_FILTERS: ContentFilters = {
   date_to: "",
 
   only_numbers: false,
+
 };
+
 
 /* ========================================================= */
 
 export type ContentRow = {
+
   id_content: string;
 
   title: string | null;
@@ -46,11 +65,14 @@ export type ContentRow = {
   source_date: string | null;
 
   published_at: string | null;
+
 };
+
 
 /* ========================================================= */
 
 export type ContentSearchResponse = {
+
   contents: ContentRow[];
 
   total_results: number;
@@ -64,4 +86,5 @@ export type ContentSearchResponse = {
   has_next: boolean;
 
   has_previous: boolean;
+
 };
