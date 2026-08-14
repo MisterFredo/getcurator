@@ -332,7 +332,7 @@ export default function ContentPage() {
         </div>
 
         <Link
-          href="/admin/content/new"
+          href="/admin/content/create"
           className="
             bg-ratecard-blue
             text-white
