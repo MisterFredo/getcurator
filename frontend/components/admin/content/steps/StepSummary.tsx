@@ -10,9 +10,6 @@ type Props = {
   sourceText: string;
 
   // 🔥 NEW
-  contentType?: "ANALYSIS" | "NEWS";
-
-  // 🔥 NEW
   primaryCompanyId?: string | null;
 
   title: string;
