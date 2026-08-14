@@ -11,9 +11,6 @@ type Source = {
 
 type Props = {
   // 🔥 NEW
-  contentType: "ANALYSIS" | "NEWS";
-
-  // 🔥 NEW
   primaryCompanyId?: string | null;
 
   onCreate: (data: {
