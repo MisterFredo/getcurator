@@ -12,348 +12,620 @@ import type { SourceOption } from "@/types/source";
 /* ========================================================= */
 
 type Props = {
+
   filters: ContentFilters;
-  onChange: (filters: ContentFilters) => void;
+
+  onChange: (
+    filters: ContentFilters,
+  ) => void;
 
   companies: CompanyOption[];
+
   solutions: SolutionOption[];
+
   topics: TopicOption[];
+
   concepts: ConceptOption[];
+
   sources: SourceOption[];
 
   onReset: () => void;
+
 };
 
 /* ========================================================= */
 
 export default function ContentFilters({
+
   filters,
+
   onChange,
+
   companies,
+
   solutions,
+
   topics,
+
   concepts,
+
   sources,
+
   onReset,
+
 }: Props) {
 
-  function update<K extends keyof ContentFilters>(
+  /* =======================================================
+     UPDATE
+  ======================================================= */
+
+  function update<
+    K extends keyof ContentFilters
+  >(
     key: K,
     value: ContentFilters[K],
   ) {
 
     onChange({
+
       ...filters,
+
       [key]: value,
+
     });
 
   }
 
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
 
-    <div className="border rounded-lg bg-white p-6 space-y-6">
+    <div
+      className="
+        border
+        rounded-lg
+        bg-white
+        p-4
+        space-y-4
+      "
+    >
 
       {/* =================================================== */}
-      {/* HEADER */}
+      {/* MAIN FILTERS */}
       {/* =================================================== */}
 
-      <div>
+      <div
+        className="
+          grid
+          gap-3
+          md:grid-cols-2
+          xl:grid-cols-12
+          items-end
+        "
+      >
 
-        <h2 className="text-xl font-semibold">
-          Filters
-        </h2>
+        {/* SEARCH */}
 
-        <p className="text-sm text-gray-500">
-          Search and narrow down contents.
-        </p>
+        <div className="xl:col-span-3">
+
+          <label
+            className="
+              block
+              text-xs
+              font-medium
+              text-gray-600
+              mb-1
+            "
+          >
+            Search
+          </label>
+
+          <input
+
+            type="text"
+
+            value={
+              filters.search
+            }
+
+            onChange={(e) =>
+              update(
+                "search",
+                e.target.value,
+              )
+            }
+
+            placeholder="Search title..."
+
+            className="
+              w-full
+              border
+              rounded
+              px-3
+              py-2
+              text-sm
+            "
+
+          />
+
+        </div>
+
+
+        {/* STATUS */}
+
+        <div className="xl:col-span-2">
+
+          <label
+            className="
+              block
+              text-xs
+              font-medium
+              text-gray-600
+              mb-1
+            "
+          >
+            Status
+          </label>
+
+          <select
+
+            value={
+              filters.status
+            }
+
+            onChange={(e) =>
+              update(
+                "status",
+                e.target.value
+                  as ContentFilters["status"],
+              )
+            }
+
+            className="
+              w-full
+              border
+              rounded
+              px-3
+              py-2
+              text-sm
+              bg-white
+            "
+
+          >
+
+            <option value="">
+              All statuses
+            </option>
+
+            <option value="DRAFT">
+              Draft
+            </option>
+
+            <option value="PUBLISHED">
+              Published
+            </option>
+
+          </select>
+
+        </div>
+
+
+        {/* COMPANY */}
+
+        <div className="xl:col-span-2">
+
+          <SearchableSelect
+
+            label="Company"
+
+            placeholder="All companies"
+
+            options={
+              companies.map(
+                (company) => ({
+
+                  id:
+                    company.id_company,
+
+                  label:
+                    company.name,
+
+                })
+              )
+            }
+
+            value={
+              companies
+                .filter(
+                  (company) =>
+                    company.id_company ===
+                    filters.company_id
+                )
+                .map(
+                  (company) => ({
+
+                    id:
+                      company.id_company,
+
+                    label:
+                      company.name,
+
+                  })
+                )[0] || null
+            }
+
+            onChange={(value) =>
+              update(
+                "company_id",
+                value?.id || "",
+              )
+            }
+
+          />
+
+        </div>
+
+
+        {/* SOLUTION */}
+
+        <div className="xl:col-span-2">
+
+          <SearchableSelect
+
+            label="Solution"
+
+            placeholder="All solutions"
+
+            options={
+              solutions.map(
+                (solution) => ({
+
+                  id:
+                    solution.id_solution,
+
+                  label:
+                    solution.name,
+
+                })
+              )
+            }
+
+            value={
+              solutions
+                .filter(
+                  (solution) =>
+                    solution.id_solution ===
+                    filters.solution_id
+                )
+                .map(
+                  (solution) => ({
+
+                    id:
+                      solution.id_solution,
+
+                    label:
+                      solution.name,
+
+                  })
+                )[0] || null
+            }
+
+            onChange={(value) =>
+              update(
+                "solution_id",
+                value?.id || "",
+              )
+            }
+
+          />
+
+        </div>
+
+
+        {/* TOPIC */}
+
+        <div className="xl:col-span-3">
+
+          <SearchableSelect
+
+            label="Topic"
+
+            placeholder="All topics"
+
+            options={
+              topics.map(
+                (topic) => ({
+
+                  id:
+                    topic.id_topic,
+
+                  label:
+                    topic.label,
+
+                })
+              )
+            }
+
+            value={
+              topics
+                .filter(
+                  (topic) =>
+                    topic.id_topic ===
+                    filters.topic_id
+                )
+                .map(
+                  (topic) => ({
+
+                    id:
+                      topic.id_topic,
+
+                    label:
+                      topic.label,
+
+                  })
+                )[0] || null
+            }
+
+            onChange={(value) =>
+              update(
+                "topic_id",
+                value?.id || "",
+              )
+            }
+
+          />
+
+        </div>
 
       </div>
 
-      {/* =================================================== */}
-      {/* QUICK SEARCH */}
-      {/* =================================================== */}
-
-      <div>
-
-        <input
-          type="text"
-          value={filters.search}
-          onChange={(e) =>
-            update(
-              "search",
-              e.target.value,
-            )
-          }
-          placeholder="Search title..."
-          className="w-full border rounded px-3 py-2"
-        />
-
-      </div>
-
-            {/* =================================================== */}
-            {/* STATUS */}
-            {/* =================================================== */}
-      
-            <div className="max-w-xs">
-      
-              <label className="block text-sm font-medium mb-2">
-                Status
-              </label>
-      
-              <select
-                value={filters.status}
-                onChange={(e) =>
-                  update(
-                    "status",
-                    e.target.value as ContentFilters["status"],
-                  )
-                }
-                className="w-full border rounded px-3 py-2 bg-white"
-              >
-      
-                <option value="">
-                  All statuses
-                </option>
-      
-                <option value="DRAFT">
-                  Draft
-                </option>
-      
-                <option value="PUBLISHED">
-                  Published
-                </option>
-      
-              </select>
-      
-            </div>
 
       {/* =================================================== */}
-      {/* ENTITIES */}
+      {/* SECONDARY FILTERS */}
       {/* =================================================== */}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div
+        className="
+          grid
+          gap-3
+          md:grid-cols-2
+          xl:grid-cols-12
+          items-end
+        "
+      >
 
-        <SearchableSelect
-          label="Company"
-          placeholder="Select company..."
-          options={companies.map((c) => ({
-            id: c.id_company,
-            label: c.name,
-          }))}
-          value={
-            companies
-              .filter(
-                (c) =>
-                  c.id_company ===
-                  filters.company_id,
+        {/* CONCEPT */}
+
+        <div className="xl:col-span-3">
+
+          <SearchableSelect
+
+            label="Concept"
+
+            placeholder="All concepts"
+
+            options={
+              concepts.map(
+                (concept) => ({
+
+                  id:
+                    concept.id_concept,
+
+                  label:
+                    concept.label,
+
+                })
               )
-              .map((c) => ({
-                id: c.id_company,
-                label: c.name,
-              }))[0] || null
-          }
-          onChange={(value) =>
-            update(
-              "company_id",
-              value?.id || "",
-            )
-          }
-        />
+            }
 
-        <SearchableSelect
-          label="Solution"
-          placeholder="Select solution..."
-          options={solutions.map((s) => ({
-            id: s.id_solution,
-            label: s.name,
-          }))}
-          value={
-            solutions
-              .filter(
-                (s) =>
-                  s.id_solution ===
-                  filters.solution_id,
+            value={
+              concepts
+                .filter(
+                  (concept) =>
+                    concept.id_concept ===
+                    filters.concept_id
+                )
+                .map(
+                  (concept) => ({
+
+                    id:
+                      concept.id_concept,
+
+                    label:
+                      concept.label,
+
+                  })
+                )[0] || null
+            }
+
+            onChange={(value) =>
+              update(
+                "concept_id",
+                value?.id || "",
               )
-              .map((s) => ({
-                id: s.id_solution,
-                label: s.name,
-              }))[0] || null
-          }
-          onChange={(value) =>
-            update(
-              "solution_id",
-              value?.id || "",
-            )
-          }
-        />
+            }
 
-        <SearchableSelect
-          label="Topic"
-          placeholder="Select topic..."
-          options={topics.map((t) => ({
-            id: t.id_topic,
-            label: t.label,
-          }))}
-          value={
-            topics
-              .filter(
-                (t) =>
-                  t.id_topic ===
-                  filters.topic_id,
+          />
+
+        </div>
+
+
+        {/* SOURCE */}
+
+        <div className="xl:col-span-3">
+
+          <SearchableSelect
+
+            label="Source"
+
+            placeholder="All sources"
+
+            options={
+              sources.map(
+                (source) => ({
+
+                  id:
+                    source.source_id,
+
+                  label:
+                    source.name,
+
+                })
               )
-              .map((t) => ({
-                id: t.id_topic,
-                label: t.label,
-              }))[0] || null
-          }
-          onChange={(value) =>
-            update(
-              "topic_id",
-              value?.id || "",
-            )
-          }
-        />
+            }
 
-        <SearchableSelect
-          label="Concept"
-          placeholder="Select concept..."
-          options={concepts.map((c) => ({
-            id: c.id_concept,
-            label: c.label,
-          }))}
-          value={
-            concepts
-              .filter(
-                (c) =>
-                  c.id_concept ===
-                  filters.concept_id,
+            value={
+              sources
+                .filter(
+                  (source) =>
+                    source.source_id ===
+                    filters.source_id
+                )
+                .map(
+                  (source) => ({
+
+                    id:
+                      source.source_id,
+
+                    label:
+                      source.name,
+
+                  })
+                )[0] || null
+            }
+
+            onChange={(value) =>
+              update(
+                "source_id",
+                value?.id || "",
               )
-              .map((c) => ({
-                id: c.id_concept,
-                label: c.label,
-              }))[0] || null
-          }
-          onChange={(value) =>
-            update(
-              "concept_id",
-              value?.id || "",
-            )
-          }
-        />
+            }
 
-        <SearchableSelect
-          label="Source"
-          placeholder="Select source..."
-          options={sources.map((s) => ({
-            id: s.source_id,
-            label: s.name,
-          }))}
-          value={
-            sources
-              .filter(
-                (s) =>
-                  s.source_id ===
-                  filters.source_id,
-              )
-              .map((s) => ({
-                id: s.source_id,
-                label: s.name,
-              }))[0] || null
-          }
-          onChange={(value) =>
-            update(
-              "source_id",
-              value?.id || "",
-            )
-          }
-        />
+          />
 
-      </div>
+        </div>
 
-      {/* =================================================== */}
-      {/* DATES */}
-      {/* =================================================== */}
 
-      <div className="grid gap-4 md:grid-cols-2">
+        {/* FROM */}
 
-        <div>
+        <div className="xl:col-span-2">
 
-          <label className="block text-sm font-medium mb-2">
+          <label
+            className="
+              block
+              text-xs
+              font-medium
+              text-gray-600
+              mb-1
+            "
+          >
             From
           </label>
 
           <input
+
             type="date"
-            value={filters.date_from}
+
+            value={
+              filters.date_from
+            }
+
             onChange={(e) =>
               update(
                 "date_from",
                 e.target.value,
               )
             }
-            className="w-full border rounded px-3 py-2"
+
+            className="
+              w-full
+              border
+              rounded
+              px-3
+              py-2
+              text-sm
+            "
+
           />
 
         </div>
 
-        <div>
 
-          <label className="block text-sm font-medium mb-2">
+        {/* TO */}
+
+        <div className="xl:col-span-2">
+
+          <label
+            className="
+              block
+              text-xs
+              font-medium
+              text-gray-600
+              mb-1
+            "
+          >
             To
           </label>
 
           <input
+
             type="date"
-            value={filters.date_to}
+
+            value={
+              filters.date_to
+            }
+
             onChange={(e) =>
               update(
                 "date_to",
                 e.target.value,
               )
             }
-            className="w-full border rounded px-3 py-2"
+
+            className="
+              w-full
+              border
+              rounded
+              px-3
+              py-2
+              text-sm
+            "
+
           />
 
         </div>
 
-      </div>
 
-      {/* =================================================== */}
-      {/* OPTIONS */}
-      {/* =================================================== */}
+        {/* RESET */}
 
-      <label className="flex items-center gap-3">
+        <div className="xl:col-span-2">
 
-        <input
-          type="checkbox"
-          checked={filters.only_numbers}
-          onChange={(e) =>
-            update(
-              "only_numbers",
-              e.target.checked,
-            )
-          }
-        />
+          <button
 
-        <span className="text-sm">
-          Only contents containing numbers
-        </span>
+            type="button"
 
-      </label>
+            onClick={
+              onReset
+            }
 
-      {/* =================================================== */}
-      {/* ACTIONS */}
-      {/* =================================================== */}
+            className="
+              w-full
+              border
+              rounded
+              px-3
+              py-2
+              text-sm
+              hover:bg-gray-50
+            "
 
-      <div className="flex justify-end">
+          >
+            Reset
+          </button>
 
-        <button
-          type="button"
-          onClick={onReset}
-          className="px-4 py-2 border rounded hover:bg-gray-50"
-        >
-          Reset filters
-        </button>
+        </div>
 
       </div>
 
