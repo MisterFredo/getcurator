@@ -26,9 +26,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
   // 🔥 CONTENT TYPE
   // =========================
 
-  const [contentType, setContentType] =
-    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
-
   // 🔥 NEW
   const [primaryCompanyId, setPrimaryCompanyId] =
     useState<string | null>(null);
