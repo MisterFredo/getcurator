@@ -404,7 +404,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
         {!internalContentId && (
 
           <StepSource
-            contentType={contentType}
             primaryCompanyId={primaryCompanyId}
 
             onCreate={({
@@ -491,9 +490,6 @@ export default function ContentStudio({ mode, contentId }: Props) {
           sourceId={sourceId}
 
           sourceText={sourceText}
-
-          contentType={contentType}
-
           title={title}
           title_en={title_en}
 
