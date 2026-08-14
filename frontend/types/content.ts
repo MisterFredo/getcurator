@@ -57,8 +57,9 @@ export const EMPTY_CONTENT_FILTERS: ContentFilters = {
 /* ========================================================= */
 
 export type ContentRow = {
-
   id_content: string;
+
+  status: string;
 
   title: string | null;
 
@@ -67,9 +68,7 @@ export type ContentRow = {
   source_date: string | null;
 
   published_at: string | null;
-
 };
-
 
 /* ========================================================= */
 
