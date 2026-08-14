@@ -33,10 +33,6 @@ export default function RawDrawer({
   const [rawText, setRawText] = useState("");
 
   // 🔥 NEW
-  const [contentType, setContentType] =
-    useState<"ANALYSIS" | "NEWS">("ANALYSIS");
-
-  // 🔥 NEW
   const [primaryCompanyId, setPrimaryCompanyId] =
     useState("");
 
@@ -178,24 +174,6 @@ export default function RawDrawer({
             onChange={(e) => setDate(e.target.value)}
             className="w-full border rounded p-2"
           />
-        </div>
-
-        {/* 🔥 CONTENT TYPE */}
-        <div className="space-y-2">
-          <label className="text-sm">Type de contenu</label>
-
-          <select
-            value={contentType}
-            onChange={(e) =>
-              setContentType(
-                e.target.value as "ANALYSIS" | "NEWS"
-              )
-            }
-            className="w-full border rounded p-2"
-          >
-            <option value="ANALYSIS">Analysis</option>
-            <option value="NEWS">News</option>
-          </select>
         </div>
 
         {/* 🔥 PRIMARY COMPANY */}
