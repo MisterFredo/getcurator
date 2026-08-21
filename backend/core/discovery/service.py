@@ -294,34 +294,6 @@ def list_discovery_items():
         for r in rows
     ]
 
-# ============================================================
-# STORE DISCOVERY URLS
-# ============================================================
-
-def store_discovery_urls(
-    discovery_ids: List[str],
-):
-
-    return {
-        "status": "not_implemented",
-        "stored": 0,
-        "skipped": 0,
-        "errors": 0,
-    }
-
-
-# ============================================================
-# IGNORE DISCOVERY URLS
-# ============================================================
-
-def ignore_discovery_urls(
-    discovery_ids: List[str],
-):
-
-    return {
-        "status": "not_implemented",
-        "ignored": 0,
-    }
 
 def dismiss_discovery(
     id_discovery: str,
