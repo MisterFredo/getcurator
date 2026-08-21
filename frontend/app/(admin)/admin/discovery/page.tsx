@@ -211,7 +211,10 @@ export default function DiscoveryPage() {
       const res =
         await api.post(
           "/discovery/scan-all",
-          {}
+          {
+            universe_id:
+              universeId || null,
+          }
         );
 
       alert(
@@ -488,27 +491,41 @@ export default function DiscoveryPage() {
   const filteredSources =
     sources.filter(
       (source) => {
-
+  
         const mode = (
           source.acquisition_mode ||
           ""
         ).toUpperCase();
-
-        if (
+  
+  
+        // =====================================================
+        // ACQUISITION MODE
+        // =====================================================
+  
+        const matchesMode =
           sourceMode === "MANUAL"
-        ) {
-
-          return (
-            mode === "MANUAL"
-          );
-
-        }
-
+            ? mode === "MANUAL"
+            : (
+                mode !== "" &&
+                mode !== "MANUAL"
+              );
+  
+  
+        // =====================================================
+        // UNIVERSE
+        // =====================================================
+  
+        const matchesUniverse =
+          !universeId ||
+          source.universe_id ===
+            universeId;
+  
+  
         return (
-          mode !== "" &&
-          mode !== "MANUAL"
+          matchesMode &&
+          matchesUniverse
         );
-
+  
       }
     );
 
@@ -633,6 +650,52 @@ export default function DiscoveryPage() {
         >
           MANUAL
         </button>
+
+        <select
+          value={
+            universeId
+          }
+          onChange={(e) =>
+            setUniverseId(
+              e.target.value
+            )
+          }
+          disabled={
+            isScanning
+          }
+          className="
+            border
+            rounded
+            px-3
+            py-1
+            text-sm
+            disabled:opacity-40
+            disabled:cursor-not-allowed
+          "
+        >
+        
+          <option value="">
+            Tous les univers
+          </option>
+        
+          {universes.map(
+            (universe) => (
+        
+              <option
+                key={
+                  universe.id_universe
+                }
+                value={
+                  universe.id_universe
+                }
+              >
+                {universe.label}
+              </option>
+        
+            )
+          )}
+        
+        </select>
 
       </div>
 
