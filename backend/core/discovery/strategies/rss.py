@@ -5,9 +5,9 @@ from typing import (
     List,
 )
 
-import requests
+import xml.etree.ElementTree as ET
 
-from bs4 import BeautifulSoup
+import requests
 
 
 # ============================================================
@@ -65,32 +65,44 @@ def discover_rss(
     # PARSE XML
     # ========================================================
 
-    soup = BeautifulSoup(
-        response.content,
-        "xml",
-    )
+    try:
+
+        root = ET.fromstring(
+            response.content
+        )
+
+    except ET.ParseError as e:
+
+        raise Exception(
+            f"RSS XML invalide : {e}"
+        )
+
+    # ========================================================
+    # EXTRACT ITEMS
+    # ========================================================
 
     results = []
     seen = set()
 
-    # ========================================================
-    # RSS ITEMS
-    # ========================================================
-
-    for item in soup.find_all(
-        "item"
+    for item in root.findall(
+        ".//item"
     ):
 
-        link = item.find(
+        # ====================================================
+        # URL
+        # ====================================================
+
+        link_element = item.find(
             "link"
         )
 
-        if not link:
+        if link_element is None:
             continue
 
-        url = link.get_text(
-            strip=True
-        )
+        url = (
+            link_element.text
+            or ""
+        ).strip()
 
         if not url:
             continue
@@ -110,17 +122,20 @@ def discover_rss(
         # TITLE
         # ====================================================
 
-        title_tag = item.find(
+        title_element = item.find(
             "title"
         )
 
-        title = (
-            title_tag.get_text(
-                strip=True
-            )
-            if title_tag
-            else url
-        )
+        title = url
+
+        if (
+            title_element is not None
+            and title_element.text
+        ):
+
+            title = (
+                title_element.text
+            ).strip()
 
         # ====================================================
         # RESULT
