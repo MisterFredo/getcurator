@@ -1,30 +1,47 @@
 type Source = {
   source_id: string;
   name: string;
+
   domain?: string | null;
   acquisition_mode?: string | null;
 };
 
+
 type Props = {
+
   sources: Source[];
+
   onScan: (
     sourceId: string,
     sourceName: string
   ) => void;
+
 };
 
+
 export default function DiscoverySources({
+
   sources,
   onScan,
+
 }: Props) {
 
   return (
 
     <div className="bg-white border rounded overflow-hidden">
 
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
+
       <div className="p-4 border-b font-semibold">
         Sources configurées
       </div>
+
+
+      {/* =====================================================
+          TABLE
+      ====================================================== */}
 
       <table className="w-full text-sm">
 
@@ -41,7 +58,7 @@ export default function DiscoverySources({
             </th>
 
             <th className="p-3 text-left">
-              URL Discovery
+              Domaine
             </th>
 
             <th className="p-3 text-left">
@@ -52,46 +69,110 @@ export default function DiscoverySources({
 
         </thead>
 
+
         <tbody>
 
-          {sources.map((source) => (
+          {sources.length === 0 ? (
 
-            <tr
-              key={source.source_id}
-              className="border-b"
-            >
+            <tr>
 
-              <td className="p-3 font-medium">
-                {source.name}
-              </td>
-
-              <td className="p-3">
-                {source.acquisition_mode || "—"}
-              </td>
-
-              <td className="p-3">
-                {source.domain || "—"}
-              </td>
-
-              <td className="p-3">
-
-                <button
-                  onClick={() =>
-                    onScan(
-                      source.source_id,
-                      source.name
-                    )
-                  }
-                  className="bg-ratecard-blue text-white px-3 py-1 rounded"
-                >
-                  SCAN
-                </button>
-
+              <td
+                colSpan={4}
+                className="p-6 text-center text-gray-400"
+              >
+                Aucune source configurée.
               </td>
 
             </tr>
 
-          ))}
+          ) : (
+
+            sources.map((source) => {
+
+              const acquisitionMode = (
+                source.acquisition_mode || ""
+              ).toUpperCase();
+
+              const isManual =
+                acquisitionMode === "MANUAL";
+
+              return (
+
+                <tr
+                  key={source.source_id}
+                  className="border-b last:border-b-0"
+                >
+
+                  {/* =========================================
+                      SOURCE
+                  ========================================== */}
+
+                  <td className="p-3 font-medium">
+
+                    {source.name}
+
+                  </td>
+
+
+                  {/* =========================================
+                      ACQUISITION MODE
+                  ========================================== */}
+
+                  <td className="p-3">
+
+                    {acquisitionMode || "—"}
+
+                  </td>
+
+
+                  {/* =========================================
+                      DOMAIN
+                  ========================================== */}
+
+                  <td className="p-3">
+
+                    {source.domain || "—"}
+
+                  </td>
+
+
+                  {/* =========================================
+                      ACTION
+                  ========================================== */}
+
+                  <td className="p-3">
+
+                    {isManual ? (
+
+                      <span className="text-gray-400">
+                        —
+                      </span>
+
+                    ) : (
+
+                      <button
+                        onClick={() =>
+                          onScan(
+                            source.source_id,
+                            source.name
+                          )
+                        }
+                        className="bg-ratecard-blue text-white px-3 py-1 rounded"
+                      >
+                        SCAN
+                      </button>
+
+                    )}
+
+                  </td>
+
+                </tr>
+
+              );
+
+            })
+
+          )}
 
         </tbody>
 
@@ -100,4 +181,5 @@ export default function DiscoverySources({
     </div>
 
   );
+
 }
