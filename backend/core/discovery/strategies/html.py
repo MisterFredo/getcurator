@@ -6,6 +6,7 @@ from typing import (
 )
 
 from urllib.parse import (
+    urljoin,
     urlparse,
 )
 
@@ -47,6 +48,10 @@ def discover_html(
             "DOMAIN manquant"
         )
 
+    # ========================================================
+    # FETCH PAGE
+    # ========================================================
+
     response = requests.get(
         page_url,
         headers=HEADERS,
@@ -60,14 +65,28 @@ def discover_html(
         "html.parser",
     )
 
-    page_domain = urlparse(
-        page_url
-    ).netloc.lower()
+    # ========================================================
+    # PAGE DOMAIN
+    # ========================================================
+
+    page_domain = (
+        urlparse(
+            page_url
+        )
+        .netloc
+        .lower()
+    )
 
     results = []
     seen = set()
 
-    for link in soup.find_all("a"):
+    # ========================================================
+    # EXTRACT LINKS
+    # ========================================================
+
+    for link in soup.find_all(
+        "a"
+    ):
 
         href = link.get(
             "href"
@@ -76,24 +95,65 @@ def discover_html(
         if not href:
             continue
 
-        if not href.startswith(
-            "http"
+        href = href.strip()
+
+        if not href:
+            continue
+
+        # ====================================================
+        # IGNORE NON-WEB LINKS
+        # ====================================================
+
+        if href.startswith(
+            (
+                "mailto:",
+                "tel:",
+                "javascript:",
+            )
         ):
             continue
 
+        # ====================================================
+        # RELATIVE → ABSOLUTE URL
+        # ====================================================
+
+        href = urljoin(
+            page_url,
+            href,
+        )
+
+        # ====================================================
+        # DOMAIN FILTER
+        # ====================================================
+
         href_domain = (
-            urlparse(href)
+            urlparse(
+                href
+            )
             .netloc
             .lower()
         )
 
-        if href_domain != page_domain:
+        if (
+            href_domain !=
+            page_domain
+        ):
             continue
+
+        # ====================================================
+        # IGNORE ANCHORS
+        # ====================================================
 
         if "#" in href:
             continue
 
-        href_lower = href.lower()
+        href_lower = (
+            href.lower()
+        )
+
+        # ====================================================
+        # EXCLUDED PATHS
+        # ====================================================
 
         excluded = [
             "/tag/",
@@ -116,6 +176,10 @@ def discover_html(
         ):
             continue
 
+        # ====================================================
+        # TITLE
+        # ====================================================
+
         title = (
             link.get_text(
                 strip=True
@@ -123,12 +187,20 @@ def discover_html(
             or href
         )
 
+        # ====================================================
+        # DEDUPLICATION
+        # ====================================================
+
         if href in seen:
             continue
 
         seen.add(
             href
         )
+
+        # ====================================================
+        # RESULT
+        # ====================================================
 
         results.append(
             {
