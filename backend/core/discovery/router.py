@@ -9,6 +9,10 @@ from core.discovery.strategies.html import (
     discover_html,
 )
 
+from core.discovery.strategies.wordpress import (
+    discover_wordpress,
+)
+
 
 # ============================================================
 # DISCOVERY ROUTER
@@ -25,6 +29,7 @@ def discover_urls(
         or ""
     ).upper()
 
+
     # ========================================================
     # MANUAL
     # ========================================================
@@ -32,6 +37,7 @@ def discover_urls(
     if mode == "MANUAL":
 
         return []
+
 
     # ========================================================
     # HTML
@@ -42,6 +48,18 @@ def discover_urls(
         return discover_html(
             source
         )
+
+
+    # ========================================================
+    # WORDPRESS API
+    # ========================================================
+
+    if mode == "WORDPRESS_API":
+
+        return discover_wordpress(
+            source
+        )
+
 
     # ========================================================
     # UNSUPPORTED
