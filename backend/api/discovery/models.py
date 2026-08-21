@@ -51,6 +51,19 @@ class ScanResponse(BaseModel):
     scanned_sources: int
     discovered_urls: int
 
+    failed_sources: Optional[int] = None
+
+    class Config:
+        extra = "forbid"
+
+# ============================================================
+# SCAN ALL REQUEST
+# ============================================================
+
+class ScanAllRequest(BaseModel):
+
+    universe_id: Optional[str] = None
+
     class Config:
         extra = "forbid"
 
