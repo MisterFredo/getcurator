@@ -1,6 +1,30 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+# backend/api/source/models.py
+
 from datetime import datetime
+from typing import (
+    List,
+    Literal,
+    Optional,
+)
+
+from pydantic import (
+    BaseModel,
+    Field,
+)
+
+
+# ============================================================
+# ACQUISITION MODE
+# ============================================================
+
+AcquisitionMode = Literal[
+    "MANUAL",
+    "HTML",
+    "RSS",
+    "SITEMAP",
+    "WORDPRESS_API",
+    "API",
+]
 
 
 # ============================================================
@@ -13,7 +37,10 @@ class SourceCreate(BaseModel):
     Contrat API 100% snake_case.
     """
 
-    name: str = Field(..., min_length=1)
+    name: str = Field(
+        ...,
+        min_length=1,
+    )
 
     type_source: Optional[str] = None
     description: Optional[str] = None
@@ -24,14 +51,19 @@ class SourceCreate(BaseModel):
 
     logo: Optional[str] = None
 
-    # Univers
+    # ========================================================
+    # UNIVERS
+    # ========================================================
+
     universe_id: Optional[str] = None
 
-    # Acquisition
-    acquisition_mode: Literal[
-        "AUTO",
+    # ========================================================
+    # ACQUISITION
+    # ========================================================
+
+    acquisition_mode: AcquisitionMode = (
         "MANUAL"
-    ] = "MANUAL"
+    )
 
     class Config:
         extra = "forbid"
@@ -57,15 +89,18 @@ class SourceUpdate(BaseModel):
 
     logo: Optional[str] = None
 
-    # Univers
+    # ========================================================
+    # UNIVERS
+    # ========================================================
+
     universe_id: Optional[str] = None
 
-    # Acquisition
+    # ========================================================
+    # ACQUISITION
+    # ========================================================
+
     acquisition_mode: Optional[
-        Literal[
-            "AUTO",
-            "MANUAL"
-        ]
+        AcquisitionMode
     ] = None
 
     class Config:
@@ -78,7 +113,7 @@ class SourceUpdate(BaseModel):
 
 class SourceOut(BaseModel):
     """
-    Représentation retournée par l’API.
+    Représentation retournée par l'API.
     Snake_case strict.
     """
 
@@ -96,15 +131,18 @@ class SourceOut(BaseModel):
 
     created_at: Optional[datetime] = None
 
-    # Univers
+    # ========================================================
+    # UNIVERS
+    # ========================================================
+
     universe_id: Optional[str] = None
 
-    # Acquisition
+    # ========================================================
+    # ACQUISITION
+    # ========================================================
+
     acquisition_mode: Optional[
-        Literal[
-            "AUTO",
-            "MANUAL"
-        ]
+        AcquisitionMode
     ] = None
 
     class Config:
@@ -116,8 +154,12 @@ class SourceOut(BaseModel):
 # ============================================================
 
 class SourceListOut(BaseModel):
+
     status: str
-    sources: List[SourceOut]
+
+    sources: List[
+        SourceOut
+    ]
 
     class Config:
         extra = "forbid"
