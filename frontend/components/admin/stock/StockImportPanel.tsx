@@ -1,173 +1,288 @@
 "use client";
 
 import { useState } from "react";
+
 import { api } from "@/lib/api";
 
+
+/* =========================================================
+   TYPES
+========================================================= */
+
 type SourceItem = {
-  id_source: string;
-  label: string;
+  source_id: string;
+  name: string;
 };
+
 
 type Props = {
   sources: SourceItem[];
   onImported: () => void;
 };
 
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function StockImportPanel({
+
   sources,
   onImported,
+
 }: Props) {
 
-  const [csvFile, setCsvFile] =
-    useState<File | null>(null);
+  const [
+    csvFile,
+    setCsvFile,
+  ] =
+    useState<File | null>(
+      null
+    );
 
-  const [urlsText, setUrlsText] =
+  const [
+    urlsText,
+    setUrlsText,
+  ] =
     useState("");
 
-  const [sourceId, setSourceId] =
+  const [
+    sourceId,
+    setSourceId,
+  ] =
     useState("");
 
-  const [loadingCsv, setLoadingCsv] =
+  const [
+    loadingCsv,
+    setLoadingCsv,
+  ] =
     useState(false);
 
-  const [loadingUrl, setLoadingUrl] =
+  const [
+    loadingUrl,
+    setLoadingUrl,
+  ] =
     useState(false);
 
-  const [urlCount, setUrlCount] =
-    useState<number | null>(null);
+  const [
+    urlCount,
+    setUrlCount,
+  ] =
+    useState<number | null>(
+      null
+    );
 
-  const [message, setMessage] =
+  const [
+    message,
+    setMessage,
+  ] =
     useState("");
 
-  // =========================
-  // URL CHANGE
-  // =========================
+
+  /* =======================================================
+     URL CHANGE
+  ======================================================== */
 
   function handleUrlChange(
     value: string
   ) {
 
-    setUrlsText(value);
-    setMessage("");
+    setUrlsText(
+      value
+    );
 
-    const lines = value
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
+    setMessage(
+      ""
+    );
 
-    setUrlCount(lines.length);
+    const lines =
+      value
+        .split("\n")
+        .map(
+          (line) =>
+            line.trim()
+        )
+        .filter(
+          Boolean
+        );
+
+    setUrlCount(
+      lines.length
+    );
+
   }
 
-  // =========================
-  // CSV IMPORT
-  // =========================
+
+  /* =======================================================
+     CSV IMPORT
+  ======================================================== */
 
   async function handleCsvImport() {
 
     if (!csvFile) {
-      return alert(
+
+      alert(
         "Choisissez un fichier CSV"
       );
+
+      return;
+
     }
 
     if (!sourceId) {
-      return alert(
+
+      alert(
         "Choisissez une source"
       );
+
+      return;
+
     }
 
-    setLoadingCsv(true);
-    setMessage("");
-
     try {
+
+      setLoadingCsv(
+        true
+      );
+
+      setMessage(
+        ""
+      );
 
       const csvText =
         await csvFile.text();
 
-      const res = await api.post(
-        "/acquisition/raw/import-csv",
-        {
-          id_source: sourceId,
+      const res =
+        await api.post(
+          "/acquisition/raw/import-csv",
+          {
+            id_source:
+              sourceId,
 
-          csv_text:
-            csvText,
-        }
-      );
+            csv_text:
+              csvText,
+          }
+        );
 
       setMessage(
         `✅ ${res.inserted} importé(s) sur ${res.total}`
       );
 
-      setCsvFile(null);
+      setCsvFile(
+        null
+      );
 
       onImported();
 
     } catch (e) {
 
-      console.error(e);
+      console.error(
+        e
+      );
 
       setMessage(
         "❌ Erreur import CSV"
       );
+
+    } finally {
+
+      setLoadingCsv(
+        false
+      );
+
     }
 
-    setLoadingCsv(false);
   }
 
-  // =========================
-  // URL IMPORT
-  // =========================
+
+  /* =======================================================
+     URL IMPORT
+  ======================================================== */
 
   async function handleUrlImport() {
 
-    if (!urlsText.trim()) {
-      return alert(
+    if (
+      !urlsText.trim()
+    ) {
+
+      alert(
         "URLs manquantes"
       );
+
+      return;
+
     }
 
     if (!sourceId) {
-      return alert(
+
+      alert(
         "Choisissez une source"
       );
-    }
 
-    setLoadingUrl(true);
-    setMessage("");
+      return;
+
+    }
 
     try {
 
-      const res = await api.post(
-        "/acquisition/raw/import-urls",
-        {
-          id_source:
-            sourceId,
-
-          urls_text:
-            urlsText,
-        }
+      setLoadingUrl(
+        true
       );
+
+      setMessage(
+        ""
+      );
+
+      const res =
+        await api.post(
+          "/acquisition/raw/import-urls",
+          {
+            id_source:
+              sourceId,
+
+            urls_text:
+              urlsText,
+          }
+        );
 
       setMessage(
         `✅ ${res.inserted} importé(s) sur ${res.total}`
       );
 
-      setUrlsText("");
-      setUrlCount(null);
+      setUrlsText(
+        ""
+      );
+
+      setUrlCount(
+        null
+      );
 
       onImported();
 
     } catch (e) {
 
-      console.error(e);
+      console.error(
+        e
+      );
 
       setMessage(
         "❌ Erreur import URLs"
       );
+
+    } finally {
+
+      setLoadingUrl(
+        false
+      );
+
     }
 
-    setLoadingUrl(false);
   }
+
+
+  /* =======================================================
+     UI
+  ======================================================== */
 
   return (
 
@@ -177,10 +292,15 @@ export default function StockImportPanel({
         Importer des contenus
       </h2>
 
-      {/* SOURCE */}
+
+      {/* ===================================================
+          SOURCE
+      ==================================================== */}
 
       <select
-        value={sourceId}
+        value={
+          sourceId
+        }
         onChange={(e) =>
           setSourceId(
             e.target.value
@@ -188,21 +308,34 @@ export default function StockImportPanel({
         }
         className="border rounded px-3 py-2"
       >
+
         <option value="">
           Source
         </option>
 
-        {sources.map((s) => (
-          <option
-            key={s.id_source}
-            value={s.id_source}
-          >
-            {s.label}
-          </option>
-        ))}
+        {sources.map(
+          (source) => (
+
+            <option
+              key={
+                source.source_id
+              }
+              value={
+                source.source_id
+              }
+            >
+              {source.name}
+            </option>
+
+          )
+        )}
+
       </select>
 
-      {/* CSV IMPORT */}
+
+      {/* ===================================================
+          CSV IMPORT
+      ==================================================== */}
 
       <div className="space-y-3 border rounded p-4 bg-white">
 
@@ -211,9 +344,13 @@ export default function StockImportPanel({
         </h3>
 
         <div className="text-xs text-gray-500">
+
           Format attendu :
+
           <br />
+
           URL,ID_PRIMARY_COMPANY
+
         </div>
 
         <input
@@ -221,16 +358,18 @@ export default function StockImportPanel({
           accept=".csv"
           onChange={(e) =>
             setCsvFile(
-              e.target.files?.[0]
-                || null
+              e.target.files?.[0] ||
+              null
             )
           }
         />
 
         {csvFile && (
+
           <div className="text-xs text-gray-600">
             {csvFile.name}
           </div>
+
         )}
 
         <button
@@ -240,16 +379,28 @@ export default function StockImportPanel({
           disabled={
             loadingCsv
           }
-          className="bg-black text-white px-4 py-2 rounded"
+          className="
+            bg-black
+            text-white
+            px-4
+            py-2
+            rounded
+            disabled:opacity-50
+          "
         >
+
           {loadingCsv
             ? "Import..."
             : "Importer CSV"}
+
         </button>
 
       </div>
 
-      {/* URL IMPORT */}
+
+      {/* ===================================================
+          URL IMPORT
+      ==================================================== */}
 
       <div className="space-y-3 border rounded p-4 bg-white">
 
@@ -258,7 +409,9 @@ export default function StockImportPanel({
         </h3>
 
         <textarea
-          value={urlsText}
+          value={
+            urlsText
+          }
           onChange={(e) =>
             handleUrlChange(
               e.target.value
@@ -270,10 +423,13 @@ export default function StockImportPanel({
         />
 
         {urlCount !== null && (
+
           <div className="text-xs text-gray-600">
-            {urlCount} URL(s)
-            détectée(s)
+
+            {urlCount} URL(s) détectée(s)
+
           </div>
+
         )}
 
         <button
@@ -283,21 +439,39 @@ export default function StockImportPanel({
           disabled={
             loadingUrl
           }
-          className="bg-ratecard-blue text-white px-4 py-2 rounded"
+          className="
+            bg-ratecard-blue
+            text-white
+            px-4
+            py-2
+            rounded
+            disabled:opacity-50
+          "
         >
+
           {loadingUrl
             ? "Import..."
             : "Importer URLs"}
+
         </button>
 
       </div>
 
+
+      {/* ===================================================
+          MESSAGE
+      ==================================================== */}
+
       {message && (
+
         <div className="text-sm font-medium">
           {message}
         </div>
+
       )}
 
     </div>
+
   );
+
 }
