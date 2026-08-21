@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { api } from "@/lib/api";
+import {
+  api,
+} from "@/lib/api";
 
 import DiscoverySources from "@/components/admin/discovery/DiscoverySources";
 import DiscoveryStats from "@/components/admin/discovery/DiscoveryStats";
 import DiscoveryActions from "@/components/admin/discovery/DiscoveryActions";
 import DiscoveryTable from "@/components/admin/discovery/DiscoveryTable";
 
+
+/* =========================================================
+   TYPES
+========================================================= */
+
 type DiscoveryItem = {
+
   id_discovery: string;
 
   source_id: string;
@@ -22,33 +33,91 @@ type DiscoveryItem = {
 
   date_found?: string | null;
   created_at?: string | null;
+
 };
 
+
 type Source = {
+
   source_id: string;
   name: string;
 
   domain?: string | null;
   acquisition_mode?: string | null;
+
 };
+
+
+type SourceMode =
+  | "AUTOMATIC"
+  | "MANUAL";
+
+
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default function DiscoveryPage() {
 
-  const [items, setItems] = useState<DiscoveryItem[]>([]);
-  const [sources, setSources] = useState<Source[]>([]);
+  const [
+    items,
+    setItems,
+  ] =
+    useState<DiscoveryItem[]>([]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [
+    sources,
+    setSources,
+  ] =
+    useState<Source[]>([]);
 
-  const [sourceMode, setSourceMode] = useState<
-    "AUTOMATIC" | "MANUAL"
-  >("AUTOMATIC");
+  const [
+    selectedIds,
+    setSelectedIds,
+  ] =
+    useState<string[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  const [
+    sourceMode,
+    setSourceMode,
+  ] =
+    useState<SourceMode>(
+      "AUTOMATIC"
+    );
 
-  // =========================================================
-  // LOAD
-  // =========================================================
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    scanningSourceId,
+    setScanningSourceId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    scanningAll,
+    setScanningAll,
+  ] =
+    useState(false);
+
+
+  /* =======================================================
+     SCAN STATE
+  ======================================================== */
+
+  const isScanning =
+    scanningAll ||
+    scanningSourceId !== null;
+
+
+  /* =======================================================
+     LOAD
+  ======================================================== */
 
   async function loadData() {
 
@@ -56,10 +125,18 @@ export default function DiscoveryPage() {
 
       setLoading(true);
 
-      const [discoveryRes, sourceRes] = await Promise.all([
-        api.get("/discovery/list"),
-        api.get("/source/list"),
-      ]);
+      const [
+        discoveryRes,
+        sourceRes,
+      ] =
+        await Promise.all([
+          api.get(
+            "/discovery/list"
+          ),
+          api.get(
+            "/source/list"
+          ),
+        ]);
 
       setItems(
         discoveryRes.items || []
@@ -82,11 +159,13 @@ export default function DiscoveryPage() {
       setLoading(false);
 
     }
+
   }
 
-  // =========================================================
-  // INIT
-  // =========================================================
+
+  /* =======================================================
+     INIT
+  ======================================================== */
 
   useEffect(() => {
 
@@ -94,23 +173,33 @@ export default function DiscoveryPage() {
 
   }, []);
 
-  // =========================================================
-  // SCAN ALL
-  // =========================================================
+
+  /* =======================================================
+     SCAN ALL
+  ======================================================== */
 
   async function scanAll() {
 
+    if (isScanning) {
+      return;
+    }
+
     try {
 
-      setScanning(true);
-
-      const res = await api.post(
-        "/discovery/scan-all",
-        {}
+      setScanningAll(
+        true
       );
 
+      const res =
+        await api.post(
+          "/discovery/scan-all",
+          {}
+        );
+
       alert(
-        `${res.discovered_urls || 0} URL(s) découverte(s)`
+        `${
+          res.discovered_urls || 0
+        } URL(s) découverte(s)`
       );
 
       await loadData();
@@ -125,29 +214,44 @@ export default function DiscoveryPage() {
 
     } finally {
 
-      setScanning(false);
+      setScanningAll(
+        false
+      );
 
     }
+
   }
 
-  // =========================================================
-  // SCAN SOURCE
-  // =========================================================
+
+  /* =======================================================
+     SCAN SOURCE
+  ======================================================== */
 
   async function scanSource(
     sourceId: string,
     sourceName: string
   ) {
 
+    if (isScanning) {
+      return;
+    }
+
     try {
 
-      const res = await api.post(
-        `/discovery/scan/${sourceId}`,
-        {}
+      setScanningSourceId(
+        sourceId
       );
 
+      const res =
+        await api.post(
+          `/discovery/scan/${sourceId}`,
+          {}
+        );
+
       alert(
-        `${sourceName}\n${res.discovered_urls || 0} URL(s) découverte(s)`
+        `${sourceName}\n${
+          res.discovered_urls || 0
+        } URL(s) découverte(s)`
       );
 
       await loadData();
@@ -159,49 +263,71 @@ export default function DiscoveryPage() {
       alert(
         `❌ Erreur scan ${sourceName}`
       );
+
+    } finally {
+
+      setScanningSourceId(
+        null
+      );
+
     }
+
   }
 
-  // =========================================================
-  // TOGGLE SELECTION
-  // =========================================================
+
+  /* =======================================================
+     TOGGLE SELECTION
+  ======================================================== */
 
   function toggleSelection(
     idDiscovery: string
   ) {
 
-    setSelectedIds((prev) =>
+    setSelectedIds(
+      (prev) =>
 
-      prev.includes(idDiscovery)
-        ? prev.filter(
-            (x) => x !== idDiscovery
-          )
-        : [...prev, idDiscovery]
-
+        prev.includes(
+          idDiscovery
+        )
+          ? prev.filter(
+              (x) =>
+                x !== idDiscovery
+            )
+          : [
+              ...prev,
+              idDiscovery,
+            ]
     );
+
   }
+
 
   function toggleAllSelections() {
 
     if (
-      selectedIds.length === items.length
+      selectedIds.length ===
+      items.length
     ) {
 
       setSelectedIds([]);
 
       return;
+
     }
 
     setSelectedIds(
       items.map(
-        (item) => item.id_discovery
+        (item) =>
+          item.id_discovery
       )
     );
+
   }
 
-  // =========================================================
-  // STORE SELECTED
-  // =========================================================
+
+  /* =======================================================
+     STORE SELECTED
+  ======================================================== */
 
   async function storeSelected() {
 
@@ -213,15 +339,19 @@ export default function DiscoveryPage() {
 
     try {
 
-      const res = await api.post(
-        "/discovery/store",
-        {
-          discovery_ids: selectedIds,
-        }
-      );
+      const res =
+        await api.post(
+          "/discovery/store",
+          {
+            discovery_ids:
+              selectedIds,
+          }
+        );
 
       alert(
-        `${res.stored || 0} URL(s) stockée(s)`
+        `${
+          res.stored || 0
+        } URL(s) stockée(s)`
       );
 
       setSelectedIds([]);
@@ -235,12 +365,15 @@ export default function DiscoveryPage() {
       alert(
         "❌ Erreur stockage"
       );
+
     }
+
   }
 
-  // =========================================================
-  // DISMISS SELECTED
-  // =========================================================
+
+  /* =======================================================
+     DISMISS SELECTED
+  ======================================================== */
 
   async function dismissSelected() {
 
@@ -252,15 +385,19 @@ export default function DiscoveryPage() {
 
     try {
 
-      const res = await api.post(
-        "/discovery/ignore",
-        {
-          discovery_ids: selectedIds,
-        }
-      );
+      const res =
+        await api.post(
+          "/discovery/ignore",
+          {
+            discovery_ids:
+              selectedIds,
+          }
+        );
 
       alert(
-        `${res.ignored || 0} URL(s) dismiss`
+        `${
+          res.ignored || 0
+        } URL(s) dismiss`
       );
 
       setSelectedIds([]);
@@ -274,8 +411,15 @@ export default function DiscoveryPage() {
       alert(
         "❌ Erreur dismiss"
       );
+
     }
+
   }
+
+
+  /* =======================================================
+     SEND TO STUDIO
+  ======================================================== */
 
   async function sendToStudio() {
 
@@ -287,15 +431,19 @@ export default function DiscoveryPage() {
 
     try {
 
-      const res = await api.post(
-        "/discovery/manual",
-        {
-          discovery_ids: selectedIds,
-        }
-      );
+      const res =
+        await api.post(
+          "/discovery/manual",
+          {
+            discovery_ids:
+              selectedIds,
+          }
+        );
 
       alert(
-        `${res.manual || 0} URL(s) envoyée(s) au Studio`
+        `${
+          res.manual || 0
+        } URL(s) envoyée(s) au Studio`
       );
 
       setSelectedIds([]);
@@ -309,40 +457,55 @@ export default function DiscoveryPage() {
       alert(
         "❌ Erreur Studio"
       );
+
     }
+
   }
 
-  // =========================================================
-  // SOURCE FILTER
-  // =========================================================
 
-  const filteredSources = sources.filter(
-    (source) => {
-  
-      const mode = (
-        source.acquisition_mode || ""
-      ).toUpperCase();
-  
-      if (sourceMode === "MANUAL") {
-        return mode === "MANUAL";
+  /* =======================================================
+     SOURCE FILTER
+  ======================================================== */
+
+  const filteredSources =
+    sources.filter(
+      (source) => {
+
+        const mode = (
+          source.acquisition_mode ||
+          ""
+        ).toUpperCase();
+
+        if (
+          sourceMode === "MANUAL"
+        ) {
+
+          return (
+            mode === "MANUAL"
+          );
+
+        }
+
+        return (
+          mode !== "" &&
+          mode !== "MANUAL"
+        );
+
       }
-  
-      return (
-        mode !== "" &&
-        mode !== "MANUAL"
-      );
-    }
-  );
+    );
 
-  // =========================================================
-  // UI
-  // =========================================================
+
+  /* =======================================================
+     UI
+  ======================================================== */
 
   return (
 
     <div className="space-y-8">
 
-      {/* HEADER */}
+      {/* ===================================================
+          HEADER
+      ==================================================== */}
 
       <div className="flex justify-between items-center">
 
@@ -358,75 +521,158 @@ export default function DiscoveryPage() {
 
         </div>
 
+
+        {/* ===============================================
+            SCAN ALL
+        ================================================ */}
+
         <button
-          onClick={scanAll}
-          disabled={scanning}
-          className="bg-ratecard-green px-5 py-2 text-white rounded disabled:opacity-50"
+          onClick={
+            scanAll
+          }
+          disabled={
+            isScanning
+          }
+          className="
+            bg-ratecard-green
+            px-5
+            py-2
+            text-white
+            rounded
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+          "
         >
-          {scanning
-            ? "Scan en cours..."
+
+          {scanningAll
+            ? "SCAN ALL EN COURS..."
             : "SCAN ALL SOURCES"}
+
         </button>
 
       </div>
 
-      {/* SOURCE MODE */}
+
+      {/* ===================================================
+          SOURCE MODE
+      ==================================================== */}
 
       <div className="flex gap-2">
-      
+
         <button
           onClick={() =>
-            setSourceMode("AUTOMATIC")
+            setSourceMode(
+              "AUTOMATIC"
+            )
+          }
+          disabled={
+            isScanning
           }
           className={
-            sourceMode === "AUTOMATIC"
-              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
-              : "bg-gray-100 px-3 py-1 rounded"
+            `
+              px-3
+              py-1
+              rounded
+              disabled:opacity-40
+              disabled:cursor-not-allowed
+              ${
+                sourceMode ===
+                "AUTOMATIC"
+                  ? "bg-ratecard-blue text-white"
+                  : "bg-gray-100"
+              }
+            `
           }
         >
           AUTOMATIC
         </button>
-      
+
+
         <button
           onClick={() =>
-            setSourceMode("MANUAL")
+            setSourceMode(
+              "MANUAL"
+            )
+          }
+          disabled={
+            isScanning
           }
           className={
-            sourceMode === "MANUAL"
-              ? "bg-ratecard-blue text-white px-3 py-1 rounded"
-              : "bg-gray-100 px-3 py-1 rounded"
+            `
+              px-3
+              py-1
+              rounded
+              disabled:opacity-40
+              disabled:cursor-not-allowed
+              ${
+                sourceMode ===
+                "MANUAL"
+                  ? "bg-ratecard-blue text-white"
+                  : "bg-gray-100"
+              }
+            `
           }
         >
           MANUAL
         </button>
-      
+
       </div>
 
-      {/* SOURCES */}
+
+      {/* ===================================================
+          SOURCES
+      ==================================================== */}
 
       <DiscoverySources
-        sources={filteredSources}
-        onScan={scanSource}
+        sources={
+          filteredSources
+        }
+        onScan={
+          scanSource
+        }
+        scanningSourceId={
+          scanningSourceId
+        }
+        scanningAll={
+          scanningAll
+        }
       />
 
-      {/* STATS */}
+
+      {/* ===================================================
+          STATS
+      ==================================================== */}
 
       <DiscoveryStats
-        total={items.length}
+        total={
+          items.length
+        }
       />
 
-      {/* ACTIONS */}
+
+      {/* ===================================================
+          ACTIONS
+      ==================================================== */}
 
       <DiscoveryActions
         selectedCount={
           selectedIds.length
         }
-        onStore={storeSelected}
-        onManual={sendToStudio}
-        onDismiss={dismissSelected}
+        onStore={
+          storeSelected
+        }
+        onManual={
+          sendToStudio
+        }
+        onDismiss={
+          dismissSelected
+        }
       />
 
-      {/* TABLE */}
+
+      {/* ===================================================
+          TABLE
+      ==================================================== */}
 
       {loading ? (
 
@@ -443,10 +689,18 @@ export default function DiscoveryPage() {
       ) : (
 
         <DiscoveryTable
-          items={items}
-          selectedIds={selectedIds}
-          onToggle={toggleSelection}
-          onToggleAll={toggleAllSelections}
+          items={
+            items
+          }
+          selectedIds={
+            selectedIds
+          }
+          onToggle={
+            toggleSelection
+          }
+          onToggleAll={
+            toggleAllSelections
+          }
         />
 
       )}
@@ -454,4 +708,5 @@ export default function DiscoveryPage() {
     </div>
 
   );
+
 }
