@@ -30,6 +30,15 @@ router = APIRouter()
 
 
 # ============================================================
+# SCAN ALL REQUEST
+# ============================================================
+
+class ScanAllRequest(BaseModel):
+
+    universe_id: str | None = None
+
+
+# ============================================================
 # SCAN ALL SOURCES
 # ============================================================
 
@@ -37,11 +46,15 @@ router = APIRouter()
     "/scan-all",
     response_model=ScanResponse,
 )
-def scan_all_route():
+def scan_all_route(
+    data: ScanAllRequest,
+):
 
     try:
 
-        result = scan_all_sources()
+        result = scan_all_sources(
+            universe_id=data.universe_id,
+        )
 
         return result
 
@@ -51,7 +64,6 @@ def scan_all_route():
             400,
             f"Erreur scan global : {e}"
         )
-
 
 # ============================================================
 # SCAN ONE SOURCE
