@@ -38,6 +38,10 @@ TABLE_RAW = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
 )
 
+TABLE_SOURCE_UNIVERSE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE"
+)
+
 
 # ============================================================
 # INSERT DISCOVERY
@@ -202,21 +206,78 @@ def scan_source(
 # SCAN ALL SOURCES
 # ============================================================
 
-def scan_all_sources():
+# ============================================================
+# SCAN ALL SOURCES
+# ============================================================
+
+def scan_all_sources(
+    universe_id: str | None = None,
+):
+
+    # ========================================================
+    # BASE QUERY
+    # ========================================================
 
     sql = f"""
-        SELECT
-            SOURCE_ID
-        FROM `{TABLE_SOURCE}`
-        WHERE DOMAIN IS NOT NULL
-          AND DOMAIN != ''
-          AND ACQUISITION_MODE IS NOT NULL
-          AND ACQUISITION_MODE != 'MANUAL'
+        SELECT DISTINCT
+            s.SOURCE_ID
+        FROM `{TABLE_SOURCE}` s
     """
 
-    rows = query_bq(sql)
+    params = {}
+
+    # ========================================================
+    # UNIVERSE FILTER
+    # ========================================================
+
+    if universe_id:
+
+        sql += f"""
+            INNER JOIN `{TABLE_SOURCE_UNIVERSE}` su
+                ON su.ID_SOURCE = s.SOURCE_ID
+        """
+
+    # ========================================================
+    # AUTOMATIC SOURCES
+    # ========================================================
+
+    sql += """
+        WHERE s.DOMAIN IS NOT NULL
+          AND s.DOMAIN != ''
+          AND s.ACQUISITION_MODE IS NOT NULL
+          AND s.ACQUISITION_MODE != 'MANUAL'
+    """
+
+    # ========================================================
+    # APPLY UNIVERSE
+    # ========================================================
+
+    if universe_id:
+
+        sql += """
+          AND su.ID_UNIVERSE = @universe_id
+        """
+
+        params["universe_id"] = (
+            universe_id
+        )
+
+    # ========================================================
+    # LOAD SOURCES
+    # ========================================================
+
+    rows = query_bq(
+        sql,
+        params,
+    )
+
+    # ========================================================
+    # SCAN
+    # ========================================================
 
     total_discovered = 0
+    scanned_sources = 0
+    failed_sources = 0
 
     for row in rows:
 
@@ -226,11 +287,17 @@ def scan_all_sources():
                 row["SOURCE_ID"]
             )
 
-            total_discovered += result[
-                "discovered_urls"
-            ]
+            total_discovered += (
+                result[
+                    "discovered_urls"
+                ]
+            )
+
+            scanned_sources += 1
 
         except Exception as e:
+
+            failed_sources += 1
 
             print(
                 "[DISCOVERY]",
@@ -238,9 +305,14 @@ def scan_all_sources():
                 e,
             )
 
+    # ========================================================
+    # RESULT
+    # ========================================================
+
     return {
         "status": "ok",
-        "scanned_sources": len(rows),
+        "scanned_sources": scanned_sources,
+        "failed_sources": failed_sources,
         "discovered_urls": total_discovered,
     }
 
