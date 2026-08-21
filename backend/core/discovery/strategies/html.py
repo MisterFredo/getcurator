@@ -19,10 +19,6 @@ from bs4 import BeautifulSoup
 # HTTP
 # ============================================================
 
-# ============================================================
-# HTTP
-# ============================================================
-
 HEADERS = {
 
     "User-Agent": (
@@ -79,6 +75,7 @@ def discover_html(
             "DOMAIN manquant"
         )
 
+
     # ========================================================
     # FETCH PAGE
     # ========================================================
@@ -94,30 +91,41 @@ def discover_html(
 
     response.raise_for_status()
 
+
+    # ========================================================
+    # PARSE HTML
+    # ========================================================
+
     soup = BeautifulSoup(
         response.text,
         "html.parser",
     )
 
+
+    # ========================================================
+    # DEBUG
+    # ========================================================
+
     print(
         f"[DISCOVERY HTML] URL={page_url}"
     )
-    
+
     print(
         f"[DISCOVERY HTML] STATUS={response.status_code}"
     )
-    
+
     print(
         f"[DISCOVERY HTML] FINAL_URL={response.url}"
     )
-    
+
     print(
         f"[DISCOVERY HTML] HTML_SIZE={len(response.text)}"
     )
-    
+
     print(
         f"[DISCOVERY HTML] LINKS={len(soup.find_all('a'))}"
     )
+
 
     # ========================================================
     # PAGE DOMAIN
@@ -134,6 +142,7 @@ def discover_html(
     results = []
     seen = set()
 
+
     # ========================================================
     # EXTRACT LINKS
     # ========================================================
@@ -146,11 +155,6 @@ def discover_html(
             "href"
         )
 
-        if href:
-            print(
-                f"[DISCOVERY HTML] HREF={href}"
-            )
-
         if not href:
             continue
 
@@ -158,6 +162,16 @@ def discover_html(
 
         if not href:
             continue
+
+
+        # ====================================================
+        # DEBUG RAW HREF
+        # ====================================================
+
+        print(
+            f"[DISCOVERY HTML] HREF={href}"
+        )
+
 
         # ====================================================
         # IGNORE NON-WEB LINKS
@@ -172,6 +186,7 @@ def discover_html(
         ):
             continue
 
+
         # ====================================================
         # RELATIVE → ABSOLUTE URL
         # ====================================================
@@ -180,6 +195,7 @@ def discover_html(
             page_url,
             href,
         )
+
 
         # ====================================================
         # DOMAIN FILTER
@@ -199,6 +215,7 @@ def discover_html(
         ):
             continue
 
+
         # ====================================================
         # IGNORE ANCHORS
         # ====================================================
@@ -206,13 +223,14 @@ def discover_html(
         if "#" in href:
             continue
 
-        href_lower = (
-            href.lower()
-        )
 
         # ====================================================
         # EXCLUDED PATHS
         # ====================================================
+
+        href_lower = (
+            href.lower()
+        )
 
         excluded = [
             "/tag/",
@@ -230,10 +248,11 @@ def discover_html(
         ]
 
         if any(
-            x in href_lower
-            for x in excluded
+            excluded_path in href_lower
+            for excluded_path in excluded
         ):
             continue
+
 
         # ====================================================
         # TITLE
@@ -246,6 +265,7 @@ def discover_html(
             or href
         )
 
+
         # ====================================================
         # DEDUPLICATION
         # ====================================================
@@ -257,6 +277,7 @@ def discover_html(
             href
         )
 
+
         # ====================================================
         # RESULT
         # ====================================================
@@ -267,5 +288,19 @@ def discover_html(
                 "title": title,
             }
         )
+
+
+    # ========================================================
+    # DEBUG RESULT
+    # ========================================================
+
+    print(
+        f"[DISCOVERY HTML] RESULTS={len(results)}"
+    )
+
+
+    # ========================================================
+    # RETURN
+    # ========================================================
 
     return results
