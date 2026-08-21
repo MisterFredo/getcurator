@@ -13,6 +13,10 @@ from core.discovery.strategies.wordpress import (
     discover_wordpress,
 )
 
+from core.discovery.strategies.rss import (
+    discover_rss,
+)
+
 
 # ============================================================
 # DISCOVERY ROUTER
@@ -57,6 +61,17 @@ def discover_urls(
     if mode == "WORDPRESS_API":
 
         return discover_wordpress(
+            source
+        )
+
+
+    # ========================================================
+    # RSS
+    # ========================================================
+
+    if mode == "RSS":
+
+        return discover_rss(
             source
         )
 
