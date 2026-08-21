@@ -47,23 +47,44 @@ TABLE_SOURCE_UNIVERSE = (
 # INSERT DISCOVERY
 # ============================================================
 
-def insert_discovery_url(
-    source_id: str,
-    url: str,
-    title: str,
+# ============================================================
+# INSERT DISCOVERY URLS
+# ============================================================
+
+def insert_discovery_urls(
+    items: list[dict],
 ):
+
+    if not items:
+        return 0
 
     client = get_bigquery_client()
 
-    payload = [{
-        "ID_DISCOVERY": str(uuid.uuid4()),
-        "SOURCE_ID": source_id,
-        "URL": url,
-        "TITLE": title,
-        "STATUS": "NEW",
-        "DATE_FOUND": datetime.utcnow().isoformat(),
-        "CREATED_AT": datetime.utcnow().isoformat(),
-    }]
+    now = datetime.utcnow().isoformat()
+
+    payload = []
+
+    for item in items:
+
+        payload.append(
+            {
+                "ID_DISCOVERY": str(
+                    uuid.uuid4()
+                ),
+                "SOURCE_ID": item[
+                    "source_id"
+                ],
+                "URL": item[
+                    "url"
+                ],
+                "TITLE": item.get(
+                    "title"
+                ),
+                "STATUS": "NEW",
+                "DATE_FOUND": now,
+                "CREATED_AT": now,
+            }
+        )
 
     client.load_table_from_json(
         payload,
@@ -72,6 +93,10 @@ def insert_discovery_url(
             write_disposition="WRITE_APPEND"
         ),
     ).result()
+
+    return len(
+        payload
+    )
 
 
 def get_existing_discovery_urls():
