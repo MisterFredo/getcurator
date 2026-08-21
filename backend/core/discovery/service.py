@@ -1,12 +1,6 @@
 from typing import List, Dict
 from datetime import datetime
-from urllib.parse import urlparse
-
 import uuid
-import requests
-
-from bs4 import BeautifulSoup
-
 from config import BQ_PROJECT, BQ_DATASET
 
 from utils.bigquery_utils import (
@@ -16,6 +10,9 @@ from utils.bigquery_utils import (
 
 from core.acquisition.storage_service import (
     insert_raw_rows,
+)
+from core.discovery.router import (
+    discover_urls,
 )
 
 from core.acquisition.parser_service import (
