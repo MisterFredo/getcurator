@@ -219,9 +219,25 @@ export default function EditSource() {
           <option value="MANUAL">
             MANUAL - Copie / colle
           </option>
-
-          <option value="AUTO">
-            AUTO - Parse automatique
+        
+          <option value="HTML">
+            HTML - Découverte via page HTML
+          </option>
+        
+          <option value="RSS">
+            RSS - Découverte via flux RSS
+          </option>
+        
+          <option value="SITEMAP">
+            SITEMAP - Découverte via sitemap
+          </option>
+        
+          <option value="WORDPRESS_API">
+            WORDPRESS API - Découverte via API WordPress
+          </option>
+        
+          <option value="API">
+            API - Découverte via API
           </option>
         </select>
       </div>
