@@ -168,6 +168,10 @@ def get_source_for_scan(
 # SCAN SOURCE
 # ============================================================
 
+# ============================================================
+# SCAN SOURCE
+# ============================================================
+
 def scan_source(
     source_id: str,
 ):
@@ -181,14 +185,18 @@ def scan_source(
             "Source introuvable"
         )
 
+    # ========================================================
+    # DISCOVER
+    # ========================================================
+
     urls = discover_urls(
         source
     )
 
-    # ============================================================
-    # 🔥 PERFORMANCE
+    # ========================================================
+    # EXISTING URLS
     # Charge une seule fois les URLs existantes
-    # ============================================================
+    # ========================================================
 
     existing_discovery = (
         get_existing_discovery_urls()
@@ -198,11 +206,17 @@ def scan_source(
         get_existing_raw_urls()
     )
 
-    discovered = 0
+    # ========================================================
+    # FILTER NEW URLS IN MEMORY
+    # ========================================================
+
+    new_items = []
 
     for item in urls:
 
-        url = item["url"]
+        url = item[
+            "url"
+        ]
 
         if url in existing_discovery:
             continue
@@ -210,26 +224,43 @@ def scan_source(
         if url in existing_raw:
             continue
 
-        insert_discovery_url(
-            source_id=source_id,
-            url=url,
-            title=item["title"],
+        new_items.append(
+            {
+                "source_id": source_id,
+                "url": url,
+                "title": item.get(
+                    "title"
+                ),
+            }
         )
 
-        # évite les doublons dans le même scan
-        existing_discovery.add(url)
+        # évite les doublons
+        # dans le même scan
+        existing_discovery.add(
+            url
+        )
 
-        discovered += 1
+    # ========================================================
+    # BATCH INSERT
+    # ========================================================
+
+    if new_items:
+
+        insert_discovery_urls(
+            new_items
+        )
+
+    # ========================================================
+    # RESULT
+    # ========================================================
 
     return {
         "status": "ok",
         "scanned_sources": 1,
-        "discovered_urls": discovered,
+        "discovered_urls": len(
+            new_items
+        ),
     }
-
-# ============================================================
-# SCAN ALL SOURCES
-# ============================================================
 
 # ============================================================
 # SCAN ALL SOURCES
