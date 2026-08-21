@@ -36,7 +36,6 @@ type DiscoveryItem = {
 
 };
 
-
 type Source = {
 
   source_id: string;
@@ -44,6 +43,16 @@ type Source = {
 
   domain?: string | null;
   acquisition_mode?: string | null;
+
+  universe_id?: string | null;
+
+};
+
+
+type Universe = {
+
+  id_universe: string;
+  label: string;
 
 };
 
@@ -70,6 +79,19 @@ export default function DiscoveryPage() {
     setSources,
   ] =
     useState<Source[]>([]);
+
+  const [
+    universes,
+    setUniverses,
+  ] =
+    useState<Universe[]>([]);
+  
+  
+  const [
+    universeId,
+    setUniverseId,
+  ] =
+    useState("");
 
   const [
     selectedIds,
@@ -128,6 +150,7 @@ export default function DiscoveryPage() {
       const [
         discoveryRes,
         sourceRes,
+        universeRes,
       ] =
         await Promise.all([
           api.get(
@@ -136,15 +159,10 @@ export default function DiscoveryPage() {
           api.get(
             "/source/list"
           ),
+          api.get(
+            "/universe/list"
+          ),
         ]);
-
-      setItems(
-        discoveryRes.items || []
-      );
-
-      setSources(
-        sourceRes.sources || []
-      );
 
     } catch (e) {
 
