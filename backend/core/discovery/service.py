@@ -38,20 +38,6 @@ TABLE_RAW = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW"
 )
 
-# ============================================================
-# HTTP
-# ============================================================
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 "
-        "(Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 "
-        "(KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-
 
 # ============================================================
 # INSERT DISCOVERY
@@ -166,17 +152,8 @@ def scan_source(
             "Source introuvable"
         )
 
-    domain = source.get(
-        "DOMAIN"
-    )
-
-    if not domain:
-        raise Exception(
-            "DOMAIN manquant"
-        )
-
-    urls = extract_urls_from_page(
-        domain
+    urls = discover_urls(
+        source
     )
 
     # ============================================================
@@ -233,7 +210,8 @@ def scan_all_sources():
         FROM `{TABLE_SOURCE}`
         WHERE DOMAIN IS NOT NULL
           AND DOMAIN != ''
-          AND ACQUISITION_MODE = 'AUTO'
+          AND ACQUISITION_MODE IS NOT NULL
+          AND ACQUISITION_MODE != 'MANUAL'
     """
 
     rows = query_bq(sql)
