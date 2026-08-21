@@ -24,41 +24,6 @@ from core.discovery.service import (
 
 router = APIRouter()
 
-# ============================================================
-# TEST RSS
-# ============================================================
-
-@router.get("/test-rss")
-def test_rss():
-
-    import requests
-
-    url = (
-        "https://drinksretailingnews.co.uk/"
-        "wp-sitemap.xml"
-    )
-    try:
-
-        response = requests.get(
-            url,
-            timeout=30,
-        )
-
-        return {
-            "status_code": response.status_code,
-            "content_type": response.headers.get(
-                "content-type"
-            ),
-            "size": len(response.content),
-            "preview": response.text[:500],
-        }
-
-    except Exception as e:
-
-        return {
-            "error": str(e),
-        }
-
 
 # ============================================================
 # SCAN ALL SOURCES
