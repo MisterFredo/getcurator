@@ -25,38 +25,86 @@ from core.discovery.service import (
 router = APIRouter()
 
 # ============================================================
-# TEST RSS
+# TEST RSS PAGINATION
 # ============================================================
 
 @router.get("/test-rss")
 def test_rss():
 
     import requests
+    import xml.etree.ElementTree as ET
 
-    url = (
-        "https://www.retaildive.com/feeds/news/"
-    )
-    try:
+    results = []
 
-        response = requests.get(
-            url,
-            timeout=30,
-        )
+    urls = [
+        "https://www.retaildive.com/feeds/news/",
+        "https://www.retaildive.com/feeds/news/?page=2",
+        "https://www.retaildive.com/feeds/news/?page=3",
+    ]
 
-        return {
-            "status_code": response.status_code,
-            "content_type": response.headers.get(
-                "content-type"
-            ),
-            "size": len(response.content),
-            "preview": response.text[:500],
-        }
+    for url in urls:
 
-    except Exception as e:
+        try:
 
-        return {
-            "error": str(e),
-        }
+            response = requests.get(
+                url,
+                timeout=30,
+            )
+
+            data = {
+                "url": url,
+                "status_code": response.status_code,
+                "content_type": response.headers.get(
+                    "content-type"
+                ),
+                "size": len(response.content),
+            }
+
+            if response.status_code == 200:
+
+                try:
+
+                    root = ET.fromstring(
+                        response.content
+                    )
+
+                    items = root.findall(
+                        ".//item"
+                    )
+
+                    data["items"] = len(
+                        items
+                    )
+
+                    data["links"] = [
+                        (
+                            item.find("link").text
+                            if item.find("link") is not None
+                            else None
+                        )
+                        for item in items
+                    ]
+
+                except Exception as e:
+
+                    data["parse_error"] = str(e)
+
+            results.append(
+                data
+            )
+
+        except Exception as e:
+
+            results.append(
+                {
+                    "url": url,
+                    "error": str(e),
+                }
+            )
+
+    return {
+        "results": results
+    }
 
 
 
