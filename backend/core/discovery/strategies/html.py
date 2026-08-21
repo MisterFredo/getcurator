@@ -65,6 +65,26 @@ def discover_html(
         "html.parser",
     )
 
+    print(
+        f"[DISCOVERY HTML] URL={page_url}"
+    )
+    
+    print(
+        f"[DISCOVERY HTML] STATUS={response.status_code}"
+    )
+    
+    print(
+        f"[DISCOVERY HTML] FINAL_URL={response.url}"
+    )
+    
+    print(
+        f"[DISCOVERY HTML] HTML_SIZE={len(response.text)}"
+    )
+    
+    print(
+        f"[DISCOVERY HTML] LINKS={len(soup.find_all('a'))}"
+    )
+
     # ========================================================
     # PAGE DOMAIN
     # ========================================================
@@ -91,6 +111,11 @@ def discover_html(
         href = link.get(
             "href"
         )
+
+        if href:
+            print(
+                f"[DISCOVERY HTML] HREF={href}"
+            )
 
         if not href:
             continue
