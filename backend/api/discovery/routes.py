@@ -1,17 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
 from api.discovery.models import (
-
     DiscoveryListOut,
+    ScanAllRequest,
     ScanResponse,
-
     StoreRequest,
     StoreResponse,
-
     IgnoreRequest,
     IgnoreResponse,
-
-    # 🔥 NEW
     ManualDiscoveryListOut,
 )
 
@@ -27,15 +23,6 @@ from core.discovery.service import (
 )
 
 router = APIRouter()
-
-
-# ============================================================
-# SCAN ALL REQUEST
-# ============================================================
-
-class ScanAllRequest(BaseModel):
-
-    universe_id: str | None = None
 
 
 # ============================================================
