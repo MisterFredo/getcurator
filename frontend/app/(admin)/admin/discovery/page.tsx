@@ -144,9 +144,9 @@ export default function DiscoveryPage() {
   async function loadData() {
 
     try {
-
+  
       setLoading(true);
-
+  
       const [
         discoveryRes,
         sourceRes,
@@ -163,21 +163,33 @@ export default function DiscoveryPage() {
             "/universe/list"
           ),
         ]);
-
+  
+      setItems(
+        discoveryRes.items || []
+      );
+  
+      setSources(
+        sourceRes.sources || []
+      );
+  
+      setUniverses(
+        universeRes.universes || []
+      );
+  
     } catch (e) {
-
+  
       console.error(e);
-
+  
       alert(
         "❌ Erreur chargement Discovery"
       );
-
+  
     } finally {
-
+  
       setLoading(false);
-
+  
     }
-
+  
   }
 
 
