@@ -16,6 +16,10 @@ type Props = {
     sourceName: string
   ) => void;
 
+  scanningSourceId: string | null;
+
+  scanningAll: boolean;
+
 };
 
 
@@ -23,6 +27,8 @@ export default function DiscoverySources({
 
   sources,
   onScan,
+  scanningSourceId,
+  scanningAll,
 
 }: Props) {
 
@@ -96,11 +102,38 @@ export default function DiscoverySources({
               const isManual =
                 acquisitionMode === "MANUAL";
 
+
+              // =============================================
+              // SCAN STATE
+              // =============================================
+
+              const isCurrentScanning =
+                scanningSourceId ===
+                source.source_id;
+
+              const isOtherScanning =
+                scanningSourceId !== null &&
+                !isCurrentScanning;
+
+              const isDisabled =
+                scanningAll ||
+                isOtherScanning;
+
+
               return (
 
                 <tr
                   key={source.source_id}
-                  className="border-b last:border-b-0"
+                  className={`
+                    border-b
+                    last:border-b-0
+                    transition-opacity
+                    ${
+                      isDisabled
+                        ? "opacity-40"
+                        : ""
+                    }
+                  `}
                 >
 
                   {/* =========================================
@@ -157,9 +190,25 @@ export default function DiscoverySources({
                             source.name
                           )
                         }
-                        className="bg-ratecard-blue text-white px-3 py-1 rounded"
+                        disabled={
+                          isDisabled ||
+                          isCurrentScanning
+                        }
+                        className="
+                          bg-ratecard-blue
+                          text-white
+                          px-3
+                          py-1
+                          rounded
+                          disabled:opacity-40
+                          disabled:cursor-not-allowed
+                        "
                       >
-                        SCAN
+
+                        {isCurrentScanning
+                          ? "SCAN EN COURS..."
+                          : "SCAN"}
+
                       </button>
 
                     )}
