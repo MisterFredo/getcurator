@@ -35,9 +35,8 @@ def test_rss():
 
     url = (
         "https://drinksretailingnews.co.uk/"
-        "category/news/latest-news/feed/"
+        "wp-sitemap.xml"
     )
-
     try:
 
         response = requests.get(
