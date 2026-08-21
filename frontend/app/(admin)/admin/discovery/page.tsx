@@ -40,8 +40,8 @@ export default function DiscoveryPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [sourceMode, setSourceMode] = useState<
-    "AUTO" | "MANUAL"
-  >("AUTO");
+    "AUTOMATIC" | "MANUAL"
+  >("AUTOMATIC");
 
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -317,9 +317,21 @@ export default function DiscoveryPage() {
   // =========================================================
 
   const filteredSources = sources.filter(
-    (source) =>
-      (source.acquisition_mode || "")
-        .toUpperCase() === sourceMode
+    (source) => {
+  
+      const mode = (
+        source.acquisition_mode || ""
+      ).toUpperCase();
+  
+      if (sourceMode === "MANUAL") {
+        return mode === "MANUAL";
+      }
+  
+      return (
+        mode !== "" &&
+        mode !== "MANUAL"
+      );
+    }
   );
 
   // =========================================================
@@ -361,20 +373,20 @@ export default function DiscoveryPage() {
       {/* SOURCE MODE */}
 
       <div className="flex gap-2">
-
+      
         <button
           onClick={() =>
-            setSourceMode("AUTO")
+            setSourceMode("AUTOMATIC")
           }
           className={
-            sourceMode === "AUTO"
+            sourceMode === "AUTOMATIC"
               ? "bg-ratecard-blue text-white px-3 py-1 rounded"
               : "bg-gray-100 px-3 py-1 rounded"
           }
         >
-          AUTO
+          AUTOMATIC
         </button>
-
+      
         <button
           onClick={() =>
             setSourceMode("MANUAL")
@@ -387,7 +399,7 @@ export default function DiscoveryPage() {
         >
           MANUAL
         </button>
-
+      
       </div>
 
       {/* SOURCES */}
