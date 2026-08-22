@@ -415,6 +415,124 @@ def update_user(payload):
 
 
 # =========================================================
+# DELETE USER
+# =========================================================
+
+def delete_user(
+    user_id: str,
+):
+
+    # =====================================================
+    # CHECK USER
+    # =====================================================
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+
+        raise ValueError(
+            "User not found"
+        )
+
+
+    # =====================================================
+    # USER EXPERT
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_EXPERT`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    # =====================================================
+    # USER KEYWORDS
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    # =====================================================
+    # USER PREFERENCES
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    # =====================================================
+    # USER PROFILE
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    # =====================================================
+    # USER UNIVERSES
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_USER_UNIVERSE}`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    # =====================================================
+    # USER
+    # =====================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_USER}`
+        WHERE ID_USER = @user_id
+        """,
+        {
+            "user_id": user_id,
+        },
+    )
+
+
+    return {
+        "status": "ok",
+        "user_id": user_id,
+    }
+
+# =========================================================
 # LIST USERS
 # =========================================================
 
