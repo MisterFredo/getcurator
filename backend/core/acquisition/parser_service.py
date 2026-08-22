@@ -293,7 +293,9 @@ def parse_raw_blocks(text: str) -> List[Dict]:
 
     return results
 
-def parse_article_from_url(url: str) -> Dict[str, Any]:
+def parse_article_from_url(
+    url: str,
+) -> Dict[str, Any]:
 
     session = requests.Session()
 
@@ -303,7 +305,7 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         timeout=20,
         allow_redirects=True,
     )
-    
+
     print(
         "[PARSER]",
         url,
@@ -314,20 +316,24 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
         "SIZE=",
         len(resp.text),
     )
-    
-    resp.raise_for_status()
 
-        if resp.status_code == 403:
-    
+    # ========================================================
+    # DEBUG 403
+    # ========================================================
+
+    if resp.status_code == 403:
+
         soup_debug = BeautifulSoup(
             resp.text,
             "html.parser",
         )
-    
-        paragraphs_debug = soup_debug.find_all(
-            "p"
+
+        paragraphs_debug = (
+            soup_debug.find_all(
+                "p"
+            )
         )
-    
+
         text_debug = "\n".join(
             p.get_text(
                 " ",
@@ -339,90 +345,157 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
                 strip=True,
             )
         )
-    
+
         print(
             "[PARSER 403]",
             "TITLE=",
-            soup_debug.title.get_text(
-                strip=True
-            )
-            if soup_debug.title
-            else None,
+            (
+                soup_debug.title.get_text(
+                    strip=True
+                )
+                if soup_debug.title
+                else None
+            ),
         )
-    
+
         print(
             "[PARSER 403]",
             "PARAGRAPHS=",
-            len(paragraphs_debug),
+            len(
+                paragraphs_debug
+            ),
             "TEXT_SIZE=",
-            len(text_debug),
+            len(
+                text_debug
+            ),
         )
-    
+
         print(
             "[PARSER 403 PREVIEW]",
             text_debug[:1000],
         )
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    # ========================================================
+    # HTTP STATUS
+    # ========================================================
+
+    resp.raise_for_status()
+
+    # ========================================================
+    # HTML
+    # ========================================================
+
+    soup = BeautifulSoup(
+        resp.text,
+        "html.parser",
+    )
 
     # --------------------------------------------------
-    # TITLE (robuste mais sans fallback artificiel)
+    # TITLE
     # --------------------------------------------------
+
     title = None
 
     if soup.title:
-        title = soup.title.get_text(strip=True)
 
-    # 👉 on garde le comportement historique :
-    # si pas de titre exploitable → on rejette
+        title = soup.title.get_text(
+            strip=True
+        )
+
     if not title:
-        raise Exception("TITLE vide")
+
+        raise Exception(
+            "TITLE vide"
+        )
 
     # --------------------------------------------------
-    # DATE (ajout minimal sans casser le reste)
+    # DATE
     # --------------------------------------------------
+
     date_source = None
 
-    # 1️⃣ meta (historique)
-    meta_date = soup.find("meta", {"property": "article:published_time"})
-    if meta_date and meta_date.get("content"):
+    # 1. META
+
+    meta_date = soup.find(
+        "meta",
+        {
+            "property":
+                "article:published_time"
+        },
+    )
+
+    if (
+        meta_date
+        and meta_date.get(
+            "content"
+        )
+    ):
+
         try:
-            date_source = parse(meta_date["content"]).date()
+
+            date_source = parse(
+                meta_date["content"]
+            ).date()
+
         except Exception:
+
             pass
 
-    # 2️⃣ fallback <time> (ajout contrôlé)
+    # 2. TIME FALLBACK
+
     if not date_source:
-        time_tag = soup.find("time")
+
+        time_tag = soup.find(
+            "time"
+        )
+
         if time_tag:
+
             try:
-                date_source = parse(time_tag.get_text(), dayfirst=True, fuzzy=True).date()
+
+                date_source = parse(
+                    time_tag.get_text(),
+                    dayfirst=True,
+                    fuzzy=True,
+                ).date()
+
             except Exception:
+
                 pass
 
     # --------------------------------------------------
-    # RAW TEXT (STRICTEMENT logique d’avant)
+    # RAW TEXT
     # --------------------------------------------------
-    paragraphs = soup.find_all("p")
+
+    paragraphs = soup.find_all(
+        "p"
+    )
 
     raw_text = "\n".join(
-        p.get_text(strip=True)
+        p.get_text(
+            strip=True
+        )
         for p in paragraphs
-        if p.get_text(strip=True)
+        if p.get_text(
+            strip=True
+        )
     ).strip()
 
-    # 👉 comportement historique : on rejette si vide
     if not raw_text:
-        raise Exception("RAW_TEXT vide")
+
+        raise Exception(
+            "RAW_TEXT vide"
+        )
 
     # --------------------------------------------------
     # RETURN
     # --------------------------------------------------
+
     return {
         "TITLE": title,
         "DATE_SOURCE": date_source,
         "RAW_TEXT": raw_text,
-        "SOURCE_URL": url
+        "SOURCE_URL": url,
     }
 
 
