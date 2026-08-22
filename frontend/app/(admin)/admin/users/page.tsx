@@ -49,6 +49,13 @@ export default function UsersPage() {
     "USER"
   );
 
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(
+    null
+  );
+
   // =====================================================
   // LOAD USERS
   // =====================================================
@@ -89,6 +96,66 @@ export default function UsersPage() {
     load();
 
   }, [profileType]);
+
+  // =====================================================
+  // DELETE USER
+  // =====================================================
+
+  async function handleDelete(
+    user: User
+  ) {
+
+    const label =
+      user.DISPLAY_NAME ||
+      user.NAME ||
+      user.EMAIL;
+
+    const confirmed =
+      window.confirm(
+        `Delete "${label}" ?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+
+      setDeletingId(
+        user.ID_USER
+      );
+
+      await api.delete(
+        `/user/${user.ID_USER}`
+      );
+
+      setUsers((prev) =>
+        prev.filter(
+          (u) =>
+            u.ID_USER !==
+            user.ID_USER
+        )
+      );
+
+    } catch (e) {
+
+      console.error(
+        "❌ error deleting user",
+        e
+      );
+
+      alert(
+        "Unable to delete user"
+      );
+
+    } finally {
+
+      setDeletingId(
+        null
+      );
+
+    }
+  }
 
   // =====================================================
   // RENDER
@@ -227,9 +294,13 @@ export default function UsersPage() {
                   className="border-b hover:bg-gray-50"
                 >
 
+                  {/* EMAIL */}
+
                   <td className="p-3">
                     {u.EMAIL}
                   </td>
+
+                  {/* NAME */}
 
                   <td className="p-3">
                     {u.DISPLAY_NAME ||
@@ -237,9 +308,13 @@ export default function UsersPage() {
                       "-"}
                   </td>
 
+                  {/* COMPANY */}
+
                   <td className="p-3">
                     {u.COMPANY || "-"}
                   </td>
+
+                  {/* LANGUAGE */}
 
                   <td className="p-3">
                     {u.LANGUAGE || "fr"}
@@ -349,12 +424,33 @@ export default function UsersPage() {
 
                   <td className="p-3">
 
-                    <Link
-                      href={`/admin/users/${u.ID_USER}`}
-                      className="text-ratecard-blue hover:underline"
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex items-center gap-3">
+
+                      <Link
+                        href={`/admin/users/${u.ID_USER}`}
+                        className="text-ratecard-blue hover:underline"
+                      >
+                        Edit
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDelete(u)
+                        }
+                        disabled={
+                          deletingId ===
+                          u.ID_USER
+                        }
+                        className="text-red-600 hover:underline disabled:opacity-40"
+                      >
+                        {deletingId ===
+                        u.ID_USER
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
+
+                    </div>
 
                   </td>
 
