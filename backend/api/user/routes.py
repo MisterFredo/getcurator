@@ -14,6 +14,7 @@ from api.user.models import (
 from core.user.user_service import (
     create_user,
     update_user,
+    delete_user,
     assign_universes,
     list_users,
     get_user_by_email,
@@ -468,6 +469,37 @@ def update_user_route(payload: UpdateUserPayload):
         return {"status": "ok"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+# =========================================================
+# DELETE USER
+# =========================================================
+
+@router.delete("/{user_id}")
+def delete_user_route(
+    user_id: str,
+):
+
+    try:
+
+        result = delete_user(
+            user_id
+        )
+
+        return result
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur suppression user : {e}",
+        )
 
 
 # =========================================================
