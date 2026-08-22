@@ -1,6 +1,7 @@
 from typing import List, Dict
 from datetime import datetime
 import uuid
+import time
 from config import BQ_PROJECT, BQ_DATASET
 
 from utils.bigquery_utils import (
@@ -564,6 +565,12 @@ def store_discovery_urls(
             )
 
             errors += 1
+
+        finally:
+
+            # Évite d'enchaîner les requêtes vers
+            # les sites trop rapidement.
+            time.sleep(3)
 
     return {
         "status": "ok",
