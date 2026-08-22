@@ -317,6 +317,52 @@ def parse_article_from_url(url: str) -> Dict[str, Any]:
     
     resp.raise_for_status()
 
+        if resp.status_code == 403:
+    
+        soup_debug = BeautifulSoup(
+            resp.text,
+            "html.parser",
+        )
+    
+        paragraphs_debug = soup_debug.find_all(
+            "p"
+        )
+    
+        text_debug = "\n".join(
+            p.get_text(
+                " ",
+                strip=True,
+            )
+            for p in paragraphs_debug
+            if p.get_text(
+                " ",
+                strip=True,
+            )
+        )
+    
+        print(
+            "[PARSER 403]",
+            "TITLE=",
+            soup_debug.title.get_text(
+                strip=True
+            )
+            if soup_debug.title
+            else None,
+        )
+    
+        print(
+            "[PARSER 403]",
+            "PARAGRAPHS=",
+            len(paragraphs_debug),
+            "TEXT_SIZE=",
+            len(text_debug),
+        )
+    
+        print(
+            "[PARSER 403 PREVIEW]",
+            text_debug[:1000],
+        )
+
     soup = BeautifulSoup(resp.text, "html.parser")
 
     # --------------------------------------------------
