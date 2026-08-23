@@ -195,6 +195,8 @@ def generate_company_description(
         table=TABLE_COMPANY,
         fields={
             "DESCRIPTION": description,
+            "UPDATED_AT":
+                datetime.utcnow().isoformat(),
         },
         where={
             "ID_COMPANY": company_id,
