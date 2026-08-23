@@ -66,6 +66,83 @@ def get_duplicate_titles():
 
     return query_bq(sql)
 
+# ============================================================
+# DELETE DUPLICATE CONTENT
+# ============================================================
+
+def delete_duplicate_content(
+    content_id: str,
+):
+
+    # --------------------------------------------------------
+    # SAFETY CHECK
+    # --------------------------------------------------------
+
+    check_sql = f"""
+    WITH ranked AS (
+
+      SELECT
+        ID_CONTENT,
+
+        ROW_NUMBER() OVER (
+          PARTITION BY TITLE
+          ORDER BY
+            PUBLISHED_AT DESC,
+            CREATED_AT DESC
+        ) AS rn
+
+      FROM `{TABLE_CONTENT}`
+
+      WHERE TITLE IS NOT NULL
+        AND TRIM(TITLE) != ""
+
+    )
+
+    SELECT
+      ID_CONTENT
+
+    FROM ranked
+
+    WHERE ID_CONTENT = @content_id
+      AND rn > 1
+    """
+
+    rows = query_bq(
+        check_sql,
+        params={
+            "content_id": content_id,
+        },
+    )
+
+    if not rows:
+
+        return {
+            "status": "error",
+            "message": "Content is not a duplicate",
+        }
+
+    # --------------------------------------------------------
+    # DELETE
+    # --------------------------------------------------------
+
+    delete_sql = f"""
+    DELETE FROM `{TABLE_CONTENT}`
+
+    WHERE ID_CONTENT = @content_id
+    """
+
+    query_bq(
+        delete_sql,
+        params={
+            "content_id": content_id,
+        },
+    )
+
+    return {
+        "status": "ok",
+        "deleted_id": content_id,
+    }
+
 
 # ============================================================
 # UNMATCHED COMPANIES
