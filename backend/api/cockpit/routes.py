@@ -102,6 +102,15 @@ def duplicate_titles():
         "results": get_duplicate_titles(),
     }
 
+@router.get("/quality/duplicate-titles")
+def duplicate_titles():
+
+    return {
+        "status": "ok",
+        "results": get_duplicate_titles(),
+    }
+
+
 @router.delete("/quality/duplicate-titles/{content_id}")
 def delete_duplicate_title(
     content_id: str,
