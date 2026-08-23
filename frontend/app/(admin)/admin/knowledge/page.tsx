@@ -13,6 +13,7 @@ import KnowledgeToolbar from "@/components/knowledge/KnowledgeToolbar";
 import KnowledgeExplorer from "@/components/knowledge/KnowledgeExplorer";
 
 import {
+  buildKnowledge,
   getKnowledgeDashboard,
   getKnowledgeExplorer,
 } from "@/lib/knowledge";
@@ -20,6 +21,7 @@ import {
 import type {
   KnowledgeDashboard as Dashboard,
   KnowledgeExplorer as Explorer,
+  KnowledgeEntitySummary,
 } from "@/types/knowledge";
 
 /* ========================================================= */
@@ -49,58 +51,308 @@ export default function KnowledgePage() {
     useState(true);
 
   /* =======================================================
+     MULTI SELECTION
+  ======================================================= */
+
+  const [
+    selectedKeys,
+    setSelectedKeys,
+  ] =
+    useState<string[]>(
+      [],
+    );
+
+  /* =======================================================
+     MULTI BUILD
+  ======================================================= */
+
+  const [
+    multiBuilding,
+    setMultiBuilding,
+  ] =
+    useState(false);
+
+  const [
+    currentBuild,
+    setCurrentBuild,
+  ] =
+    useState<{
+      index: number;
+      total: number;
+      name: string;
+    } | null>(
+      null,
+    );
+
+  /* =======================================================
+     ENTITY KEY
+  ======================================================= */
+
+  function getEntityKey(
+    entity: KnowledgeEntitySummary,
+  ) {
+
+    return (
+      `${entity.entity_type}:${entity.entity_id}`
+    );
+
+  }
+
+  /* =======================================================
      LOAD
+  ======================================================= */
+
+  async function load() {
+
+    try {
+
+      const [
+        dashboard,
+        explorer,
+      ] = await Promise.all([
+
+        getKnowledgeDashboard(),
+
+        getKnowledgeExplorer(),
+
+      ]);
+
+      setDashboard(
+        dashboard,
+      );
+
+      setExplorer(
+        explorer,
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert(
+        "Unable to load Knowledge Cockpit.",
+      );
+
+    } finally {
+
+      setLoading(
+        false,
+      );
+
+    }
+
+  }
+
+  /* =======================================================
+     INITIAL LOAD
   ======================================================= */
 
   useEffect(() => {
 
-    async function load() {
+    load();
 
-      try {
+  }, []);
 
-        const [
+  /* =======================================================
+     TOGGLE ENTITY
+  ======================================================= */
 
-          dashboard,
+  function handleToggleEntity(
+    entity: KnowledgeEntitySummary,
+  ) {
 
-          explorer,
+    if (multiBuilding) {
+      return;
+    }
 
-        ] = await Promise.all([
+    const key =
+      getEntityKey(
+        entity,
+      );
 
-          getKnowledgeDashboard(),
+    setSelectedKeys(
+      current => {
 
-          getKnowledgeExplorer(),
+        if (
+          current.includes(
+            key,
+          )
+        ) {
 
-        ]);
+          return current.filter(
+            item =>
+              item !== key,
+          );
 
-        setDashboard(
-          dashboard,
-        );
+        }
 
-        setExplorer(
-          explorer,
-        );
+        return [
+          ...current,
+          key,
+        ];
 
-      } catch (e) {
+      },
+    );
 
-        console.error(e);
+  }
+
+  /* =======================================================
+     SET SELECTION
+  ======================================================= */
+
+  function handleSetSelection(
+    entities: KnowledgeEntitySummary[],
+  ) {
+
+    if (multiBuilding) {
+      return;
+    }
+
+    setSelectedKeys(
+      entities.map(
+        getEntityKey,
+      ),
+    );
+
+  }
+
+  /* =======================================================
+     MULTI AUTO CONTINUE
+  ======================================================= */
+
+  async function handleMultiBuild() {
+
+    if (
+      multiBuilding
+      ||
+      !explorer
+      ||
+      selectedKeys.length === 0
+    ) {
+      return;
+    }
+
+    /*
+     * Freeze the selected entities before starting.
+     *
+     * The loop below is intentionally sequential.
+     * Do NOT replace it with Promise.all().
+     */
+
+    const selectedEntities =
+      explorer.entities.filter(
+        entity =>
+          selectedKeys.includes(
+            getEntityKey(
+              entity,
+            ),
+          ),
+      );
+
+    if (
+      selectedEntities.length === 0
+    ) {
+      return;
+    }
+
+    setMultiBuilding(
+      true,
+    );
+
+    let failed = 0;
+
+    try {
+
+      for (
+        let index = 0;
+        index < selectedEntities.length;
+        index += 1
+      ) {
+
+        const entity =
+          selectedEntities[index];
+
+        setCurrentBuild({
+          index:
+            index + 1,
+
+          total:
+            selectedEntities.length,
+
+          name:
+            entity.name,
+        });
+
+        try {
+
+          /*
+           * IMPORTANT:
+           *
+           * await guarantees that the complete
+           * AutoContinue of this entity finishes
+           * before the next entity starts.
+           */
+
+          await buildKnowledge({
+
+            entity_type:
+              entity.entity_type,
+
+            entity_id:
+              entity.entity_id,
+
+            auto_continue:
+              true,
+
+          });
+
+        } catch (e) {
+
+          failed += 1;
+
+          console.error(
+            "Knowledge multi build failed:",
+            entity.entity_type,
+            entity.entity_id,
+            e,
+          );
+
+          /*
+           * Do not stop the complete run.
+           * Continue with the next entity.
+           */
+
+        }
+
+      }
+
+      await load();
+
+      setSelectedKeys(
+        [],
+      );
+
+      if (failed > 0) {
 
         alert(
-          "Unable to load Knowledge Cockpit.",
-        );
-
-      } finally {
-
-        setLoading(
-          false,
+          `${selectedEntities.length - failed} completed · ${failed} failed`,
         );
 
       }
 
+    } finally {
+
+      setCurrentBuild(
+        null,
+      );
+
+      setMultiBuilding(
+        false,
+      );
+
     }
 
-    load();
-
-  }, []);
+  }
 
   /* =======================================================
      RENDER
@@ -128,7 +380,9 @@ export default function KnowledgePage() {
 
           <KnowledgeDashboard
 
-            dashboard={dashboard}
+            dashboard={
+              dashboard
+            }
 
           />
 
@@ -146,6 +400,30 @@ export default function KnowledgePage() {
 
             entities={
               explorer.entities
+            }
+
+            selectedKeys={
+              selectedKeys
+            }
+
+            multiBuilding={
+              multiBuilding
+            }
+
+            currentBuild={
+              currentBuild
+            }
+
+            onToggleEntity={
+              handleToggleEntity
+            }
+
+            onSetSelection={
+              handleSetSelection
+            }
+
+            onMultiBuild={
+              handleMultiBuild
             }
 
           />
