@@ -459,9 +459,9 @@ def parse_article_from_url(
         "html.parser",
     )
 
-    # --------------------------------------------------
+    # ========================================================
     # TITLE
-    # --------------------------------------------------
+    # ========================================================
 
     title = None
 
@@ -477,13 +477,16 @@ def parse_article_from_url(
             "TITLE vide"
         )
 
-    # --------------------------------------------------
+    # ========================================================
     # DATE
-    # --------------------------------------------------
+    # ========================================================
 
     date_source = None
+    date_method = None
 
-    # 1. META
+    # ========================================================
+    # 1. META article:published_time
+    # ========================================================
 
     meta_date = soup.find(
         "meta",
@@ -506,12 +509,183 @@ def parse_article_from_url(
                 meta_date["content"]
             ).date()
 
+            date_method = (
+                "META article:published_time"
+            )
+
         except Exception:
 
             pass
 
     # ========================================================
-    # 2. GERMAN DATE FALLBACK
+    # 2. OTHER DATE META
+    # ========================================================
+
+    if not date_source:
+
+        meta_candidates = [
+
+            soup.find(
+                "meta",
+                {
+                    "name":
+                        "date"
+                },
+            ),
+
+            soup.find(
+                "meta",
+                {
+                    "name":
+                        "publish-date"
+                },
+            ),
+
+            soup.find(
+                "meta",
+                {
+                    "name":
+                        "pubdate"
+                },
+            ),
+
+            soup.find(
+                "meta",
+                {
+                    "itemprop":
+                        "datePublished"
+                },
+            ),
+
+        ]
+
+        for meta_candidate in meta_candidates:
+
+            if not meta_candidate:
+                continue
+
+            value = meta_candidate.get(
+                "content"
+            )
+
+            if not value:
+                continue
+
+            try:
+
+                date_source = parse(
+                    value
+                ).date()
+
+                date_method = (
+                    "META FALLBACK"
+                )
+
+                break
+
+            except Exception:
+
+                continue
+
+    # ========================================================
+    # 3. JSON-LD datePublished
+    # ========================================================
+
+    if not date_source:
+
+        scripts = soup.find_all(
+            "script",
+            {
+                "type":
+                    "application/ld+json"
+            },
+        )
+
+        for script in scripts:
+
+            script_text = (
+                script.string
+                or script.get_text()
+                or ""
+            )
+
+            if not script_text:
+                continue
+
+            match = re.search(
+                r'"datePublished"\s*:\s*"([^"]+)"',
+                script_text,
+                re.IGNORECASE,
+            )
+
+            if not match:
+                continue
+
+            try:
+
+                date_source = parse(
+                    match.group(1)
+                ).date()
+
+                date_method = (
+                    "JSON-LD datePublished"
+                )
+
+                break
+
+            except Exception:
+
+                continue
+
+    # ========================================================
+    # 4. TIME
+    # ========================================================
+
+    if not date_source:
+
+        time_tags = soup.find_all(
+            "time"
+        )
+
+        for time_tag in time_tags:
+
+            candidate = (
+                time_tag.get(
+                    "datetime"
+                )
+                or time_tag.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            if not candidate:
+                continue
+
+            try:
+
+                date_source = parse(
+                    candidate,
+                    dayfirst=True,
+                    fuzzy=True,
+                ).date()
+
+                date_method = (
+                    "TIME"
+                )
+
+                break
+
+            except Exception:
+
+                continue
+
+    # ========================================================
+    # 5. TEXTUAL DATE FALLBACK
+    #
+    # IMPORTANT:
+    # on ne scanne PAS toute la page.
+    # Seulement le début du contenu visible.
     # ========================================================
 
     if not date_source:
@@ -521,43 +695,43 @@ def parse_article_from_url(
             strip=True,
         )
 
+        # Limite volontaire pour éviter :
+        # événements, footer, articles recommandés, etc.
+
+        page_head = page_text[
+            :3000
+        ]
+
+        # ----------------------------------------------------
+        # 5A. German month
+        # ----------------------------------------------------
+
         date_source = parse_date_de(
-            page_text
+            page_head
         )
 
         if date_source:
 
-            print(
-                "[PARSER DATE]",
-                "GERMAN FALLBACK=",
-                date_source,
+            date_method = (
+                "TEXT GERMAN"
             )
 
-     # 3. TIME FALLBACK
+    # ========================================================
+    # DATE DEBUG
+    # ========================================================
 
-    if not date_source:
+    print(
+        "[PARSER DATE]",
+        url,
+        "DATE_SOURCE=",
+        date_source,
+        "METHOD=",
+        date_method,
+    )
 
-        time_tag = soup.find(
-            "time"
-        )
-
-        if time_tag:
-
-            try:
-
-                date_source = parse(
-                    time_tag.get_text(),
-                    dayfirst=True,
-                    fuzzy=True,
-                ).date()
-
-            except Exception:
-
-                pass
-
-    # --------------------------------------------------
+    # ========================================================
     # RAW TEXT
-    # --------------------------------------------------
+    # ========================================================
 
     paragraphs = soup.find_all(
         "p"
@@ -579,9 +753,9 @@ def parse_article_from_url(
             "RAW_TEXT vide"
         )
 
-    # --------------------------------------------------
+    # ========================================================
     # RETURN
-    # --------------------------------------------------
+    # ========================================================
 
     return {
         "TITLE": title,
@@ -589,5 +763,3 @@ def parse_article_from_url(
         "RAW_TEXT": raw_text,
         "SOURCE_URL": url,
     }
-
-
