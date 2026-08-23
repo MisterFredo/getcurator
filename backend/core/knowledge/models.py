@@ -127,6 +127,8 @@ class KnowledgeRequest(BaseModel):
 
     limit: int | None = None
 
+    auto_continue: bool = False
+
 
 # ============================================================
 # KNOWLEDGE OBSERVATION
