@@ -86,9 +86,11 @@ def build_knowledge_route(
     build_knowledge(
 
         entity_type=request.entity_type,
-
+    
         entity_id=request.entity_id,
-
+    
+        auto_continue=request.auto_continue,
+    
     )
 
     return {
@@ -116,9 +118,11 @@ def update_knowledge_route(
     update_knowledge(
 
         entity_type=request.entity_type,
-
+    
         entity_id=request.entity_id,
-
+    
+        auto_continue=request.auto_continue,
+    
     )
 
     return {
