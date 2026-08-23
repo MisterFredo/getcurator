@@ -120,11 +120,21 @@ def get_user_experts(
         u.FREQUENCY,
         u.IS_ACTIVE,
 
-        ue.ID_EXPERT IS NOT NULL
-            AS IS_SELECTED,
+        EXISTS (
+
+            SELECT 1
+
+            FROM `{TABLE_USER_EXPERT}` selected
+
+            WHERE
+                selected.ID_EXPERT = u.ID_USER
+            AND
+                selected.ID_USER = @user_id
+
+        ) AS IS_SELECTED,
 
         (
-            SELECT COUNT(*)
+            SELECT COUNT(DISTINCT x.ID_USER)
 
             FROM `{TABLE_USER_EXPERT}` x
 
@@ -134,11 +144,6 @@ def get_user_experts(
         ) AS USER_COUNT
 
     FROM `{TABLE_USER}` u
-
-    LEFT JOIN `{TABLE_USER_EXPERT}` ue
-
-        ON ue.ID_EXPERT = u.ID_USER
-       AND ue.ID_USER = @user_id
 
     WHERE
 
