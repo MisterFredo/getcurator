@@ -75,7 +75,17 @@ def delete_duplicate_content(
 ):
 
     # --------------------------------------------------------
-    # SAFETY CHECK
+    # SAFETY
+    # --------------------------------------------------------
+
+    content_id = (
+        content_id
+        .strip()
+        .replace("'", "")
+    )
+
+    # --------------------------------------------------------
+    # CHECK DUPLICATE
     # --------------------------------------------------------
 
     check_sql = f"""
@@ -103,46 +113,57 @@ def delete_duplicate_content(
 
     FROM ranked
 
-    WHERE ID_CONTENT = @content_id
+    WHERE ID_CONTENT = '{content_id}'
       AND rn > 1
     """
 
     rows = query_bq(
-        check_sql,
-        params={
-            "content_id": content_id,
-        },
+        check_sql
     )
 
     if not rows:
 
         return {
             "status": "error",
-            "message": "Content is not a duplicate",
+            "message": "Content is not a duplicate.",
         }
 
     # --------------------------------------------------------
-    # DELETE
+    # DELETE RELATIONS
     # --------------------------------------------------------
 
-    delete_sql = f"""
-    DELETE FROM `{TABLE_CONTENT}`
+    relation_tables = [
+        TABLE_CONTENT_COMPANY,
+        TABLE_CONTENT_SOLUTION,
+        TABLE_CONTENT_TOPIC,
+        TABLE_CONTENT_CONCEPT,
+    ]
 
-    WHERE ID_CONTENT = @content_id
-    """
+    for table in relation_tables:
+
+        query_bq(
+            f"""
+            DELETE FROM `{table}`
+            WHERE ID_CONTENT = '{content_id}'
+            """
+        )
+
+    # --------------------------------------------------------
+    # DELETE CONTENT
+    # --------------------------------------------------------
 
     query_bq(
-        delete_sql,
-        params={
-            "content_id": content_id,
-        },
+        f"""
+        DELETE FROM `{TABLE_CONTENT}`
+        WHERE ID_CONTENT = '{content_id}'
+        """
     )
 
     return {
         "status": "ok",
         "deleted_id": content_id,
+        "message": "Duplicate content deleted.",
     }
-
 
 # ============================================================
 # UNMATCHED COMPANIES
