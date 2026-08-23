@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  useState,
+} from "react";
+
+import {
+  Trash2,
+} from "lucide-react";
+
+import {
+  api,
+} from "@/lib/api";
+
 import type {
   QualityRow,
 } from "@/types/cockpit";
@@ -7,9 +19,15 @@ import type {
 /* ========================================================= */
 
 type Props = {
+
   title: string;
 
   rows: QualityRow[];
+
+  onDelete?: (
+    contentId: string,
+  ) => void;
+
 };
 
 /* ========================================================= */
@@ -17,7 +35,76 @@ type Props = {
 export default function ResultsPanel({
   title,
   rows,
+  onDelete,
 }: Props) {
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  /* ======================================================= */
+  /* DUPLICATE REPORT
+  /* ======================================================= */
+
+  const isDuplicateReport =
+    title === "Duplicate titles";
+
+  /* ======================================================= */
+  /* DELETE
+  /* ======================================================= */
+
+  async function handleDelete(
+    contentId: string,
+  ) {
+
+    const confirmed =
+      window.confirm(
+        "Delete this duplicate content?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+
+      setDeletingId(
+        contentId,
+      );
+
+      await api.delete(
+        `/cockpit/quality/duplicate-titles/${contentId}`
+      );
+
+      onDelete?.(
+        contentId,
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Delete duplicate error:",
+        error,
+      );
+
+      alert(
+        "Unable to delete duplicate."
+      );
+
+    } finally {
+
+      setDeletingId(
+        null,
+      );
+
+    }
+
+  }
+
+  /* ======================================================= */
 
   if (!title) {
 
@@ -84,37 +171,89 @@ export default function ResultsPanel({
 
                 ))}
 
+                {isDuplicateReport && (
+
+                  <th className="border-b px-4 py-3 text-right font-semibold">
+
+                    Action
+
+                  </th>
+
+                )}
+
               </tr>
 
             </thead>
 
             <tbody>
 
-              {rows.map((row, index) => (
+              {rows.map((row, index) => {
 
-                <tr
-                  key={index}
-                  className="border-b hover:bg-gray-50"
-                >
+                const contentId =
+                  String(
+                    row.ID_CONTENT ?? ""
+                  );
 
-                  {Object.values(row).map((value, i) => (
+                return (
 
-                    <td
-                      key={i}
-                      className="px-4 py-3 align-top"
-                    >
+                  <tr
+                    key={
+                      contentId ||
+                      index
+                    }
+                    className="border-b hover:bg-gray-50"
+                  >
 
-                      {value === null
-                        ? "—"
-                        : String(value)}
+                    {Object.values(row).map((value, i) => (
 
-                    </td>
+                      <td
+                        key={i}
+                        className="px-4 py-3 align-top"
+                      >
 
-                  ))}
+                        {value === null
+                          ? "—"
+                          : String(value)}
 
-                </tr>
+                      </td>
 
-              ))}
+                    ))}
+
+                    {isDuplicateReport && (
+
+                      <td className="px-4 py-3 text-right">
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDelete(
+                              contentId,
+                            )
+                          }
+                          disabled={
+                            !contentId ||
+                            deletingId === contentId
+                          }
+                          className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+
+                          <Trash2 size={15} />
+
+                          {deletingId === contentId
+                            ? "Deleting..."
+                            : "Delete"}
+
+                        </button>
+
+                      </td>
+
+                    )}
+
+                  </tr>
+
+                );
+
+              })}
 
             </tbody>
 
