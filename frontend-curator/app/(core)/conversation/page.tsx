@@ -143,7 +143,11 @@ export default function ConversationPage() {
             user.ID_USER,
 
           displayName:
-            "Moi augmenté",
+            user.DISPLAY_NAME
+            ??
+            user.NAME
+            ??
+            "User",
 
           company:
             user.COMPANY ?? null,
