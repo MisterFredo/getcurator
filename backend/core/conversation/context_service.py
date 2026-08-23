@@ -255,8 +255,15 @@ def _build_entity_context(
         return None
 
     return ConversationKnowledgeEntity(
+
         entity_type=entity_type,
+    
         entity_id=entity_id,
+    
         entity_name=metadata.name,
+    
+        description=metadata.description,
+    
         blocks=blocks,
+    
     )
