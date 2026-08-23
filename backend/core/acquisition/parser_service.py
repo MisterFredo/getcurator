@@ -510,30 +510,8 @@ def parse_article_from_url(
 
             pass
 
-    # 2. TIME FALLBACK
-
-    if not date_source:
-
-        time_tag = soup.find(
-            "time"
-        )
-
-        if time_tag:
-
-            try:
-
-                date_source = parse(
-                    time_tag.get_text(),
-                    dayfirst=True,
-                    fuzzy=True,
-                ).date()
-
-            except Exception:
-
-                pass
-
     # ========================================================
-    # 3. GERMAN DATE FALLBACK
+    # 2. GERMAN DATE FALLBACK
     # ========================================================
 
     if not date_source:
@@ -554,6 +532,28 @@ def parse_article_from_url(
                 "GERMAN FALLBACK=",
                 date_source,
             )
+
+     # 3. TIME FALLBACK
+
+    if not date_source:
+
+        time_tag = soup.find(
+            "time"
+        )
+
+        if time_tag:
+
+            try:
+
+                date_source = parse(
+                    time_tag.get_text(),
+                    dayfirst=True,
+                    fuzzy=True,
+                ).date()
+
+            except Exception:
+
+                pass
 
     # --------------------------------------------------
     # RAW TEXT
