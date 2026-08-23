@@ -310,3 +310,31 @@ def generate_missing_company_descriptions(
         "skipped": skipped,
         "results": results,
     }
+
+# ============================================================
+# GENERATE DESCRIPTION PREVIEW
+# ============================================================
+
+def generate_company_description_preview(
+    company_name: str,
+) -> str:
+
+    company_name = (
+        company_name
+        or ""
+    ).strip()
+
+    if not company_name:
+
+        return ""
+
+    description = run_llm(
+        prompt=_build_description_prompt(
+            company_name,
+        ),
+        temperature=0.1,
+        system_prompt=
+            COMPANY_DESCRIPTION_SYSTEM_PROMPT,
+    ).strip()
+
+    return description
