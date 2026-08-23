@@ -197,6 +197,75 @@ def parse_date_fr(date_str: str):
         print("[RAW_IMPORT] date ignorée:", date_str)
 
         return None
+
+def parse_date_de(
+    date_str: str,
+):
+
+    mois = {
+        "januar": 1,
+        "februar": 2,
+        "märz": 3,
+        "april": 4,
+        "mai": 5,
+        "juni": 6,
+        "juli": 7,
+        "august": 8,
+        "september": 9,
+        "oktober": 10,
+        "november": 11,
+        "dezember": 12,
+    }
+
+    try:
+
+        date_str = (
+            date_str
+            .strip()
+            .lower()
+        )
+
+        match = re.search(
+            r"\b(\d{1,2})\.\s+"
+            r"(januar|februar|märz|april|mai|juni|"
+            r"juli|august|september|oktober|november|dezember)"
+            r"\s+(\d{4})\b",
+            date_str,
+            re.IGNORECASE,
+        )
+
+        if not match:
+            return None
+
+        jour = int(
+            match.group(1)
+        )
+
+        mois_num = mois.get(
+            match.group(2).lower()
+        )
+
+        annee = int(
+            match.group(3)
+        )
+
+        if not mois_num:
+            return None
+
+        return datetime(
+            annee,
+            mois_num,
+            jour,
+        ).date()
+
+    except Exception:
+
+        print(
+            "[RAW_IMPORT] date DE ignorée:",
+            date_str,
+        )
+
+        return None
         
 # ============================================================
 # PARSE RAW FILE
@@ -462,6 +531,29 @@ def parse_article_from_url(
             except Exception:
 
                 pass
+
+    # ========================================================
+    # 3. GERMAN DATE FALLBACK
+    # ========================================================
+
+    if not date_source:
+
+        page_text = soup.get_text(
+            " ",
+            strip=True,
+        )
+
+        date_source = parse_date_de(
+            page_text
+        )
+
+        if date_source:
+
+            print(
+                "[PARSER DATE]",
+                "GERMAN FALLBACK=",
+                date_source,
+            )
 
     # --------------------------------------------------
     # RAW TEXT
