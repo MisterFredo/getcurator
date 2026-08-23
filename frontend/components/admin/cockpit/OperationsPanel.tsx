@@ -113,6 +113,13 @@ const GROUPS: Group[] = [
           "Restart stopped contents.",
         icon: RotateCcw,
       },
+      {
+        id: "generate-company-descriptions",
+        label: "Generate Company Descriptions",
+        description:
+          "Generate the next 20 missing descriptions.",
+        icon: Play,
+      },
     ],
   },
 
