@@ -122,7 +122,11 @@ export default function HomePage() {
             user.ID_USER,
 
           displayName:
-            "Moi augmenté",
+            user.DISPLAY_NAME
+            ??
+            user.NAME
+            ??
+            "User",
 
           company:
             user.COMPANY
