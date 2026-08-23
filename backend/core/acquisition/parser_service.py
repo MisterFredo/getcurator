@@ -680,41 +680,108 @@ def parse_article_from_url(
 
                 continue
 
-    # ========================================================
-    # 5. TEXTUAL DATE FALLBACK
-    #
-    # IMPORTANT:
-    # on ne scanne PAS toute la page.
-    # Seulement le début du contenu visible.
-    # ========================================================
-
-    if not date_source:
-
-        page_text = soup.get_text(
-            " ",
-            strip=True,
-        )
-
-        # Limite volontaire pour éviter :
-        # événements, footer, articles recommandés, etc.
-
-        page_head = page_text[
-            :3000
-        ]
-
-        # ----------------------------------------------------
-        # 5A. German month
-        # ----------------------------------------------------
-
-        date_source = parse_date_de(
-            page_head
-        )
-
-        if date_source:
-
-            date_method = (
-                "TEXT GERMAN"
+       # ========================================================
+        # 5. TEXTUAL DATE FALLBACK
+        #
+        # On cherche uniquement autour du H1 de l'article.
+        # On évite ainsi les dates d'événements, footer, etc.
+        # ========================================================
+    
+        if not date_source:
+    
+            h1 = soup.find(
+                "h1"
             )
+    
+            if h1:
+    
+                date_zone_parts = []
+    
+                # H1 + éléments immédiatement suivants
+                current = h1
+    
+                for _ in range(5):
+    
+                    current = current.find_next()
+    
+                    if not current:
+                        break
+    
+                    text = current.get_text(
+                        " ",
+                        strip=True,
+                    )
+    
+                    if text:
+    
+                        date_zone_parts.append(
+                            text
+                        )
+    
+                date_zone = " ".join(
+                    date_zone_parts
+                )
+    
+                print(
+                    "[PARSER DATE ZONE]",
+                    date_zone[:1000],
+                )
+    
+                # -----------------------------------------------
+                # Date générique :
+                # 3. July 2026
+                # 7. August 2026
+                # 3. Juli 2026
+                # -----------------------------------------------
+    
+                date_match = re.search(
+                    r"\b\d{1,2}\.\s+"
+                    r"[A-Za-zÄÖÜäöüß]+\s+"
+                    r"\d{4}\b",
+                    date_zone,
+                )
+    
+                if date_match:
+    
+                    candidate = (
+                        date_match.group(0)
+                    )
+    
+                    # D'abord dateutil :
+                    # July, August, etc.
+    
+                    try:
+    
+                        date_source = parse(
+                            candidate,
+                            dayfirst=True,
+                            fuzzy=True,
+                        ).date()
+    
+                        date_method = (
+                            "TEXT NEAR H1"
+                        )
+    
+                    except Exception:
+    
+                        pass
+    
+                    # Puis fallback allemand :
+                    # Juli, März, Oktober...
+    
+                    if not date_source:
+    
+                        date_source = (
+                            parse_date_de(
+                                candidate
+                            )
+                        )
+    
+                        if date_source:
+    
+                            date_method = (
+                                "TEXT DE NEAR H1"
+                            )
 
     # ========================================================
     # DATE DEBUG
