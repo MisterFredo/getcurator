@@ -88,7 +88,7 @@ def generate_company_descriptions():
 
     result = (
         generate_missing_company_descriptions(
-            limit=20,
+            limit=100,
         )
     )
 
