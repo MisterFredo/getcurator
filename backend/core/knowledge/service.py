@@ -27,6 +27,10 @@ from .models import (
 # BUILD
 # ============================================================
 
+# ============================================================
+# BUILD
+# ============================================================
+
 def build_knowledge(
     entity_type: KnowledgeEntityType,
     entity_id: str,
@@ -68,6 +72,83 @@ def build_knowledge(
 
     )
 
+# ============================================================
+# BUILD
+# ============================================================
+
+def build_knowledge(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+    auto_continue: bool = False,
+):
+    """
+    Build Knowledge.
+
+    By default, processes the next batch only.
+
+    If auto_continue is enabled,
+    continues batch by batch until
+    no new content remains.
+    """
+
+    while True:
+
+        # ====================================================
+        # GET CURRENT CURSOR
+        # ====================================================
+
+        last_content_date = get_last_content_date(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+        )
+
+        # ====================================================
+        # BUILD NEXT BATCH
+        # ====================================================
+
+        last_observation = build_entity(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+            last_content_date=last_content_date,
+
+        )
+
+        # ====================================================
+        # NOTHING LEFT
+        # ====================================================
+
+        if last_observation is None:
+            return
+
+        # ====================================================
+        # UPDATE CURSOR
+        # ====================================================
+
+        update_last_content(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+            content_id=last_observation.id,
+
+            content_date=last_observation.published_at,
+
+        )
+
+        # ====================================================
+        # STOP AFTER ONE BATCH
+        # ====================================================
+
+        if not auto_continue:
+            return
+
 
 # ============================================================
 # GET
@@ -94,6 +175,7 @@ def get_knowledge(
 def update_knowledge(
     entity_type: KnowledgeEntityType,
     entity_id: str,
+    auto_continue: bool = False,
 ):
     """
     Update Knowledge with newly
@@ -106,8 +188,9 @@ def update_knowledge(
 
         entity_id=entity_id,
 
-    )
+        auto_continue=auto_continue,
 
+    )
 
 # ============================================================
 # UPDATE BLOCK
