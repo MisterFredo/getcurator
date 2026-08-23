@@ -23,6 +23,10 @@ from core.cockpit.quality import (
     get_numbers_structure,
 )
 
+from core.company.description_service import (
+    generate_missing_company_descriptions,
+)
+
 router = APIRouter()
 
 # ============================================================
@@ -77,6 +81,26 @@ def restart():
 
     return restart_destock()
 
+@router.post(
+    "/operations/generate-company-descriptions"
+)
+def generate_company_descriptions():
+
+    result = (
+        generate_missing_company_descriptions(
+            limit=20,
+        )
+    )
+
+    return {
+        "status": "ok",
+        "message": (
+            f'{result["generated"]} company descriptions generated'
+            f' · {result["failed"]} failed'
+        ),
+        "result": result,
+    }
+
 
 @router.post("/operations/backup")
 def backup():
@@ -101,15 +125,6 @@ def duplicate_titles():
         "status": "ok",
         "results": get_duplicate_titles(),
     }
-
-@router.get("/quality/duplicate-titles")
-def duplicate_titles():
-
-    return {
-        "status": "ok",
-        "results": get_duplicate_titles(),
-    }
-
 
 @router.delete("/quality/duplicate-titles/{content_id}")
 def delete_duplicate_title(
