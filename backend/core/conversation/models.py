@@ -89,12 +89,13 @@ class ConversationKnowledgeEntity(BaseModel):
 
     entity_name: str
 
+    description: str | None = None
+
     blocks: list[
         ConversationKnowledgeBlock
     ] = Field(
         default_factory=list,
     )
-
 # ============================================================
 # INTERLOCUTOR PROFILE
 # ============================================================
