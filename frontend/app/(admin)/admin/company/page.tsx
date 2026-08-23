@@ -26,6 +26,8 @@ type CompanyRow = {
 
   type?: string | null;
 
+  description?: string | null;
+
   media_logo_rectangle_id?: string | null;
 
   is_partner?: boolean | null;
@@ -225,6 +227,10 @@ export default function CompanyList() {
                 Name
               </th>
 
+              <th className="p-2 text-center">
+                Description
+              </th>
+
               <th className="p-2 text-left">
                 Type
               </th>
@@ -287,6 +293,16 @@ export default function CompanyList() {
 
                   <td className="p-2 font-medium">
                     {c.name}
+                  </td>
+
+                  {/* DESCRIPTION */}
+
+                  <td className="p-2 text-center">
+
+                    {c.description?.trim()
+                      ? "Oui"
+                      : "Non"}
+
                   </td>
 
                   {/* TYPE */}
