@@ -27,6 +27,11 @@ from core.company.public_service import (
     list_companies_for_user,
 )
 
+from core.company.description_service import (
+    generate_company_description,
+    generate_missing_company_descriptions,
+)
+
 from utils.auth import (
     get_user_id_from_request,
 )
@@ -337,6 +342,64 @@ def get_view_route(
             status_code=500,
             detail="Internal error",
         )
+
+# ============================================================
+# DESCRIPTION GENERATION
+# ============================================================
+
+@router.post(
+    "/{id_company}/generate-description"
+)
+def generate_description_route(
+    id_company: str,
+):
+
+    try:
+
+        result = generate_company_description(
+            company_id=id_company,
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur génération description : {e}",
+        )
+
+
+@router.post(
+    "/generate-missing-descriptions"
+)
+def generate_missing_descriptions_route(
+    limit: int = 20,
+):
+
+    try:
+
+        result = (
+            generate_missing_company_descriptions(
+                limit=limit,
+            )
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur génération descriptions : {e}",
+        )
+
 
 
 # ============================================================
