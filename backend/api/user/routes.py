@@ -729,7 +729,7 @@ def admin_unsubscribe_user_from_expert(
     expert_id: str,
 ):
 
-    unsubscribe_user_to_expert(
+    unsubscribe_user_from_expert(
         user_id,
         expert_id,
     )
