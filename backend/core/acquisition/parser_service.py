@@ -397,143 +397,6 @@ def parse_article_from_url(
             "html.parser",
         )
 
-            # ========================================================
-            # DEBUG ADZINE DATE
-            # ========================================================
-        
-            if "adzine.de" in url:
-        
-                print(
-                    "\n[ADZINE DATE DEBUG]"
-                )
-        
-                # ----------------------------------------------------
-                # H1
-                # ----------------------------------------------------
-        
-                h1_debug = soup.find(
-                    "h1"
-                )
-        
-                print(
-                    "[ADZINE H1]",
-                    (
-                        h1_debug.get_text(
-                            " ",
-                            strip=True,
-                        )
-                        if h1_debug
-                        else None
-                    ),
-                )
-        
-                # ----------------------------------------------------
-                # TIME TAGS
-                # ----------------------------------------------------
-        
-                time_debug = soup.find_all(
-                    "time"
-                )
-        
-                print(
-                    "[ADZINE TIME COUNT]",
-                    len(time_debug),
-                )
-        
-                for i, tag in enumerate(
-                    time_debug[:10]
-                ):
-        
-                    print(
-                        "[ADZINE TIME]",
-                        i,
-                        "datetime=",
-                        tag.get(
-                            "datetime"
-                        ),
-                        "text=",
-                        tag.get_text(
-                            " ",
-                            strip=True,
-                        ),
-                    )
-        
-                # ----------------------------------------------------
-                # META DATES
-                # ----------------------------------------------------
-        
-                for meta in soup.find_all(
-                    "meta"
-                ):
-        
-                    key = (
-                        meta.get("property")
-                        or meta.get("name")
-                        or meta.get("itemprop")
-                        or ""
-                    )
-        
-                    if "date" in key.lower():
-        
-                        print(
-                            "[ADZINE META]",
-                            key,
-                            "=",
-                            meta.get(
-                                "content"
-                            ),
-                        )
-        
-                # ----------------------------------------------------
-                # SEARCH DATE TEXT IN DOM
-                # ----------------------------------------------------
-        
-                date_nodes = soup.find_all(
-                    string=re.compile(
-                        r"\b\d{1,2}\.\s+"
-                        r"(?:January|February|March|April|May|June|"
-                        r"July|August|September|October|November|December|"
-                        r"Januar|Februar|März|April|Mai|Juni|Juli|"
-                        r"August|September|Oktober|November|Dezember)"
-                        r"\s+\d{4}\b",
-                        re.IGNORECASE,
-                    )
-                )
-        
-                print(
-                    "[ADZINE DATE NODES]",
-                    len(date_nodes),
-                )
-        
-                for i, node in enumerate(
-                    date_nodes[:20]
-                ):
-        
-                    parent = (
-                        node.parent
-                        if node
-                        else None
-                    )
-        
-                    print(
-                        "[ADZINE DATE NODE]",
-                        i,
-                        "text=",
-                        str(node).strip(),
-                        "tag=",
-                        (
-                            parent.name
-                            if parent
-                            else None
-                        ),
-                        "class=",
-                        (
-                            parent.get("class")
-                            if parent
-                            else None
-                        ),
-                    )
-
         paragraphs_debug = (
             soup_debug.find_all(
                 "p"
@@ -595,6 +458,144 @@ def parse_article_from_url(
         resp.text,
         "html.parser",
     )
+
+    # ========================================================
+    # DEBUG ADZINE DATE
+    # ========================================================
+
+    if "adzine.de" in url:
+
+        print(
+            "\n[ADZINE DATE DEBUG]"
+        )
+
+        # ----------------------------------------------------
+        # H1
+        # ----------------------------------------------------
+
+        h1_debug = soup.find(
+            "h1"
+        )
+
+        print(
+            "[ADZINE H1]",
+            (
+                h1_debug.get_text(
+                    " ",
+                    strip=True,
+                )
+                if h1_debug
+                else None
+            ),
+        )
+
+        # ----------------------------------------------------
+        # TIME TAGS
+        # ----------------------------------------------------
+
+        time_debug = soup.find_all(
+            "time"
+        )
+
+        print(
+            "[ADZINE TIME COUNT]",
+            len(time_debug),
+        )
+
+        for i, tag in enumerate(
+            time_debug[:10]
+        ):
+
+            print(
+                "[ADZINE TIME]",
+                i,
+                "datetime=",
+                tag.get(
+                    "datetime"
+                ),
+                "text=",
+                tag.get_text(
+                    " ",
+                    strip=True,
+                ),
+            )
+
+        # ----------------------------------------------------
+        # META DATES
+        # ----------------------------------------------------
+
+        for meta in soup.find_all(
+            "meta"
+        ):
+
+            key = (
+                meta.get("property")
+                or meta.get("name")
+                or meta.get("itemprop")
+                or ""
+            )
+
+            if "date" in key.lower():
+
+                print(
+                    "[ADZINE META]",
+                    key,
+                    "=",
+                    meta.get(
+                        "content"
+                    ),
+                )
+
+        # ----------------------------------------------------
+        # DATE TEXT NODES
+        # ----------------------------------------------------
+
+        date_nodes = soup.find_all(
+            string=re.compile(
+                r"\b\d{1,2}\.\s+"
+                r"(?:January|February|March|April|May|June|"
+                r"July|August|September|October|November|December|"
+                r"Januar|Februar|März|April|Mai|Juni|Juli|"
+                r"August|September|Oktober|November|Dezember)"
+                r"\s+\d{4}\b",
+                re.IGNORECASE,
+            )
+        )
+
+        print(
+            "[ADZINE DATE NODES]",
+            len(date_nodes),
+        )
+
+        for i, node in enumerate(
+            date_nodes[:20]
+        ):
+
+            parent = (
+                node.parent
+                if node
+                else None
+            )
+
+            print(
+                "[ADZINE DATE NODE]",
+                i,
+                "text=",
+                str(node).strip(),
+                "tag=",
+                (
+                    parent.name
+                    if parent
+                    else None
+                ),
+                "class=",
+                (
+                    parent.get("class")
+                    if parent
+                    else None
+                ),
+            )
+    
 
     # ========================================================
     # TITLE
