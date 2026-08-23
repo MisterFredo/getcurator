@@ -460,144 +460,6 @@ def parse_article_from_url(
     )
 
     # ========================================================
-    # DEBUG ADZINE DATE
-    # ========================================================
-
-    if "adzine.de" in url:
-
-        print(
-            "\n[ADZINE DATE DEBUG]"
-        )
-
-        # ----------------------------------------------------
-        # H1
-        # ----------------------------------------------------
-
-        h1_debug = soup.find(
-            "h1"
-        )
-
-        print(
-            "[ADZINE H1]",
-            (
-                h1_debug.get_text(
-                    " ",
-                    strip=True,
-                )
-                if h1_debug
-                else None
-            ),
-        )
-
-        # ----------------------------------------------------
-        # TIME TAGS
-        # ----------------------------------------------------
-
-        time_debug = soup.find_all(
-            "time"
-        )
-
-        print(
-            "[ADZINE TIME COUNT]",
-            len(time_debug),
-        )
-
-        for i, tag in enumerate(
-            time_debug[:10]
-        ):
-
-            print(
-                "[ADZINE TIME]",
-                i,
-                "datetime=",
-                tag.get(
-                    "datetime"
-                ),
-                "text=",
-                tag.get_text(
-                    " ",
-                    strip=True,
-                ),
-            )
-
-        # ----------------------------------------------------
-        # META DATES
-        # ----------------------------------------------------
-
-        for meta in soup.find_all(
-            "meta"
-        ):
-
-            key = (
-                meta.get("property")
-                or meta.get("name")
-                or meta.get("itemprop")
-                or ""
-            )
-
-            if "date" in key.lower():
-
-                print(
-                    "[ADZINE META]",
-                    key,
-                    "=",
-                    meta.get(
-                        "content"
-                    ),
-                )
-
-        # ----------------------------------------------------
-        # DATE TEXT NODES
-        # ----------------------------------------------------
-
-        date_nodes = soup.find_all(
-            string=re.compile(
-                r"\b\d{1,2}\.\s+"
-                r"(?:January|February|March|April|May|June|"
-                r"July|August|September|October|November|December|"
-                r"Januar|Februar|März|April|Mai|Juni|Juli|"
-                r"August|September|Oktober|November|Dezember)"
-                r"\s+\d{4}\b",
-                re.IGNORECASE,
-            )
-        )
-
-        print(
-            "[ADZINE DATE NODES]",
-            len(date_nodes),
-        )
-
-        for i, node in enumerate(
-            date_nodes[:20]
-        ):
-
-            parent = (
-                node.parent
-                if node
-                else None
-            )
-
-            print(
-                "[ADZINE DATE NODE]",
-                i,
-                "text=",
-                str(node).strip(),
-                "tag=",
-                (
-                    parent.name
-                    if parent
-                    else None
-                ),
-                "class=",
-                (
-                    parent.get("class")
-                    if parent
-                    else None
-                ),
-            )
-    
-
-    # ========================================================
     # TITLE
     # ========================================================
 
@@ -818,108 +680,102 @@ def parse_article_from_url(
 
                 continue
 
-       # ========================================================
-        # 5. TEXTUAL DATE FALLBACK
-        #
-        # On cherche uniquement autour du H1 de l'article.
-        # On évite ainsi les dates d'événements, footer, etc.
-        # ========================================================
-    
-        if not date_source:
-    
-            h1 = soup.find(
-                "h1"
+    # ========================================================
+    # 5. TEXTUAL DATE FALLBACK
+    #
+    # Cas notamment ADZINE :
+    #
+    #   3. July 2026 (asg)
+    #
+    # On récupère la PREMIÈRE date compatible trouvée
+    # dans le DOM afin d'éviter les dates d'événements
+    # situées plus bas dans la page.
+    # ========================================================
+
+    if not date_source:
+
+        date_pattern = re.compile(
+            r"\b\d{1,2}\.\s+"
+            r"(?:January|February|March|April|May|June|"
+            r"July|August|September|October|November|December|"
+            r"Januar|Februar|März|April|Mai|Juni|Juli|"
+            r"August|September|Oktober|November|Dezember)"
+            r"\s+\d{4}\b",
+            re.IGNORECASE,
+        )
+
+        date_nodes = soup.find_all(
+            string=date_pattern
+        )
+
+        if date_nodes:
+
+            candidate_text = (
+                str(
+                    date_nodes[0]
+                ).strip()
             )
-    
-            if h1:
-    
-                date_zone_parts = []
-    
-                # H1 + éléments immédiatement suivants
-                current = h1
-    
-                for _ in range(5):
-    
-                    current = current.find_next()
-    
-                    if not current:
-                        break
-    
-                    text = current.get_text(
-                        " ",
-                        strip=True,
-                    )
-    
-                    if text:
-    
-                        date_zone_parts.append(
-                            text
-                        )
-    
-                date_zone = " ".join(
-                    date_zone_parts
+
+            match = date_pattern.search(
+                candidate_text
+            )
+
+            if match:
+
+                candidate = (
+                    match.group(0)
                 )
-    
+
                 print(
-                    "[PARSER DATE ZONE]",
-                    date_zone[:1000],
+                    "[PARSER DATE CANDIDATE]",
+                    candidate,
                 )
-    
-                # -----------------------------------------------
-                # Date générique :
+
+                # ============================================
+                # ENGLISH DATE
+                #
+                # ex:
                 # 3. July 2026
-                # 7. August 2026
-                # 3. Juli 2026
-                # -----------------------------------------------
-    
-                date_match = re.search(
-                    r"\b\d{1,2}\.\s+"
-                    r"[A-Za-zÄÖÜäöüß]+\s+"
-                    r"\d{4}\b",
-                    date_zone,
-                )
-    
-                if date_match:
-    
-                    candidate = (
-                        date_match.group(0)
+                # 12. August 2026
+                # ============================================
+
+                try:
+
+                    date_source = parse(
+                        candidate,
+                        dayfirst=True,
+                        fuzzy=True,
+                    ).date()
+
+                    date_method = (
+                        "TEXT FIRST DATE NODE"
                     )
-    
-                    # D'abord dateutil :
-                    # July, August, etc.
-    
-                    try:
-    
-                        date_source = parse(
-                            candidate,
-                            dayfirst=True,
-                            fuzzy=True,
-                        ).date()
-    
+
+                except Exception:
+
+                    pass
+
+                # ============================================
+                # GERMAN DATE
+                #
+                # ex:
+                # 3. Juli 2026
+                # 12. Oktober 2026
+                # ============================================
+
+                if not date_source:
+
+                    date_source = (
+                        parse_date_de(
+                            candidate
+                        )
+                    )
+
+                    if date_source:
+
                         date_method = (
-                            "TEXT NEAR H1"
+                            "TEXT FIRST DATE NODE DE"
                         )
-    
-                    except Exception:
-    
-                        pass
-    
-                    # Puis fallback allemand :
-                    # Juli, März, Oktober...
-    
-                    if not date_source:
-    
-                        date_source = (
-                            parse_date_de(
-                                candidate
-                            )
-                        )
-    
-                        if date_source:
-    
-                            date_method = (
-                                "TEXT DE NEAR H1"
-                            )
 
     # ========================================================
     # DATE DEBUG
