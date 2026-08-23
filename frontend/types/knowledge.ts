@@ -26,6 +26,8 @@ export type KnowledgeRequest = {
 
   entity_id: string;
 
+  auto_continue?: boolean;
+
 };
 
 export type KnowledgeBlockUpdateRequest = {
