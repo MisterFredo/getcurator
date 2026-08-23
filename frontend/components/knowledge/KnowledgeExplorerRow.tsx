@@ -14,6 +14,14 @@ type Props = {
 
   entity: KnowledgeEntitySummary;
 
+  isBuildable: boolean;
+
+  isSelected: boolean;
+
+  multiBuilding: boolean;
+
+  onToggle: () => void;
+
 };
 
 /* ========================================================= */
@@ -22,28 +30,49 @@ export default function KnowledgeExplorerRow({
 
   entity,
 
+  isBuildable,
+
+  isSelected,
+
+  multiBuilding,
+
+  onToggle,
+
 }: Props) {
 
   const {
     openRightDrawer,
   } = useDrawer();
 
-  let status = "⚪ Not built";
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  let status =
+    "⚪ Not built";
 
   if (
-    entity.processed_contents >= entity.contents_count &&
+    entity.processed_contents >=
+      entity.contents_count
+    &&
     entity.contents_count > 0
   ) {
 
-    status = "🟢 Ready";
+    status =
+      "🟢 Ready";
 
   } else if (
     entity.processed_contents > 0
   ) {
 
-    status = "🟡 Building";
+    status =
+      "🟡 Building";
 
   }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -75,11 +104,65 @@ export default function KnowledgeExplorerRow({
 
     >
 
+      {/* ================================================= */}
+      {/* SELECT */}
+      {/* ================================================= */}
+
+      <td
+        className="w-[50px] px-4 py-3 text-center"
+
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+
+        <input
+
+          type="checkbox"
+
+          checked={
+            isSelected
+          }
+
+          disabled={
+            !isBuildable
+            ||
+            multiBuilding
+          }
+
+          onChange={() => {
+
+            if (
+              !isBuildable
+              ||
+              multiBuilding
+            ) {
+              return;
+            }
+
+            onToggle();
+
+          }}
+
+          className="h-4 w-4"
+
+        />
+
+      </td>
+
+      {/* ================================================= */}
+      {/* TYPE */}
+      {/* ================================================= */}
+
       <td className="px-4 py-3 text-sm">
 
         {entity.entity_type}
 
       </td>
+
+      {/* ================================================= */}
+      {/* ENTITY */}
+      {/* ================================================= */}
 
       <td className="px-4 py-3 font-medium">
 
@@ -87,11 +170,19 @@ export default function KnowledgeExplorerRow({
 
       </td>
 
+      {/* ================================================= */}
+      {/* CONTENTS */}
+      {/* ================================================= */}
+
       <td className="px-4 py-3 text-center">
 
         {entity.contents_count}
 
       </td>
+
+      {/* ================================================= */}
+      {/* USERS */}
+      {/* ================================================= */}
 
       <td className="px-4 py-3 text-center">
 
@@ -99,11 +190,19 @@ export default function KnowledgeExplorerRow({
 
       </td>
 
+      {/* ================================================= */}
+      {/* EXPERTS */}
+      {/* ================================================= */}
+
       <td className="px-4 py-3 text-center">
 
         {entity.experts_count}
 
       </td>
+
+      {/* ================================================= */}
+      {/* STATUS */}
+      {/* ================================================= */}
 
       <td className="px-4 py-3 text-center text-sm">
 
@@ -111,9 +210,15 @@ export default function KnowledgeExplorerRow({
 
       </td>
 
+      {/* ================================================= */}
+      {/* PROGRESS */}
+      {/* ================================================= */}
+
       <td className="px-4 py-3 text-center text-sm text-gray-600">
 
-        {entity.processed_contents} / {entity.contents_count}
+        {entity.processed_contents}
+        {" / "}
+        {entity.contents_count}
 
       </td>
 
