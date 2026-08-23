@@ -2,7 +2,11 @@
 
 "use client";
 
-import HtmlEditor from "@/components/admin/HtmlEditor";
+import {
+  useState,
+} from "react";
+
+import { api } from "@/lib/api";
 
 import {
   CompanyFormData,
@@ -11,11 +15,13 @@ import {
 /* ========================================================= */
 
 type Props = {
+
   company: CompanyFormData;
 
   setCompany: React.Dispatch<
     React.SetStateAction<CompanyFormData>
   >;
+
 };
 
 /* ========================================================= */
@@ -28,15 +34,92 @@ export default function CompanyKnowledge({
 
 }: Props) {
 
+  const [
+    generating,
+    setGenerating,
+  ] = useState(false);
+
+  /* =======================================================
+     GENERATE DESCRIPTION
+  ======================================================= */
+
+  async function handleGenerateDescription() {
+
+    const name =
+      company.name.trim();
+
+    if (!name) {
+
+      alert(
+        "Enter the company name first."
+      );
+
+      return;
+
+    }
+
+    try {
+
+      setGenerating(true);
+
+      const res =
+        await api.post(
+          "/company/generate-description",
+          {
+            name,
+          },
+        );
+
+      const description =
+        res.description ?? "";
+
+      if (!description) {
+
+        alert(
+          "No description was generated."
+        );
+
+        return;
+
+      }
+
+      setCompany((prev) => ({
+
+        ...prev,
+
+        description,
+
+      }));
+
+    } catch (e) {
+
+      console.error(e);
+
+      alert(
+        "Unable to generate company description."
+      );
+
+    } finally {
+
+      setGenerating(false);
+
+    }
+
+  }
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
 
-    <section className="space-y-8">
+    <section className="space-y-6">
 
       {/* =================================================== */}
-      {/* DESCRIPTION */}
+      {/* HEADER */}
       {/* =================================================== */}
 
-      <div className="space-y-6">
+      <div className="flex items-start justify-between gap-6">
 
         <div>
 
@@ -45,62 +128,62 @@ export default function CompanyKnowledge({
           </h2>
 
           <p className="text-sm text-gray-500">
-            Short editorial summary describing the company.
+            Corporate identity and reference information about the company.
           </p>
 
         </div>
 
-        <textarea
-          rows={4}
-          value={company.description}
-          onChange={(e) =>
-            setCompany((prev) => ({
-
-              ...prev,
-
-              description:
-                e.target.value,
-
-            }))
+        <button
+          type="button"
+          onClick={handleGenerateDescription}
+          disabled={
+            generating ||
+            !company.name.trim()
           }
-          className="w-full border rounded px-3 py-2"
-          placeholder="Short editorial description..."
-        />
+          className="
+            shrink-0
+            rounded
+            bg-ratecard-blue
+            px-4
+            py-2
+            text-sm
+            text-white
+            disabled:opacity-50
+          "
+        >
+
+          {
+            generating
+              ? "Generating..."
+              : company.description.trim()
+                ? "Regenerate"
+                : "Generate"
+          }
+
+        </button>
 
       </div>
 
       {/* =================================================== */}
-      {/* KNOWLEDGE */}
+      {/* DESCRIPTION */}
       {/* =================================================== */}
 
-      <div className="space-y-6">
+      <textarea
+        rows={7}
+        value={company.description}
+        onChange={(e) =>
+          setCompany((prev) => ({
 
-        <div>
+            ...prev,
 
-          <h2 className="text-lg font-semibold">
-            Knowledge
-          </h2>
+            description:
+              e.target.value,
 
-          <p className="text-sm text-gray-500">
-            Long-form reference content describing the company.
-          </p>
-
-        </div>
-
-        <HtmlEditor
-          value={company.wiki_content}
-          onChange={(value) =>
-            setCompany((prev) => ({
-
-              ...prev,
-
-              wiki_content: value,
-
-            }))
-          }
-        />
-
-      </div>
+          }))
+        }
+        className="w-full border rounded px-3 py-2"
+        placeholder="Corporate description..."
+      />
 
     </section>
 
