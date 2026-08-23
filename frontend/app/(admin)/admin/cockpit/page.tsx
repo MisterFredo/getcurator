@@ -80,9 +80,23 @@ export default function CockpitPage() {
       <ResultsPanel
 
         title={resultsTitle}
-
+      
         rows={results}
-
+      
+        onDelete={(contentId) => {
+      
+          setResults(
+            (current) =>
+              current.filter(
+                (row) =>
+                  String(
+                    row.ID_CONTENT
+                  ) !== contentId
+              )
+          );
+      
+        }}
+      
       />
 
     </div>
