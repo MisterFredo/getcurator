@@ -116,6 +116,10 @@ def get_entity(
 # GENERIC
 # ============================================================
 
+# ============================================================
+# GENERIC
+# ============================================================
+
 def _get_entity(
     table: str,
     id_column: str,
@@ -131,7 +135,9 @@ def _get_entity(
 
             {id_column} AS ID,
 
-            {name_column} AS NAME
+            {name_column} AS NAME,
+
+            DESCRIPTION
 
         FROM `{table}`
 
@@ -158,5 +164,9 @@ def _get_entity(
         name=row["NAME"],
 
         type=entity_type,
+
+        description=row.get(
+            "DESCRIPTION",
+        ),
 
     )
