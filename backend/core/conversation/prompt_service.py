@@ -205,6 +205,10 @@ GEOGRAPHIC CONTEXT
 # RENDER KNOWLEDGE CONTEXT
 # ============================================================
 
+# ============================================================
+# RENDER KNOWLEDGE CONTEXT
+# ============================================================
+
 def _render_knowledge_context(
     context: ConversationContext,
 ) -> str:
@@ -245,6 +249,12 @@ CONTENT
             )
         )
 
+        description = (
+            entity.description.strip()
+            if entity.description
+            else "No description available."
+        )
+
         entities.append(
             f"""
 ENTITY
@@ -254,6 +264,9 @@ Name
 
 Type
 {entity.entity_type}
+
+Description
+{description}
 
 Knowledge
 
