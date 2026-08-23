@@ -29,6 +29,7 @@ from core.company.public_service import (
 
 from core.company.description_service import (
     generate_company_description,
+    generate_company_description_preview,
     generate_missing_company_descriptions,
 )
 
@@ -399,6 +400,36 @@ def generate_missing_descriptions_route(
             400,
             f"Erreur génération descriptions : {e}",
         )
+
+@router.post(
+    "/generate-description"
+)
+def generate_description_preview_route(
+    data: dict,
+):
+
+    name = (
+        data.get("name")
+        or ""
+    ).strip()
+
+    if not name:
+
+        raise HTTPException(
+            400,
+            "name required",
+        )
+
+    description = (
+        generate_company_description_preview(
+            company_name=name,
+        )
+    )
+
+    return {
+        "status": "ok",
+        "description": description,
+    }
 
 
 
