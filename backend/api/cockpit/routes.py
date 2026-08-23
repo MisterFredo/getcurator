@@ -17,6 +17,7 @@ from core.cockpit.operations import (
 
 from core.cockpit.quality import (
     get_duplicate_titles,
+    delete_duplicate_content,
     get_unmatched_companies,
     get_unmatched_solutions,
     get_numbers_structure,
@@ -100,6 +101,15 @@ def duplicate_titles():
         "status": "ok",
         "results": get_duplicate_titles(),
     }
+
+@router.delete("/quality/duplicate-titles/{content_id}")
+def delete_duplicate_title(
+    content_id: str,
+):
+
+    return delete_duplicate_content(
+        content_id
+    )
 
 
 @router.get("/quality/unmatched-companies")
