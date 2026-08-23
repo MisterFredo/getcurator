@@ -30,6 +30,8 @@ class Entity(BaseModel):
 
     type: KnowledgeEntityType
 
+    description: str | None = None
+
 
 # ============================================================
 # TABLES
