@@ -44,19 +44,18 @@ export default function KnowledgeFooter({
 }: Props) {
 
   const [
-
     building,
-
     setBuilding,
-
   ] = useState(false);
 
   const [
-
     updating,
-
     setUpdating,
+  ] = useState(false);
 
+  const [
+    autoContinue,
+    setAutoContinue,
   ] = useState(false);
 
   /* =======================================================
@@ -89,6 +88,8 @@ export default function KnowledgeFooter({
 
         entity_id: entity.entity_id,
 
+        auto_continue: autoContinue,
+
       });
 
       await onReload();
@@ -116,6 +117,8 @@ export default function KnowledgeFooter({
         entity_type: entity.entity_type,
 
         entity_id: entity.entity_id,
+
+        auto_continue: autoContinue,
 
       });
 
@@ -151,7 +154,7 @@ export default function KnowledgeFooter({
 
     <div className="flex items-center justify-between border-t bg-white px-6 py-4">
 
-      <div>
+      <div className="flex items-center gap-4">
 
         {
 
@@ -195,17 +198,49 @@ export default function KnowledgeFooter({
 
                 building
 
-                  ? "Building..."
+                  ? autoContinue
+                    ? "Building all..."
+                    : "Building..."
 
                   : hasStarted
-
                     ? "Continue Build"
-
                     : "Build"
 
               }
 
             </button>
+
+          )
+
+        }
+
+        {
+
+          !isBuilt && (
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+
+              <input
+
+                type="checkbox"
+
+                checked={autoContinue}
+
+                onChange={(e) =>
+                  setAutoContinue(
+                    e.target.checked,
+                  )
+                }
+
+                disabled={building}
+
+                className="h-4 w-4"
+
+              />
+
+              Auto continue
+
+            </label>
 
           )
 
