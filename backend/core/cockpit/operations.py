@@ -5,6 +5,14 @@ from config import (
 from utils.bigquery_utils import query_bq
 from datetime import datetime
 
+from core.knowledge.cockpit_repository import (
+    list_entities,
+)
+
+from core.knowledge.service import (
+    update_knowledge,
+)
+
 
 # ============================================================
 # TABLES
@@ -531,6 +539,133 @@ WHERE
     return {
         "status": "ok",
         "message": "CONTENT_ENRICHED refreshed.",
+    }
+
+
+# ============================================================
+# CONTINUE KNOWLEDGE
+# ============================================================
+
+def continue_all_knowledge():
+    """
+    Continue every Knowledge that:
+
+    - has already started
+    - has new/unprocessed contents
+
+    Never starts a Knowledge from zero.
+
+    Entities are processed sequentially.
+    """
+
+    explorer = list_entities()
+
+    eligible = [
+
+        entity
+
+        for entity in explorer.entities
+
+        if (
+            entity.processed_contents > 0
+            and
+            entity.processed_contents
+            < entity.contents_count
+        )
+
+    ]
+
+    processed = 0
+
+    failed = 0
+
+    errors = []
+
+    # ========================================================
+    # SEQUENTIAL PROCESSING
+    # ========================================================
+
+    for entity in eligible:
+
+        try:
+
+            print(
+                "[KNOWLEDGE CONTINUE]",
+                entity.entity_type,
+                entity.name,
+                f"{entity.processed_contents}/{entity.contents_count}",
+            )
+
+            update_knowledge(
+
+                entity_type=
+                    entity.entity_type,
+
+                entity_id=
+                    entity.entity_id,
+
+                auto_continue=True,
+
+            )
+
+            processed += 1
+
+        except Exception as e:
+
+            failed += 1
+
+            errors.append({
+
+                "entity_type":
+                    entity.entity_type,
+
+                "entity_id":
+                    entity.entity_id,
+
+                "name":
+                    entity.name,
+
+                "error":
+                    str(e),
+
+            })
+
+            print(
+                "[KNOWLEDGE CONTINUE ERROR]",
+                entity.entity_type,
+                entity.name,
+                str(e),
+            )
+
+    # ========================================================
+    # RESULT
+    # ========================================================
+
+    return {
+
+        "status":
+            "ok"
+            if failed == 0
+            else "partial",
+
+        "message":
+            (
+                f"{processed} Knowledge entities updated"
+                f" · {failed} failed"
+            ),
+
+        "eligible":
+            len(eligible),
+
+        "processed":
+            processed,
+
+        "failed":
+            failed,
+
+        "errors":
+            errors,
+
     }
 
 
