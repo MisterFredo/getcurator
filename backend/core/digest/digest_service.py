@@ -7,18 +7,14 @@ from datetime import (
 
 from core.digest.models import (
     Digest,
+    DigestDocument,
 )
 
 from core.digest.repository import (
     fetch_digest,
     fetch_campaign,
     fetch_digests_for_user,
-    update_digest,
-)
-
-from core.digest.repository import (
-    fetch_digest,
-    fetch_campaign,
+    fetch_recent_digest_documents,
     fetch_digest_history,
     search_digest_history,
     update_digest,
@@ -69,6 +65,7 @@ DIGEST_CAPABILITIES = [
 ]
 
 DEFAULT_DIGEST_LIMIT = 20
+RECENT_CONVERSATION_DIGEST_LIMIT = 3
 
 
 # ============================================================
@@ -329,6 +326,23 @@ def list_digests_for_profile(
 
     return fetch_digests_for_user(
         user_id,
+    )
+
+# ============================================================
+# RECENT DOCUMENTS FOR CONVERSATION
+# ============================================================
+
+def get_recent_digest_documents(
+    user_id: str,
+) -> list[DigestDocument]:
+    """
+    Return strictly the three most recent
+    generated Digest documents for Conversation.
+    """
+
+    return fetch_recent_digest_documents(
+        user_id=user_id,
+        limit=RECENT_CONVERSATION_DIGEST_LIMIT,
     )
 
 # ============================================================
