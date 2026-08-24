@@ -125,39 +125,49 @@ def get_interlocutor_context(
                 entity,
             )
 
-    # ========================================================
-    # SOLUTIONS
-    # ========================================================
-
-    for entity_id in preferences.get(
-        "SOLUTION",
-        [],
-    ):
-
-        entity = _build_entity_context(
-            entity_type="solution",
-            entity_id=entity_id,
-        )
-
-        if entity:
-
-            entities.append(
-                entity,
+        # ========================================================
+        # SOLUTIONS
+        # ========================================================
+    
+        for entity_id in preferences.get(
+            "SOLUTION",
+            [],
+        ):
+    
+            entity = _build_entity_context(
+                entity_type="solution",
+                entity_id=entity_id,
             )
-
-    return ConversationContext(
-        interlocutor_id=
-            interlocutor_id,
-
-        profile=
-            profile,
-
-        entities=
-            entities,
-
-        recent_digests=
-            recent_digests,
-    )
+    
+            if entity:
+    
+                entities.append(
+                    entity,
+                )
+    
+        # ========================================================
+        # RECENT DIGESTS
+        # ========================================================
+    
+        recent_digests = (
+            get_recent_digest_documents(
+                interlocutor_id,
+            )
+        )
+    
+        return ConversationContext(
+            interlocutor_id=
+                interlocutor_id,
+    
+            profile=
+                profile,
+    
+            entities=
+                entities,
+    
+            recent_digests=
+                recent_digests,
+        )
 
 
 # ============================================================
