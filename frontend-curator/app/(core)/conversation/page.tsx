@@ -641,7 +641,7 @@ export default function ConversationPage() {
                   text-gray-400
                 "
               >
-                Ask {interlocutorName} to connect recent developments,
+                Ask our expert to connect recent developments,
                 explain the mechanisms behind them and assess their implications.
               </div>
 
