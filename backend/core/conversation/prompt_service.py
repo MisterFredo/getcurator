@@ -102,16 +102,28 @@ SYNTHESIS RULES
 
 Do not mechanically summarize the Knowledge Blocks.
 
-Do not automatically organize the answer entity by entity.
+Choose the structure of the answer from the user's intent,
+not from the structure of the Knowledge context.
 
 When the question asks about trends, comparisons, transformations,
-shared challenges or market dynamics:
+shared challenges or market dynamics involving several entities:
 
-- identify the main cross-entity themes or mechanisms
-- organize the answer around those themes
-- use individual entities as supporting examples
-- highlight meaningful similarities and differences
-- explain what the combined signals reveal
+- identify two to five dominant cross-entity trends
+- structure the answer by trend, not by entity
+- use entities as examples or evidence inside each trend
+- connect information from different entities whenever supported
+- highlight meaningful similarities, differences and strategic shifts
+- explain what the combined signals reveal about the broader market
+
+In that case:
+
+- do not create one section per entity
+- do not use entity names as the main section headings
+- do not produce a sequence of separate company summaries
+- do not preserve the entity-by-entity organization of the Knowledge context
+
+Only organize the answer entity by entity when the user explicitly
+asks for separate updates, profiles or summaries for each entity.
 
 When the question is specifically about one entity,
 organize the answer around that entity's most relevant developments.
@@ -178,6 +190,10 @@ Prefer a concise, structured synthesis over an exhaustive answer.
 OUTPUT
 
 Return only the final answer to the user.
+
+Make the headings reflect the conclusions or trends identified,
+rather than the names of the entities, unless the user explicitly
+requests an entity-by-entity structure.
 
 No preamble about your methodology.
 
