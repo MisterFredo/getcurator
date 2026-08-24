@@ -15,6 +15,7 @@ from core.cockpit.operations import (
     matching_full_dismiss,
     backup_prod,
     sync_prod_to_dev,
+    continue_all_knowledge,
     restart_destock,
 )
 
@@ -151,6 +152,13 @@ def backup():
 def sync_dev():
 
     return sync_prod_to_dev()
+
+@router.post(
+    "/operations/continue-knowledge"
+)
+def continue_knowledge():
+
+    return continue_all_knowledge()
 
 
 # ============================================================
