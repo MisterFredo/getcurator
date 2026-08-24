@@ -100,6 +100,13 @@ const GROUPS: Group[] = [
           "Update every existing Knowledge with new contents.",
         icon: RefreshCw,
       },
+      {
+        id: "generate-company-descriptions",
+        label: "Generate Company Descriptions",
+        description:
+          "Generate the next 20 missing descriptions.",
+        icon: Play,
+      },
     ],
   },
 
@@ -134,13 +141,6 @@ const GROUPS: Group[] = [
         description:
           "Restart stopped contents.",
         icon: RotateCcw,
-      },
-      {
-        id: "generate-company-descriptions",
-        label: "Generate Company Descriptions",
-        description:
-          "Generate the next 20 missing descriptions.",
-        icon: Play,
       },
     ],
   },
