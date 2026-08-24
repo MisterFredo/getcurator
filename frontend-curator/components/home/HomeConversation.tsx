@@ -316,9 +316,11 @@ export default function HomeConversation({
                   text-gray-400
                 "
               >
-                Ask {interlocutorName} about
-                strategy, trends, mechanisms,
-                risks or key figures.
+                Watch shows what’s happening.
+                Digests explain why it matters.
+                Ask {interlocutorName} to go further by connecting signals,
+                comparing players and exploring mechanisms,
+                risks and strategic implications.
               </p>
 
             </div>
