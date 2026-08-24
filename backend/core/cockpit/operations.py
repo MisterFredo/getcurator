@@ -179,19 +179,14 @@ def publish_all_drafts():
     UPDATE `{TABLE_CONTENT}`
 
     SET
-        STATUS = CASE
-            WHEN COALESCE(
-                TIMESTAMP(SOURCE_DATE),
-                CURRENT_TIMESTAMP()
-            ) <= CURRENT_TIMESTAMP()
-                THEN 'PUBLISHED'
-            ELSE 'SCHEDULED'
-        END,
+        STATUS = 'PUBLISHED',
 
-        PUBLISHED_AT = COALESCE(
-            TIMESTAMP(SOURCE_DATE),
-            CURRENT_TIMESTAMP()
-        ),
+        PUBLISHED_AT = CASE
+            WHEN SOURCE_DATE IS NOT NULL
+             AND TIMESTAMP(SOURCE_DATE) <= CURRENT_TIMESTAMP()
+                THEN TIMESTAMP(SOURCE_DATE)
+            ELSE CURRENT_TIMESTAMP()
+        END,
 
         UPDATED_AT = CURRENT_TIMESTAMP()
 
