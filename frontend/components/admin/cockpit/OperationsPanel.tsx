@@ -8,6 +8,7 @@ import {
   Upload,
   HardDrive,
   RotateCcw,
+  Languages,
 } from "lucide-react";
 
 import {
@@ -34,7 +35,7 @@ const GROUPS: Group[] = [
 
   {
     title: "Publishing",
-
+  
     operations: [
       {
         id: "publish-drafts",
@@ -42,6 +43,13 @@ const GROUPS: Group[] = [
         description:
           "Publish every draft content.",
         icon: Upload,
+      },
+      {
+        id: "translate-missing",
+        label: "Translate Missing",
+        description:
+          "Translate every missing English title and excerpt.",
+        icon: Languages,
       },
     ],
   },
