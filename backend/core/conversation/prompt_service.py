@@ -24,6 +24,12 @@ def build_conversation_prompt(
         )
     )
 
+    recent_digest_context = (
+        _render_recent_digest_context(
+            context,
+        )
+    )
+
     interlocutor_profile = (
         _render_interlocutor_profile(
             context,
@@ -45,6 +51,11 @@ Your role is to answer the user's questions using the knowledge available to thi
 INTERLOCUTOR PROFILE
 
 {interlocutor_profile}
+
+--------------------------------------------------
+RECENT DIGESTS
+
+{recent_digest_context}
 
 --------------------------------------------------
 INTERLOCUTOR KNOWLEDGE
@@ -78,15 +89,22 @@ Before answering, silently determine:
 - whether the question contains a temporal requirement
   such as latest, recent, current, new or evolving
 
-Select only the Knowledge that is relevant to that intent.
+Select only the information that is relevant to that intent.
 
 Do not try to include every available fact.
 
-Use the interlocutor Knowledge as your primary source of understanding.
+Two complementary sources of understanding are available:
 
-The Knowledge is a long-term structured memory built from many
-professional contents. It may contain both durable understanding
-and recent developments.
+- Recent Digests contain time-bounded syntheses of recent developments
+- Interlocutor Knowledge contains consolidated long-term understanding
+
+Use the source, or combination of sources, that best matches
+the user's intent.
+
+Use Recent Digests to establish what happened during recent periods.
+
+Use Interlocutor Knowledge to explain signals, mechanisms,
+strategic implications, points of friction and key figures.
 
 Use the interlocutor profile to shape the perspective of the answer.
 
@@ -144,24 +162,35 @@ TEMPORAL RULES
 
 Pay close attention to temporal intent.
 
+The Recent Digests are ordered from the most recent
+to the least recent.
+
 If the user asks for the latest news, recent developments,
 current trends or recent changes:
 
-- prioritize the most recent facts available in the Knowledge
-- mention dates or periods when they are available
-- distinguish recent events from longer-term background
-- do not describe old or undated information as recent
-- prioritize concrete events over generic company descriptions
-- say clearly when the available Knowledge is not sufficiently
-  dated to establish what is latest
+- use the Recent Digests as the primary temporal source
+- prioritize the most recent Digest periods
+- use the Interlocutor Knowledge to explain the broader meaning
+  and strategic implications of those developments
+- mention dates or periods when they improve clarity
+- distinguish recent events from longer-term understanding
+- prioritize concrete developments over generic descriptions
+- do not claim knowledge of events occurring after the most recent
+  Digest period available
+- say clearly when the Recent Digests do not contain enough
+  information to establish what is latest
+
+If the question is not temporal, use the Recent Digests only
+when they materially improve the answer.
 
 --------------------------------------------------
 KNOWLEDGE RULES
 
-Do not invent facts that are not supported by the available Knowledge.
+Do not invent facts that are not supported by the available
+Recent Digests or Interlocutor Knowledge.
 
-If the Knowledge does not contain enough information to answer
-confidently, say so clearly.
+If the available context does not contain enough information
+to answer confidently, say so clearly.
 
 Distinguish supported facts from interpretations and assumptions.
 
@@ -258,6 +287,103 @@ GEOGRAPHIC CONTEXT
 
     return "\n\n".join(
         parts,
+    )
+
+# ============================================================
+# RENDER RECENT DIGEST CONTEXT
+# ============================================================
+
+def _render_recent_digest_context(
+    context: ConversationContext,
+) -> str:
+    """
+    Render the generated analytical sections
+    of the three most recent Digests.
+
+    Digest cards and associated content
+    references are intentionally excluded.
+    """
+
+    if not context.recent_digests:
+
+        return (
+            "No recent Digest is currently available "
+            "for this interlocutor."
+        )
+
+    digests = []
+
+    for digest in context.recent_digests:
+
+        sections = []
+
+        for section in digest.sections:
+
+            content = (
+                section.content.strip()
+                if section.content
+                else ""
+            )
+
+            if not content:
+
+                continue
+
+            sections.append(
+                f"""
+SECTION
+
+Title
+{section.title}
+
+Content
+{content}
+""".strip()
+            )
+
+        if not sections:
+
+            continue
+
+        rendered_sections = (
+            "\n\n------------------------------\n\n"
+            .join(
+                sections,
+            )
+        )
+
+        digests.append(
+            f"""
+DIGEST
+
+Title
+{digest.title}
+
+Period
+{digest.period}
+
+Created at
+{digest.created_at.isoformat()}
+
+Generated synthesis
+
+{rendered_sections}
+""".strip()
+        )
+
+    if not digests:
+
+        return (
+            "No generated Digest synthesis is currently "
+            "available for this interlocutor."
+        )
+
+    return (
+        "\n\n"
+        "=================================================="
+        "\n\n"
+    ).join(
+        digests,
     )
 
 
