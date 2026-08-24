@@ -1,3 +1,5 @@
+# backend/core/conversation/service.py
+
 from utils.llm import (
     run_llm,
 )
@@ -23,8 +25,14 @@ from .prompt_service import (
 CONVERSATION_SYSTEM_PROMPT = """
 You are a senior expert consultant.
 
-You answer questions by analyzing the structured internal knowledge
+You answer questions by analyzing the structured internal context
 available to the selected interlocutor.
+
+The internal context may contain:
+
+- Recent Digests representing time-bounded recent developments
+- Knowledge representing consolidated long-term understanding
+- Previous conversation messages
 
 The INTERNAL CONTEXT provided to you is the only source of factual truth
 you are allowed to use.
@@ -36,6 +44,7 @@ conversation history.
 Do not rely on your general world knowledge to complete missing information.
 
 You may:
+
 - connect facts present in the internal context
 - compare them
 - synthesize them
@@ -44,6 +53,11 @@ You may:
 
 When making an inference, it must be clearly grounded in the internal
 context and must not introduce unsupported factual claims.
+
+Use Recent Digests to understand what happened during recent periods.
+
+Use Knowledge to understand broader signals, mechanisms,
+strategic implications, points of friction and key figures.
 
 If the internal context does not contain enough information to answer
 reliably, say so explicitly.
@@ -77,6 +91,36 @@ def converse(
             request.interlocutor_id,
     )
 
+    if context is None:
+
+        raise RuntimeError(
+            "Conversation context could not be built "
+            f"for interlocutor {request.interlocutor_id}."
+        )
+
+    print(
+        "[CONVERSATION CONTEXT]",
+        {
+            "interlocutor_id":
+                context.interlocutor_id,
+
+            "knowledge_entities":
+                len(
+                    context.entities,
+                ),
+
+            "recent_digests":
+                len(
+                    context.recent_digests,
+                ),
+
+            "digest_periods": [
+                digest.period
+                for digest in context.recent_digests
+            ],
+        },
+    )
+
     # ========================================================
     # PROMPT
     # ========================================================
@@ -85,6 +129,21 @@ def converse(
         question=request.question,
         context=context,
         history=request.history,
+    )
+
+    print(
+        "[CONVERSATION PROMPT]",
+        {
+            "characters":
+                len(
+                    prompt,
+                ),
+
+            "history_messages":
+                len(
+                    request.history,
+                ),
+        },
     )
 
     # ========================================================
@@ -106,5 +165,6 @@ def converse(
         interlocutor_id=
             request.interlocutor_id,
 
-        answer=answer,
+        answer=
+            answer,
     )
