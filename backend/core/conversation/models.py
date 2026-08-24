@@ -12,6 +12,10 @@ from core.knowledge.models import (
     KnowledgeEntityType,
 )
 
+from core.digest.models import (
+    DigestDocument,
+)
+
 
 # ============================================================
 # TYPES
@@ -131,6 +135,12 @@ class ConversationContext(BaseModel):
 
     entities: list[
         ConversationKnowledgeEntity
+    ] = Field(
+        default_factory=list,
+    )
+
+    recent_digests: list[
+        DigestDocument
     ] = Field(
         default_factory=list,
     )
