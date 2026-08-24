@@ -90,6 +90,20 @@ const GROUPS: Group[] = [
   },
 
   {
+    title: "Knowledge",
+  
+    operations: [
+      {
+        id: "continue-knowledge",
+        label: "Continue Knowledge",
+        description:
+          "Update every existing Knowledge with new contents.",
+        icon: RefreshCw,
+      },
+    ],
+  },
+
+  {
     title: "Environment",
 
     operations: [
