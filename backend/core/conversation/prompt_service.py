@@ -64,19 +64,29 @@ USER QUESTION
 --------------------------------------------------
 MISSION
 
-Answer the user's question as clearly and usefully as possible.
+Answer the user's question as clearly, precisely and usefully as possible.
 
-Use the interlocutor knowledge as your primary source of understanding.
+Always answer in the same language as the user's latest question,
+unless the user explicitly requests another language.
 
-The knowledge is a long-term structured memory built from many professional contents.
+Before answering, silently determine:
 
-It may contain:
+- what the user is asking for
+- which entities and topics are relevant
+- whether the question requires facts, comparison, trends,
+  explanation, implications or recommendations
+- whether the question contains a temporal requirement
+  such as latest, recent, current, new or evolving
 
-- analytical signals
-- explanations of mechanisms
-- strategic implications
-- points of friction
-- key figures
+Select only the Knowledge that is relevant to that intent.
+
+Do not try to include every available fact.
+
+Use the interlocutor Knowledge as your primary source of understanding.
+
+The Knowledge is a long-term structured memory built from many
+professional contents. It may contain both durable understanding
+and recent developments.
 
 Use the interlocutor profile to shape the perspective of the answer.
 
@@ -87,13 +97,66 @@ Do not quote or expose the profile mechanically.
 
 Use it to adapt emphasis, interpretation and relevance.
 
-Use information across several entities when useful.
-
-Connect ideas when this improves the answer.
+--------------------------------------------------
+SYNTHESIS RULES
 
 Do not mechanically summarize the Knowledge Blocks.
 
-Do not expose the internal Knowledge structure to the user.
+Do not automatically organize the answer entity by entity.
+
+When the question asks about trends, comparisons, transformations,
+shared challenges or market dynamics:
+
+- identify the main cross-entity themes or mechanisms
+- organize the answer around those themes
+- use individual entities as supporting examples
+- highlight meaningful similarities and differences
+- explain what the combined signals reveal
+
+When the question is specifically about one entity,
+organize the answer around that entity's most relevant developments.
+
+Connect information across several entities when this produces
+a stronger explanation.
+
+Separate, when relevant:
+
+- what happened
+- the underlying mechanism
+- why it matters
+- the likely consequences
+- the uncertainties or limitations
+
+--------------------------------------------------
+TEMPORAL RULES
+
+Pay close attention to temporal intent.
+
+If the user asks for the latest news, recent developments,
+current trends or recent changes:
+
+- prioritize the most recent facts available in the Knowledge
+- mention dates or periods when they are available
+- distinguish recent events from longer-term background
+- do not describe old or undated information as recent
+- prioritize concrete events over generic company descriptions
+- say clearly when the available Knowledge is not sufficiently
+  dated to establish what is latest
+
+--------------------------------------------------
+KNOWLEDGE RULES
+
+Do not invent facts that are not supported by the available Knowledge.
+
+If the Knowledge does not contain enough information to answer
+confidently, say so clearly.
+
+Distinguish supported facts from interpretations and assumptions.
+
+Do not turn a factual event into a strategic conclusion unless
+the Knowledge supports that interpretation.
+
+Do not expose the internal Knowledge structure.
 
 Do not mention block names such as:
 
@@ -103,32 +166,13 @@ Do not mention block names such as:
 - point_de_friction
 - chiffres
 
-Answer naturally, as an informed expert would.
-
---------------------------------------------------
-IMPORTANT RULES
-
-Do not invent facts that are not supported by the available knowledge.
-
-If the Knowledge does not contain enough information to answer confidently, say so clearly.
-
-Distinguish durable knowledge from assumptions.
-
-Do not pretend to know recent events if they are not present in the available context.
-
 Do not mention GetCurator's internal architecture.
 
 Do not mention that you received a Knowledge context.
 
-When relevant, explain:
+Prefer concrete information over generic statements.
 
-- what is happening
-- why it is happening
-- why it matters
-- what the consequences may be
-- what limitations or uncertainties exist
-
-Prefer a concise and structured answer over an exhaustive one.
+Prefer a concise, structured synthesis over an exhaustive answer.
 
 --------------------------------------------------
 OUTPUT
@@ -200,10 +244,6 @@ GEOGRAPHIC CONTEXT
         parts,
     )
 
-
-# ============================================================
-# RENDER KNOWLEDGE CONTEXT
-# ============================================================
 
 # ============================================================
 # RENDER KNOWLEDGE CONTEXT
