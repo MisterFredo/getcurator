@@ -585,6 +585,61 @@ def fetch_digests_for_user(
         for row in rows
     ]
 
+# ============================================================
+# RECENT DIGEST DOCUMENTS
+# ============================================================
+
+def fetch_recent_digest_documents(
+    user_id: str,
+    limit: int,
+) -> list[DigestDocument]:
+    """
+    Return the most recent generated
+    Digest documents for one profile.
+    """
+
+    sql = f"""
+        SELECT
+            DOCUMENT
+
+        FROM `{TABLE_DIGEST}`
+
+        WHERE USER_ID = @user_id
+
+          AND STATUS IN (
+              "generated",
+              "sent"
+          )
+
+          AND DOCUMENT IS NOT NULL
+
+        ORDER BY GENERATED_AT DESC
+
+        LIMIT @limit
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "user_id": user_id,
+            "limit": limit,
+        },
+    ) or []
+
+    return [
+
+        DigestDocument.model_validate(
+            row["DOCUMENT"],
+        )
+
+        for row in rows
+
+        if row.get(
+            "DOCUMENT",
+        )
+
+    ]
+
 def fetch_digest_history(
     user_id: str,
 ) -> list[dict]:
