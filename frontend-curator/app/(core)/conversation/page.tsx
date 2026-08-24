@@ -631,7 +631,7 @@ export default function ConversationPage() {
                   text-gray-700
                 "
               >
-                What would you like to know?
+                What would you like to explore?
               </div>
 
               <div
@@ -641,8 +641,8 @@ export default function ConversationPage() {
                   text-gray-400
                 "
               >
-                Ask your interlocutor
-                about their areas of expertise.
+                Ask {interlocutorName} to connect recent developments,
+                explain the mechanisms behind them and assess their implications.
               </div>
 
             </div>
