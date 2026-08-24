@@ -76,7 +76,9 @@ export default function ProfileUniversesEditor({
           universesRes?.universes ?? [];
 
         setUniverses(
-          Array.isArray(universeList)
+          Array.isArray(
+            universeList,
+          )
             ? universeList
             : [],
         );
@@ -84,15 +86,46 @@ export default function ProfileUniversesEditor({
         const userUniverses =
           userRes?.universes ?? [];
 
+        const normalizedUniverseIds =
+          Array.isArray(
+            userUniverses,
+          )
+            ? userUniverses
+                .map(
+                  (
+                    item: any,
+                  ) => {
+
+                    if (
+                      typeof item ===
+                      "string"
+                    ) {
+
+                      return item;
+
+                    }
+
+                    return (
+                      item?.id_universe
+                      ?? item?.ID_UNIVERSE
+                      ?? item?.id
+                      ?? null
+                    );
+
+                  },
+                )
+                .filter(
+                  (
+                    id: string | null,
+                  ): id is string =>
+                    typeof id ===
+                      "string"
+                    && id.length > 0,
+                )
+            : [];
+
         setSelectedIds(
-          Array.isArray(userUniverses)
-            ? userUniverses.map(
-                (item: any) =>
-                  item.id_universe
-                  ?? item.ID_UNIVERSE
-                  ?? item.id,
-              )
-            : [],
+          normalizedUniverseIds,
         );
 
       } catch (error) {
@@ -158,11 +191,21 @@ export default function ProfileUniversesEditor({
 
       setSaving(true);
 
+      const validUniverseIds =
+        selectedIds.filter(
+          (id) =>
+            typeof id === "string"
+            && id.length > 0,
+        );
+
       await api.post(
         "/user/assign-universes",
         {
-          user_id: userId,
-          universes: selectedIds,
+          user_id:
+            userId,
+
+          universes:
+            validUniverseIds,
         },
       );
 
