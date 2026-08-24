@@ -39,16 +39,16 @@ export default function CockpitPage() {
       <CockpitHeader />
 
       {/* ===================================================== */}
-      {/* MONITORING + OPERATIONS */}
+      {/* MONITORING */}
       {/* ===================================================== */}
-
-      <div className="grid gap-6 xl:grid-cols-2 items-start">
-
-        <MonitoringPanel />
-
-        <OperationsPanel />
-
-      </div>
+      
+      <MonitoringPanel />
+      
+      {/* ===================================================== */}
+      {/* OPERATIONS */}
+      {/* ===================================================== */}
+      
+      <OperationsPanel />
 
       {/* ===================================================== */}
       {/* QUALITY */}
