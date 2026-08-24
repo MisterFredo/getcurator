@@ -260,9 +260,8 @@ export default function HomeConversation({
             text-gray-500
           "
         >
-          Ask questions, challenge ideas
-          and go deeper into this profile&apos;s
-          expertise.
+          Watch shows what’s happening. Digests explain why it matters.
+          Conversation helps you connect signals, challenge ideas and go deeper.
         </p>
 
       </div>
@@ -316,11 +315,7 @@ export default function HomeConversation({
                   text-gray-400
                 "
               >
-                Watch shows what’s happening.
-                Digests explain why it matters.
-                Ask {interlocutorName} to go further by connecting signals,
-                comparing players and exploring mechanisms,
-                risks and strategic implications.
+                Ask {interlocutorName} to explain, compare or challenge an idea.
               </p>
 
             </div>
