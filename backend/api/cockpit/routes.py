@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    HTTPException,
+)
 
 from core.cockpit.monitoring import (
     get_monitoring,
@@ -27,6 +30,10 @@ from core.company.description_service import (
     generate_missing_company_descriptions,
 )
 
+from core.translation.content_translation_service import (
+    translate_contents_batch,
+)
+
 router = APIRouter()
 
 # ============================================================
@@ -50,6 +57,38 @@ def monitoring():
 def publish_drafts():
 
     return publish_all_drafts()
+
+@router.post("/operations/translate-missing")
+def translate_missing():
+
+    try:
+
+        result = translate_contents_batch(
+            target_lang="en",
+            fields=[
+                "TITLE",
+                "EXCERPT",
+            ],
+            limit=9999,
+            only_missing=True,
+            content_ids=None,
+            source_id=None,
+        )
+
+        return {
+            "status": "ok",
+            "message": (
+                "Missing translations completed."
+            ),
+            "result": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur batch traduction : {e}",
+        )
 
 
 @router.post("/operations/rebuild-company")
