@@ -46,11 +46,12 @@ export default function ResultsPanel({
   );
 
   /* ======================================================= */
-  /* DUPLICATE REPORT
+  /* DUPLICATE REPORT */
   /* ======================================================= */
-
+  
   const isDuplicateReport =
-    title === "Duplicate titles";
+    title.trim().toLowerCase() ===
+    "duplicate titles";
 
   /* ======================================================= */
   /* DELETE
