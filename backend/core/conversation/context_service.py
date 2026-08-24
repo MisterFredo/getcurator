@@ -1,3 +1,5 @@
+# backend/core/conversation/context_service.py
+
 from core.knowledge.service import (
     get_knowledge,
 )
@@ -14,6 +16,10 @@ from core.digest.digest_service import (
     get_recent_digest_documents,
 )
 
+from core.user.user_profile_service import (
+    get_user_profile,
+)
+
 from .models import (
     ConversationContext,
     ConversationInterlocutorProfile,
@@ -21,10 +27,10 @@ from .models import (
     ConversationKnowledgeEntity,
 )
 
-from core.user.user_profile_service import (
-    get_user_profile,
-)
 
+# ============================================================
+# GET INTERLOCUTOR CONTEXT
+# ============================================================
 
 def get_interlocutor_context(
     interlocutor_id: str,
@@ -125,49 +131,73 @@ def get_interlocutor_context(
                 entity,
             )
 
-        # ========================================================
-        # SOLUTIONS
-        # ========================================================
-    
-        for entity_id in preferences.get(
-            "SOLUTION",
-            [],
-        ):
-    
-            entity = _build_entity_context(
-                entity_type="solution",
-                entity_id=entity_id,
-            )
-    
-            if entity:
-    
-                entities.append(
-                    entity,
-                )
-    
-        # ========================================================
-        # RECENT DIGESTS
-        # ========================================================
-    
-        recent_digests = (
-            get_recent_digest_documents(
-                interlocutor_id,
-            )
+    # ========================================================
+    # SOLUTIONS
+    # ========================================================
+
+    for entity_id in preferences.get(
+        "SOLUTION",
+        [],
+    ):
+
+        entity = _build_entity_context(
+            entity_type="solution",
+            entity_id=entity_id,
         )
-    
-        return ConversationContext(
-            interlocutor_id=
-                interlocutor_id,
-    
-            profile=
-                profile,
-    
-            entities=
-                entities,
-    
-            recent_digests=
-                recent_digests,
+
+        if entity:
+
+            entities.append(
+                entity,
+            )
+
+    # ========================================================
+    # RECENT DIGESTS
+    # ========================================================
+
+    recent_digests = (
+        get_recent_digest_documents(
+            interlocutor_id,
         )
+    )
+
+    # ========================================================
+    # CONTEXT
+    # ========================================================
+
+    context = ConversationContext(
+        interlocutor_id=
+            interlocutor_id,
+
+        profile=
+            profile,
+
+        entities=
+            entities,
+
+        recent_digests=
+            recent_digests,
+    )
+
+    print(
+        "[INTERLOCUTOR CONTEXT BUILT]",
+        {
+            "interlocutor_id":
+                interlocutor_id,
+
+            "knowledge_entities":
+                len(
+                    entities,
+                ),
+
+            "recent_digests":
+                len(
+                    recent_digests,
+                ),
+        },
+    )
+
+    return context
 
 
 # ============================================================
@@ -189,6 +219,7 @@ def _build_entity_context(
     )
 
     if metadata is None:
+
         return None
 
     knowledge = get_knowledge(
@@ -197,6 +228,7 @@ def _build_entity_context(
     )
 
     if knowledge is None:
+
         return None
 
     blocks: list[
@@ -211,8 +243,11 @@ def _build_entity_context(
 
         blocks.append(
             ConversationKnowledgeBlock(
-                block_type="signal_analytique",
-                content=knowledge.signal_analytique.content,
+                block_type=
+                    "signal_analytique",
+
+                content=
+                    knowledge.signal_analytique.content,
             )
         )
 
@@ -224,8 +259,11 @@ def _build_entity_context(
 
         blocks.append(
             ConversationKnowledgeBlock(
-                block_type="mecanique_expliquee",
-                content=knowledge.mecanique_expliquee.content,
+                block_type=
+                    "mecanique_expliquee",
+
+                content=
+                    knowledge.mecanique_expliquee.content,
             )
         )
 
@@ -237,8 +275,11 @@ def _build_entity_context(
 
         blocks.append(
             ConversationKnowledgeBlock(
-                block_type="enjeu_strategique",
-                content=knowledge.enjeu_strategique.content,
+                block_type=
+                    "enjeu_strategique",
+
+                content=
+                    knowledge.enjeu_strategique.content,
             )
         )
 
@@ -250,8 +291,11 @@ def _build_entity_context(
 
         blocks.append(
             ConversationKnowledgeBlock(
-                block_type="point_de_friction",
-                content=knowledge.point_de_friction.content,
+                block_type=
+                    "point_de_friction",
+
+                content=
+                    knowledge.point_de_friction.content,
             )
         )
 
@@ -263,24 +307,31 @@ def _build_entity_context(
 
         blocks.append(
             ConversationKnowledgeBlock(
-                block_type="chiffres",
-                content=knowledge.chiffres.content,
+                block_type=
+                    "chiffres",
+
+                content=
+                    knowledge.chiffres.content,
             )
         )
 
     if not blocks:
+
         return None
 
     return ConversationKnowledgeEntity(
+        entity_type=
+            entity_type,
 
-        entity_type=entity_type,
-    
-        entity_id=entity_id,
-    
-        entity_name=metadata.name,
-    
-        description=metadata.description,
-    
-        blocks=blocks,
-    
+        entity_id=
+            entity_id,
+
+        entity_name=
+            metadata.name,
+
+        description=
+            metadata.description,
+
+        blocks=
+            blocks,
     )
