@@ -43,7 +43,7 @@ TABLE_SOLUTION = (
 # LIMITS
 # ============================================================
 
-MAX_USER_PREFERENCES = 10
+MAX_USER_PREFERENCES = 6
 
 # ============================================================
 # GET USER PREFERENCES
