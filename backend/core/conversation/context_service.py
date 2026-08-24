@@ -10,6 +10,10 @@ from core.user.user_preferences_service import (
     get_user_preferences_grouped,
 )
 
+from core.digest.digest_service import (
+    get_recent_digest_documents,
+)
+
 from .models import (
     ConversationContext,
     ConversationInterlocutorProfile,
@@ -150,6 +154,9 @@ def get_interlocutor_context(
 
         entities=
             entities,
+
+        recent_digests=
+            recent_digests,
     )
 
 
