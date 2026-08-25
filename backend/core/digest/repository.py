@@ -28,10 +28,6 @@ from core.digest.models import (
 # TABLES
 # ============================================================
 
-# ============================================================
-# TABLES
-# ============================================================
-
 TABLE_CAMPAIGN = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CAMPAIGN"
 )
@@ -71,8 +67,6 @@ def _map_campaign(
     return Campaign(
 
         id=row["ID"],
-
-        frequency=row["FREQUENCY"],
 
         audience=row["AUDIENCE"],
 
@@ -114,8 +108,6 @@ def insert_campaign(
     row = [{
 
         "ID": campaign.id,
-
-        "FREQUENCY": campaign.frequency,
 
         "AUDIENCE": campaign.audience,
 
@@ -215,7 +207,7 @@ def fetch_campaign(
     campaign_id: str,
 ) -> Campaign | None:
     """
-    Return a Campaign by id.
+    Return a weekly Campaign by id.
     """
 
     sql = f"""
@@ -229,15 +221,10 @@ def fetch_campaign(
     """
 
     rows = query_bq(
-
         sql,
-
         {
-
             "id": campaign_id,
-
         },
-
     )
 
     if not rows:
@@ -245,20 +232,17 @@ def fetch_campaign(
         return None
 
     return _map_campaign(
-
         rows[0],
-
     )
 
 def fetch_campaign_for_period(
-    frequency: str,
     audience: str,
     period_start,
     period_end,
 ) -> Campaign | None:
     """
-    Return the Campaign matching one exact
-    frequency, audience and period.
+    Return the weekly Campaign matching one
+    exact audience and period.
     """
 
     sql = f"""
@@ -266,8 +250,7 @@ def fetch_campaign_for_period(
 
         FROM `{TABLE_CAMPAIGN}`
 
-        WHERE FREQUENCY = @frequency
-          AND AUDIENCE = @audience
+        WHERE AUDIENCE = @audience
           AND PERIOD_START = @period_start
           AND PERIOD_END = @period_end
 
@@ -279,10 +262,14 @@ def fetch_campaign_for_period(
     rows = query_bq(
         sql,
         {
-            "frequency": frequency,
-            "audience": audience,
-            "period_start": period_start,
-            "period_end": period_end,
+            "audience":
+                audience,
+
+            "period_start":
+                period_start,
+
+            "period_end":
+                period_end,
         },
     )
 
@@ -294,18 +281,16 @@ def fetch_campaign_for_period(
         rows[0],
     )
 
-
 def fetch_campaigns(
 ) -> list[Campaign]:
     """
-    Return Campaign history.
+    Return weekly Campaign history.
     """
 
     sql = f"""
         SELECT *
 
         FROM `{TABLE_CAMPAIGN}`
-
         ORDER BY CREATED_AT DESC
     """
 
@@ -322,7 +307,6 @@ def fetch_campaigns(
         for row in rows
 
     ]
-
 
 # ============================================================
 # DIGEST MAPPING
@@ -522,29 +506,27 @@ def fetch_digest(
     digest_id: str,
 ) -> Digest | None:
     """
-    Return a Digest by id.
+    Return a weekly Digest by id.
     """
 
     sql = f"""
-        SELECT *
+        SELECT
+            d.*
 
-        FROM `{TABLE_DIGEST}`
+        FROM `{TABLE_DIGEST}` d
 
-        WHERE ID = @id
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
 
+        WHERE d.ID = @id
         LIMIT 1
     """
 
     rows = query_bq(
-
         sql,
-
         {
-
             "id": digest_id,
-
         },
-
     )
 
     if not rows:
@@ -552,20 +534,18 @@ def fetch_digest(
         return None
 
     return _map_digest(
-
         rows[0],
-
     )
+
 
 def fetch_digest_for_period(
     user_id: str,
-    frequency: str,
     period_start,
     period_end,
 ) -> Digest | None:
     """
-    Return the Digest matching one profile,
-    frequency and exact period.
+    Return the weekly Digest matching one
+    profile and exact period.
     """
 
     sql = f"""
@@ -578,11 +558,11 @@ def fetch_digest_for_period(
           ON c.ID = d.CAMPAIGN_ID
 
         WHERE d.USER_ID = @user_id
-          AND c.FREQUENCY = @frequency
           AND c.PERIOD_START = @period_start
           AND c.PERIOD_END = @period_end
 
-        ORDER BY d.GENERATED_AT DESC
+        ORDER BY
+            d.GENERATED_AT DESC
 
         LIMIT 1
     """
@@ -590,10 +570,14 @@ def fetch_digest_for_period(
     rows = query_bq(
         sql,
         {
-            "user_id": user_id,
-            "frequency": frequency,
-            "period_start": period_start,
-            "period_end": period_end,
+            "user_id":
+                user_id,
+
+            "period_start":
+                period_start,
+
+            "period_end":
+                period_end,
         },
     )
 
@@ -604,7 +588,6 @@ def fetch_digest_for_period(
     return _map_digest(
         rows[0],
     )
-
 
 def fetch_digests(
     campaign_id: str,
@@ -651,30 +634,42 @@ def fetch_digests_for_user(
 ) -> list[Digest]:
 
     sql = f"""
-        SELECT *
+        SELECT
+            d.*
 
-        FROM `{TABLE_DIGEST}`
+        FROM `{TABLE_DIGEST}` d
 
-        WHERE USER_ID = @user_id
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
 
-          AND STATUS IN (
+        WHERE d.USER_ID = @user_id
+
+          AND d.STATUS IN (
               "generated",
               "sent"
           )
 
-        ORDER BY GENERATED_AT DESC
+        ORDER BY
+            c.PERIOD_END DESC,
+            d.GENERATED_AT DESC
     """
 
     rows = query_bq(
         sql,
         {
-            "user_id": user_id,
+            "user_id":
+                user_id,
         },
     )
 
     return [
-        _map_digest(row)
+
+        _map_digest(
+            row,
+        )
+
         for row in rows
+
     ]
 
 # ============================================================
@@ -686,11 +681,8 @@ def fetch_recent_digest_documents(
     limit: int,
 ) -> list[DigestDocument]:
     """
-    Return the most recent monthly Digest
-    documents for one profile.
-
-    These documents form the historical
-    context used by Conversation.
+    Return the most recent weekly Digest
+    documents used by Conversation.
     """
 
     sql = f"""
@@ -711,8 +703,6 @@ def fetch_recent_digest_documents(
 
           AND d.DOCUMENT IS NOT NULL
 
-          AND c.FREQUENCY = "monthly"
-
         ORDER BY
             c.PERIOD_END DESC,
             d.GENERATED_AT DESC
@@ -723,8 +713,11 @@ def fetch_recent_digest_documents(
     rows = query_bq(
         sql,
         {
-            "user_id": user_id,
-            "limit": limit,
+            "user_id":
+                user_id,
+
+            "limit":
+                limit,
         },
     ) or []
 
@@ -757,8 +750,6 @@ def fetch_digest_history(
             d.ANALYZED_CONTENTS,
             d.GENERATED_AT,
             d.SENT_AT,
-
-            c.FREQUENCY,
             c.AUDIENCE,
             c.PERIOD_START,
             c.PERIOD_END
@@ -775,7 +766,9 @@ def fetch_digest_history(
               "sent"
           )
 
-        ORDER BY d.GENERATED_AT DESC
+        ORDER BY
+            c.PERIOD_END DESC,
+            d.GENERATED_AT DESC
     """
 
     return query_bq(
@@ -825,8 +818,6 @@ def search_digest_history(
 
             d.GENERATED_AT,
             d.SENT_AT,
-
-            c.FREQUENCY,
             c.AUDIENCE,
             c.PERIOD_START,
             c.PERIOD_END,
