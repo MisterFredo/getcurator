@@ -23,11 +23,6 @@ Audience = Literal[
     "expert",
 ]
 
-Frequency = Literal[
-    "weekly",
-    "monthly",
-]
-
 
 # ============================================================
 # TABLES
@@ -44,24 +39,21 @@ TABLE_USER = (
 
 def get_digest_recipients(
     audience: Audience,
-    frequency: Frequency,
 ) -> list[DigestRecipient]:
     """
     Return every active recipient matching
-    the requested audience and frequency.
+    the requested audience.
+
+    Every Digest is weekly.
     """
 
     if audience == "user":
 
-        return _get_user_recipients(
-            frequency,
-        )
+        return _get_user_recipients()
 
     if audience == "expert":
 
-        return _get_expert_recipients(
-            frequency,
-        )
+        return _get_expert_recipients()
 
     raise ValueError(
         f"Unknown audience: {audience}",
@@ -73,15 +65,10 @@ def get_digest_recipients(
 # ============================================================
 
 def _get_user_recipients(
-    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
-
         profile_type="USER",
-
-        frequency=frequency,
-
     )
 
 
@@ -90,15 +77,10 @@ def _get_user_recipients(
 # ============================================================
 
 def _get_expert_recipients(
-    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
-
         profile_type="EXPERT",
-
-        frequency=frequency,
-
     )
 
 
@@ -108,7 +90,6 @@ def _get_expert_recipients(
 
 def _load_recipients(
     profile_type: str,
-    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     sql = f"""
@@ -123,15 +104,6 @@ def _load_recipients(
 
           AND IS_ACTIVE = TRUE
 
-          AND UPPER(
-              COALESCE(
-                  FREQUENCY,
-                  ""
-              )
-          ) = UPPER(
-              @frequency
-          )
-
         ORDER BY EMAIL
     """
 
@@ -140,9 +112,6 @@ def _load_recipients(
         {
             "profile_type":
                 profile_type,
-
-            "frequency":
-                frequency,
         },
     )
 
