@@ -9,6 +9,7 @@ import {
   HardDrive,
   RotateCcw,
   Languages,
+  BookOpen,
 } from "lucide-react";
 
 import {
@@ -105,6 +106,25 @@ const GROUPS: Group[] = [
         label: "Generate Company Descriptions",
         description:
           "Generate the next 20 missing descriptions.",
+        icon: Play,
+      },
+
+        {
+    title: "Digests",
+
+    operations: [
+      {
+        id: "initialize-digest-histories",
+        label: "Initialize Digest Histories",
+        description:
+          "Create or complete the three most recent Digests for every active profile.",
+        icon: BookOpen,
+      },
+      {
+        id: "generate-all-digests",
+        label: "Generate Digests",
+        description:
+          "Generate the previous week's Digests for every active user and expert.",
         icon: Play,
       },
     ],
