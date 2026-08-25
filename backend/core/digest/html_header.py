@@ -10,15 +10,16 @@ from core.digest.models import (
 # ============================================================
 
 def build_digest_type(
-    document: DigestDocument,
+    document,
 ) -> str:
     """
-    Build the digest type label.
+    Build the visible Digest type.
     """
 
     return (
-        f"{document.frequency.upper()} "
-        f"{document.audience.upper()}"
+        f"WEEKLY "
+        f"{document.audience.upper()} "
+        f"DIGEST"
     )
 
 
