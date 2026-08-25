@@ -32,6 +32,14 @@ TABLE_USER = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
 )
 
+TABLE_USER_PREFERENCES = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
+)
+
+TABLE_USER_KEYWORD = (
+    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD"
+)
+
 
 # ============================================================
 # PUBLIC
@@ -41,10 +49,11 @@ def get_digest_recipients(
     audience: Audience,
 ) -> list[DigestRecipient]:
     """
-    Return every active recipient matching
-    the requested audience.
+    Return every active and eligible recipient
+    matching the requested audience.
 
-    Every Digest is weekly.
+    A profile is eligible when it has at least
+    one preference or one keyword.
     """
 
     if audience == "user":
@@ -57,6 +66,65 @@ def get_digest_recipients(
 
     raise ValueError(
         f"Unknown audience: {audience}",
+    )
+
+
+# ============================================================
+# ELIGIBILITY
+# ============================================================
+
+def is_digest_profile_eligible(
+    user_id: str,
+) -> bool:
+    """
+    Return whether one profile is active and
+    has at least one usable Digest criterion.
+    """
+
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_USER}` u
+
+        WHERE u.ID_USER = @user_id
+
+          AND u.IS_ACTIVE = TRUE
+
+          AND (
+
+              EXISTS (
+
+                  SELECT 1
+
+                  FROM `{TABLE_USER_PREFERENCES}` p
+
+                  WHERE p.ID_USER = u.ID_USER
+
+              )
+
+              OR EXISTS (
+
+                  SELECT 1
+
+                  FROM `{TABLE_USER_KEYWORD}` k
+
+                  WHERE k.ID_USER = u.ID_USER
+
+              )
+
+          )
+
+        LIMIT 1
+        """,
+        {
+            "user_id":
+                user_id,
+        },
+    )
+
+    return bool(
+        rows
     )
 
 
@@ -95,16 +163,41 @@ def _load_recipients(
     sql = f"""
         SELECT
 
-            ID_USER,
-            LANGUAGE
+            u.ID_USER,
+            u.LANGUAGE
 
-        FROM `{TABLE_USER}`
+        FROM `{TABLE_USER}` u
 
-        WHERE PROFILE_TYPE = @profile_type
+        WHERE u.PROFILE_TYPE = @profile_type
 
-          AND IS_ACTIVE = TRUE
+          AND u.IS_ACTIVE = TRUE
 
-        ORDER BY EMAIL
+          AND (
+
+              EXISTS (
+
+                  SELECT 1
+
+                  FROM `{TABLE_USER_PREFERENCES}` p
+
+                  WHERE p.ID_USER = u.ID_USER
+
+              )
+
+              OR EXISTS (
+
+                  SELECT 1
+
+                  FROM `{TABLE_USER_KEYWORD}` k
+
+                  WHERE k.ID_USER = u.ID_USER
+
+              )
+
+          )
+
+        ORDER BY
+            u.EMAIL
     """
 
     rows = query_bq(
