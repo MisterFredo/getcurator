@@ -126,9 +126,6 @@ def bootstrap_profile_digests(
         digest = fetch_digest_for_period(
 
             user_id=user_id,
-
-            frequency="weekly",
-
             period_start=period_start,
 
             period_end=period_end,
