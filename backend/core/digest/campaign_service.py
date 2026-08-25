@@ -41,13 +41,6 @@ from core.user.user_service import (
 
 
 # ============================================================
-# CONFIGURATION
-# ============================================================
-
-DIGEST_FREQUENCY = "weekly"
-
-
-# ============================================================
 # CREATE FOR PERIOD
 # ============================================================
 
@@ -58,7 +51,8 @@ def create_campaign_for_period(
     user_ids: list[str] | None = None,
 ) -> Campaign:
     """
-    Create a weekly Digest Campaign for one exact period.
+    Create a Digest Campaign for one exact
+    weekly period.
 
     When user_ids is None, recipients are resolved
     from their profile type.
@@ -75,8 +69,6 @@ def create_campaign_for_period(
 
         existing_campaign = (
             fetch_campaign_for_period(
-
-                frequency=DIGEST_FREQUENCY,
 
                 audience=audience,
 
@@ -133,8 +125,6 @@ def create_campaign_for_period(
 
             user_id=user_id,
 
-            frequency=DIGEST_FREQUENCY,
-
             period_start=period_start,
 
             period_end=period_end,
@@ -171,9 +161,8 @@ def create_campaign_for_period(
 
                 return existing_campaign
 
-        # Preserve the current behavior for an audience
-        # containing no eligible recipient: an empty Campaign
-        # is still created for traceability.
+        # Preserve traceability when an audience contains
+        # no eligible recipient: an empty Campaign is created.
 
         if recipient_ids:
 
@@ -192,8 +181,6 @@ def create_campaign_for_period(
     campaign = Campaign(
 
         id=str(uuid4()),
-
-        frequency=DIGEST_FREQUENCY,
 
         audience=audience,
 
@@ -250,15 +237,9 @@ def create_campaign(
     request: CampaignCreateRequest,
 ) -> Campaign:
     """
-    Create the weekly Digest Campaign for the
-    previous complete week.
+    Create a Digest Campaign for the previous
+    complete week.
     """
-
-    if request.frequency != DIGEST_FREQUENCY:
-
-        raise ValueError(
-            "A Digest Campaign must be weekly."
-        )
 
     now = datetime.now(
         timezone.utc,
