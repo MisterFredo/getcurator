@@ -283,3 +283,77 @@ export type DigestHistoryItem = {
   PROFILE_TYPE?: string | null;
 
 };
+
+
+/* =========================================================
+   PROFILE BOOTSTRAP RESULT
+========================================================= */
+
+export type DigestBootstrapResult = {
+
+  status:
+    | "completed"
+    | "partial"
+    | "failed";
+
+  user_id: string;
+
+  audience: DigestAudience;
+
+  created_count: number;
+
+  generated_count: number;
+
+  skipped_count: number;
+
+  failed_count: number;
+
+};
+
+
+/* =========================================================
+   BULK BOOTSTRAP RESULT
+========================================================= */
+
+export type DigestBulkBootstrapResult = {
+
+  status:
+    | "completed"
+    | "partial"
+    | "failed";
+
+  profiles_count: number;
+
+  processed_count: number;
+
+  created_count: number;
+
+  generated_count: number;
+
+  skipped_count: number;
+
+  failed_count: number;
+
+};
+
+
+/* =========================================================
+   BULK GENERATION RESULT
+========================================================= */
+
+export type DigestBulkGenerationResult = {
+
+  status:
+    | "completed"
+    | "partial"
+    | "failed";
+
+  campaigns_count: number;
+
+  digests_count: number;
+
+  generated_count: number;
+
+  failed_count: number;
+
+};
