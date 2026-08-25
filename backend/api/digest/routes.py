@@ -36,6 +36,15 @@ from core.user.user_expert_service import (
     get_user_experts,
 )
 
+from core.digest.bootstrap_service import (
+    bootstrap_profile_digests,
+)
+
+from core.digest.bulk_service import (
+    bootstrap_all_profiles,
+    generate_all_digests,
+)
+
 from utils.auth import (
     get_user_id_from_request,
 )
@@ -111,6 +120,84 @@ def send_campaign_route(
             campaign_id,
         ),
     }
+
+# ============================================================
+# DIGEST BOOTSTRAP
+# ============================================================
+
+@router.post(
+    "/bootstrap/{user_id}",
+)
+def bootstrap_profile_route(
+    user_id: str,
+):
+
+    try:
+
+        return bootstrap_profile_digests(
+            user_id=user_id,
+        )
+
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to bootstrap "
+                f"profile Digests: {exc}"
+            ),
+        )
+
+
+@router.post(
+    "/bootstrap-all",
+)
+def bootstrap_all_profiles_route():
+
+    try:
+
+        return bootstrap_all_profiles()
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to bootstrap "
+                f"Digest histories: {exc}"
+            ),
+        )
+
+
+# ============================================================
+# BULK GENERATION
+# ============================================================
+
+@router.post(
+    "/campaigns/generate-all",
+)
+def generate_all_digests_route():
+
+    try:
+
+        return generate_all_digests()
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to generate "
+                f"Digests: {exc}"
+            ),
+        )
 
 # ============================================================
 # PUBLIC DIGESTS — CURRENT USER
