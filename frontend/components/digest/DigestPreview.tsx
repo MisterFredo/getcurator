@@ -6,9 +6,17 @@ import type {
 
 import DigestSection from "./DigestSection";
 
+
+/* ========================================================= */
+
 type Props = {
+
   document: DigestDocument;
+
 };
+
+
+/* ========================================================= */
 
 export default function DigestPreview({
   document,
@@ -44,14 +52,19 @@ export default function DigestPreview({
 
       </div>
 
-      {document.sections.map((section) => (
+      {document.sections.map(
+        (
+          section,
+          index,
+        ) => (
 
-        <DigestSection
-          key={section.id}
-          section={section}
-        />
+          <DigestSection
+            key={`${section.title}-${index}`}
+            section={section}
+          />
 
-      ))}
+        ),
+      )}
 
     </div>
 
