@@ -51,19 +51,23 @@ def create_campaign_for_period(
     user_ids: list[str] | None = None,
 ) -> Campaign:
     """
-    Create a Digest Campaign for one exact
-    weekly period.
+    Create or complete a Digest Campaign for
+    one exact weekly period.
 
     When user_ids is None, recipients are resolved
     from their profile type.
 
     When user_ids is provided, only these profiles
     are considered. This mode is used by bootstrap.
+
+    Existing Digests are never duplicated.
     """
 
     # ========================================================
-    # STANDARD CAMPAIGN IDEMPOTENCE
+    # EXISTING STANDARD CAMPAIGN
     # ========================================================
+
+    existing_campaign = None
 
     if user_ids is None:
 
@@ -78,10 +82,6 @@ def create_campaign_for_period(
 
             )
         )
-
-        if existing_campaign is not None:
-
-            return existing_campaign
 
     # ========================================================
     # RECIPIENTS
@@ -112,7 +112,7 @@ def create_campaign_for_period(
         )
 
     # ========================================================
-    # REMOVE EXISTING DIGESTS
+    # FIND MISSING DIGESTS
     # ========================================================
 
     missing_user_ids = []
@@ -151,18 +151,22 @@ def create_campaign_for_period(
 
     if not missing_user_ids:
 
+        if existing_campaign is not None:
+
+            return existing_campaign
+
         if first_existing_digest is not None:
 
-            existing_campaign = fetch_campaign(
+            digest_campaign = fetch_campaign(
                 first_existing_digest.campaign_id,
             )
 
-            if existing_campaign is not None:
+            if digest_campaign is not None:
 
-                return existing_campaign
+                return digest_campaign
 
-        # Preserve traceability when an audience contains
-        # no eligible recipient: an empty Campaign is created.
+        # No eligible recipient and no existing Campaign:
+        # continue and create an empty Campaign for traceability.
 
         if recipient_ids:
 
@@ -171,7 +175,89 @@ def create_campaign_for_period(
             )
 
     # ========================================================
-    # CAMPAIGN
+    # COMPLETE EXISTING CAMPAIGN
+    # ========================================================
+
+    if existing_campaign is not None:
+
+        for user_id in missing_user_ids:
+
+            digest = Digest(
+
+                campaign_id=existing_campaign.id,
+
+                user_id=user_id,
+
+                status="created",
+
+                total_contents=0,
+
+                analyzed_contents=0,
+
+            )
+
+            insert_digest(
+                digest,
+            )
+
+        campaign_digests = fetch_digests(
+            existing_campaign.id,
+        )
+
+        existing_campaign.digests_count = len(
+            campaign_digests,
+        )
+
+        existing_campaign.generated_count = len([
+
+            digest
+
+            for digest in campaign_digests
+
+            if digest.status in (
+                "generated",
+                "sent",
+            )
+
+        ])
+
+        existing_campaign.sent_count = len([
+
+            digest
+
+            for digest in campaign_digests
+
+            if digest.status == "sent"
+
+        ])
+
+        existing_campaign.failed_count = len([
+
+            digest
+
+            for digest in campaign_digests
+
+            if digest.status == "failed"
+
+        ])
+
+        # Reopen the Campaign because at least one
+        # new Digest now needs to be generated.
+
+        if missing_user_ids:
+
+            existing_campaign.status = "created"
+
+            existing_campaign.completed_at = None
+
+        update_campaign(
+            existing_campaign,
+        )
+
+        return existing_campaign
+
+    # ========================================================
+    # CREATE CAMPAIGN
     # ========================================================
 
     now = datetime.now(
@@ -203,7 +289,7 @@ def create_campaign_for_period(
     )
 
     # ========================================================
-    # DIGESTS
+    # CREATE DIGESTS
     # ========================================================
 
     for user_id in missing_user_ids:
