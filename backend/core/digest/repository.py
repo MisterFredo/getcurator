@@ -250,6 +250,50 @@ def fetch_campaign(
 
     )
 
+def fetch_campaign_for_period(
+    frequency: str,
+    audience: str,
+    period_start,
+    period_end,
+) -> Campaign | None:
+    """
+    Return the Campaign matching one exact
+    frequency, audience and period.
+    """
+
+    sql = f"""
+        SELECT *
+
+        FROM `{TABLE_CAMPAIGN}`
+
+        WHERE FREQUENCY = @frequency
+          AND AUDIENCE = @audience
+          AND PERIOD_START = @period_start
+          AND PERIOD_END = @period_end
+
+        ORDER BY CREATED_AT DESC
+
+        LIMIT 1
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "frequency": frequency,
+            "audience": audience,
+            "period_start": period_start,
+            "period_end": period_end,
+        },
+    )
+
+    if not rows:
+
+        return None
+
+    return _map_campaign(
+        rows[0],
+    )
+
 
 def fetch_campaigns(
 ) -> list[Campaign]:
@@ -513,6 +557,54 @@ def fetch_digest(
 
     )
 
+def fetch_digest_for_period(
+    user_id: str,
+    frequency: str,
+    period_start,
+    period_end,
+) -> Digest | None:
+    """
+    Return the Digest matching one profile,
+    frequency and exact period.
+    """
+
+    sql = f"""
+        SELECT
+            d.*
+
+        FROM `{TABLE_DIGEST}` d
+
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
+
+        WHERE d.USER_ID = @user_id
+          AND c.FREQUENCY = @frequency
+          AND c.PERIOD_START = @period_start
+          AND c.PERIOD_END = @period_end
+
+        ORDER BY d.GENERATED_AT DESC
+
+        LIMIT 1
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "user_id": user_id,
+            "frequency": frequency,
+            "period_start": period_start,
+            "period_end": period_end,
+        },
+    )
+
+    if not rows:
+
+        return None
+
+    return _map_digest(
+        rows[0],
+    )
+
 
 def fetch_digests(
     campaign_id: str,
@@ -594,26 +686,36 @@ def fetch_recent_digest_documents(
     limit: int,
 ) -> list[DigestDocument]:
     """
-    Return the most recent generated
-    Digest documents for one profile.
+    Return the most recent monthly Digest
+    documents for one profile.
+
+    These documents form the historical
+    context used by Conversation.
     """
 
     sql = f"""
         SELECT
-            DOCUMENT
+            d.DOCUMENT
 
-        FROM `{TABLE_DIGEST}`
+        FROM `{TABLE_DIGEST}` d
 
-        WHERE USER_ID = @user_id
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
 
-          AND STATUS IN (
+        WHERE d.USER_ID = @user_id
+
+          AND d.STATUS IN (
               "generated",
               "sent"
           )
 
-          AND DOCUMENT IS NOT NULL
+          AND d.DOCUMENT IS NOT NULL
 
-        ORDER BY GENERATED_AT DESC
+          AND c.FREQUENCY = "monthly"
+
+        ORDER BY
+            c.PERIOD_END DESC,
+            d.GENERATED_AT DESC
 
         LIMIT @limit
     """
