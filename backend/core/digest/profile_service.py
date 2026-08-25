@@ -49,7 +49,7 @@ def get_digest_recipients(
     matching the requested audience.
 
     A profile is eligible when it has at least
-    one preference.
+    one favorite.
     """
 
     if audience == "user":
@@ -74,7 +74,7 @@ def is_digest_profile_eligible(
 ) -> bool:
     """
     Return whether one profile is active and
-    has at least one usable Digest criterion.
+    has at least one favorite.
     """
 
     rows = query_bq(
@@ -89,13 +89,11 @@ def is_digest_profile_eligible(
 
           AND EXISTS (
 
-                SELECT 1
-            
-                FROM `{TABLE_USER_PREFERENCES}` p
-            
-                WHERE p.ID_USER = u.ID_USER
-            
-            )
+              SELECT 1
+
+              FROM `{TABLE_USER_PREFERENCES}` p
+
+              WHERE p.ID_USER = u.ID_USER
 
           )
 
@@ -156,27 +154,13 @@ def _load_recipients(
 
           AND u.IS_ACTIVE = TRUE
 
-          AND (
+          AND EXISTS (
 
-              EXISTS (
+              SELECT 1
 
-                  SELECT 1
+              FROM `{TABLE_USER_PREFERENCES}` p
 
-                  FROM `{TABLE_USER_PREFERENCES}` p
-
-                  WHERE p.ID_USER = u.ID_USER
-
-              )
-
-              OR EXISTS (
-
-                  SELECT 1
-
-                  FROM `{TABLE_USER_KEYWORD}` k
-
-                  WHERE k.ID_USER = u.ID_USER
-
-              )
+              WHERE p.ID_USER = u.ID_USER
 
           )
 
