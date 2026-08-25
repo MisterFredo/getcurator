@@ -1,12 +1,8 @@
-# backend/core/digest/campaign_service.py
-
 from datetime import (
     datetime,
     timedelta,
     timezone,
 )
-
-from calendar import monthrange
 
 from uuid import uuid4
 import traceback
@@ -45,21 +41,27 @@ from core.user.user_service import (
 
 
 # ============================================================
+# CONFIGURATION
+# ============================================================
+
+DIGEST_FREQUENCY = "weekly"
+
+
+# ============================================================
 # CREATE FOR PERIOD
 # ============================================================
 
 def create_campaign_for_period(
-    frequency: str,
     audience: str,
     period_start: datetime,
     period_end: datetime,
     user_ids: list[str] | None = None,
 ) -> Campaign:
     """
-    Create a Campaign for one exact period.
+    Create a weekly Digest Campaign for one exact period.
 
     When user_ids is None, recipients are resolved
-    from their profile type and configured frequency.
+    from their profile type.
 
     When user_ids is provided, only these profiles
     are considered. This mode is used by bootstrap.
@@ -74,7 +76,7 @@ def create_campaign_for_period(
         existing_campaign = (
             fetch_campaign_for_period(
 
-                frequency=frequency,
+                frequency=DIGEST_FREQUENCY,
 
                 audience=audience,
 
@@ -96,11 +98,7 @@ def create_campaign_for_period(
     if user_ids is None:
 
         recipients = get_digest_recipients(
-
             audience=audience,
-
-            frequency=frequency,
-
         )
 
         recipient_ids = [
@@ -135,7 +133,7 @@ def create_campaign_for_period(
 
             user_id=user_id,
 
-            frequency=frequency,
+            frequency=DIGEST_FREQUENCY,
 
             period_start=period_start,
 
@@ -173,14 +171,14 @@ def create_campaign_for_period(
 
                 return existing_campaign
 
-        # Standard campaign with no eligible recipients:
-        # preserve the current behavior and create an empty
-        # campaign for traceability.
+        # Preserve the current behavior for an audience
+        # containing no eligible recipient: an empty Campaign
+        # is still created for traceability.
 
         if recipient_ids:
 
             raise ValueError(
-                "Unable to resolve existing campaign."
+                "Unable to resolve existing Digest Campaign."
             )
 
     # ========================================================
@@ -195,7 +193,7 @@ def create_campaign_for_period(
 
         id=str(uuid4()),
 
-        frequency=frequency,
+        frequency=DIGEST_FREQUENCY,
 
         audience=audience,
 
@@ -243,6 +241,7 @@ def create_campaign_for_period(
 
     return campaign
 
+
 # ============================================================
 # CREATE
 # ============================================================
@@ -250,99 +249,61 @@ def create_campaign_for_period(
 def create_campaign(
     request: CampaignCreateRequest,
 ) -> Campaign:
+    """
+    Create the weekly Digest Campaign for the
+    previous complete week.
+    """
+
+    if request.frequency != DIGEST_FREQUENCY:
+
+        raise ValueError(
+            "A Digest Campaign must be weekly."
+        )
 
     now = datetime.now(
         timezone.utc,
     )
 
-    # ========================================================
-    # PERIOD
-    # ========================================================
+    # Previous complete week: Monday → Sunday.
 
-    if request.frequency == "weekly":
+    current_monday = (
 
-        # Previous complete week (Monday → Sunday).
+        now
 
-        current_monday = (
-
-            now
-
-            - timedelta(
-                days=now.weekday(),
-            )
-
-        ).replace(
-
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-
+        - timedelta(
+            days=now.weekday(),
         )
 
-        period_end = (
+    ).replace(
 
-            current_monday
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
 
-            - timedelta(
-                microseconds=1,
-            )
+    )
 
+    period_end = (
+
+        current_monday
+
+        - timedelta(
+            microseconds=1,
         )
 
-        period_start = (
+    )
 
-            current_monday
+    period_start = (
 
-            - timedelta(
-                days=7,
-            )
+        current_monday
 
+        - timedelta(
+            days=7,
         )
 
-    else:
-
-        # Previous complete month.
-
-        first_day_current_month = now.replace(
-
-            day=1,
-
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-
-        )
-
-        period_end = (
-
-            first_day_current_month
-
-            - timedelta(
-                microseconds=1,
-            )
-
-        )
-
-        period_start = period_end.replace(
-
-            day=1,
-
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-
-        )
-
-    # ========================================================
-    # CREATE
-    # ========================================================
+    )
 
     return create_campaign_for_period(
-
-        frequency=request.frequency,
 
         audience=request.audience,
 
@@ -351,6 +312,7 @@ def create_campaign(
         period_end=period_end,
 
     )
+
 
 # ============================================================
 # GENERATE
@@ -394,6 +356,18 @@ def generate_campaign(
 
     for digest in digests:
 
+        # Existing immutable Digest:
+        # count it without regenerating it.
+
+        if digest.status in (
+            "generated",
+            "sent",
+        ):
+
+            generated += 1
+
+            continue
+
         try:
 
             generate_digest(
@@ -412,6 +386,10 @@ def generate_campaign(
     # UPDATE CAMPAIGN
     # ========================================================
 
+    campaign.digests_count = len(
+        digests,
+    )
+
     campaign.generated_count = generated
 
     campaign.failed_count = failed
@@ -427,6 +405,7 @@ def generate_campaign(
     return update_campaign(
         campaign,
     )
+
 
 # ============================================================
 # SEND
@@ -515,8 +494,12 @@ def get_campaign(
     # ========================================================
 
     users = {
-        user["ID_USER"]: user
+
+        user["ID_USER"]:
+            user
+
         for user in list_users()
+
     }
 
     # ========================================================
@@ -540,14 +523,25 @@ def get_campaign(
                 **digest.model_dump(),
 
                 user_name=(
+
                     user.get("DISPLAY_NAME")
+
                     or user.get("NAME")
-                    if user else None
+
+                    if user
+
+                    else None
+
                 ),
 
                 user_email=(
+
                     user.get("EMAIL")
-                    if user else None
+
+                    if user
+
+                    else None
+
                 ),
 
             )
@@ -565,6 +559,7 @@ def get_campaign(
         digests=digests,
 
     )
+
 
 # ============================================================
 # LIST
