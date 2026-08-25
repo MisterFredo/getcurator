@@ -176,7 +176,6 @@ def generate_digest(
             period_start=campaign.period_start,
 
             period_end=campaign.period_end,
-            frequency=campaign.frequency,
             audience=campaign.audience,
 
         )
