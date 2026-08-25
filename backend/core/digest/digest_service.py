@@ -128,15 +128,16 @@ def generate_digest(
         expertise = generate_expertise_from_profile(
 
             user_id=digest.user_id,
-
+        
             period_start=campaign.period_start.isoformat(),
-
+        
             period_end=campaign.period_end.isoformat(),
-
+        
             limit=DEFAULT_DIGEST_LIMIT,
-
+        
+            include_keywords=False,
+        
         )
-
         # ====================================================
         # DELIVERY
         # ====================================================
