@@ -61,6 +61,7 @@ def generate_expertise_from_profile(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
+    include_keywords: bool = True,
 ) -> Expertise:
 
     t0 = perf_counter()
@@ -72,6 +73,23 @@ def generate_expertise_from_profile(
     profile = load_profile(
         user_id=user_id,
     )
+
+    # ========================================================
+    # OPTIONAL KEYWORD EXCLUSION
+    # ========================================================
+
+    if not include_keywords:
+
+        profile = profile.model_copy(
+
+            update={
+
+                "keywords":
+                    [],
+
+            },
+
+        )
 
     t1 = perf_counter()
 
