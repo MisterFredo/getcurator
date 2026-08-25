@@ -37,21 +37,6 @@ const LANGUAGES = [
   },
 ];
 
-const FREQUENCIES = [
-  {
-    value: "WEEKLY",
-    label: "Weekly",
-  },
-  {
-    value: "MONTHLY",
-    label: "Monthly",
-  },
-  {
-    value: "DISABLED",
-    label: "Disabled",
-  },
-];
-
 /* ========================================================= */
 
 type Props = {
@@ -67,11 +52,6 @@ type Props = {
 
   language: string;
   setLanguage: (
-    value: string
-  ) => void;
-
-  frequency: string;
-  setFrequency: (
     value: string
   ) => void;
 
@@ -92,10 +72,7 @@ export default function ProfileAccountCard({
 
   language,
   setLanguage,
-
-  frequency,
-  setFrequency,
-
+  
   isActive,
   setIsActive,
 }: Props) {
@@ -197,37 +174,6 @@ export default function ProfileAccountCard({
               className="w-full border rounded-lg px-3 py-2"
             >
               {LANGUAGES.map((item) => (
-
-                <option
-                  key={item.value}
-                  value={item.value}
-                >
-                  {item.label}
-                </option>
-
-              ))}
-            </select>
-
-          </div>
-
-          {/* DIGEST */}
-
-          <div className="space-y-2">
-
-            <label className="text-sm font-medium">
-              Digest Frequency
-            </label>
-
-            <select
-              value={frequency}
-              onChange={(e) =>
-                setFrequency(
-                  e.target.value
-                )
-              }
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              {FREQUENCIES.map((item) => (
 
                 <option
                   key={item.value}
