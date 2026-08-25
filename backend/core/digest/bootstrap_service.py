@@ -23,6 +23,10 @@ from core.user.user_service import (
     get_user,
 )
 
+from core.digest.profile_service import (
+    is_digest_profile_eligible,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -39,8 +43,8 @@ def bootstrap_profile_digests(
     user_id: str,
 ) -> dict:
     """
-    Ensure that one profile has its three most
-    recent complete weekly Digests.
+    Ensure that one eligible profile has its
+    three most recent complete Digests.
 
     Existing generated or sent Digests are never
     regenerated.
@@ -61,6 +65,44 @@ def bootstrap_profile_digests(
         raise ValueError(
             f"Unknown user: {user_id}"
         )
+
+    # ========================================================
+    # ELIGIBILITY
+    # ========================================================
+
+    if not is_digest_profile_eligible(
+        user_id,
+    ):
+
+        return {
+
+            "status":
+                "not_eligible",
+
+            "user_id":
+                user_id,
+
+            "reason": (
+                "Profile is inactive or has no "
+                "preference or keyword."
+            ),
+
+            "created_count":
+                0,
+
+            "generated_count":
+                0,
+
+            "skipped_count":
+                0,
+
+            "failed_count":
+                0,
+
+            "digests":
+                [],
+
+        }
 
     profile_type = (
         user.get("PROFILE_TYPE")
