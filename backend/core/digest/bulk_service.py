@@ -11,8 +11,8 @@ from core.digest.models import (
     CampaignCreateRequest,
 )
 
-from core.user.user_service import (
-    list_users,
+from core.digest.profile_service import (
+    get_digest_recipients,
 )
 
 
@@ -23,34 +23,36 @@ from core.user.user_service import (
 def bootstrap_all_profiles(
 ) -> dict:
     """
-    Ensure that every active USER and EXPERT
-    has its three most recent Digests.
+    Ensure that every active and eligible USER
+    and EXPERT has its three most recent Digests.
+
+    Eligibility is shared with normal Campaigns:
+    - active profile
+    - at least one preference or keyword
     """
 
-    users = list_users()
+    eligible_profiles = []
 
-    eligible_users = [
+    for audience in (
+        "user",
+        "expert",
+    ):
 
-        user
-
-        for user in users
-
-        if (
-            bool(
-                user.get("IS_ACTIVE")
-            )
-
-            and (
-                user.get("PROFILE_TYPE")
-                or "USER"
-            ).upper()
-            in (
-                "USER",
-                "EXPERT",
-            )
+        recipients = get_digest_recipients(
+            audience=audience,
         )
 
-    ]
+        for recipient in recipients:
+
+            eligible_profiles.append({
+
+                "user_id":
+                    recipient.user_id,
+
+                "audience":
+                    audience,
+
+            })
 
     result = {
 
@@ -58,7 +60,7 @@ def bootstrap_all_profiles(
             "completed",
 
         "profiles_count":
-            len(eligible_users),
+            len(eligible_profiles),
 
         "processed_count":
             0,
@@ -80,15 +82,15 @@ def bootstrap_all_profiles(
 
     }
 
-    for user in eligible_users:
+    for profile in eligible_profiles:
 
-        user_id = user.get(
-            "ID_USER"
-        )
+        user_id = profile[
+            "user_id"
+        ]
 
-        if not user_id:
-
-            continue
+        audience = profile[
+            "audience"
+        ]
 
         try:
 
@@ -133,14 +135,8 @@ def bootstrap_all_profiles(
                 "user_id":
                     user_id,
 
-                "name": (
-                    user.get("DISPLAY_NAME")
-                    or user.get("NAME")
-                    or user_id
-                ),
-
-                "profile_type":
-                    user.get("PROFILE_TYPE"),
+                "audience":
+                    audience,
 
                 "status":
                     profile_result.get(
@@ -184,14 +180,8 @@ def bootstrap_all_profiles(
                 "user_id":
                     user_id,
 
-                "name": (
-                    user.get("DISPLAY_NAME")
-                    or user.get("NAME")
-                    or user_id
-                ),
-
-                "profile_type":
-                    user.get("PROFILE_TYPE"),
+                "audience":
+                    audience,
 
                 "status":
                     "failed",
@@ -230,7 +220,8 @@ def generate_all_digests(
 ) -> dict:
     """
     Create and generate the previous complete
-    week's Campaigns for USER and EXPERT profiles.
+    week's Campaigns for every eligible USER
+    and EXPERT profile.
     """
 
     result = {
