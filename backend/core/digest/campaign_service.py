@@ -138,6 +138,7 @@ def create_campaign(
 
     recipients = get_digest_recipients(
         audience=request.audience,
+        frequency=request.frequency,
     )
 
     print("====================================")
