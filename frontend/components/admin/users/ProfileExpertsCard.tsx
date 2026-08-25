@@ -12,7 +12,6 @@ type ExpertOption = {
   displayName: string;
   description?: string;
   isSelected: boolean;
-  frequency?: string;
   userCount?: number;
   isActive?: boolean;
 };
@@ -29,7 +28,6 @@ function normalizeExpert(row: any): ExpertOption {
     displayName: row.DISPLAY_NAME ?? row.NAME ?? "",
     description: row.DESCRIPTION ?? "",
     isSelected: !!row.IS_SELECTED,
-    frequency: row.FREQUENCY ?? "",
     userCount: row.USER_COUNT ?? 0,
     isActive: !!row.IS_ACTIVE,
   };
@@ -188,13 +186,6 @@ export default function ProfileExpertsCard({
                   <div className="font-medium">
                     {expert.displayName}
                   </div>
-
-                  {expert.frequency && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                      {expert.frequency}
-                    </span>
-                  )}
-
                   {expert.isActive === false && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
                       Inactive
