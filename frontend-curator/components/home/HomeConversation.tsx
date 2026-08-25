@@ -63,6 +63,13 @@ export default function HomeConversation({
     null,
   );
 
+  const [
+    interlocutorDescription,
+    setInterlocutorDescription,
+  ] = useState<string | null>(
+    null,
+  );
+
   /* =========================================================
      RESET WHEN INTERLOCUTOR CHANGES
   ========================================================= */
@@ -81,6 +88,73 @@ export default function HomeConversation({
       null,
     );
 
+  }, [
+    interlocutorId,
+  ]);
+
+  /* =========================================================
+   LOAD INTERLOCUTOR DESCRIPTION
+  ========================================================= */
+  
+  useEffect(() => {
+  
+    let active = true;
+  
+    async function loadInterlocutor() {
+  
+      try {
+  
+        setInterlocutorDescription(
+          null,
+        );
+  
+        const response =
+          await api.get(
+            `/user/${interlocutorId}`,
+          );
+  
+        if (!active) {
+  
+          return;
+  
+        }
+  
+        setInterlocutorDescription(
+          response?.user?.DESCRIPTION
+          || null,
+        );
+  
+      } catch (error) {
+  
+        console.error(
+          "Unable to load interlocutor:",
+          error,
+        );
+  
+        if (active) {
+  
+          setInterlocutorDescription(
+            null,
+          );
+  
+        }
+  
+      }
+  
+    }
+  
+    if (interlocutorId) {
+  
+      loadInterlocutor();
+  
+    }
+  
+    return () => {
+  
+      active = false;
+  
+    };
+  
   }, [
     interlocutorId,
   ]);
@@ -252,16 +326,33 @@ export default function HomeConversation({
           {interlocutorName}
         </div>
 
+        {interlocutorDescription && (
+
+          <p
+            className="
+              mt-2
+              max-w-2xl
+              text-sm
+              font-medium
+              leading-6
+              text-gray-700
+            "
+          >
+            {interlocutorDescription}
+          </p>
+        
+        )}
+        
         <p
           className="
-            mt-1
+            mt-2
             text-xs
             leading-5
             text-gray-500
           "
         >
-          Watch shows what’s happening. Digests explain why it matters.
-          Conversation helps you connect signals, challenge ideas and go deeper.
+          WATCH shows what’s happening. DIGESTS explain why it matters.
+          CONVERSATION helps you connect signals, challenge ideas and go deeper.
         </p>
 
       </div>
