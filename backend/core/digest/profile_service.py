@@ -24,21 +24,31 @@ TABLE_USER = (
 
 def get_digest_recipients(
     audience: Audience,
+    frequency: Literal[
+        "weekly",
+        "monthly",
+    ],
 ) -> list[DigestRecipient]:
-    """
-    Return every active recipient for
-    the requested audience.
-    """
-
-    if audience == "user":
-        return _get_user_recipients()
-
-    if audience == "expert":
-        return _get_expert_recipients()
-
-    raise ValueError(
-        f"Unknown audience: {audience}",
-    )
+       """
+        Return every active recipient matching
+        the requested audience and frequency.
+        """
+    
+        if audience == "user":
+    
+            return _get_user_recipients(
+                frequency,
+            )
+    
+        if audience == "expert":
+    
+            return _get_expert_recipients(
+                frequency,
+            )
+    
+        raise ValueError(
+            f"Unknown audience: {audience}",
+        )
 
 
 # ============================================================
@@ -46,24 +56,26 @@ def get_digest_recipients(
 # ============================================================
 
 def _get_user_recipients(
+    frequency: str,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
-        "USER",
+        profile_type="USER",
+        frequency=frequency,
     )
-
 
 # ============================================================
 # EXPERTS
 # ============================================================
 
 def _get_expert_recipients(
+    frequency: str,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
-        "EXPERT",
+        profile_type="EXPERT",
+        frequency=frequency,
     )
-
 
 # ============================================================
 # INTERNAL
@@ -71,6 +83,7 @@ def _get_expert_recipients(
 
 def _load_recipients(
     profile_type: str,
+    frequency: str,
 ) -> list[DigestRecipient]:
 
     sql = f"""
@@ -82,7 +95,17 @@ def _load_recipients(
         FROM `{TABLE_USER}`
 
         WHERE PROFILE_TYPE = @profile_type
+
           AND IS_ACTIVE = TRUE
+
+          AND UPPER(
+              COALESCE(
+                  FREQUENCY,
+                  ""
+              )
+          ) = UPPER(
+              @frequency
+          )
 
         ORDER BY EMAIL
     """
@@ -90,7 +113,11 @@ def _load_recipients(
     rows = query_bq(
         sql,
         {
-            "profile_type": profile_type,
+            "profile_type":
+                profile_type,
+
+            "frequency":
+                frequency,
         },
     )
 
@@ -100,9 +127,9 @@ def _load_recipients(
 
             user_id=row["ID_USER"],
 
-            language=row.get(
-                "LANGUAGE",
-                "en",
+            language=(
+                row.get("LANGUAGE")
+                or "en"
             ),
 
         )
