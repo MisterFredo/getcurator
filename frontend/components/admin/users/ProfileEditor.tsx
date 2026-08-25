@@ -66,9 +66,6 @@ export default function ProfileEditor({
   const [language, setLanguage] =
     useState("fr");
 
-  const [frequency, setFrequency] =
-    useState("WEEKLY");
-
   const [isActive, setIsActive] =
     useState(true);
 
@@ -126,10 +123,6 @@ export default function ProfileEditor({
           user.LANGUAGE ?? "fr",
         );
 
-        setFrequency(
-          user.FREQUENCY ?? "WEEKLY",
-        );
-
         setIsActive(
           user.IS_ACTIVE ?? true,
         );
@@ -170,7 +163,6 @@ export default function ProfileEditor({
         profile_type: profileType,
         display_name: displayName,
         description,
-        frequency,
         is_active: isActive,
       };
 
@@ -255,9 +247,6 @@ export default function ProfileEditor({
 
         language={language}
         setLanguage={setLanguage}
-
-        frequency={frequency}
-        setFrequency={setFrequency}
 
         isActive={isActive}
         setIsActive={setIsActive}
