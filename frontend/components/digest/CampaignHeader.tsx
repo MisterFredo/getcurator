@@ -6,9 +6,17 @@ import type {
 
 import CampaignActions from "./CampaignActions";
 
+
+/* ========================================================= */
+
 type Props = {
+
   campaign: Campaign;
+
 };
+
+
+/* ========================================================= */
 
 export default function CampaignHeader({
   campaign,
@@ -22,28 +30,42 @@ export default function CampaignHeader({
 
         <div className="space-y-3">
 
-          <h1 className="text-2xl font-bold capitalize">
+          <h1 className="text-2xl font-bold">
 
-            {campaign.frequency} Digest
+            Digest Campaign
 
           </h1>
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
 
             <span className="capitalize">
+
               Audience: {campaign.audience}
+
             </span>
 
             <span>
-              {formatCoverage(campaign)}
+
+              {formatCoverage(
+                campaign,
+              )}
+
             </span>
 
             <span>
-              Created: {formatDate(campaign.created_at)}
+
+              Created:{" "}
+
+              {formatDate(
+                campaign.created_at,
+              )}
+
             </span>
 
             <span className="capitalize">
+
               Status: {campaign.status}
+
             </span>
 
           </div>
@@ -86,6 +108,7 @@ export default function CampaignHeader({
 
 }
 
+
 /* ========================================================= */
 
 function StatCard({
@@ -118,6 +141,7 @@ function StatCard({
 
 }
 
+
 /* ========================================================= */
 
 function formatCoverage(
@@ -125,24 +149,14 @@ function formatCoverage(
 ): string {
 
   const start =
-    new Date(campaign.period_start);
+    new Date(
+      campaign.period_start,
+    );
 
   const end =
-    new Date(campaign.period_end);
-
-  if (
-    campaign.frequency === "monthly"
-  ) {
-
-    return `Coverage: ${start.toLocaleDateString(
-      "en-US",
-      {
-        month: "long",
-        year: "numeric",
-      },
-    )}`;
-
-  }
+    new Date(
+      campaign.period_end,
+    );
 
   return `Coverage: Week of ${start.toLocaleDateString(
     "en-US",
@@ -160,13 +174,16 @@ function formatCoverage(
 
 }
 
+
 /* ========================================================= */
 
 function formatDate(
   value: string,
 ): string {
 
-  return new Date(value).toLocaleDateString(
+  return new Date(
+    value,
+  ).toLocaleDateString(
     "en-US",
     {
       year: "numeric",
