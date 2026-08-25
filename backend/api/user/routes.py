@@ -50,6 +50,10 @@ from core.user.user_expert_service import (
     get_expert_users,
 )
 
+from core.digest.bootstrap_service import (
+    bootstrap_profile_digests,
+)
+
 from utils.auth import get_user_id_from_request
 
 router = APIRouter()
@@ -392,6 +396,48 @@ def create_user_route(payload: CreateUserPayload):
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+# =========================================================
+# INITIALIZE PROFILE DIGESTS
+# =========================================================
+
+@router.post(
+    "/{user_id}/initialize-digests"
+)
+def initialize_profile_digests(
+    user_id: str,
+):
+
+    try:
+
+        result = bootstrap_profile_digests(
+            user_id=user_id,
+        )
+
+        return result
+
+    except ValueError as exc:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail=str(exc),
+
+        )
+
+    except Exception as exc:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "Unable to initialize "
+                f"profile Digests: {exc}"
+            ),
+
+        )
 
 
 @router.get("/bootstrap-admin")
