@@ -1,194 +1,193 @@
-from typing import Literal
-
-from config import (
-    BQ_DATASET,
-    BQ_PROJECT,
-)
-
-from utils.bigquery_utils import (
-    query_bq,
-)
-
 from core.digest.models import (
-    DigestRecipient,
+    DigestBadge,
+    DigestProfile,
+)
+
+from core.user.user_service import (
+    get_user,
+)
+
+from core.user.user_profile_service import (
+    get_user_profile,
+)
+
+from core.user.user_preferences_service import (
+    get_user_preferences_detailed,
+)
+
+from core.user.user_keyword_service import (
+    get_user_keywords,
 )
 
 
 # ============================================================
-# TYPES
+# BUILD DIGEST PROFILE
 # ============================================================
 
-Audience = Literal[
-    "user",
-    "expert",
-]
-
-
-# ============================================================
-# TABLES
-# ============================================================
-
-TABLE_USER = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
-)
-
-TABLE_USER_PREFERENCES = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
-)
-
-
-# ============================================================
-# PUBLIC
-# ============================================================
-
-def get_digest_recipients(
-    audience: Audience,
-) -> list[DigestRecipient]:
-    """
-    Return every active and eligible recipient
-    matching the requested audience.
-
-    A profile is eligible when it has at least
-    one favorite.
-    """
-
-    if audience == "user":
-
-        return _get_user_recipients()
-
-    if audience == "expert":
-
-        return _get_expert_recipients()
-
-    raise ValueError(
-        f"Unknown audience: {audience}",
-    )
-
-
-# ============================================================
-# ELIGIBILITY
-# ============================================================
-
-def is_digest_profile_eligible(
+def build_digest_profile(
     user_id: str,
-) -> bool:
+) -> DigestProfile:
     """
-    Return whether one profile is active and
-    has at least one favorite.
-    """
-
-    rows = query_bq(
-        f"""
-        SELECT 1
-
-        FROM `{TABLE_USER}` u
-
-        WHERE u.ID_USER = @user_id
-
-          AND u.IS_ACTIVE = TRUE
-
-          AND EXISTS (
-
-              SELECT 1
-
-              FROM `{TABLE_USER_PREFERENCES}` p
-
-              WHERE p.ID_USER = u.ID_USER
-
-          )
-
-        LIMIT 1
-        """,
-        {
-            "user_id":
-                user_id,
-        },
-    )
-
-    return bool(
-        rows
-    )
-
-
-# ============================================================
-# USERS
-# ============================================================
-
-def _get_user_recipients(
-) -> list[DigestRecipient]:
-
-    return _load_recipients(
-        profile_type="USER",
-    )
-
-
-# ============================================================
-# EXPERTS
-# ============================================================
-
-def _get_expert_recipients(
-) -> list[DigestRecipient]:
-
-    return _load_recipients(
-        profile_type="EXPERT",
-    )
-
-
-# ============================================================
-# INTERNAL
-# ============================================================
-
-def _load_recipients(
-    profile_type: str,
-) -> list[DigestRecipient]:
-
-    sql = f"""
-        SELECT
-
-            u.ID_USER,
-            u.LANGUAGE
-
-        FROM `{TABLE_USER}` u
-
-        WHERE u.PROFILE_TYPE = @profile_type
-
-          AND u.IS_ACTIVE = TRUE
-
-          AND EXISTS (
-
-              SELECT 1
-
-              FROM `{TABLE_USER_PREFERENCES}` p
-
-              WHERE p.ID_USER = u.ID_USER
-
-          )
-
-        ORDER BY
-            u.EMAIL
+    Build the profile snapshot used to personalize
+    one DigestDocument.
     """
 
-    rows = query_bq(
-        sql,
-        {
-            "profile_type":
-                profile_type,
-        },
+    # ========================================================
+    # LOAD USER
+    # ========================================================
+
+    user = get_user(
+        user_id,
     )
 
-    return [
+    if not user:
 
-        DigestRecipient(
+        raise ValueError(
+            f"Unknown user: {user_id}"
+        )
 
-            user_id=row["ID_USER"],
+    # ========================================================
+    # LOAD PROFILE
+    # ========================================================
 
-            language=(
-                row.get("LANGUAGE")
-                or "en"
+    profile = (
+        get_user_profile(
+            user_id,
+        )
+        or {}
+    )
+
+    # ========================================================
+    # LOAD PREFERENCES
+    # ========================================================
+
+    preferences = (
+        get_user_preferences_detailed(
+            user_id,
+        )
+        or {}
+    )
+
+    # ========================================================
+    # LOAD KEYWORDS
+    # ========================================================
+
+    keywords = (
+        get_user_keywords(
+            user_id,
+        )
+        or []
+    )
+
+    # ========================================================
+    # BUILD
+    # ========================================================
+
+    return DigestProfile(
+
+        name=(
+
+            user.get("DISPLAY_NAME")
+
+            or user.get("NAME")
+
+            or ""
+
+        ),
+
+        company=user.get(
+            "COMPANY"
+        ),
+
+        role=user.get(
+            "ROLE"
+        ),
+
+        description=profile.get(
+            "profile_text"
+        ),
+
+        geography_1=profile.get(
+            "geography_1"
+        ),
+
+        geography_2=profile.get(
+            "geography_2"
+        ),
+
+        geography_3=profile.get(
+            "geography_3"
+        ),
+
+        companies=_build_badges(
+
+            preferences.get(
+                "companies",
+                [],
             ),
+
+            "company",
+
+        ),
+
+        topics=_build_badges(
+
+            preferences.get(
+                "topics",
+                [],
+            ),
+
+            "topic",
+
+        ),
+
+        solutions=_build_badges(
+
+            preferences.get(
+                "solutions",
+                [],
+            ),
+
+            "solution",
+
+        ),
+
+        keywords=keywords,
+
+    )
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def _build_badges(
+    values: list[dict],
+    badge_type: str,
+) -> list[DigestBadge]:
+
+    badges = []
+
+    for value in values:
+
+        label = value.get(
+            "label"
+        )
+
+        if not label:
+
+            continue
+
+        badges.append(
+
+            DigestBadge(
+
+                label=label,
+
+                type=badge_type,
+
+            )
 
         )
 
-        for row in rows
-
-    ]
+    return badges
