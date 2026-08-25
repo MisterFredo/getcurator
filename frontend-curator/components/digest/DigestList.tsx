@@ -69,15 +69,6 @@ export default function DigestList({
       digest.PERIOD_END,
     );
 
-  const frequency =
-    digest.FREQUENCY
-      ? `${digest.FREQUENCY
-          .charAt(0)
-          .toUpperCase()}${digest.FREQUENCY
-          .slice(1)
-          .toLowerCase()} Digest`
-      : "Digest";
-
   /* =========================================================
      RENDER
   ========================================================= */
@@ -166,17 +157,6 @@ export default function DigestList({
               gap-y-1
             "
           >
-
-            <span
-              className="
-                text-sm
-                font-semibold
-                text-gray-900
-                group-hover:underline
-              "
-            >
-              {frequency}
-            </span>
 
             {(periodStart ||
               periodEnd) && (
