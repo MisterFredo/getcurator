@@ -36,14 +36,6 @@ TABLE_DIGEST = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DIGEST"
 )
 
-TABLE_USER = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
-)
-
-TABLE_USER_PREFERENCES = (
-    f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES"
-)
-
 TABLE_COMPANY = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
 )
@@ -1006,6 +998,7 @@ def search_digest_history(
             )
 
         ORDER BY
+            c.PERIOD_END DESC,
             d.GENERATED_AT DESC
     """
 
