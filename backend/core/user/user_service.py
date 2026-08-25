@@ -545,10 +545,14 @@ def list_users(
     params = {}
 
     if profile_type:
+
         where_clause = """
         WHERE u.PROFILE_TYPE = @profile_type
         """
-        params["profile_type"] = profile_type
+
+        params[
+            "profile_type"
+        ] = profile_type
 
     query = f"""
     SELECT
@@ -561,12 +565,16 @@ def list_users(
         u.LANGUAGE,
         u.ROLE,
         u.PROFILE_TYPE,
-        u.FREQUENCY,
         u.IS_ACTIVE,
         u.CREATED_AT,
 
-        COUNT(DISTINCT k.KEYWORD)
-            AS KEYWORDS_COUNT,
+        COUNTIF(
+            pref.ID_USER IS NOT NULL
+        ) > 0 AS HAS_FAVORITES,
+
+        COUNT(
+            DISTINCT k.KEYWORD
+        ) AS KEYWORDS_COUNT,
 
         MAX(
             p.GEOGRAPHY_1
@@ -574,24 +582,44 @@ def list_users(
 
         MAX(
             CASE
+
                 WHEN p.PROFILE_TEXT IS NOT NULL
-                 AND TRIM(p.PROFILE_TEXT) != ''
+
+                 AND TRIM(
+                    p.PROFILE_TEXT
+                 ) != ""
+
                 THEN TRUE
+
                 ELSE FALSE
+
             END
         ) AS HAS_PROFILE
 
     FROM `{TABLE_USER}` u
 
-    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD` k
+    LEFT JOIN (
+        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD`
+    ) k
+
       ON u.ID_USER = k.ID_USER
 
-    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE` p
+    LEFT JOIN (
+        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE`
+    ) p
+
       ON u.ID_USER = p.ID_USER
+
+    LEFT JOIN (
+        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES`
+    ) pref
+
+      ON u.ID_USER = pref.ID_USER
 
     {where_clause}
 
     GROUP BY
+
         u.ID_USER,
         u.EMAIL,
         u.NAME,
@@ -600,11 +628,11 @@ def list_users(
         u.LANGUAGE,
         u.ROLE,
         u.PROFILE_TYPE,
-        u.FREQUENCY,
         u.IS_ACTIVE,
         u.CREATED_AT
 
     ORDER BY
+
         u.CREATED_AT DESC
     """
 
