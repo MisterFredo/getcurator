@@ -4,9 +4,17 @@ import type {
   DigestSection as DigestSectionType,
 } from "@/types/digest";
 
+
+/* ========================================================= */
+
 type Props = {
+
   section: DigestSectionType;
+
 };
+
+
+/* ========================================================= */
 
 export default function DigestSection({
   section,
@@ -14,7 +22,7 @@ export default function DigestSection({
 
   return (
 
-    <section className="rounded-lg border bg-white p-6 space-y-6">
+    <section className="space-y-6 rounded-lg border bg-white p-6">
 
       <div>
 
@@ -24,11 +32,11 @@ export default function DigestSection({
 
         </h2>
 
-        {section.body && (
+        {section.content && (
 
           <p className="mt-2 whitespace-pre-wrap text-gray-700">
 
-            {section.body}
+            {section.content}
 
           </p>
 
@@ -40,62 +48,71 @@ export default function DigestSection({
 
         <div className="space-y-4">
 
-          {section.cards.map((card) => (
+          {section.cards.map(
+            (card) => (
 
-            <a
-              key={card.id}
-              href={card.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg border p-4 hover:bg-gray-50"
-            >
+              <a
+                key={card.id}
+                href={card.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-lg border p-4 hover:bg-gray-50"
+              >
 
-              <div className="flex gap-4">
+                <div className="flex gap-4">
 
-                {card.company_logo && (
+                  {card.company_logo && (
 
-                  <img
-                    src={card.company_logo}
-                    alt=""
-                    className="h-12 w-12 rounded object-contain"
-                  />
+                    <img
+                      src={card.company_logo}
+                      alt=""
+                      className="h-12 w-12 rounded object-contain"
+                    />
 
-                )}
+                  )}
 
-                <div className="flex-1">
+                  <div className="flex-1">
 
-                  <h3 className="font-medium">
+                    <h3 className="font-medium">
 
-                    {card.title}
+                      {card.title}
 
-                  </h3>
+                    </h3>
 
-                  <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-gray-600">
 
-                    {card.excerpt}
+                      {card.excerpt}
 
-                  </p>
+                    </p>
 
-                  <div className="mt-3 text-xs text-gray-400">
+                    <div className="mt-3 text-xs text-gray-400">
 
-                    {card.source_title}
+                      {card.source_title}
 
-                    {card.published_at && (
-                      <>
-                        {" • "}
-                        {card.published_at}
-                      </>
-                    )}
+                      {card.published_at && (
+
+                        <>
+
+                          {" • "}
+
+                          {formatDate(
+                            card.published_at,
+                          )}
+
+                        </>
+
+                      )}
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
+              </a>
 
-            </a>
-
-          ))}
+            ),
+          )}
 
         </div>
 
@@ -103,6 +120,26 @@ export default function DigestSection({
 
     </section>
 
+  );
+
+}
+
+
+/* ========================================================= */
+
+function formatDate(
+  value: string,
+): string {
+
+  return new Date(
+    value,
+  ).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    },
   );
 
 }
