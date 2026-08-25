@@ -19,11 +19,6 @@ export default function CampaignTable({
         <thead className="bg-gray-50">
 
           <tr>
-
-            <th className="px-4 py-3 text-left">
-              Frequency
-            </th>
-
             <th className="px-4 py-3 text-left">
               Audience
             </th>
