@@ -32,14 +32,216 @@ from core.digest.repository import (
     update_campaign,
     fetch_campaign,
     fetch_campaigns,
+    fetch_campaign_for_period,
     insert_digest,
     update_digest,
+    fetch_digest_for_period,
     fetch_digests,
 )
 
 from core.user.user_service import (
     list_users,
 )
+
+
+# ============================================================
+# CREATE FOR PERIOD
+# ============================================================
+
+def create_campaign_for_period(
+    frequency: str,
+    audience: str,
+    period_start: datetime,
+    period_end: datetime,
+    user_ids: list[str] | None = None,
+) -> Campaign:
+    """
+    Create a Campaign for one exact period.
+
+    When user_ids is None, recipients are resolved
+    from their profile type and configured frequency.
+
+    When user_ids is provided, only these profiles
+    are considered. This mode is used by bootstrap.
+    """
+
+    # ========================================================
+    # STANDARD CAMPAIGN IDEMPOTENCE
+    # ========================================================
+
+    if user_ids is None:
+
+        existing_campaign = (
+            fetch_campaign_for_period(
+
+                frequency=frequency,
+
+                audience=audience,
+
+                period_start=period_start,
+
+                period_end=period_end,
+
+            )
+        )
+
+        if existing_campaign is not None:
+
+            return existing_campaign
+
+    # ========================================================
+    # RECIPIENTS
+    # ========================================================
+
+    if user_ids is None:
+
+        recipients = get_digest_recipients(
+
+            audience=audience,
+
+            frequency=frequency,
+
+        )
+
+        recipient_ids = [
+
+            recipient.user_id
+
+            for recipient in recipients
+
+        ]
+
+    else:
+
+        # Preserve order while removing duplicates.
+
+        recipient_ids = list(
+            dict.fromkeys(
+                user_ids,
+            )
+        )
+
+    # ========================================================
+    # REMOVE EXISTING DIGESTS
+    # ========================================================
+
+    missing_user_ids = []
+
+    first_existing_digest = None
+
+    for user_id in recipient_ids:
+
+        existing_digest = fetch_digest_for_period(
+
+            user_id=user_id,
+
+            frequency=frequency,
+
+            period_start=period_start,
+
+            period_end=period_end,
+
+        )
+
+        if existing_digest is not None:
+
+            if first_existing_digest is None:
+
+                first_existing_digest = (
+                    existing_digest
+                )
+
+            continue
+
+        missing_user_ids.append(
+            user_id,
+        )
+
+    # ========================================================
+    # NOTHING TO CREATE
+    # ========================================================
+
+    if not missing_user_ids:
+
+        if first_existing_digest is not None:
+
+            existing_campaign = fetch_campaign(
+                first_existing_digest.campaign_id,
+            )
+
+            if existing_campaign is not None:
+
+                return existing_campaign
+
+        # Standard campaign with no eligible recipients:
+        # preserve the current behavior and create an empty
+        # campaign for traceability.
+
+        if recipient_ids:
+
+            raise ValueError(
+                "Unable to resolve existing campaign."
+            )
+
+    # ========================================================
+    # CAMPAIGN
+    # ========================================================
+
+    now = datetime.now(
+        timezone.utc,
+    )
+
+    campaign = Campaign(
+
+        id=str(uuid4()),
+
+        frequency=frequency,
+
+        audience=audience,
+
+        period_start=period_start,
+
+        period_end=period_end,
+
+        status="created",
+
+        digests_count=len(
+            missing_user_ids,
+        ),
+
+        created_at=now,
+
+    )
+
+    insert_campaign(
+        campaign,
+    )
+
+    # ========================================================
+    # DIGESTS
+    # ========================================================
+
+    for user_id in missing_user_ids:
+
+        digest = Digest(
+
+            campaign_id=campaign.id,
+
+            user_id=user_id,
+
+            status="created",
+
+            total_contents=0,
+
+            analyzed_contents=0,
+
+        )
+
+        insert_digest(
+            digest,
+        )
+
+    return campaign
 
 # ============================================================
 # CREATE
@@ -59,60 +261,86 @@ def create_campaign(
 
     if request.frequency == "weekly":
 
-        # Previous complete week (Monday → Sunday)
+        # Previous complete week (Monday → Sunday).
 
         current_monday = (
+
             now
-            - timedelta(days=now.weekday())
+
+            - timedelta(
+                days=now.weekday(),
+            )
+
         ).replace(
+
             hour=0,
             minute=0,
             second=0,
             microsecond=0,
+
         )
 
         period_end = (
+
             current_monday
-            - timedelta(microseconds=1)
+
+            - timedelta(
+                microseconds=1,
+            )
+
         )
 
         period_start = (
+
             current_monday
-            - timedelta(days=7)
+
+            - timedelta(
+                days=7,
+            )
+
         )
 
     else:
 
-        # Previous complete month
+        # Previous complete month.
 
         first_day_current_month = now.replace(
+
             day=1,
+
             hour=0,
             minute=0,
             second=0,
             microsecond=0,
+
         )
 
         period_end = (
+
             first_day_current_month
-            - timedelta(microseconds=1)
+
+            - timedelta(
+                microseconds=1,
+            )
+
         )
 
         period_start = period_end.replace(
+
             day=1,
+
             hour=0,
             minute=0,
             second=0,
             microsecond=0,
+
         )
 
     # ========================================================
-    # CAMPAIGN
+    # CREATE
     # ========================================================
 
-    campaign = Campaign(
-
-        id=str(uuid4()),
+    return create_campaign_for_period(
 
         frequency=request.frequency,
 
@@ -122,74 +350,7 @@ def create_campaign(
 
         period_end=period_end,
 
-        status="created",
-
-        created_at=now,
-
     )
-
-    campaign = insert_campaign(
-        campaign,
-    )
-
-    # ========================================================
-    # RECIPIENTS
-    # ========================================================
-
-    recipients = get_digest_recipients(
-        audience=request.audience,
-        frequency=request.frequency,
-    )
-
-    print("====================================")
-    print("AUDIENCE :", request.audience)
-    print("RECIPIENTS :", len(recipients))
-
-    if recipients:
-
-        print("FIRST RECIPIENT :", recipients[0])
-
-    campaign.digests_count = len(
-        recipients,
-    )
-
-    for recipient in recipients:
-
-        print(
-            "Creating digest for:",
-            recipient.user_id,
-        )
-
-        digest = Digest(
-
-            campaign_id=campaign.id,
-
-            user_id=recipient.user_id,
-
-            status="created",
-
-            total_contents=0,
-
-            analyzed_contents=0,
-
-        )
-
-
-        insert_digest(
-            digest,
-        )
-
-    campaign = update_campaign(
-        campaign,
-    )
-
-    print(
-        "Campaign created:",
-        campaign.id,
-    )
-
-    return campaign
-
 
 # ============================================================
 # GENERATE
