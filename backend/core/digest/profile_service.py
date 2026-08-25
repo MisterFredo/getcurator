@@ -1,17 +1,37 @@
 from typing import Literal
 
-from config import BQ_DATASET, BQ_PROJECT
+from config import (
+    BQ_DATASET,
+    BQ_PROJECT,
+)
 
-from utils.bigquery_utils import query_bq
+from utils.bigquery_utils import (
+    query_bq,
+)
 
 from core.digest.models import (
     DigestRecipient,
 )
 
+
+# ============================================================
+# TYPES
+# ============================================================
+
 Audience = Literal[
     "user",
     "expert",
 ]
+
+Frequency = Literal[
+    "weekly",
+    "monthly",
+]
+
+
+# ============================================================
+# TABLES
+# ============================================================
 
 TABLE_USER = (
     f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
@@ -24,31 +44,28 @@ TABLE_USER = (
 
 def get_digest_recipients(
     audience: Audience,
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ],
+    frequency: Frequency,
 ) -> list[DigestRecipient]:
-       """
-        Return every active recipient matching
-        the requested audience and frequency.
-        """
-    
-        if audience == "user":
-    
-            return _get_user_recipients(
-                frequency,
-            )
-    
-        if audience == "expert":
-    
-            return _get_expert_recipients(
-                frequency,
-            )
-    
-        raise ValueError(
-            f"Unknown audience: {audience}",
+    """
+    Return every active recipient matching
+    the requested audience and frequency.
+    """
+
+    if audience == "user":
+
+        return _get_user_recipients(
+            frequency,
         )
+
+    if audience == "expert":
+
+        return _get_expert_recipients(
+            frequency,
+        )
+
+    raise ValueError(
+        f"Unknown audience: {audience}",
+    )
 
 
 # ============================================================
@@ -56,26 +73,34 @@ def get_digest_recipients(
 # ============================================================
 
 def _get_user_recipients(
-    frequency: str,
+    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
+
         profile_type="USER",
+
         frequency=frequency,
+
     )
+
 
 # ============================================================
 # EXPERTS
 # ============================================================
 
 def _get_expert_recipients(
-    frequency: str,
+    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     return _load_recipients(
+
         profile_type="EXPERT",
+
         frequency=frequency,
+
     )
+
 
 # ============================================================
 # INTERNAL
@@ -83,7 +108,7 @@ def _get_expert_recipients(
 
 def _load_recipients(
     profile_type: str,
-    frequency: str,
+    frequency: Frequency,
 ) -> list[DigestRecipient]:
 
     sql = f"""
