@@ -587,7 +587,7 @@ def list_users(
 
                  AND TRIM(
                     p.PROFILE_TEXT
-                 ) != ""
+                 ) != ''
 
                 THEN TRUE
 
@@ -598,21 +598,15 @@ def list_users(
 
     FROM `{TABLE_USER}` u
 
-    LEFT JOIN (
-        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD`
-    ) k
+    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD` k
 
       ON u.ID_USER = k.ID_USER
 
-    LEFT JOIN (
-        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE`
-    ) p
+    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PROFILE` p
 
       ON u.ID_USER = p.ID_USER
 
-    LEFT JOIN (
-        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES`
-    ) pref
+    LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES` pref
 
       ON u.ID_USER = pref.ID_USER
 
