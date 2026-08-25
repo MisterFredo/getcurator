@@ -1,16 +1,32 @@
 "use client";
 
-import { api } from "@/lib/api";
+import {
+  useState,
+} from "react";
 
-import { useDrawer } from "@/contexts/DrawerContext";
+import {
+  api,
+} from "@/lib/api";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
 
 import type {
   Digest,
 } from "@/types/digest";
 
+
+/* ========================================================= */
+
 type Props = {
+
   digest: Digest;
+
 };
+
+
+/* ========================================================= */
 
 export default function DigestRow({
   digest,
@@ -20,18 +36,102 @@ export default function DigestRow({
     openRightDrawer,
   } = useDrawer();
 
+  const [
+    loadingAction,
+    setLoadingAction,
+  ] = useState<
+    "generate" | "send" | null
+  >(null);
+
+
+  /* =====================================================
+     ACTION AVAILABILITY
+  ===================================================== */
+
+  const canGenerate = (
+
+    digest.status === "created"
+
+    || digest.status === "failed"
+
+  );
+
+  const canPreview = (
+
+    digest.status === "generated"
+
+    || digest.status === "sent"
+
+  );
+
+  const canSend = (
+    digest.status === "generated"
+  );
+
+  const loading =
+    loadingAction !== null;
+
+
+  /* =====================================================
+     GENERATE
+  ===================================================== */
+
   async function handleGenerate() {
 
-    await api.post(
-      `/digest/digests/${digest.id}/generate`,
-      {},
-    );
+    if (
+      !canGenerate
+      || loading
+    ) {
 
-    window.location.reload();
+      return;
+
+    }
+
+    try {
+
+      setLoadingAction(
+        "generate",
+      );
+
+      await api.post(
+        `/digest/digests/${digest.id}/generate`,
+        {},
+      );
+
+      window.location.reload();
+
+    } catch (error) {
+
+      console.error(
+        error,
+      );
+
+      alert(
+        "Unable to generate Digest.",
+      );
+
+    } finally {
+
+      setLoadingAction(
+        null,
+      );
+
+    }
 
   }
 
+
+  /* =====================================================
+     PREVIEW
+  ===================================================== */
+
   function handlePreview() {
+
+    if (!canPreview) {
+
+      return;
+
+    }
 
     openRightDrawer(
       "digest-preview",
@@ -40,16 +140,59 @@ export default function DigestRow({
 
   }
 
+
+  /* =====================================================
+     SEND
+  ===================================================== */
+
   async function handleSend() {
 
-    await api.post(
-      `/digest/digests/${digest.id}/send`,
-      {},
-    );
+    if (
+      !canSend
+      || loading
+    ) {
 
-    window.location.reload();
+      return;
+
+    }
+
+    try {
+
+      setLoadingAction(
+        "send",
+      );
+
+      await api.post(
+        `/digest/digests/${digest.id}/send`,
+        {},
+      );
+
+      window.location.reload();
+
+    } catch (error) {
+
+      console.error(
+        error,
+      );
+
+      alert(
+        "Unable to send Digest.",
+      );
+
+    } finally {
+
+      setLoadingAction(
+        null,
+      );
+
+    }
 
   }
+
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
 
@@ -61,7 +204,8 @@ export default function DigestRow({
 
           <span className="font-medium">
 
-            {digest.user_name ?? digest.user_id}
+            {digest.user_name
+              ?? digest.user_id}
 
           </span>
 
@@ -102,24 +246,47 @@ export default function DigestRow({
         <div className="flex justify-end gap-2">
 
           <button
+            type="button"
+            disabled={
+              !canGenerate
+              || loading
+            }
             onClick={handleGenerate}
-            className="rounded border px-3 py-1 hover:bg-gray-50"
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Generate
+
+            {loadingAction === "generate"
+              ? "Generating..."
+              : "Generate"}
+
           </button>
 
           <button
+            type="button"
+            disabled={
+              !canPreview
+              || loading
+            }
             onClick={handlePreview}
-            className="rounded border px-3 py-1 hover:bg-gray-50"
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Preview
           </button>
 
           <button
+            type="button"
+            disabled={
+              !canSend
+              || loading
+            }
             onClick={handleSend}
-            className="rounded border px-3 py-1 hover:bg-gray-50"
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Send
+
+            {loadingAction === "send"
+              ? "Sending..."
+              : "Send"}
+
           </button>
 
         </div>
