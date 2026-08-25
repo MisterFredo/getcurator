@@ -145,8 +145,6 @@ def bootstrap_profile_digests(
 
             campaign = create_campaign_for_period(
 
-                frequency="weekly",
-
                 audience=audience,
 
                 period_start=period_start,
