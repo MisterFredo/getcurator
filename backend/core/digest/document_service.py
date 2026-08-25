@@ -1,6 +1,8 @@
-# backend/core/digest/document_service.py
+from datetime import (
+    datetime,
+    timezone,
+)
 
-from datetime import datetime
 from typing import Literal
 
 from core.delivery.models import (
@@ -22,6 +24,18 @@ from core.expertise.capabilities import (
     CAPABILITY_STRUCTURE,
 )
 
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+DIGEST_FREQUENCY = "weekly"
+
+DIGEST_TITLE = (
+    "Weekly Curator Digest"
+)
+
+
 # ============================================================
 # DISPLAY ORDER
 # ============================================================
@@ -37,6 +51,7 @@ DISPLAY_ORDER = [
     CAPABILITY_STRUCTURE,
 
 ]
+
 
 # ============================================================
 # SECTION TITLES
@@ -60,6 +75,7 @@ SECTION_TITLES = {
 
 SECTION_ARTICLES = "Articles"
 
+
 # ============================================================
 # BUILD DOCUMENT
 # ============================================================
@@ -69,11 +85,14 @@ def build_digest_document(
     knowledge: KnowledgeResult,
     period_start: datetime,
     period_end: datetime,
-    frequency: Literal["weekly", "monthly"],
-    audience: Literal["user", "expert"],
+    audience: Literal[
+        "user",
+        "expert",
+    ],
 ) -> DigestDocument:
     """
-    Build a DigestDocument from a KnowledgeResult.
+    Build one weekly DigestDocument
+    from a KnowledgeResult.
     """
 
     sections: list[DigestSection] = []
@@ -93,6 +112,7 @@ def build_digest_document(
         )
 
         if not result:
+
             continue
 
         sections.append(
@@ -114,9 +134,12 @@ def build_digest_document(
     # REMAINING CAPABILITIES
     # ========================================================
 
-    for capability, result in capability_results.items():
+    for capability, result in (
+        capability_results.items()
+    ):
 
         if capability in DISPLAY_ORDER:
+
             continue
 
         sections.append(
@@ -140,9 +163,13 @@ def build_digest_document(
 
     cards = [
 
-        _build_card(content)
+        _build_card(
+            content,
+        )
 
-        for content in knowledge.expertise.contents
+        for content in (
+            knowledge.expertise.contents
+        )
 
     ]
 
@@ -168,28 +195,32 @@ def build_digest_document(
 
     return DigestDocument(
 
-        frequency=frequency,
+        frequency=DIGEST_FREQUENCY,
+
         audience=audience,
 
-        title=_build_title(
-            period_start,
-            period_end,
-        ),
+        title=DIGEST_TITLE,
 
         subtitle="",
 
         period=_format_period(
+
             period_start,
+
             period_end,
+
         ),
 
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(
+            timezone.utc,
+        ),
 
         profile=profile,
 
         sections=sections,
 
     )
+
 
 # ============================================================
 # CARD
@@ -273,46 +304,17 @@ def _build_card(
 
     )
 
-# ============================================================
-# TITLE
-# ============================================================
-
-def _build_title(
-
-    period_start: datetime,
-
-    period_end: datetime,
-
-) -> str:
-    """
-    Build the digest title.
-    """
-
-    duration = (
-        period_end
-        - period_start
-    ).days
-
-    if duration <= 8:
-
-        return "Weekly Curator Digest"
-
-    return "Monthly Curator Digest"
-
 
 # ============================================================
 # PERIOD
 # ============================================================
 
 def _format_period(
-
     period_start: datetime,
-
     period_end: datetime,
-
 ) -> str:
     """
-    Format the digest period.
+    Format the weekly Digest period.
     """
 
     start = period_start.strftime(
