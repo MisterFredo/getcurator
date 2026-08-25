@@ -2,13 +2,23 @@
 
 import Link from "next/link";
 
-import type { Campaign } from "@/types/digest";
+import type {
+  Campaign,
+} from "@/types/digest";
 
 import CampaignActions from "./CampaignActions";
 
+
+/* ========================================================= */
+
 type Props = {
+
   campaign: Campaign;
+
 };
+
+
+/* ========================================================= */
 
 export default function CampaignRow({
   campaign,
@@ -19,40 +29,47 @@ export default function CampaignRow({
     <tr className="border-t">
 
       <td className="px-4 py-3 capitalize">
-        {campaign.frequency}
-      </td>
 
-      <td className="px-4 py-3 capitalize">
         {campaign.audience}
+
       </td>
 
       <td className="px-4 py-3">
-        {campaign.period_start}
-        {" "}
-        →
-        {" "}
-        {campaign.period_end}
+
+        {formatPeriod(
+          campaign.period_start,
+          campaign.period_end,
+        )}
+
       </td>
 
       <td className="px-4 py-3 capitalize">
+
         {campaign.status}
+
       </td>
 
       <td className="px-4 py-3 text-right">
+
         {campaign.digests_count}
+
       </td>
 
       <td className="px-4 py-3 text-right">
+
         {campaign.generated_count}
+
       </td>
 
       <td className="px-4 py-3 text-right">
+
         {campaign.sent_count}
+
       </td>
 
       <td className="px-4 py-3">
 
-        <div className="flex justify-end items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
 
           <CampaignActions
             campaign={campaign}
@@ -72,5 +89,47 @@ export default function CampaignRow({
     </tr>
 
   );
+
+}
+
+
+/* ========================================================= */
+
+function formatPeriod(
+  periodStart: string,
+  periodEnd: string,
+): string {
+
+  const start =
+    new Date(
+      periodStart,
+    );
+
+  const end =
+    new Date(
+      periodEnd,
+    );
+
+  const startLabel =
+    start.toLocaleDateString(
+      "en-US",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      },
+    );
+
+  const endLabel =
+    end.toLocaleDateString(
+      "en-US",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      },
+    );
+
+  return `${startLabel} → ${endLabel}`;
 
 }
