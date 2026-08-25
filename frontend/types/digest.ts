@@ -294,7 +294,8 @@ export type DigestBootstrapResult = {
   status:
     | "completed"
     | "partial"
-    | "failed";
+    | "failed"
+    | "not_eligible";
 
   user_id: string;
 
@@ -320,7 +321,8 @@ export type DigestBulkBootstrapResult = {
   status:
     | "completed"
     | "partial"
-    | "failed";
+    | "failed"
+    | "not_eligible";
 
   profiles_count: number;
 
