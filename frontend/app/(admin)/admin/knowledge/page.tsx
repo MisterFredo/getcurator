@@ -4,6 +4,7 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -23,6 +24,7 @@ import type {
   KnowledgeExplorer as Explorer,
   KnowledgeEntitySummary,
 } from "@/types/knowledge";
+
 
 /* ========================================================= */
 
@@ -50,6 +52,56 @@ export default function KnowledgePage() {
   ] =
     useState(true);
 
+
+  /* =======================================================
+     SEARCH
+  ======================================================= */
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] =
+    useState("");
+
+
+  const filteredEntities =
+    useMemo(
+      () => {
+
+        if (!explorer) {
+
+          return [];
+
+        }
+
+        const normalizedQuery =
+          searchQuery
+            .trim()
+            .toLocaleLowerCase();
+
+        if (!normalizedQuery) {
+
+          return explorer.entities;
+
+        }
+
+        return explorer.entities.filter(
+          entity =>
+            entity.name
+              .toLocaleLowerCase()
+              .includes(
+                normalizedQuery,
+              ),
+        );
+
+      },
+      [
+        explorer,
+        searchQuery,
+      ],
+    );
+
+
   /* =======================================================
      MULTI SELECTION
   ======================================================= */
@@ -61,6 +113,7 @@ export default function KnowledgePage() {
     useState<string[]>(
       [],
     );
+
 
   /* =======================================================
      MULTI BUILD
@@ -84,6 +137,7 @@ export default function KnowledgePage() {
       null,
     );
 
+
   /* =======================================================
      ENTITY KEY
   ======================================================= */
@@ -98,6 +152,7 @@ export default function KnowledgePage() {
 
   }
 
+
   /* =======================================================
      LOAD
   ======================================================= */
@@ -107,8 +162,8 @@ export default function KnowledgePage() {
     try {
 
       const [
-        dashboard,
-        explorer,
+        dashboardResult,
+        explorerResult,
       ] = await Promise.all([
 
         getKnowledgeDashboard(),
@@ -118,16 +173,18 @@ export default function KnowledgePage() {
       ]);
 
       setDashboard(
-        dashboard,
+        dashboardResult,
       );
 
       setExplorer(
-        explorer,
+        explorerResult,
       );
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error,
+      );
 
       alert(
         "Unable to load Knowledge Cockpit.",
@@ -143,6 +200,7 @@ export default function KnowledgePage() {
 
   }
 
+
   /* =======================================================
      INITIAL LOAD
   ======================================================= */
@@ -153,6 +211,7 @@ export default function KnowledgePage() {
 
   }, []);
 
+
   /* =======================================================
      TOGGLE ENTITY
   ======================================================= */
@@ -162,7 +221,9 @@ export default function KnowledgePage() {
   ) {
 
     if (multiBuilding) {
+
       return;
+
     }
 
     const key =
@@ -196,6 +257,7 @@ export default function KnowledgePage() {
 
   }
 
+
   /* =======================================================
      SET SELECTION
   ======================================================= */
@@ -205,7 +267,9 @@ export default function KnowledgePage() {
   ) {
 
     if (multiBuilding) {
+
       return;
+
     }
 
     setSelectedKeys(
@@ -215,6 +279,7 @@ export default function KnowledgePage() {
     );
 
   }
+
 
   /* =======================================================
      MULTI AUTO CONTINUE
@@ -229,7 +294,9 @@ export default function KnowledgePage() {
       ||
       selectedKeys.length === 0
     ) {
+
       return;
+
     }
 
     /*
@@ -252,7 +319,9 @@ export default function KnowledgePage() {
     if (
       selectedEntities.length === 0
     ) {
+
       return;
+
     }
 
     setMultiBuilding(
@@ -273,6 +342,7 @@ export default function KnowledgePage() {
           selectedEntities[index];
 
         setCurrentBuild({
+
           index:
             index + 1,
 
@@ -281,6 +351,7 @@ export default function KnowledgePage() {
 
           name:
             entity.name,
+
         });
 
         try {
@@ -306,7 +377,7 @@ export default function KnowledgePage() {
 
           });
 
-        } catch (e) {
+        } catch (error) {
 
           failed += 1;
 
@@ -314,7 +385,7 @@ export default function KnowledgePage() {
             "Knowledge multi build failed:",
             entity.entity_type,
             entity.entity_id,
-            e,
+            error,
           );
 
           /*
@@ -354,6 +425,7 @@ export default function KnowledgePage() {
 
   }
 
+
   /* =======================================================
      RENDER
   ======================================================= */
@@ -361,12 +433,17 @@ export default function KnowledgePage() {
   if (loading) {
 
     return (
+
       <div>
+
         Loading...
+
       </div>
+
     );
 
   }
+
 
   return (
 
@@ -374,63 +451,124 @@ export default function KnowledgePage() {
 
       <KnowledgeHeader />
 
-      {
 
-        dashboard && (
+      {/* ================================================= */}
+      {/* SEARCH */}
+      {/* ================================================= */}
 
-          <KnowledgeDashboard
+      <div className="rounded-xl border bg-white p-4">
 
-            dashboard={
-              dashboard
+        <label
+          htmlFor="knowledge-search"
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
+          Search by name
+        </label>
+
+        <div className="flex items-center gap-3">
+
+          <input
+            id="knowledge-search"
+            type="search"
+            value={searchQuery}
+            disabled={multiBuilding}
+            onChange={event =>
+              setSearchQuery(
+                event.target.value,
+              )
             }
-
+            placeholder="Company, solution or topic..."
+            className="w-full max-w-xl rounded-lg border px-3 py-2 text-sm outline-none focus:border-ratecard-blue disabled:bg-gray-100"
           />
 
-        )
+          {searchQuery && (
 
-      }
+            <button
+              type="button"
+              disabled={multiBuilding}
+              onClick={() =>
+                setSearchQuery("")
+              }
+              className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Clear
+            </button>
+
+          )}
+
+          <span className="text-sm text-gray-500">
+
+            {filteredEntities.length} result
+            {filteredEntities.length !== 1
+              ? "s"
+              : ""}
+
+          </span>
+
+        </div>
+
+      </div>
+
+
+      {/* ================================================= */}
+      {/* DASHBOARD */}
+      {/* ================================================= */}
+
+      {dashboard && (
+
+        <KnowledgeDashboard
+          dashboard={dashboard}
+        />
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* TOOLBAR */}
+      {/* ================================================= */}
 
       <KnowledgeToolbar />
 
-      {
 
-        explorer && (
+      {/* ================================================= */}
+      {/* EXPLORER */}
+      {/* ================================================= */}
 
-          <KnowledgeExplorer
+      {explorer && (
 
-            entities={
-              explorer.entities
-            }
+        <KnowledgeExplorer
 
-            selectedKeys={
-              selectedKeys
-            }
+          entities={
+            filteredEntities
+          }
 
-            multiBuilding={
-              multiBuilding
-            }
+          selectedKeys={
+            selectedKeys
+          }
 
-            currentBuild={
-              currentBuild
-            }
+          multiBuilding={
+            multiBuilding
+          }
 
-            onToggleEntity={
-              handleToggleEntity
-            }
+          currentBuild={
+            currentBuild
+          }
 
-            onSetSelection={
-              handleSetSelection
-            }
+          onToggleEntity={
+            handleToggleEntity
+          }
 
-            onMultiBuild={
-              handleMultiBuild
-            }
+          onSetSelection={
+            handleSetSelection
+          }
 
-          />
+          onMultiBuild={
+            handleMultiBuild
+          }
 
-        )
+        />
 
-      }
+      )}
 
     </div>
 
