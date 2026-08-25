@@ -1,8 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { api } from "@/lib/api";
+import {
+  api,
+} from "@/lib/api";
+
+
+/* =========================================================
+   DIGEST ROUTES
+========================================================= */
+
+const DIGEST_OPERATION_ROUTES:
+  Record<string, string> = {
+
+    "initialize-digest-histories":
+      "/digest/bootstrap-all",
+
+    "generate-all-digests":
+      "/digest/campaigns/generate-all",
+
+  };
+
 
 /* ========================================================= */
 
@@ -27,7 +48,10 @@ export function useCockpitOperations() {
     null,
   );
 
-  /* ======================================================= */
+
+  /* =====================================================
+     RUN
+  ===================================================== */
 
   async function run(
     operation: string,
@@ -41,15 +65,27 @@ export function useCockpitOperations() {
 
       setError(null);
 
+      const endpoint = (
+
+        DIGEST_OPERATION_ROUTES[
+          operation
+        ]
+
+        || `/cockpit/operations/${operation}`
+
+      );
+
       const res =
         await api.post(
-          `/cockpit/operations/${operation}`,
+          endpoint,
           {},
         );
 
       setSuccess(
-        res.message ||
-        "Operation completed.",
+        buildSuccessMessage(
+          operation,
+          res,
+        ),
       );
 
       return res;
@@ -62,8 +98,8 @@ export function useCockpitOperations() {
       );
 
       setError(
-        e?.message ||
-        "Operation failed.",
+        e?.message
+        || "Operation failed.",
       );
 
       throw e;
@@ -76,7 +112,10 @@ export function useCockpitOperations() {
 
   }
 
-  /* ======================================================= */
+
+  /* =====================================================
+     RESET
+  ===================================================== */
 
   function reset() {
 
@@ -86,7 +125,10 @@ export function useCockpitOperations() {
 
   }
 
-  /* ======================================================= */
+
+  /* =====================================================
+     RETURN
+  ===================================================== */
 
   return {
 
@@ -101,5 +143,58 @@ export function useCockpitOperations() {
     reset,
 
   };
+
+}
+
+
+/* =========================================================
+   SUCCESS MESSAGE
+========================================================= */
+
+function buildSuccessMessage(
+  operation: string,
+  result: any,
+): string {
+
+  if (
+    operation
+    === "initialize-digest-histories"
+  ) {
+
+    return [
+
+      `${result.processed_count ?? 0} profiles processed`,
+
+      `${result.generated_count ?? 0} Digests generated`,
+
+      `${result.skipped_count ?? 0} already available`,
+
+      `${result.failed_count ?? 0} failed`,
+
+    ].join(" · ");
+
+  }
+
+  if (
+    operation
+    === "generate-all-digests"
+  ) {
+
+    return [
+
+      `${result.campaigns_count ?? 0} Campaigns processed`,
+
+      `${result.generated_count ?? 0} Digests generated`,
+
+      `${result.failed_count ?? 0} failed`,
+
+    ].join(" · ");
+
+  }
+
+  return (
+    result.message
+    || "Operation completed."
+  );
 
 }
