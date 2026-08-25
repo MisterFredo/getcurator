@@ -87,7 +87,7 @@ export default function DigestPage() {
 
           <p className="text-sm text-gray-500">
 
-            Generate and send weekly or monthly digest campaigns.
+            Generate and send weekly digest campaigns.
 
           </p>
 
