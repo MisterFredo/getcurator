@@ -28,7 +28,7 @@ from core.user.user_service import (
 # CONFIGURATION
 # ============================================================
 
-BOOTSTRAP_MONTHS_COUNT = 3
+BOOTSTRAP_WEEKS_COUNT = 3
 
 
 # ============================================================
@@ -40,7 +40,7 @@ def bootstrap_profile_digests(
 ) -> dict:
     """
     Ensure that one profile has its three most
-    recent complete monthly Digests.
+    recent complete weekly Digests.
 
     Existing generated or sent Digests are never
     regenerated.
@@ -113,8 +113,8 @@ def bootstrap_profile_digests(
     # PERIODS
     # ========================================================
 
-    periods = _build_monthly_periods(
-        count=BOOTSTRAP_MONTHS_COUNT,
+    periods = _build_weekly_periods(
+        count=BOOTSTRAP_WEEKS_COUNT,
     )
 
     # ========================================================
@@ -127,7 +127,7 @@ def bootstrap_profile_digests(
 
             user_id=user_id,
 
-            frequency="monthly",
+            frequency="weekly",
 
             period_start=period_start,
 
@@ -145,7 +145,7 @@ def bootstrap_profile_digests(
 
             campaign = create_campaign_for_period(
 
-                frequency="monthly",
+                frequency="weekly",
 
                 audience=audience,
 
@@ -315,7 +315,15 @@ def bootstrap_profile_digests(
 
     if result["failed_count"]:
 
-        if result["generated_count"]:
+        available_count = (
+
+            result["generated_count"]
+
+            + result["skipped_count"]
+
+        )
+
+        if available_count:
 
             result["status"] = "partial"
 
@@ -327,24 +335,33 @@ def bootstrap_profile_digests(
 
 
 # ============================================================
-# MONTHLY PERIODS
+# WEEKLY PERIODS
 # ============================================================
 
-def _build_monthly_periods(
+def _build_weekly_periods(
     count: int,
 ) -> list[tuple[datetime, datetime]]:
     """
-    Return the most recent complete calendar months,
+    Return the most recent complete calendar weeks,
     ordered from newest to oldest.
+
+    A complete week runs from Monday at 00:00 UTC
+    to Sunday at 23:59:59.999999 UTC.
     """
 
     now = datetime.now(
         timezone.utc,
     )
 
-    cursor = now.replace(
+    current_monday = (
 
-        day=1,
+        now
+
+        - timedelta(
+            days=now.weekday(),
+        )
+
+    ).replace(
 
         hour=0,
         minute=0,
@@ -352,6 +369,8 @@ def _build_monthly_periods(
         microsecond=0,
 
     )
+
+    cursor = current_monday
 
     periods = []
 
@@ -367,14 +386,13 @@ def _build_monthly_periods(
 
         )
 
-        period_start = period_end.replace(
+        period_start = (
 
-            day=1,
+            cursor
 
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
+            - timedelta(
+                days=7,
+            )
 
         )
 
@@ -459,10 +477,6 @@ def _refresh_campaign_generation(
                 else "created"
 
             )
-
-        elif campaign.failed_count:
-
-            campaign.status = "generated"
 
         else:
 
