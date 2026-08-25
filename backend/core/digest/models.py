@@ -20,10 +20,6 @@ from core.delivery.models import (
 # TYPES
 # ============================================================
 
-DigestFrequency = Literal[
-    "weekly",
-]
-
 DigestAudience = Literal[
     "user",
     "expert",
@@ -155,8 +151,6 @@ class DigestDocument(
         default_factory=list,
     )
 
-    frequency: DigestFrequency
-
     audience: DigestAudience
 
 
@@ -216,8 +210,6 @@ class Campaign(
         ),
     )
 
-    frequency: DigestFrequency
-
     audience: DigestAudience
 
     period_start: datetime
@@ -259,11 +251,6 @@ class Campaign(
 class CampaignCreateRequest(
     BaseModel,
 ):
-
-    # Retained in the API payload for compatibility,
-    # but only weekly is accepted.
-
-    frequency: DigestFrequency = "weekly"
 
     audience: DigestAudience
 
