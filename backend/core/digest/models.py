@@ -2,6 +2,7 @@ from datetime import (
     datetime,
     timezone,
 )
+
 from typing import Literal
 from uuid import uuid4
 
@@ -14,7 +15,28 @@ from core.delivery.models import (
     KnowledgeResult,
 )
 
-class DigestBadge(BaseModel):
+
+# ============================================================
+# TYPES
+# ============================================================
+
+DigestFrequency = Literal[
+    "weekly",
+]
+
+DigestAudience = Literal[
+    "user",
+    "expert",
+]
+
+
+# ============================================================
+# DIGEST BADGE
+# ============================================================
+
+class DigestBadge(
+    BaseModel,
+):
 
     label: str
 
@@ -26,7 +48,13 @@ class DigestBadge(BaseModel):
     ]
 
 
-class DigestProfile(BaseModel):
+# ============================================================
+# DIGEST PROFILE
+# ============================================================
+
+class DigestProfile(
+    BaseModel,
+):
 
     name: str
 
@@ -35,12 +63,12 @@ class DigestProfile(BaseModel):
     role: str | None = None
 
     description: str | None = None
+
     geography_1: str | None = None
 
     geography_2: str | None = None
 
     geography_3: str | None = None
-
 
     companies: list[DigestBadge] = Field(
         default_factory=list,
@@ -58,7 +86,14 @@ class DigestProfile(BaseModel):
         default_factory=list,
     )
 
-class DigestCard(BaseModel):
+
+# ============================================================
+# DIGEST CARD
+# ============================================================
+
+class DigestCard(
+    BaseModel,
+):
 
     id: str
 
@@ -81,7 +116,13 @@ class DigestCard(BaseModel):
     )
 
 
-class DigestSection(BaseModel):
+# ============================================================
+# DIGEST SECTION
+# ============================================================
+
+class DigestSection(
+    BaseModel,
+):
 
     title: str
 
@@ -92,7 +133,13 @@ class DigestSection(BaseModel):
     )
 
 
-class DigestDocument(BaseModel):
+# ============================================================
+# DIGEST DOCUMENT
+# ============================================================
+
+class DigestDocument(
+    BaseModel,
+):
 
     title: str
 
@@ -104,61 +151,77 @@ class DigestDocument(BaseModel):
 
     profile: DigestProfile
 
-    sections: list[DigestSection]
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ]
+    sections: list[DigestSection] = Field(
+        default_factory=list,
+    )
 
-    audience: Literal[
-        "user",
-        "expert",
-    ]
+    frequency: DigestFrequency
+
+    audience: DigestAudience
+
 
 # ============================================================
 # DIGEST
 # ============================================================
 
-class Digest(BaseModel):
+class Digest(
+    BaseModel,
+):
 
     id: str = Field(
-        default_factory=lambda: str(uuid4()),
+        default_factory=lambda: str(
+            uuid4()
+        ),
     )
+
     campaign_id: str
+
     user_id: str
+
     status: Literal[
         "created",
         "generating",
         "generated",
+        "sending",
         "sent",
         "failed",
     ]
 
     total_contents: int = 0
+
     analyzed_contents: int = 0
+
     knowledge: KnowledgeResult | None = None
+
     document: DigestDocument | None = None
+
     generated_at: datetime | None = None
+
     sent_at: datetime | None = None
+
     error: str | None = None
+
 
 # ============================================================
 # CAMPAIGN
 # ============================================================
 
-class Campaign(BaseModel):
+class Campaign(
+    BaseModel,
+):
+
     id: str = Field(
-        default_factory=lambda: str(uuid4()),
+        default_factory=lambda: str(
+            uuid4()
+        ),
     )
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ]
-    audience: Literal[
-        "user",
-        "expert",
-    ]
+
+    frequency: DigestFrequency
+
+    audience: DigestAudience
+
     period_start: datetime
+
     period_end: datetime
 
     status: Literal[
@@ -169,52 +232,78 @@ class Campaign(BaseModel):
         "completed",
         "failed",
     ]
+
     digests_count: int = 0
+
     generated_count: int = 0
+
     sent_count: int = 0
+
     failed_count: int = 0
+
     created_at: datetime = Field(
+
         default_factory=lambda: datetime.now(
             timezone.utc,
         )
+
     )
 
     completed_at: datetime | None = None
+
 
 # ============================================================
 # CAMPAIGN CREATE REQUEST
 # ============================================================
 
-class CampaignCreateRequest(BaseModel):
-    frequency: Literal[
-        "weekly",
-        "monthly",
-    ]
-    audience: Literal[
-        "user",
-        "expert",
-    ]
+class CampaignCreateRequest(
+    BaseModel,
+):
+
+    # Retained in the API payload for compatibility,
+    # but only weekly is accepted.
+
+    frequency: DigestFrequency = "weekly"
+
+    audience: DigestAudience
+
+
 # ============================================================
 # CAMPAIGN DIGEST
 # ============================================================
 
-class CampaignDigest(Digest):
+class CampaignDigest(
+    Digest,
+):
+
     user_name: str | None = None
+
     user_email: str | None = None
+
 
 # ============================================================
 # CAMPAIGN DETAIL
 # ============================================================
 
-class CampaignDetail(BaseModel):
+class CampaignDetail(
+    BaseModel,
+):
+
     campaign: Campaign
-    digests: list[CampaignDigest]
+
+    digests: list[CampaignDigest] = Field(
+        default_factory=list,
+    )
+
 
 # ============================================================
-# DIGEST PROFILE
+# DIGEST RECIPIENT
 # ============================================================
 
-class DigestRecipient(BaseModel):
+class DigestRecipient(
+    BaseModel,
+):
+
     user_id: str
-    language: str
 
+    language: str
