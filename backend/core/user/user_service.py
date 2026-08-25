@@ -226,11 +226,6 @@ def create_user(payload):
 
     description = payload.description
 
-    frequency = (
-        payload.frequency
-        or "WEEKLY"
-    )
-
     is_active = (
         True
         if payload.is_active is None
@@ -256,7 +251,6 @@ def create_user(payload):
             PROFILE_TYPE,
             DISPLAY_NAME,
             DESCRIPTION,
-            FREQUENCY,
             IS_ACTIVE,
             CREATED_AT
         )
@@ -271,7 +265,6 @@ def create_user(payload):
             @profile_type,
             @display_name,
             @description,
-            @frequency,
             @is_active,
             CURRENT_TIMESTAMP()
         )
@@ -287,7 +280,6 @@ def create_user(payload):
             "profile_type": profile_type,
             "display_name": display_name,
             "description": description,
-            "frequency": frequency,
             "is_active": is_active,
         },
     )
@@ -360,11 +352,6 @@ def update_user(payload):
                 DESCRIPTION
             ),
 
-            FREQUENCY = COALESCE(
-                @frequency,
-                FREQUENCY
-            ),
-
             IS_ACTIVE = COALESCE(
                 @is_active,
                 IS_ACTIVE
@@ -393,9 +380,6 @@ def update_user(payload):
 
             "description":
                 payload.description,
-
-            "frequency":
-                payload.frequency,
 
             "is_active":
                 payload.is_active,
@@ -668,7 +652,6 @@ def list_digest_users(
         u.LANGUAGE,
         u.ROLE,
         u.PROFILE_TYPE,
-        u.FREQUENCY,
         u.CREATED_AT,
 
         ds.LAST_SENT_AT
@@ -751,7 +734,6 @@ def get_user(
         LANGUAGE,
         ROLE,
         PROFILE_TYPE,
-        FREQUENCY,
         IS_ACTIVE,
         CREATED_AT
 
