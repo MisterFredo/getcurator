@@ -15,8 +15,6 @@ export type DigestHistoryItem = {
 
   SENT_AT?: string | null;
 
-  FREQUENCY?: string | null;
-
   AUDIENCE?: string | null;
 
   PERIOD_START?: string | null;
