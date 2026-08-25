@@ -29,8 +29,6 @@ from core.expertise.capabilities import (
 # CONFIGURATION
 # ============================================================
 
-DIGEST_FREQUENCY = "weekly"
-
 DIGEST_TITLE = (
     "Weekly Curator Digest"
 )
@@ -91,8 +89,8 @@ def build_digest_document(
     ],
 ) -> DigestDocument:
     """
-    Build one weekly DigestDocument
-    from a KnowledgeResult.
+    Build one DigestDocument from
+    a KnowledgeResult.
     """
 
     sections: list[DigestSection] = []
@@ -194,8 +192,6 @@ def build_digest_document(
     # ========================================================
 
     return DigestDocument(
-
-        frequency=DIGEST_FREQUENCY,
 
         audience=audience,
 
@@ -314,7 +310,7 @@ def _format_period(
     period_end: datetime,
 ) -> str:
     """
-    Format the weekly Digest period.
+    Format the Digest weekly period.
     """
 
     start = period_start.strftime(
