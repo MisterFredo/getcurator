@@ -117,7 +117,6 @@ def get_user_experts(
         u.DISPLAY_NAME,
         u.NAME,
         u.DESCRIPTION,
-        u.FREQUENCY,
         u.IS_ACTIVE,
 
         EXISTS (
@@ -128,13 +127,17 @@ def get_user_experts(
 
             WHERE
                 selected.ID_EXPERT = u.ID_USER
+
             AND
                 selected.ID_USER = @user_id
 
         ) AS IS_SELECTED,
 
         (
-            SELECT COUNT(DISTINCT x.ID_USER)
+            SELECT
+                COUNT(
+                    DISTINCT x.ID_USER
+                )
 
             FROM `{TABLE_USER_EXPERT}` x
 
@@ -149,6 +152,8 @@ def get_user_experts(
 
         u.PROFILE_TYPE = "EXPERT"
 
+        AND u.IS_ACTIVE = TRUE
+
     ORDER BY
 
         u.DISPLAY_NAME,
@@ -159,7 +164,8 @@ def get_user_experts(
     return query_bq(
         query,
         {
-            "user_id": user_id,
+            "user_id":
+                user_id,
         },
     ) or []
 
