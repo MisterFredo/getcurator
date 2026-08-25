@@ -1,5 +1,3 @@
-# backend/core/digest/digest_profile_service.py
-
 from core.digest.models import (
     DigestBadge,
     DigestProfile,
@@ -30,17 +28,20 @@ def build_digest_profile(
     user_id: str,
 ) -> DigestProfile:
     """
-    Build the profile used to personalize
-    a DigestDocument.
+    Build the profile snapshot used to personalize
+    one weekly DigestDocument.
     """
 
     # ========================================================
     # LOAD USER
     # ========================================================
 
-    user = get_user(user_id)
+    user = get_user(
+        user_id,
+    )
 
     if not user:
+
         raise ValueError(
             f"Unknown user: {user_id}"
         )
@@ -50,7 +51,9 @@ def build_digest_profile(
     # ========================================================
 
     profile = (
-        get_user_profile(user_id)
+        get_user_profile(
+            user_id,
+        )
         or {}
     )
 
@@ -59,7 +62,9 @@ def build_digest_profile(
     # ========================================================
 
     preferences = (
-        get_user_preferences_detailed(user_id)
+        get_user_preferences_detailed(
+            user_id,
+        )
         or {}
     )
 
@@ -68,7 +73,9 @@ def build_digest_profile(
     # ========================================================
 
     keywords = (
-        get_user_keywords(user_id)
+        get_user_keywords(
+            user_id,
+        )
         or []
     )
 
@@ -79,9 +86,13 @@ def build_digest_profile(
     return DigestProfile(
 
         name=(
+
             user.get("DISPLAY_NAME")
+
             or user.get("NAME")
+
             or ""
+
         ),
 
         company=user.get(
@@ -96,28 +107,49 @@ def build_digest_profile(
             "profile_text"
         ),
 
+        geography_1=profile.get(
+            "geography_1"
+        ),
+
+        geography_2=profile.get(
+            "geography_2"
+        ),
+
+        geography_3=profile.get(
+            "geography_3"
+        ),
+
         companies=_build_badges(
+
             preferences.get(
                 "companies",
                 [],
             ),
+
             "company",
+
         ),
 
         topics=_build_badges(
+
             preferences.get(
                 "topics",
                 [],
             ),
+
             "topic",
+
         ),
 
         solutions=_build_badges(
+
             preferences.get(
                 "solutions",
                 [],
             ),
+
             "solution",
+
         ),
 
         keywords=keywords,
@@ -138,9 +170,12 @@ def _build_badges(
 
     for value in values:
 
-        label = value.get("label")
+        label = value.get(
+            "label"
+        )
 
         if not label:
+
             continue
 
         badges.append(
