@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+} from "react";
 
 import {
   createCampaign,
@@ -8,11 +10,20 @@ import {
 
 import type {
   CampaignCreateRequest,
+  DigestAudience,
 } from "@/types/digest";
 
+
+/* ========================================================= */
+
 type Props = {
+
   onCreated: () => void;
+
 };
+
+
+/* ========================================================= */
 
 export default function CreateCampaignDialog({
   onCreated,
@@ -29,30 +40,49 @@ export default function CreateCampaignDialog({
   ] = useState(false);
 
   const [
-    form,
-    setForm,
-  ] = useState<CampaignCreateRequest>({
-    frequency: "weekly",
-    audience: "user",
-  });
+    audience,
+    setAudience,
+  ] = useState<DigestAudience>(
+    "user",
+  );
+
+
+  /* =====================================================
+     CREATE
+  ===================================================== */
 
   async function handleCreate() {
 
-    setLoading(true);
-
     try {
 
+      setLoading(true);
+
+      const payload:
+        CampaignCreateRequest = {
+
+          audience,
+
+        };
+
       await createCampaign(
-        form,
+        payload,
       );
 
       setOpen(false);
 
       onCreated();
 
-    }
+    } catch (error) {
 
-    finally {
+      console.error(
+        error,
+      );
+
+      alert(
+        "Unable to create Campaign.",
+      );
+
+    } finally {
 
       setLoading(false);
 
@@ -60,12 +90,20 @@ export default function CreateCampaignDialog({
 
   }
 
+
+  /* =====================================================
+     CLOSED
+  ===================================================== */
+
   if (!open) {
 
     return (
 
       <button
-        onClick={() => setOpen(true)}
+        type="button"
+        onClick={() =>
+          setOpen(true)
+        }
         className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
       >
         New Campaign
@@ -75,11 +113,16 @@ export default function CreateCampaignDialog({
 
   }
 
+
+  /* =====================================================
+     DIALOG
+  ===================================================== */
+
   return (
 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 space-y-5">
+      <div className="w-full max-w-lg space-y-5 rounded-lg bg-white p-6">
 
         <h2 className="text-lg font-semibold">
 
@@ -87,57 +130,28 @@ export default function CreateCampaignDialog({
 
         </h2>
 
-        <div>
-
-          <label className="block text-sm mb-1">
-
-            Frequency
-
-          </label>
-
-          <select
-            value={form.frequency}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                frequency:
-                  e.target.value as
-                    "weekly" | "monthly",
-              })
-            }
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="weekly">
-              Weekly
-            </option>
-
-            <option value="monthly">
-              Monthly
-            </option>
-
-          </select>
-
-        </div>
+        {/* ================================================= */}
+        {/* AUDIENCE */}
+        {/* ================================================= */}
 
         <div>
 
-          <label className="block text-sm mb-1">
+          <label className="mb-1 block text-sm">
 
             Audience
 
           </label>
 
           <select
-            value={form.audience}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                audience:
-                  e.target.value as
-                    "user" | "expert",
-              })
+            value={audience}
+            disabled={loading}
+            onChange={(event) =>
+              setAudience(
+                event.target.value as
+                  DigestAudience,
+              )
             }
-            className="w-full rounded border px-3 py-2"
+            className="w-full rounded border px-3 py-2 disabled:opacity-50"
           >
             <option value="user">
               Users
@@ -151,9 +165,13 @@ export default function CreateCampaignDialog({
 
         </div>
 
+        {/* ================================================= */}
+        {/* PERIOD */}
+        {/* ================================================= */}
+
         <div>
 
-          <label className="block text-sm mb-1">
+          <label className="mb-1 block text-sm">
 
             Period
 
@@ -161,24 +179,31 @@ export default function CreateCampaignDialog({
 
           <div className="rounded border bg-gray-50 px-3 py-2 text-sm text-gray-600">
 
-            {form.frequency === "weekly"
-              ? "Previous complete week"
-              : "Previous complete month"}
+            Previous complete week
 
           </div>
 
         </div>
 
+        {/* ================================================= */}
+        {/* ACTIONS */}
+        {/* ================================================= */}
+
         <div className="flex justify-end gap-3">
 
           <button
-            onClick={() => setOpen(false)}
-            className="rounded border px-4 py-2"
+            type="button"
+            disabled={loading}
+            onClick={() =>
+              setOpen(false)
+            }
+            className="rounded border px-4 py-2 disabled:opacity-50"
           >
             Cancel
           </button>
 
           <button
+            type="button"
             disabled={loading}
             onClick={handleCreate}
             className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
