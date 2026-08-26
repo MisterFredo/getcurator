@@ -12,6 +12,10 @@ from core.user.user_profile_service import (
     get_user_profile,
 )
 
+from core.user.user_expert_service import (
+    remove_incompatible_expert_links,
+)
+
 
 # =========================================================
 # TABLES
@@ -761,34 +765,59 @@ def get_user(
 # ASSIGN UNIVERS
 # =========================================================
 
-def assign_universes(user_id: str, universes: list[str]):
+def assign_universes(
+    user_id: str,
+    universes: list[str],
+):
+
     query_bq(
         f"""
         DELETE FROM `{TABLE_USER_UNIVERSE}`
+
         WHERE ID_USER = @user_id
         """,
-        {"user_id": user_id},
+        {
+            "user_id":
+                user_id,
+        },
     )
 
-    for u in universes:
+    for universe_id in universes:
+
         query_bq(
             f"""
             INSERT INTO `{TABLE_USER_UNIVERSE}` (
+
                 ID_USER,
+
                 ID_UNIVERSE,
+
                 CREATED_AT
+
             )
+
             VALUES (
+
                 @user_id,
-                @universe,
+
+                @universe_id,
+
                 CURRENT_TIMESTAMP()
+
             )
             """,
             {
-                "user_id": user_id,
-                "universe": u,
+                "user_id":
+                    user_id,
+
+                "universe_id":
+                    universe_id,
             },
         )
+
+    remove_incompatible_expert_links(
+        changed_user_id=user_id,
+    )
 
 # ============================================================
 # 🔥 USER FILTER FACTO (UNIVERSES)
