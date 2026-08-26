@@ -85,7 +85,9 @@ export default function ExpertCard({
   function handleClick() {
 
     if (isLoading) {
+
       return;
+
     }
 
     onClick?.();
@@ -119,10 +121,10 @@ export default function ExpertCard({
   ========================================================= */
 
   async function handleFavoriteClick(
-    e: React.MouseEvent,
+    event: React.MouseEvent,
   ) {
 
-    e.stopPropagation();
+    event.stopPropagation();
 
     try {
 
@@ -146,11 +148,11 @@ export default function ExpertCard({
         isFavorite,
       );
 
-    } catch (e) {
+    } catch (error) {
 
       console.error(
         "❌ expert favorite error",
-        e,
+        error,
       );
 
     }
@@ -164,12 +166,17 @@ export default function ExpertCard({
   return (
 
     <div
+
       onClick={
         handleClick
       }
+
       className="
         group
+        relative
+        h-full
         cursor-pointer
+        overflow-hidden
         rounded-xl
         border
         border-ratecard-border
@@ -177,43 +184,57 @@ export default function ExpertCard({
         shadow-card
         transition
         hover:shadow-cardHover
-        overflow-hidden
-        relative
       "
+
     >
 
-      {/* FAVORITE */}
+      {/* =====================================================
+          FAVORITE
+      ===================================================== */}
 
       <button
+
         type="button"
+
         onClick={
           handleFavoriteClick
         }
+
         className={`
           absolute
-          top-2
           left-2
+          top-2
           z-20
           cursor-pointer
+          text-[18px]
           leading-none
           transition
-          text-[20px]
 
           ${
+
             isFavorite
+
               ? ""
-              : "text-gray-700 hover:text-black"
+
+              : `
+                text-gray-700
+                hover:text-black
+              `
+
           }
         `}
+
       >
-        {
-          isFavorite
-            ? "⭐"
-            : "☆"
-        }
+
+        {isFavorite
+          ? "⭐"
+          : "☆"}
+
       </button>
 
-      {/* LOADING */}
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
 
       {isLoading && (
 
@@ -222,49 +243,58 @@ export default function ExpertCard({
             absolute
             inset-0
             z-30
-            bg-white/70
-            backdrop-blur-sm
             flex
             items-center
             justify-center
+            bg-white/70
+            backdrop-blur-sm
           "
         >
+
           <div
             className="
+              animate-pulse
               text-xs
               text-gray-500
-              animate-pulse
             "
           >
             Loading...
           </div>
+
         </div>
 
       )}
 
-      {/* IDENTITY */}
+      {/* =====================================================
+          IDENTITY
+      ===================================================== */}
 
       <div
         className="
-          h-24
-          w-full
-          bg-ratecard-light
           flex
+          h-16
+          w-full
           items-center
           justify-center
-          px-6
+          bg-ratecard-light
+          px-8
           text-center
         "
       >
 
-        <div>
+        <div
+          className="
+            min-w-0
+          "
+        >
 
           <div
             className="
-              text-sm
-              font-semibold
-              text-gray-900
               line-clamp-2
+              text-[13px]
+              font-semibold
+              leading-5
+              text-gray-900
             "
           >
             {displayName}
@@ -274,10 +304,10 @@ export default function ExpertCard({
 
             <div
               className="
-                mt-1
-                text-xs
-                text-gray-500
+                mt-0.5
                 line-clamp-1
+                text-[11px]
+                text-gray-500
               "
             >
               {company}
@@ -289,10 +319,15 @@ export default function ExpertCard({
 
       </div>
 
-      {/* DESCRIPTION */}
+      {/* =====================================================
+          DESCRIPTION
+      ===================================================== */}
 
       <div
         className="
+          flex
+          min-h-[72px]
+          items-start
           p-4
         "
       >
@@ -301,10 +336,10 @@ export default function ExpertCard({
 
           <p
             className="
+              line-clamp-3
               text-xs
               leading-5
               text-gray-600
-              line-clamp-4
             "
           >
             {description}
