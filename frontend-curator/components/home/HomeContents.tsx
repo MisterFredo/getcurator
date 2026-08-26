@@ -297,46 +297,53 @@ export default function HomeContents({
 
         ) : (
 
-          <WatchList
-
-            title=""
-
-            total={
-              total
-            }
-
-            items={
-              items
-            }
-
-            loading={
-              false
-            }
-
-            hasMore={
-              false
-            }
-
-            onLoadMore={() => {}}
-
-            onSelect={
-              openContent
-            }
-
-            selectedIds={
-              selectedIds
-            }
-
-            onToggleSelect={
-              toggleSelect
-            }
-
-          />
-
+          <div
+            className="
+              max-h-[420px]
+              overflow-y-auto
+              overscroll-contain
+            "
+          >
+        
+            <WatchList
+        
+              title=""
+        
+              total={
+                total
+              }
+        
+              items={
+                items
+              }
+        
+              loading={
+                false
+              }
+        
+              hasMore={
+                false
+              }
+        
+              onLoadMore={() => {}}
+        
+              onSelect={
+                openContent
+              }
+        
+              selectedIds={
+                selectedIds
+              }
+        
+              onToggleSelect={
+                toggleSelect
+              }
+        
+            />
+        
+          </div>
+        
         )}
-
-      </div>
-
     </section>
 
   );
