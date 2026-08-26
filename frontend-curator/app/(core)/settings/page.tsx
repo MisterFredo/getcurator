@@ -24,10 +24,6 @@ type Profile = {
   profile_text?: string | null;
 };
 
-type SettingsTab =
-  | "profile"
-  | "experts";
-
 /* =========================================================
    PAGE
 ========================================================= */
@@ -35,11 +31,9 @@ type SettingsTab =
 export default function SettingsPage() {
 
   const [
-    activeTab,
-    setActiveTab,
-  ] = useState<SettingsTab>(
-    "profile",
-  );
+    profileOpen,
+    setProfileOpen,
+  ] = useState(false);
 
   const [loading, setLoading] =
     useState(true);
@@ -284,297 +278,485 @@ export default function SettingsPage() {
 
   }
 
-  /* =====================================================
+ /* =====================================================
      RENDER
   ===================================================== */
-
+  
   return (
-
-    <div className="space-y-6">
-
-      {/* =====================================================
-          TABS
-      ===================================================== */}
-
-      <div
+  
+    <div
+      className="
+        space-y-6
+      "
+    >
+  
+      {/* ===================================================
+          EXPERTS
+      =================================================== */}
+  
+      <section
         className="
-          border-b
+          rounded-xl
+          border
           border-gray-200
+          bg-white
+          p-6
         "
       >
-
-        <div
+  
+        <UserExperts />
+  
+      </section>
+  
+      {/* ===================================================
+          FAVORITES + PROFILE
+      =================================================== */}
+  
+      <div
+        className="
+          grid
+          grid-cols-1
+          gap-6
+          xl:grid-cols-[1.4fr_0.6fr]
+        "
+      >
+  
+        {/* =================================================
+            FAVORITES
+        ================================================= */}
+  
+        <section
           className="
-            flex
-            gap-8
+            rounded-xl
+            border
+            border-gray-200
+            bg-white
+            p-6
           "
         >
-
-          <button
-            type="button"
-            onClick={() =>
-              setActiveTab(
-                "profile",
-              )
-            }
-            className={`
-              border-b-2
-              pb-3
-              text-sm
-              font-medium
-              transition
-
-              ${
-                activeTab ===
-                "profile"
-                  ? `
-                    border-emerald-600
-                    text-emerald-700
-                  `
-                  : `
-                    border-transparent
-                    text-gray-500
-                    hover:text-gray-900
-                  `
-              }
-            `}
-          >
-            Profile
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setActiveTab(
-                "experts",
-              )
-            }
-            className={`
-              border-b-2
-              pb-3
-              text-sm
-              font-medium
-              transition
-
-              ${
-                activeTab ===
-                "experts"
-                  ? `
-                    border-emerald-600
-                    text-emerald-700
-                  `
-                  : `
-                    border-transparent
-                    text-gray-500
-                    hover:text-gray-900
-                  `
-              }
-            `}
-          >
-            Experts
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* =====================================================
-          PROFILE TAB
-      ===================================================== */}
-
-      {
-        activeTab === "profile" && (
-
+  
+          <UserFavoritesSummary />
+  
+        </section>
+  
+        {/* =================================================
+            PROFILE
+        ================================================= */}
+  
+        <section
+          className="
+            rounded-xl
+            border
+            border-gray-200
+            bg-white
+            p-6
+          "
+        >
+  
           <div
             className="
-              grid
-              grid-cols-[1fr_1fr]
-              gap-6
+              flex
+              items-start
+              justify-between
+              gap-4
             "
           >
-
-            {/* =================================================
-                SETTINGS
-            ================================================= */}
-
-            <div
+  
+            <div>
+  
+              <h2
+                className="
+                  text-base
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                Your profile
+              </h2>
+  
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-500
+                "
+              >
+                Used to personalize your
+                insights and digests.
+              </p>
+  
+            </div>
+  
+            <button
+              type="button"
+              onClick={() =>
+                setProfileOpen(
+                  current => !current,
+                )
+              }
               className="
-                bg-white
+                shrink-0
+                rounded-lg
                 border
-                rounded-xl
-                p-6
-                space-y-8
+                border-gray-200
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-gray-600
+                transition
+                hover:border-gray-300
+                hover:bg-gray-50
+                hover:text-gray-900
               "
             >
-
-              {/* LANGUAGE */}
-
+              {profileOpen
+                ? "Close"
+                : "Edit"}
+            </button>
+  
+          </div>
+  
+          {!profileOpen ? (
+  
+            /* ===============================================
+                PROFILE SUMMARY
+            =============================================== */
+  
+            <div
+              className="
+                mt-6
+                space-y-5
+              "
+            >
+  
               <div>
-
+  
                 <div
                   className="
-                    text-sm
+                    mb-2
+                    text-[11px]
                     font-medium
-                    mb-3
+                    uppercase
+                    tracking-wide
+                    text-gray-400
                   "
                 >
                   Language
                 </div>
-
+  
+                <div
+                  className="
+                    inline-flex
+                    rounded-full
+                    bg-emerald-50
+                    px-3
+                    py-1
+                    text-xs
+                    font-medium
+                    uppercase
+                    text-emerald-700
+                  "
+                >
+                  {language}
+                </div>
+  
+              </div>
+  
+              <div>
+  
+                <div
+                  className="
+                    mb-2
+                    text-[11px]
+                    font-medium
+                    uppercase
+                    tracking-wide
+                    text-gray-400
+                  "
+                >
+                  Keywords
+                </div>
+  
+                {keywords.length > 0 ? (
+  
+                  <div
+                    className="
+                      flex
+                      flex-wrap
+                      gap-2
+                    "
+                  >
+  
+                    {keywords.map(
+                      keyword => (
+  
+                        <span
+                          key={
+                            keyword
+                          }
+                          className="
+                            rounded-full
+                            bg-gray-100
+                            px-3
+                            py-1
+                            text-xs
+                            text-gray-600
+                          "
+                        >
+                          {keyword}
+                        </span>
+  
+                      ),
+                    )}
+  
+                  </div>
+  
+                ) : (
+  
+                  <div
+                    className="
+                      text-sm
+                      text-gray-400
+                    "
+                  >
+                    No keywords.
+                  </div>
+  
+                )}
+  
+              </div>
+  
+              <div>
+  
+                <div
+                  className="
+                    mb-2
+                    text-[11px]
+                    font-medium
+                    uppercase
+                    tracking-wide
+                    text-gray-400
+                  "
+                >
+                  Professional profile
+                </div>
+  
+                <p
+                  className="
+                    line-clamp-5
+                    whitespace-pre-line
+                    text-sm
+                    leading-6
+                    text-gray-600
+                  "
+                >
+                  {profileText
+                    || "No professional profile yet."}
+                </p>
+  
+              </div>
+  
+            </div>
+  
+          ) : (
+  
+            /* ===============================================
+                PROFILE EDITOR
+            =============================================== */
+  
+            <div
+              className="
+                mt-6
+                space-y-6
+              "
+            >
+  
+              {/* LANGUAGE */}
+  
+              <div>
+  
+                <div
+                  className="
+                    mb-3
+                    text-sm
+                    font-medium
+                    text-gray-900
+                  "
+                >
+                  Language
+                </div>
+  
                 <div
                   className="
                     flex
                     gap-2
                   "
                 >
-
+  
                   <button
                     type="button"
                     onClick={() =>
                       saveLanguage("fr")
                     }
                     className={`
-                      px-3
-                      py-1.5
                       rounded-full
                       border
+                      px-3
+                      py-1.5
                       text-sm
-
+  
                       ${
+  
                         language === "fr"
+  
                           ? `
+                            border-emerald-600
                             bg-emerald-600
                             text-white
-                            border-emerald-600
                           `
+  
                           : `
+                            border-gray-200
                             bg-white
                             hover:bg-gray-50
                           `
+  
                       }
                     `}
                   >
                     FR
                   </button>
-
+  
                   <button
                     type="button"
                     onClick={() =>
                       saveLanguage("en")
                     }
                     className={`
-                      px-3
-                      py-1.5
                       rounded-full
                       border
+                      px-3
+                      py-1.5
                       text-sm
-
+  
                       ${
+  
                         language === "en"
+  
                           ? `
+                            border-emerald-600
                             bg-emerald-600
                             text-white
-                            border-emerald-600
                           `
+  
                           : `
+                            border-gray-200
                             bg-white
                             hover:bg-gray-50
                           `
+  
                       }
                     `}
                   >
                     EN
                   </button>
-
+  
                 </div>
-
+  
               </div>
-
+  
               {/* KEYWORDS */}
-
+  
               <div>
-
+  
                 <div
                   className="
+                    mb-3
                     text-sm
                     font-medium
-                    mb-3
+                    text-gray-900
                   "
                 >
                   Keywords
                 </div>
-
+  
                 <div
                   className="
                     flex
                     gap-2
-                    mb-3
                   "
                 >
-
+  
                   <input
                     value={
                       keywordInput
                     }
-                    onChange={(e) =>
+                    onChange={event =>
                       setKeywordInput(
-                        e.target.value,
+                        event.target.value,
                       )
                     }
-                    onKeyDown={(e) => {
-
+                    onKeyDown={event => {
+  
                       if (
-                        e.key === "Enter"
+                        event.key === "Enter"
                       ) {
-
-                        e.preventDefault();
-
+  
+                        event.preventDefault();
+  
                         addKeyword();
-
+  
                       }
-
+  
                     }}
-                    placeholder="premiumization"
+                    placeholder="Add a keyword"
                     className="
+                      min-w-0
                       flex-1
-                      border
                       rounded-lg
+                      border
+                      border-gray-200
                       px-3
                       py-2
                       text-sm
+                      outline-none
+                      focus:border-gray-400
                     "
                   />
-
+  
                   <button
                     type="button"
                     onClick={
                       addKeyword
                     }
                     className="
-                      px-4
                       rounded-lg
                       bg-emerald-600
-                      text-white
+                      px-4
                       text-sm
+                      text-white
                     "
                   >
                     Add
                   </button>
-
+  
                 </div>
-
-                <div
-                  className="
-                    flex
-                    flex-wrap
-                    gap-2
-                  "
-                >
-
-                  {
-                    keywords.map(
-                      (keyword) => (
-
+  
+                {keywords.length > 0 && (
+  
+                  <div
+                    className="
+                      mt-3
+                      flex
+                      flex-wrap
+                      gap-2
+                    "
+                  >
+  
+                    {keywords.map(
+                      keyword => (
+  
                         <button
                           type="button"
                           key={
@@ -586,89 +768,71 @@ export default function SettingsPage() {
                             )
                           }
                           className="
-                            px-3
-                            py-1
                             rounded-full
                             bg-gray-100
+                            px-3
+                            py-1
+                            text-xs
+                            text-gray-600
+                            transition
                             hover:bg-gray-200
-                            text-sm
                           "
                         >
                           {keyword} ×
                         </button>
-
+  
                       ),
-                    )
-                  }
-
-                </div>
-
+                    )}
+  
+                  </div>
+  
+                )}
+  
               </div>
-
+  
               {/* PROFESSIONAL PROFILE */}
-
+  
               <div>
-
+  
                 <div
                   className="
+                    mb-3
                     text-sm
                     font-medium
-                    mb-3
+                    text-gray-900
                   "
                 >
-                  Professional Profile
+                  Professional profile
                 </div>
-
-                <div
-                  className="
-                    text-sm
-                    text-gray-500
-                    mb-3
-                  "
-                >
-                  This profile is used to
-                  generate personalized
-                  insights and digest
-                  analysis based on your
-                  role, expertise and
-                  strategic priorities.
-                </div>
-
+  
                 <textarea
                   value={
                     profileText
                   }
-                  onChange={(e) =>
+                  onChange={event =>
                     setProfileText(
-                      e.target.value,
+                      event.target.value,
                     )
                   }
-                  rows={12}
+                  rows={10}
                   className="
                     w-full
-                    border
                     rounded-lg
+                    border
+                    border-gray-200
                     p-3
                     text-sm
+                    leading-6
+                    outline-none
+                    focus:border-gray-400
                   "
-                  placeholder={`Senior Director Retail Media
-
-Focus:
-- Commerce Media
-- Walmart Connect
-- Instacart
-
-Strategic priorities:
-- Measurement
-- Attribution
-- Retail media monetization
-
-Key competitors:
-- Amazon
-- Walmart
-- Kroger`}
+                  placeholder="
+                    Describe your role,
+                    expertise and strategic
+                    priorities.
+                  "
                 />
-
+  
                 <button
                   type="button"
                   onClick={
@@ -676,72 +840,29 @@ Key competitors:
                   }
                   className="
                     mt-3
-                    px-4
-                    py-2
                     rounded-lg
                     bg-emerald-600
-                    text-white
+                    px-4
+                    py-2
                     text-sm
+                    text-white
                   "
                 >
-                  {
-                    profileSaved
-                      ? "✓ Saved"
-                      : "Save"
-                  }
+                  {profileSaved
+                    ? "✓ Saved"
+                    : "Save profile"}
                 </button>
-
+  
               </div>
-
+  
             </div>
-
-            {/* =================================================
-                FAVORITES
-            ================================================= */}
-
-            <div
-              className="
-                bg-white
-                border
-                rounded-xl
-                p-6
-              "
-            >
-
-              <UserFavoritesSummary />
-
-            </div>
-
-          </div>
-
-        )
-      }
-
-      {/* =====================================================
-          EXPERTS TAB
-      ===================================================== */}
-
-      {
-        activeTab === "experts" && (
-
-          <div
-            className="
-              bg-white
-              border
-              rounded-xl
-              p-6
-            "
-          >
-
-            <UserExperts />
-
-          </div>
-
-        )
-      }
-
+  
+          )}
+  
+        </section>
+  
+      </div>
+  
     </div>
-
+  
   );
-
-}
