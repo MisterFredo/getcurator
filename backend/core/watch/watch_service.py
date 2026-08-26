@@ -31,6 +31,8 @@ def latest(
     user_id: str,
     limit: int = 20,
     offset: int = 0,
+    period_start: str | None = None,
+    period_end: str | None = None,
     universe_id: str | None = None,
     company_id: str | None = None,
     solution_id: str | None = None,
@@ -42,6 +44,10 @@ def latest(
     expertise = generate_expertise_from_profile(
 
         user_id=user_id,
+
+        period_start=period_start,
+
+        period_end=period_end,
 
         limit=limit,
 
@@ -112,6 +118,8 @@ def search(
     query: str,
     limit: int = 20,
     offset: int = 0,
+    period_start: str | None = None,
+    period_end: str | None = None,
     universe_id: str | None = None,
     company_id: str | None = None,
     solution_id: str | None = None,
@@ -125,6 +133,10 @@ def search(
         user_id=user_id,
 
         query=query,
+
+        period_start=period_start,
+
+        period_end=period_end,
 
         limit=limit,
 
