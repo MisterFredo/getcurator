@@ -17,6 +17,10 @@ from core.watch.workspace_service import (
     remove_content,
 )
 
+from core.watch.filter_service import (
+    get_watch_filters,
+)
+
 router = APIRouter()
 
 
@@ -179,6 +183,31 @@ def search_route(
     )
 
     return result
+
+# ============================================================
+# FILTERS
+# ============================================================
+
+@router.get("/filters")
+def filters_route(
+
+    user_id: str,
+
+    period_start: str | None = None,
+
+    period_end: str | None = None,
+
+):
+
+    return get_watch_filters(
+
+        user_id=user_id,
+
+        period_start=period_start,
+
+        period_end=period_end,
+
+    )
 
 
 # ============================================================
