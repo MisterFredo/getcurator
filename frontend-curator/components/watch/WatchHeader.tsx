@@ -707,202 +707,222 @@ export default function WatchHeader({
       </div>
 
       {/* ===================================================
-          PERIOD
+          PERIOD + UNIVERSES
       =================================================== */}
-
+      
       <div
         className="
           flex
           items-center
-          gap-2
+          gap-4
           overflow-x-auto
           px-1
           scrollbar-none
         "
       >
-
-        <span
+      
+        {/* PERIOD */}
+      
+        <div
           className="
-            mr-1
-            whitespace-nowrap
-            text-[11px]
-            font-medium
-            uppercase
-            tracking-wide
-            text-gray-400
+            flex
+            shrink-0
+            items-center
+            gap-2
           "
         >
-          Period
-        </span>
-
-        {PERIODS.map(
-          option => (
-
-            <PillButton
-
-              key={
-                option.id
-              }
-
-              active={
-                period === option.id
-              }
-
-              onClick={() =>
-
-                onSelectPeriod(
-                  option.id,
-                )
-
-              }
-
-            >
-
-              {option.label}
-
-            </PillButton>
-
-          ),
-        )}
-
-      </div>
-
-      {/* ===================================================
-          UNIVERSES
-      =================================================== */}
-
-      <div
-        className="
-          flex
-          items-center
-          gap-2
-          overflow-x-auto
-          px-1
-          scrollbar-none
-        "
-      >
-
-        <span
-          className="
-            mr-1
-            whitespace-nowrap
-            text-[11px]
-            font-medium
-            uppercase
-            tracking-wide
-            text-gray-400
-          "
-        >
-          Universe
-        </span>
-
-        <PillButton
-
-          active={
-            selectedUniverse === null
-          }
-
-          disabled={
-            filtersLoading
-          }
-
-          onClick={() =>
-
-            onSelectUniverse(
-              null,
-            )
-
-          }
-
-        >
-          All
-        </PillButton>
-
-        {universes.map(
-          universe => {
-
-            const active =
-              selectedUniverse ===
-              universe.id;
-
-            return (
-
+      
+          <span
+            className="
+              mr-1
+              whitespace-nowrap
+              text-[11px]
+              font-medium
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Period
+          </span>
+      
+          {PERIODS.map(
+            option => (
+      
               <PillButton
-
+      
                 key={
-                  universe.id
+                  option.id
                 }
-
+      
                 active={
-                  active
+                  period === option.id
                 }
-
-                disabled={
-                  filtersLoading
-                }
-
+      
                 onClick={() =>
-
-                  onSelectUniverse(
-                    universe.id,
+      
+                  onSelectPeriod(
+                    option.id,
                   )
-
+      
                 }
-
+      
               >
-
-                <span
-                  className="
-                    inline-flex
-                    items-center
-                    gap-1.5
-                  "
-                >
-
-                  <span>
-
-                    {universe.label}
-
-                  </span>
-
-                  <span
-                    className={`
-                      rounded-full
-                      px-1.5
-                      py-0.5
-                      text-[9px]
-
-                      ${
-
-                        active
-
-                          ? `
-                            bg-white/20
-                            text-white
-                          `
-
-                          : `
-                            bg-gray-100
-                            text-gray-500
-                          `
-
-                      }
-                    `}
-                  >
-
-                    {universe.count}
-
-                  </span>
-
-                </span>
-
+      
+                {option.label}
+      
               </PillButton>
-
-            );
-
-          },
-        )}
-
+      
+            ),
+          )}
+      
+        </div>
+      
+        {/* SEPARATOR */}
+      
+        <div
+          className="
+            h-5
+            w-px
+            shrink-0
+            bg-gray-200
+          "
+        />
+      
+        {/* UNIVERSES */}
+      
+        <div
+          className="
+            flex
+            shrink-0
+            items-center
+            gap-2
+          "
+        >
+      
+          <span
+            className="
+              mr-1
+              whitespace-nowrap
+              text-[11px]
+              font-medium
+              uppercase
+              tracking-wide
+              text-gray-400
+            "
+          >
+            Universe
+          </span>
+      
+          <PillButton
+      
+            active={
+              selectedUniverse === null
+            }
+      
+            disabled={
+              filtersLoading
+            }
+      
+            onClick={() =>
+      
+              onSelectUniverse(
+                null,
+              )
+      
+            }
+      
+          >
+            All
+          </PillButton>
+      
+          {universes.map(
+            universe => {
+      
+              const active =
+                selectedUniverse ===
+                universe.id;
+      
+              return (
+      
+                <PillButton
+      
+                  key={
+                    universe.id
+                  }
+      
+                  active={
+                    active
+                  }
+      
+                  disabled={
+                    filtersLoading
+                  }
+      
+                  onClick={() =>
+      
+                    onSelectUniverse(
+                      universe.id,
+                    )
+      
+                  }
+      
+                >
+      
+                  <span
+                    className="
+                      inline-flex
+                      items-center
+                      gap-1.5
+                    "
+                  >
+      
+                    <span>
+      
+                      {universe.label}
+      
+                    </span>
+      
+                    <span
+                      className={`
+                        rounded-full
+                        px-1.5
+                        py-0.5
+                        text-[9px]
+      
+                        ${
+      
+                          active
+      
+                            ? `
+                              bg-white/20
+                              text-white
+                            `
+      
+                            : `
+                              bg-gray-100
+                              text-gray-500
+                            `
+      
+                        }
+                      `}
+                    >
+      
+                      {universe.count}
+      
+                    </span>
+      
+                  </span>
+      
+                </PillButton>
+      
+              );
+      
+            },
+          )}
+      
+        </div>
+      
       </div>
 
       {/* ===================================================
