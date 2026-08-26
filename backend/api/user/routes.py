@@ -624,8 +624,15 @@ def list_user_experts(
         request
     )
 
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
     return get_user_experts(
-        user_id
+        user_id=user_id,
     )
 
 
@@ -639,14 +646,34 @@ def subscribe_to_expert(
         request
     )
 
-    subscribe_user_to_expert(
-        user_id,
-        expert_id,
-    )
+    if not user_id:
 
-    return {
-        "status": "ok"
-    }
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    try:
+
+        return subscribe_user_to_expert(
+
+            user_id=user_id,
+
+            expert_id=expert_id,
+
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=str(
+                error,
+            ),
+
+        )
 
 
 @router.delete("/experts/{expert_id}")
@@ -659,15 +686,20 @@ def unsubscribe_from_expert(
         request
     )
 
-    unsubscribe_user_from_expert(
-        user_id,
-        expert_id,
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    return unsubscribe_user_from_expert(
+
+        user_id=user_id,
+
+        expert_id=expert_id,
+
     )
-
-    return {
-        "status": "ok"
-    }
-
 
 @router.get("/expert/{expert_id}/users")
 def list_expert_users(
