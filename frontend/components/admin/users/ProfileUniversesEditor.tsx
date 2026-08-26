@@ -217,6 +217,8 @@ export default function ProfileUniversesEditor({
         },
       );
 
+      onSaved?.();
+
     } catch (error) {
 
       console.error(
