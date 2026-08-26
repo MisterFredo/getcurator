@@ -174,3 +174,30 @@ export type WatchResponse = {
   count: number;
 
 };
+
+/* =========================================================
+   WATCH FILTERS
+========================================================= */
+
+export type WatchFilterOption = {
+
+  id: string;
+
+  label: string;
+
+  count: number;
+
+};
+
+
+export type WatchFiltersResponse = {
+
+  universes: WatchFilterOption[];
+
+  companies: WatchFilterOption[];
+
+  solutions: WatchFilterOption[];
+
+  topics: WatchFilterOption[];
+
+};
