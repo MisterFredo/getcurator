@@ -712,20 +712,35 @@ def admin_list_user_experts(
         )
     }
 
-@router.post("/admin/{user_id}/experts/{expert_id}")
+@router.post(
+    "/admin/{user_id}/experts/{expert_id}"
+)
 def admin_subscribe_user_to_expert(
     user_id: str,
     expert_id: str,
 ):
 
-    subscribe_user_to_expert(
-        user_id,
-        expert_id,
-    )
+    try:
 
-    return {
-        "status": "ok",
-    }
+        return subscribe_user_to_expert(
+
+            user_id=user_id,
+
+            expert_id=expert_id,
+
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=str(
+                error,
+            ),
+
+        )
 
 
 @router.delete("/admin/{user_id}/experts/{expert_id}")
