@@ -11,7 +11,11 @@ import { api } from "@/lib/api";
 /* ========================================================= */
 
 type Props = {
+
   userId: string;
+
+  onSaved?: () => void;
+
 };
 
 type Universe = {
@@ -22,7 +26,11 @@ type Universe = {
 /* ========================================================= */
 
 export default function ProfileUniversesEditor({
+
   userId,
+
+  onSaved,
+
 }: Props) {
 
   const [
