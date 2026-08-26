@@ -69,6 +69,11 @@ export default function ProfileEditor({
   const [isActive, setIsActive] =
     useState(true);
 
+  const [
+    expertsRefreshKey,
+    setExpertsRefreshKey,
+  ] = useState(0);
+
   /* =====================================================
      LOAD
   ===================================================== */
@@ -205,6 +210,19 @@ export default function ProfileEditor({
 
   /* ===================================================== */
 
+  /* =====================================================
+   UNIVERSES SAVED
+  ===================================================== */
+  
+  function handleUniversesSaved() {
+  
+    setExpertsRefreshKey(
+      current =>
+        current + 1,
+    );
+  
+  }
+
   if (loading) {
 
     return (
@@ -273,15 +291,33 @@ export default function ProfileEditor({
       {mode === "edit" &&
         userId && (
           <>
-            {profileType === "USER" && (
-              <ProfileExpertsCard
-                userId={userId}
-              />
-            )}
-
             <ProfileUniversesEditor
-              userId={userId}
+
+              userId={
+                userId
+              }
+            
+              onSaved={
+                handleUniversesSaved
+              }
+            
             />
+            
+            {profileType === "USER" && (
+            
+              <ProfileExpertsCard
+            
+                userId={
+                  userId
+                }
+            
+                refreshKey={
+                  expertsRefreshKey
+                }
+            
+              />
+            
+            )}
 
             <ProfilePreferencesEditor
               userId={userId}
