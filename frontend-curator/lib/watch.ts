@@ -1,5 +1,3 @@
-// frontend-curator/lib/watch.ts
-
 import { api } from "@/lib/api";
 
 import type {
@@ -17,6 +15,10 @@ type WatchParams = {
   limit?: number;
 
   offset?: number;
+
+  period_start?: string | null;
+
+  period_end?: string | null;
 
   universe_id?: string | null;
 
@@ -110,6 +112,24 @@ function appendWatchParams(
       params.offset ?? 0,
     ),
   );
+
+  if (params.period_start) {
+
+    query.append(
+      "period_start",
+      params.period_start,
+    );
+
+  }
+
+  if (params.period_end) {
+
+    query.append(
+      "period_end",
+      params.period_end,
+    );
+
+  }
 
   if (params.universe_id) {
 
