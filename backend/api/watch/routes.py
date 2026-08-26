@@ -33,6 +33,10 @@ def latest_route(
 
     offset: int = 0,
 
+    period_start: str | None = None,
+
+    period_end: str | None = None,
+
     universe_id: str | None = None,
 
     company_id: str | None = None,
@@ -51,6 +55,8 @@ def latest_route(
             "user_id": user_id,
             "limit": limit,
             "offset": offset,
+            "period_start": period_start,
+            "period_end": period_end,
             "universe_id": universe_id,
             "company_id": company_id,
             "solution_id": solution_id,
@@ -65,6 +71,10 @@ def latest_route(
         limit=limit,
 
         offset=offset,
+
+        period_start=period_start,
+
+        period_end=period_end,
 
         universe_id=universe_id,
 
@@ -103,6 +113,10 @@ def search_route(
 
     offset: int = 0,
 
+    period_start: str | None = None,
+
+    period_end: str | None = None,
+
     universe_id: str | None = None,
 
     company_id: str | None = None,
@@ -122,6 +136,8 @@ def search_route(
             "query": query,
             "limit": limit,
             "offset": offset,
+            "period_start": period_start,
+            "period_end": period_end,
             "universe_id": universe_id,
             "company_id": company_id,
             "solution_id": solution_id,
@@ -138,6 +154,10 @@ def search_route(
         limit=limit,
 
         offset=offset,
+
+        period_start=period_start,
+
+        period_end=period_end,
 
         universe_id=universe_id,
 
