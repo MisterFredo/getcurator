@@ -4,6 +4,7 @@ import type {
   WatchItem,
   Content,
   WatchResponse,
+  WatchFiltersResponse,
 } from "@/types/watch";
 
 /* ========================================================= */
