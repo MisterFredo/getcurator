@@ -37,6 +37,16 @@ type SearchParams = WatchParams & {
 
 };
 
+type WatchFiltersParams = {
+
+  user_id: string;
+
+  period_start?: string | null;
+
+  period_end?: string | null;
+
+};
+
 /* ========================================================= */
 
 function mapItem(
@@ -242,6 +252,63 @@ export async function watchSearch(
 
     count:
       res.count ?? 0,
+
+  };
+
+}
+
+/* =========================================================
+   FILTERS
+========================================================= */
+
+export async function getWatchFilters(
+  params: WatchFiltersParams,
+): Promise<WatchFiltersResponse> {
+
+  const query =
+    new URLSearchParams();
+
+  query.append(
+    "user_id",
+    params.user_id,
+  );
+
+  if (params.period_start) {
+
+    query.append(
+      "period_start",
+      params.period_start,
+    );
+
+  }
+
+  if (params.period_end) {
+
+    query.append(
+      "period_end",
+      params.period_end,
+    );
+
+  }
+
+  const res =
+    await api.get(
+      `/watch/filters?${query.toString()}`,
+    );
+
+  return {
+
+    universes:
+      res.universes ?? [],
+
+    companies:
+      res.companies ?? [],
+
+    solutions:
+      res.solutions ?? [],
+
+    topics:
+      res.topics ?? [],
 
   };
 
