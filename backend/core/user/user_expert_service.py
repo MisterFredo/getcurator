@@ -418,19 +418,55 @@ def is_user_subscribed_to_expert(
 
 
 # =========================================================
-# REMOVE INCOMPATIBLE SUBSCRIPTIONS
+# REMOVE INCOMPATIBLE EXPERT LINKS
 # =========================================================
 
-def remove_incompatible_user_experts(
-    user_id: str,
+def remove_incompatible_expert_links(
+    changed_user_id: str,
 ):
 
-    if not user_id:
+    if not changed_user_id:
 
         return {
             "status": "ok",
             "removed": 0,
         }
+
+    incompatible_sql = f"""
+
+        (
+
+            subscription.ID_USER =
+                @changed_user_id
+
+            OR subscription.ID_EXPERT =
+                @changed_user_id
+
+        )
+
+        AND NOT EXISTS (
+
+            SELECT 1
+
+            FROM `{TABLE_USER_UNIVERSE}` subscriber_universe
+
+            JOIN `{TABLE_USER_UNIVERSE}` expert_universe
+
+                ON
+                    expert_universe.ID_UNIVERSE =
+                    subscriber_universe.ID_UNIVERSE
+
+            WHERE
+
+                subscriber_universe.ID_USER =
+                    subscription.ID_USER
+
+                AND expert_universe.ID_USER =
+                    subscription.ID_EXPERT
+
+        )
+
+    """
 
     count_rows = query_bq(
         f"""
@@ -442,34 +478,11 @@ def remove_incompatible_user_experts(
 
         WHERE
 
-            subscription.ID_USER =
-                @user_id
-
-            AND NOT EXISTS (
-
-                SELECT 1
-
-                FROM `{TABLE_USER_UNIVERSE}` user_universe
-
-                JOIN `{TABLE_USER_UNIVERSE}` expert_universe
-
-                    ON
-                        expert_universe.ID_UNIVERSE =
-                        user_universe.ID_UNIVERSE
-
-                WHERE
-
-                    user_universe.ID_USER =
-                        subscription.ID_USER
-
-                    AND expert_universe.ID_USER =
-                        subscription.ID_EXPERT
-
-            )
+            {incompatible_sql}
         """,
         {
-            "user_id":
-                user_id,
+            "changed_user_id":
+                changed_user_id,
         },
     )
 
@@ -497,34 +510,11 @@ def remove_incompatible_user_experts(
 
             WHERE
 
-                subscription.ID_USER =
-                    @user_id
-
-                AND NOT EXISTS (
-
-                    SELECT 1
-
-                    FROM `{TABLE_USER_UNIVERSE}` user_universe
-
-                    JOIN `{TABLE_USER_UNIVERSE}` expert_universe
-
-                        ON
-                            expert_universe.ID_UNIVERSE =
-                            user_universe.ID_UNIVERSE
-
-                    WHERE
-
-                        user_universe.ID_USER =
-                            subscription.ID_USER
-
-                        AND expert_universe.ID_USER =
-                            subscription.ID_EXPERT
-
-                )
+                {incompatible_sql}
             """,
             {
-                "user_id":
-                    user_id,
+                "changed_user_id":
+                    changed_user_id,
             },
         )
 
