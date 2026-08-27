@@ -1,4 +1,4 @@
-import argparse
+import threading
 
 from concurrent.futures import (
     ThreadPoolExecutor,
@@ -57,6 +57,14 @@ TRANSLATION_START_DATE = (
     "2026-01-01 00:00:00+00"
 )
 
+CHUNK_SIZE = 100
+
+WORKERS = 5
+
+WRITE_BATCH_SIZE = 25
+
+MAX_ATTEMPTS = 3
+
 
 # ============================================================
 # FIELD MAPPING
@@ -92,12 +100,56 @@ FIELD_MAPPING = {
 
 
 # ============================================================
-# LOAD CONTENTS TO PROCESS
+# RUNTIME STATE
 # ============================================================
 
-def load_contents(
-    limit: int,
-) -> List[Dict]:
+_STATE_LOCK = (
+    threading.Lock()
+)
+
+_RUNNING = False
+
+_STARTED_AT = None
+
+_FINISHED_AT = None
+
+_LAST_ERROR = None
+
+
+# ============================================================
+# RESERVE BACKFILL
+# ============================================================
+
+def reserve_translation_backfill() -> bool:
+
+    global _RUNNING
+    global _STARTED_AT
+    global _FINISHED_AT
+    global _LAST_ERROR
+
+    with _STATE_LOCK:
+
+        if _RUNNING:
+            return False
+
+        _RUNNING = True
+
+        _STARTED_AT = datetime.now(
+            timezone.utc
+        )
+
+        _FINISHED_AT = None
+
+        _LAST_ERROR = None
+
+        return True
+
+
+# ============================================================
+# LOAD NEXT CHUNK
+# ============================================================
+
+def _load_next_chunk() -> List[Dict]:
 
     missing_conditions = []
 
@@ -162,17 +214,34 @@ def load_contents(
 
             SELECT 1
 
-            FROM `{TABLE_BACKLOG}` b
+            FROM `{TABLE_BACKLOG}` completed
 
             WHERE
-                b.ID_CONTENT = c.ID_CONTENT
-                AND b.STATUS = 'COMPLETED'
+                completed.ID_CONTENT
+                    = c.ID_CONTENT
+
+                AND completed.STATUS
+                    = 'COMPLETED'
         )
+
+        AND (
+
+            SELECT COUNTIF(
+                failed.STATUS = 'FAILED'
+            )
+
+            FROM `{TABLE_BACKLOG}` failed
+
+            WHERE
+                failed.ID_CONTENT
+                    = c.ID_CONTENT
+
+        ) < @max_attempts
 
     ORDER BY
         c.PUBLISHED_AT DESC
 
-    LIMIT @limit
+    LIMIT @chunk_size
     """
 
     return query_bq(
@@ -181,17 +250,20 @@ def load_contents(
             "translation_start_date":
                 TRANSLATION_START_DATE,
 
-            "limit":
-                limit,
+            "max_attempts":
+                MAX_ATTEMPTS,
+
+            "chunk_size":
+                CHUNK_SIZE,
         },
     )
 
 
 # ============================================================
-# BUILD TRANSLATION PAYLOAD
+# BUILD PAYLOAD
 # ============================================================
 
-def build_payload(
+def _build_payload(
     content: Dict,
 ) -> Dict[str, str]:
 
@@ -233,10 +305,10 @@ def build_payload(
 
 
 # ============================================================
-# RESULT ROW
+# BUILD STAGING ROW
 # ============================================================
 
-def build_result_row(
+def _build_staging_row(
     content_id: str,
     status: str,
     translated: Optional[Dict] = None,
@@ -295,7 +367,7 @@ def build_result_row(
 # TRANSLATE ONE CONTENT
 # ============================================================
 
-def translate_one_content(
+def _translate_one_content(
     content: Dict,
 ) -> Dict:
 
@@ -305,15 +377,19 @@ def translate_one_content(
 
     try:
 
-        payload = build_payload(
+        payload = _build_payload(
             content
         )
 
         if not payload:
 
-            return build_result_row(
-                content_id=content_id,
-                status="COMPLETED",
+            return _build_staging_row(
+
+                content_id=
+                    content_id,
+
+                status=
+                    "COMPLETED",
             )
 
         # ====================================================
@@ -332,7 +408,7 @@ def translate_one_content(
                 True,
         )
 
-        return build_result_row(
+        return _build_staging_row(
 
             content_id=
                 content_id,
@@ -351,7 +427,7 @@ def translate_one_content(
             or error.__class__.__name__
         )
 
-        return build_result_row(
+        return _build_staging_row(
 
             content_id=
                 content_id,
@@ -365,10 +441,10 @@ def translate_one_content(
 
 
 # ============================================================
-# WRITE STAGING BATCH
+# WRITE STAGING ROWS
 # ============================================================
 
-def write_staging_batch(
+def _write_staging_rows(
     rows: List[Dict],
 ):
 
@@ -379,6 +455,7 @@ def write_staging_batch(
 
     job_config = (
         bigquery.LoadJobConfig(
+
             write_disposition=(
                 bigquery.WriteDisposition.WRITE_APPEND
             ),
@@ -398,87 +475,29 @@ def write_staging_batch(
 
 
 # ============================================================
-# RUN BACKFILL
+# PROCESS CHUNK
 # ============================================================
 
-def run_backfill(
-    limit: int,
-    workers: int,
-    write_batch_size: int,
+def _process_chunk(
+    contents: List[Dict],
 ) -> Dict:
 
-    contents = load_contents(
-        limit=limit
-    )
-
-    selected_count = len(
-        contents
-    )
-
-    print(
-        "=================================================="
-    )
-
-    print(
-        "TRANSLATION BACKFILL"
-    )
-
-    print(
-        "Dataset:",
-        f"{BQ_PROJECT}.{BQ_DATASET}",
-    )
-
-    print(
-        "Selected contents:",
-        selected_count,
-    )
-
-    print(
-        "Workers:",
-        workers,
-    )
-
-    print(
-        "Write batch size:",
-        write_batch_size,
-    )
-
-    print(
-        "=================================================="
-    )
-
-    if not contents:
-
-        return {
-
-            "selected_count":
-                0,
-
-            "completed_count":
-                0,
-
-            "failed_count":
-                0,
-        }
-
     completed_count = 0
+
     failed_count = 0
+
     processed_count = 0
 
     pending_rows = []
 
-    # ========================================================
-    # PARALLEL TRANSLATION
-    # ========================================================
-
     with ThreadPoolExecutor(
-        max_workers=workers
+        max_workers=WORKERS
     ) as executor:
 
         futures = {
 
             executor.submit(
-                translate_one_content,
+                _translate_one_content,
                 content,
             ):
                 content["ID_CONTENT"]
@@ -504,16 +523,18 @@ def run_backfill(
 
             except Exception as error:
 
-                result_row = build_result_row(
+                result_row = (
+                    _build_staging_row(
 
-                    content_id=
-                        content_id,
+                        content_id=
+                            content_id,
 
-                    status=
-                        "FAILED",
+                        status=
+                            "FAILED",
 
-                    error=
-                        str(error)[:5000],
+                        error=
+                            str(error)[:5000],
+                    )
                 )
 
             processed_count += 1
@@ -525,23 +546,12 @@ def run_backfill(
 
                 completed_count += 1
 
-                marker = "✔"
-
             else:
 
                 failed_count += 1
 
-                marker = "❌"
-
             pending_rows.append(
                 result_row
-            )
-
-            print(
-                marker,
-                f"{processed_count}/{selected_count}",
-                content_id,
-                result_row["STATUS"],
             )
 
             # =================================================
@@ -550,19 +560,26 @@ def run_backfill(
 
             if (
                 len(pending_rows)
-                >= write_batch_size
+                >= WRITE_BATCH_SIZE
             ):
 
-                write_staging_batch(
+                _write_staging_rows(
                     pending_rows
                 )
 
-                print(
-                    "💾 Staging rows written:",
-                    len(pending_rows),
-                )
-
                 pending_rows = []
+
+            if (
+                processed_count % 10
+                == 0
+            ):
+
+                print(
+                    "TRANSLATION BACKFILL:",
+                    processed_count,
+                    "/",
+                    len(contents),
+                )
 
     # ========================================================
     # FINAL WRITE
@@ -570,19 +587,11 @@ def run_backfill(
 
     if pending_rows:
 
-        write_staging_batch(
+        _write_staging_rows(
             pending_rows
         )
 
-        print(
-            "💾 Final staging rows written:",
-            len(pending_rows),
-        )
-
-    result = {
-
-        "selected_count":
-            selected_count,
+    return {
 
         "completed_count":
             completed_count,
@@ -591,96 +600,409 @@ def run_backfill(
             failed_count,
     }
 
-    print(
-        "=================================================="
-    )
-
-    print(
-        "BACKFILL FINISHED:",
-        result,
-    )
-
-    print(
-        "=================================================="
-    )
-
-    return result
-
 
 # ============================================================
-# COMMAND LINE
+# RUN BACKFILL
 # ============================================================
 
-def parse_args():
+def run_translation_backfill():
 
-    parser = argparse.ArgumentParser(
+    global _RUNNING
+    global _FINISHED_AT
+    global _LAST_ERROR
 
-        description=(
-            "Translate 2026+ content fields "
-            "into English staging."
+    total_completed = 0
+
+    total_failed = 0
+
+    try:
+
+        print(
+            "=================================================="
         )
-    )
 
-    parser.add_argument(
+        print(
+            "TRANSLATION BACKFILL STARTED"
+        )
 
-        "--limit",
+        print(
+            "Dataset:",
+            f"{BQ_PROJECT}.{BQ_DATASET}",
+        )
 
-        type=int,
+        print(
+            "Start date:",
+            TRANSLATION_START_DATE,
+        )
 
-        default=100,
+        print(
+            "=================================================="
+        )
 
-        help=(
-            "Maximum number of contents "
-            "processed during this run."
-        ),
-    )
+        while True:
 
-    parser.add_argument(
+            contents = (
+                _load_next_chunk()
+            )
 
-        "--workers",
+            if not contents:
+                break
 
-        type=int,
+            result = _process_chunk(
+                contents
+            )
 
-        default=5,
+            total_completed += (
+                result[
+                    "completed_count"
+                ]
+            )
 
-        help=(
-            "Number of simultaneous LLM calls."
-        ),
-    )
+            total_failed += (
+                result[
+                    "failed_count"
+                ]
+            )
 
-    parser.add_argument(
+            print(
+                "BACKFILL TOTAL:",
+                {
+                    "completed":
+                        total_completed,
 
-        "--write-batch-size",
+                    "failed":
+                        total_failed,
+                },
+            )
 
-        type=int,
+        print(
+            "=================================================="
+        )
 
-        default=50,
+        print(
+            "TRANSLATION BACKFILL FINISHED"
+        )
 
-        help=(
-            "Number of results written "
-            "per BigQuery load job."
-        ),
-    )
+        print(
+            {
+                "completed":
+                    total_completed,
 
-    return parser.parse_args()
+                "failed":
+                    total_failed,
+            },
+        )
+
+        print(
+            "=================================================="
+        )
+
+    except Exception as error:
+
+        _LAST_ERROR = (
+            str(error)
+            or error.__class__.__name__
+        )
+
+        print(
+            "❌ TRANSLATION BACKFILL ERROR:",
+            _LAST_ERROR,
+        )
+
+    finally:
+
+        with _STATE_LOCK:
+
+            _RUNNING = False
+
+            _FINISHED_AT = (
+                datetime.now(
+                    timezone.utc
+                )
+            )
 
 
 # ============================================================
-# MAIN
+# PERSISTED PROGRESS
 # ============================================================
 
-if __name__ == "__main__":
+def _get_persisted_progress() -> Dict:
 
-    args = parse_args()
+    missing_conditions = []
 
-    run_backfill(
+    for source_col, config in (
+        FIELD_MAPPING.items()
+    ):
 
-        limit=
-            args.limit,
+        target_col = config[
+            "target"
+        ]
 
-        workers=
-            args.workers,
+        missing_conditions.append(
+            f"""
+            (
+                c.{source_col} IS NOT NULL
+                AND TRIM(c.{source_col}) != ''
+                AND (
+                    c.{target_col} IS NULL
+                    OR TRIM(c.{target_col}) = ''
+                )
+            )
+            """
+        )
 
-        write_batch_size=
-            args.write_batch_size,
+    rows = query_bq(
+        f"""
+        WITH eligible AS (
+
+            SELECT
+                c.ID_CONTENT
+
+            FROM `{TABLE_CONTENT}` c
+
+            WHERE
+                c.STATUS = 'PUBLISHED'
+
+                AND c.IS_ACTIVE = TRUE
+
+                AND c.PUBLISHED_AT >= TIMESTAMP(
+                    @translation_start_date
+                )
+
+                AND (
+                    {" OR ".join(missing_conditions)}
+                )
+        ),
+
+        attempts AS (
+
+            SELECT
+
+                ID_CONTENT,
+
+                COUNTIF(
+                    STATUS = 'COMPLETED'
+                ) AS completed_attempts,
+
+                COUNTIF(
+                    STATUS = 'FAILED'
+                ) AS failed_attempts
+
+            FROM `{TABLE_BACKLOG}`
+
+            GROUP BY
+                ID_CONTENT
+        )
+
+        SELECT
+
+            COUNT(*) AS total_count,
+
+            COUNTIF(
+                COALESCE(
+                    a.completed_attempts,
+                    0
+                ) > 0
+            ) AS completed_count,
+
+            COUNTIF(
+                COALESCE(
+                    a.completed_attempts,
+                    0
+                ) = 0
+
+                AND COALESCE(
+                    a.failed_attempts,
+                    0
+                ) >= @max_attempts
+            ) AS failed_count,
+
+            COALESCE(
+                SUM(
+                    a.failed_attempts
+                ),
+                0
+            ) AS failed_attempt_count
+
+        FROM eligible e
+
+        LEFT JOIN attempts a
+          ON a.ID_CONTENT = e.ID_CONTENT
+        """,
+        {
+            "translation_start_date":
+                TRANSLATION_START_DATE,
+
+            "max_attempts":
+                MAX_ATTEMPTS,
+        },
     )
+
+    if not rows:
+
+        return {
+
+            "total_count":
+                0,
+
+            "completed_count":
+                0,
+
+            "failed_count":
+                0,
+
+            "failed_attempt_count":
+                0,
+
+            "remaining_count":
+                0,
+
+            "progress_percent":
+                0,
+        }
+
+    row = rows[0]
+
+    total_count = int(
+        row.get(
+            "total_count"
+        )
+        or 0
+    )
+
+    completed_count = int(
+        row.get(
+            "completed_count"
+        )
+        or 0
+    )
+
+    failed_count = int(
+        row.get(
+            "failed_count"
+        )
+        or 0
+    )
+
+    failed_attempt_count = int(
+        row.get(
+            "failed_attempt_count"
+        )
+        or 0
+    )
+
+    remaining_count = max(
+
+        total_count
+        - completed_count
+        - failed_count,
+
+        0,
+    )
+
+    progress_percent = (
+
+        round(
+            (
+                completed_count
+                / total_count
+            )
+            * 100,
+            1,
+        )
+
+        if total_count
+        else 0
+    )
+
+    return {
+
+        "total_count":
+            total_count,
+
+        "completed_count":
+            completed_count,
+
+        "failed_count":
+            failed_count,
+
+        "failed_attempt_count":
+            failed_attempt_count,
+
+        "remaining_count":
+            remaining_count,
+
+        "progress_percent":
+            progress_percent,
+    }
+
+
+# ============================================================
+# PUBLIC STATUS
+# ============================================================
+
+def get_translation_backfill_status() -> Dict:
+
+    with _STATE_LOCK:
+
+        running = _RUNNING
+
+        started_at = _STARTED_AT
+
+        finished_at = _FINISHED_AT
+
+        last_error = _LAST_ERROR
+
+    progress = (
+        _get_persisted_progress()
+    )
+
+    if running:
+
+        state = "RUNNING"
+
+    elif last_error:
+
+        state = "FAILED"
+
+    elif (
+        progress["total_count"] > 0
+        and progress["remaining_count"] == 0
+        and progress["failed_count"] == 0
+    ):
+
+        state = "READY_TO_MERGE"
+
+    elif progress["completed_count"] > 0:
+
+        state = "PAUSED"
+
+    else:
+
+        state = "NOT_STARTED"
+
+    return {
+
+        "state":
+            state,
+
+        "running":
+            running,
+
+        "started_at": (
+            started_at.isoformat()
+            if started_at
+            else None
+        ),
+
+        "finished_at": (
+            finished_at.isoformat()
+            if finished_at
+            else None
+        ),
+
+        "last_error":
+            last_error,
+
+        **progress,
+    }
