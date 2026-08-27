@@ -1,170 +1,301 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-import { api } from "@/lib/api";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   Languages,
   RefreshCw,
 } from "lucide-react";
 
+import {
+  api,
+} from "@/lib/api";
+
+
+/* ========================================================= */
+
 const PAGE_SIZE = 20;
 
+
+/* =========================================================
+   TRANSLATED FIELDS
+========================================================= */
+
+const TRANSLATION_FIELDS = [
+
+  "TITLE",
+
+  "EXCERPT",
+
+  "CONTENT_BODY",
+
+  "SIGNAL_ANALYTIQUE",
+
+  "MECANIQUE_EXPLIQUEE",
+
+  "ENJEU_STRATEGIQUE",
+
+  "POINT_DE_FRICTION",
+
+];
+
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+type TranslationStatus =
+  | "MISSING"
+  | "PARTIAL"
+  | "COMPLETE";
+
+
 type TranslationContent = {
+
   id_content: string;
 
-  title: string;
+  id_primary_company?: string | null;
+
+  primary_company_name?: string | null;
+
+  source_url?: string | null;
+
+  source_title?: string | null;
+
+  title?: string | null;
+
   title_en?: string | null;
+
+  excerpt?: string | null;
 
   excerpt_en?: string | null;
 
-  status: string;
+  status?: string | null;
+
+  translation_status:
+    TranslationStatus;
+
+  translation_required_count:
+    number;
+
+  translation_completed_count:
+    number;
 
   source_date?: string | null;
+
+  published_at?: string | null;
+
+  updated_at?: string | null;
+
 };
+
+
+/* ========================================================= */
 
 export default function TranslationPage() {
 
-  const [contents, setContents] =
-    useState<TranslationContent[]>([]);
+  const [
+    contents,
+    setContents,
+  ] = useState<TranslationContent[]>(
+    [],
+  );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [translating, setTranslating] =
-    useState(false);
+  const [
+    translating,
+    setTranslating,
+  ] = useState(false);
 
-  const [selectedIds, setSelectedIds] =
-    useState<string[]>([]);
+  const [
+    selectedIds,
+    setSelectedIds,
+  ] = useState<string[]>(
+    [],
+  );
 
-  const [statusFilter, setStatusFilter] =
-    useState("ALL");
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState("ALL");
 
-  const [translationFilter, setTranslationFilter] =
-    useState("ALL");
+  const [
+    translationFilter,
+    setTranslationFilter,
+  ] = useState("ALL");
 
-  const [page, setPage] =
-    useState(1);
+  const [
+    page,
+    setPage,
+  ] = useState(1);
 
-  // =====================================================
-  // LOAD
-  // =====================================================
+
+  /* =====================================================
+     LOAD
+  ===================================================== */
 
   async function load() {
 
-    setLoading(true);
-
     try {
 
-      const res = await api.get(
-        "/content/list"
-      );
+      setLoading(true);
+
+      const response =
+        await api.get(
+          "/content/list",
+        );
 
       setContents(
-        res.contents || []
+        response.contents
+        || [],
       );
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error,
+      );
 
       alert(
-        "Erreur chargement contenus"
+        "Erreur chargement contenus",
       );
+
+    } finally {
+
+      setLoading(false);
 
     }
 
-    setLoading(false);
   }
+
 
   useEffect(() => {
+
     load();
+
   }, []);
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
+
+  /* =====================================================
+     HELPERS
+  ===================================================== */
 
   function toggleSelection(
-    id: string
+    id: string,
   ) {
 
-    setSelectedIds((prev) =>
+    setSelectedIds(
+      (previous) =>
 
-      prev.includes(id)
-        ? prev.filter(
-            (x) => x !== id
-          )
-        : [...prev, id]
+        previous.includes(id)
+
+          ? previous.filter(
+              (currentId) =>
+                currentId !== id,
+            )
+
+          : [
+              ...previous,
+              id,
+            ],
     );
+
   }
+
 
   function formatDate(
-    value?: string | null
+    value?: string | null,
   ) {
 
-    if (!value) return "—";
+    if (!value) {
+      return "—";
+    }
 
-    return new Date(value)
-      .toLocaleDateString(
-        "fr-FR"
+    return new Date(
+      value,
+    ).toLocaleDateString(
+      "fr-FR",
+    );
+
+  }
+
+
+  function getStatusClasses(
+    status: TranslationStatus,
+  ) {
+
+    if (status === "COMPLETE") {
+
+      return (
+        "border-green-200 "
+        + "bg-green-50 "
+        + "text-green-700"
       );
-  }
 
-  function getTranslationStatus(
-    c: TranslationContent
-  ) {
-
-    const hasTitleEn =
-      !!c.title_en?.trim();
-
-    const hasExcerptEn =
-      !!c.excerpt_en?.trim();
-
-    if (
-      hasTitleEn
-      && hasExcerptEn
-    ) {
-      return "COMPLETE";
     }
 
-    if (
-      hasTitleEn
-      || hasExcerptEn
-    ) {
-      return "PARTIAL";
+    if (status === "PARTIAL") {
+
+      return (
+        "border-amber-200 "
+        + "bg-amber-50 "
+        + "text-amber-700"
+      );
+
     }
 
-    return "MISSING";
+    return (
+      "border-red-200 "
+      + "bg-red-50 "
+      + "text-red-700"
+    );
+
   }
 
-  // =====================================================
-  // FILTERS
-  // =====================================================
+
+  /* =====================================================
+     FILTERS
+  ===================================================== */
 
   const filteredContents =
     useMemo(() => {
 
-      return contents.filter((c) => {
+      return contents.filter(
+        (content) => {
 
-        const translationStatus =
-          getTranslationStatus(c);
+          const matchesStatus = (
 
-        const matchStatus =
-          statusFilter === "ALL"
-          || c.status === statusFilter;
+            statusFilter === "ALL"
 
-        const matchTranslation =
-          translationFilter === "ALL"
-          || translationStatus
-            === translationFilter;
+            || content.status
+              === statusFilter
 
-        return (
-          matchStatus
-          && matchTranslation
-        );
-      });
+          );
+
+          const matchesTranslation = (
+
+            translationFilter === "ALL"
+
+            || content.translation_status
+              === translationFilter
+
+          );
+
+          return (
+            matchesStatus
+            && matchesTranslation
+          );
+
+        },
+      );
 
     }, [
       contents,
@@ -172,28 +303,39 @@ export default function TranslationPage() {
       translationFilter,
     ]);
 
-  // =====================================================
-  // PAGINATION
-  // =====================================================
 
-  const totalPages =
+  /* =====================================================
+     PAGINATION
+  ===================================================== */
+
+  const totalPages = Math.max(
+
     Math.ceil(
       filteredContents.length
-      / PAGE_SIZE
-    );
+      / PAGE_SIZE,
+    ),
+
+    1,
+  );
+
 
   const paginatedContents =
     filteredContents.slice(
-      (page - 1) * PAGE_SIZE,
-      page * PAGE_SIZE
+
+      (page - 1)
+      * PAGE_SIZE,
+
+      page
+      * PAGE_SIZE,
     );
 
-  // =====================================================
-  // ACTIONS
-  // =====================================================
+
+  /* =====================================================
+     TRANSLATE ONE
+  ===================================================== */
 
   async function translateOne(
-    id: string
+    id: string,
   ) {
 
     try {
@@ -201,32 +343,48 @@ export default function TranslationPage() {
       setTranslating(true);
 
       await api.post(
-        "/translation/content",
-        {
-          content_id: id,
-          target_lang: "en",
 
-          fields: [
-            "TITLE",
-            "EXCERPT",
-          ],
-        }
+        "/translation/content",
+
+        {
+          content_id:
+            id,
+
+          target_lang:
+            "fr",
+
+          fields:
+            TRANSLATION_FIELDS,
+
+          only_missing:
+            false,
+        },
       );
 
       await load();
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error,
+      );
 
       alert(
-        "Erreur traduction"
+        "Erreur traduction",
       );
+
+    } finally {
+
+      setTranslating(false);
 
     }
 
-    setTranslating(false);
   }
+
+
+  /* =====================================================
+     TRANSLATE SELECTED
+  ===================================================== */
 
   async function translateBulk() {
 
@@ -241,80 +399,111 @@ export default function TranslationPage() {
       setTranslating(true);
 
       await api.post(
+
         "/translation/batch",
+
         {
           content_ids:
             selectedIds,
 
           target_lang:
-            "en",
+            "fr",
 
-          fields: [
-            "TITLE",
-            "EXCERPT",
-          ],
+          fields:
+            TRANSLATION_FIELDS,
 
           only_missing:
             false,
-        }
+        },
       );
 
-      setSelectedIds([]);
+      setSelectedIds(
+        [],
+      );
 
       await load();
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error,
+      );
 
       alert(
-        "Erreur batch traduction"
+        "Erreur batch traduction",
       );
+
+    } finally {
+
+      setTranslating(false);
 
     }
 
-    setTranslating(false);
   }
+
+
+  /* =====================================================
+     TRANSLATE VISIBLE
+  ===================================================== */
 
   async function translateVisible() {
 
-  try {
+    if (
+      paginatedContents.length === 0
+    ) {
+      return;
+    }
 
-    setTranslating(true);
+    try {
 
-    await api.post(
-      "/translation/batch",
-      {
-        content_ids:
-          paginatedContents.map(
-            (c) => c.id_content
-          ),
+      setTranslating(true);
 
-        target_lang: "en",
+      await api.post(
 
-        fields: [
-          "TITLE",
-          "EXCERPT",
-        ],
+        "/translation/batch",
 
-        only_missing: false,
-      }
-    );
+        {
+          content_ids:
+            paginatedContents.map(
+              (content) =>
+                content.id_content,
+            ),
 
-    await load();
+          target_lang:
+            "fr",
 
-  } catch (e) {
+          fields:
+            TRANSLATION_FIELDS,
 
-    console.error(e);
+          only_missing:
+            false,
+        },
+      );
 
-    alert(
-      "Erreur batch visible"
-    );
+      await load();
+
+    } catch (error) {
+
+      console.error(
+        error,
+      );
+
+      alert(
+        "Erreur batch visible",
+      );
+
+    } finally {
+
+      setTranslating(false);
+
+    }
 
   }
 
-  setTranslating(false);
-}
+
+  /* =====================================================
+     TRANSLATE MISSING
+  ===================================================== */
 
   async function translateMissing() {
 
@@ -323,70 +512,90 @@ export default function TranslationPage() {
       setTranslating(true);
 
       await api.post(
+
         "/translation/batch",
+
         {
-          target_lang: "en",
+          target_lang:
+            "fr",
 
-          fields: [
-            "TITLE",
-            "EXCERPT",
-          ],
+          fields:
+            TRANSLATION_FIELDS,
 
-          only_missing: true,
+          only_missing:
+            true,
 
-          limit: 9999,
-        }
+          limit:
+            9999,
+        },
       );
 
       await load();
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error,
+      );
 
       alert(
-        "Erreur batch traduction"
+        "Erreur batch traduction",
       );
+
+    } finally {
+
+      setTranslating(false);
 
     }
 
-    setTranslating(false);
   }
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+
+  /* =====================================================
+     LOADING
+  ===================================================== */
 
   if (loading) {
 
     return (
+
       <div>
+
         Chargement…
+
       </div>
+
     );
+
   }
 
-  // =====================================================
-  // RENDER
-  // =====================================================
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
 
     <div className="space-y-8">
 
+      {/* ================================================= */}
       {/* HEADER */}
+      {/* ================================================= */}
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between gap-6">
 
         <div>
 
           <h1 className="text-3xl font-semibold text-ratecard-blue">
+
             Translations
+
           </h1>
 
-          <p className="text-sm text-gray-500 mt-1">
-            Gestion des traductions
-            éditoriales
+          <p className="mt-1 text-sm text-gray-500">
+
+            English production → French translation
+
           </p>
 
         </div>
@@ -394,59 +603,104 @@ export default function TranslationPage() {
         <div className="flex items-center gap-2">
 
           <button
-            onClick={translateVisible}
-            disabled={translating}
-            className="px-4 py-2 rounded border text-sm"
+            type="button"
+            onClick={
+              translateVisible
+            }
+            disabled={
+              translating
+              || paginatedContents.length
+                === 0
+            }
+            className="rounded border px-4 py-2 text-sm disabled:opacity-50"
           >
-            Traduire visible
+
+            Traduire les visibles
+
           </button>
 
           <button
-            onClick={translateMissing}
-            disabled={translating}
-            className="px-4 py-2 rounded bg-ratecard-blue text-white text-sm"
+            type="button"
+            onClick={
+              translateMissing
+            }
+            disabled={
+              translating
+            }
+            className="rounded bg-ratecard-blue px-4 py-2 text-sm text-white disabled:opacity-50"
           >
-            Traduire les manquants
+
+            {translating
+              ? "Traduction…"
+              : "Traduire les manquants"}
+
           </button>
 
         </div>
 
       </div>
 
-      {/* FILTERS */}
 
-      <div className="flex justify-between items-center">
+      {/* ================================================= */}
+      {/* FILTERS */}
+      {/* ================================================= */}
+
+      <div className="flex items-center justify-between gap-6">
 
         <div className="flex items-center gap-3">
 
           <select
-            value={statusFilter}
-            onChange={(e) => {
+            value={
+              statusFilter
+            }
+            onChange={
+              (event) => {
 
-              setStatusFilter(
-                e.target.value
-              );
+                setStatusFilter(
+                  event.target.value,
+                );
 
-              setPage(1);
+                setPage(
+                  1,
+                );
 
-            }}
-            className="border px-3 py-2 rounded text-sm"
+                setSelectedIds(
+                  [],
+                );
+
+              }
+            }
+            className="rounded border px-3 py-2 text-sm"
           >
 
             <option value="ALL">
+
               Tous statuts
+
             </option>
 
             <option value="DRAFT">
+
               Draft
+
             </option>
 
             <option value="READY">
+
               Ready
+
+            </option>
+
+            <option value="SCHEDULED">
+
+              Scheduled
+
             </option>
 
             <option value="PUBLISHED">
+
               Published
+
             </option>
 
           </select>
@@ -455,32 +709,48 @@ export default function TranslationPage() {
             value={
               translationFilter
             }
-            onChange={(e) => {
+            onChange={
+              (event) => {
 
-              setTranslationFilter(
-                e.target.value
-              );
+                setTranslationFilter(
+                  event.target.value,
+                );
 
-              setPage(1);
+                setPage(
+                  1,
+                );
 
-            }}
-            className="border px-3 py-2 rounded text-sm"
+                setSelectedIds(
+                  [],
+                );
+
+              }
+            }
+            className="rounded border px-3 py-2 text-sm"
           >
 
             <option value="ALL">
+
               Toutes traductions
+
             </option>
 
             <option value="MISSING">
+
               Missing
+
             </option>
 
             <option value="PARTIAL">
+
               Partial
+
             </option>
 
             <option value="COMPLETE">
+
               Complete
+
             </option>
 
           </select>
@@ -490,38 +760,44 @@ export default function TranslationPage() {
         <div className="text-sm text-gray-500">
 
           {filteredContents.length}
-          {" "}
-          contenus
+          {" contenus"}
 
         </div>
 
       </div>
 
+
+      {/* ================================================= */}
       {/* BULK */}
+      {/* ================================================= */}
 
       {selectedIds.length > 0 && (
 
-        <div className="flex items-center gap-3 bg-gray-50 border rounded px-4 py-3">
+        <div className="flex items-center gap-3 rounded border bg-gray-50 px-4 py-3">
 
           <button
+            type="button"
             onClick={
               translateBulk
             }
-            disabled={translating}
-            className="flex items-center gap-2 px-3 py-2 rounded bg-green-600 text-white text-sm"
+            disabled={
+              translating
+            }
+            className="flex items-center gap-2 rounded bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-50"
           >
 
-            <Languages size={16} />
+            <Languages
+              size={16}
+            />
 
-            Traduire sélection
+            Traduire la sélection
 
           </button>
 
           <div className="text-sm text-gray-500">
 
             {selectedIds.length}
-            {" "}
-            sélectionné(s)
+            {" sélectionné(s)"}
 
           </div>
 
@@ -529,205 +805,348 @@ export default function TranslationPage() {
 
       )}
 
+
+      {/* ================================================= */}
       {/* TABLE */}
+      {/* ================================================= */}
 
-      <table className="w-full border-collapse text-sm">
+      <div className="overflow-x-auto rounded-lg border">
 
-        <thead>
+        <table className="w-full border-collapse text-sm">
 
-          <tr className="bg-gray-100 border-b text-left text-gray-700">
+          <thead>
 
-            <th className="p-2">
+            <tr className="border-b bg-gray-100 text-left text-gray-700">
 
-              <input
-                type="checkbox"
-                checked={
-                  selectedIds.length
-                    === paginatedContents.length
-                  && paginatedContents.length > 0
-                }
-                onChange={(e) =>
+              <th className="p-3">
 
-                  e.target.checked
+                <input
+                  type="checkbox"
+                  checked={
+                    paginatedContents.length > 0
 
-                    ? setSelectedIds(
+                    && paginatedContents.every(
+                      (content) =>
+                        selectedIds.includes(
+                          content.id_content,
+                        ),
+                    )
+                  }
+                  onChange={
+                    (event) => {
+
+                      const visibleIds =
                         paginatedContents.map(
-                          (c) =>
-                            c.id_content
-                        )
-                      )
+                          (content) =>
+                            content.id_content,
+                        );
 
-                    : setSelectedIds([])
-                }
-              />
+                      if (
+                        event.target.checked
+                      ) {
 
-            </th>
+                        setSelectedIds(
+                          (
+                            previous,
+                          ) => Array.from(
+                            new Set([
+                              ...previous,
+                              ...visibleIds,
+                            ]),
+                          ),
+                        );
 
-            <th className="p-2">
-              Title
-            </th>
+                      } else {
 
-            <th className="p-2">
-              Title EN
-            </th>
+                        setSelectedIds(
+                          (
+                            previous,
+                          ) => previous.filter(
+                            (id) =>
+                              !visibleIds.includes(
+                                id,
+                              ),
+                          ),
+                        );
 
-            <th className="p-2">
-              Excerpt EN
-            </th>
-
-            <th className="p-2">
-              Status
-            </th>
-
-            <th className="p-2">
-              SOURCE_DATE
-            </th>
-
-            <th className="p-2 text-right">
-              Actions
-            </th>
-
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {paginatedContents.map(
-            (c) => {
-
-              const hasExcerpt =
-                !!c.excerpt_en?.trim();
-
-              return (
-
-                <tr
-                  key={c.id_content}
-                  className="border-b hover:bg-gray-50"
-                >
-
-                  <td className="p-2">
-
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(
-                        c.id_content
-                      )}
-                      onChange={() =>
-                        toggleSelection(
-                          c.id_content
-                        )
                       }
-                    />
 
-                  </td>
+                    }
+                  }
+                />
 
-                  <td className="p-2 font-medium max-w-[280px]">
+              </th>
 
-                    <div className="line-clamp-2">
-                      {c.title}
-                    </div>
+              <th className="p-3">
 
-                  </td>
+                English title
 
-                  <td className="p-2 max-w-[280px]">
+              </th>
 
-                    {c.title_en ? (
+              <th className="p-3">
 
-                      <div className="line-clamp-2">
-                        {c.title_en}
-                      </div>
+                French title
 
-                    ) : (
+              </th>
 
-                      <div className="text-gray-400 italic">
-                        — missing —
-                      </div>
+              <th className="p-3">
 
-                    )}
+                Translation
 
-                  </td>
+              </th>
 
-                  <td className="p-2">
+              <th className="p-3">
 
-                    {hasExcerpt ? (
-                      <span className="text-green-600 font-medium">
-                        ✅
-                      </span>
-                    ) : (
-                      <span className="text-red-500 font-medium">
-                        ❌
-                      </span>
-                    )}
+                Content status
 
-                  </td>
+              </th>
 
-                  <td className="p-2">
+              <th className="p-3">
 
-                    <span className="px-2 py-1 rounded text-xs bg-gray-100">
+                Source date
 
-                      {c.status}
+              </th>
 
-                    </span>
+              <th className="p-3 text-right">
 
-                  </td>
+                Action
 
-                  <td className="p-2 text-gray-600">
+              </th>
 
-                    {formatDate(
-                      c.source_date
-                    )}
+            </tr>
 
-                  </td>
+          </thead>
 
-                  <td className="p-2 text-right">
+          <tbody>
 
-                    <button
-                      onClick={() =>
-                        translateOne(
-                          c.id_content
-                        )
-                      }
-                      disabled={
-                        translating
-                      }
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 text-blue-600"
-                    >
+            {paginatedContents.map(
+              (content) => {
 
-                      <RefreshCw
-                        size={16}
+                const requiredCount = (
+                  content
+                    .translation_required_count
+                  || 0
+                );
+
+                const completedCount = (
+                  content
+                    .translation_completed_count
+                  || 0
+                );
+
+                const translationStatus = (
+                  content.translation_status
+                  || "MISSING"
+                );
+
+                return (
+
+                  <tr
+                    key={
+                      content.id_content
+                    }
+                    className="border-b last:border-b-0 hover:bg-gray-50"
+                  >
+
+                    <td className="p-3">
+
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedIds.includes(
+                            content.id_content,
+                          )
+                        }
+                        onChange={
+                          () =>
+                            toggleSelection(
+                              content.id_content,
+                            )
+                        }
                       />
 
-                    </button>
+                    </td>
 
-                  </td>
+                    <td className="max-w-[320px] p-3 font-medium">
 
-                </tr>
+                      {content.title_en ? (
 
-              );
-            }
-          )}
+                        <div className="line-clamp-2">
 
-        </tbody>
+                          {content.title_en}
 
-      </table>
+                        </div>
 
+                      ) : (
+
+                        <div className="italic text-gray-400">
+
+                          — missing English source —
+
+                        </div>
+
+                      )}
+
+                    </td>
+
+                    <td className="max-w-[320px] p-3">
+
+                      {content.title ? (
+
+                        <div className="line-clamp-2">
+
+                          {content.title}
+
+                        </div>
+
+                      ) : (
+
+                        <div className="italic text-gray-400">
+
+                          — missing French translation —
+
+                        </div>
+
+                      )}
+
+                    </td>
+
+                    <td className="p-3">
+
+                      <span
+                        className={[
+                          "inline-flex rounded-full border px-2 py-1 text-xs font-medium",
+                          getStatusClasses(
+                            translationStatus,
+                          ),
+                        ].join(" ")}
+                      >
+
+                        {translationStatus}
+
+                        {" · "}
+
+                        {completedCount}
+                        {"/"}
+                        {requiredCount}
+
+                      </span>
+
+                    </td>
+
+                    <td className="p-3">
+
+                      <span className="rounded bg-gray-100 px-2 py-1 text-xs">
+
+                        {content.status
+                          || "—"}
+
+                      </span>
+
+                    </td>
+
+                    <td className="p-3 text-gray-600">
+
+                      {formatDate(
+                        content.source_date,
+                      )}
+
+                    </td>
+
+                    <td className="p-3 text-right">
+
+                      <button
+                        type="button"
+                        title="Retraduire vers le français"
+                        onClick={
+                          () =>
+                            translateOne(
+                              content.id_content,
+                            )
+                        }
+                        disabled={
+                          translating
+                          || requiredCount === 0
+                        }
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-600 hover:bg-blue-50 disabled:opacity-40"
+                      >
+
+                        <RefreshCw
+                          size={16}
+                          className={
+                            translating
+                              ? "animate-spin"
+                              : ""
+                          }
+                        />
+
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                );
+
+              },
+            )}
+
+            {paginatedContents.length === 0 && (
+
+              <tr>
+
+                <td
+                  colSpan={7}
+                  className="p-8 text-center text-gray-500"
+                >
+
+                  Aucun contenu
+
+                </td>
+
+              </tr>
+
+            )}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      {/* ================================================= */}
       {/* PAGINATION */}
+      {/* ================================================= */}
 
       {totalPages > 1 && (
 
         <div className="flex justify-center gap-4">
 
           <button
-            disabled={page === 1}
-            onClick={() =>
-              setPage(
-                (p) => p - 1
-              )
+            type="button"
+            disabled={
+              page === 1
             }
-            className="px-3 py-1 border rounded"
+            onClick={
+              () => {
+
+                setPage(
+                  (currentPage) =>
+                    currentPage - 1,
+                );
+
+                setSelectedIds(
+                  [],
+                );
+
+              }
+            }
+            className="rounded border px-3 py-1 disabled:opacity-50"
           >
+
             Précédent
+
           </button>
 
           <span>
@@ -739,17 +1158,29 @@ export default function TranslationPage() {
           </span>
 
           <button
+            type="button"
             disabled={
               page === totalPages
             }
-            onClick={() =>
-              setPage(
-                (p) => p + 1
-              )
+            onClick={
+              () => {
+
+                setPage(
+                  (currentPage) =>
+                    currentPage + 1,
+                );
+
+                setSelectedIds(
+                  [],
+                );
+
+              }
             }
-            className="px-3 py-1 border rounded"
+            className="rounded border px-3 py-1 disabled:opacity-50"
           >
+
             Suivant
+
           </button>
 
         </div>
@@ -757,5 +1188,7 @@ export default function TranslationPage() {
       )}
 
     </div>
+
   );
+
 }
