@@ -675,6 +675,9 @@ def run_translation_backfill():
                 },
             )
 
+            # TEMPORARY TEST: stop after first chunk
+            break
+
         print(
             "=================================================="
         )
