@@ -158,8 +158,17 @@ def translate_text(
     if not text:
         return text
 
-    if target_lang == "fr":
-        return text
+    target_lang = (
+        target_lang
+        .strip()
+        .lower()
+    )
+
+    if not target_lang:
+
+        raise ValueError(
+            "La langue cible est obligatoire."
+        )
 
     try:
 
