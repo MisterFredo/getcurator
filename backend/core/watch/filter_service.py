@@ -6,6 +6,10 @@ from core.expertise.query_builder import (
     build_selection_context,
 )
 
+from core.universe.service import (
+    list_universes_for_user,
+)
+
 from utils.bigquery_utils import (
     query_bq,
 )
