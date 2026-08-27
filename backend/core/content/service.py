@@ -661,7 +661,6 @@ def update_content(
 # GET CONTENT
 # ============================================================
 
-
 def get_content(
     content_id: str,
 ) -> dict | None:
@@ -682,14 +681,19 @@ def get_content(
         EXCERPT_EN,
 
         CONTENT_BODY,
+        CONTENT_BODY_EN,
 
         SIGNAL_ANALYTIQUE,
+        SIGNAL_ANALYTIQUE_EN,
 
         MECANIQUE_EXPLIQUEE,
+        MECANIQUE_EXPLIQUEE_EN,
 
         ENJEU_STRATEGIQUE,
+        ENJEU_STRATEGIQUE_EN,
 
         POINT_DE_FRICTION,
+        POINT_DE_FRICTION_EN,
 
         CHIFFRES,
 
@@ -727,19 +731,16 @@ def get_content(
         sql,
 
         {
-
-            "content_id": content_id,
-
+            "content_id":
+                content_id,
         },
 
     )
 
     if not rows:
-
         return None
 
     return rows[0]
-
 # ============================================================
 # ARCHIVE CONTENT
 # ============================================================
