@@ -1,5 +1,6 @@
 import logging
 import hashlib
+
 from typing import Optional
 
 from utils.llm import run_llm
@@ -9,6 +10,7 @@ from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +30,12 @@ TABLE_TRANSLATION_CACHE = (
 
 def _hash_text(
     text: str,
-    lang: str
+    lang: str,
 ) -> str:
 
-    raw = f"{text.strip()}_{lang}"
+    raw = (
+        f"{text.strip()}_{lang}"
+    )
 
     return hashlib.md5(
         raw.encode("utf-8")
@@ -40,12 +44,12 @@ def _hash_text(
 
 def _get_cached_translation(
     text: str,
-    lang: str
+    lang: str,
 ) -> Optional[str]:
 
     hash_key = _hash_text(
         text,
-        lang
+        lang,
     )
 
     rows = query_bq(
@@ -60,25 +64,36 @@ def _get_cached_translation(
         LIMIT 1
         """,
         {
-            "hash": hash_key
-        }
+            "hash": hash_key,
+        },
     )
 
-    if rows:
-        return rows[0]["TRANSLATED_TEXT"]
+    if not rows:
+        return None
 
-    return None
+    translated = (
+        rows[0].get(
+            "TRANSLATED_TEXT"
+        )
+        or ""
+    ).strip()
+
+    return (
+        translated
+        if translated
+        else None
+    )
 
 
 def _store_translation(
     text: str,
     lang: str,
-    translated: str
+    translated: str,
 ):
 
     hash_key = _hash_text(
         text,
-        lang
+        lang,
     )
 
     query_bq(
@@ -92,6 +107,7 @@ def _store_translation(
         )
 
         SELECT *
+
         FROM (
 
             SELECT
@@ -114,11 +130,18 @@ def _store_translation(
         )
         """,
         {
-            "hash": hash_key,
-            "text": text,
-            "lang": lang,
-            "translated": translated,
-        }
+            "hash":
+                hash_key,
+
+            "text":
+                text,
+
+            "lang":
+                lang,
+
+            "translated":
+                translated,
+        },
     )
 
 
@@ -128,7 +151,8 @@ def _store_translation(
 
 def translate_text(
     text: str,
-    target_lang: str
+    target_lang: str,
+    raise_on_error: bool = False,
 ) -> str:
 
     if not text:
@@ -145,7 +169,7 @@ def translate_text(
 
         cached = _get_cached_translation(
             text,
-            target_lang
+            target_lang,
         )
 
         if cached:
@@ -184,12 +208,25 @@ OUTPUT:
 Return ONLY the translated text.
 """
 
-        raw = run_llm(prompt)
+        raw = run_llm(
+            prompt
+        )
 
         if not raw:
-            return text
 
-        translated = raw.strip()
+            raise RuntimeError(
+                "Le LLM n'a retourné aucune traduction."
+            )
+
+        translated = (
+            raw.strip()
+        )
+
+        if not translated:
+
+            raise RuntimeError(
+                "La traduction retournée est vide."
+            )
 
         # =====================================================
         # STORE CACHE
@@ -198,7 +235,7 @@ Return ONLY the translated text.
         _store_translation(
             text,
             target_lang,
-            translated
+            translated,
         )
 
         return translated
@@ -208,5 +245,8 @@ Return ONLY the translated text.
         logger.exception(
             "Translation error"
         )
+
+        if raise_on_error:
+            raise
 
         return text
