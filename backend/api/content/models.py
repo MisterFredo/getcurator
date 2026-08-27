@@ -232,18 +232,47 @@ class ContentListRequest(BaseModel):
 
 
 class ContentListItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid"
+    )
 
     id_content: str
 
-    title: Optional[str] = None
+    id_primary_company: Optional[str] = None
+
+    primary_company_name: Optional[str] = None
+
+    source_url: Optional[str] = None
 
     source_title: Optional[str] = None
+
+    title: Optional[str] = None
+
+    title_en: Optional[str] = None
+
+    excerpt: Optional[str] = None
+
+    excerpt_en: Optional[str] = None
+
+    status: Optional[str] = None
+
+    translation_status: Optional[
+        Literal[
+            "MISSING",
+            "PARTIAL",
+            "COMPLETE",
+        ]
+    ] = None
+
+    translation_required_count: int = 0
+
+    translation_completed_count: int = 0
 
     source_date: Optional[date] = None
 
     published_at: Optional[datetime] = None
 
+    updated_at: Optional[datetime] = None
 
 class ContentListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
