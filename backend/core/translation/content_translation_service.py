@@ -225,6 +225,7 @@ def translate_content_fields(
         translated = translate_text(
             text=source_value,
             target_lang=target_lang,
+            raise_on_error=True,
         )
 
         if not translated:
