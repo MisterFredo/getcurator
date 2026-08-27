@@ -368,3 +368,21 @@ class ContentSearchResponse(BaseModel):
     page_size: int
 
     total_pages: int
+
+# ============================================================
+# STORE RAW CONTENT
+# ============================================================
+
+class ContentRawStore(BaseModel):
+
+    source_id: str
+    source_title: str
+    raw_text: str
+
+    source_url: Optional[str] = None
+    date_source: Optional[date] = None
+    id_primary_company: Optional[str] = None
+
+    # Transmis par le Studio lorsqu'un contenu vient de Discovery.
+    # Il n'est pas encore utilisé par storage_service.
+    discovery_id: Optional[str] = None
