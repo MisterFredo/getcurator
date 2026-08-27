@@ -177,13 +177,20 @@ def _parse_list(
     if not block:
         return []
 
-        if block.strip().lower().startswith(
-            (
-                "aucun",
-                "none",
-            )
-        ):
-            return []
+    normalized_block = (
+        block
+        .strip()
+        .lower()
+    )
+
+    if normalized_block.startswith(
+        (
+            "aucun",
+            "none",
+        )
+    ):
+
+        return []
 
     items = []
 
@@ -212,8 +219,11 @@ def _parse_list(
             }
         ):
 
-    return items
+            items.append(
+                line
+            )
 
+    return items
 # ============================================================
 # BUILD BODY
 # ============================================================
