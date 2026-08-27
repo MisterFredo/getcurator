@@ -102,6 +102,7 @@ class ContentUpdate(BaseModel):
     excerpt: Optional[str] = None
     excerpt_en: Optional[str] = None
     content_body: Optional[str] = None
+    content_body_en: Optional[str] = None
 
     # ========================================================
     # EXTRACTIONS STRUCTURÉES
@@ -119,9 +120,16 @@ class ContentUpdate(BaseModel):
     # ========================================================
 
     mecanique_expliquee: Optional[str] = None
+    mecanique_expliquee_en: Optional[str] = None
+
     enjeu_strategique: Optional[str] = None
+    enjeu_strategique_en: Optional[str] = None
+
     point_de_friction: Optional[str] = None
+    point_de_friction_en: Optional[str] = None
+
     signal_analytique: Optional[str] = None
+    signal_analytique_en: Optional[str] = None
 
 
 # ============================================================
@@ -157,6 +165,7 @@ class ContentOut(BaseModel):
     excerpt: Optional[str] = None
     excerpt_en: Optional[str] = None
     content_body: Optional[str] = None
+    content_body_en: Optional[str] = None
 
     source_date: Optional[date] = None
 
@@ -165,10 +174,16 @@ class ContentOut(BaseModel):
     acteurs_cites: List[str] = Field(default_factory=list)
 
     mecanique_expliquee: Optional[str] = None
-    enjeu_strategique: Optional[str] = None
-    point_de_friction: Optional[str] = None
-    signal_analytique: Optional[str] = None
+    mecanique_expliquee_en: Optional[str] = None
 
+    enjeu_strategique: Optional[str] = None
+    enjeu_strategique_en: Optional[str] = None
+
+    point_de_friction: Optional[str] = None
+    point_de_friction_en: Optional[str] = None
+
+    signal_analytique: Optional[str] = None
+    signal_analytique_en: Optional[str] = None
     concepts_llm: List[str] = Field(default_factory=list)
     solutions_llm: List[str] = Field(default_factory=list)
     topics_llm: List[str] = Field(default_factory=list)
