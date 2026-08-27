@@ -177,10 +177,13 @@ def _parse_list(
     if not block:
         return []
 
-    if block.strip().lower().startswith(
-        "aucun"
-    ):
-        return []
+        if block.strip().lower().startswith(
+            (
+                "aucun",
+                "none",
+            )
+        ):
+            return []
 
     items = []
 
@@ -200,11 +203,14 @@ def _parse_list(
             line,
         )
 
-        if line and line.lower() != "aucun":
-
-            items.append(
-                line
-            )
+        if (
+            line
+            and line.lower()
+            not in {
+                "aucun",
+                "none",
+            }
+        ):
 
     return items
 
