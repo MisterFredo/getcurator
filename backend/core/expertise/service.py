@@ -62,6 +62,7 @@ def generate_expertise_from_profile(
     solution_id: str | None = None,
     topic_id: str | None = None,
     include_keywords: bool = True,
+    apply_profile_selection: bool = True,
 ) -> Expertise:
 
     t0 = perf_counter()
@@ -127,6 +128,8 @@ def generate_expertise_from_profile(
         solution_id=solution_id,
 
         topic_id=topic_id,
+
+        apply_profile_selection=apply_profile_selection,
 
     )
 
