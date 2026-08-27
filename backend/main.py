@@ -14,9 +14,9 @@ sys.path.insert(0, BASE_DIR)
 # APP
 # -------------------------------------------------------
 app = FastAPI(
-    title="Ratecard Backend",
+    title="GetCurator Backend",
     version="1.2.0",
-    description="Ratecard backend API"
+    description="GetCurator backend API"
 )
 
 app.add_middleware(
@@ -25,11 +25,15 @@ app.add_middleware(
         "https://curator-frontend-zayd.onrender.com",
         "https://curator-frontend-prod.onrender.com",
         "https://getcurator.ai",
-        "https://www.getcurator.ai",  # 👈 IMPORTANT
+        "https://www.getcurator.ai",
 
-        # Render
+        # Render DEV
         "https://getcurator-admin.onrender.com",
         "https://getcurator-frontend.onrender.com",
+
+        # Render PROD
+        "https://getcurator-admin-prod.onrender.com",
+        "https://getcurator-frontend-prod.onrender.com",
 
         # Local
         "http://localhost:3000",
