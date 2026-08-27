@@ -45,6 +45,16 @@ type WatchFiltersParams = {
 
   period_end?: string | null;
 
+  query?: string | null;
+
+  universe_id?: string | null;
+
+  company_id?: string | null;
+
+  solution_id?: string | null;
+
+  topic_id?: string | null;
+
 };
 
 /* ========================================================= */
