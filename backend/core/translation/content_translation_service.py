@@ -34,38 +34,38 @@ TABLE_CONTENT = (
 FIELD_MAPPING = {
 
     "TITLE": {
-        "source": "TITLE",
-        "target": "TITLE_EN",
+        "source": "TITLE_EN",
+        "target": "TITLE",
     },
 
     "EXCERPT": {
-        "source": "EXCERPT",
-        "target": "EXCERPT_EN",
+        "source": "EXCERPT_EN",
+        "target": "EXCERPT",
     },
 
     "CONTENT_BODY": {
-        "source": "CONTENT_BODY",
-        "target": "CONTENT_BODY_EN",
+        "source": "CONTENT_BODY_EN",
+        "target": "CONTENT_BODY",
     },
 
     "SIGNAL_ANALYTIQUE": {
-        "source": "SIGNAL_ANALYTIQUE",
-        "target": "SIGNAL_ANALYTIQUE_EN",
+        "source": "SIGNAL_ANALYTIQUE_EN",
+        "target": "SIGNAL_ANALYTIQUE",
     },
 
     "MECANIQUE_EXPLIQUEE": {
-        "source": "MECANIQUE_EXPLIQUEE",
-        "target": "MECANIQUE_EXPLIQUEE_EN",
+        "source": "MECANIQUE_EXPLIQUEE_EN",
+        "target": "MECANIQUE_EXPLIQUEE",
     },
 
     "ENJEU_STRATEGIQUE": {
-        "source": "ENJEU_STRATEGIQUE",
-        "target": "ENJEU_STRATEGIQUE_EN",
+        "source": "ENJEU_STRATEGIQUE_EN",
+        "target": "ENJEU_STRATEGIQUE",
     },
 
     "POINT_DE_FRICTION": {
-        "source": "POINT_DE_FRICTION",
-        "target": "POINT_DE_FRICTION_EN",
+        "source": "POINT_DE_FRICTION_EN",
+        "target": "POINT_DE_FRICTION",
     },
 }
 
@@ -119,7 +119,7 @@ def _get_target_column(
 
     field = field.upper()
 
-    if target_lang != "en":
+    if target_lang != "fr":
 
         raise ValueError(
             f"Langue non supportée : {target_lang}"
@@ -159,7 +159,7 @@ def _get_source_column(
 
 def translate_content_fields(
     content_id: str,
-    target_lang: str = "en",
+    target_lang: str = "fr",
     fields: Optional[List[str]] = None,
     only_missing: bool = False,
 ) -> Dict:
@@ -368,7 +368,7 @@ def translate_content_fields(
 # ============================================================
 
 def translate_contents_batch(
-    target_lang: str = "en",
+    target_lang: str = "fr",
     fields: Optional[List[str]] = None,
     limit: int = 10000,
     only_missing: bool = True,
