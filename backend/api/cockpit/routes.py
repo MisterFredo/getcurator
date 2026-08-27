@@ -72,11 +72,8 @@ def translate_missing():
     try:
 
         result = translate_contents_batch(
-            target_lang="en",
-            fields=[
-                "TITLE",
-                "EXCERPT",
-            ],
+            target_lang="fr",
+            fields=None,
             limit=9999,
             only_missing=True,
             content_ids=None,
