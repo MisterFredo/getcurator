@@ -354,11 +354,19 @@ def populate_content_enriched():
         excerpt,
         excerpt_en,
         content_body,
+        content_body_en,
 
         signal_analytique,
+        signal_analytique_en,
+
         mecanique_expliquee,
+        mecanique_expliquee_en,
+
         enjeu_strategique,
+        enjeu_strategique_en,
+
         point_de_friction,
+        point_de_friction_en,
 
         chiffres,
         acteurs_cites,
@@ -407,13 +415,23 @@ def populate_content_enriched():
 
         c.CONTENT_BODY AS content_body,
 
+        c.CONTENT_BODY_EN AS content_body_en,
+
         c.SIGNAL_ANALYTIQUE AS signal_analytique,
+
+        c.SIGNAL_ANALYTIQUE_EN AS signal_analytique_en,
 
         c.MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
 
+        c.MECANIQUE_EXPLIQUEE_EN AS mecanique_expliquee_en,
+
         c.ENJEU_STRATEGIQUE AS enjeu_strategique,
 
+        c.ENJEU_STRATEGIQUE_EN AS enjeu_strategique_en,
+
         c.POINT_DE_FRICTION AS point_de_friction,
+
+        c.POINT_DE_FRICTION_EN AS point_de_friction_en,
 
         c.CHIFFRES AS chiffres,
 
