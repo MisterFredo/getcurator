@@ -1,8 +1,15 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import {
+  RefreshCw,
+} from "lucide-react";
 
-import { useCockpitMonitoring } from "@/hooks/useCockpitMonitoring";
+import {
+  useCockpitMonitoring,
+} from "@/hooks/useCockpitMonitoring";
+
+
+/* ========================================================= */
 
 export default function MonitoringPanel() {
 
@@ -12,86 +19,279 @@ export default function MonitoringPanel() {
     refresh,
   } = useCockpitMonitoring();
 
+
+  /* ========================================================
+     VALUES
+  ======================================================== */
+
+  const destock = (
+    monitoring?.destock
+  );
+
+  const translation = (
+    monitoring?.translation
+  );
+
+  const destockProgress = (
+    destock?.progress_pct
+    ?? 0
+  );
+
+  const translationProgress = (
+    translation?.pct_fully_translated
+    ?? 0
+  );
+
+
+  /* ========================================================
+     RENDER
+  ======================================================== */
+
   return (
 
-    <div className="border rounded-xl bg-white p-6">
+    <div className="rounded-xl border bg-white p-6">
 
-      <div className="flex items-center justify-between mb-6">
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
+
+      <div className="mb-6 flex items-center justify-between">
 
         <div>
 
           <h2 className="text-xl font-semibold">
+
             Monitoring
+
           </h2>
 
           <p className="text-sm text-gray-500">
+
             Live platform status.
+
           </p>
 
         </div>
 
         <button
-          onClick={refresh}
-          className="border rounded px-3 py-2 hover:bg-gray-50"
+          type="button"
+          onClick={
+            refresh
+          }
+          disabled={
+            loading
+          }
+          className="rounded border px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
         >
-          <RefreshCw size={16} />
+
+          <RefreshCw
+            size={16}
+            className={
+              loading
+                ? "animate-spin"
+                : ""
+            }
+          />
+
         </button>
 
       </div>
 
-      {loading && (
+
+      {/* ================================================= */}
+      {/* LOADING */}
+      {/* ================================================= */}
+
+      {loading && !monitoring && (
 
         <div className="text-gray-500">
+
           Loading...
+
         </div>
 
       )}
 
-      {!loading && monitoring && (
 
-        <div className="grid md:grid-cols-2 gap-4">
+      {/* ================================================= */}
+      {/* MONITORING */}
+      {/* ================================================= */}
 
-          <div className="border rounded-lg p-5">
+      {monitoring && (
+
+        <div className="grid gap-4 md:grid-cols-2">
+
+          {/* ============================================= */}
+          {/* DESTOCK */}
+          {/* ============================================= */}
+
+          <div className="rounded-lg border p-5">
 
             <div className="text-sm text-gray-500">
+
               Destock
+
             </div>
 
             <div className="mt-3 text-3xl font-semibold">
-              {monitoring.destock.progress_pct}%
+
+              {destockProgress}%
+
             </div>
 
-            <div className="mt-2 text-sm text-gray-500">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
 
-              {monitoring.destock.processed}
+              <div
+                className="h-full rounded-full bg-ratecard-blue transition-all"
+                style={{
+                  width:
+                    `${Math.min(
+                      Math.max(
+                        destockProgress,
+                        0,
+                      ),
+                      100,
+                    )}%`,
+                }}
+              />
+
+            </div>
+
+            <div className="mt-3 text-sm text-gray-500">
+
+              {destock?.processed ?? 0}
 
               {" / "}
 
-              {monitoring.destock.total}
+              {destock?.total ?? 0}
 
               {" processed"}
 
             </div>
 
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+
+              <span>
+
+                {destock?.stored ?? 0}
+                {" stored"}
+
+              </span>
+
+              <span>
+
+                {destock?.processing ?? 0}
+                {" processing"}
+
+              </span>
+
+              <span
+                className={
+                  (destock?.errors ?? 0) > 0
+                    ? "text-red-600"
+                    : ""
+                }
+              >
+
+                {destock?.errors ?? 0}
+                {" errors"}
+
+              </span>
+
+            </div>
+
           </div>
 
-          <div className="border rounded-lg p-5">
+
+          {/* ============================================= */}
+          {/* TRANSLATION */}
+          {/* ============================================= */}
+
+          <div className="rounded-lg border p-5">
 
             <div className="text-sm text-gray-500">
-              Translation
+
+              Translation EN → FR
+
             </div>
 
             <div className="mt-3 text-3xl font-semibold">
 
-              {monitoring.translation.pct_fully_translated}%
+              {translationProgress}%
 
             </div>
 
-            <div className="mt-2 text-sm text-gray-500">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
 
-              {monitoring.translation.missing_translation}
+              <div
+                className="h-full rounded-full bg-green-600 transition-all"
+                style={{
+                  width:
+                    `${Math.min(
+                      Math.max(
+                        translationProgress,
+                        0,
+                      ),
+                      100,
+                    )}%`,
+                }}
+              />
 
-              {" remaining"}
+            </div>
+
+            <div className="mt-3 text-sm text-gray-500">
+
+              {translation?.fully_translated ?? 0}
+
+              {" / "}
+
+              {translation?.english_source_ready ?? 0}
+
+              {" translated"}
+
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+
+              <span
+                className={
+                  (
+                    translation
+                      ?.missing_translation
+                    ?? 0
+                  ) > 0
+
+                    ? "text-amber-600"
+
+                    : ""
+                }
+              >
+
+                {translation?.missing_translation ?? 0}
+
+                {" remaining"}
+
+              </span>
+
+              <span
+                className={
+                  (
+                    translation
+                      ?.english_source_missing
+                    ?? 0
+                  ) > 0
+
+                    ? "text-red-600"
+
+                    : ""
+                }
+              >
+
+                {translation?.english_source_missing ?? 0}
+
+                {" without English source"}
+
+              </span>
 
             </div>
 
