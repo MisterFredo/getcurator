@@ -41,6 +41,45 @@ def build_universe_sql(
 
     """
 
+# ============================================================
+# BUILD ALLOWED UNIVERSES SQL
+# ============================================================
+
+def build_allowed_universes_sql(
+    allowed_universe_ids: list[str] | None,
+) -> str:
+
+    # None signifie que l'appelant ne demande pas
+    # de restriction par droits utilisateur.
+    if allowed_universe_ids is None:
+
+        return ""
+
+    # Une liste vide signifie que le user
+    # n'a accès à aucun univers.
+    if not allowed_universe_ids:
+
+        return """
+
+        AND FALSE
+
+        """
+
+    return """
+
+    AND EXISTS (
+
+        SELECT 1
+
+        FROM UNNEST(universes) u
+
+        WHERE u.id_universe
+            IN UNNEST(@allowed_universe_ids)
+
+    )
+
+    """
+
 
 # ============================================================
 # BUILD ENTITY SQL
