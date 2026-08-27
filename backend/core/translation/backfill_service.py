@@ -57,9 +57,9 @@ TRANSLATION_START_DATE = (
     "2026-01-01 00:00:00+00"
 )
 
-CHUNK_SIZE = 5
+CHUNK_SIZE = 100
 
-WORKERS = 1
+WORKERS = 5
 
 WRITE_BATCH_SIZE = 25
 
@@ -682,9 +682,6 @@ def run_translation_backfill():
                         total_failed,
                 },
             )
-
-            # TEMPORARY TEST: stop after first chunk
-            break
 
         print(
             "=================================================="
