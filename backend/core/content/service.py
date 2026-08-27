@@ -16,6 +16,9 @@ from utils.bigquery_utils import (
 from core.numbers.service import get_numbers_from_content
 from core.numbers.backlog_llm import process_backlog_row
 from core.numbers.backlog_insert_service import insert_backlog_batch
+from core.translation.drawer_translation_service import (
+    translate_fields,
+)
 
 # ============================================================
 # TABLES
@@ -69,6 +72,18 @@ def normalize_array(
 
     return []
 
+def normalize_optional_text(
+    value,
+):
+
+    if not isinstance(
+        value,
+        str,
+    ):
+        return ""
+
+    return value.strip()
+
 
 # ============================================================
 # CREATE CONTENT
@@ -98,6 +113,60 @@ def create_content(
 
         raise ValueError(
             "CONTENT_BODY obligatoire"
+        )
+
+        # ========================================================
+        # ENGLISH PRODUCTION
+        # ========================================================
+    
+        english_fields = {
+    
+            "TITLE":
+                data.title.strip(),
+    
+            "EXCERPT":
+                normalize_optional_text(
+                    data.excerpt
+                ),
+    
+            "CONTENT_BODY":
+                data.content_body.strip(),
+    
+            "MECANIQUE_EXPLIQUEE":
+                normalize_optional_text(
+                    data.mecanique_expliquee
+                ),
+    
+            "ENJEU_STRATEGIQUE":
+                normalize_optional_text(
+                    data.enjeu_strategique
+                ),
+    
+            "POINT_DE_FRICTION":
+                normalize_optional_text(
+                    data.point_de_friction
+                ),
+    
+            "SIGNAL_ANALYTIQUE":
+                normalize_optional_text(
+                    data.signal_analytique
+                ),
+        }
+
+        # ========================================================
+        # ONE EN → FR TRANSLATION CALL
+        # ========================================================
+    
+        french_fields = translate_fields(
+    
+            fields=
+                english_fields,
+    
+            target_lang=
+                "fr",
+    
+            raise_on_error=
+                True,
         )
 
 
@@ -163,18 +232,47 @@ def create_content(
             else None
         ),
 
-        # ====================================================
-        # CONTENT
-        # ====================================================
-
-        "TITLE":
-            data.title.strip(),
-
-        "EXCERPT":
-            data.excerpt,
-
-        "CONTENT_BODY":
-            data.content_body,
+                # ====================================================
+                # CONTENT — FRENCH
+                # ====================================================
+        
+                "TITLE":
+                    french_fields.get(
+                        "TITLE"
+                    ),
+        
+                "EXCERPT": (
+                    french_fields.get(
+                        "EXCERPT"
+                    )
+                    or None
+                ),
+        
+                "CONTENT_BODY":
+                    french_fields.get(
+                        "CONTENT_BODY"
+                    ),
+        
+                # ====================================================
+                # CONTENT — ENGLISH
+                # ====================================================
+        
+                "TITLE_EN":
+                    english_fields[
+                        "TITLE"
+                    ],
+        
+                "EXCERPT_EN": (
+                    english_fields.get(
+                        "EXCERPT"
+                    )
+                    or None
+                ),
+        
+                "CONTENT_BODY_EN":
+                    english_fields[
+                        "CONTENT_BODY"
+                    ],
 
         # ====================================================
         # EXTRACTIONS
@@ -205,21 +303,69 @@ def create_content(
                 data.topics_llm
             ),
 
-        # ====================================================
-        # ANALYSE
-        # ====================================================
-
-        "MECANIQUE_EXPLIQUEE":
-            data.mecanique_expliquee,
-
-        "ENJEU_STRATEGIQUE":
-            data.enjeu_strategique,
-
-        "POINT_DE_FRICTION":
-            data.point_de_friction,
-
-        "SIGNAL_ANALYTIQUE":
-            data.signal_analytique,
+                # ====================================================
+                # ANALYSIS — FRENCH
+                # ====================================================
+        
+                "MECANIQUE_EXPLIQUEE": (
+                    french_fields.get(
+                        "MECANIQUE_EXPLIQUEE"
+                    )
+                    or None
+                ),
+        
+                "ENJEU_STRATEGIQUE": (
+                    french_fields.get(
+                        "ENJEU_STRATEGIQUE"
+                    )
+                    or None
+                ),
+        
+                "POINT_DE_FRICTION": (
+                    french_fields.get(
+                        "POINT_DE_FRICTION"
+                    )
+                    or None
+                ),
+        
+                "SIGNAL_ANALYTIQUE": (
+                    french_fields.get(
+                        "SIGNAL_ANALYTIQUE"
+                    )
+                    or None
+                ),
+        
+                # ====================================================
+                # ANALYSIS — ENGLISH
+                # ====================================================
+        
+                "MECANIQUE_EXPLIQUEE_EN": (
+                    english_fields.get(
+                        "MECANIQUE_EXPLIQUEE"
+                    )
+                    or None
+                ),
+        
+                "ENJEU_STRATEGIQUE_EN": (
+                    english_fields.get(
+                        "ENJEU_STRATEGIQUE"
+                    )
+                    or None
+                ),
+        
+                "POINT_DE_FRICTION_EN": (
+                    english_fields.get(
+                        "POINT_DE_FRICTION"
+                    )
+                    or None
+                ),
+        
+                "SIGNAL_ANALYTIQUE_EN": (
+                    english_fields.get(
+                        "SIGNAL_ANALYTIQUE"
+                    )
+                    or None
+                ),
 
         # ====================================================
         # PUBLICATION
