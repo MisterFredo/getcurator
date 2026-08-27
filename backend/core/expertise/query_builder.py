@@ -212,6 +212,10 @@ def build_search_sql(
 # BUILD SELECTION CONTEXT
 # ============================================================
 
+# ============================================================
+# BUILD SELECTION CONTEXT
+# ============================================================
+
 def build_selection_context(
     profile: ExpertiseProfile,
     period_start: str | None = None,
@@ -222,6 +226,7 @@ def build_selection_context(
     solution_id: str | None = None,
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
+    allowed_universe_ids: list[str] | None = None,
 ) -> tuple[str, dict]:
 
     selection = build_selection_filters(
@@ -246,6 +251,20 @@ def build_selection_context(
             profile.preferences.topics,
 
     }
+
+    # ========================================================
+    # ALLOWED UNIVERSES
+    # ========================================================
+
+    if allowed_universe_ids:
+
+        params["allowed_universe_ids"] = (
+            allowed_universe_ids
+        )
+
+    # ========================================================
+    # EXPLICIT FILTERS
+    # ========================================================
 
     if universe_id:
 
@@ -277,6 +296,16 @@ def build_selection_context(
             topic_id
         )
 
+    # ========================================================
+    # FILTER SQL
+    # ========================================================
+
+    allowed_universes_filter_sql = (
+        build_allowed_universes_sql(
+            allowed_universe_ids,
+        )
+    )
+
     universe_filter_sql = (
         build_universe_sql(
             universe_id,
@@ -296,6 +325,10 @@ def build_selection_context(
             topic_id=topic_id,
         )
     )
+
+    # ========================================================
+    # DATE
+    # ========================================================
 
     date_filter_sql = ""
 
@@ -349,7 +382,13 @@ def build_selection_context(
 
         selection_sql = ""
 
+    # ========================================================
+    # FINAL FILTERS
+    # ========================================================
+
     filters_sql = f"""
+
+        {allowed_universes_filter_sql}
 
         {universe_filter_sql}
 
@@ -382,6 +421,7 @@ def build_selection_query(
     solution_id: str | None = None,
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
+    allowed_universe_ids: list[str] | None = None,
 ) -> tuple[str, dict]:
 
     # ========================================================
@@ -408,6 +448,8 @@ def build_selection_query(
             topic_id=topic_id,
 
             apply_profile_selection=apply_profile_selection,
+
+            allowed_universe_ids=allowed_universe_ids,
 
         )
     )
@@ -557,6 +599,7 @@ def build_selection_count_query(
     solution_id: str | None = None,
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
+    allowed_universe_ids: list[str] | None = None,
 ) -> tuple[str, dict]:
 
     filters_sql, params = (
@@ -579,6 +622,8 @@ def build_selection_count_query(
             topic_id=topic_id,
 
             apply_profile_selection=apply_profile_selection,
+
+            allowed_universe_ids=allowed_universe_ids,
 
         )
     )
@@ -605,7 +650,6 @@ def build_selection_count_query(
         sql,
         params,
     )
-
 # ============================================================
 # BUILD SELECTION FILTERS
 # ============================================================
