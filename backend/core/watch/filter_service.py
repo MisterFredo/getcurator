@@ -45,6 +45,22 @@ def get_watch_filters(
     )
 
     # ========================================================
+    # ALLOWED UNIVERSES
+    # ========================================================
+
+    user_universes = list_universes_for_user(
+        user_id,
+    )
+
+    allowed_universe_ids = [
+
+        universe["id_universe"]
+
+        for universe in user_universes
+
+    ]
+
+    # ========================================================
     # BASE PROFILE SELECTION
     # ========================================================
 
@@ -56,6 +72,10 @@ def get_watch_filters(
             period_start=period_start,
 
             period_end=period_end,
+
+            apply_profile_selection=False,
+
+            allowed_universe_ids=allowed_universe_ids,
 
         )
     )
