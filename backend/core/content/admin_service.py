@@ -223,108 +223,281 @@ def _load_content_relations(
 # LIST CONTENTS ADMIN
 # ============================================================
 
-# ============================================================
-# LIST CONTENTS ADMIN
-# ============================================================
-
 def list_contents_admin():
 
     rows = query_bq(
         f"""
+        WITH content_translation AS (
+
+            SELECT
+
+                c.ID_CONTENT,
+
+                c.ID_PRIMARY_COMPANY,
+
+                pc.NAME AS PRIMARY_COMPANY_NAME,
+
+                c.TITLE,
+                c.TITLE_EN,
+
+                c.EXCERPT,
+                c.EXCERPT_EN,
+
+                c.STATUS,
+
+                c.SOURCE_DATE,
+                c.SOURCE_URL,
+                c.SOURCE_TITLE,
+
+                c.PUBLISHED_AT,
+                c.UPDATED_AT,
+
+                (
+                    IF(
+                        c.TITLE_EN IS NOT NULL
+                        AND TRIM(c.TITLE_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.EXCERPT_EN IS NOT NULL
+                        AND TRIM(c.EXCERPT_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.CONTENT_BODY_EN IS NOT NULL
+                        AND TRIM(c.CONTENT_BODY_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.SIGNAL_ANALYTIQUE_EN IS NOT NULL
+                        AND TRIM(c.SIGNAL_ANALYTIQUE_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.MECANIQUE_EXPLIQUEE_EN IS NOT NULL
+                        AND TRIM(c.MECANIQUE_EXPLIQUEE_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.ENJEU_STRATEGIQUE_EN IS NOT NULL
+                        AND TRIM(c.ENJEU_STRATEGIQUE_EN) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.POINT_DE_FRICTION_EN IS NOT NULL
+                        AND TRIM(c.POINT_DE_FRICTION_EN) != '',
+                        1,
+                        0
+                    )
+                ) AS TRANSLATION_REQUIRED_COUNT,
+
+                (
+                    IF(
+                        c.TITLE_EN IS NOT NULL
+                        AND TRIM(c.TITLE_EN) != ''
+                        AND c.TITLE IS NOT NULL
+                        AND TRIM(c.TITLE) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.EXCERPT_EN IS NOT NULL
+                        AND TRIM(c.EXCERPT_EN) != ''
+                        AND c.EXCERPT IS NOT NULL
+                        AND TRIM(c.EXCERPT) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.CONTENT_BODY_EN IS NOT NULL
+                        AND TRIM(c.CONTENT_BODY_EN) != ''
+                        AND c.CONTENT_BODY IS NOT NULL
+                        AND TRIM(c.CONTENT_BODY) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.SIGNAL_ANALYTIQUE_EN IS NOT NULL
+                        AND TRIM(c.SIGNAL_ANALYTIQUE_EN) != ''
+                        AND c.SIGNAL_ANALYTIQUE IS NOT NULL
+                        AND TRIM(c.SIGNAL_ANALYTIQUE) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.MECANIQUE_EXPLIQUEE_EN IS NOT NULL
+                        AND TRIM(c.MECANIQUE_EXPLIQUEE_EN) != ''
+                        AND c.MECANIQUE_EXPLIQUEE IS NOT NULL
+                        AND TRIM(c.MECANIQUE_EXPLIQUEE) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.ENJEU_STRATEGIQUE_EN IS NOT NULL
+                        AND TRIM(c.ENJEU_STRATEGIQUE_EN) != ''
+                        AND c.ENJEU_STRATEGIQUE IS NOT NULL
+                        AND TRIM(c.ENJEU_STRATEGIQUE) != '',
+                        1,
+                        0
+                    )
+                    +
+                    IF(
+                        c.POINT_DE_FRICTION_EN IS NOT NULL
+                        AND TRIM(c.POINT_DE_FRICTION_EN) != ''
+                        AND c.POINT_DE_FRICTION IS NOT NULL
+                        AND TRIM(c.POINT_DE_FRICTION) != '',
+                        1,
+                        0
+                    )
+                ) AS TRANSLATION_COMPLETED_COUNT
+
+            FROM `{TABLE_CONTENT}` c
+
+            LEFT JOIN `{TABLE_COMPANY}` pc
+              ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
+
+            WHERE
+                c.IS_ACTIVE = TRUE
+        )
+
         SELECT
-            c.ID_CONTENT,
 
-            c.ID_PRIMARY_COMPANY,
+            *,
 
-            pc.NAME AS PRIMARY_COMPANY_NAME,
+            CASE
 
-            c.TITLE,
-            c.TITLE_EN,
+                WHEN TRANSLATION_REQUIRED_COUNT = 0
+                    THEN 'MISSING'
 
-            c.EXCERPT,
-            c.EXCERPT_EN,
+                WHEN TRANSLATION_COMPLETED_COUNT = 0
+                    THEN 'MISSING'
 
-            c.STATUS,
+                WHEN (
+                    TRANSLATION_COMPLETED_COUNT
+                    = TRANSLATION_REQUIRED_COUNT
+                )
+                    THEN 'COMPLETE'
 
-            c.SOURCE_DATE,
-            c.SOURCE_URL,
-            c.SOURCE_TITLE,
+                ELSE 'PARTIAL'
 
-            c.PUBLISHED_AT,
-            c.UPDATED_AT
+            END AS TRANSLATION_STATUS
 
-        FROM `{TABLE_CONTENT}` c
-
-        LEFT JOIN `{TABLE_COMPANY}` pc
-          ON c.ID_PRIMARY_COMPANY = pc.ID_COMPANY
-
-        WHERE
-            c.IS_ACTIVE = TRUE
+        FROM content_translation
 
         ORDER BY
-            c.UPDATED_AT DESC
+            UPDATED_AT DESC
         """
     )
 
     return [
 
         {
+            "id_content":
+                row["ID_CONTENT"],
 
-            "id_content": r["ID_CONTENT"],
+            "id_primary_company":
+                row.get(
+                    "ID_PRIMARY_COMPANY"
+                ),
 
-            "id_primary_company": r.get(
-                "ID_PRIMARY_COMPANY"
-            ),
+            "primary_company_name":
+                row.get(
+                    "PRIMARY_COMPANY_NAME"
+                ),
 
-            "primary_company_name": r.get(
-                "PRIMARY_COMPANY_NAME"
-            ),
+            "source_url":
+                row.get(
+                    "SOURCE_URL"
+                ),
 
-            "source_url": r.get(
-                "SOURCE_URL"
-            ),
+            "source_title":
+                row.get(
+                    "SOURCE_TITLE"
+                ),
 
-            "source_title": r.get(
-                "SOURCE_TITLE"
-            ),
+            "title":
+                row.get(
+                    "TITLE"
+                ),
 
-            "title": r["TITLE"],
-            "title_en": r["TITLE_EN"],
+            "title_en":
+                row.get(
+                    "TITLE_EN"
+                ),
 
-            "excerpt": r.get(
-                "EXCERPT"
-            ),
+            "excerpt":
+                row.get(
+                    "EXCERPT"
+                ),
 
-            "excerpt_en": r.get(
-                "EXCERPT_EN"
-            ),
+            "excerpt_en":
+                row.get(
+                    "EXCERPT_EN"
+                ),
 
-            "status": r.get(
-                "STATUS"
-            ),
+            "status":
+                row.get(
+                    "STATUS"
+                ),
 
-            "source_date": _map_datetime(
-                r.get("SOURCE_DATE")
-            ),
+            "translation_status":
+                row.get(
+                    "TRANSLATION_STATUS"
+                ),
 
-            "published_at": _map_datetime(
-                r.get("PUBLISHED_AT")
-            ),
+            "translation_required_count":
+                row.get(
+                    "TRANSLATION_REQUIRED_COUNT"
+                )
+                or 0,
 
-            "updated_at": _map_datetime(
-                r.get("UPDATED_AT")
-            ),
+            "translation_completed_count":
+                row.get(
+                    "TRANSLATION_COMPLETED_COUNT"
+                )
+                or 0,
 
+            "source_date":
+                _map_datetime(
+                    row.get(
+                        "SOURCE_DATE"
+                    )
+                ),
+
+            "published_at":
+                _map_datetime(
+                    row.get(
+                        "PUBLISHED_AT"
+                    )
+                ),
+
+            "updated_at":
+                _map_datetime(
+                    row.get(
+                        "UPDATED_AT"
+                    )
+                ),
         }
 
-        for r in rows
-
+        for row in rows
     ]
-
-# ============================================================
-# GET CONTENT
-# ============================================================
-
 # ============================================================
 # GET CONTENT ADMIN
 # ============================================================
