@@ -18,6 +18,10 @@ from core.content.service import (
     get_content as load_content,
 )
 
+from core.universe.service import (
+    list_universes_for_user,
+)
+
 
 # ============================================================
 # LATEST
@@ -36,6 +40,17 @@ def latest(
 ):
 
     t0 = perf_counter()
+    user_universes = list_universes_for_user(
+        user_id,
+    )
+
+    allowed_universe_ids = [
+
+        universe["id_universe"]
+
+        for universe in user_universes
+
+    ]
 
     expertise = generate_expertise_from_profile(
 
@@ -57,7 +72,7 @@ def latest(
 
         topic_id=topic_id,
         apply_profile_selection=False,
-
+        allowed_universe_ids=allowed_universe_ids,
 
     )
 
@@ -125,6 +140,17 @@ def search(
 ):
 
     t0 = perf_counter()
+    user_universes = list_universes_for_user(
+        user_id,
+    )
+
+    allowed_universe_ids = [
+
+        universe["id_universe"]
+
+        for universe in user_universes
+
+    ]
 
     expertise = generate_expertise_from_profile(
 
@@ -148,7 +174,7 @@ def search(
 
         topic_id=topic_id,
         apply_profile_selection=False,
-
+        allowed_universe_ids=allowed_universe_ids,
 
     )
 
