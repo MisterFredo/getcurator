@@ -182,6 +182,7 @@ def build_selection_context(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
+    apply_profile_selection: bool = True,
 ) -> tuple[str, dict]:
 
     selection = build_selection_filters(
@@ -283,6 +284,10 @@ def build_selection_context(
             period_end
         )
 
+    # ========================================================
+    # SELECTION
+    # ========================================================
+
     if entity_filter_sql:
 
         selection_sql = f"""
@@ -291,7 +296,7 @@ def build_selection_context(
         )
         """
 
-    else:
+    elif apply_profile_selection:
 
         selection_sql = f"""
         AND (
@@ -300,6 +305,10 @@ def build_selection_context(
             ({selection.keywords_sql})
         )
         """
+
+    else:
+
+        selection_sql = ""
 
     filters_sql = f"""
 
@@ -318,7 +327,6 @@ def build_selection_context(
         params,
     )
 
-
 # ============================================================
 # BUILD SELECTION QUERY
 # ============================================================
@@ -334,6 +342,7 @@ def build_selection_query(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
+    apply_profile_selection: bool = True,
 ) -> tuple[str, dict]:
 
     # ========================================================
@@ -358,6 +367,8 @@ def build_selection_query(
             solution_id=solution_id,
 
             topic_id=topic_id,
+
+            apply_profile_selection=apply_profile_selection,
 
         )
     )
@@ -506,18 +517,30 @@ def build_selection_count_query(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
+    apply_profile_selection: bool = True,
 ) -> tuple[str, dict]:
 
     filters_sql, params = (
         build_selection_context(
+
             profile=profile,
+
             period_start=period_start,
+
             period_end=period_end,
+
             universe_id=universe_id,
+
             query=query,
+
             company_id=company_id,
+
             solution_id=solution_id,
+
             topic_id=topic_id,
+
+            apply_profile_selection=apply_profile_selection,
+
         )
     )
 
