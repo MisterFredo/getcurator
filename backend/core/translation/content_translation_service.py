@@ -13,8 +13,8 @@ from utils.bigquery_utils import (
     query_bq,
 )
 
-from core.translation.service import (
-    translate_text,
+from core.translation.drawer_translation_service import (
+    translate_fields,
 )
 
 
@@ -93,7 +93,9 @@ def _normalize_fields(
 
     for field in selected_fields:
 
-        normalized = field.upper()
+        normalized = (
+            field.upper()
+        )
 
         if normalized not in FIELD_MAPPING:
 
@@ -129,7 +131,9 @@ def _get_target_column(
             f"Champ non supporté : {field}"
         )
 
-    return FIELD_MAPPING[field]["target"]
+    return FIELD_MAPPING[
+        field
+    ]["target"]
 
 
 def _get_source_column(
@@ -144,7 +148,9 @@ def _get_source_column(
             f"Champ non supporté : {field}"
         )
 
-    return FIELD_MAPPING[field]["source"]
+    return FIELD_MAPPING[
+        field
+    ]["source"]
 
 
 # ============================================================
@@ -158,8 +164,10 @@ def translate_content_fields(
     only_missing: bool = False,
 ) -> Dict:
 
-    normalized_fields = _normalize_fields(
-        fields
+    normalized_fields = (
+        _normalize_fields(
+            fields
+        )
     )
 
     # ========================================================
@@ -174,7 +182,8 @@ def translate_content_fields(
         LIMIT 1
         """,
         {
-            "content_id": content_id,
+            "content_id":
+                content_id,
         },
     )
 
@@ -186,30 +195,38 @@ def translate_content_fields(
 
     content = rows[0]
 
-    updated_fields = {}
+    # ========================================================
+    # BUILD ONE TRANSLATION PAYLOAD
+    # ========================================================
 
-    # ========================================================
-    # TRANSLATE
-    # ========================================================
+    translation_payload = {}
 
     for field in normalized_fields:
 
-        source_col = _get_source_column(
-            field
+        source_col = (
+            _get_source_column(
+                field
+            )
         )
 
-        target_col = _get_target_column(
-            field,
-            target_lang,
+        target_col = (
+            _get_target_column(
+                field,
+                target_lang,
+            )
         )
 
         source_value = (
-            content.get(source_col)
+            content.get(
+                source_col
+            )
             or ""
         ).strip()
 
         target_value = (
-            content.get(target_col)
+            content.get(
+                target_col
+            )
             or ""
         ).strip()
 
@@ -222,60 +239,113 @@ def translate_content_fields(
         ):
             continue
 
-        translated = translate_text(
-            text=source_value,
-            target_lang=target_lang,
-            raise_on_error=True,
-        )
+        translation_payload[
+            target_col
+        ] = source_value
 
-        if not translated:
-            continue
+    # ========================================================
+    # NOTHING TO TRANSLATE
+    # ========================================================
 
-        updated_fields[target_col] = (
-            translated.strip()
+    if not translation_payload:
+
+        return {
+
+            "content_id":
+                content_id,
+
+            "target_lang":
+                target_lang,
+
+            "updated_fields":
+                {},
+
+            "updated_count":
+                0,
+        }
+
+    # ========================================================
+    # ONE LLM CALL
+    # ========================================================
+
+    translated_fields = (
+        translate_fields(
+
+            fields=
+                translation_payload,
+
+            target_lang=
+                target_lang,
+
+            raise_on_error=
+                True,
         )
+    )
 
     # ========================================================
     # SINGLE UPDATE
     # ========================================================
 
-    if updated_fields:
+    assignments = []
 
-        assignments = []
+    params = {
+        "content_id":
+            content_id,
+    }
 
-        params = {
-            "content_id": content_id,
-        }
+    for index, target_col in enumerate(
+        translation_payload.keys()
+    ):
 
-        for index, (
-            target_col,
-            translated,
-        ) in enumerate(
-            updated_fields.items()
-        ):
+        translated_value = (
+            translated_fields.get(
+                target_col
+            )
+            or ""
+        ).strip()
 
-            param_name = (
-                f"translated_{index}"
+        if not translated_value:
+
+            raise ValueError(
+                "Traduction absente pour "
+                f"le champ {target_col}."
             )
 
-            assignments.append(
-                f"{target_col} = @{param_name}"
-            )
-
-            params[param_name] = translated
-
-        query_bq(
-            f"""
-            UPDATE `{TABLE_CONTENT}`
-
-            SET
-                {", ".join(assignments)}
-
-            WHERE
-                ID_CONTENT = @content_id
-            """,
-            params,
+        param_name = (
+            f"translated_{index}"
         )
+
+        assignments.append(
+            f"{target_col} = @{param_name}"
+        )
+
+        params[
+            param_name
+        ] = translated_value
+
+    query_bq(
+        f"""
+        UPDATE `{TABLE_CONTENT}`
+
+        SET
+            {", ".join(assignments)}
+
+        WHERE
+            ID_CONTENT = @content_id
+        """,
+        params,
+    )
+
+    updated_fields = {
+
+        target_col:
+            translated_fields[
+                target_col
+            ]
+
+        for target_col
+        in translation_payload.keys()
+    }
 
     return {
 
@@ -304,10 +374,13 @@ def translate_contents_batch(
     only_missing: bool = True,
     content_ids: Optional[List[str]] = None,
     source_id: Optional[str] = None,
+    content_type: Optional[str] = None,
 ) -> Dict:
 
-    normalized_fields = _normalize_fields(
-        fields
+    normalized_fields = (
+        _normalize_fields(
+            fields
+        )
     )
 
     # ========================================================
@@ -319,7 +392,8 @@ def translate_contents_batch(
     ]
 
     params = {
-        "limit": limit,
+        "limit":
+            limit,
     }
 
     # ========================================================
@@ -332,13 +406,17 @@ def translate_contents_batch(
 
         for field in normalized_fields:
 
-            source_col = _get_source_column(
-                field
+            source_col = (
+                _get_source_column(
+                    field
+                )
             )
 
-            target_col = _get_target_column(
-                field,
-                target_lang,
+            target_col = (
+                _get_target_column(
+                    field,
+                    target_lang,
+                )
             )
 
             missing_conditions.append(
@@ -390,7 +468,26 @@ def translate_contents_batch(
             "SOURCE_ID = @source_id"
         )
 
-        params["source_id"] = source_id
+        params["source_id"] = (
+            source_id
+        )
+
+    # ========================================================
+    # CONTENT TYPE
+    # ========================================================
+
+    if content_type:
+
+        where_clauses.append(
+            """
+            UPPER(CONTENT_TYPE)
+            = UPPER(@content_type)
+            """
+        )
+
+        params["content_type"] = (
+            content_type
+        )
 
     # ========================================================
     # QUERY
@@ -426,20 +523,35 @@ def translate_contents_batch(
 
     for row in rows:
 
-        content_id = row[
-            "ID_CONTENT"
-        ]
+        content_id = (
+            row["ID_CONTENT"]
+        )
 
         try:
 
-            result = translate_content_fields(
-                content_id=content_id,
-                target_lang=target_lang,
-                fields=normalized_fields,
-                only_missing=only_missing,
+            result = (
+                translate_content_fields(
+
+                    content_id=
+                        content_id,
+
+                    target_lang=
+                        target_lang,
+
+                    fields=
+                        normalized_fields,
+
+                    only_missing=
+                        only_missing,
+                )
             )
 
-            if result["updated_count"] > 0:
+            if (
+                result[
+                    "updated_count"
+                ]
+                > 0
+            ):
 
                 translated_ids.append(
                     content_id
