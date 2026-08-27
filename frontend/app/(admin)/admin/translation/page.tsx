@@ -355,12 +355,9 @@ export default function TranslationPage() {
 
           fields:
             TRANSLATION_FIELDS,
-
-          only_missing:
-            false,
         },
       );
-
+      
       await load();
 
     } catch (error) {
