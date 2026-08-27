@@ -56,6 +56,8 @@ def latest(
         solution_id=solution_id,
 
         topic_id=topic_id,
+        apply_profile_selection=False,
+
 
     )
 
@@ -145,6 +147,8 @@ def search(
         solution_id=solution_id,
 
         topic_id=topic_id,
+        apply_profile_selection=False,
+
 
     )
 
