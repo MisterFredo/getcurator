@@ -35,6 +35,7 @@ def select_contents(
     solution_id: str | None = None,
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
+    allowed_universe_ids: list[str] | None = None,
 ) -> tuple[
     list[ExpertiseContent],
     int,
@@ -67,6 +68,8 @@ def select_contents(
         topic_id=topic_id,
 
         apply_profile_selection=apply_profile_selection,
+
+        allowed_universe_ids=allowed_universe_ids,
 
     )
 
@@ -106,6 +109,8 @@ def select_contents(
             topic_id=topic_id,
 
             apply_profile_selection=apply_profile_selection,
+
+            allowed_universe_ids=allowed_universe_ids,
 
         )
     )
