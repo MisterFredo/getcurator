@@ -53,10 +53,6 @@ TABLE_BACKLOG = (
 
 TARGET_LANG = "en"
 
-TRANSLATION_START_DATE = (
-    "2026-01-01 00:00:00+00"
-)
-
 CHUNK_SIZE = 100
 
 WORKERS = 5
@@ -202,10 +198,6 @@ def _load_next_chunk() -> List[Dict]:
 
         AND c.IS_ACTIVE = TRUE
 
-        AND c.PUBLISHED_AT >= TIMESTAMP(
-            @translation_start_date
-        )
-
         AND (
             {" OR ".join(missing_conditions)}
         )
@@ -247,9 +239,6 @@ def _load_next_chunk() -> List[Dict]:
     return query_bq(
         sql,
         {
-            "translation_start_date":
-                TRANSLATION_START_DATE,
-
             "max_attempts":
                 MAX_ATTEMPTS,
 
@@ -639,11 +628,6 @@ def run_translation_backfill():
         )
 
         print(
-            "Start date:",
-            TRANSLATION_START_DATE,
-        )
-
-        print(
             "=================================================="
         )
 
@@ -773,10 +757,6 @@ def _get_persisted_progress() -> Dict:
 
                 AND c.IS_ACTIVE = TRUE
 
-                AND c.PUBLISHED_AT >= TIMESTAMP(
-                    @translation_start_date
-                )
-
                 AND (
                     {" OR ".join(missing_conditions)}
                 )
@@ -838,8 +818,6 @@ def _get_persisted_progress() -> Dict:
           ON a.ID_CONTENT = e.ID_CONTENT
         """,
         {
-            "translation_start_date":
-                TRANSLATION_START_DATE,
 
             "max_attempts":
                 MAX_ATTEMPTS,
