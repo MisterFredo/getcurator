@@ -356,10 +356,18 @@ def _build_staging_row(
         "ERROR":
             error,
 
-        "CREATED_AT":
+        "STATUS":
+            status,
+
+        "ERROR":
+            error,
+
+        "CREATED_AT": (
             datetime.now(
                 timezone.utc
-            ),
+            )
+            .isoformat()
+        ),
     }
 
 
