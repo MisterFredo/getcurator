@@ -16,9 +16,6 @@ from utils.bigquery_utils import (
 from core.numbers.service import get_numbers_from_content
 from core.numbers.backlog_llm import process_backlog_row
 from core.numbers.backlog_insert_service import insert_backlog_batch
-from core.translation.drawer_translation_service import (
-    translate_fields,
-)
 
 # ============================================================
 # TABLES
@@ -72,18 +69,6 @@ def normalize_array(
 
     return []
 
-def normalize_optional_text(
-    value,
-):
-
-    if not isinstance(
-        value,
-        str,
-    ):
-        return ""
-
-    return value.strip()
-
 
 # ============================================================
 # CREATE CONTENT
@@ -103,7 +88,7 @@ def create_content(
     ):
 
         raise ValueError(
-            "TITLE obligatoire"
+            "TITLE_EN obligatoire"
         )
 
     if (
@@ -112,63 +97,8 @@ def create_content(
     ):
 
         raise ValueError(
-            "CONTENT_BODY obligatoire"
+            "CONTENT_BODY_EN obligatoire"
         )
-
-        # ========================================================
-        # ENGLISH PRODUCTION
-        # ========================================================
-    
-        english_fields = {
-    
-            "TITLE":
-                data.title.strip(),
-    
-            "EXCERPT":
-                normalize_optional_text(
-                    data.excerpt
-                ),
-    
-            "CONTENT_BODY":
-                data.content_body.strip(),
-    
-            "MECANIQUE_EXPLIQUEE":
-                normalize_optional_text(
-                    data.mecanique_expliquee
-                ),
-    
-            "ENJEU_STRATEGIQUE":
-                normalize_optional_text(
-                    data.enjeu_strategique
-                ),
-    
-            "POINT_DE_FRICTION":
-                normalize_optional_text(
-                    data.point_de_friction
-                ),
-    
-            "SIGNAL_ANALYTIQUE":
-                normalize_optional_text(
-                    data.signal_analytique
-                ),
-        }
-
-        # ========================================================
-        # ONE EN → FR TRANSLATION CALL
-        # ========================================================
-    
-        french_fields = translate_fields(
-    
-            fields=
-                english_fields,
-    
-            target_lang=
-                "fr",
-    
-            raise_on_error=
-                True,
-        )
-
 
     # ========================================================
     # META
@@ -184,7 +114,6 @@ def create_content(
         )
         .isoformat()
     )
-
 
     # ========================================================
     # ROW
@@ -232,50 +161,38 @@ def create_content(
             else None
         ),
 
-                # ====================================================
-                # CONTENT — FRENCH
-                # ====================================================
-        
-                "TITLE":
-                    french_fields.get(
-                        "TITLE"
-                    ),
-        
-                "EXCERPT": (
-                    french_fields.get(
-                        "EXCERPT"
-                    )
-                    or None
-                ),
-        
-                "CONTENT_BODY":
-                    french_fields.get(
-                        "CONTENT_BODY"
-                    ),
-        
-                # ====================================================
-                # CONTENT — ENGLISH
-                # ====================================================
-        
-                "TITLE_EN":
-                    english_fields[
-                        "TITLE"
-                    ],
-        
-                "EXCERPT_EN": (
-                    english_fields.get(
-                        "EXCERPT"
-                    )
-                    or None
-                ),
-        
-                "CONTENT_BODY_EN":
-                    english_fields[
-                        "CONTENT_BODY"
-                    ],
+        # ====================================================
+        # CONTENT — FRENCH
+        # Filled later by the translation batch
+        # ====================================================
+
+        "TITLE":
+            None,
+
+        "EXCERPT":
+            None,
+
+        "CONTENT_BODY":
+            None,
 
         # ====================================================
-        # EXTRACTIONS
+        # CONTENT — ENGLISH PRODUCTION
+        # ====================================================
+
+        "TITLE_EN":
+            data.title.strip(),
+
+        "EXCERPT_EN": (
+            data.excerpt.strip()
+            if data.excerpt
+            else None
+        ),
+
+        "CONTENT_BODY_EN":
+            data.content_body.strip(),
+
+        # ====================================================
+        # STRUCTURED EXTRACTIONS
         # ====================================================
 
         "CHIFFRES":
@@ -303,69 +220,50 @@ def create_content(
                 data.topics_llm
             ),
 
-                # ====================================================
-                # ANALYSIS — FRENCH
-                # ====================================================
-        
-                "MECANIQUE_EXPLIQUEE": (
-                    french_fields.get(
-                        "MECANIQUE_EXPLIQUEE"
-                    )
-                    or None
-                ),
-        
-                "ENJEU_STRATEGIQUE": (
-                    french_fields.get(
-                        "ENJEU_STRATEGIQUE"
-                    )
-                    or None
-                ),
-        
-                "POINT_DE_FRICTION": (
-                    french_fields.get(
-                        "POINT_DE_FRICTION"
-                    )
-                    or None
-                ),
-        
-                "SIGNAL_ANALYTIQUE": (
-                    french_fields.get(
-                        "SIGNAL_ANALYTIQUE"
-                    )
-                    or None
-                ),
-        
-                # ====================================================
-                # ANALYSIS — ENGLISH
-                # ====================================================
-        
-                "MECANIQUE_EXPLIQUEE_EN": (
-                    english_fields.get(
-                        "MECANIQUE_EXPLIQUEE"
-                    )
-                    or None
-                ),
-        
-                "ENJEU_STRATEGIQUE_EN": (
-                    english_fields.get(
-                        "ENJEU_STRATEGIQUE"
-                    )
-                    or None
-                ),
-        
-                "POINT_DE_FRICTION_EN": (
-                    english_fields.get(
-                        "POINT_DE_FRICTION"
-                    )
-                    or None
-                ),
-        
-                "SIGNAL_ANALYTIQUE_EN": (
-                    english_fields.get(
-                        "SIGNAL_ANALYTIQUE"
-                    )
-                    or None
-                ),
+        # ====================================================
+        # ANALYSIS — FRENCH
+        # Filled later by the translation batch
+        # ====================================================
+
+        "MECANIQUE_EXPLIQUEE":
+            None,
+
+        "ENJEU_STRATEGIQUE":
+            None,
+
+        "POINT_DE_FRICTION":
+            None,
+
+        "SIGNAL_ANALYTIQUE":
+            None,
+
+        # ====================================================
+        # ANALYSIS — ENGLISH PRODUCTION
+        # ====================================================
+
+        "MECANIQUE_EXPLIQUEE_EN": (
+            data.mecanique_expliquee.strip()
+            if data.mecanique_expliquee
+            else None
+        ),
+
+        "ENJEU_STRATEGIQUE_EN": (
+            data.enjeu_strategique.strip()
+            if data.enjeu_strategique
+            else None
+        ),
+
+        "POINT_DE_FRICTION_EN": (
+            data.point_de_friction.strip()
+            if data.point_de_friction
+            else None
+        ),
+
+        "SIGNAL_ANALYTIQUE_EN": (
+            data.signal_analytique.strip()
+            if data.signal_analytique
+            else None
+        ),
 
         # ====================================================
         # PUBLICATION
@@ -381,7 +279,6 @@ def create_content(
             now,
 
     }]
-
 
     # ========================================================
     # INSERT CONTENT
@@ -410,7 +307,6 @@ def create_content(
         content_id,
     )
 
-
     # ========================================================
     # PRIMARY COMPANY RELATION
     # ========================================================
@@ -433,9 +329,7 @@ def create_content(
                     now,
 
             }],
-
         )
-
 
     # ========================================================
     # NUMBERS → BACKLOG PIPELINE
@@ -501,13 +395,12 @@ def create_content(
                 content_id,
             )
 
-    except Exception as e:
+    except Exception as error:
 
         print(
             "❌ ERROR NUMBERS BACKLOG:",
-            str(e),
+            str(error),
         )
-
 
     # ========================================================
     # DONE
@@ -570,7 +463,6 @@ def update_content(
 
     fields = {}
 
-
     # ========================================================
     # PRIMARY COMPANY
     # ========================================================
@@ -580,7 +472,6 @@ def update_content(
         fields[
             "ID_PRIMARY_COMPANY"
         ] = data.id_primary_company
-
 
     # ========================================================
     # SOURCE
@@ -592,13 +483,11 @@ def update_content(
             "SOURCE_ID"
         ] = data.source_id
 
-
     if data.source_text is not None:
 
         fields[
             "SOURCE_TEXT"
         ] = data.source_text
-
 
     if data.source_url is not None:
 
@@ -606,13 +495,11 @@ def update_content(
             "SOURCE_URL"
         ] = data.source_url
 
-
     if data.source_author is not None:
 
         fields[
             "SOURCE_AUTHOR"
         ] = data.source_author
-
 
     if data.source_published_at is not None:
 
@@ -620,16 +507,49 @@ def update_content(
             "SOURCE_PUBLISHED_AT"
         ] = data.source_published_at
 
-
     if data.source_date is not None:
 
         fields[
             "SOURCE_DATE"
         ] = data.source_date
 
+    # ========================================================
+    # SUMMARY — ENGLISH
+    # Changing EN invalidates the corresponding FR field
+    # ========================================================
+
+    if data.title_en is not None:
+
+        fields[
+            "TITLE_EN"
+        ] = data.title_en.strip()
+
+        fields[
+            "TITLE"
+        ] = None
+
+    if data.excerpt_en is not None:
+
+        fields[
+            "EXCERPT_EN"
+        ] = data.excerpt_en.strip()
+
+        fields[
+            "EXCERPT"
+        ] = None
+
+    if data.content_body_en is not None:
+
+        fields[
+            "CONTENT_BODY_EN"
+        ] = data.content_body_en.strip()
+
+        fields[
+            "CONTENT_BODY"
+        ] = None
 
     # ========================================================
-    # SUMMARY
+    # SUMMARY — FRENCH EXPLICIT UPDATE
     # ========================================================
 
     if data.title is not None:
@@ -638,37 +558,20 @@ def update_content(
             "TITLE"
         ] = data.title.strip()
 
-
-    if data.title_en is not None:
-
-        fields[
-            "TITLE_EN"
-        ] = data.title_en.strip()
-
-
     if data.excerpt is not None:
 
         fields[
             "EXCERPT"
-        ] = data.excerpt
-
-
-    if data.excerpt_en is not None:
-
-        fields[
-            "EXCERPT_EN"
-        ] = data.excerpt_en
-
+        ] = data.excerpt.strip()
 
     if data.content_body is not None:
 
         fields[
             "CONTENT_BODY"
-        ] = data.content_body
-
+        ] = data.content_body.strip()
 
     # ========================================================
-    # EXTRACTIONS STRUCTURÉES
+    # STRUCTURED EXTRACTIONS
     # ========================================================
 
     if data.chiffres is not None:
@@ -679,7 +582,6 @@ def update_content(
             data.chiffres
         )
 
-
     if data.acteurs_cites is not None:
 
         fields[
@@ -687,7 +589,6 @@ def update_content(
         ] = normalize_array(
             data.acteurs_cites
         )
-
 
     if data.concepts_llm is not None:
 
@@ -697,7 +598,6 @@ def update_content(
             data.concepts_llm
         )
 
-
     if data.solutions_llm is not None:
 
         fields[
@@ -705,7 +605,6 @@ def update_content(
         ] = normalize_array(
             data.solutions_llm
         )
-
 
     if data.topics_llm is not None:
 
@@ -715,38 +614,102 @@ def update_content(
             data.topics_llm
         )
 
+    # ========================================================
+    # ANALYSIS — ENGLISH
+    # Changing EN invalidates the corresponding FR field
+    # ========================================================
+
+    if data.mecanique_expliquee_en is not None:
+
+        fields[
+            "MECANIQUE_EXPLIQUEE_EN"
+        ] = (
+            data.mecanique_expliquee_en
+            .strip()
+        )
+
+        fields[
+            "MECANIQUE_EXPLIQUEE"
+        ] = None
+
+    if data.enjeu_strategique_en is not None:
+
+        fields[
+            "ENJEU_STRATEGIQUE_EN"
+        ] = (
+            data.enjeu_strategique_en
+            .strip()
+        )
+
+        fields[
+            "ENJEU_STRATEGIQUE"
+        ] = None
+
+    if data.point_de_friction_en is not None:
+
+        fields[
+            "POINT_DE_FRICTION_EN"
+        ] = (
+            data.point_de_friction_en
+            .strip()
+        )
+
+        fields[
+            "POINT_DE_FRICTION"
+        ] = None
+
+    if data.signal_analytique_en is not None:
+
+        fields[
+            "SIGNAL_ANALYTIQUE_EN"
+        ] = (
+            data.signal_analytique_en
+            .strip()
+        )
+
+        fields[
+            "SIGNAL_ANALYTIQUE"
+        ] = None
 
     # ========================================================
-    # ANALYSE STRATÉGIQUE
+    # ANALYSIS — FRENCH EXPLICIT UPDATE
     # ========================================================
 
     if data.mecanique_expliquee is not None:
 
         fields[
             "MECANIQUE_EXPLIQUEE"
-        ] = data.mecanique_expliquee
-
+        ] = (
+            data.mecanique_expliquee
+            .strip()
+        )
 
     if data.enjeu_strategique is not None:
 
         fields[
             "ENJEU_STRATEGIQUE"
-        ] = data.enjeu_strategique
-
+        ] = (
+            data.enjeu_strategique
+            .strip()
+        )
 
     if data.point_de_friction is not None:
 
         fields[
             "POINT_DE_FRICTION"
-        ] = data.point_de_friction
-
+        ] = (
+            data.point_de_friction
+            .strip()
+        )
 
     if data.signal_analytique is not None:
 
         fields[
             "SIGNAL_ANALYTIQUE"
-        ] = data.signal_analytique
-
+        ] = (
+            data.signal_analytique
+            .strip()
+        )
 
     # ========================================================
     # META
@@ -756,24 +719,23 @@ def update_content(
         "UPDATED_AT"
     ] = now
 
-
     # ========================================================
     # UPDATE CONTENT
     # ========================================================
 
     update_bq(
 
-        table=TABLE_CONTENT,
+        table=
+            TABLE_CONTENT,
 
-        fields=fields,
+        fields=
+            fields,
 
         where={
             "ID_CONTENT":
                 id_content,
         },
-
     )
-
 
     # ========================================================
     # PRIMARY COMPANY RELATION
@@ -781,7 +743,7 @@ def update_content(
 
     if data.id_primary_company is not None:
 
-        reset_and_insert(
+        _reset_relations(
 
             TABLE_CONTENT_COMPANY,
 
@@ -798,11 +760,11 @@ def update_content(
 
                 else []
             ),
-
         )
 
-
     return True
+
+
 # ============================================================
 # GET CONTENT
 # ============================================================
