@@ -1,5 +1,6 @@
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     HTTPException,
 )
 
@@ -33,6 +34,12 @@ from core.company.description_service import (
 
 from core.translation.content_translation_service import (
     translate_contents_batch,
+)
+
+from core.translation.backfill_service import (
+    reserve_translation_backfill,
+    run_translation_backfill,
+    get_translation_backfill_status,
 )
 
 router = APIRouter()
@@ -90,6 +97,78 @@ def translate_missing():
             400,
             f"Erreur batch traduction : {e}",
         )
+
+# ============================================================
+# TRANSLATION BACKFILL 2026
+# ============================================================
+
+@router.post(
+    "/operations/translation-backfill/start"
+)
+def start_translation_backfill(
+    background_tasks: BackgroundTasks,
+):
+
+    reserved = reserve_translation_backfill()
+
+    if not reserved:
+
+        raise HTTPException(
+            409,
+            "Le backlog de traduction est déjà en cours.",
+        )
+
+    background_tasks.add_task(
+        run_translation_backfill,
+    )
+
+    return {
+        "status": "ok",
+        "message": (
+            "Translation backlog started."
+        ),
+    }
+
+
+@router.post(
+    "/operations/translation-backfill/retry"
+)
+def retry_translation_backfill(
+    background_tasks: BackgroundTasks,
+):
+
+    reserved = reserve_translation_backfill()
+
+    if not reserved:
+
+        raise HTTPException(
+            409,
+            "Le backlog de traduction est déjà en cours.",
+        )
+
+    background_tasks.add_task(
+        run_translation_backfill,
+    )
+
+    return {
+        "status": "ok",
+        "message": (
+            "Translation backlog resumed."
+        ),
+    }
+
+
+@router.get(
+    "/operations/translation-backfill/status"
+)
+def translation_backfill_status():
+
+    return {
+        "status": "ok",
+        "backfill": (
+            get_translation_backfill_status()
+        ),
+    }
 
 
 @router.post("/operations/rebuild-company")
