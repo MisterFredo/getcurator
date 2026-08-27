@@ -15,6 +15,8 @@ import {
   useCockpitOperations,
 } from "@/hooks/useCockpitOperations";
 
+import TranslationBackfillOperation from "@/components/admin/cockpit/TranslationBackfillOperation";
+
 
 /* ========================================================= */
 
@@ -364,6 +366,12 @@ export default function OperationsPanel() {
                   );
 
                 },
+              )}
+
+              {group.title === "Publishing" && (
+
+                <TranslationBackfillOperation />
+
               )}
 
             </div>
