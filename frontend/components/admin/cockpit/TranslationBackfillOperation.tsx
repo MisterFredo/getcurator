@@ -253,13 +253,13 @@ export default function TranslationBackfillOperation() {
 
             <div className="font-medium">
 
-              Translation Backfill 2026
+              Translation Backfill
 
             </div>
 
             <div className="text-sm text-gray-500">
 
-              Persist the five English drawer fields for content published since January 2026.
+              Persist the five English drawer fields for content published.
 
             </div>
 
