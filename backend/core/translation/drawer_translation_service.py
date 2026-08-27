@@ -25,9 +25,6 @@ def translate_fields(
     if not fields:
         return fields
 
-    if target_lang == "fr":
-        return fields
-
     # ========================================================
     # CLEAN INPUT
     # ========================================================
