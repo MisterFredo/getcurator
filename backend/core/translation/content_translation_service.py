@@ -1,6 +1,3 @@
-import logging
-import json
-
 from typing import (
     List,
     Dict,
@@ -18,9 +15,6 @@ from utils.bigquery_utils import (
 
 from utils.llm import run_llm
 
-from core.translation.drawer_translation_service import (
-    translate_fields,
-)
 
 
 # ============================================================
