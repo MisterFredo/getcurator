@@ -51,6 +51,10 @@ from core.acquisition.storage_service import (
     store_raw_content,
 )
 
+from core.discovery.service import (
+    dismiss_discovery,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -375,10 +379,19 @@ def store_raw_route(
             id_primary_company=payload.id_primary_company,
         )
 
+        # Si le contenu vient de Discovery,
+        # on retire l'URL des suggestions uniquement après
+        # la réussite du stockage RAW.
+        if payload.discovery_id:
+
+            dismiss_discovery(
+                payload.discovery_id
+            )
+
         return {
             "status": "ok",
             "inserted": inserted,
-            "discovery_id": payload.discovery_id,
+            "id_discovery": payload.discovery_id,
         }
 
     except Exception as e:
