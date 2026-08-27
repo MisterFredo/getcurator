@@ -7,6 +7,7 @@ from api.content.models import (
     ContentPublish,
     ContentSearchRequest,
     BulkIdsRequest,
+    ContentRawStore,
 )
 
 from core.content.service import (
@@ -44,6 +45,10 @@ from core.content.operations_service import (
 
 from core.content.search_service import (
     search_contents,
+)
+
+from core.acquisition.storage_service import (
+    store_raw_content,
 )
 
 from config import (
@@ -349,6 +354,43 @@ def bulk_sync_route(payload: BulkIdsRequest):
             str(e)
         )
 
+
+# ============================================================
+# STORE RAW CONTENT
+# ============================================================
+
+@router.post("/store-raw")
+def store_raw_route(
+    payload: ContentRawStore,
+):
+
+    try:
+
+        inserted = store_raw_content(
+            source_id=payload.source_id,
+            source_title=payload.source_title,
+            source_url=payload.source_url,
+            raw_text=payload.raw_text,
+            date_source=payload.date_source,
+            id_primary_company=payload.id_primary_company,
+        )
+
+        return {
+            "status": "ok",
+            "inserted": inserted,
+            "discovery_id": payload.discovery_id,
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur stockage contenu RAW"
+        )
+
+        raise HTTPException(
+            400,
+            str(e),
+        )
 
 
 # ============================================================
