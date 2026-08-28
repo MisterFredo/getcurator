@@ -290,8 +290,10 @@ export default function ExpertCard({
 
           <div
             className="
+              min-h-10
               line-clamp-2
-              text-[13px]
+              break-words
+              text-sm
               font-semibold
               leading-5
               text-gray-900
