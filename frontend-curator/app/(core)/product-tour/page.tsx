@@ -4,7 +4,7 @@ const GCS_BASE_URL =
   process.env.NEXT_PUBLIC_GCS_BASE_URL!;
 
 const VIDEO_URL =
-  `${GCS_BASE_URL}/product/getcurator-tour-v1.mp4`;
+  `${GCS_BASE_URL}/product/getcurator-tour-v2.mp4`;
 
 export default function ProductTourPage() {
 
@@ -33,9 +33,11 @@ export default function ProductTourPage() {
             text-lg
           "
         >
-          Discover how to monitor companies, topics, solutions and strategic
-          signals with GetCurator. Watch the product tour below and book a
-          personalized demo if you'd like to learn more.
+          Discover how GetCurator transforms industry signals into personalized
+          intelligence through curated content, weekly digests, specialized
+          experts and contextual conversations. Watch the product tour below
+          and book a personalized demo to explore how GetCurator can support
+          your decisions.
         </p>
 
       </div>
@@ -116,39 +118,12 @@ export default function ProductTourPage() {
           mt-8
           grid
           gap-4
-          md:grid-cols-4
+          sm:grid-cols-2
+          lg:grid-cols-5
         "
       >
 
-        <div
-          className="
-            bg-white
-            border
-            rounded-lg
-            p-4
-          "
-        >
-
-          <div
-            className="
-              font-semibold
-              text-gray-900
-            "
-          >
-            Feed
-          </div>
-
-          <div
-            className="
-              mt-2
-              text-sm
-              text-gray-600
-            "
-          >
-            Follow the latest signals across your industries and markets.
-          </div>
-
-        </div>
+        {/* PERSONALIZED HOME */}
 
         <div
           className="
@@ -165,7 +140,7 @@ export default function ProductTourPage() {
               text-gray-900
             "
           >
-            Companies
+            Personalized Home
           </div>
 
           <div
@@ -175,10 +150,12 @@ export default function ProductTourPage() {
               text-gray-600
             "
           >
-            Track companies and understand how they evolve over time.
+            Follow the signals most relevant to your priorities and markets.
           </div>
 
         </div>
+
+        {/* DIGESTS */}
 
         <div
           className="
@@ -195,7 +172,7 @@ export default function ProductTourPage() {
               text-gray-900
             "
           >
-            Topics
+            Weekly Digests
           </div>
 
           <div
@@ -205,10 +182,79 @@ export default function ProductTourPage() {
               text-gray-600
             "
           >
-            Explore the themes and trends shaping your market.
+            Connect recent developments and identify emerging strategic
+            patterns.
           </div>
 
         </div>
+
+        {/* EXPERTS */}
+
+        <div
+          className="
+            bg-white
+            border
+            rounded-lg
+            p-4
+          "
+        >
+
+          <div
+            className="
+              font-semibold
+              text-gray-900
+            "
+          >
+            Experts
+          </div>
+
+          <div
+            className="
+              mt-2
+              text-sm
+              text-gray-600
+            "
+          >
+            Build your own intelligence team around companies, markets and
+            competitive dynamics.
+          </div>
+
+        </div>
+
+        {/* CONVERSATIONS */}
+
+        <div
+          className="
+            bg-white
+            border
+            rounded-lg
+            p-4
+          "
+        >
+
+          <div
+            className="
+              font-semibold
+              text-gray-900
+            "
+          >
+            Conversations
+          </div>
+
+          <div
+            className="
+              mt-2
+              text-sm
+              text-gray-600
+            "
+          >
+            Ask questions and receive contextualized answers grounded in
+            accumulated knowledge.
+          </div>
+
+        </div>
+
+        {/* WORKSPACE */}
 
         <div
           className="
@@ -235,7 +281,8 @@ export default function ProductTourPage() {
               text-gray-600
             "
           >
-            Generate insights and structured analysis from selected content.
+            Turn selected signals into focused insights and structured
+            analysis.
           </div>
 
         </div>
