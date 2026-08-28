@@ -229,12 +229,8 @@ export default function UserExperts() {
       <div
         className="
           grid
-          grid-cols-1
+          grid-cols-[repeat(auto-fit,minmax(145px,1fr))]
           gap-4
-          sm:grid-cols-2
-          md:grid-cols-3
-          lg:grid-cols-4
-          xl:grid-cols-6
         "
       >
 
