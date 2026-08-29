@@ -5,49 +5,31 @@ import {
 } from "react";
 
 import {
-  deleteDigest,
-  generateDigest,
-  sendDigest,
-} from "@/lib/digest";
+  api,
+} from "@/lib/api";
 
 import {
   useDrawer,
 } from "@/contexts/DrawerContext";
 
 import type {
-  DigestHistoryItem,
-  DigestStatus,
+  Digest,
 } from "@/types/digest";
 
 
-/* =========================================================
-   TYPES
-========================================================= */
-
-type DigestAction =
-  | "generate"
-  | "send"
-  | "delete";
+/* ========================================================= */
 
 type Props = {
 
-  digest: DigestHistoryItem;
-
-  onChanged: () => void;
+  digest: Digest;
 
 };
 
 
-/* =========================================================
-   COMPONENT
-========================================================= */
+/* ========================================================= */
 
 export default function DigestRow({
-
   digest,
-
-  onChanged,
-
 }: Props) {
 
   const {
@@ -58,7 +40,7 @@ export default function DigestRow({
     loadingAction,
     setLoadingAction,
   ] = useState<
-    DigestAction | null
+    "generate" | "send" | null
   >(null);
 
 
@@ -78,8 +60,6 @@ export default function DigestRow({
 
     digest.status === "generated"
 
-    || digest.status === "sending"
-
     || digest.status === "sent"
 
   );
@@ -88,41 +68,8 @@ export default function DigestRow({
     digest.status === "generated"
   );
 
-  const canDelete = (
-
-    digest.status !== "generating"
-
-    && digest.status !== "sending"
-
-  );
-
   const loading =
     loadingAction !== null;
-
-
-  /* =====================================================
-     LABELS
-  ===================================================== */
-
-  const recipientName = (
-
-    digest.display_name
-
-    || digest.name
-
-    || digest.email
-
-    || digest.user_id
-
-  );
-
-  const profileLabel = (
-
-    digest.profile_type
-
-    || digest.audience
-
-  );
 
 
   /* =====================================================
@@ -146,20 +93,20 @@ export default function DigestRow({
         "generate",
       );
 
-      await generateDigest(
-        digest.id,
+      await api.post(
+        `/digest/digests/${digest.id}/generate`,
+        {},
       );
 
-      onChanged();
+      window.location.reload();
 
     } catch (error) {
 
       console.error(
-        "Unable to generate Digest",
         error,
       );
 
-      window.alert(
+      alert(
         "Unable to generate Digest.",
       );
 
@@ -180,10 +127,7 @@ export default function DigestRow({
 
   function handlePreview() {
 
-    if (
-      !canPreview
-      || loading
-    ) {
+    if (!canPreview) {
 
       return;
 
@@ -218,91 +162,21 @@ export default function DigestRow({
         "send",
       );
 
-      await sendDigest(
-        digest.id,
+      await api.post(
+        `/digest/digests/${digest.id}/send`,
+        {},
       );
 
-      onChanged();
+      window.location.reload();
 
     } catch (error) {
 
       console.error(
-        "Unable to send Digest",
         error,
       );
 
-      window.alert(
+      alert(
         "Unable to send Digest.",
-      );
-
-    } finally {
-
-      setLoadingAction(
-        null,
-      );
-
-    }
-
-  }
-
-
-  /* =====================================================
-     DELETE
-  ===================================================== */
-
-  async function handleDelete() {
-
-    if (
-      !canDelete
-      || loading
-    ) {
-
-      return;
-
-    }
-
-    const period =
-      formatPeriod(
-        digest.period_start,
-        digest.period_end,
-      );
-
-    const confirmed =
-      window.confirm(
-        (
-          `Delete the Digest for `
-          + `${recipientName} covering `
-          + `${period}?`
-        ),
-      );
-
-    if (!confirmed) {
-
-      return;
-
-    }
-
-    try {
-
-      setLoadingAction(
-        "delete",
-      );
-
-      await deleteDigest(
-        digest.id,
-      );
-
-      onChanged();
-
-    } catch (error) {
-
-      console.error(
-        "Unable to delete Digest",
-        error,
-      );
-
-      window.alert(
-        "Unable to delete Digest.",
       );
 
     } finally {
@@ -322,54 +196,25 @@ export default function DigestRow({
 
   return (
 
-    <tr
-      className="
-        border-t
-        align-middle
-        transition
-        hover:bg-gray-50
-      "
-    >
-
-      {/* ================================================= */}
-      {/* RECIPIENT */}
-      {/* ================================================= */}
+    <tr className="border-t">
 
       <td className="px-4 py-3">
 
         <div className="flex flex-col">
 
-          <span
-            className="
-              font-medium
-              text-gray-900
-            "
-          >
-            {recipientName}
+          <span className="font-medium">
+
+            {digest.user_name
+              ?? digest.user_id}
+
           </span>
 
-          {digest.email && (
+          {digest.user_email && (
 
-            <span
-              className="
-                text-xs
-                text-gray-500
-              "
-            >
-              {digest.email}
-            </span>
+            <span className="text-xs text-gray-500">
 
-          )}
+              {digest.user_email}
 
-          {digest.company && (
-
-            <span
-              className="
-                text-xs
-                text-gray-400
-              "
-            >
-              {digest.company}
             </span>
 
           )}
@@ -378,258 +223,71 @@ export default function DigestRow({
 
       </td>
 
+      <td className="px-4 py-3 capitalize">
 
-      {/* ================================================= */}
-      {/* PROFILE */}
-      {/* ================================================= */}
-
-      <td
-        className="
-          px-4
-          py-3
-          capitalize
-          text-gray-700
-        "
-      >
-        {profileLabel}
-      </td>
-
-
-      {/* ================================================= */}
-      {/* PERIOD */}
-      {/* ================================================= */}
-
-      <td
-        className="
-          whitespace-nowrap
-          px-4
-          py-3
-          text-gray-700
-        "
-      >
-        {formatPeriod(
-          digest.period_start,
-          digest.period_end,
-        )}
-      </td>
-
-
-      {/* ================================================= */}
-      {/* STATUS */}
-      {/* ================================================= */}
-
-      <td className="px-4 py-3">
-
-        <DigestStatusBadge
-          status={
-            digest.status
-          }
-        />
-
-        {digest.error && (
-
-          <div
-            title={
-              digest.error
-            }
-            className="
-              mt-1
-              max-w-48
-              truncate
-              text-xs
-              text-red-500
-            "
-          >
-            {digest.error}
-          </div>
-
-        )}
+        {digest.status}
 
       </td>
 
+      <td className="px-4 py-3 text-right">
 
-      {/* ================================================= */}
-      {/* CONTENTS */}
-      {/* ================================================= */}
-
-      <td
-        className="
-          whitespace-nowrap
-          px-4
-          py-3
-          text-right
-          tabular-nums
-          text-gray-700
-        "
-      >
-        {digest.analyzed_contents}
-        {" / "}
         {digest.total_contents}
+
       </td>
 
+      <td className="px-4 py-3 text-right">
 
-      {/* ================================================= */}
-      {/* GENERATED */}
-      {/* ================================================= */}
+        {digest.analyzed_contents}
 
-      <td
-        className="
-          whitespace-nowrap
-          px-4
-          py-3
-          text-gray-500
-        "
-      >
-        {formatDateTime(
-          digest.generated_at,
-        )}
       </td>
-
-
-      {/* ================================================= */}
-      {/* ACTIONS */}
-      {/* ================================================= */}
 
       <td className="px-4 py-3">
 
-        <div
-          className="
-            flex
-            items-center
-            justify-end
-            gap-2
-          "
-        >
+        <div className="flex justify-end gap-2">
 
-          {canGenerate && (
+          <button
+            type="button"
+            disabled={
+              !canGenerate
+              || loading
+            }
+            onClick={handleGenerate}
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
 
-            <button
-              type="button"
-              disabled={
-                loading
-              }
-              onClick={
-                handleGenerate
-              }
-              className="
-                rounded-md
-                border
-                border-blue-200
-                bg-blue-50
-                px-3
-                py-1.5
-                text-xs
-                font-medium
-                text-blue-700
-                transition
-                hover:bg-blue-100
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              {loadingAction === "generate"
-                ? "Generating..."
-                : "Generate"}
-            </button>
+            {loadingAction === "generate"
+              ? "Generating..."
+              : "Generate"}
 
-          )}
+          </button>
 
-          {canPreview && (
+          <button
+            type="button"
+            disabled={
+              !canPreview
+              || loading
+            }
+            onClick={handlePreview}
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Preview
+          </button>
 
-            <button
-              type="button"
-              disabled={
-                loading
-              }
-              onClick={
-                handlePreview
-              }
-              className="
-                rounded-md
-                border
-                border-gray-300
-                bg-white
-                px-3
-                py-1.5
-                text-xs
-                font-medium
-                text-gray-700
-                transition
-                hover:bg-gray-100
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              Preview
-            </button>
+          <button
+            type="button"
+            disabled={
+              !canSend
+              || loading
+            }
+            onClick={handleSend}
+            className="rounded border px-3 py-1 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
 
-          )}
+            {loadingAction === "send"
+              ? "Sending..."
+              : "Send"}
 
-          {canSend && (
-
-            <button
-              type="button"
-              disabled={
-                loading
-              }
-              onClick={
-                handleSend
-              }
-              className="
-                rounded-md
-                border
-                border-green-200
-                bg-green-50
-                px-3
-                py-1.5
-                text-xs
-                font-medium
-                text-green-700
-                transition
-                hover:bg-green-100
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              {loadingAction === "send"
-                ? "Sending..."
-                : "Send"}
-            </button>
-
-          )}
-
-          {canDelete && (
-
-            <button
-              type="button"
-              disabled={
-                loading
-              }
-              onClick={
-                handleDelete
-              }
-              className="
-                rounded-md
-                border
-                border-red-200
-                bg-white
-                px-3
-                py-1.5
-                text-xs
-                font-medium
-                text-red-600
-                transition
-                hover:bg-red-50
-                disabled:cursor-not-allowed
-                disabled:opacity-40
-              "
-            >
-              {loadingAction === "delete"
-                ? "Deleting..."
-                : "Delete"}
-            </button>
-
-          )}
+          </button>
 
         </div>
 
@@ -637,137 +295,6 @@ export default function DigestRow({
 
     </tr>
 
-  );
-
-}
-
-
-/* =========================================================
-   STATUS BADGE
-========================================================= */
-
-function DigestStatusBadge({
-  status,
-}: {
-  status: DigestStatus;
-}) {
-
-  const colors: Record<
-    DigestStatus,
-    string
-  > = {
-
-    created:
-      "bg-gray-100 text-gray-700",
-
-    generating:
-      "bg-blue-100 text-blue-700",
-
-    generated:
-      "bg-indigo-100 text-indigo-700",
-
-    sending:
-      "bg-amber-100 text-amber-700",
-
-    sent:
-      "bg-green-100 text-green-700",
-
-    failed:
-      "bg-red-100 text-red-700",
-
-  };
-
-  return (
-
-    <span
-      className={`
-        inline-flex
-        rounded-full
-        px-2.5
-        py-1
-        text-xs
-        font-medium
-        capitalize
-        ${colors[status]}
-      `}
-    >
-      {status}
-    </span>
-
-  );
-
-}
-
-
-/* =========================================================
-   FORMAT PERIOD
-========================================================= */
-
-function formatPeriod(
-  periodStart: string,
-  periodEnd: string,
-): string {
-
-  const start =
-    new Date(
-      periodStart,
-    );
-
-  const end =
-    new Date(
-      periodEnd,
-    );
-
-  const startLabel =
-    start.toLocaleDateString(
-      "en-US",
-      {
-        month: "short",
-        day: "numeric",
-      },
-    );
-
-  const endLabel =
-    end.toLocaleDateString(
-      "en-US",
-      {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      },
-    );
-
-  return `${startLabel} → ${endLabel}`;
-
-}
-
-
-/* =========================================================
-   FORMAT DATE
-========================================================= */
-
-function formatDateTime(
-  value?: string | null,
-): string {
-
-  if (!value) {
-
-    return "—";
-
-  }
-
-  const date =
-    new Date(
-      value,
-    );
-
-  return date.toLocaleDateString(
-    "en-US",
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    },
   );
 
 }
