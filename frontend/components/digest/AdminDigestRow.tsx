@@ -42,7 +42,7 @@ type Props = {
    COMPONENT
 ========================================================= */
 
-export default function DigestRow({
+export default function AdminDigestRow({
 
   digest,
 
