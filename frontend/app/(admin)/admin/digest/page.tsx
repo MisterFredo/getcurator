@@ -17,7 +17,7 @@ import type {
 } from "@/types/digest";
 
 import DigestFilters from "@/components/digest/DigestFilters";
-import DigestList from "@/components/digest/AdminDigestList";
+import AdminDigestList from "@/components/digest/AdminDigestList";
 import DigestPagination from "@/components/digest/DigestPagination";
 
 
