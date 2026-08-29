@@ -249,39 +249,29 @@ export type CampaignDetail = {
 ========================================================= */
 
 export type DigestHistoryItem = {
+  id: string;
+  campaign_id: string;
+  user_id: string;
 
-  ID: string;
+  status: Digest["status"];
 
-  CAMPAIGN_ID: string;
+  total_contents: number;
+  analyzed_contents: number;
 
-  USER_ID: string;
+  generated_at?: string | null;
+  sent_at?: string | null;
 
-  STATUS: string;
+  audience: DigestAudience;
 
-  TOTAL_CONTENTS?: number | null;
+  period_start: string;
+  period_end: string;
 
-  ANALYZED_CONTENTS?: number | null;
-
-  GENERATED_AT?: string | null;
-
-  SENT_AT?: string | null;
-
-  AUDIENCE?: DigestAudience | null;
-
-  PERIOD_START?: string | null;
-
-  PERIOD_END?: string | null;
-
-  NAME?: string | null;
-
-  DISPLAY_NAME?: string | null;
-
-  COMPANY?: string | null;
-
-  DESCRIPTION?: string | null;
-
-  PROFILE_TYPE?: string | null;
-
+  name?: string | null;
+  display_name?: string | null;
+  email?: string | null;
+  company?: string | null;
+  description?: string | null;
+  profile_type?: string | null;
 };
 
 
