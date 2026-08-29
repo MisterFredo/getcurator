@@ -770,6 +770,135 @@ def fetch_digest_history(
         },
     ) or []
 
+# ============================================================
+# DELETE DIGEST
+# ============================================================
+
+def delete_digest(
+    digest_id: str,
+) -> bool:
+    """
+    Delete one Digest and refresh its Campaign counters.
+
+    Returns False when the Digest does not exist.
+    """
+
+    digest = fetch_digest(
+        digest_id,
+    )
+
+    if digest is None:
+
+        return False
+
+    campaign_id = (
+        digest.campaign_id
+    )
+
+    client = get_bigquery_client()
+
+    sql = f"""
+        BEGIN TRANSACTION;
+
+        DELETE FROM `{TABLE_DIGEST}`
+
+        WHERE ID = @digest_id;
+
+
+        UPDATE `{TABLE_CAMPAIGN}` c
+
+        SET
+
+            DIGESTS_COUNT = (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_DIGEST}` d
+
+                WHERE
+                    d.CAMPAIGN_ID = @campaign_id
+
+            ),
+
+            GENERATED_COUNT = (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_DIGEST}` d
+
+                WHERE
+                    d.CAMPAIGN_ID = @campaign_id
+
+                    AND d.STATUS IN (
+                        "generated",
+                        "sending",
+                        "sent"
+                    )
+
+            ),
+
+            SENT_COUNT = (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_DIGEST}` d
+
+                WHERE
+                    d.CAMPAIGN_ID = @campaign_id
+
+                    AND d.STATUS = "sent"
+
+            ),
+
+            FAILED_COUNT = (
+
+                SELECT COUNT(*)
+
+                FROM `{TABLE_DIGEST}` d
+
+                WHERE
+                    d.CAMPAIGN_ID = @campaign_id
+
+                    AND d.STATUS = "failed"
+
+            )
+
+        WHERE
+            c.ID = @campaign_id;
+
+        COMMIT TRANSACTION;
+    """
+
+    job_config = bigquery.QueryJobConfig(
+
+        query_parameters=[
+
+            bigquery.ScalarQueryParameter(
+                "digest_id",
+                "STRING",
+                digest_id,
+            ),
+
+            bigquery.ScalarQueryParameter(
+                "campaign_id",
+                "STRING",
+                campaign_id,
+            ),
+
+        ],
+
+    )
+
+    client.query(
+
+        sql,
+
+        job_config=job_config,
+
+    ).result()
+
+    return True
+
 def search_digest_history(
     query: str | None = None,
     user_id: str | None = None,
