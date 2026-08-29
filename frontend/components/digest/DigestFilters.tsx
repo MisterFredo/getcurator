@@ -115,7 +115,6 @@ export default function DigestFilters({
   ===================================================== */
 
   return (
-
     <div
       className="
         rounded-lg
