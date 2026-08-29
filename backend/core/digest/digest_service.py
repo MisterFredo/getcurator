@@ -17,6 +17,7 @@ from core.digest.repository import (
     fetch_recent_digest_documents,
     fetch_digest_history,
     search_digest_history,
+    search_admin_digest_history,
     update_digest,
 )
 
@@ -375,4 +376,45 @@ def search_digests(
         company_id=company_id,
         solution_id=solution_id,
         topic_id=topic_id,
+    )
+
+# ============================================================
+# ADMIN DIGEST SEARCH
+# ============================================================
+
+def search_admin_digests(
+    query: str | None = None,
+    audience: str | None = None,
+    status: str | None = None,
+    campaign_id: str | None = None,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """
+    Search every Digest from the admin.
+
+    Includes generated and non-generated Digests
+    and returns a paginated result.
+    """
+
+    return search_admin_digest_history(
+
+        query=query,
+
+        audience=audience,
+
+        status=status,
+
+        campaign_id=campaign_id,
+
+        period_start=period_start,
+
+        period_end=period_end,
+
+        limit=limit,
+
+        offset=offset,
+
     )
