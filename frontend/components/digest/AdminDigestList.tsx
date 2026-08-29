@@ -266,7 +266,7 @@ export default function AdminDigestList({
                 digest,
               ) => (
 
-                <DigestRow
+                <AdminDigestRow
 
                   key={
                     digest.id
