@@ -1023,3 +1023,311 @@ def search_digest_history(
                 topic_id,
         },
     ) or []
+
+
+# ============================================================
+# ADMIN DIGEST SEARCH
+# ============================================================
+
+def search_admin_digest_history(
+    query: str | None = None,
+    audience: str | None = None,
+    status: str | None = None,
+    campaign_id: str | None = None,
+    period_start: str | None = None,
+    period_end: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """
+    Search every Digest available in the admin.
+
+    Results include all Digest statuses and can be
+    filtered by recipient, audience, status, campaign
+    and period.
+    """
+
+    table_user = (
+        f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
+    )
+
+    safe_limit = min(
+        max(
+            limit,
+            1,
+        ),
+        200,
+    )
+
+    safe_offset = max(
+        offset,
+        0,
+    )
+
+    sql = f"""
+        SELECT
+
+            d.ID,
+            d.CAMPAIGN_ID,
+            d.USER_ID,
+            d.STATUS,
+
+            d.TOTAL_CONTENTS,
+            d.ANALYZED_CONTENTS,
+
+            d.GENERATED_AT,
+            d.SENT_AT,
+            d.ERROR,
+
+            c.AUDIENCE,
+            c.PERIOD_START,
+            c.PERIOD_END,
+
+            u.NAME,
+            u.DISPLAY_NAME,
+            u.EMAIL,
+            u.COMPANY,
+            u.DESCRIPTION,
+            u.PROFILE_TYPE,
+
+            COUNT(*) OVER() AS TOTAL_COUNT
+
+        FROM `{TABLE_DIGEST}` d
+
+        JOIN `{TABLE_CAMPAIGN}` c
+          ON c.ID = d.CAMPAIGN_ID
+
+        LEFT JOIN `{table_user}` u
+          ON u.ID_USER = d.USER_ID
+
+        WHERE
+
+            (
+                @query IS NULL
+
+                OR LOWER(
+                    COALESCE(
+                        u.DISPLAY_NAME,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR LOWER(
+                    COALESCE(
+                        u.NAME,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR LOWER(
+                    COALESCE(
+                        u.EMAIL,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+                OR LOWER(
+                    COALESCE(
+                        u.COMPANY,
+                        ""
+                    )
+                )
+                LIKE CONCAT(
+                    "%",
+                    LOWER(@query),
+                    "%"
+                )
+
+            )
+
+            AND (
+                @audience IS NULL
+                OR c.AUDIENCE = @audience
+            )
+
+            AND (
+                @status IS NULL
+                OR d.STATUS = @status
+            )
+
+            AND (
+                @campaign_id IS NULL
+                OR d.CAMPAIGN_ID = @campaign_id
+            )
+
+            AND (
+                @period_start IS NULL
+                OR c.PERIOD_END >= @period_start
+            )
+
+            AND (
+                @period_end IS NULL
+                OR c.PERIOD_START <= @period_end
+            )
+
+        ORDER BY
+            c.PERIOD_END DESC,
+            d.GENERATED_AT DESC,
+            u.DISPLAY_NAME ASC,
+            u.NAME ASC
+
+        LIMIT @limit
+        OFFSET @offset
+    """
+
+    rows = query_bq(
+        sql,
+        {
+            "query":
+                query.strip()
+                if query
+                else None,
+
+            "audience":
+                audience,
+
+            "status":
+                status,
+
+            "campaign_id":
+                campaign_id,
+
+            "period_start":
+                period_start,
+
+            "period_end":
+                period_end,
+
+            "limit":
+                safe_limit,
+
+            "offset":
+                safe_offset,
+        },
+    ) or []
+
+    total = (
+        int(
+            rows[0].get(
+                "TOTAL_COUNT",
+                0,
+            )
+        )
+        if rows
+        else 0
+    )
+
+    items = []
+
+    for row in rows:
+
+        items.append({
+
+            "id":
+                row["ID"],
+
+            "campaign_id":
+                row["CAMPAIGN_ID"],
+
+            "user_id":
+                row["USER_ID"],
+
+            "status":
+                row["STATUS"],
+
+            "total_contents":
+                row.get(
+                    "TOTAL_CONTENTS",
+                ) or 0,
+
+            "analyzed_contents":
+                row.get(
+                    "ANALYZED_CONTENTS",
+                ) or 0,
+
+            "generated_at":
+                row.get(
+                    "GENERATED_AT",
+                ),
+
+            "sent_at":
+                row.get(
+                    "SENT_AT",
+                ),
+
+            "error":
+                row.get(
+                    "ERROR",
+                ),
+
+            "audience":
+                row["AUDIENCE"],
+
+            "period_start":
+                row["PERIOD_START"],
+
+            "period_end":
+                row["PERIOD_END"],
+
+            "name":
+                row.get(
+                    "NAME",
+                ),
+
+            "display_name":
+                row.get(
+                    "DISPLAY_NAME",
+                ),
+
+            "email":
+                row.get(
+                    "EMAIL",
+                ),
+
+            "company":
+                row.get(
+                    "COMPANY",
+                ),
+
+            "description":
+                row.get(
+                    "DESCRIPTION",
+                ),
+
+            "profile_type":
+                row.get(
+                    "PROFILE_TYPE",
+                ),
+
+        })
+
+    return {
+
+        "items":
+            items,
+
+        "total":
+            total,
+
+        "limit":
+            safe_limit,
+
+        "offset":
+            safe_offset,
+
+    }
