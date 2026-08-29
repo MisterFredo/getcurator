@@ -26,7 +26,7 @@ type Props = {
    COMPONENT
 ========================================================= */
 
-export default function DigestList({
+export default function AdminDigestList({
 
   digests,
 
