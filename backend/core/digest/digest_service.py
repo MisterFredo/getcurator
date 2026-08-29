@@ -19,6 +19,7 @@ from core.digest.repository import (
     search_digest_history,
     search_admin_digest_history,
     update_digest,
+    delete_digest as delete_digest_record,
 )
 
 from core.digest.document_service import (
@@ -229,6 +230,63 @@ def get_digest(
         )
 
     return digest
+
+# ============================================================
+# DELETE
+# ============================================================
+
+def delete_digest(
+    digest_id: str,
+) -> dict:
+    """
+    Delete one Digest.
+
+    Digests currently being generated or sent
+    cannot be deleted.
+    """
+
+    digest = fetch_digest(
+        digest_id,
+    )
+
+    if digest is None:
+
+        raise ValueError(
+            f"Unknown digest: {digest_id}"
+        )
+
+    if digest.status in (
+        "generating",
+        "sending",
+    ):
+
+        raise RuntimeError(
+            "Digest cannot be deleted while "
+            f"its status is {digest.status}."
+        )
+
+    deleted = delete_digest_record(
+        digest_id,
+    )
+
+    if not deleted:
+
+        raise ValueError(
+            f"Unknown digest: {digest_id}"
+        )
+
+    return {
+
+        "id":
+            digest_id,
+
+        "campaign_id":
+            digest.campaign_id,
+
+        "deleted":
+            True,
+
+    }
 
 # ============================================================
 # SEND
