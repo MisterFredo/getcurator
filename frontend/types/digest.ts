@@ -27,6 +27,28 @@ export type DigestAudience =
 
 
 /* =========================================================
+   DIGEST STATUS
+========================================================= */
+
+export type DigestStatus =
+  | "created"
+  | "generating"
+  | "generated"
+  | "sending"
+  | "sent"
+  | "failed";
+
+
+/* =========================================================
+   AVAILABLE DIGEST STATUS
+========================================================= */
+
+export type AvailableDigestStatus =
+  | "generated"
+  | "sent";
+
+
+/* =========================================================
    CAMPAIGN
 ========================================================= */
 
@@ -203,13 +225,7 @@ export type Digest = {
 
   user_email?: string | null;
 
-  status:
-    | "created"
-    | "generating"
-    | "generated"
-    | "sending"
-    | "sent"
-    | "failed";
+  status: DigestStatus;
 
   total_contents: number;
 
@@ -249,29 +265,83 @@ export type CampaignDetail = {
 ========================================================= */
 
 export type DigestHistoryItem = {
+
   id: string;
+
   campaign_id: string;
+
   user_id: string;
 
-  status: Digest["status"];
+  status: AvailableDigestStatus;
 
   total_contents: number;
+
   analyzed_contents: number;
 
   generated_at?: string | null;
+
   sent_at?: string | null;
 
   audience: DigestAudience;
 
   period_start: string;
+
   period_end: string;
 
   name?: string | null;
+
   display_name?: string | null;
+
   email?: string | null;
+
   company?: string | null;
+
   description?: string | null;
+
   profile_type?: string | null;
+
+};
+
+
+/* =========================================================
+   ADMIN DIGEST SEARCH FILTERS
+========================================================= */
+
+export type AdminDigestSearchFilters = {
+
+  query?: string;
+
+  audience?: DigestAudience;
+
+  status?: AvailableDigestStatus;
+
+  campaign_id?: string;
+
+  period_start?: string;
+
+  period_end?: string;
+
+  limit?: number;
+
+  offset?: number;
+
+};
+
+
+/* =========================================================
+   ADMIN DIGEST SEARCH RESPONSE
+========================================================= */
+
+export type AdminDigestSearchResponse = {
+
+  items: DigestHistoryItem[];
+
+  total: number;
+
+  limit: number;
+
+  offset: number;
+
 };
 
 
