@@ -4,7 +4,7 @@ import type {
   DigestHistoryItem,
 } from "@/types/digest";
 
-import DigestRow from "./DigestRow";
+import DigestRow from "./AdminDigestRow";
 
 
 /* =========================================================
