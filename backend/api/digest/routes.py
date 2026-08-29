@@ -25,6 +25,7 @@ from core.digest.digest_service import (
     send_digest,
     list_digest_history,
     search_digests,
+    search_admin_digests,
 )
 
 from core.digest.html_service import (
@@ -374,6 +375,111 @@ def search_digests_route(
         "digests": digests,
 
     }
+
+# ============================================================
+# ADMIN DIGESTS — SEARCH
+# ============================================================
+
+@router.get(
+    "/admin/digests",
+)
+def search_admin_digests_route(
+
+    query: str | None = Query(
+        default=None,
+    ),
+
+    audience: str | None = Query(
+        default=None,
+        pattern="^(user|expert)$",
+    ),
+
+    status: str | None = Query(
+        default=None,
+        pattern=(
+            "^(created|generating|generated|"
+            "sending|sent|failed)$"
+        ),
+    ),
+
+    campaign_id: str | None = Query(
+        default=None,
+    ),
+
+    period_start: str | None = Query(
+        default=None,
+    ),
+
+    period_end: str | None = Query(
+        default=None,
+    ),
+
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=200,
+    ),
+
+    offset: int = Query(
+        default=0,
+        ge=0,
+    ),
+
+):
+
+    try:
+
+        result = search_admin_digests(
+
+            query=query,
+
+            audience=audience,
+
+            status=status,
+
+            campaign_id=campaign_id,
+
+            period_start=period_start,
+
+            period_end=period_end,
+
+            limit=limit,
+
+            offset=offset,
+
+        )
+
+        return {
+
+            "status":
+                "ok",
+
+            "items":
+                result["items"],
+
+            "total":
+                result["total"],
+
+            "limit":
+                result["limit"],
+
+            "offset":
+                result["offset"],
+
+        }
+
+    except Exception as exc:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "Unable to search "
+                f"Digests: {exc}"
+            ),
+
+        )
 
 # ============================================================
 # GET DIGEST
