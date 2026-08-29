@@ -23,6 +23,7 @@ from core.digest.digest_service import (
     get_digest,
     generate_digest,
     send_digest,
+    delete_digest,
     list_digest_history,
     search_digests,
     search_admin_digests,
@@ -498,6 +499,70 @@ def get_digest_route(
             digest_id,
         ),
     }
+
+# ============================================================
+# DELETE DIGEST
+# ============================================================
+
+@router.delete(
+    "/digests/{digest_id}",
+)
+def delete_digest_route(
+    digest_id: str,
+):
+
+    try:
+
+        result = delete_digest(
+            digest_id,
+        )
+
+        return {
+
+            "status":
+                "ok",
+
+            "digest":
+                result,
+
+        }
+
+    except ValueError as exc:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail=str(
+                exc,
+            ),
+
+        )
+
+    except RuntimeError as exc:
+
+        raise HTTPException(
+
+            status_code=409,
+
+            detail=str(
+                exc,
+            ),
+
+        )
+
+    except Exception as exc:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "Unable to delete "
+                f"Digest: {exc}"
+            ),
+
+        )
 
 
 # ============================================================
