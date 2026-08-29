@@ -40,15 +40,6 @@ export type DigestStatus =
 
 
 /* =========================================================
-   AVAILABLE DIGEST STATUS
-========================================================= */
-
-export type AvailableDigestStatus =
-  | "generated"
-  | "sent";
-
-
-/* =========================================================
    CAMPAIGN
 ========================================================= */
 
@@ -272,7 +263,7 @@ export type DigestHistoryItem = {
 
   user_id: string;
 
-  status: AvailableDigestStatus;
+  status: DigestStatus;
 
   total_contents: number;
 
@@ -281,6 +272,8 @@ export type DigestHistoryItem = {
   generated_at?: string | null;
 
   sent_at?: string | null;
+
+  error?: string | null;
 
   audience: DigestAudience;
 
@@ -302,7 +295,6 @@ export type DigestHistoryItem = {
 
 };
 
-
 /* =========================================================
    ADMIN DIGEST SEARCH FILTERS
 ========================================================= */
@@ -313,7 +305,7 @@ export type AdminDigestSearchFilters = {
 
   audience?: DigestAudience;
 
-  status?: AvailableDigestStatus;
+  status?: DigestStatus;
 
   campaign_id?: string;
 
@@ -326,7 +318,6 @@ export type AdminDigestSearchFilters = {
   offset?: number;
 
 };
-
 
 /* =========================================================
    ADMIN DIGEST SEARCH RESPONSE
@@ -343,7 +334,6 @@ export type AdminDigestSearchResponse = {
   offset: number;
 
 };
-
 
 /* =========================================================
    PROFILE BOOTSTRAP RESULT
