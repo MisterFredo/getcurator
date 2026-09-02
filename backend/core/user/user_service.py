@@ -25,6 +25,10 @@ TABLE_USER = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER"
 TABLE_USER_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_UNIVERSE"
 TABLE_SOURCE_UNIVERSE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_SOURCE_UNIVERSE"
 TABLE_USER_KEYWORD = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_KEYWORD"
+TABLE_USER_ACCESS_EVENT = (
+    f"{BQ_PROJECT}.{BQ_DATASET}."
+    "RATECARD_USER_ACCESS_EVENT"
+)
 
 SUPPORTED_LANGS = ["fr", "en"]
 
@@ -543,6 +547,69 @@ def list_users(
         ] = profile_type
 
     query = f"""
+
+    WITH access_stats AS (
+
+        SELECT
+
+            ID_USER,
+
+            MAX(
+                IF(
+                    EVENT_TYPE = 'SESSION_START',
+                    ACCESS_AT,
+                    NULL
+                )
+            ) AS LAST_ACCESS_AT,
+
+            COUNTIF(
+
+                EVENT_TYPE = 'SESSION_START'
+
+                AND ACCESS_AT >= TIMESTAMP_SUB(
+                    CURRENT_TIMESTAMP(),
+                    INTERVAL 7 DAY
+                )
+
+            ) AS SESSIONS_7D,
+
+            COUNTIF(
+
+                EVENT_TYPE = 'SESSION_START'
+
+                AND ACCESS_AT >= TIMESTAMP_SUB(
+                    CURRENT_TIMESTAMP(),
+                    INTERVAL 30 DAY
+                )
+
+            ) AS SESSIONS_30D,
+
+            COUNT(
+                DISTINCT IF(
+
+                    EVENT_TYPE = 'SESSION_START'
+
+                    AND ACCESS_AT >= TIMESTAMP_SUB(
+                        CURRENT_TIMESTAMP(),
+                        INTERVAL 30 DAY
+                    ),
+
+                    DATE(
+                        ACCESS_AT
+                    ),
+
+                    NULL
+
+                )
+            ) AS ACTIVE_DAYS_30D
+
+        FROM `{TABLE_USER_ACCESS_EVENT}`
+
+        GROUP BY
+            ID_USER
+
+    )
+
     SELECT
 
         u.ID_USER,
@@ -582,7 +649,32 @@ def list_users(
                 ELSE FALSE
 
             END
-        ) AS HAS_PROFILE
+        ) AS HAS_PROFILE,
+
+        MAX(
+            access.LAST_ACCESS_AT
+        ) AS LAST_ACCESS_AT,
+
+        COALESCE(
+            MAX(
+                access.SESSIONS_7D
+            ),
+            0
+        ) AS SESSIONS_7D,
+
+        COALESCE(
+            MAX(
+                access.SESSIONS_30D
+            ),
+            0
+        ) AS SESSIONS_30D,
+
+        COALESCE(
+            MAX(
+                access.ACTIVE_DAYS_30D
+            ),
+            0
+        ) AS ACTIVE_DAYS_30D
 
     FROM `{TABLE_USER}` u
 
@@ -597,6 +689,10 @@ def list_users(
     LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER_PREFERENCES` pref
 
       ON u.ID_USER = pref.ID_USER
+
+    LEFT JOIN access_stats access
+
+      ON u.ID_USER = access.ID_USER
 
     {where_clause}
 
@@ -616,14 +712,13 @@ def list_users(
     ORDER BY
 
         u.CREATED_AT DESC
+
     """
 
     return query_bq(
         query,
         params,
     )
-
-
 # =========================================================
 # LIST DIGEST PROFILES
 # =========================================================
