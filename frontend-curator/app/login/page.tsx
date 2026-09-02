@@ -17,21 +17,16 @@ const VIDEO_URL =
 
 function createSessionId() {
 
-  const existingSessionId =
-    sessionStorage.getItem(
-      "getcurator_session_id"
-    );
-
-  if (existingSessionId) {
-    return existingSessionId;
-  }
-
   const sessionId =
     crypto.randomUUID();
 
   sessionStorage.setItem(
     "getcurator_session_id",
     sessionId
+  );
+
+  sessionStorage.removeItem(
+    "getcurator_session_registered"
   );
 
   return sessionId;
