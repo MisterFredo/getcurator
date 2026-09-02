@@ -10,6 +10,38 @@ const GCS_BASE_URL =
 const VIDEO_URL =
   `${GCS_BASE_URL}/product/getcurator-tour-V2.mp4`;
 
+
+/* =========================================================
+   SESSION
+========================================================= */
+
+function createSessionId() {
+
+  const existingSessionId =
+    sessionStorage.getItem(
+      "getcurator_session_id"
+    );
+
+  if (existingSessionId) {
+    return existingSessionId;
+  }
+
+  const sessionId =
+    crypto.randomUUID();
+
+  sessionStorage.setItem(
+    "getcurator_session_id",
+    sessionId
+  );
+
+  return sessionId;
+}
+
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function LoginPage() {
 
   const searchParams =
@@ -26,6 +58,11 @@ export default function LoginPage() {
 
   const [loading, setLoading] =
     useState(false);
+
+
+  /* =======================================================
+     LOGIN
+  ======================================================= */
 
   async function handleLogin() {
 
@@ -53,7 +90,9 @@ export default function LoginPage() {
         );
 
       if (!res || !res.user_id) {
-        throw new Error("Login failed");
+        throw new Error(
+          "Login failed"
+        );
       }
 
       localStorage.setItem(
@@ -66,14 +105,44 @@ export default function LoginPage() {
         res.role || "user"
       );
 
+      const sessionId =
+        createSessionId();
+
+      try {
+
+        await api.post(
+          "/user/access/session",
+          {
+            session_id: sessionId,
+          }
+        );
+
+      } catch (sessionError) {
+
+        /*
+         * Le suivi ne doit jamais empêcher
+         * l'utilisateur d'accéder à GetCurator.
+         */
+
+        console.error(
+          "Unable to register user session",
+          sessionError
+        );
+
+      }
+
       window.location.href =
         redirect;
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        error
+      );
 
-      alert("Access denied");
+      alert(
+        "Access denied"
+      );
 
     } finally {
 
@@ -81,6 +150,11 @@ export default function LoginPage() {
 
     }
   }
+
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -200,11 +274,21 @@ export default function LoginPage() {
                 type="email"
                 placeholder="Email"
                 value={email}
-                onChange={(e) =>
+                onChange={(event) =>
                   setEmail(
-                    e.target.value
+                    event.target.value
                   )
                 }
+                onKeyDown={(event) => {
+
+                  if (
+                    event.key === "Enter"
+                    && !loading
+                  ) {
+                    handleLogin();
+                  }
+
+                }}
                 className="
                   w-full
                   border
@@ -219,11 +303,21 @@ export default function LoginPage() {
                 type="password"
                 placeholder="Password"
                 value={password}
-                onChange={(e) =>
+                onChange={(event) =>
                   setPassword(
-                    e.target.value
+                    event.target.value
                   )
                 }
+                onKeyDown={(event) => {
+
+                  if (
+                    event.key === "Enter"
+                    && !loading
+                  ) {
+                    handleLogin();
+                  }
+
+                }}
                 className="
                   w-full
                   border
@@ -267,6 +361,8 @@ export default function LoginPage() {
                   py-2
                   text-sm
                   font-medium
+                  disabled:opacity-50
+                  disabled:cursor-not-allowed
                 "
               >
                 {loading
