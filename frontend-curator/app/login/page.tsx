@@ -102,28 +102,41 @@ export default function LoginPage() {
 
       const sessionId =
         createSessionId();
-
+      
+      /*
+       * Verrouillage immédiat avant l'appel réseau.
+       * Cela empêche AuthGuard d'enregistrer
+       * simultanément la même session.
+       */
+      sessionStorage.setItem(
+        "getcurator_session_registered",
+        "true"
+      );
+      
       try {
-
+      
         await api.post(
           "/user/access/session",
           {
             session_id: sessionId,
           }
         );
-
+      
       } catch (sessionError) {
-
+      
         /*
-         * Le suivi ne doit jamais empêcher
-         * l'utilisateur d'accéder à GetCurator.
+         * Autorise une nouvelle tentative
+         * si l'enregistrement a échoué.
          */
-
+        sessionStorage.removeItem(
+          "getcurator_session_registered"
+        );
+      
         console.error(
           "Unable to register user session",
           sessionError
         );
-
+      
       }
 
       window.location.href =
