@@ -48,7 +48,49 @@ type User = {
 
   HAS_PROFILE?: boolean;
 
+  LAST_ACCESS_AT?: string | null;
+
+  SESSIONS_7D?: number;
+
+  SESSIONS_30D?: number;
+
+  ACTIVE_DAYS_30D?: number;
+
 };
+
+/* =========================================================
+   FORMAT ACCESS DATE
+========================================================= */
+
+function formatAccessDate(
+  value?: string | null,
+) {
+
+  if (!value) {
+    return null;
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  ).format(
+    date,
+  );
+}
 
 
 /* =========================================================
@@ -275,8 +317,7 @@ export default function UsersPage() {
       {/* TABLE */}
       {/* ================================================= */}
 
-      <div className="overflow-hidden rounded-xl border bg-white">
-
+      <div className="overflow-x-auto rounded-xl border bg-white">
         {loading ? (
 
           <div className="p-6 text-sm text-gray-500">
@@ -339,6 +380,10 @@ export default function UsersPage() {
 
                 <th className="p-3 text-left">
                   Profile
+                </th>
+
+                <th className="p-3 text-left">
+                  Access
                 </th>
 
                 <th className="p-3 text-left">
@@ -555,6 +600,60 @@ export default function UsersPage() {
 
                       )}
 
+                    </td>
+
+                    {/* ===================================== */}
+                    {/* ACCESS */}
+                    {/* ===================================== */}
+                    
+                    <td className="p-3">
+                    
+                      {user.LAST_ACCESS_AT ? (
+                    
+                        <div className="min-w-[190px]">
+                    
+                          <div className="font-medium text-gray-900">
+                    
+                            {formatAccessDate(
+                              user.LAST_ACCESS_AT,
+                            )}
+                    
+                          </div>
+                    
+                          <div className="mt-1 text-xs text-gray-500">
+                    
+                            7d: {user.SESSIONS_7D ?? 0}
+                    
+                            <span className="mx-1">
+                              ·
+                            </span>
+                    
+                            30d: {user.SESSIONS_30D ?? 0}
+                            {" "}
+                            sessions
+                    
+                            <span className="mx-1">
+                              /
+                            </span>
+                    
+                            {user.ACTIVE_DAYS_30D ?? 0}
+                            {" "}
+                            active days
+                    
+                          </div>
+                    
+                        </div>
+                    
+                      ) : (
+                    
+                        <span className="text-gray-400">
+                    
+                          Never
+                    
+                        </span>
+                    
+                      )}
+                    
                     </td>
 
                     {/* ===================================== */}
