@@ -123,6 +123,9 @@ def register_user_session(
         @device_type,
         @created_at
 
+    FROM
+        UNNEST([1]) AS dummy
+
     WHERE NOT EXISTS (
 
         SELECT 1
