@@ -54,6 +54,10 @@ from core.digest.bootstrap_service import (
     bootstrap_profile_digests,
 )
 
+from core.user.user_access_service import (
+    register_user_session,
+)
+
 from utils.auth import get_user_id_from_request
 
 router = APIRouter()
@@ -533,6 +537,97 @@ def login(payload: LoginPayload):
         "language": user.get("LANGUAGE", "fr"),  # 🔥 AJOUT
         "universes": universes,
     }
+
+# =========================================================
+# REGISTER USER SESSION
+# =========================================================
+
+@router.post("/access/session")
+def register_access_session(
+    request: Request,
+    payload: dict,
+):
+
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    session_id = payload.get(
+        "session_id"
+    )
+
+    if not session_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Missing session_id",
+        )
+
+    forwarded_for = request.headers.get(
+        "x-forwarded-for"
+    )
+
+    ip_address = (
+
+        forwarded_for.split(",")[0].strip()
+
+        if forwarded_for
+
+        else (
+            request.client.host
+            if request.client
+            else None
+        )
+
+    )
+
+    user_agent = request.headers.get(
+        "user-agent"
+    )
+
+    try:
+
+        return register_user_session(
+
+            user_id=user_id,
+
+            session_id=session_id,
+
+            ip_address=ip_address,
+
+            user_agent=user_agent,
+
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=str(error),
+
+        )
+
+    except Exception as error:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "Erreur enregistrement session : "
+                f"{error}"
+            ),
+
+        )
 
 
 # =========================================================
