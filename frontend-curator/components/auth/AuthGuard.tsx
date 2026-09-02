@@ -92,28 +92,70 @@ export default function AuthGuard({
   useEffect(() => {
 
     if (
-      !loading
-      && !user
-      && !isPublic
+      loading
+      || !user
+      || pathname.startsWith("/login")
     ) {
-
-      const redirect =
-        encodeURIComponent(
-          pathname
-        );
-
-      router.replace(
-        `/login?redirect=${redirect}`
-      );
-
+      return;
     }
-
+  
+    const alreadyRegistered =
+      sessionStorage.getItem(
+        SESSION_REGISTERED_KEY
+      );
+  
+    if (alreadyRegistered) {
+      return;
+    }
+  
+    const sessionId =
+      getOrCreateSessionId();
+  
+    /*
+     * Positionné avant l'appel pour empêcher
+     * plusieurs effets React simultanés.
+     */
+    sessionStorage.setItem(
+      SESSION_REGISTERED_KEY,
+      "true"
+    );
+  
+    async function registerSession() {
+  
+      try {
+  
+        await api.post(
+          "/user/access/session",
+          {
+            session_id: sessionId,
+          }
+        );
+  
+      } catch (error) {
+  
+        /*
+         * On autorise une nouvelle tentative
+         * si l'enregistrement a échoué.
+         */
+        sessionStorage.removeItem(
+          SESSION_REGISTERED_KEY
+        );
+  
+        console.error(
+          "Unable to register user session",
+          error
+        );
+  
+      }
+  
+    }
+  
+    registerSession();
+  
   }, [
     user,
     loading,
     pathname,
-    isPublic,
-    router,
   ]);
 
 
