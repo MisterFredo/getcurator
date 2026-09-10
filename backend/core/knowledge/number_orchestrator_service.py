@@ -184,6 +184,248 @@ def load_number_knowledge_entities(
 
     return rows
 
+# ============================================================
+# NUMBER KNOWLEDGE MONITORING
+# ============================================================
+
+def get_number_knowledge_status() -> Dict[str, Any]:
+    """
+    Return the Numbers Knowledge progress for
+    entities already selected in general Knowledge.
+    """
+
+    rows = query_bq(
+        f"""
+        WITH general_knowledge_entities AS (
+
+            SELECT DISTINCT
+
+                ENTITY_TYPE,
+
+                ENTITY_ID
+
+            FROM `{TABLE_KNOWLEDGE}`
+
+            WHERE BLOCK_TYPE IN (
+                'signal_analytique',
+                'mecanique_expliquee',
+                'enjeu_strategique',
+                'point_de_friction'
+            )
+        ),
+
+        accepted_numbers AS (
+
+            SELECT
+
+                relation.ENTITY_TYPE,
+
+                relation.ENTITY_ID,
+
+                relation.ENTITY_LABEL,
+
+                number.ID_NUMBER,
+
+                number.PUBLISHED_AT
+
+            FROM `{TABLE_NUMBER}` number
+
+            JOIN `{TABLE_NUMBER_ENTITY}` relation
+              ON relation.ID_NUMBER = number.ID_NUMBER
+
+            JOIN general_knowledge_entities knowledge
+              ON knowledge.ENTITY_TYPE
+                 = relation.ENTITY_TYPE
+
+             AND knowledge.ENTITY_ID
+                 = relation.ENTITY_ID
+
+            WHERE number.STATUS = 'ACCEPTED'
+
+              AND number.PUBLISHED_AT IS NOT NULL
+        ),
+
+        entity_state AS (
+
+            SELECT
+
+                accepted.ENTITY_TYPE,
+
+                accepted.ENTITY_ID,
+
+                ANY_VALUE(
+                    accepted.ENTITY_LABEL
+                ) AS ENTITY_LABEL,
+
+                COUNT(*) AS TOTAL_OBSERVATIONS,
+
+                COUNTIF(
+
+                    status.ENTITY_ID IS NULL
+
+                    OR status.LAST_PUBLISHED_AT
+                       IS NULL
+
+                    OR accepted.PUBLISHED_AT
+                       > status.LAST_PUBLISHED_AT
+
+                    OR (
+                        accepted.PUBLISHED_AT
+                            = status.LAST_PUBLISHED_AT
+
+                        AND accepted.ID_NUMBER
+                            > COALESCE(
+                                status.LAST_NUMBER_ID,
+                                ''
+                            )
+                    )
+
+                ) AS PENDING_OBSERVATIONS,
+
+                ANY_VALUE(
+                    status.ENTITY_ID
+                ) IS NOT NULL
+                    AS HAS_NUMBER_STATUS
+
+            FROM accepted_numbers accepted
+
+            LEFT JOIN `{TABLE_NUMBER_STATUS}` status
+              ON status.ENTITY_TYPE
+                 = accepted.ENTITY_TYPE
+
+             AND status.ENTITY_ID
+                 = accepted.ENTITY_ID
+
+            GROUP BY
+
+                accepted.ENTITY_TYPE,
+
+                accepted.ENTITY_ID
+        )
+
+        SELECT
+
+            COUNT(*) AS TOTAL_ENTITIES,
+
+            COUNTIF(
+                HAS_NUMBER_STATUS
+            ) AS STARTED_ENTITIES,
+
+            COUNTIF(
+                HAS_NUMBER_STATUS
+                AND PENDING_OBSERVATIONS = 0
+            ) AS UP_TO_DATE_ENTITIES,
+
+            COUNTIF(
+                PENDING_OBSERVATIONS > 0
+            ) AS PENDING_ENTITIES,
+
+            COUNTIF(
+                NOT HAS_NUMBER_STATUS
+            ) AS NOT_STARTED_ENTITIES,
+
+            COALESCE(
+                SUM(TOTAL_OBSERVATIONS),
+                0
+            ) AS TOTAL_OBSERVATIONS,
+
+            COALESCE(
+                SUM(PENDING_OBSERVATIONS),
+                0
+            ) AS PENDING_OBSERVATIONS,
+
+            COALESCE(
+                SUM(
+                    TOTAL_OBSERVATIONS
+                    - PENDING_OBSERVATIONS
+                ),
+                0
+            ) AS PROCESSED_OBSERVATIONS,
+
+            ROUND(
+                SAFE_DIVIDE(
+
+                    SUM(
+                        TOTAL_OBSERVATIONS
+                        - PENDING_OBSERVATIONS
+                    ),
+
+                    SUM(
+                        TOTAL_OBSERVATIONS
+                    )
+
+                ) * 100,
+                2
+            ) AS PROGRESS_PERCENT
+
+        FROM entity_state
+        """,
+        {},
+    ) or []
+
+    if not rows:
+
+        return {
+            "total_entities": 0,
+            "started_entities": 0,
+            "up_to_date_entities": 0,
+            "pending_entities": 0,
+            "not_started_entities": 0,
+            "total_observations": 0,
+            "processed_observations": 0,
+            "pending_observations": 0,
+            "progress_percent": 0,
+        }
+
+    row = rows[0]
+
+    return {
+        "total_entities": (
+            row.get("TOTAL_ENTITIES")
+            or 0
+        ),
+
+        "started_entities": (
+            row.get("STARTED_ENTITIES")
+            or 0
+        ),
+
+        "up_to_date_entities": (
+            row.get("UP_TO_DATE_ENTITIES")
+            or 0
+        ),
+
+        "pending_entities": (
+            row.get("PENDING_ENTITIES")
+            or 0
+        ),
+
+        "not_started_entities": (
+            row.get("NOT_STARTED_ENTITIES")
+            or 0
+        ),
+
+        "total_observations": (
+            row.get("TOTAL_OBSERVATIONS")
+            or 0
+        ),
+
+        "processed_observations": (
+            row.get("PROCESSED_OBSERVATIONS")
+            or 0
+        ),
+
+        "pending_observations": (
+            row.get("PENDING_OBSERVATIONS")
+            or 0
+        ),
+
+        "progress_percent": (
+            row.get("PROGRESS_PERCENT")
+            or 0
+        ),
+    }
+
 
 # ============================================================
 # CONTINUE NUMBER KNOWLEDGE
