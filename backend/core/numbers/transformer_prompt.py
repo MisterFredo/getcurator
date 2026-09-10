@@ -292,7 +292,14 @@ Remove thousands separators when safe:
 - "5,300" may become 5300
 - "9 000" may become 9000
 
-Use a dot as the decimal separator.
+- Use a dot as the decimal separator.
+- Use value_min and value_max only when two explicit numeric
+  boundaries are present in the source.
+- A label containing the word "range" does not prove that two
+  boundaries exist.
+- If only one numeric boundary is available for a described range,
+  return REVIEW and preserve it as value.
+- Never return only value_min or only value_max.
 
 ==================================================
 UNIT AND SCALE
