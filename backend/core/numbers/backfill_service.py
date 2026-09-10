@@ -521,6 +521,248 @@ def _serialize_result(
         ),
     }
 
+# ============================================================
+# BACKFILL MONITORING
+# ============================================================
+
+def get_number_backfill_status() -> Dict[str, Any]:
+    """
+    Return the global Numbers transformation
+    progress for the current transformer version.
+    """
+
+    rows = query_bq(
+        f"""
+        WITH source_contents AS (
+
+            SELECT
+                ID_CONTENT,
+                ARRAY_LENGTH(
+                    CHIFFRES
+                ) AS RAW_NUMBERS_COUNT
+
+            FROM `{TABLE_CONTENT_ENRICHED}`
+
+            WHERE STATUS = 'PUBLISHED'
+
+              AND IS_ACTIVE = TRUE
+
+              AND PUBLISHED_AT IS NOT NULL
+
+              AND CHIFFRES IS NOT NULL
+
+              AND ARRAY_LENGTH(
+                  CHIFFRES
+              ) > 0
+        ),
+
+        content_status AS (
+
+            SELECT
+
+                source.ID_CONTENT,
+
+                source.RAW_NUMBERS_COUNT,
+
+                processing.STATUS,
+
+                processing.TRANSFORMER_VERSION
+
+            FROM source_contents source
+
+            LEFT JOIN `{TABLE_PROCESSING}` processing
+              ON processing.ID_CONTENT = source.ID_CONTENT
+        ),
+
+        content_totals AS (
+
+            SELECT
+
+                COUNT(*) AS TOTAL_CONTENTS,
+
+                COALESCE(
+                    SUM(RAW_NUMBERS_COUNT),
+                    0
+                ) AS TOTAL_RAW_NUMBERS,
+
+                COUNTIF(
+                    STATUS = 'COMPLETED'
+                    AND TRANSFORMER_VERSION = @version
+                ) AS COMPLETED_CONTENTS,
+
+                COUNTIF(
+                    STATUS = 'FAILED'
+                    AND TRANSFORMER_VERSION = @version
+                ) AS FAILED_CONTENTS,
+
+                COUNTIF(
+                    STATUS = 'PROCESSING'
+                    AND TRANSFORMER_VERSION = @version
+                ) AS PROCESSING_CONTENTS,
+
+                COUNTIF(
+                    STATUS IS NULL
+
+                    OR TRANSFORMER_VERSION
+                       IS DISTINCT FROM @version
+
+                    OR (
+                        TRANSFORMER_VERSION = @version
+                        AND STATUS NOT IN (
+                            'COMPLETED',
+                            'FAILED',
+                            'PROCESSING'
+                        )
+                    )
+                ) AS PENDING_CONTENTS
+
+            FROM content_status
+        ),
+
+        observation_totals AS (
+
+            SELECT
+
+                COUNT(*) AS TOTAL_OBSERVATIONS,
+
+                COUNTIF(
+                    STATUS = 'ACCEPTED'
+                ) AS ACCEPTED_OBSERVATIONS,
+
+                COUNTIF(
+                    STATUS = 'REVIEW'
+                ) AS REVIEW_OBSERVATIONS,
+
+                COUNTIF(
+                    STATUS = 'REJECTED'
+                ) AS REJECTED_OBSERVATIONS
+
+            FROM `{TABLE_OBSERVATION}`
+
+            WHERE TRANSFORMER_VERSION = @version
+        )
+
+        SELECT
+
+            content.TOTAL_CONTENTS,
+
+            content.TOTAL_RAW_NUMBERS,
+
+            content.COMPLETED_CONTENTS,
+
+            content.FAILED_CONTENTS,
+
+            content.PROCESSING_CONTENTS,
+
+            content.PENDING_CONTENTS,
+
+            observation.TOTAL_OBSERVATIONS,
+
+            observation.ACCEPTED_OBSERVATIONS,
+
+            observation.REVIEW_OBSERVATIONS,
+
+            observation.REJECTED_OBSERVATIONS,
+
+            ROUND(
+                SAFE_DIVIDE(
+                    content.COMPLETED_CONTENTS,
+                    content.TOTAL_CONTENTS
+                ) * 100,
+                2
+            ) AS PROGRESS_PERCENT
+
+        FROM content_totals content
+
+        CROSS JOIN observation_totals observation
+        """,
+        {
+            "version": TRANSFORMER_VERSION,
+        },
+    ) or []
+
+    if not rows:
+
+        return {
+            "transformer_version": (
+                TRANSFORMER_VERSION
+            ),
+            "total_contents": 0,
+            "total_raw_numbers": 0,
+            "completed_contents": 0,
+            "failed_contents": 0,
+            "processing_contents": 0,
+            "pending_contents": 0,
+            "total_observations": 0,
+            "accepted_observations": 0,
+            "review_observations": 0,
+            "rejected_observations": 0,
+            "progress_percent": 0,
+        }
+
+    row = rows[0]
+
+    return {
+        "transformer_version": (
+            TRANSFORMER_VERSION
+        ),
+
+        "total_contents": (
+            row.get("TOTAL_CONTENTS")
+            or 0
+        ),
+
+        "total_raw_numbers": (
+            row.get("TOTAL_RAW_NUMBERS")
+            or 0
+        ),
+
+        "completed_contents": (
+            row.get("COMPLETED_CONTENTS")
+            or 0
+        ),
+
+        "failed_contents": (
+            row.get("FAILED_CONTENTS")
+            or 0
+        ),
+
+        "processing_contents": (
+            row.get("PROCESSING_CONTENTS")
+            or 0
+        ),
+
+        "pending_contents": (
+            row.get("PENDING_CONTENTS")
+            or 0
+        ),
+
+        "total_observations": (
+            row.get("TOTAL_OBSERVATIONS")
+            or 0
+        ),
+
+        "accepted_observations": (
+            row.get("ACCEPTED_OBSERVATIONS")
+            or 0
+        ),
+
+        "review_observations": (
+            row.get("REVIEW_OBSERVATIONS")
+            or 0
+        ),
+
+        "rejected_observations": (
+            row.get("REJECTED_OBSERVATIONS")
+            or 0
+        ),
+
+        "progress_percent": (
+            row.get("PROGRESS_PERCENT")
+            or 0
+        ),
+    }
+
 
 # ============================================================
 # RUN BACKFILL BATCH
