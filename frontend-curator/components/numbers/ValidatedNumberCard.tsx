@@ -405,12 +405,12 @@ export default function ValidatedNumberCard({
 
         className="
           flex
-          min-h-28
+          min-h-20
           items-center
           justify-center
           bg-gray-50
-          px-5
-          py-6
+          px-3
+          py-4
           text-center
         "
 
@@ -421,7 +421,7 @@ export default function ValidatedNumberCard({
           <div
 
             className="
-              text-2xl
+              text-xl
               font-semibold
               tracking-tight
               text-gray-950
@@ -471,20 +471,20 @@ export default function ValidatedNumberCard({
           flex
           flex-1
           flex-col
-          p-4
+          p-3
         "
 
       >
 
         <div
-
           className="
-            text-sm
+            line-clamp-2
+            min-h-10
+            text-xs
             font-medium
             leading-5
             text-gray-800
           "
-
         >
 
           {item.label}
@@ -554,8 +554,8 @@ export default function ValidatedNumberCard({
                   className={`
                     rounded-full
                     px-2
-                    py-1
-                    text-[10px]
+                    py-0.5
+                    text-[9px]
                     font-medium
                     ${getEntityClasses(
                       entity.entity_type,
@@ -583,50 +583,28 @@ export default function ValidatedNumberCard({
         {sourceTitle && (
 
           <div
-
             className="
-              mt-auto
+              mt-3
               border-t
               border-gray-100
-              pt-4
+              pt-2
             "
-
           >
-
+        
             <div
-
               className="
-                text-[10px]
-                font-semibold
-                uppercase
-                tracking-wide
-                text-gray-300
-              "
-
-            >
-
-              Source
-
-            </div>
-
-            <div
-
-              className="
-                mt-1
                 line-clamp-2
-                text-xs
+                text-[10px]
                 leading-4
-                text-gray-500
+                text-gray-400
               "
-
+              title={sourceTitle}
             >
-
               {sourceTitle}
-
             </div>
-
+        
           </div>
-
+        
         )}
 
       </div>
