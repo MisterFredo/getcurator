@@ -39,6 +39,16 @@ TABLE_CONTENT = (
     "RATECARD_CONTENT_ENRICHED"
 )
 
+TABLE_KNOWLEDGE = (
+    f"{BQ_PROJECT}.{BQ_DATASET}."
+    "RATECARD_KNOWLEDGE"
+)
+
+TABLE_KNOWLEDGE_NUMBER_STATUS = (
+    f"{BQ_PROJECT}.{BQ_DATASET}."
+    "RATECARD_KNOWLEDGE_NUMBER_STATUS"
+)
+
 
 # ============================================================
 # CONFIG
