@@ -37,6 +37,10 @@ from core.numbers.backfill_service import (
     run_number_backfill_batch,
 )
 
+from core.knowledge.number_orchestrator_service import (
+    continue_number_knowledge,
+)
+
 router = APIRouter()
 
 
@@ -222,6 +226,40 @@ def backfill_numbers_route(
             detail=(
                 "Erreur interne backfill "
                 f"Numbers : {e}"
+            ),
+        )
+
+# ============================================================
+# CONTINUE NUMBERS KNOWLEDGE
+# ============================================================
+
+@router.post("/knowledge/continue")
+def continue_number_knowledge_route(
+    limit: int = Query(
+        5,
+        ge=1,
+        le=10,
+    ),
+):
+
+    try:
+
+        result = continue_number_knowledge(
+            limit=limit,
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur Continue Numbers "
+                f"Knowledge : {e}"
             ),
         )
 
