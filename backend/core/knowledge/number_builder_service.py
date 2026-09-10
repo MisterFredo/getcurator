@@ -187,7 +187,7 @@ def build_number_knowledge(
         last_number_id=(
             last_observation.id_number
         ),
-        processed_observations=(
+        processed_count=(
             observations_count
         ),
     )
