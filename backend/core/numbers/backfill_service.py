@@ -73,32 +73,37 @@ def load_next_number_backfill_contents(
     # ========================================================
     # PROCESSING FILTER
     # ========================================================
-
+    
     if retry_failed:
-
+    
+        # Retry only failures produced by the
+        # current transformer version.
         processing_filter = """
-        AND (
-            processing.ID_CONTENT IS NULL
-
-            OR processing.TRANSFORMER_VERSION
-               IS DISTINCT FROM @version
-
-            OR processing.STATUS != 'COMPLETED'
-        )
+        AND processing.STATUS = 'FAILED'
+    
+        AND processing.TRANSFORMER_VERSION = @version
         """
-
+    
     else:
-
+    
+        # Standard backfill:
+        # process new contents or contents produced
+        # by an older transformer version.
         processing_filter = """
         AND (
             processing.ID_CONTENT IS NULL
-
+    
             OR processing.TRANSFORMER_VERSION
                IS DISTINCT FROM @version
-
-            OR processing.STATUS NOT IN (
-                'COMPLETED',
-                'FAILED'
+    
+            OR (
+                processing.TRANSFORMER_VERSION = @version
+    
+                AND processing.STATUS NOT IN (
+                    'COMPLETED',
+                    'FAILED',
+                    'PROCESSING'
+                )
             )
         )
         """
