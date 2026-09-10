@@ -63,7 +63,7 @@ def _now():
 
     return datetime.now(
         timezone.utc,
-    )
+    ).isoformat()
 
 
 def _raw_hash(
