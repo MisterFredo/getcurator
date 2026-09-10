@@ -69,14 +69,36 @@ def load_next_number_backfill_contents(
         ),
     )
 
-    failed_filter = ""
+    # ========================================================
+    # PROCESSING FILTER
+    # ========================================================
 
-    if not retry_failed:
+    if retry_failed:
 
-        failed_filter = """
-        AND NOT (
-            processing.STATUS = 'FAILED'
-            AND processing.TRANSFORMER_VERSION = @version
+        processing_filter = """
+        AND (
+            processing.ID_CONTENT IS NULL
+
+            OR processing.TRANSFORMER_VERSION
+               IS DISTINCT FROM @version
+
+            OR processing.STATUS != 'COMPLETED'
+        )
+        """
+
+    else:
+
+        processing_filter = """
+        AND (
+            processing.ID_CONTENT IS NULL
+
+            OR processing.TRANSFORMER_VERSION
+               IS DISTINCT FROM @version
+
+            OR processing.STATUS NOT IN (
+                'COMPLETED',
+                'FAILED'
+            )
         )
         """
 
@@ -102,12 +124,7 @@ def load_next_number_backfill_contents(
               content.CHIFFRES
           ) > 0
 
-          AND NOT (
-              processing.STATUS = 'COMPLETED'
-              AND processing.TRANSFORMER_VERSION = @version
-          )
-
-          {failed_filter}
+          {processing_filter}
 
         ORDER BY
             content.PUBLISHED_AT ASC,
