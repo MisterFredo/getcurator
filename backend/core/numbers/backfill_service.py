@@ -5,6 +5,11 @@ from typing import (
     Dict,
 )
 
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -45,7 +50,9 @@ TABLE_CONTENT_ENRICHED = (
 # ============================================================
 
 DEFAULT_BACKFILL_LIMIT = 5
-MAX_BACKFILL_LIMIT = 10
+MAX_BACKFILL_LIMIT = 5
+
+BACKFILL_MAX_WORKERS = 3
 
 
 # ============================================================
@@ -826,27 +833,45 @@ def run_number_backfill_batch(
     ] = []
 
     # ========================================================
-    # TRANSFORM IN MEMORY
+    # TRANSFORM IN MEMORY — CONTROLLED PARALLELISM
     # ========================================================
-
-    for id_content in content_ids:
-
-        try:
-
-            result = preview_content_numbers(
+    
+    with ThreadPoolExecutor(
+        max_workers=BACKFILL_MAX_WORKERS,
+    ) as executor:
+    
+        futures = {
+    
+            executor.submit(
+                preview_content_numbers,
                 id_content=id_content,
-            )
-
-            results.append(
-                result
-            )
-
-        except Exception as error:
-
-            failures.append({
-                "id_content": id_content,
-                "error": str(error),
-            })
+            ): id_content
+    
+            for id_content in content_ids
+        }
+    
+        for future in as_completed(
+            futures
+        ):
+    
+            id_content = futures[
+                future
+            ]
+    
+            try:
+    
+                result = future.result()
+    
+                results.append(
+                    result
+                )
+    
+            except Exception as error:
+    
+                failures.append({
+                    "id_content": id_content,
+                    "error": str(error),
+                })
 
     # ========================================================
     # GROUPED STORAGE
