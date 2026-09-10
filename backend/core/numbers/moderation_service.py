@@ -841,6 +841,90 @@ def _acceptance_error(
 
     return None
 
+# ============================================================
+# INVALIDATE NUMBER KNOWLEDGE
+# ============================================================
+
+def _invalidate_number_knowledge(
+    ids: List[str],
+):
+    """
+    Delete Numbers Knowledge blocks and cursors
+    affected by a moderation decision.
+
+    The next Numbers Knowledge run will rebuild
+    them from all effectively ACCEPTED observations.
+    """
+
+    if not ids:
+        return
+
+    # ========================================================
+    # DELETE CHIFFRES BLOCKS
+    # ========================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_KNOWLEDGE}`
+
+        WHERE BLOCK_TYPE = 'chiffres'
+
+          AND CONCAT(
+              ENTITY_TYPE,
+              ':',
+              ENTITY_ID
+          ) IN (
+
+              SELECT DISTINCT
+
+                  CONCAT(
+                      ENTITY_TYPE,
+                      ':',
+                      ENTITY_ID
+                  )
+
+              FROM `{TABLE_OBSERVATION_ENTITY}`
+
+              WHERE ID_NUMBER IN UNNEST(@ids)
+          )
+        """,
+        {
+            "ids": ids,
+        },
+    )
+
+    # ========================================================
+    # DELETE NUMBER CURSORS
+    # ========================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_KNOWLEDGE_NUMBER_STATUS}`
+
+        WHERE CONCAT(
+            ENTITY_TYPE,
+            ':',
+            ENTITY_ID
+        ) IN (
+
+            SELECT DISTINCT
+
+                CONCAT(
+                    ENTITY_TYPE,
+                    ':',
+                    ENTITY_ID
+                )
+
+            FROM `{TABLE_OBSERVATION_ENTITY}`
+
+            WHERE ID_NUMBER IN UNNEST(@ids)
+        )
+        """,
+        {
+            "ids": ids,
+        },
+    )
+
 
 # ============================================================
 # APPLY BULK DECISION
@@ -860,7 +944,15 @@ def apply_number_decisions(
 
     Invalid ACCEPTED candidates are skipped without
     blocking the rest of the selection.
+
+    When the effective ACCEPTED perimeter changes,
+    the affected Numbers Knowledge blocks and
+    cursors are invalidated for a complete rebuild.
     """
+
+    # ========================================================
+    # VALIDATE IDS INPUT
+    # ========================================================
 
     if not isinstance(
         ids,
@@ -873,6 +965,7 @@ def apply_number_decisions(
 
     normalized_ids = list(
         dict.fromkeys([
+
             str(
                 id_number
             ).strip()
@@ -882,6 +975,7 @@ def apply_number_decisions(
             if str(
                 id_number
             ).strip()
+
         ])
     )
 
@@ -901,6 +995,10 @@ def apply_number_decisions(
             "can be moderated at once"
         )
 
+    # ========================================================
+    # VALIDATE DECISION
+    # ========================================================
+
     normalized_decision = (
         str(
             decision
@@ -919,6 +1017,10 @@ def apply_number_decisions(
             f"{decision}"
         )
 
+    # ========================================================
+    # LOAD CANDIDATES
+    # ========================================================
+
     candidates = (
         _load_moderation_candidates(
             ids=normalized_ids,
@@ -926,10 +1028,13 @@ def apply_number_decisions(
     )
 
     updated_ids = []
+
     skipped = []
 
+    knowledge_change_ids = []
+
     # ========================================================
-    # VALIDATE IDS
+    # VALIDATE EACH NUMBER
     # ========================================================
 
     for id_number in normalized_ids:
@@ -937,6 +1042,10 @@ def apply_number_decisions(
         candidate = candidates.get(
             id_number
         )
+
+        # ----------------------------------------------------
+        # NUMBER NOT FOUND
+        # ----------------------------------------------------
 
         if candidate is None:
 
@@ -951,6 +1060,10 @@ def apply_number_decisions(
             })
 
             continue
+
+        # ----------------------------------------------------
+        # ACCEPTANCE REQUIREMENTS
+        # ----------------------------------------------------
 
         if (
             normalized_decision
@@ -976,6 +1089,43 @@ def apply_number_decisions(
                 })
 
                 continue
+
+        # ----------------------------------------------------
+        # CURRENT EFFECTIVE STATUS
+        # ----------------------------------------------------
+
+        current_status = (
+            candidate.get(
+                "effective_status"
+            )
+        )
+
+        # ----------------------------------------------------
+        # KNOWLEDGE INVALIDATION
+        # ----------------------------------------------------
+
+        if (
+            current_status
+            != normalized_decision
+
+            and (
+
+                current_status
+                == "ACCEPTED"
+
+                or normalized_decision
+                == "ACCEPTED"
+
+            )
+        ):
+
+            knowledge_change_ids.append(
+                id_number
+            )
+
+        # ----------------------------------------------------
+        # VALID MODERATION
+        # ----------------------------------------------------
 
         updated_ids.append(
             id_number
@@ -1071,7 +1221,9 @@ def apply_number_decisions(
               )
             """,
             {
-                "ids": updated_ids,
+                "ids": (
+                    updated_ids
+                ),
 
                 "decision": (
                     normalized_decision
@@ -1090,6 +1242,20 @@ def apply_number_decisions(
                 ),
             },
         )
+
+    # ========================================================
+    # INVALIDATE DERIVED KNOWLEDGE
+    # ========================================================
+
+    if knowledge_change_ids:
+
+        _invalidate_number_knowledge(
+            ids=knowledge_change_ids,
+        )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
 
     return {
         "decision": (
@@ -1114,5 +1280,9 @@ def apply_number_decisions(
 
         "skipped": (
             skipped
+        ),
+
+        "knowledge_invalidated_numbers": len(
+            knowledge_change_ids
         ),
     }
