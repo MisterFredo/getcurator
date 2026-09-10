@@ -22,56 +22,6 @@ from .models import (
     KnowledgeBlockType,
 )
 
-
-# ============================================================
-# BUILD
-# ============================================================
-
-# ============================================================
-# BUILD
-# ============================================================
-
-def build_knowledge(
-    entity_type: KnowledgeEntityType,
-    entity_id: str,
-):
-    """
-    Build the next Knowledge batch.
-    """
-
-    last_content_date = get_last_content_date(
-
-        entity_type=entity_type,
-
-        entity_id=entity_id,
-
-    )
-
-    last_observation = build_entity(
-
-        entity_type=entity_type,
-
-        entity_id=entity_id,
-
-        last_content_date=last_content_date,
-
-    )
-
-    if last_observation is None:
-        return
-
-    update_last_content(
-
-        entity_type=entity_type,
-
-        entity_id=entity_id,
-
-        content_id=last_observation.id,
-
-        content_date=last_observation.published_at,
-
-    )
-
 # ============================================================
 # BUILD
 # ============================================================
