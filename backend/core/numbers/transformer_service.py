@@ -832,6 +832,22 @@ def _validate_transformed_number(
     number.entities = validated_entities
 
     # ========================================================
+    # ACCEPTED WITHOUT ENTITY -> REVIEW
+    # ========================================================
+
+    if (
+        number.status == "ACCEPTED"
+        and not number.entities
+    ):
+
+        number.status = "REVIEW"
+
+        number.reason = (
+            "No official entity candidate "
+            "could be safely assigned."
+        )
+
+    # ========================================================
     # STATUS RULES
     # ========================================================
 
