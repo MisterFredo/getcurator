@@ -842,6 +842,11 @@ def _validate_transformed_number(
 
         number.status = "REVIEW"
 
+        number.confidence = min(
+            number.confidence,
+            0.7,
+        )
+
         number.reason = (
             "No official entity candidate "
             "could be safely assigned."
