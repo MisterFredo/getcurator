@@ -171,3 +171,45 @@ class KnowledgeBlockUpdateRequest(BaseModel):
     block_type: KnowledgeBlockType
 
     content: str
+
+# ============================================================
+# KNOWLEDGE NUMBER OBSERVATION
+# ============================================================
+
+class KnowledgeNumberObservation(BaseModel):
+    """
+    One validated and entity-linked Number
+    sent to the Knowledge Numbers Agent.
+    """
+
+    id_number: str
+
+    id_content: str
+
+    title: str
+
+    label: str
+
+    metric_type: str
+
+    value: float | None = None
+
+    value_min: float | None = None
+
+    value_max: float | None = None
+
+    unit: str
+
+    scale: str
+
+    zone: str
+
+    period_label: str
+
+    value_status: str
+
+    raw_line: str
+
+    confidence: float
+
+    published_at: datetime
