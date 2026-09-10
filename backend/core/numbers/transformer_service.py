@@ -761,10 +761,34 @@ def _validate_transformed_number(
 
     if has_partial_range:
 
-        raise ValueError(
-            "Incomplete range for raw line: "
-            f"{number.raw_line}"
+        partial_value = (
+            number.value_min
+            if number.value_min is not None
+            else number.value_max
         )
+    
+        # Preserve the only explicit numeric value
+        # without pretending that a complete range exists.
+        number.value = partial_value
+        number.value_min = None
+        number.value_max = None
+    
+        number.status = "REVIEW"
+    
+        number.confidence = min(
+            number.confidence,
+            0.6,
+        )
+    
+        number.reason = (
+            "The source provides only one boundary "
+            "for a metric described as a range."
+        )
+    
+        # Recompute validation flags after normalization.
+        has_single_value = True
+        has_complete_range = False
+        has_partial_range = False
 
     if (
         has_single_value
