@@ -179,6 +179,32 @@ def transform_and_save_route(
         )
 
 # ============================================================
+# NUMBERS BACKFILL STATUS
+# ============================================================
+
+@router.get("/backfill/status")
+def number_backfill_status_route():
+
+    try:
+
+        return {
+            "status": "ok",
+            "result": (
+                get_number_backfill_status()
+            ),
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur monitoring backfill "
+                f"Numbers : {e}"
+            ),
+        )
+
+# ============================================================
 # NUMBERS BACKFILL
 # ============================================================
 
