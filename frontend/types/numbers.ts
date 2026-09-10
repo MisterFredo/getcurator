@@ -33,6 +33,20 @@ type NumberItem = {
 };
 
 /* =========================================================
+   COMMON
+========================================================= */
+
+export type NumberStatus =
+  | "ACCEPTED"
+  | "REVIEW"
+  | "REJECTED";
+
+export type NumberEntityType =
+  | "company"
+  | "topic"
+  | "solution";
+
+/* =========================================================
    NUMBERS BACKFILL MONITORING
 ========================================================= */
 
@@ -100,6 +114,91 @@ export type NumbersBackfillResult = {
 };
 
 /* =========================================================
+   NUMBER OBSERVATION
+========================================================= */
+
+export type NumberObservationEntity = {
+  entity_type:
+    | "company"
+    | "topic"
+    | "solution";
+
+  entity_id: string;
+  entity_label: string;
+};
+
+export type NumberObservation = {
+  id_number: string;
+  id_content: string;
+
+  content_title: string | null;
+  raw_line: string;
+
+  label: string | null;
+  metric_type: string | null;
+
+  value: number | null;
+  value_min: number | null;
+  value_max: number | null;
+
+  unit: string | null;
+  scale: string | null;
+
+  zone: string | null;
+  period_label: string | null;
+  value_status: string | null;
+
+  transformer_status: NumberStatus;
+  effective_status: NumberStatus;
+
+  manual_decision: NumberStatus | null;
+
+  confidence: number;
+
+  reason: string | null;
+  review_reason: string | null;
+
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+
+  published_at: string | null;
+  transformer_version: string;
+
+  entities: NumberObservationEntity[];
+};
+
+/* =========================================================
+   PAGINATION
+========================================================= */
+
+export type NumberObservationPagination = {
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+};
+
+/* =========================================================
+   MODERATION
+========================================================= */
+
+export type NumberModerationSkip = {
+  id_number: string;
+  reason: string;
+};
+
+export type NumberModerationResult = {
+  decision: NumberStatus;
+
+  requested: number;
+  updated: number;
+  skipped_count: number;
+
+  updated_ids: string[];
+  skipped: NumberModerationSkip[];
+};
+
+/* =========================================================
    API RESPONSES
 ========================================================= */
 
@@ -111,4 +210,15 @@ export type NumbersBackfillStatusResponse = {
 export type NumbersBackfillResponse = {
   status: string;
   result: NumbersBackfillResult;
+};
+
+export type NumberObservationsResponse = {
+  status: string;
+  items: NumberObservation[];
+  pagination: NumberObservationPagination;
+};
+
+export type NumberModerationResponse = {
+  status: string;
+  result: NumberModerationResult;
 };
