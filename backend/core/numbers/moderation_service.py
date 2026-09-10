@@ -684,6 +684,7 @@ def _load_moderation_candidates(
             observation.LABEL,
 
             observation.METRIC_TYPE,
+            observation.EFFECTIVE_STATUS,
 
             observation.VALUE,
 
@@ -726,6 +727,10 @@ def _load_moderation_candidates(
 
             "metric_type": row.get(
                 "METRIC_TYPE"
+            ),
+
+            "effective_status": row.get(
+                "EFFECTIVE_STATUS"
             ),
 
             "value": row.get(
