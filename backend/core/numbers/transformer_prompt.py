@@ -61,6 +61,8 @@ CANONICAL_UNITS = [
     "MINUTES",
     "YEARS",
     "PERCENTAGE_POINTS",
+    "RATIO",
+    "DATA_RATE_TBPS",
     "OTHER",
 ]
 
@@ -335,6 +337,10 @@ becomes:
 - Use YEARS for durations expressed in years.
 - Use PERCENTAGE_POINTS only when the source explicitly describes a
   change in percentage points, not a percentage change.
+- Use RATIO when a value represents a ratio between two quantities,
+  such as proactive versus reactive takedowns.
+- Store the numeric multiplier in value and use scale NONE.
+- Use DATA_RATE_TBPS for data transmission capacity expressed in Tbps.
 
 If a monetary scale is known but its currency is not:
 
@@ -342,6 +348,7 @@ If a monetary scale is known but its currency is not:
 - normally use REVIEW
 
 Never infer USD merely because an article is written in English.
+
 
 ==================================================
 VALUE STATUS
@@ -385,6 +392,13 @@ period_label:
 - Translate unambiguous geographic names into their standard English
   form, for example Inde to India, Allemagne to Germany and États-Unis
   to United States.
+- Analyze related raw Numbers together.
+- When one observation gives an explicit year and another observation
+  for the exact same metric says "previous year", resolve the previous
+  period only when the relationship is unambiguous.
+- Example: the same metric is 331 in 2026 and 200 in the previous year;
+  period_label may be normalized to 2025.
+- Otherwise keep UNKNOWN.
 
 ==================================================
 ENTITY DISPATCH
