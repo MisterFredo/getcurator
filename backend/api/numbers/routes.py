@@ -31,6 +31,7 @@ from core.knowledge.number_builder_service import (
 
 from core.knowledge.number_orchestrator_service import (
     continue_number_knowledge,
+    get_number_knowledge_status,
 )
 
 from core.numbers.backfill_service import (
@@ -249,6 +250,32 @@ def backfill_numbers_route(
             detail=(
                 "Erreur interne backfill "
                 f"Numbers : {e}"
+            ),
+        )
+
+# ============================================================
+# NUMBERS KNOWLEDGE STATUS
+# ============================================================
+
+@router.get("/knowledge/status")
+def number_knowledge_status_route():
+
+    try:
+
+        return {
+            "status": "ok",
+            "result": (
+                get_number_knowledge_status()
+            ),
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur monitoring Numbers "
+                f"Knowledge : {e}"
             ),
         )
 
