@@ -133,7 +133,7 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id
+      || !user?.id_user
     ) {
 
       return;
@@ -167,7 +167,7 @@ export default function NumbersPage() {
     loadUniverses();
 
   }, [
-    user?.id,
+    user?.id_user,
     userLoading,
   ]);
 
@@ -191,7 +191,7 @@ export default function NumbersPage() {
     }) => {
 
       const userId =
-        user?.id;
+        user?.id_user;
 
       if (!userId) {
 
@@ -306,7 +306,7 @@ export default function NumbersPage() {
     },
 
     [
-      user?.id,
+      user?.id_user,
     ],
   );
 
@@ -319,7 +319,7 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id
+      || !user?.id_user
     ) {
 
       return;
@@ -339,7 +339,7 @@ export default function NumbersPage() {
   }, [
     activeUniverse,
     loadNumbers,
-    user?.id,
+    user?.id_user,
     userLoading,
   ]);
 
@@ -354,7 +354,7 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id
+      || !user?.id_user
     ) {
 
       return;
@@ -386,7 +386,7 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id
+      || !user?.id_user
       || loading
       || loadingMore
       || !hasMore
