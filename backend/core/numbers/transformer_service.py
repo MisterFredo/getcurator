@@ -38,6 +38,13 @@ from .transformer_prompt import (
     build_number_transformer_prompt,
 )
 
+from .observation_repository import (
+    mark_number_processing_completed,
+    mark_number_processing_failed,
+    mark_number_processing_started,
+    replace_content_number_observations,
+)
+
 
 # ============================================================
 # TABLES
@@ -1130,3 +1137,51 @@ def preview_content_numbers_dict(
     return _model_to_dict(
         result
     )
+
+# ============================================================
+# TRANSFORM AND SAVE
+# ============================================================
+
+def transform_and_save_content_numbers(
+    id_content: str,
+) -> Dict[str, Any]:
+    """
+    Transform and persist every Number
+    associated with one content.
+    """
+
+    mark_number_processing_started(
+        id_content=id_content,
+    )
+
+    try:
+
+        result = preview_content_numbers(
+            id_content=id_content,
+        )
+
+        storage = (
+            replace_content_number_observations(
+                result=result,
+            )
+        )
+
+        mark_number_processing_completed(
+            result=result,
+        )
+
+        return {
+            "transformation": (
+                _model_to_dict(result)
+            ),
+            "storage": storage,
+        }
+
+    except Exception as e:
+
+        mark_number_processing_failed(
+            id_content=id_content,
+            error=str(e),
+        )
+
+        raise
