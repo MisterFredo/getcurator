@@ -33,6 +33,10 @@ from core.knowledge.number_builder_service import (
     build_number_knowledge,
 )
 
+from core.numbers.backfill_service import (
+    run_number_backfill_batch,
+)
+
 router = APIRouter()
 
 
@@ -170,6 +174,54 @@ def transform_and_save_route(
             detail=(
                 "Erreur sauvegarde Numbers : "
                 f"{e}"
+            ),
+        )
+
+# ============================================================
+# NUMBERS BACKFILL
+# ============================================================
+
+@router.post("/backfill")
+def backfill_numbers_route(
+    limit: int = Query(
+        5,
+        ge=1,
+        le=10,
+    ),
+    retry_failed: bool = Query(
+        False,
+    ),
+):
+
+    try:
+
+        result = run_number_backfill_batch(
+            limit=limit,
+            retry_failed=retry_failed,
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur backfill Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne backfill "
+                f"Numbers : {e}"
             ),
         )
 
