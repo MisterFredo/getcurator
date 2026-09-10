@@ -29,6 +29,10 @@ from core.numbers.transformer_service import (
     transform_and_save_content_numbers,
 )
 
+from core.knowledge.number_builder_service import (
+    build_number_knowledge,
+)
+
 router = APIRouter()
 
 
@@ -166,6 +170,57 @@ def transform_and_save_route(
             detail=(
                 "Erreur sauvegarde Numbers : "
                 f"{e}"
+            ),
+        )
+
+# ============================================================
+# BUILD NUMBER KNOWLEDGE
+# ============================================================
+
+@router.post(
+    "/knowledge/{entity_type}/{entity_id}"
+)
+def build_number_knowledge_route(
+    entity_type: str,
+    entity_id: str,
+):
+
+    try:
+
+        result = build_number_knowledge(
+
+            entity_type=entity_type,
+
+            entity_id=entity_id,
+
+            # First Numbers build:
+            # process the complete history.
+            last_published_at=None,
+
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur Knowledge Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne Knowledge "
+                f"Numbers : {e}"
             ),
         )
 
