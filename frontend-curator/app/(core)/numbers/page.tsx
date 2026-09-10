@@ -6,13 +6,8 @@ import {
   useState,
 } from "react";
 
-import {
-  api,
-} from "@/lib/api";
-
-import {
-  useUser,
-} from "@/hooks/useUser";
+import { api } from "@/lib/api";
+import { useUser } from "@/hooks/useUser";
 
 import {
   searchValidatedNumbers,
@@ -31,11 +26,8 @@ import type {
 ============================================================ */
 
 type Universe = {
-
   id_universe: string;
-
   label: string;
-
 };
 
 
@@ -61,6 +53,10 @@ export default function NumbersPage() {
     loading: userLoading,
   } = useUser();
 
+  const userId =
+    user?.user_id
+    || null;
+
 
   /* ========================================================
      UNIVERSES
@@ -69,9 +65,7 @@ export default function NumbersPage() {
   const [
     universes,
     setUniverses,
-  ] = useState<Universe[]>(
-    [],
-  );
+  ] = useState<Universe[]>([]);
 
   const [
     activeUniverse,
@@ -88,9 +82,7 @@ export default function NumbersPage() {
   const [
     items,
     setItems,
-  ] = useState<PublicNumber[]>(
-    [],
-  );
+  ] = useState<PublicNumber[]>([]);
 
   const [
     query,
@@ -133,11 +125,9 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id_user
+      || !userId
     ) {
-
       return;
-
     }
 
     async function loadUniverses() {
@@ -167,7 +157,7 @@ export default function NumbersPage() {
     loadUniverses();
 
   }, [
-    user?.id_user,
+    userId,
     userLoading,
   ]);
 
@@ -190,13 +180,8 @@ export default function NumbersPage() {
       append?: boolean;
     }) => {
 
-      const userId =
-        user?.id_user;
-
       if (!userId) {
-
         return;
-
       }
 
       if (append) {
@@ -277,36 +262,26 @@ export default function NumbersPage() {
 
         if (!append) {
 
-          setItems(
-            [],
-          );
+          setItems([]);
 
-          setTotal(
-            0,
-          );
+          setTotal(0);
 
-          setHasMore(
-            false,
-          );
+          setHasMore(false);
 
         }
 
       } finally {
 
-        setLoading(
-          false,
-        );
+        setLoading(false);
 
-        setLoadingMore(
-          false,
-        );
+        setLoadingMore(false);
 
       }
 
     },
 
     [
-      user?.id_user,
+      userId,
     ],
   );
 
@@ -319,27 +294,20 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id_user
+      || !userId
     ) {
-
       return;
-
     }
 
     loadNumbers({
-
-      searchQuery:
-        query,
-
-      universeId:
-        activeUniverse,
-
+      searchQuery: query,
+      universeId: activeUniverse,
     });
 
   }, [
     activeUniverse,
     loadNumbers,
-    user?.id_user,
+    userId,
     userLoading,
   ]);
 
@@ -354,11 +322,9 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id_user
+      || !userId
     ) {
-
       return;
-
     }
 
     setQuery(
@@ -366,13 +332,8 @@ export default function NumbersPage() {
     );
 
     loadNumbers({
-
-      searchQuery:
-        nextQuery,
-
-      universeId:
-        activeUniverse,
-
+      searchQuery: nextQuery,
+      universeId: activeUniverse,
     });
 
   }
@@ -386,37 +347,26 @@ export default function NumbersPage() {
 
     if (
       userLoading
-      || !user?.id_user
+      || !userId
       || loading
       || loadingMore
       || !hasMore
     ) {
-
       return;
-
     }
 
     loadNumbers({
-
-      searchQuery:
-        query,
-
-      universeId:
-        activeUniverse,
-
-      offset:
-        items.length,
-
-      append:
-        true,
-
+      searchQuery: query,
+      universeId: activeUniverse,
+      offset: items.length,
+      append: true,
     });
 
   }
 
 
   /* ========================================================
-     PAGE LOADING
+     PAGE STATE
   ======================================================== */
 
   const pageLoading =
@@ -430,13 +380,7 @@ export default function NumbersPage() {
 
   return (
 
-    <div
-
-      className="
-        space-y-8
-      "
-
-    >
+    <div className="space-y-8">
 
       {/* ================================================= */}
       {/* HEADER */}
@@ -445,22 +389,17 @@ export default function NumbersPage() {
       <header>
 
         <h1
-
           className="
             text-2xl
             font-semibold
             tracking-tight
             text-gray-900
           "
-
         >
-
           Numbers
-
         </h1>
 
         <p
-
           className="
             mt-2
             max-w-3xl
@@ -468,12 +407,9 @@ export default function NumbersPage() {
             leading-6
             text-gray-500
           "
-
         >
-
           Explore verified business metrics extracted from
           GetCurator&apos;s editorial intelligence.
-
         </p>
 
       </header>
@@ -484,19 +420,9 @@ export default function NumbersPage() {
       {/* ================================================= */}
 
       <ValidatedNumbersSearchBar
-
-        query={
-          query
-        }
-
-        loading={
-          pageLoading
-        }
-
-        onSearch={
-          handleSearch
-        }
-
+        query={query}
+        loading={pageLoading}
+        onSearch={handleSearch}
       />
 
 
@@ -507,29 +433,19 @@ export default function NumbersPage() {
       {universes.length > 0 && (
 
         <div
-
           className="
             flex
             flex-wrap
             gap-2
           "
-
         >
 
           <button
-
             type="button"
-
-            disabled={
-              pageLoading
-            }
-
+            disabled={pageLoading}
             onClick={() =>
-              setActiveUniverse(
-                null,
-              )
+              setActiveUniverse(null)
             }
-
             className={`
               rounded-full
               px-3
@@ -541,12 +457,10 @@ export default function NumbersPage() {
 
               ${
                 activeUniverse === null
-
                   ? `
                     bg-gray-900
                     text-white
                   `
-
                   : `
                     bg-gray-100
                     text-gray-600
@@ -554,34 +468,22 @@ export default function NumbersPage() {
                   `
               }
             `}
-
           >
-
             All
-
           </button>
 
           {universes.map(
             universe => (
 
               <button
-
-                key={
-                  universe.id_universe
-                }
-
+                key={universe.id_universe}
                 type="button"
-
-                disabled={
-                  pageLoading
-                }
-
+                disabled={pageLoading}
                 onClick={() =>
                   setActiveUniverse(
                     universe.id_universe,
                   )
                 }
-
                 className={`
                   rounded-full
                   px-3
@@ -594,12 +496,10 @@ export default function NumbersPage() {
                   ${
                     activeUniverse
                     === universe.id_universe
-
                       ? `
                         bg-gray-900
                         text-white
                       `
-
                       : `
                         bg-gray-100
                         text-gray-600
@@ -607,11 +507,8 @@ export default function NumbersPage() {
                       `
                   }
                 `}
-
               >
-
                 {universe.label}
-
               </button>
 
             ),
@@ -629,19 +526,15 @@ export default function NumbersPage() {
       {!pageLoading && !error && (
 
         <div
-
           className="
             text-xs
             text-gray-400
           "
-
         >
-
           {total} validated Number
           {total !== 1
             ? "s"
             : ""}
-
         </div>
 
       )}
@@ -654,7 +547,6 @@ export default function NumbersPage() {
       {pageLoading && (
 
         <div
-
           className="
             rounded-2xl
             border
@@ -665,11 +557,8 @@ export default function NumbersPage() {
             text-sm
             text-gray-400
           "
-
         >
-
           Loading Numbers...
-
         </div>
 
       )}
@@ -682,7 +571,6 @@ export default function NumbersPage() {
       {!pageLoading && error && (
 
         <div
-
           className="
             rounded-2xl
             border
@@ -692,11 +580,8 @@ export default function NumbersPage() {
             text-sm
             text-red-700
           "
-
         >
-
           {error}
-
         </div>
 
       )}
@@ -712,7 +597,6 @@ export default function NumbersPage() {
         && (
 
           <div
-
             className="
               rounded-2xl
               border
@@ -721,35 +605,26 @@ export default function NumbersPage() {
               p-8
               text-center
             "
-
           >
 
             <div
-
               className="
                 text-sm
                 font-medium
                 text-gray-700
               "
-
             >
-
               No validated Number found.
-
             </div>
 
             <div
-
               className="
                 mt-1
                 text-xs
                 text-gray-400
               "
-
             >
-
               Try another search or universe.
-
             </div>
 
           </div>
@@ -767,7 +642,6 @@ export default function NumbersPage() {
         && (
 
           <div
-
             className="
               grid
               grid-cols-1
@@ -776,22 +650,14 @@ export default function NumbersPage() {
               lg:grid-cols-3
               xl:grid-cols-4
             "
-
           >
 
             {items.map(
               item => (
 
                 <ValidatedNumberCard
-
-                  key={
-                    item.id_number
-                  }
-
-                  item={
-                    item
-                  }
-
+                  key={item.id_number}
+                  item={item}
                 />
 
               ),
@@ -812,27 +678,17 @@ export default function NumbersPage() {
         && (
 
           <div
-
             className="
               flex
               justify-center
               pt-2
             "
-
           >
 
             <button
-
               type="button"
-
-              disabled={
-                loadingMore
-              }
-
-              onClick={
-                handleLoadMore
-              }
-
+              disabled={loadingMore}
+              onClick={handleLoadMore}
               className="
                 rounded-xl
                 border
@@ -848,13 +704,10 @@ export default function NumbersPage() {
                 disabled:cursor-not-allowed
                 disabled:opacity-50
               "
-
             >
-
               {loadingMore
                 ? "Loading..."
                 : "Load more"}
-
             </button>
 
           </div>
