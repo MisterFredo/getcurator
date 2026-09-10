@@ -301,6 +301,13 @@ Remove thousands separators when safe:
   return REVIEW and preserve it as value.
 - Never return only value_min or only value_max.
 
+IMPORTANT DISTINCTION
+
+- TARGET is a value_status, never a metric_type.
+- FORECAST, ESTIMATE and ACTUAL are also value_status values,
+  never metric_type values.
+- If no canonical metric_type safely applies, use OTHER.
+
 ==================================================
 UNIT AND SCALE
 ==================================================
