@@ -1,4 +1,4 @@
-from datetime import datetime
+# backend/core/knowledge/number_builder_service.py
 
 from .block_service import (
     build_block,
@@ -16,6 +16,11 @@ from .number_content_service import (
     load_number_batches,
 )
 
+from .number_status_repository import (
+    get_number_knowledge_cursor,
+    update_number_knowledge_cursor,
+)
+
 
 # ============================================================
 # BUILD NUMBER KNOWLEDGE
@@ -24,15 +29,18 @@ from .number_content_service import (
 def build_number_knowledge(
     entity_type: KnowledgeEntityType,
     entity_id: str,
-    last_published_at: datetime | None = None,
 ):
     """
     Build only the Knowledge `chiffres` block
     for one entity.
 
-    This service is intentionally independent
-    from the general Knowledge builder.
+    The Numbers cursor is independent from the
+    general Knowledge content cursor.
     """
+
+    # ========================================================
+    # VALIDATE ENTITY TYPE
+    # ========================================================
 
     if entity_type not in (
         "company",
@@ -43,6 +51,10 @@ def build_number_knowledge(
         raise ValueError(
             f"Invalid entity type: {entity_type}"
         )
+
+    # ========================================================
+    # LOAD ENTITY
+    # ========================================================
 
     entity = get_entity(
 
@@ -59,15 +71,44 @@ def build_number_knowledge(
             f"{entity_type}/{entity_id}"
         )
 
+    # ========================================================
+    # LOAD NUMBERS CURSOR
+    # ========================================================
+
+    (
+        last_published_at,
+        last_number_id,
+    ) = get_number_knowledge_cursor(
+
+        entity_type=entity_type,
+
+        entity_id=entity_id,
+
+    )
+
+    # ========================================================
+    # LOAD NEXT NUMBER BATCH
+    # ========================================================
+
     batches = load_number_batches(
 
         entity_type=entity_type,
 
         entity_id=entity_id,
 
-        last_published_at=last_published_at,
+        last_published_at=(
+            last_published_at
+        ),
+
+        last_number_id=(
+            last_number_id
+        ),
 
     )
+
+    # ========================================================
+    # NOTHING TO PROCESS
+    # ========================================================
 
     if not batches:
 
@@ -78,8 +119,22 @@ def build_number_knowledge(
             "entity_name": entity.name,
             "observations_count": 0,
             "batches_count": 0,
+            "cursor": {
+                "last_published_at": (
+                    last_published_at.isoformat()
+                    if last_published_at
+                    else None
+                ),
+                "last_number_id": (
+                    last_number_id
+                ),
+            },
             "block": None,
         }
+
+    # ========================================================
+    # BUILD CHIFFRES BLOCK
+    # ========================================================
 
     block = build_block(
 
@@ -95,14 +150,49 @@ def build_number_knowledge(
 
     )
 
+    # ========================================================
+    # LAST PROCESSED OBSERVATION
+    # ========================================================
+
     observations_count = sum(
+
         len(batch)
+
         for batch in batches
+
     )
 
     last_observation = (
         batches[-1][-1]
     )
+
+    # ========================================================
+    # UPDATE NUMBERS CURSOR
+    # ========================================================
+
+    update_number_knowledge_cursor(
+
+        entity_type=entity_type,
+
+        entity_id=entity_id,
+
+        last_published_at=(
+            last_observation.published_at
+        ),
+
+        last_number_id=(
+            last_observation.id_number
+        ),
+
+        processed_count=(
+            observations_count
+        ),
+
+    )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
 
     return {
         "status": "built",
@@ -112,18 +202,30 @@ def build_number_knowledge(
         "observations_count": (
             observations_count
         ),
-        "batches_count": len(batches),
+        "batches_count": len(
+            batches
+        ),
         "last_published_at": (
             last_observation
             .published_at
             .isoformat()
         ),
+        "last_number_id": (
+            last_observation.id_number
+        ),
         "block": {
-            "block_type": block.block_type,
-            "content": block.content,
-            "version": block.version,
+            "block_type": (
+                block.block_type
+            ),
+            "content": (
+                block.content
+            ),
+            "version": (
+                block.version
+            ),
             "updated_at": (
-                block.updated_at.isoformat()
+                block.updated_at
+                .isoformat()
             ),
         },
     }
