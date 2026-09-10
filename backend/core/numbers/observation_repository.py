@@ -468,3 +468,199 @@ def replace_content_number_observations(
             relation_rows
         ),
     }
+
+# ============================================================
+# REPLACE CONTENT OBSERVATIONS — BATCH
+# ============================================================
+
+def replace_content_number_observations_batch(
+    results: list[NumberTransformationResult],
+):
+    """
+    Replace transformed Numbers for several
+    contents using grouped BigQuery operations.
+
+    BigQuery operations per batch:
+
+    - one DELETE for relations
+    - one DELETE for observations
+    - one load for observations
+    - one load for relations
+
+    This function is intended for backfills.
+    """
+
+    if not results:
+
+        return {
+            "contents_processed": 0,
+            "observations_saved": 0,
+            "relations_saved": 0,
+        }
+
+    # ========================================================
+    # CONTENT IDS
+    # ========================================================
+
+    content_ids = list({
+
+        result.id_content
+
+        for result in results
+
+        if result.id_content
+
+    })
+
+    if not content_ids:
+
+        return {
+            "contents_processed": 0,
+            "observations_saved": 0,
+            "relations_saved": 0,
+        }
+
+    # ========================================================
+    # BUILD ALL ROWS
+    # ========================================================
+
+    observation_rows_by_id: Dict[
+        str,
+        Dict[str, Any],
+    ] = {}
+
+    relation_rows_by_key: Dict[
+        tuple[str, str, str],
+        Dict[str, Any],
+    ] = {}
+
+    for result in results:
+
+        observation_rows, relation_rows = (
+            _build_storage_rows(
+                result=result,
+            )
+        )
+
+        for row in observation_rows:
+
+            id_number = row[
+                "ID_NUMBER"
+            ]
+
+            observation_rows_by_id[
+                id_number
+            ] = row
+
+        for row in relation_rows:
+
+            relation_key = (
+                row["ID_NUMBER"],
+                row["ENTITY_TYPE"],
+                row["ENTITY_ID"],
+            )
+
+            relation_rows_by_key[
+                relation_key
+            ] = row
+
+    observation_rows = list(
+        observation_rows_by_id.values()
+    )
+
+    relation_rows = list(
+        relation_rows_by_key.values()
+    )
+
+    client = get_bigquery_client()
+
+    # ========================================================
+    # DELETE PREVIOUS RELATIONS
+    # ========================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_OBSERVATION_ENTITY}`
+
+        WHERE ID_NUMBER IN (
+
+            SELECT ID_NUMBER
+
+            FROM `{TABLE_OBSERVATION}`
+
+            WHERE ID_CONTENT IN UNNEST(
+                @content_ids
+            )
+        )
+        """,
+        {
+            "content_ids": content_ids,
+        },
+    )
+
+    # ========================================================
+    # DELETE PREVIOUS OBSERVATIONS
+    # ========================================================
+
+    query_bq(
+        f"""
+        DELETE FROM `{TABLE_OBSERVATION}`
+
+        WHERE ID_CONTENT IN UNNEST(
+            @content_ids
+        )
+        """,
+        {
+            "content_ids": content_ids,
+        },
+    )
+
+    # ========================================================
+    # INSERT OBSERVATIONS
+    # ========================================================
+
+    if observation_rows:
+
+        client.load_table_from_json(
+            observation_rows,
+            TABLE_OBSERVATION,
+            job_config=(
+                bigquery.LoadJobConfig(
+                    write_disposition=(
+                        "WRITE_APPEND"
+                    )
+                )
+            ),
+        ).result()
+
+    # ========================================================
+    # INSERT RELATIONS
+    # ========================================================
+
+    if relation_rows:
+
+        client.load_table_from_json(
+            relation_rows,
+            TABLE_OBSERVATION_ENTITY,
+            job_config=(
+                bigquery.LoadJobConfig(
+                    write_disposition=(
+                        "WRITE_APPEND"
+                    )
+                )
+            ),
+        ).result()
+
+    return {
+        "contents_processed": len(
+            content_ids
+        ),
+
+        "observations_saved": len(
+            observation_rows
+        ),
+
+        "relations_saved": len(
+            relation_rows
+        ),
+    }
