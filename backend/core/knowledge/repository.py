@@ -413,6 +413,48 @@ def exists_entity(
     return bool(rows)
 
 # ============================================================
+# EXISTS GENERAL KNOWLEDGE
+# ============================================================
+
+def exists_general_knowledge(
+    entity_type: KnowledgeEntityType,
+    entity_id: str,
+) -> bool:
+    """
+    Return True only when the entity already belongs
+    to the general Knowledge perimeter.
+
+    A Numbers-only block is not sufficient.
+    """
+
+    rows = query_bq(
+        f"""
+        SELECT 1
+
+        FROM `{TABLE_KNOWLEDGE}`
+
+        WHERE ENTITY_TYPE = @entity_type
+
+          AND ENTITY_ID = @entity_id
+
+          AND BLOCK_TYPE IN (
+              'signal_analytique',
+              'mecanique_expliquee',
+              'enjeu_strategique',
+              'point_de_friction'
+          )
+
+        LIMIT 1
+        """,
+        {
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+        },
+    )
+
+    return bool(rows)
+
+# ============================================================
 # GET STATUS
 # ============================================================
 
