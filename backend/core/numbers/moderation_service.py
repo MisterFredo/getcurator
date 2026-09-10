@@ -254,37 +254,20 @@ def list_number_observations(
                         )
                     )
 
-                    OR EXISTS (
-
-                        SELECT 1
-
-                        FROM
-                          `{entity_table}`
-                          relation_search
-
-                        WHERE
-                          relation_search.ID_NUMBER
-                              = observation.ID_NUMBER
-
-                          AND LOWER(
-                              IFNULL(
-                                  relation_search.ENTITY_LABEL,
-                                  ''
-                              )
-                          ) LIKE LOWER(
-                              CONCAT(
-                                  '%',
-                                  @query,
-                                  '%'
-                              )
-                          )
+                    OR LOWER(
+                        IFNULL(
+                            entity_aggregation.ENTITY_SEARCH,
+                            ''
+                        )
+                    ) LIKE LOWER(
+                        CONCAT(
+                            '%',
+                            @query,
+                            '%'
+                        )
                     )
                 )
-                """.format(
-                    entity_table=(
-                        TABLE_OBSERVATION_ENTITY
-                    )
-                )
+                """
             )
 
             params["query"] = (
@@ -315,21 +298,12 @@ def list_number_observations(
             )
 
         conditions.append(
-            f"""
-            EXISTS (
-
-                SELECT 1
-
-                FROM
-                  `{TABLE_OBSERVATION_ENTITY}`
-                  relation_type
-
-                WHERE
-                  relation_type.ID_NUMBER
-                      = observation.ID_NUMBER
-
-                  AND relation_type.ENTITY_TYPE
-                      = @entity_type
+            """
+            @entity_type IN UNNEST(
+                IFNULL(
+                    entity_aggregation.ENTITY_TYPES,
+                    ARRAY<STRING>[]
+                )
             )
             """
         )
@@ -345,21 +319,12 @@ def list_number_observations(
     if entity_id:
 
         conditions.append(
-            f"""
-            EXISTS (
-
-                SELECT 1
-
-                FROM
-                  `{TABLE_OBSERVATION_ENTITY}`
-                  relation_entity
-
-                WHERE
-                  relation_entity.ID_NUMBER
-                      = observation.ID_NUMBER
-
-                  AND relation_entity.ENTITY_ID
-                      = @entity_id
+            """
+            @entity_id IN UNNEST(
+                IFNULL(
+                    entity_aggregation.ENTITY_IDS,
+                    ARRAY<STRING>[]
+                )
             )
             """
         )
@@ -378,6 +343,54 @@ def list_number_observations(
 
     rows = query_bq(
         f"""
+        WITH entity_aggregation AS (
+
+            SELECT
+
+                ID_NUMBER,
+
+                ARRAY_AGG(
+
+                    STRUCT(
+
+                        ENTITY_TYPE
+                            AS ENTITY_TYPE,
+
+                        ENTITY_ID
+                            AS ENTITY_ID,
+
+                        ENTITY_LABEL
+                            AS ENTITY_LABEL
+
+                    )
+
+                    ORDER BY
+                        ENTITY_TYPE,
+                        ENTITY_LABEL
+
+                ) AS ENTITIES,
+
+                ARRAY_AGG(
+                    DISTINCT ENTITY_TYPE
+                    IGNORE NULLS
+                ) AS ENTITY_TYPES,
+
+                ARRAY_AGG(
+                    DISTINCT ENTITY_ID
+                    IGNORE NULLS
+                ) AS ENTITY_IDS,
+
+                STRING_AGG(
+                    DISTINCT ENTITY_LABEL,
+                    ' '
+                ) AS ENTITY_SEARCH
+
+            FROM `{TABLE_OBSERVATION_ENTITY}`
+
+            GROUP BY
+                ID_NUMBER
+        )
+
         SELECT
 
             observation.ID_NUMBER,
@@ -428,29 +441,7 @@ def list_number_observations(
 
             observation.TRANSFORMER_VERSION,
 
-            ARRAY(
-
-                SELECT AS STRUCT
-
-                    relation.ENTITY_TYPE,
-
-                    relation.ENTITY_ID,
-
-                    relation.ENTITY_LABEL
-
-                FROM
-                  `{TABLE_OBSERVATION_ENTITY}`
-                  relation
-
-                WHERE
-                  relation.ID_NUMBER
-                      = observation.ID_NUMBER
-
-                ORDER BY
-                  relation.ENTITY_TYPE,
-                  relation.ENTITY_LABEL
-
-            ) AS ENTITIES,
+            entity_aggregation.ENTITIES,
 
             COUNT(*) OVER() AS TOTAL_COUNT
 
@@ -459,6 +450,10 @@ def list_number_observations(
         LEFT JOIN `{TABLE_CONTENT}` content
           ON content.ID_CONTENT
              = observation.ID_CONTENT
+
+        LEFT JOIN entity_aggregation
+          ON entity_aggregation.ID_NUMBER
+             = observation.ID_NUMBER
 
         WHERE {where_sql}
 
@@ -658,6 +653,20 @@ def _load_moderation_candidates(
 
     rows = query_bq(
         f"""
+        WITH entity_counts AS (
+
+            SELECT
+
+                ID_NUMBER,
+
+                COUNT(*) AS ENTITY_COUNT
+
+            FROM `{TABLE_OBSERVATION_ENTITY}`
+
+            GROUP BY
+                ID_NUMBER
+        )
+
         SELECT
 
             observation.ID_NUMBER,
@@ -680,21 +689,16 @@ def _load_moderation_candidates(
 
             observation.PERIOD_LABEL,
 
-            EXISTS (
-
-                SELECT 1
-
-                FROM
-                  `{TABLE_OBSERVATION_ENTITY}`
-                  relation
-
-                WHERE
-                  relation.ID_NUMBER
-                      = observation.ID_NUMBER
-
-            ) AS HAS_ENTITY
+            COALESCE(
+                entity_counts.ENTITY_COUNT,
+                0
+            ) > 0 AS HAS_ENTITY
 
         FROM `{VIEW_OBSERVATION}` observation
+
+        LEFT JOIN entity_counts
+          ON entity_counts.ID_NUMBER
+             = observation.ID_NUMBER
 
         WHERE observation.ID_NUMBER
               IN UNNEST(@ids)
@@ -706,27 +710,49 @@ def _load_moderation_candidates(
 
     return {
         row["ID_NUMBER"]: {
-            "label": row.get("LABEL"),
-            "metric_type": (
-                row.get("METRIC_TYPE")
+            "label": row.get(
+                "LABEL"
             ),
-            "value": row.get("VALUE"),
-            "value_min": (
-                row.get("VALUE_MIN")
+
+            "metric_type": row.get(
+                "METRIC_TYPE"
             ),
-            "value_max": (
-                row.get("VALUE_MAX")
+
+            "value": row.get(
+                "VALUE"
             ),
-            "unit": row.get("UNIT"),
-            "scale": row.get("SCALE"),
-            "zone": row.get("ZONE"),
-            "period_label": (
-                row.get("PERIOD_LABEL")
+
+            "value_min": row.get(
+                "VALUE_MIN"
             ),
+
+            "value_max": row.get(
+                "VALUE_MAX"
+            ),
+
+            "unit": row.get(
+                "UNIT"
+            ),
+
+            "scale": row.get(
+                "SCALE"
+            ),
+
+            "zone": row.get(
+                "ZONE"
+            ),
+
+            "period_label": row.get(
+                "PERIOD_LABEL"
+            ),
+
             "has_entity": bool(
-                row.get("HAS_ENTITY")
+                row.get(
+                    "HAS_ENTITY"
+                )
             ),
         }
+
         for row in rows
     }
 
@@ -750,24 +776,34 @@ def _acceptance_error(
 
     for field in required_fields:
 
-        if candidate.get(field) in (
+        if candidate.get(
+            field
+        ) in (
             None,
             "",
         ):
 
             return (
-                f"Missing required field: {field}"
+                "Missing required field: "
+                f"{field}"
             )
 
     has_single_value = (
-        candidate.get("value")
+        candidate.get(
+            "value"
+        )
         is not None
     )
 
     has_complete_range = (
-        candidate.get("value_min")
+        candidate.get(
+            "value_min"
+        )
         is not None
-        and candidate.get("value_max")
+
+        and candidate.get(
+            "value_max"
+        )
         is not None
     )
 
@@ -776,13 +812,17 @@ def _acceptance_error(
         or has_complete_range
     ):
 
-        return "Missing numeric value"
+        return (
+            "Missing numeric value"
+        )
 
     if not candidate.get(
         "has_entity"
     ):
 
-        return "No official entity assigned"
+        return (
+            "No official entity assigned"
+        )
 
     return None
 
@@ -816,11 +856,19 @@ def apply_number_decisions(
             "ids must be an array"
         )
 
-    normalized_ids = list(dict.fromkeys([
-        str(id_number).strip()
-        for id_number in ids
-        if str(id_number).strip()
-    ]))
+    normalized_ids = list(
+        dict.fromkeys([
+            str(
+                id_number
+            ).strip()
+
+            for id_number in ids
+
+            if str(
+                id_number
+            ).strip()
+        ])
+    )
 
     if not normalized_ids:
 
@@ -828,7 +876,10 @@ def apply_number_decisions(
             "No Number selected"
         )
 
-    if len(normalized_ids) > MAX_BULK_IDS:
+    if (
+        len(normalized_ids)
+        > MAX_BULK_IDS
+    ):
 
         raise ValueError(
             "A maximum of 500 Numbers "
@@ -836,7 +887,9 @@ def apply_number_decisions(
         )
 
     normalized_decision = (
-        str(decision)
+        str(
+            decision
+        )
         .strip()
         .upper()
     )
@@ -847,7 +900,8 @@ def apply_number_decisions(
     ):
 
         raise ValueError(
-            f"Invalid decision: {decision}"
+            "Invalid decision: "
+            f"{decision}"
         )
 
     candidates = (
@@ -856,7 +910,7 @@ def apply_number_decisions(
         )
     )
 
-    accepted_ids = []
+    updated_ids = []
     skipped = []
 
     # ========================================================
@@ -872,8 +926,13 @@ def apply_number_decisions(
         if candidate is None:
 
             skipped.append({
-                "id_number": id_number,
-                "reason": "Number not found",
+                "id_number": (
+                    id_number
+                ),
+
+                "reason": (
+                    "Number not found"
+                ),
             })
 
             continue
@@ -892,13 +951,18 @@ def apply_number_decisions(
             if acceptance_error:
 
                 skipped.append({
-                    "id_number": id_number,
-                    "reason": acceptance_error,
+                    "id_number": (
+                        id_number
+                    ),
+
+                    "reason": (
+                        acceptance_error
+                    ),
                 })
 
                 continue
 
-        accepted_ids.append(
+        updated_ids.append(
             id_number
         )
 
@@ -906,7 +970,7 @@ def apply_number_decisions(
     # BULK MERGE
     # ========================================================
 
-    if accepted_ids:
+    if updated_ids:
 
         query_bq(
             f"""
@@ -916,13 +980,17 @@ def apply_number_decisions(
 
                 SELECT
 
-                    id_number AS ID_NUMBER,
+                    id_number
+                        AS ID_NUMBER,
 
-                    @decision AS DECISION,
+                    @decision
+                        AS DECISION,
 
-                    @reason AS REASON,
+                    @reason
+                        AS REASON,
 
-                    @reviewed_by AS REVIEWED_BY
+                    @reviewed_by
+                        AS REVIEWED_BY
 
                 FROM UNNEST(
                     @ids
@@ -937,15 +1005,21 @@ def apply_number_decisions(
 
               UPDATE SET
 
-                DECISION = source.DECISION,
+                DECISION = (
+                    source.DECISION
+                ),
 
-                REASON = source.REASON,
+                REASON = (
+                    source.REASON
+                ),
 
                 REVIEWED_BY = (
                     source.REVIEWED_BY
                 ),
 
-                UPDATED_AT = CURRENT_TIMESTAMP()
+                UPDATED_AT = (
+                    CURRENT_TIMESTAMP()
+                )
 
             WHEN NOT MATCHED THEN
 
@@ -982,7 +1056,7 @@ def apply_number_decisions(
               )
             """,
             {
-                "ids": accepted_ids,
+                "ids": updated_ids,
 
                 "decision": (
                     normalized_decision
@@ -1003,14 +1077,16 @@ def apply_number_decisions(
         )
 
     return {
-        "decision": normalized_decision,
+        "decision": (
+            normalized_decision
+        ),
 
         "requested": len(
             normalized_ids
         ),
 
         "updated": len(
-            accepted_ids
+            updated_ids
         ),
 
         "skipped_count": len(
@@ -1018,8 +1094,10 @@ def apply_number_decisions(
         ),
 
         "updated_ids": (
-            accepted_ids
+            updated_ids
         ),
 
-        "skipped": skipped,
+        "skipped": (
+            skipped
+        ),
     }
