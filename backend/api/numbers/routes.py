@@ -44,6 +44,10 @@ from core.numbers.moderation_service import (
     list_number_observations,
 )
 
+from core.numbers.retrieval_service import (
+    search_validated_numbers,
+)
+
 router = APIRouter()
 
 
@@ -294,6 +298,73 @@ def apply_number_decisions_route(
                 f"Numbers : {e}"
             ),
         )
+
+
+# ============================================================
+# PUBLIC VALIDATED NUMBERS
+# ============================================================
+
+@router.get("/public")
+def public_numbers_route(
+    query: Optional[str] = None,
+    user_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    metric_type: Optional[str] = None,
+    zone: Optional[str] = None,
+    period: Optional[str] = None,
+    limit: int = Query(
+        50,
+        ge=1,
+        le=200,
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+    ),
+):
+
+    try:
+
+        result = search_validated_numbers(
+            query=query,
+            user_id=user_id,
+            universe_id=universe_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metric_type=metric_type,
+            zone=zone,
+            period=period,
+            limit=limit,
+            offset=offset,
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur recherche Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne recherche "
+                f"Numbers : {e}"
+            ),
+        )
+
 
 # ============================================================
 # NUMBERS BACKFILL STATUS
