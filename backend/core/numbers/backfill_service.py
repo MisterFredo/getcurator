@@ -128,7 +128,7 @@ def load_next_number_backfill_contents(
           {processing_filter}
 
         ORDER BY
-            content.PUBLISHED_AT ASC,
+            content.PUBLISHED_AT DESC,
             content.ID_CONTENT ASC
 
         LIMIT @limit
