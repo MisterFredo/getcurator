@@ -57,6 +57,10 @@ CANONICAL_UNITS = [
     "DISTANCE_KM",
     "BASIS_POINTS",
     "MULTIPLIER",
+    "PEOPLE",
+    "MINUTES",
+    "YEARS",
+    "PERCENTAGE_POINTS",
     "OTHER",
 ]
 
@@ -169,6 +173,10 @@ ABSOLUTE RULES
 - When the line is irrelevant or unusable, use REJECTED.
 - Quality is more important than acceptance volume.
 - There is no target acceptance percentage.
+- A Number does not need to describe the main subject of the article.
+- A valid supporting fact or customer example may be ACCEPTED.
+- Do not evaluate whether a Number is strategically important for Knowledge.
+- Strategic relevance will be evaluated later by the Knowledge Numbers Agent.
 
 ==================================================
 DECISION
@@ -188,8 +196,11 @@ uncertain, ambiguous or incomplete.
 
 REJECTED
 
-The Number is irrelevant, duplicated page metadata, malformed, unrelated
-to the editorial subject, or impossible to interpret reliably.
+The Number is duplicated page metadata, malformed, not genuinely supported
+by the supplied content, non-factual, or impossible to interpret reliably.
+
+Do not reject a valid factual Number merely because it is secondary to the
+main subject of the article.
 
 ==================================================
 REJECTED CONTENT
@@ -318,6 +329,12 @@ becomes:
 "value": 75
 "unit": "PERCENT"
 "scale": "NONE"
+
+- Use PEOPLE for employees, workforce and planned hires.
+- Use MINUTES for measured durations expressed in minutes.
+- Use YEARS for durations expressed in years.
+- Use PERCENTAGE_POINTS only when the source explicitly describes a
+  change in percentage points, not a percentage change.
 
 If a monetary scale is known but its currency is not:
 
