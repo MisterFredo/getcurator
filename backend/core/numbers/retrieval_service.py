@@ -28,9 +28,9 @@ VIEW_NUMBER = (
     "V_NUMBER_OBSERVATION_EFFECTIVE"
 )
 
-VIEW_CONTENT = (
+TABLE_CONTENT = (
     f"{BQ_PROJECT}.{BQ_DATASET}."
-    "V_CONTENT_ENRICHED"
+    "RATECARD_CONTENT_ENRICHED"
 )
 
 TABLE_NUMBER_ENTITY = (
@@ -517,7 +517,7 @@ def search_validated_numbers(
 
         FROM `{VIEW_NUMBER}` number
 
-        JOIN `{VIEW_CONTENT}` content
+        JOIN `{TABLE_CONTENT}` content
           ON content.id_content
              = number.ID_CONTENT
 
