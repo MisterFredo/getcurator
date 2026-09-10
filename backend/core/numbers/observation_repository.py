@@ -59,7 +59,7 @@ TRANSFORMER_VERSION = "numbers-v1"
 # HELPERS
 # ============================================================
 
-def _now():
+def _now() -> str:
 
     return datetime.now(
         timezone.utc,
@@ -101,14 +101,6 @@ def _number_id(
     )
 
 
-def _model_to_dict(model):
-
-    if hasattr(model, "model_dump"):
-        return model.model_dump()
-
-    return model.dict()
-
-
 # ============================================================
 # PROCESSING STATUS
 # ============================================================
@@ -116,7 +108,6 @@ def _model_to_dict(model):
 def mark_number_processing_started(
     id_content: str,
 ):
-
 
     query_bq(
         f"""
@@ -255,6 +246,7 @@ def _build_storage_rows(
     result: NumberTransformationResult,
 ):
 
+    now = _now()
 
     # Dictionaries provide an additional
     # deterministic deduplication layer.
@@ -340,15 +332,19 @@ def _build_storage_rows(
                 relation_key
             ] = {
                 "ID_NUMBER": id_number,
+
                 "ENTITY_TYPE": (
                     entity.entity_type
                 ),
+
                 "ENTITY_ID": (
                     entity.entity_id
                 ),
+
                 "ENTITY_LABEL": (
                     entity.entity_label
                 ),
+
                 "CREATED_AT": now,
             }
 
@@ -463,9 +459,11 @@ def replace_content_number_observations(
 
     return {
         "id_content": result.id_content,
+
         "observations_saved": len(
             observation_rows
         ),
+
         "relations_saved": len(
             relation_rows
         ),
