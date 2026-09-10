@@ -63,7 +63,15 @@ function StatCard({
       `}
     >
 
-      <p className="text-xs font-medium uppercase tracking-wide opacity-70">
+      <p
+        className="
+          text-xs
+          font-medium
+          uppercase
+          tracking-wide
+          opacity-70
+        "
+      >
         {label}
       </p>
 
@@ -89,9 +97,14 @@ export default function NumbersTransformation() {
     action,
     error,
 
+    continuousRunning,
+    continuousProcessed,
+
     reload,
     continueBackfill,
     retryFailed,
+    startContinuousBackfill,
+    stopContinuousBackfill,
   } = useNumbersMonitoring();
 
   /* =======================================================
@@ -189,7 +202,13 @@ export default function NumbersTransformation() {
 
           <div>
 
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2
+              className="
+                text-lg
+                font-semibold
+                text-gray-900
+              "
+            >
               Transformation des Numbers
             </h2>
 
@@ -201,7 +220,13 @@ export default function NumbersTransformation() {
 
           <div className="text-left md:text-right">
 
-            <p className="text-2xl font-semibold text-ratecard-blue">
+            <p
+              className="
+                text-2xl
+                font-semibold
+                text-ratecard-blue
+              "
+            >
               {progress.toFixed(2)} %
             </p>
 
@@ -283,7 +308,14 @@ export default function NumbersTransformation() {
 
       <section>
 
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">
+        <h2
+          className="
+            mb-3
+            text-sm
+            font-semibold
+            text-gray-700
+          "
+        >
           Contenus
         </h2>
 
@@ -340,7 +372,14 @@ export default function NumbersTransformation() {
 
       <section>
 
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">
+        <h2
+          className="
+            mb-3
+            text-sm
+            font-semibold
+            text-gray-700
+          "
+        >
           Observations produites
         </h2>
 
@@ -413,12 +452,19 @@ export default function NumbersTransformation() {
 
           <div>
 
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2
+              className="
+                text-base
+                font-semibold
+                text-gray-900
+              "
+            >
               Actions
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Chaque exécution traite au maximum cinq contenus.
+              Chaque lot traite cinq contenus et le mode continu enchaîne
+              automatiquement les lots.
             </p>
 
           </div>
@@ -471,7 +517,10 @@ export default function NumbersTransformation() {
             >
               {action === "retry"
                 ? "Retraitement…"
-                : `Retraiter les erreurs (${monitoring.failed_contents})`
+                : (
+                  "Retraiter les erreurs "
+                  + `(${monitoring.failed_contents})`
+                )
               }
             </button>
 
@@ -484,13 +533,15 @@ export default function NumbersTransformation() {
               }
               className="
                 rounded-lg
-                bg-ratecard-blue
+                border
+                border-ratecard-blue
+                bg-white
                 px-4
                 py-2
                 text-sm
                 font-medium
-                text-white
-                hover:opacity-90
+                text-ratecard-blue
+                hover:bg-blue-50
                 disabled:cursor-not-allowed
                 disabled:opacity-50
               "
@@ -501,9 +552,144 @@ export default function NumbersTransformation() {
               }
             </button>
 
+            {continuousRunning ? (
+
+              <button
+                type="button"
+                onClick={
+                  stopContinuousBackfill
+                }
+                className="
+                  rounded-lg
+                  border
+                  border-amber-300
+                  bg-amber-50
+                  px-4
+                  py-2
+                  text-sm
+                  font-medium
+                  text-amber-800
+                  hover:bg-amber-100
+                "
+              >
+                Arrêter après le lot en cours
+              </button>
+
+            ) : (
+
+              <button
+                type="button"
+                onClick={
+                  startContinuousBackfill
+                }
+                disabled={
+                  busy
+                  || monitoring.pending_contents === 0
+                }
+                className="
+                  rounded-lg
+                  bg-emerald-600
+                  px-4
+                  py-2
+                  text-sm
+                  font-medium
+                  text-white
+                  hover:bg-emerald-700
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+                Lancer le traitement continu
+              </button>
+
+            )}
+
           </div>
 
         </div>
+
+        {/* CONTINUOUS SESSION */}
+
+        {continuousRunning && (
+
+          <div
+            className="
+              mt-5
+              rounded-lg
+              border
+              border-emerald-200
+              bg-emerald-50
+              p-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                flex-col
+                gap-2
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+              "
+            >
+
+              <div>
+
+                <p
+                  className="
+                    text-sm
+                    font-medium
+                    text-emerald-900
+                  "
+                >
+                  Traitement continu en cours
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-sm
+                    text-emerald-700
+                  "
+                >
+                  Le traitement peut être interrompu après la fin du lot
+                  actuellement exécuté.
+                </p>
+
+              </div>
+
+              <div className="text-left sm:text-right">
+
+                <p
+                  className="
+                    text-2xl
+                    font-semibold
+                    text-emerald-900
+                  "
+                >
+                  {formatNumber(
+                    continuousProcessed,
+                  )}
+                </p>
+
+                <p
+                  className="
+                    text-xs
+                    text-emerald-700
+                  "
+                >
+                  contenus traités pendant cette session
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ERROR */}
 
         {error && (
 
@@ -539,7 +725,13 @@ export default function NumbersTransformation() {
           "
         >
 
-          <h2 className="text-base font-semibold text-gray-900">
+          <h2
+            className="
+              text-base
+              font-semibold
+              text-gray-900
+            "
+          >
             Dernière exécution
           </h2>
 
@@ -559,7 +751,13 @@ export default function NumbersTransformation() {
                 Sélectionnés
               </p>
 
-              <p className="mt-1 font-semibold text-gray-900">
+              <p
+                className="
+                  mt-1
+                  font-semibold
+                  text-gray-900
+                "
+              >
                 {lastRun.selected_count}
               </p>
 
@@ -571,7 +769,13 @@ export default function NumbersTransformation() {
                 Traités
               </p>
 
-              <p className="mt-1 font-semibold text-emerald-700">
+              <p
+                className="
+                  mt-1
+                  font-semibold
+                  text-emerald-700
+                "
+              >
                 {lastRun.processed_count}
               </p>
 
@@ -583,7 +787,13 @@ export default function NumbersTransformation() {
                 Observations
               </p>
 
-              <p className="mt-1 font-semibold text-gray-900">
+              <p
+                className="
+                  mt-1
+                  font-semibold
+                  text-gray-900
+                "
+              >
                 {lastRun.storage.observations_saved}
               </p>
 
@@ -612,6 +822,8 @@ export default function NumbersTransformation() {
             </div>
 
           </div>
+
+          {/* FAILURES */}
 
           {lastRun.failures.length > 0 && (
 
