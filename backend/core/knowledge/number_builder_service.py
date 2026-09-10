@@ -47,14 +47,29 @@ def build_number_knowledge(
     # ========================================================
 
     if entity_type not in (
-        "company",
-        "topic",
-        "solution",
+            "company",
+            "topic",
+            "solution",
+        ):
+    
+            raise ValueError(
+                f"Invalid entity type: {entity_type}"
+            )
+    
+        if not exists_general_knowledge(
+        entity_type=entity_type,
+        entity_id=entity_id,
     ):
-
-        raise ValueError(
-            f"Invalid entity type: {entity_type}"
-        )
+    
+        return {
+            "status": "not_selected",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "entity_name": None,
+            "observations_count": 0,
+            "batches_count": 0,
+            "block": None,
+        }
 
     # ========================================================
     # LOAD ENTITY
