@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -24,7 +25,35 @@ import type {
 type NumbersAction =
   | "continue"
   | "retry"
+  | "continuous"
   | null;
+
+/* =========================================================
+   CONFIG
+========================================================= */
+
+const BATCH_SIZE = 5;
+const BATCH_PAUSE_MS = 750;
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function wait(
+  duration: number,
+) {
+
+  return new Promise<void>(
+    (resolve) => {
+
+      window.setTimeout(
+        resolve,
+        duration,
+      );
+
+    },
+  );
+}
 
 /* =========================================================
    HOOK
@@ -64,6 +93,14 @@ export function useNumbersMonitoring() {
   ] = useState<string | null>(
     null,
   );
+
+  const [
+    continuousProcessed,
+    setContinuousProcessed,
+  ] = useState(0);
+
+  const stopRequestedRef =
+    useRef(false);
 
   /* =======================================================
      LOAD MONITORING
@@ -112,12 +149,47 @@ export function useNumbersMonitoring() {
   );
 
   /* =======================================================
-     RUN BATCH
+     EXECUTE ONE BATCH
+  ======================================================= */
+
+  const executeBatch = useCallback(
+    async (
+      retryFailed: boolean,
+    ) => {
+
+      const response =
+        await api.post(
+          (
+            "/numbers/backfill"
+            + `?limit=${BATCH_SIZE}`
+            + `&retry_failed=${retryFailed}`
+          ),
+          {},
+        ) as NumbersBackfillResponse;
+
+      setLastRun(
+        response.result,
+      );
+
+      await loadMonitoring(
+        false,
+      );
+
+      return response.result;
+
+    },
+    [
+      loadMonitoring,
+    ],
+  );
+
+  /* =======================================================
+     MANUAL BATCH
   ======================================================= */
 
   const runBatch = useCallback(
     async (
-      retryFailed: boolean = false,
+      retryFailed: boolean,
     ) => {
 
       setAction(
@@ -130,36 +202,19 @@ export function useNumbersMonitoring() {
 
       try {
 
-        const response =
-          await api.post(
-            (
-              "/numbers/backfill"
-              + "?limit=5"
-              + `&retry_failed=${retryFailed}`
-            ),
-            {},
-          ) as NumbersBackfillResponse;
-
-        setLastRun(
-          response.result,
+        return await executeBatch(
+          retryFailed,
         );
-
-        await loadMonitoring(
-          false,
-        );
-
-        return response.result;
 
       } catch (requestError) {
 
-        const message =
+        setError(
           requestError instanceof Error
             ? requestError.message
-            : "Unable to run Numbers backfill.";
+            : "Unable to run Numbers backfill.",
+        );
 
-        setError(message);
-
-        throw requestError;
+        return null;
 
       } finally {
 
@@ -169,18 +224,111 @@ export function useNumbersMonitoring() {
 
     },
     [
-      loadMonitoring,
+      executeBatch,
     ],
   );
 
   /* =======================================================
-     INITIAL LOAD
+     CONTINUOUS BACKFILL
+  ======================================================= */
+
+  const startContinuousBackfill =
+    useCallback(
+      async () => {
+
+        stopRequestedRef.current = false;
+
+        setContinuousProcessed(0);
+
+        setAction(
+          "continuous",
+        );
+
+        setError(null);
+
+        try {
+
+          while (
+            !stopRequestedRef.current
+          ) {
+
+            const result =
+              await executeBatch(false);
+
+            setContinuousProcessed(
+              (current) =>
+                current
+                + result.processed_count,
+            );
+
+            if (
+              result.selected_count === 0
+            ) {
+              break;
+            }
+
+            if (
+              !stopRequestedRef.current
+            ) {
+
+              await wait(
+                BATCH_PAUSE_MS,
+              );
+
+            }
+
+          }
+
+        } catch (requestError) {
+
+          stopRequestedRef.current = true;
+
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Continuous Numbers backfill failed.",
+          );
+
+        } finally {
+
+          setAction(null);
+
+        }
+
+      },
+      [
+        executeBatch,
+      ],
+    );
+
+  /* =======================================================
+     STOP CONTINUOUS BACKFILL
+  ======================================================= */
+
+  const stopContinuousBackfill =
+    useCallback(
+      () => {
+
+        stopRequestedRef.current = true;
+
+      },
+      [],
+    );
+
+  /* =======================================================
+     INITIAL LOAD / CLEANUP
   ======================================================= */
 
   useEffect(
     () => {
 
       loadMonitoring();
+
+      return () => {
+
+        stopRequestedRef.current = true;
+
+      };
 
     },
     [
@@ -196,6 +344,11 @@ export function useNumbersMonitoring() {
     action,
     error,
 
+    continuousRunning:
+      action === "continuous",
+
+    continuousProcessed,
+
     reload: loadMonitoring,
 
     continueBackfill: () =>
@@ -203,5 +356,8 @@ export function useNumbersMonitoring() {
 
     retryFailed: () =>
       runBatch(true),
+
+    startContinuousBackfill,
+    stopContinuousBackfill,
   };
 }
