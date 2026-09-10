@@ -21,9 +21,9 @@ from .models import (
 # TABLES
 # ============================================================
 
-TABLE_NUMBER = (
+VIEW_NUMBER = (
     f"{BQ_PROJECT}.{BQ_DATASET}."
-    "RATECARD_NUMBER_OBSERVATION"
+    "V_NUMBER_OBSERVATION_EFFECTIVE"
 )
 
 TABLE_NUMBER_ENTITY = (
@@ -150,7 +150,7 @@ def load_number_observations(
 
             n.PUBLISHED_AT
 
-        FROM `{TABLE_NUMBER}` n
+        FROM `{VIEW_NUMBER}` n
 
         JOIN `{TABLE_NUMBER_ENTITY}` ne
           ON ne.ID_NUMBER = n.ID_NUMBER
@@ -158,7 +158,7 @@ def load_number_observations(
         LEFT JOIN `{TABLE_CONTENT}` c
           ON c.ID_CONTENT = n.ID_CONTENT
 
-        WHERE n.STATUS = 'ACCEPTED'
+        WHERE n.EFFECTIVE_STATUS = 'ACCEPTED'
 
           AND ne.ENTITY_TYPE = @entity_type
 
