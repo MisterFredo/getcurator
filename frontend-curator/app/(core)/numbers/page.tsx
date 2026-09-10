@@ -11,6 +11,10 @@ import {
 } from "@/lib/api";
 
 import {
+  useUser,
+} from "@/hooks/useUser";
+
+import {
   searchValidatedNumbers,
 } from "@/lib/numbers";
 
@@ -49,7 +53,17 @@ const PAGE_SIZE = 50;
 export default function NumbersPage() {
 
   /* ========================================================
-     UNIVERSes
+     USER
+  ======================================================== */
+
+  const {
+    user,
+    loading: userLoading,
+  } = useUser();
+
+
+  /* ========================================================
+     UNIVERSES
   ======================================================== */
 
   const [
@@ -117,6 +131,15 @@ export default function NumbersPage() {
 
   useEffect(() => {
 
+    if (
+      userLoading
+      || !user?.id
+    ) {
+
+      return;
+
+    }
+
     async function loadUniverses() {
 
       try {
@@ -143,7 +166,10 @@ export default function NumbersPage() {
 
     loadUniverses();
 
-  }, []);
+  }, [
+    user?.id,
+    userLoading,
+  ]);
 
 
   /* ========================================================
@@ -163,6 +189,15 @@ export default function NumbersPage() {
       offset?: number;
       append?: boolean;
     }) => {
+
+      const userId =
+        user?.id;
+
+      if (!userId) {
+
+        return;
+
+      }
 
       if (append) {
 
@@ -186,6 +221,9 @@ export default function NumbersPage() {
 
         const response =
           await searchValidatedNumbers({
+
+            user_id:
+              userId,
 
             query:
               searchQuery
@@ -267,7 +305,9 @@ export default function NumbersPage() {
 
     },
 
-    [],
+    [
+      user?.id,
+    ],
   );
 
 
@@ -276,6 +316,15 @@ export default function NumbersPage() {
   ======================================================== */
 
   useEffect(() => {
+
+    if (
+      userLoading
+      || !user?.id
+    ) {
+
+      return;
+
+    }
 
     loadNumbers({
 
@@ -290,6 +339,8 @@ export default function NumbersPage() {
   }, [
     activeUniverse,
     loadNumbers,
+    user?.id,
+    userLoading,
   ]);
 
 
@@ -300,6 +351,15 @@ export default function NumbersPage() {
   function handleSearch(
     nextQuery: string,
   ) {
+
+    if (
+      userLoading
+      || !user?.id
+    ) {
+
+      return;
+
+    }
 
     setQuery(
       nextQuery,
@@ -325,7 +385,9 @@ export default function NumbersPage() {
   function handleLoadMore() {
 
     if (
-      loading
+      userLoading
+      || !user?.id
+      || loading
       || loadingMore
       || !hasMore
     ) {
@@ -351,6 +413,15 @@ export default function NumbersPage() {
     });
 
   }
+
+
+  /* ========================================================
+     PAGE LOADING
+  ======================================================== */
+
+  const pageLoading =
+    userLoading
+    || loading;
 
 
   /* ========================================================
@@ -419,7 +490,7 @@ export default function NumbersPage() {
         }
 
         loading={
-          loading
+          pageLoading
         }
 
         onSearch={
@@ -450,7 +521,7 @@ export default function NumbersPage() {
             type="button"
 
             disabled={
-              loading
+              pageLoading
             }
 
             onClick={() =>
@@ -502,7 +573,7 @@ export default function NumbersPage() {
                 type="button"
 
                 disabled={
-                  loading
+                  pageLoading
                 }
 
                 onClick={() =>
@@ -555,7 +626,7 @@ export default function NumbersPage() {
       {/* COUNTER */}
       {/* ================================================= */}
 
-      {!loading && !error && (
+      {!pageLoading && !error && (
 
         <div
 
@@ -580,7 +651,7 @@ export default function NumbersPage() {
       {/* LOADING */}
       {/* ================================================= */}
 
-      {loading && (
+      {pageLoading && (
 
         <div
 
@@ -608,7 +679,7 @@ export default function NumbersPage() {
       {/* ERROR */}
       {/* ================================================= */}
 
-      {!loading && error && (
+      {!pageLoading && error && (
 
         <div
 
@@ -635,7 +706,7 @@ export default function NumbersPage() {
       {/* EMPTY */}
       {/* ================================================= */}
 
-      {!loading
+      {!pageLoading
         && !error
         && items.length === 0
         && (
@@ -690,7 +761,7 @@ export default function NumbersPage() {
       {/* GRID */}
       {/* ================================================= */}
 
-      {!loading
+      {!pageLoading
         && !error
         && items.length > 0
         && (
@@ -735,7 +806,7 @@ export default function NumbersPage() {
       {/* LOAD MORE */}
       {/* ================================================= */}
 
-      {!loading
+      {!pageLoading
         && !error
         && hasMore
         && (
