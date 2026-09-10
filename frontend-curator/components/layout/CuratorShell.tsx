@@ -15,6 +15,7 @@ import {
   Users,
   Newspaper,
   MessageSquare,
+  BarChart3,
 } from "lucide-react";
 
 import Header from "./Header";
@@ -39,19 +40,33 @@ export default function CuratorShell({
   const pathname =
     usePathname();
 
-  const hideWorkspace = [
+  const hideWorkspace = (
 
-    "/login",
-
-    "/register",
-
-    "/forgot-password",
-
-    "/reset-password",
-
-    "/product-tour",
-
-  ].includes(pathname);
+    [
+  
+      "/login",
+  
+      "/register",
+  
+      "/forgot-password",
+  
+      "/reset-password",
+  
+      "/product-tour",
+  
+    ].includes(pathname)
+  
+    ||
+  
+    pathname === "/numbers"
+  
+    ||
+  
+    pathname.startsWith(
+      "/numbers/",
+    )
+  
+  );
 
   const {
     user,
@@ -103,14 +118,11 @@ export default function CuratorShell({
       icon: MessageSquare,
     },
 
-    /*
     {
       href: "/numbers",
       label: "Numbers",
-      icon: Hash,
+      icon: BarChart3,
     },
-    */
-
   ];
 
   /* =========================================================
