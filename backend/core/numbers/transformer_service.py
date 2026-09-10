@@ -899,12 +899,6 @@ def _validate_transformed_number(
                 f"{number.raw_line}"
             )
 
-        if not number.entities:
-            raise ValueError(
-                "ACCEPTED Number without entity: "
-                f"{number.raw_line}"
-            )
-
         if number.reason:
             raise ValueError(
                 "ACCEPTED Number must not "
