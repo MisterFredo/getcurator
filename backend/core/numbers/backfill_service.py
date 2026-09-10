@@ -23,6 +23,7 @@ from .transformer_service import (
 )
 
 from .observation_repository import (
+    TABLE_OBSERVATION,
     TABLE_PROCESSING,
     TRANSFORMER_VERSION,
     replace_content_number_observations_batch,
