@@ -222,3 +222,62 @@ export type NumberModerationResponse = {
   status: string;
   result: NumberModerationResult;
 };
+
+
+/* =========================================================
+   NUMBERS KNOWLEDGE STATUS
+========================================================= */
+
+export type NumbersKnowledgeStatus = {
+  total_entities: number;
+  started_entities: number;
+  up_to_date_entities: number;
+  pending_entities: number;
+  not_started_entities: number;
+
+  total_observations: number;
+  processed_observations: number;
+  pending_observations: number;
+
+  progress_percent: number;
+};
+
+/* =========================================================
+   NUMBERS KNOWLEDGE CONTINUE
+========================================================= */
+
+export type NumbersKnowledgeFailure = {
+  entity_type: string;
+  entity_id: string;
+  entity_label: string | null;
+  error: string;
+};
+
+export type NumbersKnowledgeContinueResult = {
+  status:
+    | "processed"
+    | "partial"
+    | "completed";
+
+  selected_entities: number;
+  built_entities: number;
+  no_data_entities: number;
+  failed_entities: number;
+
+  results: unknown[];
+  failures: NumbersKnowledgeFailure[];
+};
+
+/* =========================================================
+   NUMBERS KNOWLEDGE RESPONSES
+========================================================= */
+
+export type NumbersKnowledgeStatusResponse = {
+  status: string;
+  result: NumbersKnowledgeStatus;
+};
+
+export type NumbersKnowledgeContinueResponse = {
+  status: string;
+  result: NumbersKnowledgeContinueResult;
+};
