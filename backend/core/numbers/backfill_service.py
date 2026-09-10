@@ -44,7 +44,7 @@ TABLE_CONTENT_ENRICHED = (
 # ============================================================
 
 DEFAULT_BACKFILL_LIMIT = 5
-MAX_BACKFILL_LIMIT = 25
+MAX_BACKFILL_LIMIT = 10
 
 
 # ============================================================
