@@ -124,6 +124,48 @@ def _serialize_entities(
         for entity in entities
     ]
 
+def _normalize_condition(
+    condition: Optional[str],
+) -> str:
+    """
+    Convert a SQL fragment returned as:
+
+        AND (...)
+        WHERE (...)
+
+    into a standalone condition that can safely
+    be added to the conditions list.
+    """
+
+    normalized = (
+        condition
+        or ""
+    ).strip()
+
+    upper = (
+        normalized.upper()
+    )
+
+    if upper.startswith(
+        "AND "
+    ):
+
+        normalized = (
+            normalized[4:]
+            .strip()
+        )
+
+    elif upper.startswith(
+        "WHERE "
+    ):
+
+        normalized = (
+            normalized[6:]
+            .strip()
+        )
+
+    return normalized
+
 
 # ============================================================
 # SEARCH VALIDATED NUMBERS
@@ -175,15 +217,23 @@ def search_validated_numbers(
     # ========================================================
     # USER FILTER
     # ========================================================
-
+    
     if user_id:
-
-        conditions.append(
-            build_user_filter(
-                "content"
+    
+        user_condition = (
+            _normalize_condition(
+                build_user_filter(
+                    "content"
+                )
             )
         )
-
+    
+        if user_condition:
+    
+            conditions.append(
+                user_condition
+            )
+    
         params["user_id"] = (
             user_id
         )
