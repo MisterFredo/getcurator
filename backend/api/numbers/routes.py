@@ -20,6 +20,10 @@ from core.numbers.insight_service import (
     get_numbers_by_ids,
 )
 
+from core.numbers.transformer_service import (
+    preview_content_numbers_dict,
+)
+
 router = APIRouter()
 
 
@@ -79,6 +83,46 @@ def delete_route(id_number: str):
 
     except Exception as e:
         raise HTTPException(400, f"Erreur suppression number : {e}")
+
+# ============================================================
+# TRANSFORM PREVIEW
+# ============================================================
+
+@router.post("/transform-preview/{id_content}")
+def transform_preview_route(
+    id_content: str,
+):
+
+    try:
+
+        result = preview_content_numbers_dict(
+            id_content=id_content,
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur transformation Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne transformation "
+                f"Numbers : {e}"
+            ),
+        )
 
 
 # ============================================================
