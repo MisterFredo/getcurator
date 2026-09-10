@@ -39,6 +39,11 @@ from core.numbers.backfill_service import (
     run_number_backfill_batch,
 )
 
+from core.numbers.moderation_service import (
+    apply_number_decisions,
+    list_number_observations,
+)
+
 router = APIRouter()
 
 
@@ -176,6 +181,117 @@ def transform_and_save_route(
             detail=(
                 "Erreur sauvegarde Numbers : "
                 f"{e}"
+            ),
+        )
+
+# ============================================================
+# NUMBER OBSERVATIONS
+# ============================================================
+
+@router.get("/observations")
+def list_number_observations_route(
+    status: Optional[str] = None,
+    query: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = Query(
+        100,
+        ge=1,
+        le=500,
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+    ),
+):
+
+    try:
+
+        result = list_number_observations(
+            status=status,
+            query=query,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit,
+            offset=offset,
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur observations Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne observations "
+                f"Numbers : {e}"
+            ),
+        )
+
+
+# ============================================================
+# BULK NUMBER DECISIONS
+# ============================================================
+
+@router.post("/observations/decisions")
+def apply_number_decisions_route(
+    payload: dict,
+):
+
+    try:
+
+        result = apply_number_decisions(
+            ids=payload.get(
+                "ids",
+                [],
+            ),
+            decision=payload.get(
+                "decision",
+                "",
+            ),
+            reason=payload.get(
+                "reason",
+            ),
+            reviewed_by=payload.get(
+                "reviewed_by",
+            ),
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur modération Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne modération "
+                f"Numbers : {e}"
             ),
         )
 
