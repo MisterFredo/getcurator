@@ -1,73 +1,119 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import { api } from "@/lib/api";
+import {
+  api,
+} from "@/lib/api";
 
-import NumberCard from "@/components/numbers/NumberCard";
-import NumbersHeader from "@/components/numbers/NumbersHeader";
+import {
+  searchValidatedNumbers,
+} from "@/lib/numbers";
 
-import { useWorkspace } from "@/contexts/WorkspaceContext";
+import ValidatedNumberCard from "@/components/numbers/ValidatedNumberCard";
+import ValidatedNumbersSearchBar from "@/components/numbers/ValidatedNumbersSearchBar";
 
-/* ========================================================= */
+import type {
+  PublicNumber,
+} from "@/types/numbers";
 
-type NumberItem = {
-  ID_NUMBER: string;
-  TYPE?: string;
-  [key: string]: any;
-};
+
+/* ============================================================
+   TYPES
+============================================================ */
 
 type Universe = {
+
   id_universe: string;
+
   label: string;
+
 };
 
-/* ========================================================= */
+
+/* ============================================================
+   CONFIG
+============================================================ */
+
+const PAGE_SIZE = 50;
+
+
+/* ============================================================
+   PAGE
+============================================================ */
 
 export default function NumbersPage() {
 
-  const LIMIT = 100;
+  /* ========================================================
+     UNIVERSes
+  ======================================================== */
 
-  /* =========================================================
-     WORKSPACE
-  ========================================================= */
+  const [
+    universes,
+    setUniverses,
+  ] = useState<Universe[]>(
+    [],
+  );
 
-  const {
-    selectedNumberItems,
-    toggleNumber,
-  } = useWorkspace();
+  const [
+    activeUniverse,
+    setActiveUniverse,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const selectedIds =
-    selectedNumberItems.map(
-      (i) => i.ID_NUMBER
-    );
 
-  /* =========================================================
-     UNIVERSE
-  ========================================================= */
+  /* ========================================================
+     NUMBERS
+  ======================================================== */
 
-  const [universes, setUniverses] =
-    useState<Universe[]>([]);
+  const [
+    items,
+    setItems,
+  ] = useState<PublicNumber[]>(
+    [],
+  );
 
-  const [activeUniverse, setActiveUniverse] =
-    useState<string | null>(null);
+  const [
+    query,
+    setQuery,
+  ] = useState("");
 
-  /* =========================================================
-     DATA
-  ========================================================= */
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
 
-  const [items, setItems] =
-    useState<NumberItem[]>([]);
+  const [
+    hasMore,
+    setHasMore,
+  ] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [query, setQuery] =
-    useState("");
+  const [
+    loadingMore,
+    setLoadingMore,
+  ] = useState(false);
 
-  /* =========================================================
-     LOAD UNIVERS
-  ========================================================= */
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
+
+
+  /* ========================================================
+     LOAD UNIVERSES
+  ======================================================== */
 
   useEffect(() => {
 
@@ -75,235 +121,408 @@ export default function NumbersPage() {
 
       try {
 
-        const res = await api.get(
-          "/universe/list-for-user"
+        const response = await api.get(
+          "/universe/list-for-user",
         );
 
         setUniverses(
-          res?.universes || []
+          response?.universes
+          || [],
         );
 
-      } catch (e) {
+      } catch (loadError) {
 
         console.error(
-          "❌ universe load error",
-          e
+          "Unable to load universes:",
+          loadError,
         );
+
       }
+
     }
 
     loadUniverses();
 
   }, []);
 
-  /* =========================================================
-     LOAD
-  ========================================================= */
 
-  async function load(q?: string) {
+  /* ========================================================
+     LOAD NUMBERS
+  ======================================================== */
 
-    const finalQuery =
-      (q ?? query)?.trim();
+  const loadNumbers = useCallback(
 
-    setLoading(true);
+    async ({
+      searchQuery,
+      universeId,
+      offset = 0,
+      append = false,
+    }: {
+      searchQuery: string;
+      universeId: string | null;
+      offset?: number;
+      append?: boolean;
+    }) => {
 
-    try {
+      if (append) {
 
-      const res = await api.get(
-        `/numbers/feed?limit=${LIMIT}${
-          finalQuery
-            ? `&query=${encodeURIComponent(
-                finalQuery
-              )}`
-            : ""
-        }${
-          activeUniverse
-            ? `&universe_id=${activeUniverse}`
-            : ""
-        }`
-      );
+        setLoadingMore(
+          true,
+        );
 
-      const data =
-        res?.items ?? [];
+      } else {
 
-      setItems(data);
+        setLoading(
+          true,
+        );
 
-    } catch (e) {
-
-      console.error(
-        "❌ Numbers load error",
-        e
-      );
-
-      setItems([]);
-
-    } finally {
-
-      setLoading(false);
-
-    }
-  }
-
-  /* ========================================================= */
-
-  useEffect(() => {
-    load();
-  }, [activeUniverse]);
-
-  /* =========================================================
-     SELECTION
-  ========================================================= */
-
-  function toggleSelect(
-    item: NumberItem
-  ) {
-    toggleNumber(item);
-  }
-
-  /* =========================================================
-     GROUP BY TYPE
-  ========================================================= */
-
-  function groupByType(
-    items: NumberItem[]
-  ) {
-
-    const map:
-      Record<
-        string,
-        NumberItem[]
-      > = {};
-
-    items.forEach((item) => {
-
-      const key =
-        item.TYPE ?? "Autres";
-
-      if (!map[key]) {
-        map[key] = [];
       }
 
-      map[key].push(item);
+      setError(
+        null,
+      );
+
+      try {
+
+        const response =
+          await searchValidatedNumbers({
+
+            query:
+              searchQuery
+              || undefined,
+
+            universe_id:
+              universeId
+              || undefined,
+
+            limit:
+              PAGE_SIZE,
+
+            offset,
+
+          });
+
+        const nextItems =
+          response.items
+          || [];
+
+        setItems(
+          current =>
+            append
+              ? [
+                  ...current,
+                  ...nextItems,
+                ]
+              : nextItems,
+        );
+
+        setTotal(
+          response.pagination?.total
+          ?? nextItems.length,
+        );
+
+        setHasMore(
+          response.pagination?.has_more
+          ?? false,
+        );
+
+      } catch (loadError) {
+
+        console.error(
+          "Unable to load validated Numbers:",
+          loadError,
+        );
+
+        setError(
+          "Unable to load Numbers.",
+        );
+
+        if (!append) {
+
+          setItems(
+            [],
+          );
+
+          setTotal(
+            0,
+          );
+
+          setHasMore(
+            false,
+          );
+
+        }
+
+      } finally {
+
+        setLoading(
+          false,
+        );
+
+        setLoadingMore(
+          false,
+        );
+
+      }
+
+    },
+
+    [],
+  );
+
+
+  /* ========================================================
+     INITIAL LOAD / UNIVERSE CHANGE
+  ======================================================== */
+
+  useEffect(() => {
+
+    loadNumbers({
+
+      searchQuery:
+        query,
+
+      universeId:
+        activeUniverse,
+
     });
 
-    return Object.fromEntries(
-      Object.entries(map).sort(
-        ([a], [b]) =>
-          a.localeCompare(
-            b,
-            "fr",
-            {
-              sensitivity:
-                "base",
-            }
-          )
-      )
+  }, [
+    activeUniverse,
+    loadNumbers,
+  ]);
+
+
+  /* ========================================================
+     SEARCH
+  ======================================================== */
+
+  function handleSearch(
+    nextQuery: string,
+  ) {
+
+    setQuery(
+      nextQuery,
     );
+
+    loadNumbers({
+
+      searchQuery:
+        nextQuery,
+
+      universeId:
+        activeUniverse,
+
+    });
+
   }
 
-  /* ========================================================= */
 
-  const grouped =
-    groupByType(items);
+  /* ========================================================
+     LOAD MORE
+  ======================================================== */
 
-  const hasContent =
-    items.length > 0;
+  function handleLoadMore() {
 
-  /* =========================================================
+    if (
+      loading
+      || loadingMore
+      || !hasMore
+    ) {
+
+      return;
+
+    }
+
+    loadNumbers({
+
+      searchQuery:
+        query,
+
+      universeId:
+        activeUniverse,
+
+      offset:
+        items.length,
+
+      append:
+        true,
+
+    });
+
+  }
+
+
+  /* ========================================================
      RENDER
-  ========================================================= */
+  ======================================================== */
 
   return (
 
-    <div className="
-      grid
-      grid-cols-1
-      gap-8
-      items-start
-    ">
+    <div
 
-      <div className="
-        space-y-6
-      ">
+      className="
+        space-y-8
+      "
 
-        {/* ===================================================
-            TITLE
-        =================================================== */}
+    >
 
-        <div>
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
 
-          <h1 className="
+      <header>
+
+        <h1
+
+          className="
             text-2xl
             font-semibold
             tracking-tight
-            text-[#111827]
-          ">
-            Numbers
-          </h1>
+            text-gray-900
+          "
 
-        </div>
+        >
 
-        {/* ===================================================
-            UNIVERSE FILTERS
-        =================================================== */}
+          Numbers
 
-        {universes.length > 0 && (
+        </h1>
 
-          <div className="
+        <p
+
+          className="
+            mt-2
+            max-w-3xl
+            text-sm
+            leading-6
+            text-gray-500
+          "
+
+        >
+
+          Explore verified business metrics extracted from
+          GetCurator&apos;s editorial intelligence.
+
+        </p>
+
+      </header>
+
+
+      {/* ================================================= */}
+      {/* SEARCH */}
+      {/* ================================================= */}
+
+      <ValidatedNumbersSearchBar
+
+        query={
+          query
+        }
+
+        loading={
+          loading
+        }
+
+        onSearch={
+          handleSearch
+        }
+
+      />
+
+
+      {/* ================================================= */}
+      {/* UNIVERSES */}
+      {/* ================================================= */}
+
+      {universes.length > 0 && (
+
+        <div
+
+          className="
             flex
             flex-wrap
             gap-2
-          ">
+          "
 
-            <button
-              onClick={() =>
-                setActiveUniverse(null)
+        >
+
+          <button
+
+            type="button"
+
+            disabled={
+              loading
+            }
+
+            onClick={() =>
+              setActiveUniverse(
+                null,
+              )
+            }
+
+            className={`
+              rounded-full
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              transition
+              disabled:opacity-50
+
+              ${
+                activeUniverse === null
+
+                  ? `
+                    bg-gray-900
+                    text-white
+                  `
+
+                  : `
+                    bg-gray-100
+                    text-gray-600
+                    hover:bg-gray-200
+                  `
               }
-              className={`
-                px-3
-                py-1.5
-                rounded-full
-                text-xs
-                font-medium
-                transition
+            `}
 
-                ${
-                  !activeUniverse
-                    ? `
-                      bg-gray-900
-                      text-white
-                    `
-                    : `
-                      bg-gray-100
-                      text-gray-600
-                      hover:bg-gray-200
-                    `
-                }
-              `}
-            >
-              All
-            </button>
+          >
 
-            {universes.map((u) => (
+            All
+
+          </button>
+
+          {universes.map(
+            universe => (
 
               <button
-                key={u.id_universe}
+
+                key={
+                  universe.id_universe
+                }
+
+                type="button"
+
+                disabled={
+                  loading
+                }
+
                 onClick={() =>
                   setActiveUniverse(
-                    u.id_universe
+                    universe.id_universe,
                   )
                 }
+
                 className={`
+                  rounded-full
                   px-3
                   py-1.5
-                  rounded-full
                   text-xs
                   font-medium
                   transition
+                  disabled:opacity-50
 
                   ${
-                    activeUniverse ===
-                    u.id_universe
+                    activeUniverse
+                    === universe.id_universe
 
                       ? `
                         bg-gray-900
@@ -317,151 +536,262 @@ export default function NumbersPage() {
                       `
                   }
                 `}
+
               >
-                {u.label}
+
+                {universe.label}
+
               </button>
 
-            ))}
+            ),
+          )}
+
+        </div>
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* COUNTER */}
+      {/* ================================================= */}
+
+      {!loading && !error && (
+
+        <div
+
+          className="
+            text-xs
+            text-gray-400
+          "
+
+        >
+
+          {total} validated Number
+          {total !== 1
+            ? "s"
+            : ""}
+
+        </div>
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* LOADING */}
+      {/* ================================================= */}
+
+      {loading && (
+
+        <div
+
+          className="
+            rounded-2xl
+            border
+            border-gray-200
+            bg-white
+            p-8
+            text-center
+            text-sm
+            text-gray-400
+          "
+
+        >
+
+          Loading Numbers...
+
+        </div>
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* ERROR */}
+      {/* ================================================= */}
+
+      {!loading && error && (
+
+        <div
+
+          className="
+            rounded-2xl
+            border
+            border-red-100
+            bg-red-50
+            p-5
+            text-sm
+            text-red-700
+          "
+
+        >
+
+          {error}
+
+        </div>
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* EMPTY */}
+      {/* ================================================= */}
+
+      {!loading
+        && !error
+        && items.length === 0
+        && (
+
+          <div
+
+            className="
+              rounded-2xl
+              border
+              border-gray-200
+              bg-white
+              p-8
+              text-center
+            "
+
+          >
+
+            <div
+
+              className="
+                text-sm
+                font-medium
+                text-gray-700
+              "
+
+            >
+
+              No validated Number found.
+
+            </div>
+
+            <div
+
+              className="
+                mt-1
+                text-xs
+                text-gray-400
+              "
+
+            >
+
+              Try another search or universe.
+
+            </div>
 
           </div>
 
         )}
 
-        {/* ===================================================
-            SEARCH
-        =================================================== */}
 
-        <NumbersHeader
-          query={query}
-          setQuery={setQuery}
-          onSearch={(q) =>
-            load(q)
-          }
-        />
+      {/* ================================================= */}
+      {/* GRID */}
+      {/* ================================================= */}
 
-        {/* ===================================================
-            LOADING
-        =================================================== */}
+      {!loading
+        && !error
+        && items.length > 0
+        && (
 
-        {loading && (
-          <p className="
-            text-sm
-            text-gray-400
-          ">
-            Chargement des chiffres...
-          </p>
+          <div
+
+            className="
+              grid
+              grid-cols-1
+              gap-4
+              sm:grid-cols-2
+              lg:grid-cols-3
+              xl:grid-cols-4
+            "
+
+          >
+
+            {items.map(
+              item => (
+
+                <ValidatedNumberCard
+
+                  key={
+                    item.id_number
+                  }
+
+                  item={
+                    item
+                  }
+
+                />
+
+              ),
+            )}
+
+          </div>
+
         )}
 
-        {/* ===================================================
-            EMPTY
-        =================================================== */}
 
-        {!loading &&
-          !hasContent && (
-            <p className="
-              text-sm
-              text-gray-400
-            ">
-              Aucun chiffre disponible.
-            </p>
-          )}
+      {/* ================================================= */}
+      {/* LOAD MORE */}
+      {/* ================================================= */}
 
-        {/* ===================================================
-            CONTENT
-        =================================================== */}
+      {!loading
+        && !error
+        && hasMore
+        && (
 
-        {!loading &&
-          hasContent &&
-          Object.entries(
-            grouped
-          ).map(
-            ([
-              type,
-              groupItems,
-            ]) => (
-              <section
-                key={type}
-                className="space-y-4"
-              >
+          <div
 
-                <div className="
-                  flex
-                  items-center
-                  justify-between
-                ">
+            className="
+              flex
+              justify-center
+              pt-2
+            "
 
-                  <h2 className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wide
-                    text-gray-400
-                  ">
-                    {type}
-                  </h2>
+          >
 
-                  <span className="
-                    text-xs
-                    text-gray-300
-                  ">
-                    {
-                      groupItems.length
-                    }
-                  </span>
+            <button
 
-                </div>
+              type="button"
 
-                <div
-                  className="
-                    grid
-                    grid-cols-2
-                    sm:grid-cols-3
-                    md:grid-cols-4
-                    lg:grid-cols-5
-                    gap-3
-                  "
-                >
+              disabled={
+                loadingMore
+              }
 
-                  {groupItems.map(
-                    (item) => {
+              onClick={
+                handleLoadMore
+              }
 
-                      const selected =
-                        selectedIds.includes(
-                          item.ID_NUMBER
-                        );
+              className="
+                rounded-xl
+                border
+                border-gray-200
+                bg-white
+                px-5
+                py-2.5
+                text-sm
+                font-medium
+                text-gray-700
+                transition
+                hover:bg-gray-50
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+              "
 
-                      return (
+            >
 
-                        <NumberCard
-                          key={
-                            item.ID_NUMBER
-                          }
+              {loadingMore
+                ? "Loading..."
+                : "Load more"}
 
-                          item={item}
+            </button>
 
-                          selected={
-                            selected
-                          }
+          </div>
 
-                          onClick={() =>
-                            toggleSelect(
-                              item
-                            )
-                          }
-                        />
-
-                      );
-                    }
-                  )}
-
-                </div>
-
-              </section>
-            )
-          )}
-
-      </div>
+        )}
 
     </div>
+
   );
+
 }
