@@ -21,6 +21,10 @@ from .number_status_repository import (
     update_number_knowledge_cursor,
 )
 
+from .repository import (
+    exists_general_knowledge,
+)
+
 
 # ============================================================
 # BUILD NUMBER KNOWLEDGE
