@@ -381,6 +381,11 @@ period_label:
 - The publication date may help interpret relative wording only when the
   content makes the relationship unambiguous.
 
+- Return normalized geographic labels in English.
+- Translate unambiguous geographic names into their standard English
+  form, for example Inde to India, Allemagne to Germany and États-Unis
+  to United States.
+
 ==================================================
 ENTITY DISPATCH
 ==================================================
@@ -422,6 +427,15 @@ If the relevant actor is not present in ENTITY CANDIDATES:
 - do not invent an entity
 - return no entity for that actor
 - use REVIEW if the missing entity prevents safe exploitation
+
+A Number about a brand, product or solution may also be associated with
+its parent company when the supplied content explicitly establishes the
+ownership relationship and the parent company is present in ENTITY
+CANDIDATES.
+
+Do not require the metric to describe only consolidated company activity.
+Product-level performance may provide meaningful factual knowledge about
+the parent company.
 
 ==================================================
 CONFIDENCE
