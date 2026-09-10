@@ -12,6 +12,7 @@ import KnowledgeHeader from "@/components/knowledge/KnowledgeHeader";
 import KnowledgeDashboard from "@/components/knowledge/KnowledgeDashboard";
 import KnowledgeToolbar from "@/components/knowledge/KnowledgeToolbar";
 import KnowledgeExplorer from "@/components/knowledge/KnowledgeExplorer";
+import NumbersKnowledgeOperations from "@/components/knowledge/NumbersKnowledgeOperations";
 
 import {
   buildKnowledge,
@@ -521,6 +522,12 @@ export default function KnowledgePage() {
         />
 
       )}
+
+      {/* ================================================= */}
+      {/* NUMBERS KNOWLEDGE */}
+      {/* ================================================= */}
+      
+      <NumbersKnowledgeOperations />
 
 
       {/* ================================================= */}
