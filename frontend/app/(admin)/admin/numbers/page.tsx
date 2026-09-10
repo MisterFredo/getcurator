@@ -1,73 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import NumbersTransformation from "@/components/admin/numbers/NumbersTransformation";
 
-import NumbersManualCreate from "@/components/admin/numbers/NumbersManualCreate";
-import NumbersAssistantCreate from "@/components/admin/numbers/NumbersAssistantCreate";
-import NumbersAdminList from "@/components/admin/numbers/NumbersAdminList";
-
-/* ========================================================= */
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default function NumbersPage() {
-
-  const [tab, setTab] = useState<"manual" | "assistant" | "admin">("manual");
-
-  /* ========================================================= */
 
   return (
 
     <div className="space-y-6">
 
       {/* HEADER */}
-      <h1 className="text-2xl font-semibold text-ratecard-blue">
-        Numbers
-      </h1>
 
-      {/* TABS */}
-      <div className="flex gap-4">
+      <div>
 
-        <button
-          onClick={() => setTab("manual")}
-          className={`px-3 py-1 rounded ${
-            tab === "manual"
-              ? "bg-ratecard-blue text-white"
-              : "bg-gray-200"
-          }`}
-        >
-          Manual
-        </button>
+        <h1 className="text-2xl font-semibold text-ratecard-blue">
+          Numbers
+        </h1>
 
-        <button
-          onClick={() => setTab("assistant")}
-          className={`px-3 py-1 rounded ${
-            tab === "assistant"
-              ? "bg-ratecard-blue text-white"
-              : "bg-gray-200"
-          }`}
-        >
-          Assistant
-        </button>
-
-        <button
-          onClick={() => setTab("admin")}
-          className={`px-3 py-1 rounded ${
-            tab === "admin"
-              ? "bg-ratecard-blue text-white"
-              : "bg-gray-200"
-          }`}
-        >
-          Admin
-        </button>
+        <p className="mt-2 text-sm text-gray-600">
+          Transform and validate Numbers extracted from published contents.
+        </p>
 
       </div>
 
-      {/* CONTENT */}
+      {/* TRANSFORMATION */}
 
-      {tab === "manual" && <NumbersManualCreate />}
-
-      {tab === "assistant" && <NumbersAssistantCreate />}
-
-      {tab === "admin" && <NumbersAdminList />}
+      <NumbersTransformation />
 
     </div>
   );
