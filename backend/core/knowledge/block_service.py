@@ -13,6 +13,7 @@ from .models import (
     KnowledgeBlock,
     KnowledgeBlockType,
     KnowledgeObservation,
+    KnowledgeNumberObservation,
     KnowledgeEntityType,
 )
 
@@ -37,6 +38,20 @@ from .prompts.friction import (
     build_friction_prompt,
 )
 
+from .prompts.chiffres import (
+    build_chiffres_prompt,
+)
+
+
+# ============================================================
+# TYPES
+# ============================================================
+
+KnowledgeInputObservation = (
+    KnowledgeObservation
+    | KnowledgeNumberObservation
+)
+
 
 # ============================================================
 # BUILD BLOCK
@@ -47,7 +62,11 @@ def build_block(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     block_type: KnowledgeBlockType,
-    batches: list[list[KnowledgeObservation]],
+    batches: list[
+        list[
+            KnowledgeInputObservation
+        ]
+    ],
 ):
     """
     Build one Knowledge Block.
@@ -124,7 +143,9 @@ def _update_block(
     entity_name: str,
     entity_type: KnowledgeEntityType,
     block: KnowledgeBlock,
-    batch: list[KnowledgeObservation],
+    batch: list[
+        KnowledgeInputObservation
+    ],
 ) -> KnowledgeBlock:
     """
     Update one Knowledge Block from
@@ -177,7 +198,9 @@ def _build_prompt(
     entity_type: KnowledgeEntityType,
     block_type: KnowledgeBlockType,
     block: KnowledgeBlock,
-    batch: list[KnowledgeObservation],
+    batch: list[
+        KnowledgeInputObservation
+    ],
 ) -> str:
     """
     Dispatch to the appropriate
@@ -187,66 +210,74 @@ def _build_prompt(
     match block_type:
 
         case "signal_analytique":
-    
+
             return build_signal_prompt(
-    
+
                 entity_name=entity_name,
-    
+
                 entity_type=entity_type,
-    
+
                 block=block,
-    
+
                 contents=batch,
-    
+
             )
-    
+
         case "mecanique_expliquee":
-    
+
             return build_mecanique_prompt(
-    
+
                 entity_name=entity_name,
-    
+
                 entity_type=entity_type,
-    
+
                 block=block,
-    
+
                 contents=batch,
-    
+
             )
-    
+
         case "enjeu_strategique":
-    
+
             return build_enjeu_prompt(
-    
+
                 entity_name=entity_name,
-    
+
                 entity_type=entity_type,
-    
+
                 block=block,
-    
+
                 contents=batch,
-    
+
             )
-    
+
         case "point_de_friction":
-    
+
             return build_friction_prompt(
-    
+
                 entity_name=entity_name,
-    
+
                 entity_type=entity_type,
-    
+
                 block=block,
-    
+
                 contents=batch,
-    
+
             )
-    
+
         case "chiffres":
 
-            # Handled by a dedicated Knowledge Agent
+            return build_chiffres_prompt(
 
-            raise NotImplementedError
+                entity_name=entity_name,
+
+                entity_type=entity_type,
+
+                block=block,
+
+                contents=batch,
+
+            )
 
     raise ValueError(
         f"Unknown block type: {block_type}"
