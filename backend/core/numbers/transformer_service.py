@@ -681,11 +681,23 @@ def _validate_transformed_number(
         and number.metric_type
         not in METRIC_TYPES
     ):
-
-        raise ValueError(
-            "Invalid metric_type "
-            f"for raw line '{number.raw_line}': "
-            f"{number.metric_type}"
+    
+        invalid_metric_type = (
+            number.metric_type
+        )
+    
+        # A malformed business classification must
+        # reject only this Number, not the content.
+        number.status = "REJECTED"
+    
+        number.metric_type = None
+    
+        number.confidence = 0.0
+    
+        number.reason = (
+            "Invalid metric type returned by "
+            "the transformer: "
+            f"{invalid_metric_type}."
         )
 
     if (
