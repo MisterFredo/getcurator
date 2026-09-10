@@ -24,6 +24,11 @@ from core.numbers.transformer_service import (
     preview_content_numbers_dict,
 )
 
+from core.numbers.transformer_service import (
+    preview_content_numbers_dict,
+    transform_and_save_content_numbers,
+)
+
 router = APIRouter()
 
 
@@ -121,6 +126,46 @@ def transform_preview_route(
             detail=(
                 "Erreur interne transformation "
                 f"Numbers : {e}"
+            ),
+        )
+
+# ============================================================
+# TRANSFORM AND SAVE
+# ============================================================
+
+@router.post("/transform/{id_content}")
+def transform_and_save_route(
+    id_content: str,
+):
+
+    try:
+
+        result = transform_and_save_content_numbers(
+            id_content=id_content,
+        )
+
+        return {
+            "status": "ok",
+            "result": result,
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Erreur transformation Numbers : "
+                f"{e}"
+            ),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur sauvegarde Numbers : "
+                f"{e}"
             ),
         )
 
