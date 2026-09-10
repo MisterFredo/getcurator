@@ -1,3 +1,5 @@
+# backend/core/knowledge/number_content_service.py
+
 from datetime import datetime
 
 from config import (
@@ -51,14 +53,23 @@ def load_number_observations(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     last_published_at: datetime | None = None,
+    last_number_id: str | None = None,
     limit: int = KNOWLEDGE_NUMBER_BUILD_LIMIT,
 ) -> list[KnowledgeNumberObservation]:
     """
     Load validated Numbers associated with
     one official GetCurator entity.
+
+    The cursor uses:
+
+    - PUBLISHED_AT
+    - ID_NUMBER
+
+    This prevents Numbers sharing the same
+    publication date from being skipped.
     """
 
-    date_filter = ""
+    cursor_filter = ""
 
     params = {
         "entity_type": entity_type,
@@ -66,15 +77,42 @@ def load_number_observations(
         "limit": limit,
     }
 
+    # ========================================================
+    # CURSOR
+    # ========================================================
+
     if last_published_at:
 
-        date_filter = """
-        AND n.PUBLISHED_AT > @last_published_at
-        """
+        if last_number_id:
+
+            cursor_filter = """
+            AND (
+                n.PUBLISHED_AT > @last_published_at
+
+                OR (
+                    n.PUBLISHED_AT = @last_published_at
+                    AND n.ID_NUMBER > @last_number_id
+                )
+            )
+            """
+
+            params["last_number_id"] = (
+                last_number_id
+            )
+
+        else:
+
+            cursor_filter = """
+            AND n.PUBLISHED_AT > @last_published_at
+            """
 
         params["last_published_at"] = (
             last_published_at
         )
+
+    # ========================================================
+    # QUERY
+    # ========================================================
 
     rows = query_bq(
         f"""
@@ -128,7 +166,7 @@ def load_number_observations(
 
           AND n.PUBLISHED_AT IS NOT NULL
 
-          {date_filter}
+          {cursor_filter}
 
         ORDER BY
           n.PUBLISHED_AT ASC,
@@ -139,46 +177,79 @@ def load_number_observations(
         params,
     ) or []
 
+    # ========================================================
+    # MAP
+    # ========================================================
+
     return [
+
         KnowledgeNumberObservation(
 
-            id_number=row["ID_NUMBER"],
+            id_number=row[
+                "ID_NUMBER"
+            ],
 
-            id_content=row["ID_CONTENT"],
+            id_content=row[
+                "ID_CONTENT"
+            ],
 
             title=(
                 row.get("TITLE")
                 or "Untitled content"
             ),
 
-            label=row["LABEL"],
+            label=row[
+                "LABEL"
+            ],
 
-            metric_type=row["METRIC_TYPE"],
+            metric_type=row[
+                "METRIC_TYPE"
+            ],
 
-            value=row.get("VALUE"),
+            value=row.get(
+                "VALUE"
+            ),
 
-            value_min=row.get("VALUE_MIN"),
+            value_min=row.get(
+                "VALUE_MIN"
+            ),
 
-            value_max=row.get("VALUE_MAX"),
+            value_max=row.get(
+                "VALUE_MAX"
+            ),
 
-            unit=row["UNIT"],
+            unit=row[
+                "UNIT"
+            ],
 
-            scale=row["SCALE"],
+            scale=row[
+                "SCALE"
+            ],
 
-            zone=row["ZONE"],
+            zone=row[
+                "ZONE"
+            ],
 
-            period_label=row["PERIOD_LABEL"],
+            period_label=row[
+                "PERIOD_LABEL"
+            ],
 
-            value_status=row["VALUE_STATUS"],
+            value_status=row[
+                "VALUE_STATUS"
+            ],
 
-            raw_line=row["RAW_LINE"],
+            raw_line=row[
+                "RAW_LINE"
+            ],
 
             confidence=(
                 row.get("CONFIDENCE")
                 or 0.0
             ),
 
-            published_at=row["PUBLISHED_AT"],
+            published_at=row[
+                "PUBLISHED_AT"
+            ],
 
         )
 
@@ -194,9 +265,14 @@ def load_number_batches(
     entity_type: KnowledgeEntityType,
     entity_id: str,
     last_published_at: datetime | None = None,
+    last_number_id: str | None = None,
     limit: int = KNOWLEDGE_NUMBER_BUILD_LIMIT,
     batch_size: int = KNOWLEDGE_NUMBER_BATCH_SIZE,
-) -> list[list[KnowledgeNumberObservation]]:
+) -> list[
+    list[
+        KnowledgeNumberObservation
+    ]
+]:
     """
     Load accepted Number observations and split
     them into chronological batches.
@@ -208,7 +284,13 @@ def load_number_batches(
 
         entity_id=entity_id,
 
-        last_published_at=last_published_at,
+        last_published_at=(
+            last_published_at
+        ),
+
+        last_number_id=(
+            last_number_id
+        ),
 
         limit=limit,
 
