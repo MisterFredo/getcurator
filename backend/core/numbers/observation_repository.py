@@ -117,7 +117,6 @@ def mark_number_processing_started(
     id_content: str,
 ):
 
-    now = _now()
 
     query_bq(
         f"""
@@ -141,9 +140,9 @@ def mark_number_processing_started(
             ),
             ERROR = NULL,
             TRANSFORMER_VERSION = @version,
-            STARTED_AT = @now,
+            STARTED_AT = CURRENT_TIMESTAMP(),
             COMPLETED_AT = NULL,
-            UPDATED_AT = @now
+            UPDATED_AT = CURRENT_TIMESTAMP()
 
         WHEN NOT MATCHED THEN
           INSERT (
@@ -170,15 +169,14 @@ def mark_number_processing_started(
             1,
             NULL,
             @version,
-            @now,
+            CURRENT_TIMESTAMP(),
             NULL,
-            @now
+            CURRENT_TIMESTAMP()
           )
         """,
         {
             "id_content": id_content,
             "version": TRANSFORMER_VERSION,
-            "now": now,
         },
     )
 
@@ -186,8 +184,6 @@ def mark_number_processing_started(
 def mark_number_processing_completed(
     result: NumberTransformationResult,
 ):
-
-    now = _now()
 
     query_bq(
         f"""
@@ -201,8 +197,8 @@ def mark_number_processing_completed(
           REVIEW_COUNT = @review_count,
           ERROR = NULL,
           TRANSFORMER_VERSION = @version,
-          COMPLETED_AT = @now,
-          UPDATED_AT = @now
+          COMPLETED_AT = CURRENT_TIMESTAMP(),
+          UPDATED_AT = CURRENT_TIMESTAMP()
 
         WHERE ID_CONTENT = @id_content
         """,
@@ -221,7 +217,6 @@ def mark_number_processing_completed(
                 result.review_count
             ),
             "version": TRANSFORMER_VERSION,
-            "now": now,
         },
     )
 
@@ -231,8 +226,6 @@ def mark_number_processing_failed(
     error: str,
 ):
 
-    now = _now()
-
     query_bq(
         f"""
         UPDATE `{TABLE_PROCESSING}`
@@ -241,8 +234,8 @@ def mark_number_processing_failed(
           STATUS = 'FAILED',
           ERROR = @error,
           TRANSFORMER_VERSION = @version,
-          COMPLETED_AT = @now,
-          UPDATED_AT = @now
+          COMPLETED_AT = CURRENT_TIMESTAMP(),
+          UPDATED_AT = CURRENT_TIMESTAMP()
 
         WHERE ID_CONTENT = @id_content
         """,
@@ -250,7 +243,6 @@ def mark_number_processing_failed(
             "id_content": id_content,
             "error": str(error)[:5000],
             "version": TRANSFORMER_VERSION,
-            "now": now,
         },
     )
 
@@ -263,7 +255,6 @@ def _build_storage_rows(
     result: NumberTransformationResult,
 ):
 
-    now = _now()
 
     # Dictionaries provide an additional
     # deterministic deduplication layer.
@@ -324,7 +315,9 @@ def _build_storage_rows(
             "REASON": number.reason,
 
             "PUBLISHED_AT": (
-                result.published_at
+                result.published_at.isoformat()
+                if result.published_at
+                else None
             ),
 
             "TRANSFORMER_VERSION": (
