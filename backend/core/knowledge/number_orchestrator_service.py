@@ -26,9 +26,9 @@ TABLE_KNOWLEDGE = (
     "RATECARD_KNOWLEDGE"
 )
 
-TABLE_NUMBER = (
+VIEW_NUMBER = (
     f"{BQ_PROJECT}.{BQ_DATASET}."
-    "RATECARD_NUMBER_OBSERVATION"
+    "V_NUMBER_OBSERVATION_EFFECTIVE"
 )
 
 TABLE_NUMBER_ENTITY = (
@@ -107,7 +107,7 @@ def load_number_knowledge_entities(
 
                 number.PUBLISHED_AT
 
-            FROM `{TABLE_NUMBER}` number
+            FROM `{VIEW_NUMBER}` number
 
             JOIN `{TABLE_NUMBER_ENTITY}` relation
               ON relation.ID_NUMBER = number.ID_NUMBER
@@ -120,7 +120,7 @@ def load_number_knowledge_entities(
               ON status.ENTITY_TYPE = relation.ENTITY_TYPE
              AND status.ENTITY_ID = relation.ENTITY_ID
 
-            WHERE number.STATUS = 'ACCEPTED'
+            WHERE number.EFFECTIVE_STATUS = 'ACCEPTED'
 
               AND number.PUBLISHED_AT IS NOT NULL
 
@@ -228,7 +228,7 @@ def get_number_knowledge_status() -> Dict[str, Any]:
 
                 number.PUBLISHED_AT
 
-            FROM `{TABLE_NUMBER}` number
+            FROM `{VIEW_NUMBER}` number
 
             JOIN `{TABLE_NUMBER_ENTITY}` relation
               ON relation.ID_NUMBER = number.ID_NUMBER
@@ -240,7 +240,7 @@ def get_number_knowledge_status() -> Dict[str, Any]:
              AND knowledge.ENTITY_ID
                  = relation.ENTITY_ID
 
-            WHERE number.STATUS = 'ACCEPTED'
+            WHERE number.EFFECTIVE_STATUS = 'ACCEPTED'
 
               AND number.PUBLISHED_AT IS NOT NULL
         ),
