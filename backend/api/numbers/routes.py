@@ -22,10 +22,6 @@ from core.numbers.insight_service import (
 
 from core.numbers.transformer_service import (
     preview_content_numbers_dict,
-)
-
-from core.numbers.transformer_service import (
-    preview_content_numbers_dict,
     transform_and_save_content_numbers,
 )
 
@@ -33,12 +29,13 @@ from core.knowledge.number_builder_service import (
     build_number_knowledge,
 )
 
-from core.numbers.backfill_service import (
-    run_number_backfill_batch,
-)
-
 from core.knowledge.number_orchestrator_service import (
     continue_number_knowledge,
+)
+
+from core.numbers.backfill_service import (
+    get_number_backfill_status,
+    run_number_backfill_batch,
 )
 
 router = APIRouter()
