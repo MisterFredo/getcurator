@@ -73,6 +73,7 @@ class NumberTransformationInput(BaseModel):
     title: str
 
     excerpt: str = ""
+    content_body: str = ""
 
     published_at: Optional[datetime] = None
 
