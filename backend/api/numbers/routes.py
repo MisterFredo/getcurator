@@ -193,10 +193,6 @@ def build_number_knowledge_route(
 
             entity_id=entity_id,
 
-            # First Numbers build:
-            # process the complete history.
-            last_published_at=None,
-
         )
 
         return {
@@ -223,7 +219,6 @@ def build_number_knowledge_route(
                 f"Numbers : {e}"
             ),
         )
-
 
 # ============================================================
 # FROM CONTENT
