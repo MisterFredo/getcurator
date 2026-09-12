@@ -64,6 +64,10 @@ from core.digest.digest_profile_service import (
     build_digest_profile,
 )
 
+from core.digest.selection_prompt import (
+    DIGEST_SELECTION_VERSION,
+)
+
 
 # ============================================================
 # LOGGER
@@ -316,6 +320,52 @@ def generate_digest(
             )
 
         )
+
+        # ====================================================
+        # STORE SELECTION METADATA
+        # ====================================================
+        
+        knowledge.metadata[
+            "digest_selection"
+        ] = {
+        
+            "version":
+                DIGEST_SELECTION_VERSION,
+        
+            "candidate_count":
+                len(
+                    candidates
+                ),
+        
+            "selected_count":
+                len(
+                    selection_outcome
+                    .selected_content_ids
+                ),
+        
+            "used_fallback":
+                selection_outcome
+                .used_fallback,
+        
+            "fallback_error":
+                selection_outcome
+                .error,
+        
+            "decisions": [
+        
+                decision.model_dump(
+                    mode="json",
+                )
+        
+                for decision in (
+                    selection_outcome
+                    .selection
+                    .decisions
+                )
+        
+            ],
+        
+        }
 
         # ====================================================
         # BUILD DOCUMENT
