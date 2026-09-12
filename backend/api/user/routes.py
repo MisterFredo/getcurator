@@ -451,6 +451,29 @@ def profile_assistant(
             user_id=user_id,
             messages=payload.messages,
             language=language,
+            account_context={
+                "name": user.get(
+                    "NAME"
+                ),
+                "display_name": user.get(
+                    "DISPLAY_NAME"
+                ),
+                " Continua: "company": user.get(
+                    "COMPANY"
+                ),
+                "description": user.get(
+                    "DESCRIPTION"
+                ),
+                "profile_type": (
+                    user.get(
+                        "PROFILE_TYPE"
+                    )
+                    or "USER"
+                ),
+                "role": user.get(
+                    "ROLE"
+                ),
+            },
         )
 
         if error:
