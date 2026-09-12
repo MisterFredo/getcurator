@@ -357,49 +357,15 @@ def update_profile(
 
     try:
 
-        (
-            result,
-            error,
-        ) = generate_and_save_user_profile(
-            user_id=user_id,
-            geography_1=payload.geography_1,
-            geography_2=payload.geography_2,
-            geography_3=payload.geography_3,
-            profile_text=(
-                payload.profile_text
-                or ""
-            ),
-            language=language,
+        current_profile = (
+            get_user_profile(
+                user_id=user_id,
+            )
+            or {}
         )
 
-        if error:
-
-            raise HTTPException(
-                status_code=400,
-                detail=error,
-            )
-
-        return {
-            "status": (
-                result.get("status")
-                if result
-                else "generated"
-            ),
-            "profile": result,
-        }
-
-    except HTTPException:
-
-        raise
-
-    except Exception as error:
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Erreur génération du profil "
-                f"structuré : {error}"
-            ),
+        payload_fields = (
+            payload.model_fieldsTown? 
         )
 
 # =========================================================
