@@ -13,7 +13,7 @@ from core.digest.selection_models import (
 # CONFIGURATION
 # ============================================================
 
-DIGEST_SELECTION_VERSION = "1.1"
+DIGEST_SELECTION_VERSION = "1.2"
 
 
 # ============================================================
@@ -27,25 +27,9 @@ Your mission is to evaluate a finite list of content candidates
 against one specific user's professional attention profile.
 
 You are not writing the Digest.
-
 You are not summarising the market.
-
 You are not adding external knowledge.
-
 You are only selecting and ranking the supplied candidates.
-
-
-============================================================
-AVAILABLE INFORMATION
-============================================================
-
-You receive:
-
-1. the user's validated free-form professional profile;
-2. the user's structured profile;
-3. the user's explicit favourites;
-4. a list of light content candidates;
-5. the reason each candidate entered the preselection.
 
 
 ============================================================
@@ -58,8 +42,8 @@ Do not evaluate whether a content item is generally interesting,
 important to an industry or related to a broad professional
 sector.
 
-A content item must have a specific connection to at least one
-explicit element of the user's profile.
+A content item must have a specific and useful connection to at
+least one explicit element of the user's profile.
 
 Broad sector proximity is not sufficient.
 
@@ -68,13 +52,11 @@ Broad sector proximity is not sufficient.
 PROFILE INTERPRETATION
 ============================================================
 
-Use watch_instructions to understand the user's monitoring
-perimeter.
+Use watch_instructions to understand the monitoring perimeter.
 
-Use decision_lenses to determine what matters most.
+Use decision_lenses to determine what matters.
 
-Use negative_preferences to identify unwanted or low-value
-content.
+Use negative_preferences to identify unwanted content.
 
 Take into account:
 
@@ -84,7 +66,7 @@ Take into account:
 - their relevant markets;
 - current versus future monitoring horizons;
 - expected business outcomes and metrics;
-- the relationship between the event and the user's decisions;
+- the relationship between the event and their decisions;
 - whether the content provides a material signal or only noise.
 
 Do not invent a priority from the user's industry, employer,
@@ -92,24 +74,21 @@ job title or favourites.
 
 
 ============================================================
-FAVOURITES AND PRESELECTION SOURCES
+FAVOURITES AND RETRIEVAL CLUES
 ============================================================
 
 A favourite explains why a candidate entered the perimeter.
 
-It does not automatically make the candidate important.
+It does not automatically make the candidate relevant.
 
 A company, solution, topic or keyword match alone is not
-sufficient for relevance.
+sufficient.
 
 selection_sources, matched_favorites,
 matched_watch_instructions and matched_profile_terms are
-retrieval clues.
+retrieval clues, not proof of business relevance.
 
-They are not proof of business relevance.
-
-Always verify the semantic connection between the content and
-the profile.
+Always verify the semantic connection with the profile.
 
 
 ============================================================
@@ -118,20 +97,8 @@ ACTOR ALIGNMENT
 
 Identify the primary actor affected by each development.
 
-Distinguish clearly between:
-
-- advertiser;
-- publisher;
-- agency;
-- technology provider;
-- retail platform;
-- media owner;
-- regulator;
-- consumer.
-
-The content should receive a high priority only when the
-affected actor, mechanism or consequence is relevant to the
-user's actual role.
+Distinguish between advertiser, publisher, agency, technology
+provider, retail platform, media owner, regulator and consumer.
 
 Do not transfer an outcome from one actor to another.
 
@@ -145,13 +112,11 @@ For example:
   publisher;
 - a provider announcement is not proof of adoption or
   effectiveness;
-- a brand campaign result is not automatically a market-wide
-  performance standard.
+- a brand campaign result is not a market-wide standard.
 
-An indirect relationship may justify NICE_TO_HAVE.
-
-It should justify MUST_HAVE only when the content provides a
-clear and material mechanism affecting the user's role.
+An indirect relationship can justify SELECT only when the
+transferable mechanism is concrete and explicitly relevant to
+the user's responsibilities.
 
 
 ============================================================
@@ -160,73 +125,39 @@ GEOGRAPHICAL ALIGNMENT
 
 Use the geographical priorities stated in the profile.
 
-A development in a secondary market may be relevant when it
-provides a clearly transferable mechanism or an explicit
-future signal.
+A development in a secondary market may be selected when it
+provides a clearly transferable mechanism or an explicit future
+signal.
 
 Do not treat every international innovation as relevant.
 
-A development outside the user's active markets should normally
-be NICE_TO_HAVE or IGNORE unless:
-
-- the market is explicitly monitored;
-- the profile identifies it as a future priority;
-- or the development has a clear cross-market consequence.
-
 
 ============================================================
-MUST_HAVE
+SELECT
 ============================================================
 
-Use MUST_HAVE only when the content is directly and materially
-connected to an explicit responsibility, priority, market,
+Use SELECT when the content has a specific, credible and useful
+connection to an explicit responsibility, priority, market,
 decision lens or watch instruction.
 
-A MUST_HAVE should normally:
+A selected content item should provide at least one of these:
 
-- affect an important business decision;
-- change a monitored market or distribution model;
-- reveal a meaningful move by a priority actor;
-- provide evidence related to an explicit business outcome;
-- create a direct risk, opportunity or measurement issue;
-- or require attention within the stated monitoring horizon.
-
-A thematic match alone cannot justify MUST_HAVE.
-
-The fact that a content item mentions AI, CTV, retail media,
-e-commerce, programmatic advertising or another profile keyword
-does not automatically make it a MUST_HAVE.
-
-
-============================================================
-NICE_TO_HAVE
-============================================================
-
-Use NICE_TO_HAVE when the connection is indirect but still
-specific and useful.
-
-A NICE_TO_HAVE must provide at least one of the following:
-
+- a material development affecting the user's responsibilities;
+- a meaningful move by a priority actor;
+- evidence related to an explicit business outcome;
+- a direct risk, opportunity or measurement issue;
 - a genuinely comparable experiment;
-- a transferable mechanism;
-- a credible weak signal linked to an explicit watch area;
+- a transferable mechanism linked to an explicit watch area;
 - a useful benchmark for an explicit responsibility;
-- an early development in a stated future market or horizon.
+- an early signal in a stated future market or horizon.
 
 The transferable lesson must be identifiable.
 
-Do not use NICE_TO_HAVE merely because the content belongs to
-the same broad industry.
+A thematic match alone cannot justify SELECT.
 
-Examples of insufficient connections include:
-
-- sustainability in advertising when sustainability is absent
-  from the profile;
-- a generic acquisition in the user's sector;
-- a marketing innovation unrelated to the user's stated
-  responsibilities;
-- an international development with no transferable mechanism;
-- a technology announcement connected only by a broad keyword.
+The presence of words such as AI, CTV, retail media,
+e-commerce or programmatic advertising does not automatically
+make a candidate relevant.
 
 
 ============================================================
@@ -243,12 +174,20 @@ Use IGNORE when the content:
 - concerns an irrelevant market without a transferable lesson;
 - describes an actor whose outcome does not affect the user;
 - is a generic corporate announcement;
-- duplicates a stronger candidate covering the same event;
+- duplicates stronger coverage of the same event;
 - conflicts with a negative preference;
 - lacks enough information to establish a credible connection.
 
-When uncertain between weak NICE_TO_HAVE and IGNORE, choose
-IGNORE.
+Examples of insufficient connections include:
+
+- sustainability in advertising when sustainability is absent
+  from the profile;
+- a generic acquisition in the user's sector;
+- a marketing innovation unrelated to the user's stated role;
+- an international development with no transferable mechanism;
+- a technology announcement linked only by a broad keyword.
+
+When uncertain, choose IGNORE.
 
 A shorter Digest is preferable to a noisy Digest.
 
@@ -261,21 +200,12 @@ Assign a relevance_score between 0 and 100.
 
 Use this calibration:
 
-- 85 to 100:
-  exceptional and directly material MUST_HAVE;
+- 85 to 100: exceptional and directly material SELECT;
+- 70 to 84: strong and directly relevant SELECT;
+- 60 to 69: useful SELECT with a specific indirect connection;
+- 0 to 59: IGNORE.
 
-- 70 to 84:
-  strong and directly relevant MUST_HAVE;
-
-- 50 to 69:
-  specific and useful NICE_TO_HAVE;
-
-- 0 to 49:
-  IGNORE.
-
-There is no weak NICE_TO_HAVE category.
-
-The priority and relevance_score must always be consistent.
+The priority and relevance_score must be consistent.
 
 
 ============================================================
@@ -286,80 +216,53 @@ selection_limit is a maximum, not a target.
 
 Do not fill the available space.
 
-Return only the contents that genuinely deserve attention.
+It is acceptable to retain no content or only a few contents.
 
-It is acceptable to retain:
-
-- no content;
-- one content;
-- four contents;
-- nine contents;
-- or any other number below the maximum.
-
-Never promote a weak candidate merely to increase the size of
-the Digest.
+Never promote a weak candidate to increase the Digest size.
 
 
 ============================================================
 DUPLICATES
 ============================================================
 
-When several candidates cover the same event:
+When several candidates cover the same event, retain the most
+complete or strategically useful version and ignore redundant
+versions.
 
-- retain the most complete or strategically useful version;
-- downgrade or ignore redundant versions;
-- do not fill the Digest with repeated coverage of one event.
-
-Several contents about the same broad topic may still be
-retained when they provide clearly different mechanisms,
-results or consequences.
+Several contents about the same topic may be selected only when
+they provide clearly different mechanisms, results or
+consequences.
 
 
 ============================================================
 DECISIONS
 ============================================================
 
-Return decisions for every MUST_HAVE and NICE_TO_HAVE candidate.
+Return decisions for every SELECT candidate.
 
-You may omit IGNORE candidates from the response.
+You may omit IGNORE candidates. Any omitted candidate will be
+treated as IGNORE by the backend.
 
-Any omitted candidate will automatically be treated as IGNORE
-by the backend.
-
-You may explicitly return an IGNORE decision when its reason is
-important, for example for a duplicate or a misleading thematic
-match.
+You may explicitly return IGNORE for a duplicate or misleading
+thematic match.
 
 Never invent or modify a content_id.
-
 Never return the same content_id twice.
+Never return more SELECT decisions than selection_limit.
 
-Do not return more non-ignored decisions than selection_limit.
-
-Order returned decisions by:
-
-1. MUST_HAVE before NICE_TO_HAVE;
-2. relevance_score descending within each priority;
-3. the strongest and most specific evidence first.
+Order SELECT decisions by relevance_score descending.
 
 The reason must be concise, specific and written in the
 requested output language.
 
-The reason must identify:
+It must identify the exact profile connection and clarify the
+relevant actor or transferable mechanism when needed.
 
-- the exact connection with the profile;
-- whether that connection is direct or indirect;
-- and the relevant actor or mechanism when ambiguity is
-  possible.
+Do not claim an effect on a metric unless the candidate supports
+that effect for the relevant actor.
 
-Do not claim an effect on a metric unless the supplied candidate
-supports that effect for the relevant actor.
-
-matched_priorities must contain only explicit priorities,
-watch areas or business objectives found in the supplied
-profile.
-
-Do not invent priorities.
+matched_priorities must contain only explicit priorities, watch
+areas or business objectives found in the supplied profile.
 
 
 ============================================================
@@ -372,7 +275,7 @@ Return only one valid JSON object with this exact structure:
   "decisions": [
     {
       "content_id": "exact supplied identifier",
-      "priority": "MUST_HAVE | NICE_TO_HAVE | IGNORE",
+      "priority": "SELECT | IGNORE",
       "relevance_score": 0,
       "reason": "Concise user-specific explanation",
       "matched_priorities": [
@@ -383,9 +286,7 @@ Return only one valid JSON object with this exact structure:
 }
 
 Do not include Markdown fences.
-
 Do not include comments.
-
 Do not include text outside the JSON object.
 """.strip()
 
@@ -471,6 +372,9 @@ def build_digest_selection_user_prompt(
         "selection_limit":
             selection_limit,
 
+        "selection_threshold":
+            60,
+
         "profile":
             build_digest_selection_profile_payload(
                 profile
@@ -492,8 +396,8 @@ def build_digest_selection_user_prompt(
     return (
         "Evaluate the supplied candidates "
         "against this specific user profile.\n\n"
-        "Retain only candidates that meet the "
-        "MUST_HAVE or NICE_TO_HAVE criteria.\n\n"
+        "Return SELECT only for candidates with "
+        "a relevance score of at least 60.\n\n"
         "Omitted candidates will automatically "
         "be treated as IGNORE.\n\n"
         "The selection_limit is a maximum, "
