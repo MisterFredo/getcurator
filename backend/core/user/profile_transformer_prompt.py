@@ -204,9 +204,6 @@ def build_profile_transformer_user_prompt(
     geography_1: Optional[str] = None,
     geography_2: Optional[str] = None,
     geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
     language: str = "fr",
 ) -> str:
 
@@ -215,9 +212,6 @@ def build_profile_transformer_user_prompt(
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
     )
 
@@ -267,11 +261,6 @@ A watch instruction must:
 - use WATCH for prospective or lower-immediacy monitoring;
 - use CURRENT for active priorities;
 - use FUTURE for explicitly prospective priorities.
-
-Explicit favourites not otherwise qualified by the profile must still
-be represented in the watch perimeter, without inventing a geography
-or strategic objective for them.
-
 
 DECISION LENSES
 
