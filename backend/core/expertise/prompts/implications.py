@@ -1,3 +1,5 @@
+import json
+
 from api.expertise.models import (
     Expertise,
 )
@@ -12,6 +14,84 @@ from .blocks import (
 
 
 # ============================================================
+# PROFILE CONTEXT
+# ============================================================
+
+def _build_profile_context(
+    expertise: Expertise,
+) -> str:
+
+    profile = expertise.profile
+
+    structured_profile = (
+        profile.structured_profile
+        if isinstance(
+            profile.structured_profile,
+            dict,
+        )
+        else {}
+    )
+
+    profile_context = {
+
+        "professional_profile":
+            profile.profile_text,
+
+        "geographies":
+            profile.geographies,
+
+        "professional_context":
+            structured_profile.get(
+                "professional_context",
+                {},
+            ),
+
+        "watch_instructions":
+            structured_profile.get(
+                "watch_instructions",
+                [],
+            ),
+
+        "decision_lenses":
+            structured_profile.get(
+                "decision_lenses",
+                [],
+            ),
+
+        "negative_preferences":
+            structured_profile.get(
+                "negative_preferences",
+                [],
+            ),
+
+    }
+
+    return json.dumps(
+        profile_context,
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+# ============================================================
+# OUTPUT LANGUAGE
+# ============================================================
+
+def _get_output_language(
+    expertise: Expertise,
+) -> str:
+
+    if (
+        expertise.profile.language
+        == "fr"
+    ):
+
+        return "French"
+
+    return "English"
+
+
+# ============================================================
 # IMPLICATIONS PROMPT
 # ============================================================
 
@@ -20,13 +100,22 @@ def build_implications_prompt(
     context: dict | None = None,
 ) -> str:
 
-    content_context = build_content_blocks(
-        expertise.contents
+    profile_context = (
+        _build_profile_context(
+            expertise
+        )
     )
 
-    profile_text = (
-        expertise.profile.profile_text
-        or "No expert profile provided."
+    content_context = (
+        build_content_blocks(
+            expertise.contents
+        )
+    )
+
+    output_language = (
+        _get_output_language(
+            expertise
+        )
     )
 
     outputs = (
@@ -42,154 +131,190 @@ def build_implications_prompt(
     )
 
     return f"""
-You are a senior business intelligence analyst.
+You are the GetCurator strategic intelligence editor.
 
-Your mission is to explain the strategic implications of the market developments already identified in the Key Points.
+Your mission is to explain what the established developments
+change for this specific professional.
 
-The Key Points are established market facts.
+The Key Points describe what changed.
 
-Do not question them.
+Your response must explain why those changes matter for the
+user's responsibilities, decisions, priorities and metrics.
 
-Do not rewrite them.
 
-Use the supporting content only as evidence for your reasoning.
-
---------------------------------------------------
+============================================================
 LANGUAGE
+============================================================
 
-Write the entire response in English.
+Write the entire response in {output_language}.
 
---------------------------------------------------
-EXPERT PROFILE
 
-{profile_text}
+============================================================
+PROFESSIONAL PROFILE
+============================================================
 
-The expert profile defines the strategic priorities of this analysis.
+{profile_context}
 
-Use it only to prioritize the implications.
 
-Never mention the profile.
-
-Its influence must remain completely implicit.
-
---------------------------------------------------
-KEY POINTS
+============================================================
+ESTABLISHED DEVELOPMENTS
+============================================================
 
 {key_points}
 
---------------------------------------------------
+
+============================================================
 SUPPORTING CONTENT
+============================================================
 
 {content_context}
 
---------------------------------------------------
+
+============================================================
 OBJECTIVE
+============================================================
 
-Assume the reader already understands the market developments.
+Assume the reader already understands what happened.
 
-Your role is to explain what these developments change strategically.
+Do not restate the Key Points.
 
-Focus on structural consequences such as:
+Explain the concrete business consequences from the user's
+professional perspective.
 
-- competitive dynamics
-- industry structure
-- business models
-- customer behavior
-- value creation
-- distribution of power
-- investment priorities
-- long-term market direction
+Focus only on consequences supported by the established
+developments and supporting content.
 
-Connect multiple Key Points whenever they reveal the same structural transformation.
+Relevant consequences may concern:
 
---------------------------------------------------
+- revenue or monetisation;
+- costs and investment priorities;
+- business models;
+- distribution or market access;
+- competitive positioning;
+- customer or audience behaviour;
+- operational responsibilities;
+- measurement and performance;
+- bargaining power;
+- important metrics explicitly named in the profile.
+
+Use a metric from the profile only when the connection is
+credible and supported.
+
+Do not force every profile priority or metric into the response.
+
+
+============================================================
 TASK
+============================================================
 
-1. Read all Key Points.
-2. Treat them as established market facts.
-3. Identify the structural transformations they reveal.
-4. Prioritize the transformations that matter most for the expert profile.
-5. Explain why these transformations matter strategically.
-6. Base every conclusion exclusively on the provided evidence.
-7. Never introduce new market developments.
+1. Identify the two to four most important implications.
+2. Rank them by importance for this professional.
+3. Explain the specific business consequence.
+4. State the responsibility, decision or metric affected when
+   this is supported.
+5. Combine developments only when they create the same
+   consequence.
+6. Omit weak or generic implications.
 
---------------------------------------------------
+
+============================================================
 OUTPUT FORMAT
+============================================================
 
-For each Strategic Implication, use EXACTLY the following structure.
+For each implication, use exactly:
 
-Implication title
+A short standalone title of no more than 10 words.
 
-One concise paragraph (maximum 80 words) explaining the strategic consequence.
+One paragraph of no more than 55 words explaining:
 
---------------------------------------------------
+- the concrete consequence for this user;
+- the responsibility, decision, risk, opportunity or metric
+  affected.
 
-Repeat the same structure for every implication.
-
-Separate each implication with exactly:
+Separate implications with exactly:
 
 --------------------------------------------------
 
 Do not use bullets.
-
 Do not use numbering.
-
 Do not use Markdown.
-
 Do not use bold.
+Do not add an introduction.
+Do not add a conclusion.
 
-Do not add introductions or conclusions.
 
---------------------------------------------------
+============================================================
 WRITING STYLE
+============================================================
 
-Write like a senior executive briefing.
+Be direct, precise and decision-oriented.
 
-Be analytical.
+Use short sentences.
 
-Be concise.
+Address the reader directly when useful.
 
-Prefer formulations such as:
+Prefer concrete formulations such as:
 
-- This accelerates...
-- This reinforces...
-- This changes...
-- This reshapes...
-- This redistributes...
-- This increases...
+- This puts pressure on...
+- This changes how you...
+- This affects...
+- This makes ... more difficult to measure.
+- This increases the value of...
 - This reduces...
-- This strengthens...
-- This creates structural pressure on...
+- This creates a trade-off between...
+- This may affect [explicit metric] through...
 
-Avoid formulations such as:
+Do not repeatedly begin paragraphs with "This shift",
+"This evolution" or "This transformation".
 
-- The market is shifting...
-- Company X announced...
-- This article explains...
-- This Key Point shows...
-- According to...
-- For this expert...
-- Given the profile...
-- The profile suggests...
+Avoid generic formulations such as:
 
---------------------------------------------------
-RULES
+- Companies need to adapt.
+- The market is rapidly changing.
+- Innovation is becoming essential.
+- This creates new opportunities.
+- This is important for the future.
+- This reinforces the need to stay competitive.
 
-- Maximum 5 implications.
-- Order them from most important to least important.
-- One structural transformation per implication.
-- Do not rewrite the Key Points.
-- Do not summarize the articles.
-- Do not identify new market developments.
-- Do not recommend actions.
-- Do not speculate.
-- Do not invent opportunities or risks.
-- Do not mention article titles.
-- Do not mention publishers.
-- Base every conclusion exclusively on the provided evidence.
-- Every implication must remain understandable if read independently.
 
---------------------------------------------------
+============================================================
+BOUNDARIES
+============================================================
 
-The reader should finish with a deeper understanding of why the identified market developments matter strategically from the perspective defined by the expert profile.
+Do not introduce a new market development.
+
+Do not summarise the articles.
+
+Do not repeat the Key Points.
+
+Do not mention article titles or publishers.
+
+Do not mention the existence of a profile.
+
+Do not invent a metric, objective, risk or opportunity.
+
+Do not make a recommendation that is unsupported by the
+evidence.
+
+Do not produce one implication per article.
+
+Every implication must add a distinct consequence.
+
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before responding, verify that:
+
+- every implication is specific to this professional;
+- every implication follows from an established development;
+- no implication merely restates what happened;
+- no two implications make the same point;
+- every paragraph contains a concrete consequence;
+- no paragraph exceeds 55 words;
+- the response contains no filler.
+
+If only two implications are material, return two.
+Never add an implication merely to reach a target.
 """.strip()
