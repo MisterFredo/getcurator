@@ -356,6 +356,12 @@ class ProfileTransformerResult(
 
     structured_profile: StructuredUserProfile
 
+    source_hash: str
+
+    schema_version: str
+
+    transformer_version: str
+
     warnings: List[str] = Field(
         default_factory=list,
     )
