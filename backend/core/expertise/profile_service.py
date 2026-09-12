@@ -9,6 +9,10 @@ from utils.bigquery_utils import (
     query_bq,
 )
 
+from core.user.user_profile_service import (
+    parse_structured_profile,
+)
+
 from api.expertise.models import (
     ExpertisePreferences,
     ExpertiseProfile,
@@ -114,6 +118,8 @@ def load_profile(
             p.GEOGRAPHY_2,
             p.GEOGRAPHY_3,
             p.PROFILE_TEXT,
+            p.PROFILE_STRUCTURED_JSON,
+            p.PROFILE_STRUCTURED_STATUS,
 
             COALESCE(
                 pref.COMPANIES,
@@ -179,6 +185,7 @@ def load_profile(
             geographies=[],
 
             profile_text="",
+            structured_profile=None,
         )
 
     row = rows[0]
@@ -210,6 +217,27 @@ def load_profile(
         if geography
 
     ]
+
+    # ========================================================
+    # STRUCTURED PROFILE
+    # ========================================================
+    
+    structured_profile = None
+    
+    if (
+        row.get(
+            "PROFILE_STRUCTURED_STATUS"
+        )
+        == "READY"
+    ):
+    
+        structured_profile = (
+            parse_structured_profile(
+                row.get(
+                    "PROFILE_STRUCTURED_JSON"
+                )
+            )
+        )
 
     # ========================================================
     # PROFILE
@@ -265,6 +293,9 @@ def load_profile(
                 "PROFILE_TEXT",
             )
             or ""
+        ),
+        structured_profile=(
+            structured_profile
         ),
 
     )
