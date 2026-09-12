@@ -57,6 +57,8 @@ class ExpertiseProfile(BaseModel):
 
     profile_text: str = ""
 
+    structured_profile: dict | None = None
+
 
 # ============================================================
 # CONTENT
