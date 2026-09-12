@@ -319,6 +319,7 @@ def get_my_profile(request: Request):
         "profile": get_user_profile(user_id)
     }
 
+
 @router.post("/profile/update")
 def update_profile(
     request: Request,
@@ -327,27 +328,21 @@ def update_profile(
 
     user_id = (
         payload.user_id
-        or get_user_id_from_request(
-            request
-        )
+        or get_user_id_from_request(request)
     )
 
     if not user_id:
-
         raise HTTPException(
             status_code=401,
-            detail="Not authenticated",
+            detail="Utilisateur non authentifié",
         )
 
-    user = get_user_by_id(
-        user_id
-    )
+    user = get_user_by_id(user_id)
 
     if not user:
-
         raise HTTPException(
             status_code=404,
-            detail="User not found",
+            detail="Utilisateur introuvable",
         )
 
     language = (
@@ -358,15 +353,98 @@ def update_profile(
     try:
 
         current_profile = (
-            get_user_profile(
-                user_id=user_id,
-            )
+            get_user_profile(user_id)
             or {}
         )
 
         payload_fields = (
-            payload.model_fieldsTown? 
+            payload.model_fields_set
         )
+
+        geography_1 = current_profile.get(
+            "geography_1"
+        )
+
+        geography_2 = current_profile.get(
+            "geography_2"
+        )
+
+        geography_3 = current_profile.get(
+            "geography_3"
+        )
+
+        profile_text = current_profile.get(
+            "profile_text"
+        )
+
+        if "geography_1" in payload_fields:
+            geography_1 = payload.geography_1
+
+        if "geography_2" in payload_fields:
+            geography_2 = payload.geography_2
+
+        if "geography_3" in payload_fields:
+            geography_3 = payload.geography_3
+
+        if "profile_text" in payload_fields:
+            profile_text = payload.profile_text
+
+        if not isinstance (
+            profile_text,
+            str,
+        ):
+            profile_text = ""
+
+        profile_text = profile_text.strip()
+
+        if not profile_text:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Le profil ne peut pas "
+                    "être vide"
+                ),
+            )
+
+        result, error = (
+            generate_and_save_user_profile(
+                user_id=user_id,
+                geography_1=geography_1,
+                geography_2=geography_2,
+                geography_3=geography_3,
+                profile_text=profile_text,
+                language=language,
+            )
+        )
+
+        if error:
+            raise HTTPException(
+                status_code=400,
+                detail=error,
+            )
+
+        return {
+            "status": (
+                result.get("status")
+                if result
+                else "generated"
+            ),
+            "profile": result,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur lors de la génération "
+                f"du profil structuré : {error}"
+            ),
+        )
+
+
 
 # =========================================================
 # PROFILE ASSISTANT
