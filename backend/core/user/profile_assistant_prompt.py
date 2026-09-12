@@ -211,6 +211,34 @@ def clean_optional_text(
 
     return cleaned
 
+# ============================================================
+# CLEAN ACCOUNT CONTEXT
+# ============================================================
+
+def clean_account_context(
+    account_context: Optional[
+        Dict[str, Any]
+    ],
+) -> Dict[str, Optional[str]]:
+
+    if not account_context:
+
+        return {
+            "name": None,
+            "display_name": None,
+            "company": None,
+            "description": None,
+            "profile_type": None,
+            "role": None,
+        }
+
+    return {
+        "name": clean_optional_text(
+            account_context.get(
+                ":
+                "name"
+            ) ?? no. Need produce correct. Let's be cautious, no corrupted artifacts. 
+
 
 def clean_string_list(
     values: Optional[List[str]],
