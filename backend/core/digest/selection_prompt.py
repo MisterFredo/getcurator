@@ -177,6 +177,8 @@ Use IGNORE when the content:
 - duplicates stronger coverage of the same event;
 - conflicts with a negative preference;
 - lacks enough information to establish a credible connection.
+- reports an event already covered by a stronger selected
+  candidate.
 
 Examples of insufficient connections include:
 
