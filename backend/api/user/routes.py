@@ -9,6 +9,8 @@ from api.user.models import (
     UserKeywordPayload,
     UserProfilePayload,
     UserPreferencesPayload,
+    UserProfileAssistantPayload,
+    UserProfileRegeneratePayload,
 )
 
 from core.user.user_service import (
@@ -60,6 +62,10 @@ from core.digest.bootstrap_service import (
 
 from core.user.user_access_service import (
     register_user_session,
+)
+
+from core.user.profile_assistant_service import (
+    run_profile_assistant,
 )
 
 from utils.auth import get_user_id_from_request
@@ -397,17 +403,91 @@ def update_profile(
         )
 
 # =========================================================
+# PROFILE ASSISTANT
+# =========================================================
+
+@router.post("/profile/assistant")
+def profile_assistant(
+    request: Request,
+    payload: UserProfileAssistantPayload,
+):
+
+    user_id = (
+        payload.user_id
+        or get_user_id_from_request(
+            request
+        )
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    language = (
+        user.get("LANGUAGE")
+        or "fr"
+    )
+
+    try:
+
+        (
+            result,
+            error,
+        ) = run_profile_assistant(
+            user_id=user_id,
+            messages=payload.messages,
+            language=language,
+        )
+
+        if error:
+
+            raise HTTPException(
+                status_code=500,
+                detail=error,
+            )
+
+        return result
+
+    except HTTPException:
+
+        raise
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur assistant de profil : "
+                f"{error}"
+            ),
+        )
+
+# =========================================================
 # REGENERATE STRUCTURED USER PROFILE
 # =========================================================
 
 @router.post("/profile/regenerate")
 def regenerate_profile(
     request: Request,
-    payload: dict,
+    payload: UserProfileRegeneratePayload,
 ):
 
     user_id = (
-        payload.get("user_id")
+        payload.user_id
         or get_user_id_from_request(
             request
         )
