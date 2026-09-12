@@ -510,7 +510,7 @@ def select_digest_candidates(
 
             model=model,
 
-            temperature=0.0,
+            temperature=0.1,
 
             system_prompt=(
                 DIGEST_SELECTION_SYSTEM_PROMPT
