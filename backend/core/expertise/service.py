@@ -198,6 +198,7 @@ def generate_expertise_from_contents(
 
     contents = load_contents_by_ids(
         content_ids=content_ids,
+        language=profile.language,
     )
 
     return build_expertise(
