@@ -159,6 +159,17 @@ export type DigestCard = {
 
   company_logo?: string | null;
 
+  selection_priority?:
+    | "SELECT"
+    | "IGNORE"
+    | null;
+
+  selection_score?: number | null;
+
+  selection_reason?: string | null;
+
+  matched_priorities: string[];
+
 };
 
 
