@@ -3,7 +3,10 @@ from datetime import (
     timezone,
 )
 
-from typing import Literal
+from typing import (
+    Any,
+    Literal,
+)
 
 from core.delivery.models import (
     KnowledgeResult,
@@ -71,7 +74,17 @@ SECTION_TITLES = {
 
 }
 
-SECTION_ARTICLES = "Articles"
+SECTION_MUST_READ = (
+    "Must Read"
+)
+
+SECTION_WORTH_ATTENTION = (
+    "Also Worth Your Attention"
+)
+
+SECTION_ARTICLES = (
+    "Articles"
+)
 
 
 # ============================================================
@@ -140,6 +153,10 @@ def build_digest_document(
 
             continue
 
+        if not result:
+
+            continue
+
         sections.append(
 
             DigestSection(
@@ -156,22 +173,128 @@ def build_digest_document(
         )
 
     # ========================================================
-    # ARTICLES
+    # SELECTION DECISIONS
     # ========================================================
 
-    cards = [
+    selection_decisions = (
+        _get_selection_decisions(
+            knowledge
+        )
+    )
 
-        _build_card(
-            content,
+    # ========================================================
+    # ARTICLE GROUPS
+    # ========================================================
+
+    must_read_cards: list[
+        DigestCard
+    ] = []
+
+    worth_attention_cards: list[
+        DigestCard
+    ] = []
+
+    unclassified_cards: list[
+        DigestCard
+    ] = []
+
+    for content in (
+        knowledge.expertise.contents
+    ):
+
+        decision = (
+            selection_decisions.get(
+                content.id
+            )
         )
 
-        for content in (
-            knowledge.expertise.contents
+        card = _build_card(
+
+            content=content,
+
+            decision=decision,
+
         )
 
-    ]
+        priority = (
+            decision.get(
+                "priority"
+            )
 
-    if cards:
+            if decision
+
+            else None
+        )
+
+        if priority == "MUST_HAVE":
+
+            must_read_cards.append(
+                card
+            )
+
+            continue
+
+        if priority == "NICE_TO_HAVE":
+
+            worth_attention_cards.append(
+                card
+            )
+
+            continue
+
+        unclassified_cards.append(
+            card
+        )
+
+    # ========================================================
+    # MUST READ
+    # ========================================================
+
+    if must_read_cards:
+
+        sections.append(
+
+            DigestSection(
+
+                title=SECTION_MUST_READ,
+
+                content="",
+
+                cards=must_read_cards,
+
+            )
+
+        )
+
+    # ========================================================
+    # WORTH ATTENTION
+    # ========================================================
+
+    if worth_attention_cards:
+
+        sections.append(
+
+            DigestSection(
+
+                title=(
+                    SECTION_WORTH_ATTENTION
+                ),
+
+                content="",
+
+                cards=(
+                    worth_attention_cards
+                ),
+
+            )
+
+        )
+
+    # ========================================================
+    # LEGACY OR UNCLASSIFIED ARTICLES
+    # ========================================================
+
+    if unclassified_cards:
 
         sections.append(
 
@@ -181,7 +304,7 @@ def build_digest_document(
 
                 content="",
 
-                cards=cards,
+                cards=unclassified_cards,
 
             )
 
@@ -219,14 +342,91 @@ def build_digest_document(
 
 
 # ============================================================
-# CARD
+# GET SELECTION DECISIONS
+# ============================================================
+
+def _get_selection_decisions(
+    knowledge: KnowledgeResult,
+) -> dict[str, dict[str, Any]]:
+
+    metadata = (
+        knowledge.metadata
+        if isinstance(
+            knowledge.metadata,
+            dict,
+        )
+        else {}
+    )
+
+    selection = (
+        metadata.get(
+            "digest_selection"
+        )
+        or {}
+    )
+
+    if not isinstance(
+        selection,
+        dict,
+    ):
+
+        return {}
+
+    decisions = (
+        selection.get(
+            "decisions"
+        )
+        or []
+    )
+
+    decisions_by_id = {}
+
+    for decision in decisions:
+
+        if not isinstance(
+            decision,
+            dict,
+        ):
+
+            continue
+
+        content_id = decision.get(
+            "content_id"
+        )
+
+        if not content_id:
+
+            continue
+
+        decisions_by_id[
+            content_id
+        ] = decision
+
+    return decisions_by_id
+
+
+# ============================================================
+# BUILD CARD
 # ============================================================
 
 def _build_card(
     content,
+    decision: dict[
+        str,
+        Any,
+    ] | None = None,
 ) -> DigestCard:
 
     badges: list[DigestBadge] = []
+
+    decision = (
+        decision
+        if isinstance(
+            decision,
+            dict,
+        )
+        else {}
+    )
 
     # ========================================================
     # COMPANIES
@@ -234,11 +434,26 @@ def _build_card(
 
     for company in content.companies:
 
+        if not isinstance(
+            company,
+            dict,
+        ):
+
+            continue
+
+        label = company.get(
+            "name"
+        )
+
+        if not label:
+
+            continue
+
         badges.append(
 
             DigestBadge(
 
-                label=company["name"],
+                label=label,
 
                 type="company",
 
@@ -252,11 +467,26 @@ def _build_card(
 
     for topic in content.topics:
 
+        if not isinstance(
+            topic,
+            dict,
+        ):
+
+            continue
+
+        label = topic.get(
+            "label"
+        )
+
+        if not label:
+
+            continue
+
         badges.append(
 
             DigestBadge(
 
-                label=topic["label"],
+                label=label,
 
                 type="topic",
 
@@ -270,17 +500,54 @@ def _build_card(
 
     for solution in content.solutions:
 
+        if not isinstance(
+            solution,
+            dict,
+        ):
+
+            continue
+
+        label = solution.get(
+            "name"
+        )
+
+        if not label:
+
+            continue
+
         badges.append(
 
             DigestBadge(
 
-                label=solution["name"],
+                label=label,
 
                 type="solution",
 
             )
 
         )
+
+    # ========================================================
+    # MATCHED PRIORITIES
+    # ========================================================
+
+    matched_priorities = (
+        decision.get(
+            "matched_priorities"
+        )
+        or []
+    )
+
+    if not isinstance(
+        matched_priorities,
+        list,
+    ):
+
+        matched_priorities = []
+
+    # ========================================================
+    # CARD
+    # ========================================================
 
     return DigestCard(
 
@@ -292,11 +559,45 @@ def _build_card(
 
         url=content.url,
 
-        source_title=content.source_title,
+        source_title=(
+            content.source_title
+        ),
 
-        published_at=content.published_at,
+        published_at=(
+            content.published_at
+        ),
 
         badges=badges,
+
+        selection_priority=(
+            decision.get(
+                "priority"
+            )
+        ),
+
+        selection_score=(
+            decision.get(
+                "relevance_score"
+            )
+        ),
+
+        selection_reason=(
+            decision.get(
+                "reason"
+            )
+        ),
+
+        matched_priorities=[
+            str(
+                priority
+            )
+
+            for priority in (
+                matched_priorities
+            )
+
+            if priority
+        ],
 
     )
 
