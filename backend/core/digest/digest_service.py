@@ -241,7 +241,7 @@ def generate_digest(
 
         ]
 
-        logger.info(
+        logger.warning(
 
             "DIGEST_SELECTION %s",
 
