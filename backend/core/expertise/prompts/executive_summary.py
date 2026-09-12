@@ -1,3 +1,5 @@
+import json
+
 from api.expertise.models import (
     Expertise,
 )
@@ -9,6 +11,78 @@ from core.expertise.capabilities import (
 
 
 # ============================================================
+# PROFILE CONTEXT
+# ============================================================
+
+def _build_profile_context(
+    expertise: Expertise,
+) -> str:
+
+    profile = expertise.profile
+
+    structured_profile = (
+        profile.structured_profile
+        if isinstance(
+            profile.structured_profile,
+            dict,
+        )
+        else {}
+    )
+
+    profile_context = {
+
+        "professional_profile":
+            profile.profile_text,
+
+        "geographies":
+            profile.geographies,
+
+        "professional_context":
+            structured_profile.get(
+                "professional_context",
+                {},
+            ),
+
+        "watch_instructions":
+            structured_profile.get(
+                "watch_instructions",
+                [],
+            ),
+
+        "decision_lenses":
+            structured_profile.get(
+                "decision_lenses",
+                [],
+            ),
+
+    }
+
+    return json.dumps(
+        profile_context,
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+# ============================================================
+# OUTPUT LANGUAGE
+# ============================================================
+
+def _get_output_language(
+    expertise: Expertise,
+) -> str:
+
+    if (
+        expertise.profile.language
+        == "fr"
+    ):
+
+        return "French"
+
+    return "English"
+
+
+# ============================================================
 # EXECUTIVE SUMMARY PROMPT
 # ============================================================
 
@@ -17,9 +91,16 @@ def build_executive_summary_prompt(
     context: dict | None = None,
 ) -> str:
 
-    profile_text = (
-        expertise.profile.profile_text
-        or "No expert profile provided."
+    profile_context = (
+        _build_profile_context(
+            expertise
+        )
+    )
+
+    output_language = (
+        _get_output_language(
+            expertise
+        )
     )
 
     outputs = (
@@ -40,135 +121,156 @@ def build_executive_summary_prompt(
     )
 
     return f"""
-You are a senior business intelligence analyst.
+You are the GetCurator executive intelligence editor.
 
-Your mission is to write the Executive Brief of this market briefing.
+Your mission is to write the opening brief for this specific
+professional.
 
-The Market Developments describe what happened.
+The Market Developments explain what changed.
 
-The Strategic Implications explain why these developments matter.
+The Strategic Implications explain what those changes mean for
+the reader.
 
-Your role is to synthesize both into one concise executive narrative, personalized according to the reader's monitoring profile.
+Your response must identify the essential story without
+repeating either section.
 
---------------------------------------------------
+
+============================================================
 LANGUAGE
+============================================================
 
-Write the entire response in English.
+Write the entire response in {output_language}.
 
---------------------------------------------------
-EXPERT PROFILE
 
-{profile_text}
+============================================================
+PROFESSIONAL PROFILE
+============================================================
 
-The expert profile defines the perspective of this Executive Brief.
+{profile_context}
 
-Use it only to prioritize the narrative.
 
-Never mention the profile.
-
-Its influence must remain completely implicit.
-
---------------------------------------------------
+============================================================
 MARKET DEVELOPMENTS
+============================================================
 
 {key_points}
 
---------------------------------------------------
+
+============================================================
 STRATEGIC IMPLICATIONS
+============================================================
 
 {implications}
 
---------------------------------------------------
+
+============================================================
 OBJECTIVE
+============================================================
 
-Produce one concise executive narrative answering two questions:
+Answer these questions immediately:
 
-• What is the overall story of this period?
+1. What is the most important story of this period?
+2. Why does it matter to this professional now?
 
-• Why is this story strategically important for this reader?
+Prioritise the developments with the strongest consequences for
+the reader's responsibilities, decisions, markets and metrics.
 
-The Executive Brief should not repeat the Market Developments.
+Do not attempt to mention every development.
 
-It should not summarize the Strategic Implications one by one.
+Do not summarise the implications one by one.
 
-Instead, integrate both into one coherent narrative.
 
-Focus on the dominant market trajectory rather than individual developments.
-
---------------------------------------------------
-TASK
-
-1. Read the Market Developments.
-2. Read the Strategic Implications.
-3. Consider the monitoring profile.
-4. Identify the dominant market narrative.
-5. Prioritize the elements that matter most for this reader.
-6. Explain the overall direction of the market.
-7. Explain why this direction deserves the reader's attention.
-8. Stay strictly faithful to the provided analysis.
-
---------------------------------------------------
+============================================================
 OUTPUT FORMAT
+============================================================
 
-Write only the Executive Brief.
+Write one or two short paragraphs.
 
-Use 2 or 3 short paragraphs.
+Use three to five sentences in total.
 
-Each paragraph should contain 1 or 2 sentences.
+Use no more than 90 words.
 
-Maximum 120 words.
+Return only the Executive Brief.
 
-Leave one blank line between paragraphs.
+Do not write a title.
 
---------------------------------------------------
+Do not use headings.
+
+Do not use bullets.
+
+Do not use Markdown.
+
+
+============================================================
 WRITING STYLE
+============================================================
 
-Write like the opening section of a board-level market briefing.
+Lead with the main conclusion.
 
-Be concise.
+Be direct, specific and concise.
 
-Be analytical.
+Use short sentences.
 
-Be highly readable.
+Prefer concrete changes, mechanisms and consequences.
 
-Write with confidence.
+Address the reader directly when it makes the business
+consequence clearer.
 
-Prefer formulations such as:
+Use an explicit metric from the profile only when the supplied
+analysis establishes a credible connection.
+
+Avoid generic opening formulations such as:
 
 - This period confirms...
-- The market continues to...
+- The market continues to evolve...
+- The market is entering a new phase...
 - Together these developments reveal...
-- The overall direction indicates...
-- The market is entering a phase where...
-- The combination of these developments suggests...
+- In today's rapidly changing environment...
+- It is increasingly important...
 
-Avoid formulations such as:
+Avoid generic conclusions such as:
 
-- The Market Developments show...
-- The Strategic Implications explain...
-- This report explains...
-- According to...
-- Company X announced...
+- Companies must adapt.
+- Innovation will be essential.
+- This creates opportunities and challenges.
+- Staying competitive is critical.
+- The reader should remain vigilant.
 
---------------------------------------------------
-RULES
 
-- Return only the Executive Brief.
-- Do not write a title.
-- Do not write "Executive Brief".
-- Use 2 or 3 short paragraphs.
-- No bullet points.
-- No headings.
-- Do not list the Market Developments.
-- Do not list the Strategic Implications.
-- Do not recommend actions.
-- Do not speculate.
-- Do not introduce new market developments.
-- Base the narrative exclusively on the provided Market Developments and Strategic Implications.
-- Do not mention articles or publishers.
-- The personalization must remain invisible to the reader.
+============================================================
+BOUNDARIES
+============================================================
 
---------------------------------------------------
+Do not introduce a new development.
 
-The reader should finish this Executive Brief with a clear understanding of the dominant market narrative and why it matters specifically in the context of their monitoring priorities, before exploring the Market Developments in detail.
+Do not introduce a new implication.
+
+Do not mention articles or publishers.
+
+Do not mention the existence of a profile.
+
+Do not list companies unless one is essential to the main
+conclusion.
+
+Do not recommend an action unsupported by the supplied
+analysis.
+
+Do not repeat complete sentences or formulations from the
+Market Developments or Strategic Implications.
+
+Do not use filler to reach the word limit.
+
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before responding, verify that:
+
+- the first sentence contains the main conclusion;
+- the brief is specific to this professional;
+- the brief contains no more than 90 words;
+- every sentence adds new information;
+- no idea is repeated;
+- the response can be understood in under 30 seconds.
 """.strip()
