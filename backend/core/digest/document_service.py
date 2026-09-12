@@ -74,16 +74,8 @@ SECTION_TITLES = {
 
 }
 
-SECTION_MUST_READ = (
-    "Must Read"
-)
-
-SECTION_WORTH_ATTENTION = (
-    "Also Worth Your Attention"
-)
-
-SECTION_ARTICLES = (
-    "Articles"
+SECTION_SELECTED_CONTENTS = (
+    "Selected for You"
 )
 
 
@@ -183,18 +175,10 @@ def build_digest_document(
     )
 
     # ========================================================
-    # ARTICLE GROUPS
+    # SELECTED ARTICLES
     # ========================================================
 
-    must_read_cards: list[
-        DigestCard
-    ] = []
-
-    worth_attention_cards: list[
-        DigestCard
-    ] = []
-
-    unclassified_cards: list[
+    selected_cards: list[
         DigestCard
     ] = []
 
@@ -208,103 +192,29 @@ def build_digest_document(
             )
         )
 
-        card = _build_card(
+        selected_cards.append(
 
-            content=content,
+            _build_card(
 
-            decision=decision,
+                content=content,
+
+                decision=decision,
+
+            )
 
         )
 
-        priority = (
-            decision.get(
-                "priority"
-            )
-
-            if decision
-
-            else None
-        )
-
-        if priority == "MUST_HAVE":
-
-            must_read_cards.append(
-                card
-            )
-
-            continue
-
-        if priority == "NICE_TO_HAVE":
-
-            worth_attention_cards.append(
-                card
-            )
-
-            continue
-
-        unclassified_cards.append(
-            card
-        )
-
-    # ========================================================
-    # MUST READ
-    # ========================================================
-
-    if must_read_cards:
+    if selected_cards:
 
         sections.append(
 
             DigestSection(
 
-                title=SECTION_MUST_READ,
+                title=SECTION_SELECTED_CONTENTS,
 
                 content="",
 
-                cards=must_read_cards,
-
-            )
-
-        )
-
-    # ========================================================
-    # WORTH ATTENTION
-    # ========================================================
-
-    if worth_attention_cards:
-
-        sections.append(
-
-            DigestSection(
-
-                title=(
-                    SECTION_WORTH_ATTENTION
-                ),
-
-                content="",
-
-                cards=(
-                    worth_attention_cards
-                ),
-
-            )
-
-        )
-
-    # ========================================================
-    # LEGACY OR UNCLASSIFIED ARTICLES
-    # ========================================================
-
-    if unclassified_cards:
-
-        sections.append(
-
-            DigestSection(
-
-                title=SECTION_ARTICLES,
-
-                content="",
-
-                cards=unclassified_cards,
+                cards=selected_cards,
 
             )
 
