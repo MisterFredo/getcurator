@@ -11,10 +11,6 @@ from core.user.profile_transformer_service import (
     transform_user_profile,
 )
 
-from core.user.user_preferences_service import (
-    get_user_preferences_detailed,
-)
-
 from core.user.user_profile_service import (
     get_user_profile,
     save_validated_user_profile,
@@ -29,98 +25,6 @@ OrchestratorResult = Tuple[
     Optional[Dict[str, Any]],
     Optional[str],
 ]
-
-
-# ============================================================
-# EXTRACT PREFERENCE LABELS
-# ============================================================
-
-def extract_preference_labels(
-    preferences: Dict[str, List[Dict]],
-    preference_type: str,
-) -> List[str]:
-
-    items = (
-        preferences.get(
-            preference_type,
-            [],
-        )
-        or []
-    )
-
-    labels: List[str] = []
-
-    seen = set()
-
-    for item in items:
-
-        label = item.get(
-            "label"
-        )
-
-        if not isinstance(
-            label,
-            str,
-        ):
-
-            continue
-
-        cleaned_label = (
-            label.strip()
-        )
-
-        if not cleaned_label:
-
-            continue
-
-        normalized_label = (
-            cleaned_label.casefold()
-        )
-
-        if normalized_label in seen:
-
-            continue
-
-        seen.add(
-            normalized_label
-        )
-
-        labels.append(
-            cleaned_label
-        )
-
-    return labels
-
-
-# ============================================================
-# LOAD PREFERENCE LABELS
-# ============================================================
-
-def load_preference_labels(
-    user_id: str,
-) -> Dict[str, List[str]]:
-
-    preferences = (
-        get_user_preferences_detailed(
-            user_id=user_id,
-        )
-        or {}
-    )
-
-    return {
-        "companies": extract_preference_labels(
-            preferences=preferences,
-            preference_type="companies",
-        ),
-        "solutions": extract_preference_labels(
-            preferences=preferences,
-            preference_type="solutions",
-        ),
-        "topics": extract_preference_labels(
-            preferences=preferences,
-            preference_type="topics",
-        ),
-    }
 
 
 # ============================================================
@@ -202,32 +106,11 @@ def generate_and_save_user_profile(
         else ""
     )
 
-    preference_labels = (
-        load_preference_labels(
-            user_id=user_id,
-        )
-    )
-
-    companies = preference_labels[
-        "companies"
-    ]
-
-    solutions = preference_labels[
-        "solutions"
-    ]
-
-    topics = preference_labels[
-        "topics"
-    ]
-
     source_hash = build_profile_source_hash(
         profile_text=cleaned_profile_text,
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
     )
 
@@ -277,9 +160,6 @@ def generate_and_save_user_profile(
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
         model=model,
     )
