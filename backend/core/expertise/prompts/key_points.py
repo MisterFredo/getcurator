@@ -1,3 +1,5 @@
+import json
+
 from api.expertise.models import (
     Expertise,
 )
@@ -8,6 +10,84 @@ from .blocks import (
 
 
 # ============================================================
+# PROFILE CONTEXT
+# ============================================================
+
+def _build_profile_context(
+    expertise: Expertise,
+) -> str:
+
+    profile = expertise.profile
+
+    structured_profile = (
+        profile.structured_profile
+        if isinstance(
+            profile.structured_profile,
+            dict,
+        )
+        else {}
+    )
+
+    profile_context = {
+
+        "professional_profile":
+            profile.profile_text,
+
+        "geographies":
+            profile.geographies,
+
+        "professional_context":
+            structured_profile.get(
+                "professional_context",
+                {},
+            ),
+
+        "watch_instructions":
+            structured_profile.get(
+                "watch_instructions",
+                [],
+            ),
+
+        "decision_lenses":
+            structured_profile.get(
+                "decision_lenses",
+                [],
+            ),
+
+        "negative_preferences":
+            structured_profile.get(
+                "negative_preferences",
+                [],
+            ),
+
+    }
+
+    return json.dumps(
+        profile_context,
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
+# ============================================================
+# OUTPUT LANGUAGE
+# ============================================================
+
+def _get_output_language(
+    expertise: Expertise,
+) -> str:
+
+    if (
+        expertise.profile.language
+        == "fr"
+    ):
+
+        return "French"
+
+    return "English"
+
+
+# ============================================================
 # KEY POINTS PROMPT
 # ============================================================
 
@@ -15,144 +95,169 @@ def build_key_points_prompt(
     expertise: Expertise,
 ) -> str:
 
-    content_context = build_content_blocks(
-        expertise.contents
+    profile_context = (
+        _build_profile_context(
+            expertise
+        )
+    )
+
+    content_context = (
+        build_content_blocks(
+            expertise.contents
+        )
+    )
+
+    output_language = (
+        _get_output_language(
+            expertise
+        )
     )
 
     return f"""
-You are a senior business intelligence analyst.
+You are the GetCurator market intelligence editor.
 
-Your mission is to identify the few market developments that best explain what changed in the market during this period.
+Your mission is to identify the few developments that matter
+most to this specific professional during this period.
 
-The articles are evidence.
+The supplied contents are evidence.
+The professional profile determines the editorial angle.
 
-Your output is NOT about the articles.
 
-Your output is about the market.
-
---------------------------------------------------
+============================================================
 LANGUAGE
+============================================================
 
-Write the entire response in English.
+Write the entire response in {output_language}.
 
---------------------------------------------------
-OBJECTIVE
 
-Identify the structural market developments that together explain the current market narrative.
+============================================================
+PROFESSIONAL PROFILE
+============================================================
 
-The objective is not to summarize the news.
+{profile_context}
 
-The objective is to explain the major evolutions emerging from all the available evidence.
 
-Each development should be understandable on its own.
-
-Focus on:
-
-- structural shifts
-- recurring patterns
-- emerging trends
-- competitive dynamics
-- market evolution
-
-Ignore isolated events unless they reveal a broader market transformation.
-
---------------------------------------------------
+============================================================
 SELECTED CONTENT
+============================================================
 
 {content_context}
 
---------------------------------------------------
+
+============================================================
+OBJECTIVE
+============================================================
+
+Explain what materially changed within the user's monitoring
+perimeter.
+
+Do not summarise every article.
+
+Do not attempt to use every supplied content item.
+
+Combine contents only when they describe the same development.
+
+Keep a standalone event when it materially changes the user's
+operating environment, even if it is not yet a broad market
+trend.
+
+Select developments according to:
+
+- the user's exact responsibilities;
+- their strategic priorities;
+- their relevant markets;
+- their monitored business models;
+- their important metrics and outcomes;
+- the likely materiality of the development.
+
+A thematic match alone is not sufficient.
+
+
+============================================================
 TASK
+============================================================
 
-1. Read every content item.
-2. Group articles describing the same market evolution.
-3. Distinguish structural changes from isolated events.
-4. Identify the few developments that best explain the market.
-5. Rank them by strategic significance.
-6. Produce one development for each major market evolution.
+1. Identify the two to four most important developments.
+2. Rank them by relevance to this professional.
+3. State what changed, not what an article said.
+4. Include only information supported by the supplied content.
+5. Remove overlapping or repetitive developments.
+6. Omit weak developments rather than filling space.
 
---------------------------------------------------
+
+============================================================
 OUTPUT FORMAT
+============================================================
 
-For each Market Development, use EXACTLY the following structure.
+For each development, use exactly:
 
-A short title on its own line (maximum 12 words).
+A short standalone title of no more than 10 words.
 
-One concise paragraph (maximum 60 words) describing the market evolution.
+One paragraph of no more than 45 words explaining:
+
+- what changed;
+- the concrete market or business consequence.
+
+Separate developments with exactly:
 
 --------------------------------------------------
-
-Repeat the same structure for every Market Development.
-
-Separate each Market Development with exactly:
-
---------------------------------------------------
-
-The title is mandatory.
-
-Do not omit it.
-
-Do not merge the title with the paragraph.
 
 Do not use bullets.
-
 Do not use numbering.
-
 Do not use Markdown.
-
 Do not use bold.
+Do not add an introduction.
+Do not add a conclusion.
 
-Do not add introductions or conclusions.
 
---------------------------------------------------
-WRITING STYLE
+============================================================
+WRITING RULES
+============================================================
 
-Write like a senior market analyst briefing executives.
+Be direct, factual and specific.
 
-Be factual.
+Use short sentences.
 
-Be concise.
+Lead with the change.
 
-Be analytical.
+Prefer concrete mechanisms, consequences and measurable facts.
 
-Prefer formulations such as:
+Use companies only when they are necessary to understand the
+development.
 
-- Premiumization continues to accelerate...
-- Retail media is expanding into...
-- Consumer demand is shifting toward...
-- Distribution models are evolving...
-- Competitive pressure is increasing...
-- Investment is concentrating around...
+Do not mention article titles or publishers.
 
-Avoid formulations such as:
+Do not provide recommendations in this section.
 
-- Apple announced...
-- Google launched...
-- Company X introduced...
-- This article explains...
-- According to...
-- The report states...
+Do not write generic statements about innovation, disruption,
+competition or transformation.
 
---------------------------------------------------
-RULES
+Do not repeat the same idea using different words.
 
-- Maximum 5 developments.
-- Order them from most important to least important.
-- One market evolution only per development.
-- Merge related evidence.
-- Remove duplication.
-- Stay factual.
-- Do not speculate.
-- Do not recommend actions.
-- Do not explain strategic implications.
-- Do not mention article titles.
-- Do not mention publishers.
-- Mention companies only when they genuinely illustrate a broader market evolution.
-- Use only the provided content.
-- Every Market Development must have a clear standalone title.
-- Every paragraph must remain understandable when read independently.
+Avoid empty formulations such as:
 
---------------------------------------------------
+- This shift underscores...
+- This evolution highlights...
+- This transformation reshapes...
+- The market is rapidly evolving...
+- Companies must adapt...
+- It is increasingly important...
 
-The reader should finish with a clear understanding of the few market developments that define the current period.
+Every sentence must add a distinct piece of information.
+
+If only two developments are materially supported, return two.
+Never create an additional development merely to reach a target.
+
+
+============================================================
+FINAL CHECK
+============================================================
+
+Before responding, verify that:
+
+- every development is relevant to the supplied profile;
+- every development is supported by the supplied content;
+- no two developments make the same point;
+- no paragraph exceeds 45 words;
+- the response contains no filler.
 """.strip()
