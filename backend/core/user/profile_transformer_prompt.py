@@ -73,37 +73,35 @@ CORE PRINCIPLES
    - entity_id = null;
    - resolution_status = "PENDING".
 
-8. Explicit favourites are part of the user's watch perimeter,
-   even if they are not repeated in the free-form profile.
+8. An entity mentioned in the profile does not automatically mean
+   that every piece of content about that entity is strategically
+   important.
 
-9. A favourite does not automatically mean that every piece of
-   content about that entity is strategically important.
+9. Use watch instructions to describe what should be monitored.
 
-10. Use watch instructions to describe what should be monitored.
-
-11. Use decision lenses to describe why content may matter
+10. Use decision lenses to describe why content may matter
     to the user.
 
-12. Use negative preferences only when the user explicitly
+11. Use negative preferences only when the user explicitly
     expresses that some content is unwanted, irrelevant or
     low priority.
 
-13. Do not infer negative preferences from silence.
+12. Do not infer negative preferences from silence.
 
-14. Distinguish current priorities from future monitoring.
+13. Distinguish current priorities from future monitoring.
 
-15. If the profile provides a precise horizon such as "2027+",
+14. If the profile provides a precise horizon such as "2027+",
     preserve it in horizon_label.
 
-16. Return valid JSON only.
+15. Return valid JSON only.
 
-17. Do not include Markdown fences, comments or explanatory text.
+16. Do not include Markdown fences, comments or explanatory text.
 
-18. Include all fields required by the supplied JSON schema.
+17. Include all fields required by the supplied JSON schema.
 
-19. Use empty arrays instead of null for collection fields.
+18. Use empty arrays instead of null for collection fields.
 
-20. Generate the structured profile in the requested language,
+19. Generate the structured profile in the requested language,
     while preserving recognised company, platform, product,
     solution and metric names.
 """.strip()
