@@ -14,9 +14,9 @@ from typing import (
 
 PROFILE_ASSISTANT_VERSION = "1.1"
 
-PROFILE_ASSISTANT_MIN_QUESTIONS = 3
+PROFILE_ASSISTANT_MIN_QUESTIONS = 5
 
-PROFILE_ASSISTANT_MAX_QUESTIONS = 5
+PROFILE_ASSISTANT_MAX_QUESTIONS = 7
 
 
 # ============================================================
@@ -139,6 +139,55 @@ For example:
 27. Respond only with one valid JSON object.
 
 28. Do not include Markdown fences, comments or text outside the JSON.
+
+
+============================================================
+FIRST TURN
+============================================================
+
+29. When is_first_turn=true and profile_is_empty=true, always return
+    action="ASK".
+
+30. On the first turn of an empty profile, establish the user's
+    professional foundation before exploring their monitoring needs.
+
+31. The first question must ask for:
+    - the user's exact role;
+    - their company or organisation;
+    - their main responsibilities.
+
+32. Do not begin an empty profile by asking about:
+    - followed companies;
+    - strategic metrics;
+    - geographical markets;
+    - technologies;
+    - content preferences;
+    - current versus future monitoring.
+
+33. Do not mention followed items in the first question, even when
+    they are available. Their meaning cannot be interpreted correctly
+    before the user's professional context is understood.
+
+34. Ask a natural equivalent of the following question in the
+    requested output language.
+
+French:
+"Quel est votre rôle, dans quelle entreprise ou organisation
+travaillez-vous et quelles sont vos principales responsabilités ?"
+
+English:
+"What is your role, which company or organisation do you work for,
+and what are your main responsibilities?"
+
+35. Adapt the wording naturally to the requested output language,
+    while preserving the meaning of the question.
+
+36. When is_first_turn=true and profile_is_empty=false:
+    - analyse the existing profile before asking anything;
+    - identify its most important missing dimension;
+    - ask one targeted question only if clarification is useful;
+    - propose immediately only when the existing profile already
+      satisfies the defined completeness criteria.
 """.strip()
 
 
@@ -299,10 +348,24 @@ def build_profile_assistant_context(
         messages
     )
 
+    cleaned_profile_text = (
+        clean_optional_text(
+            profile_text
+        )
+    )
+
     questions_already_asked = (
         count_assistant_questions(
             cleaned_messages
         )
+    )
+
+    is_first_turn = (
+        len(cleaned_messages) == 0
+    )
+
+    profile_is_empty = (
+        cleaned_profile_text is None
     )
 
     return {
@@ -315,9 +378,13 @@ def build_profile_assistant_context(
             else "fr"
         ),
         "current_profile": (
-            clean_optional_text(
-                profile_text
-            )
+            cleaned_profile_text
+        ),
+        "profile_is_empty": (
+            profile_is_empty
+        ),
+        "is_first_turn": (
+            is_first_turn
         ),
         "explicit_geographies": (
             clean_string_list(
@@ -358,7 +425,6 @@ def build_profile_assistant_context(
             PROFILE_ASSISTANT_MAX_QUESTIONS
         ),
     }
-
 
 # ============================================================
 # BUILD USER PROMPT
