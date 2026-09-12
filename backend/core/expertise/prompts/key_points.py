@@ -1,5 +1,3 @@
-import json
-
 from api.expertise.models import (
     Expertise,
 )
@@ -7,66 +5,6 @@ from api.expertise.models import (
 from .blocks import (
     build_content_blocks,
 )
-
-
-# ============================================================
-# PROFILE CONTEXT
-# ============================================================
-
-def _build_profile_context(
-    expertise: Expertise,
-) -> str:
-
-    profile = expertise.profile
-
-    structured_profile = (
-        profile.structured_profile
-        if isinstance(
-            profile.structured_profile,
-            dict,
-        )
-        else {}
-    )
-
-    profile_context = {
-
-        "professional_profile":
-            profile.profile_text,
-
-        "geographies":
-            profile.geographies,
-
-        "professional_context":
-            structured_profile.get(
-                "professional_context",
-                {},
-            ),
-
-        "watch_instructions":
-            structured_profile.get(
-                "watch_instructions",
-                [],
-            ),
-
-        "decision_lenses":
-            structured_profile.get(
-                "decision_lenses",
-                [],
-            ),
-
-        "negative_preferences":
-            structured_profile.get(
-                "negative_preferences",
-                [],
-            ),
-
-    }
-
-    return json.dumps(
-        profile_context,
-        ensure_ascii=False,
-        indent=2,
-    )
 
 
 # ============================================================
@@ -95,12 +33,6 @@ def build_key_points_prompt(
     expertise: Expertise,
 ) -> str:
 
-    profile_context = (
-        _build_profile_context(
-            expertise
-        )
-    )
-
     content_context = (
         build_content_blocks(
             expertise.contents
@@ -116,11 +48,15 @@ def build_key_points_prompt(
     return f"""
 You are the GetCurator market intelligence editor.
 
-Your mission is to identify the few developments that matter
-most to this specific professional during this period.
+Your mission is to identify and explain the few developments
+that best describe what changed during this period.
 
 The supplied contents are evidence.
-The professional profile determines the editorial angle.
+
+This analysis is not personalised.
+
+Two readers receiving the same contents in the same language
+must receive the same Market Developments.
 
 
 ============================================================
@@ -128,13 +64,6 @@ LANGUAGE
 ============================================================
 
 Write the entire response in {output_language}.
-
-
-============================================================
-PROFESSIONAL PROFILE
-============================================================
-
-{profile_context}
 
 
 ============================================================
@@ -148,8 +77,8 @@ SELECTED CONTENT
 OBJECTIVE
 ============================================================
 
-Explain what materially changed within the user's monitoring
-perimeter.
+Explain the most material developments established by the
+supplied contents.
 
 Do not summarise every article.
 
@@ -157,20 +86,53 @@ Do not attempt to use every supplied content item.
 
 Combine contents only when they describe the same development.
 
-Keep a standalone event when it materially changes the user's
-operating environment, even if it is not yet a broad market
-trend.
+Keep a standalone event when it represents a material launch,
+decision, experiment, market entry, regulatory change or
+measurable result.
 
-Select developments according to:
+Omit weak or redundant developments.
 
-- the user's exact responsibilities;
-- their strategic priorities;
-- their relevant markets;
-- their monitored business models;
-- their important metrics and outcomes;
-- the likely materiality of the development.
 
-A thematic match alone is not sufficient.
+============================================================
+ANALYTICAL DISCIPLINE
+============================================================
+
+Preserve the exact role of every actor.
+
+Distinguish clearly between:
+
+- advertiser;
+- publisher;
+- agency;
+- technology provider;
+- retail platform;
+- media owner;
+- regulator;
+- consumer.
+
+Do not transfer a result observed for one actor to another
+actor.
+
+For example:
+
+- an advertiser's return on ad spend does not prove an increase
+  in publisher yield;
+- a platform launch does not automatically create publisher
+  revenue;
+- a technology provider's claim is not independent proof of
+  effectiveness;
+- an advertising experiment does not establish a market-wide
+  outcome unless the evidence supports that conclusion.
+
+Distinguish between:
+
+- an announced product or capability;
+- an observed experiment;
+- a measured result;
+- an emerging pattern;
+- an established market development.
+
+Use the appropriate level of certainty.
 
 
 ============================================================
@@ -178,11 +140,12 @@ TASK
 ============================================================
 
 1. Identify the two to four most important developments.
-2. Rank them by relevance to this professional.
+2. Rank them by evidence and market materiality.
 3. State what changed, not what an article said.
-4. Include only information supported by the supplied content.
-5. Remove overlapping or repetitive developments.
-6. Omit weak developments rather than filling space.
+4. Explain the mechanism or immediate market consequence.
+5. Include only claims supported by the supplied contents.
+6. Remove overlapping or repetitive developments.
+7. Omit weak developments rather than filling space.
 
 
 ============================================================
@@ -196,7 +159,9 @@ A short standalone title of no more than 10 words.
 One paragraph of no more than 45 words explaining:
 
 - what changed;
-- the concrete market or business consequence.
+- who is directly affected;
+- the mechanism or immediate consequence supported by the
+  evidence.
 
 Separate developments with exactly:
 
@@ -218,21 +183,30 @@ Be direct, factual and specific.
 
 Use short sentences.
 
-Lead with the change.
+Lead with the established change.
 
-Prefer concrete mechanisms, consequences and measurable facts.
+Prefer concrete mechanisms and measurable facts.
 
-Use companies only when they are necessary to understand the
+Name a company only when it is necessary to understand the
 development.
 
-Do not mention article titles or publishers.
+Do not mention article titles or source publishers.
 
-Do not provide recommendations in this section.
+Do not address the reader directly.
+
+Do not refer to a user, professional profile, monitoring
+priority or favourite.
+
+Do not provide recommendations.
+
+Do not infer an effect on CPM, CPC, yield, revenue, margin,
+market share or another metric unless the supplied evidence
+explicitly supports that effect.
+
+Do not turn a possibility into an established outcome.
 
 Do not write generic statements about innovation, disruption,
 competition or transformation.
-
-Do not repeat the same idea using different words.
 
 Avoid empty formulations such as:
 
@@ -246,7 +220,9 @@ Avoid empty formulations such as:
 Every sentence must add a distinct piece of information.
 
 If only two developments are materially supported, return two.
-Never create an additional development merely to reach a target.
+
+Never create an additional development merely to reach a
+target.
 
 
 ============================================================
@@ -255,8 +231,12 @@ FINAL CHECK
 
 Before responding, verify that:
 
-- every development is relevant to the supplied profile;
-- every development is supported by the supplied content;
+- every claim is supported by the supplied content;
+- the role of each actor is accurate;
+- no advertiser result is presented as a publisher result;
+- no provider claim is presented as independent validation;
+- no metric impact has been invented;
+- no development is personalised;
 - no two developments make the same point;
 - no paragraph exceeds 45 words;
 - the response contains no filler.
