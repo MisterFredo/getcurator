@@ -267,9 +267,10 @@ def run_profile_assistant(
             topics=topics,
             messages=normalized_messages,
             language=language,
+            account_context=account_context,
         )
     )
-
+    
     raw_content = run_llm_json(
         prompt=prompt,
         model=model,
