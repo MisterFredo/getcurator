@@ -60,7 +60,7 @@ FORBIDDEN_IMPLICATION_PATTERNS = [
     r"\bneed to invest\b",
     r"\bneed to prioritise\b",
     r"\bneed to prioritize\b",
-
+    r"\byou may need to\b",
     r"\bhighlights? (?:the )?need to\b",
     r"\bsuggests? (?:a )?need to\b",
     r"\brequires? you to\b",
