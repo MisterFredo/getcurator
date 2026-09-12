@@ -2,7 +2,6 @@ from pydantic import (
     BaseModel,
     EmailStr,
     Field,
-    root_validator,
     validator,
 )
 
@@ -283,25 +282,6 @@ class UserProfileAssistantPayload(
         max_items=12,
     )
 
-# =========================================================
-# PROFILE ASSISTANT RESULT
-# =========================================================
-
-class ProfileAssistantResult(
-    BaseModel,
-):
-
-    action: Literal[
-        "ASK",
-        "PROPOSE",
-    ]
-
-    message: str
-
-    proposed_profile_text: Optional[str] = None
-
-    profile_complete: bool = False
-
 
 # =========================================================
 # PROFILE REGENERATE
@@ -313,15 +293,3 @@ class UserProfileRegeneratePayload(
 
     user_id: Optional[str] = None
 
-
-# =========================================================
-# VALIDATE PROFILE PROPOSAL
-# =========================================================
-
-class ValidateUserProfileProposalPayload(
-    BaseModel,
-):
-
-    user_id: Optional[str] = None
-
-    session_id: str
