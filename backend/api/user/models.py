@@ -2,6 +2,7 @@ from pydantic import (
     BaseModel,
     EmailStr,
     Field,
+    root_validator,
     validator,
 )
 
@@ -261,12 +262,12 @@ class ProfileAssistantMessage(
     content: str = Field(
         ...,
         min_length=1,
-        max_length=10000,
+        max_length=5000,
     )
 
 
 # =========================================================
-# PROFILE ASSISTANT REQUEST
+# PROFILE ASSISTANT PAYLOAD
 # =========================================================
 
 class UserProfileAssistantPayload(
@@ -279,10 +280,8 @@ class UserProfileAssistantPayload(
         ProfileAssistantMessage
     ] = Field(
         default_factory=list,
+        max_items=12,
     )
-
-    restart: bool = False
-
 
 # =========================================================
 # PROFILE ASSISTANT RESULT
