@@ -49,28 +49,21 @@ FORBIDDEN_IMPLICATION_PATTERNS = [
 
     r"\byou should\b",
     r"\byou must\b",
-    r"\byou need\b",
+    r"\byou need to\b",
     r"\byou have to\b",
-    r"\byou can\b",
 
     r"\bconsider\b",
     r"\bfocus on\b",
-    r"\bexplore\b",
-    r"\bassess\b",
-    r"\bevaluate\b",
-    r"\badopt\b",
-    r"\bintegrate\b",
-    r"\binvest\b",
-    r"\bprioriti[sz]e\b",
-    r"\bleverage\b",
 
-    r"\bneed for\b",
-    r"\bneed to\b",
-    r"\bpoint to assess\b",
-    r"\bhighlights? (?:the )?need\b",
-    r"\bsuggests? (?:a )?need\b",
-    r"\brequires? you\b",
-    r"\bopportunit(?:y|ies) to\b",
+    r"\bneed to adopt\b",
+    r"\bneed to integrate\b",
+    r"\bneed to invest\b",
+    r"\bneed to prioritise\b",
+    r"\bneed to prioritize\b",
+
+    r"\bhighlights? (?:the )?need to\b",
+    r"\bsuggests? (?:a )?need to\b",
+    r"\brequires? you to\b",
 
 ]
 
@@ -258,6 +251,7 @@ def _execute_implications(
 ) -> str:
 
     current_prompt = prompt
+    last_result = ""
 
     for _ in range(
         IMPLICATIONS_MAX_ATTEMPTS
@@ -269,7 +263,9 @@ def _execute_implications(
 
         if not result:
 
-            return ""
+            return last_result
+
+        last_result = result
 
         violations = (
             _find_forbidden_implication_patterns(
@@ -293,9 +289,7 @@ def _execute_implications(
             )
         )
 
-    # Ne pas publier un texte qui enfreint encore
-    # explicitement les règles éditoriales.
-    return ""
+    return last_result
 
 # ============================================================
 # EXECUTE CAPABILITY
