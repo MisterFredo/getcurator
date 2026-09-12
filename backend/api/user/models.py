@@ -8,6 +8,7 @@ from pydantic import (
 from typing import (
     Optional,
     List,
+    Literal,
 )
 
 
@@ -243,6 +244,75 @@ class UserProfilePayload(
     geography_3: Optional[str] = None
 
     profile_text: Optional[str] = None
+
+# =========================================================
+# PROFILE ASSISTANT MESSAGE
+# =========================================================
+
+class ProfileAssistantMessage(
+    BaseModel,
+):
+
+    role: Literal[
+        "user",
+        "assistant",
+    ]
+
+    content: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+    )
+
+
+# =========================================================
+# PROFILE ASSISTANT REQUEST
+# =========================================================
+
+class UserProfileAssistantPayload(
+    BaseModel,
+):
+
+    user_id: Optional[str] = None
+
+    messages: List[
+        ProfileAssistantMessage
+    ] = Field(
+        default_factory=list,
+    )
+
+    restart: bool = False
+
+
+# =========================================================
+# PROFILE ASSISTANT RESULT
+# =========================================================
+
+class ProfileAssistantResult(
+    BaseModel,
+):
+
+    action: Literal[
+        "ASK",
+        "PROPOSE",
+    ]
+
+    message: str
+
+    proposed_profile_text: Optional[str] = None
+
+    profile_complete: bool = False
+
+
+# =========================================================
+# PROFILE REGENERATE
+# =========================================================
+
+class UserProfileRegeneratePayload(
+    BaseModel,
+):
+
+    user_id: Optional[str] = None
 
 
 # =========================================================
