@@ -190,6 +190,9 @@ def run_profile_assistant(
     messages: Optional[List[Any]] = None,
     language: str = "fr",
     model: Optional[str] = None,
+    account_context: Optional[
+        Dict[str, Any]
+    ] = None,
 ) -> AssistantServiceResult:
 
     if not user_id:
