@@ -24,6 +24,20 @@ type Profile = {
   profile_text?: string | null;
 };
 
+type AssistantMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type AssistantResponse = {
+  status: string;
+  assistant_version: string;
+  action: "ASK" | "PROPOSE";
+  message: string;
+  proposed_profile_text?: string | null;
+  profile_complete: boolean;
+};
+
 /* =========================================================
    PAGE
 ========================================================= */
@@ -55,9 +69,63 @@ export default function SettingsPage() {
   ] = useState("");
 
   const [
+    savedProfileText,
+    setSavedProfileText,
+  ] = useState("");
+
+  const [
+    profileSaving,
+    setProfileSaving,
+  ] = useState(false);
+
+  const [
     profileSaved,
     setProfileSaved,
   ] = useState(false);
+
+  const [
+    profileError,
+    setProfileError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    assistantOpen,
+    setAssistantOpen,
+  ] = useState(false);
+
+  const [
+    assistantLoading,
+    setAssistantLoading,
+  ] = useState(false);
+
+  const [
+    assistantMessages,
+    setAssistantMessages,
+  ] = useState<AssistantMessage[]>(
+    [],
+  );
+
+  const [
+    assistantInput,
+    setAssistantInput,
+  ] = useState("");
+
+  const [
+    assistantComplete,
+    setAssistantComplete,
+  ] = useState(false);
+
+  const [
+    assistantError,
+    setAssistantError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const profileHasChanges =
+    profileText !== savedProfileText;
 
   /* =====================================================
      LOAD
@@ -91,6 +159,9 @@ export default function SettingsPage() {
         const profile: Profile =
           profileRes?.profile || {};
 
+        const loadedProfileText =
+          profile.profile_text || "";
+
         setLanguage(
           user?.LANGUAGE || "fr",
         );
@@ -100,14 +171,18 @@ export default function SettingsPage() {
         );
 
         setProfileText(
-          profile.profile_text || "",
+          loadedProfileText,
         );
 
-      } catch (e) {
+        setSavedProfileText(
+          loadedProfileText,
+        );
+
+      } catch (error) {
 
         console.error(
           "settings load error",
-          e,
+          error,
         );
 
       } finally {
@@ -141,11 +216,11 @@ export default function SettingsPage() {
 
       setLanguage(value);
 
-    } catch (e) {
+    } catch (error) {
 
       console.error(
         "language update error",
-        e,
+        error,
       );
 
     }
@@ -173,19 +248,19 @@ export default function SettingsPage() {
       );
 
       setKeywords(
-        (prev) => [
-          ...prev,
+        current => [
+          ...current,
           value,
         ],
       );
 
       setKeywordInput("");
 
-    } catch (e) {
+    } catch (error) {
 
       console.error(
         "keyword add error",
-        e,
+        error,
       );
 
     }
@@ -208,18 +283,18 @@ export default function SettingsPage() {
       );
 
       setKeywords(
-        (prev) =>
-          prev.filter(
-            (k) =>
-              k !== keyword,
+        current =>
+          current.filter(
+            item =>
+              item !== keyword,
           ),
       );
 
-    } catch (e) {
+    } catch (error) {
 
       console.error(
         "keyword remove error",
-        e,
+        error,
       );
 
     }
@@ -232,30 +307,238 @@ export default function SettingsPage() {
 
   async function saveProfile() {
 
+    const cleanedProfile =
+      profileText.trim();
+
+    if (!cleanedProfile) {
+
+      setProfileError(
+        "Your professional profile cannot be empty.",
+      );
+
+      return;
+
+    }
+
     try {
+
+      setProfileSaving(true);
+      setProfileSaved(false);
+      setProfileError(null);
 
       await api.post(
         "/user/profile/update",
         {
           profile_text:
-            profileText || null,
+            cleanedProfile,
         },
       );
 
+      setProfileText(
+        cleanedProfile,
+      );
+
+      setSavedProfileText(
+        cleanedProfile,
+      );
+
       setProfileSaved(true);
+      setAssistantComplete(false);
 
       setTimeout(() => {
         setProfileSaved(false);
       }, 2000);
 
-    } catch (e) {
+    } catch (error) {
 
       console.error(
         "profile save error",
-        e,
+        error,
       );
 
+      setProfileError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save your profile.",
+      );
+
+    } finally {
+
+      setProfileSaving(false);
+
     }
+
+  }
+
+  /* =====================================================
+     PROFILE ASSISTANT REQUEST
+  ===================================================== */
+
+  async function callProfileAssistant(
+    messages: AssistantMessage[],
+  ) {
+
+    try {
+
+      setAssistantLoading(true);
+      setAssistantError(null);
+
+      const response:
+        AssistantResponse =
+        await api.post(
+          "/user/profile/assistant",
+          {
+            messages,
+          },
+        );
+
+      const assistantMessage:
+        AssistantMessage = {
+          role: "assistant",
+          content:
+            response.message,
+        };
+
+      setAssistantMessages([
+        ...messages,
+        assistantMessage,
+      ]);
+
+      if (
+        response.action === "PROPOSE"
+        && response.proposed_profile_text
+      ) {
+
+        setProfileText(
+          response.proposed_profile_text,
+        );
+
+        setAssistantComplete(true);
+
+      } else {
+
+        setAssistantComplete(false);
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        "profile assistant error",
+        error,
+      );
+
+      setAssistantError(
+        error instanceof Error
+          ? error.message
+          : (
+              "The profile assistant "
+              + "is currently unavailable."
+            ),
+      );
+
+    } finally {
+
+      setAssistantLoading(false);
+
+    }
+
+  }
+
+  /* =====================================================
+     START PROFILE ASSISTANT
+  ===================================================== */
+
+  async function startProfileAssistant() {
+
+    if (profileHasChanges) {
+
+      setAssistantError(
+        "Save or discard your current changes before starting the assistant.",
+      );
+
+      setAssistantOpen(true);
+
+      return;
+
+    }
+
+    setAssistantOpen(true);
+    setAssistantMessages([]);
+    setAssistantInput("");
+    setAssistantComplete(false);
+    setAssistantError(null);
+
+    await callProfileAssistant(
+      [],
+    );
+
+  }
+
+  /* =====================================================
+     SEND ASSISTANT ANSWER
+  ===================================================== */
+
+  async function sendAssistantAnswer() {
+
+    const answer =
+      assistantInput.trim();
+
+    if (
+      !answer
+      || assistantLoading
+      || assistantComplete
+    ) {
+
+      return;
+
+    }
+
+    const messages:
+      AssistantMessage[] = [
+        ...assistantMessages,
+        {
+          role: "user",
+          content: answer,
+        },
+      ];
+
+    setAssistantInput("");
+
+    await callProfileAssistant(
+      messages,
+    );
+
+  }
+
+  /* =====================================================
+     CLOSE PROFILE ASSISTANT
+  ===================================================== */
+
+  function closeProfileAssistant() {
+
+    setAssistantOpen(false);
+    setAssistantMessages([]);
+    setAssistantInput("");
+    setAssistantComplete(false);
+    setAssistantError(null);
+
+  }
+
+  /* =====================================================
+     DISCARD PROFILE CHANGES
+  ===================================================== */
+
+  function discardProfileChanges() {
+
+    setProfileText(
+      savedProfileText,
+    );
+
+    setProfileError(null);
+    setProfileSaved(false);
+
+    closeProfileAssistant();
 
   }
 
@@ -278,22 +561,22 @@ export default function SettingsPage() {
 
   }
 
- /* =====================================================
+  /* =====================================================
      RENDER
   ===================================================== */
-  
+
   return (
-  
+
     <div
       className="
         space-y-6
       "
     >
-  
-      {/* ===================================================
+
+      {/* =================================================
           EXPERTS
-      =================================================== */}
-  
+      ================================================= */}
+
       <section
         className="
           rounded-xl
@@ -303,15 +586,15 @@ export default function SettingsPage() {
           p-6
         "
       >
-  
+
         <UserExperts />
-  
+
       </section>
-  
-      {/* ===================================================
+
+      {/* =================================================
           FAVORITES + PROFILE
-      =================================================== */}
-  
+      ================================================= */}
+
       <div
         className="
           grid
@@ -320,11 +603,11 @@ export default function SettingsPage() {
           xl:grid-cols-[1.4fr_0.6fr]
         "
       >
-  
-        {/* =================================================
+
+        {/* ===============================================
             FAVORITES
-        ================================================= */}
-  
+        =============================================== */}
+
         <section
           className="
             rounded-xl
@@ -334,15 +617,15 @@ export default function SettingsPage() {
             p-6
           "
         >
-  
+
           <UserFavoritesSummary />
-  
+
         </section>
-  
-        {/* =================================================
+
+        {/* ===============================================
             PROFILE
-        ================================================= */}
-  
+        =============================================== */}
+
         <section
           className="
             rounded-xl
@@ -352,7 +635,7 @@ export default function SettingsPage() {
             p-6
           "
         >
-  
+
           <div
             className="
               flex
@@ -361,9 +644,9 @@ export default function SettingsPage() {
               gap-4
             "
           >
-  
+
             <div>
-  
+
               <h2
                 className="
                   text-base
@@ -373,7 +656,7 @@ export default function SettingsPage() {
               >
                 Your profile
               </h2>
-  
+
               <p
                 className="
                   mt-1
@@ -384,9 +667,9 @@ export default function SettingsPage() {
                 Used to personalize your
                 insights and digests.
               </p>
-  
+
             </div>
-  
+
             <button
               type="button"
               onClick={() =>
@@ -414,24 +697,24 @@ export default function SettingsPage() {
                 ? "Close"
                 : "Edit"}
             </button>
-  
+
           </div>
-  
+
           {!profileOpen ? (
-  
-            /* ===============================================
+
+            /* =============================================
                 PROFILE SUMMARY
-            =============================================== */
-  
+            ============================================= */
+
             <div
               className="
                 mt-6
                 space-y-5
               "
             >
-  
+
               <div>
-  
+
                 <div
                   className="
                     mb-2
@@ -444,7 +727,7 @@ export default function SettingsPage() {
                 >
                   Language
                 </div>
-  
+
                 <div
                   className="
                     inline-flex
@@ -460,11 +743,11 @@ export default function SettingsPage() {
                 >
                   {language}
                 </div>
-  
+
               </div>
-  
+
               <div>
-  
+
                 <div
                   className="
                     mb-2
@@ -477,9 +760,9 @@ export default function SettingsPage() {
                 >
                   Keywords
                 </div>
-  
+
                 {keywords.length > 0 ? (
-  
+
                   <div
                     className="
                       flex
@@ -487,14 +770,12 @@ export default function SettingsPage() {
                       gap-2
                     "
                   >
-  
+
                     {keywords.map(
                       keyword => (
-  
+
                         <span
-                          key={
-                            keyword
-                          }
+                          key={keyword}
                           className="
                             rounded-full
                             bg-gray-100
@@ -506,14 +787,14 @@ export default function SettingsPage() {
                         >
                           {keyword}
                         </span>
-  
+
                       ),
                     )}
-  
+
                   </div>
-  
+
                 ) : (
-  
+
                   <div
                     className="
                       text-sm
@@ -522,13 +803,13 @@ export default function SettingsPage() {
                   >
                     No keywords.
                   </div>
-  
+
                 )}
-  
+
               </div>
-  
+
               <div>
-  
+
                 <div
                   className="
                     mb-2
@@ -541,7 +822,7 @@ export default function SettingsPage() {
                 >
                   Professional profile
                 </div>
-  
+
                 <p
                   className="
                     line-clamp-5
@@ -552,30 +833,33 @@ export default function SettingsPage() {
                   "
                 >
                   {profileText
-                    || "No professional profile yet."}
+                    || (
+                      "No professional "
+                      + "profile yet."
+                    )}
                 </p>
-  
+
               </div>
-  
+
             </div>
-  
+
           ) : (
-  
-            /* ===============================================
+
+            /* =============================================
                 PROFILE EDITOR
-            =============================================== */
-  
+            ============================================= */
+
             <div
               className="
                 mt-6
                 space-y-6
               "
             >
-  
+
               {/* LANGUAGE */}
-  
+
               <div>
-  
+
                 <div
                   className="
                     mb-3
@@ -586,14 +870,14 @@ export default function SettingsPage() {
                 >
                   Language
                 </div>
-  
+
                 <div
                   className="
                     flex
                     gap-2
                   "
                 >
-  
+
                   <button
                     type="button"
                     onClick={() =>
@@ -605,29 +889,25 @@ export default function SettingsPage() {
                       px-3
                       py-1.5
                       text-sm
-  
+
                       ${
-  
                         language === "fr"
-  
                           ? `
                             border-emerald-600
                             bg-emerald-600
                             text-white
                           `
-  
                           : `
                             border-gray-200
                             bg-white
                             hover:bg-gray-50
                           `
-  
                       }
                     `}
                   >
                     FR
                   </button>
-  
+
                   <button
                     type="button"
                     onClick={() =>
@@ -639,37 +919,33 @@ export default function SettingsPage() {
                       px-3
                       py-1.5
                       text-sm
-  
+
                       ${
-  
                         language === "en"
-  
                           ? `
                             border-emerald-600
                             bg-emerald-600
                             text-white
                           `
-  
                           : `
                             border-gray-200
                             bg-white
                             hover:bg-gray-50
                           `
-  
                       }
                     `}
                   >
                     EN
                   </button>
-  
+
                 </div>
-  
+
               </div>
-  
+
               {/* KEYWORDS */}
-  
+
               <div>
-  
+
                 <div
                   className="
                     mb-3
@@ -680,35 +956,33 @@ export default function SettingsPage() {
                 >
                   Keywords
                 </div>
-  
+
                 <div
                   className="
                     flex
                     gap-2
                   "
                 >
-  
+
                   <input
-                    value={
-                      keywordInput
-                    }
+                    value={keywordInput}
                     onChange={event =>
                       setKeywordInput(
                         event.target.value,
                       )
                     }
                     onKeyDown={event => {
-  
+
                       if (
                         event.key === "Enter"
                       ) {
-  
+
                         event.preventDefault();
-  
+
                         addKeyword();
-  
+
                       }
-  
+
                     }}
                     placeholder="Add a keyword"
                     className="
@@ -724,12 +998,10 @@ export default function SettingsPage() {
                       focus:border-gray-400
                     "
                   />
-  
+
                   <button
                     type="button"
-                    onClick={
-                      addKeyword
-                    }
+                    onClick={addKeyword}
                     className="
                       rounded-lg
                       bg-emerald-600
@@ -740,11 +1012,11 @@ export default function SettingsPage() {
                   >
                     Add
                   </button>
-  
+
                 </div>
-  
+
                 {keywords.length > 0 && (
-  
+
                   <div
                     className="
                       mt-3
@@ -753,15 +1025,13 @@ export default function SettingsPage() {
                       gap-2
                     "
                   >
-  
+
                     {keywords.map(
                       keyword => (
-  
+
                         <button
                           type="button"
-                          key={
-                            keyword
-                          }
+                          key={keyword}
                           onClick={() =>
                             removeKeyword(
                               keyword,
@@ -780,42 +1050,98 @@ export default function SettingsPage() {
                         >
                           {keyword} ×
                         </button>
-  
+
                       ),
                     )}
-  
+
                   </div>
-  
+
                 )}
-  
+
               </div>
-  
+
               {/* PROFESSIONAL PROFILE */}
-  
+
               <div>
-  
+
                 <div
                   className="
-                    mb-3
-                    text-sm
-                    font-medium
-                    text-gray-900
+                    flex
+                    flex-wrap
+                    items-center
+                    justify-between
+                    gap-3
                   "
                 >
-                  Professional profile
+
+                  <div
+                    className="
+                      text-sm
+                      font-medium
+                      text-gray-900
+                    "
+                  >
+                    Professional profile
+                  </div>
+
+                  {!assistantOpen && (
+
+                    <button
+                      type="button"
+                      onClick={
+                        startProfileAssistant
+                      }
+                      className="
+                        rounded-lg
+                        border
+                        border-emerald-200
+                        bg-emerald-50
+                        px-3
+                        py-1.5
+                        text-xs
+                        font-medium
+                        text-emerald-700
+                        transition
+                        hover:border-emerald-300
+                        hover:bg-emerald-100
+                      "
+                    >
+                      Improve with AI
+                    </button>
+
+                  )}
+
                 </div>
-  
+
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    leading-5
+                    text-gray-500
+                  "
+                >
+                  Describe your responsibilities,
+                  priorities, markets and the
+                  business questions that matter
+                  to you.
+                </p>
+
                 <textarea
-                  value={
-                    profileText
-                  }
-                  onChange={event =>
+                  value={profileText}
+                  onChange={event => {
+
                     setProfileText(
                       event.target.value,
-                    )
-                  }
-                  rows={10}
+                    );
+
+                    setProfileSaved(false);
+                    setProfileError(null);
+
+                  }}
+                  rows={12}
                   className="
+                    mt-3
                     w-full
                     rounded-lg
                     border
@@ -826,44 +1152,433 @@ export default function SettingsPage() {
                     outline-none
                     focus:border-gray-400
                   "
-                  placeholder="
-                    Describe your role,
-                    expertise and strategic
-                    priorities.
-                  "
-                />
-  
-                <button
-                  type="button"
-                  onClick={
-                    saveProfile
+                  placeholder={
+                    "Describe your role, "
+                    + "expertise, markets and "
+                    + "strategic priorities."
                   }
+                />
+
+                {profileHasChanges && (
+
+                  <div
+                    className="
+                      mt-2
+                      text-xs
+                      text-amber-600
+                    "
+                  >
+                    You have unsaved changes.
+                  </div>
+
+                )}
+
+                {profileError && (
+
+                  <div
+                    className="
+                      mt-3
+                      rounded-lg
+                      border
+                      border-red-200
+                      bg-red-50
+                      px-3
+                      py-2
+                      text-xs
+                      leading-5
+                      text-red-700
+                    "
+                  >
+                    {profileError}
+                  </div>
+
+                )}
+
+                <div
                   className="
                     mt-3
-                    rounded-lg
-                    bg-emerald-600
-                    px-4
-                    py-2
-                    text-sm
-                    text-white
+                    flex
+                    flex-wrap
+                    gap-2
                   "
                 >
-                  {profileSaved
-                    ? "✓ Saved"
-                    : "Save profile"}
-                </button>
-  
+
+                  <button
+                    type="button"
+                    onClick={saveProfile}
+                    disabled={
+                      profileSaving
+                      || !profileText.trim()
+                      || !profileHasChanges
+                    }
+                    className="
+                      rounded-lg
+                      bg-emerald-600
+                      px-4
+                      py-2
+                      text-sm
+                      text-white
+                      transition
+                      hover:bg-emerald-700
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+                    {profileSaving
+                      ? "Saving..."
+                      : profileSaved
+                        ? "✓ Saved"
+                        : "Save profile"}
+                  </button>
+
+                  {profileHasChanges && (
+
+                    <button
+                      type="button"
+                      onClick={
+                        discardProfileChanges
+                      }
+                      disabled={profileSaving}
+                      className="
+                        rounded-lg
+                        border
+                        border-gray-200
+                        bg-white
+                        px-4
+                        py-2
+                        text-sm
+                        text-gray-600
+                        transition
+                        hover:bg-gray-50
+                        disabled:opacity-50
+                      "
+                    >
+                      Discard changes
+                    </button>
+
+                  )}
+
+                </div>
+
               </div>
-  
+
+              {/* PROFILE ASSISTANT */}
+
+              {assistantOpen && (
+
+                <div
+                  className="
+                    rounded-xl
+                    border
+                    border-emerald-200
+                    bg-emerald-50/50
+                    p-4
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-start
+                      justify-between
+                      gap-4
+                    "
+                  >
+
+                    <div>
+
+                      <div
+                        className="
+                          text-sm
+                          font-semibold
+                          text-gray-900
+                        "
+                      >
+                        Profile assistant
+                      </div>
+
+                      <p
+                        className="
+                          mt-1
+                          text-xs
+                          leading-5
+                          text-gray-500
+                        "
+                      >
+                        Answer a few questions to
+                        clarify what GetCurator
+                        should monitor for you.
+                      </p>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        closeProfileAssistant
+                      }
+                      disabled={assistantLoading}
+                      className="
+                        shrink-0
+                        text-xs
+                        font-medium
+                        text-gray-500
+                        hover:text-gray-900
+                        disabled:opacity-50
+                      "
+                    >
+                      Close
+                    </button>
+
+                  </div>
+
+                  <div
+                    className="
+                      mt-4
+                      max-h-80
+                      space-y-3
+                      overflow-y-auto
+                    "
+                  >
+
+                    {assistantMessages.map(
+                      (
+                        message,
+                        index,
+                      ) => (
+
+                        <div
+                          key={`${message.role}-${index}`}
+                          className={`
+                            flex
+
+                            ${
+                              message.role === "user"
+                                ? "justify-end"
+                                : "justify-start"
+                            }
+                          `}
+                        >
+
+                          <div
+                            className={`
+                              max-w-[90%]
+                              whitespace-pre-line
+                              rounded-xl
+                              px-3
+                              py-2
+                              text-sm
+                              leading-5
+
+                              ${
+                                message.role === "user"
+                                  ? `
+                                    bg-emerald-600
+                                    text-white
+                                  `
+                                  : `
+                                    border
+                                    border-gray-200
+                                    bg-white
+                                    text-gray-700
+                                  `
+                              }
+                            `}
+                          >
+                            {message.content}
+                          </div>
+
+                        </div>
+
+                      ),
+                    )}
+
+                    {assistantLoading && (
+
+                      <div
+                        className="
+                          flex
+                          justify-start
+                        "
+                      >
+
+                        <div
+                          className="
+                            rounded-xl
+                            border
+                            border-gray-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-gray-500
+                          "
+                        >
+                          Preparing the next step...
+                        </div>
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                  {assistantError && (
+
+                    <div
+                      className="
+                        mt-3
+                        rounded-lg
+                        border
+                        border-red-200
+                        bg-red-50
+                        px-3
+                        py-2
+                        text-xs
+                        leading-5
+                        text-red-700
+                      "
+                    >
+                      {assistantError}
+                    </div>
+
+                  )}
+
+                  {assistantComplete ? (
+
+                    <div
+                      className="
+                        mt-4
+                        rounded-lg
+                        border
+                        border-emerald-200
+                        bg-white
+                        p-3
+                      "
+                    >
+
+                      <div
+                        className="
+                          text-sm
+                          font-medium
+                          text-emerald-700
+                        "
+                      >
+                        Your profile proposal is ready.
+                      </div>
+
+                      <p
+                        className="
+                          mt-1
+                          text-xs
+                          leading-5
+                          text-gray-500
+                        "
+                      >
+                        It has been copied into the
+                        professional profile above.
+                        You can edit it before saving.
+                        Nothing is saved automatically.
+                      </p>
+
+                    </div>
+
+                  ) : (
+
+                    <div
+                      className="
+                        mt-4
+                        flex
+                        gap-2
+                      "
+                    >
+
+                      <textarea
+                        value={assistantInput}
+                        onChange={event =>
+                          setAssistantInput(
+                            event.target.value,
+                          )
+                        }
+                        onKeyDown={event => {
+
+                          if (
+                            event.key === "Enter"
+                            && !event.shiftKey
+                          ) {
+
+                            event.preventDefault();
+
+                            sendAssistantAnswer();
+
+                          }
+
+                        }}
+                        rows={3}
+                        disabled={assistantLoading}
+                        placeholder="Type your answer..."
+                        className="
+                          min-w-0
+                          flex-1
+                          resize-none
+                          rounded-lg
+                          border
+                          border-gray-200
+                          bg-white
+                          px-3
+                          py-2
+                          text-sm
+                          leading-5
+                          outline-none
+                          focus:border-emerald-500
+                          disabled:opacity-60
+                        "
+                      />
+
+                      <button
+                        type="button"
+                        onClick={
+                          sendAssistantAnswer
+                        }
+                        disabled={
+                          assistantLoading
+                          || !assistantInput.trim()
+                        }
+                        className="
+                          self-end
+                          rounded-lg
+                          bg-emerald-600
+                          px-4
+                          py-2
+                          text-sm
+                          text-white
+                          transition
+                          hover:bg-emerald-700
+                          disabled:cursor-not-allowed
+                          disabled:opacity-50
+                        "
+                      >
+                        Send
+                      </button>
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              )}
+
             </div>
-  
+
           )}
-  
+
         </section>
-  
+
       </div>
-  
+
     </div>
-  
+
   );
+
 }
