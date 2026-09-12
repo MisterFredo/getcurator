@@ -394,6 +394,9 @@ def build_profile_assistant_context(
     topics: Optional[List[str]] = None,
     messages: Optional[List[Dict[str, Any]]] = None,
     language: str = "fr",
+    account_context: Optional[
+        Dict[str, Any]
+    ] = None,
 ) -> Dict[str, Any]:
 
     cleaned_messages = clean_messages(
@@ -428,6 +431,12 @@ def build_profile_assistant_context(
                 "en",
             }
             else "fr"
+        ),
+
+        "account_context": (
+            clean_account_context(
+                account_context
+            )
         ),
         "current_profile": (
             cleaned_profile_text
@@ -492,6 +501,9 @@ def build_profile_assistant_user_prompt(
     topics: Optional[List[str]] = None,
     messages: Optional[List[Dict[str, Any]]] = None,
     language: str = "fr",
+    account_context: Optional[
+        Dict[str, Any]
+    ] = None,
 ) -> str:
 
     context = build_profile_assistant_context(
@@ -504,8 +516,8 @@ def build_profile_assistant_user_prompt(
         topics=topics,
         messages=messages,
         language=language,
+        account_context=account_context,
     )
-
     questions_already_asked = context[
         "questions_already_asked"
     ]
