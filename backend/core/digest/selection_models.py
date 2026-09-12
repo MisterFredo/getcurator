@@ -114,3 +114,21 @@ class DigestCandidateSelectionResult(
     ] = Field(
         default_factory=list,
     )
+
+# ============================================================
+# SELECTION OUTCOME
+# ============================================================
+
+class DigestSelectionOutcome(
+    StrictDigestSelectionModel,
+):
+
+    selection: DigestCandidateSelectionResult
+
+    selected_content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    used_fallback: bool = False
+
+    error: str | None = None
