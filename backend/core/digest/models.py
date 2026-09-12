@@ -113,7 +113,6 @@ class DigestCard(
 
     selection_priority: Literal[
         "MUST_HAVE",
-        "NICE_TO_HAVE",
         "IGNORE",
     ] | None = None
 
