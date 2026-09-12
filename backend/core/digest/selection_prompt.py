@@ -268,35 +268,41 @@ def build_digest_selection_user_prompt(
 
     payload = {
 
-        "selection_version":
-            DIGEST_SELECTION_VERSION,
-
         "output_language":
             profile.language,
 
         "selection_limit":
             selection_limit,
 
-        "profile": (
+        "profile":
             build_digest_selection_profile_payload(
-                profile=profile,
-            )
-        ),
+                profile
+            ),
 
-        "candidates": (
-            build_digest_candidates_payload(
-                candidates=candidates,
+        "candidates": [
+
+            candidate.model_dump(
+                mode="json",
             )
-        ),
+
+            for candidate in candidates
+
+        ],
 
     }
 
+    serialized_payload = json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+    )
+
     return (
-        "Evaluate every candidate contained in "
-        "the following JSON payload.\n\n"
-        + json.dumps(
-            payload,
-            ensure_ascii=False,
-            indent=2,
-        )
+        "Evaluate every supplied candidate "
+        "against this user profile.\n\n"
+        "The selection_limit is the maximum "
+        "number of non-ignored contents that "
+        "will be retained after your ranking.\n\n"
+        "INPUT:\n"
+        f"{serialized_payload}"
     )
