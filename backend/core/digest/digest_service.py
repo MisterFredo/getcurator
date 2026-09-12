@@ -1,4 +1,4 @@
-# backend/core/digest/digest_service.py
+import logging
 
 from datetime import (
     datetime,
@@ -64,6 +64,16 @@ from core.digest.digest_profile_service import (
     build_digest_profile,
 )
 
+
+# ============================================================
+# LOGGER
+# ============================================================
+
+logger = logging.getLogger(
+    __name__
+)
+
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -75,6 +85,7 @@ DIGEST_CAPABILITIES = [
 ]
 
 DEFAULT_DIGEST_LIMIT = 20
+
 RECENT_CONVERSATION_DIGEST_LIMIT = 3
 
 
@@ -106,7 +117,8 @@ def generate_digest(
     if campaign is None:
 
         raise ValueError(
-            f"Unknown campaign: {digest.campaign_id}"
+            f"Unknown campaign: "
+            f"{digest.campaign_id}"
         )
 
     # ========================================================
@@ -124,73 +136,167 @@ def generate_digest(
     try:
 
         # ====================================================
-        # BUILD PROFILE
+        # BUILD DISPLAY PROFILE
         # ====================================================
 
         profile = build_digest_profile(
             digest.user_id,
         )
 
-       # ====================================================
+        # ====================================================
         # BUILD CONTENT CANDIDATES
         # ====================================================
-        
+
         (
             candidate_profile,
             candidates,
         ) = build_digest_candidates(
-        
+
             user_id=digest.user_id,
-        
+
             period_start=(
                 campaign
                 .period_start
                 .isoformat()
             ),
-        
+
             period_end=(
                 campaign
                 .period_end
                 .isoformat()
             ),
-        
+
         )
-        
+
         # ====================================================
         # SELECT CONTENTS
         # ====================================================
-        
+
         selection_outcome = (
             select_digest_candidates(
-        
+
                 profile=candidate_profile,
-        
+
                 candidates=candidates,
-        
+
                 selection_limit=(
                     DEFAULT_DIGEST_LIMIT
                 ),
-        
+
             )
         )
-        
+
+        # ====================================================
+        # SELECTION OBSERVABILITY
+        # ====================================================
+
+        priority_counts = {
+            "MUST_HAVE": 0,
+            "NICE_TO_HAVE": 0,
+            "IGNORE": 0,
+        }
+
+        for decision in (
+            selection_outcome
+            .selection
+            .decisions
+        ):
+
+            priority_counts[
+                decision.priority
+            ] += 1
+
+        selected_ids = set(
+            selection_outcome
+            .selected_content_ids
+        )
+
+        selected_decisions = [
+
+            {
+                "content_id":
+                    decision.content_id,
+
+                "priority":
+                    decision.priority,
+
+                "score":
+                    decision.relevance_score,
+
+                "reason":
+                    decision.reason,
+
+            }
+
+            for decision in (
+                selection_outcome
+                .selection
+                .decisions
+            )
+
+            if (
+                decision.content_id
+                in selected_ids
+            )
+
+        ]
+
+        logger.info(
+
+            "DIGEST_SELECTION %s",
+
+            {
+                "digest_id":
+                    digest.id,
+
+                "user_id":
+                    digest.user_id,
+
+                "candidate_count":
+                    len(
+                        candidates
+                    ),
+
+                "selected_count":
+                    len(
+                        selection_outcome
+                        .selected_content_ids
+                    ),
+
+                "priority_counts":
+                    priority_counts,
+
+                "used_fallback":
+                    selection_outcome
+                    .used_fallback,
+
+                "fallback_error":
+                    selection_outcome
+                    .error,
+
+                "selected_decisions":
+                    selected_decisions,
+            },
+
+        )
+
         # ====================================================
         # LOAD SELECTED CONTENTS
         # ====================================================
-        
+
         expertise = (
             generate_expertise_from_contents(
-        
+
                 user_id=digest.user_id,
-        
+
                 content_ids=(
                     selection_outcome
                     .selected_content_ids
                 ),
-        
+
             )
         )
-        
+
         # ====================================================
         # DELIVERY
         # ====================================================
@@ -201,7 +307,9 @@ def generate_digest(
 
                 user_id=digest.user_id,
 
-                capabilities=DIGEST_CAPABILITIES,
+                capabilities=(
+                    DIGEST_CAPABILITIES
+                ),
 
                 expertise=expertise,
 
@@ -216,24 +324,33 @@ def generate_digest(
         digest.total_contents = len(
             candidates
         )
-        
+
         digest.analyzed_contents = len(
             expertise.contents
         )
 
         digest.knowledge = knowledge
 
-        digest.document = build_digest_document(
+        digest.document = (
+            build_digest_document(
 
-            profile=profile,
+                profile=profile,
 
-            knowledge=knowledge,
+                knowledge=knowledge,
 
-            period_start=campaign.period_start,
+                period_start=(
+                    campaign.period_start
+                ),
 
-            period_end=campaign.period_end,
-            audience=campaign.audience,
+                period_end=(
+                    campaign.period_end
+                ),
 
+                audience=(
+                    campaign.audience
+                ),
+
+            )
         )
 
         digest.status = "generated"
@@ -248,7 +365,16 @@ def generate_digest(
 
         digest.status = "failed"
 
-        digest.error = str(exc)
+        digest.error = str(
+            exc
+        )
+
+        logger.exception(
+            "DIGEST_GENERATION_FAILED "
+            "digest_id=%s user_id=%s",
+            digest.id,
+            digest.user_id,
+        )
 
         raise
 
@@ -283,6 +409,7 @@ def get_digest(
         )
 
     return digest
+
 
 # ============================================================
 # DELETE
@@ -329,7 +456,6 @@ def delete_digest(
         )
 
     return {
-
         "id":
             digest_id,
 
@@ -338,8 +464,8 @@ def delete_digest(
 
         "deleted":
             True,
-
     }
+
 
 # ============================================================
 # SEND
@@ -412,7 +538,16 @@ def send_digest(
 
         digest.status = "generated"
 
-        digest.error = str(exc)
+        digest.error = str(
+            exc
+        )
+
+        logger.exception(
+            "DIGEST_SEND_FAILED "
+            "digest_id=%s user_id=%s",
+            digest.id,
+            digest.user_id,
+        )
 
         raise
 
@@ -429,7 +564,7 @@ def send_digest(
 # LIST FOR PROFILE
 # ============================================================
 
-def list_digests_for_profile(
+defreit list_digests_for_profile(
     user_id: str,
 ) -> list[Digest]:
     """
@@ -439,6 +574,7 @@ def list_digests_for_profile(
     return fetch_digests_for_user(
         user_id,
     )
+
 
 # ============================================================
 # RECENT DOCUMENTS FOR CONVERSATION
@@ -454,8 +590,11 @@ def get_recent_digest_documents(
 
     return fetch_recent_digest_documents(
         user_id=user_id,
-        limit=RECENT_CONVERSATION_DIGEST_LIMIT,
+        limit=(
+            RECENT_CONVERSATION_DIGEST_LIMIT
+        ),
     )
+
 
 # ============================================================
 # HISTORY
@@ -473,6 +612,11 @@ def list_digest_history(
         profile_id,
     )
 
+
+# ============================================================
+# SEARCH
+# ============================================================
+
 def search_digests(
     query: str | None = None,
     user_id: str | None = None,
@@ -482,12 +626,19 @@ def search_digests(
 ) -> list[dict]:
 
     return search_digest_history(
+
         query=query,
+
         user_id=user_id,
+
         company_id=company_id,
+
         solution_id=solution_id,
+
         topic_id=topic_id,
+
     )
+
 
 # ============================================================
 # ADMIN DIGEST SEARCH
