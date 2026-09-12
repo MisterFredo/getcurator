@@ -16,6 +16,10 @@ from core.user.profile_models import (
     StructuredUserProfile,
 )
 
+from core.user.profile_entity_resolver import (
+    resolve_structured_profile_entities,
+)
+
 from core.user.profile_transformer_prompt import (
     PROFILE_SCHEMA_VERSION,
     PROFILE_TRANSFORMER_SYSTEM_PROMPT,
@@ -289,6 +293,13 @@ def transform_user_profile(
             )
         )
 
+        (
+            structured_profile,
+            resolution_warnings,
+        ) = resolve_structured_profile_entities(
+            structured_profile=structured_profile,
+        )
+
     except ValidationError as exc:
 
         return (
@@ -306,7 +317,9 @@ def transform_user_profile(
             str(exc),
         )
 
-    warnings: List[str] = []
+    warnings: List[str] = list(
+        resolution_warnings
+    )
 
     if not structured_profile.watch_instructions:
 
