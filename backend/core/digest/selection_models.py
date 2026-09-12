@@ -20,8 +20,7 @@ DigestCandidateSource = Literal[
 ]
 
 DigestCandidatePriority = Literal[
-    "MUST_HAVE",
-    "NICE_TO_HAVE",
+    "SELECT",
     "IGNORE",
 ]
 
