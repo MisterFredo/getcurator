@@ -35,7 +35,7 @@ DEFAULT_DIGEST_SELECTION_LIMIT = 20
 # ============================================================
 
 def _extract_json_object(
-    rawval: str,
+    raw_content: str,
 ) -> dict:
 
     content = (
@@ -79,11 +79,13 @@ def _extract_json_object(
                 "dans la réponse de sélection"
             )
 
+        extracted_content = content[
+            first_brace:
+            last_brace + 1
+        ]
+
         parsed = json.loads(
-            content[
-                first_brace:
-                last_brace + 1
-            ]
+            extracted_content
         )
 
     if not isinstance(
@@ -267,40 +269,38 @@ def _build_fallback_outcome(
     error: str,
 ) -> DigestSelectionOutcome:
 
-    decisions = []
+    retained_candidates = candidates[
+        :selection_limit
+    ]
 
-    selected_candidate_ids = {
+    retained_ids = {
 
         candidate.content_id
 
-        for candidate in candidates[
-            :selection_limit
-        ]
+        for candidate in retained_candidates
 
     }
 
-    total_candidates = len(
-        candidates
-    )
+    decisions = []
 
     for index, candidate in enumerate(
         candidates
     ):
 
-        selected = (
+        retained = (
             candidate.content_id
-            in selected_candidate_ids
+            in retained_ids
         )
 
         if language == "fr":
 
             reason = (
 
-                "Contenu conservé selon l'ordre "
+                "Contenu conservé selon l’ordre "
                 "de présélection après une erreur "
                 "du moteur de classement."
 
-                if selected
+                if retained
 
                 else
 
@@ -317,7 +317,7 @@ def _build_fallback_outcome(
                 "the preselection order after a "
                 "ranking engine error."
 
-                if selected
+                if retained
 
                 else
 
@@ -333,7 +333,7 @@ def _build_fallback_outcome(
                 69 - index,
             )
 
-            if selected
+            if retained
 
             else 0
 
@@ -349,7 +349,7 @@ def _build_fallback_outcome(
 
                 priority=(
                     "NICE_TO_HAVE"
-                    if selected
+                    if retained
                     else "IGNORE"
                 ),
 
@@ -381,19 +381,15 @@ def _build_fallback_outcome(
 
             candidate.content_id
 
-            for candidate in candidates[
-                :selection_limit
-            ]
+            for candidate in retained_candidates
 
         ],
 
         used_fallback=True,
 
-        error=(
-            error[
-                :2000
-            ]
-        ),
+        error=error[
+            :2000
+        ],
 
     )
 
@@ -441,25 +437,32 @@ def select_digest_candidates(
         prompt = (
             build_digest_selection_user_prompt(
 
-(
                 profile=profile,
+
                 candidates=candidates,
-                selection_limit=selection_limit,
+
+                selection_limit=(
+                    selection_limit
+                ),
+
             )
         )
 
-        raw
- 
-        serviced = run_llHealth_json(
+        raw_content = run_llm_json(
+
             prompt=prompt,
+
             model=model,
+
             temperature=0.1,
+
             system_prompt=(
                 DIGEST_SELECTION_SYSTEM_PROMPT
             ),
+
         )
 
-        parsed = _extract_jsonStateObject(
+        parsed = _extract_json_object(
             raw_content
         )
 
@@ -471,8 +474,11 @@ def select_digest_candidates(
         )
 
         _validate_decision_ids(
+
             candidates=candidates,
+
             selection=selection,
+
         )
 
         sorted_decisions = (
@@ -491,10 +497,13 @@ def select_digest_candidates(
 
         selected_content_ids = (
             _build_selected_content_ids(
+
                 selection=selection,
+
                 selection_limit=(
                     selection_limit
                 ),
+
             )
         )
 
