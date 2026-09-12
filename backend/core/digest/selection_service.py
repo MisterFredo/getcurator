@@ -532,11 +532,23 @@ def select_digest_candidates(
         _validate_decision_ids(
 
             candidates=candidates,
-
+        
             selection=selection,
-
+        
         )
-
+        
+        selection = (
+            _complete_missing_decisions(
+        
+                candidates=candidates,
+        
+                selection=selection,
+        
+                language=profile.language,
+        
+            )
+        )
+        
         sorted_decisions = (
             _sort_decisions(
                 selection.decisions
