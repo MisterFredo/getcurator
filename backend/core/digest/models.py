@@ -111,6 +111,20 @@ class DigestCard(
         default_factory=list,
     )
 
+    selection_priority: Literal[
+        "MUST_HAVE",
+        "NICE_TO_HAVE",
+        "IGNORE",
+    ] | None = None
+
+    selection_score: int | None = None
+
+    selection_reason: str | None = None
+
+    matched_priorities: list[str] = Field(
+        default_factory=list,
+    )
+
 
 # ============================================================
 # DIGEST SECTION
