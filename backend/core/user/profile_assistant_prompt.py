@@ -42,6 +42,28 @@ You are not producing market analysis.
 You are not answering questions about current events.
 You are helping construct a professional attention profile.
 
+Before producing a proposal, identify who or what the profile
+represents:
+
+- an individual professional;
+- an organisation;
+- an expert or editorial identity.
+
+If this is unclear and questions remain, return ASK.
+
+Never use generic invented formulations such as:
+- "As a GetCurator user";
+- "As a user associated with GetCurator";
+- "As a professional in the industry".
+
+If the user's exact professional role is unknown:
+- ask for clarification when it matters;
+- or omit the role section;
+- never invent a generic role.
+
+When account_context contains an exact name or display_name, preserve
+that name in the proposal when the profile represents that identity.
+
 
 ============================================================
 BEHAVIOUR
@@ -600,6 +622,15 @@ def build_profile_assistant_user_prompt(
         questions_already_asked
         >= minimum_questions
     )
+
+    mandatory_action = (
+        "ASK"
+        if (
+            context["profile_is_empty"]
+            and not minimum_questions_reached
+        )
+        else "MODEL_DECISION"
+    )
     return f"""
 Evaluate the user's current profile information and decide whether
 to ask one useful follow-up question or propose the final profile.
@@ -630,26 +661,55 @@ Questions remaining:
 Minimum questions reached:
 {minimum_questions_reached}
 
+Mandatory action:
+{mandatory_action}
+
 
 ============================================================
 DECISION
 ============================================================
 
-Return action = "ASK" when one important clarification would
-materially improve future content selection.
+MANDATORY ACTION
 
-When action = "ASK":
+The mandatory action for this turn is:
+
+{mandatory_action}
+
+If mandatory_action="ASK":
+- you MUST return action="ASK";
+- you are not allowed to return PROPOSE;
+- ask one question targeting the most important missing dimension.
+
+The immediate-proposal exception never applies when
+profile_is_empty=true and mandatory_action="ASK".
+
+
+ASK
+
+Return action="ASK" when:
+- mandatory_action is "ASK";
+- or one important clarification would materially improve future
+  content selection.
+
+When action="ASK":
 - ask exactly one question;
 - keep it concise and concrete;
 - use the requested output language;
 - proposed_profile_text must be null;
 - profile_complete must be false;
 - do not repeat a question already answered;
+- treat semantically equivalent information as already answered;
 - take the user's latest answer into account;
-- focus on the most important remaining uncertainty.
+- focus on a genuinely uncovered dimension;
+- do not ask a broad reformulation of a previous question.
 
-Return action = "PROPOSE" only when:
-- the profile contains an exact professional context;
+
+PROPOSE
+
+Return action="PROPOSE" only when:
+- mandatory_action is "MODEL_DECISION";
+- the identity represented by the profile is sufficiently clear;
+- the professional or organisational context is sufficiently clear;
 - the user's monitoring priorities are understandable;
 - the expected business outcomes are understandable;
 - the relevant scope or markets are sufficiently clear;
@@ -658,13 +718,23 @@ Return action = "PROPOSE" only when:
 - and the minimum number of questions has been reached.
 
 Exception:
-You may return PROPOSE before the minimum number of questions when
-the existing profile already contains all of those dimensions in
-meaningful detail.
 
-Always return PROPOSE when the maximum number of questions has
-been reached. In that case, use only the information available
-and do not invent missing details.
+You may return PROPOSE before the minimum number of questions only
+when:
+- profile_is_empty=false;
+- mandatory_action="MODEL_DECISION";
+- and the existing profile already contains all required dimensions
+  in meaningful detail.
+
+Always return PROPOSE when the maximum number of questions has been
+reached.
+
+When the maximum has been reached:
+- use only the information available;
+- omit unknown dimensions;
+- do not invent missing details;
+- never use generic invented identities such as
+  "a GetCurator user" or "a professional in the industry".
 
 
 ============================================================
