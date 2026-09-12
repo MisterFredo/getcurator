@@ -28,6 +28,7 @@ from utils.llm import (
 # ============================================================
 
 DEFAULT_DIGEST_SELECTION_LIMIT = 20
+DEFAULT_DIGEST_SELECTION_THRESHOLD = 60
 
 
 # ============================================================
@@ -110,9 +111,8 @@ def _priority_order(
 ) -> int:
 
     priorities = {
-        "MUST_HAVE": 0,
-        "NICE_TO_HAVE": 1,
-        "IGNORE": 2,
+        "SELECT": 0,
+        "IGNORE": 1,
     }
 
     return priorities.get(
@@ -286,13 +286,21 @@ def _complete_missing_decisions(
 def _build_selected_content_ids(
     selection: DigestCandidateSelectionResult,
     selection_limit: int,
+    selection_threshold: int,
 ) -> list[str]:
 
     selected_ids = []
 
     for decision in selection.decisions:
 
-        if decision.priority == "IGNORE":
+        if decision.priority != "SELECT":
+
+            continue
+
+        if (
+            decision.relevance_score
+            < selection_threshold
+        ):
 
             continue
 
@@ -385,7 +393,7 @@ def _build_fallback_outcome(
         relevance_score = (
 
             max(
-                25,
+                DEFAULT_DIGEST_SELECTION_THRESHOLD,
                 69 - index,
             )
 
@@ -404,7 +412,7 @@ def _build_fallback_outcome(
                 ),
 
                 priority=(
-                    "NICE_TO_HAVE"
+                    "SELECT"
                     if retained
                     else "IGNORE"
                 ),
@@ -570,6 +578,10 @@ def select_digest_candidates(
 
                 selection_limit=(
                     selection_limit
+                ),
+
+                selection_threshold=(
+                    DEFAULT_DIGEST_SELECTION_THRESHOLD
                 ),
 
             )
