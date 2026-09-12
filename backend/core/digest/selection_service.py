@@ -1,4 +1,5 @@
 import json
+import re
 
 from typing import Optional
 
@@ -261,6 +262,8 @@ def _complete_missing_decisions(
                     candidate.content_id
                 ),
 
+                event_key=None,
+
                 priority="IGNORE",
 
                 relevance_score=0,
@@ -276,6 +279,133 @@ def _complete_missing_decisions(
     return DigestCandidateSelectionResult(
 
         decisions=completed_decisions,
+
+    )
+
+
+# ============================================================
+# NORMALIZE EVENT KEY
+# ============================================================
+
+def _normalize_event_key(
+    event_key: str | None,
+) -> str:
+
+    if not isinstance(
+        event_key,
+        str,
+    ):
+
+        return ""
+
+    normalized = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        event_key.lower(),
+    )
+
+    return normalized.strip(
+        "-"
+    )
+
+
+# ============================================================
+# DEDUPLICATE SELECTED EVENTS
+# ============================================================
+
+def _deduplicate_selected_events(
+    selection: DigestCandidateSelectionResult,
+    language: str,
+) -> DigestCandidateSelectionResult:
+
+    retained_event_ids: dict[
+        str,
+        str,
+    ] = {}
+
+    decisions = []
+
+    for decision in selection.decisions:
+
+        event_key = _normalize_event_key(
+            decision.event_key
+        )
+
+        if (
+            decision.priority != "SELECT"
+            or not event_key
+        ):
+
+            decisions.append(
+                decision
+            )
+
+            continue
+
+        retained_content_id = (
+            retained_event_ids.get(
+                event_key
+            )
+        )
+
+        if not retained_content_id:
+
+            retained_event_ids[
+                event_key
+            ] = decision.content_id
+
+            decisions.append(
+                decision
+            )
+
+            continue
+
+        if language == "fr":
+
+            reason = (
+                "Doublon de l’événement déjà "
+                "couvert par le contenu "
+                f"{retained_content_id}."
+            )
+
+        else:
+
+            reason = (
+                "Duplicate of the event already "
+                "covered by content "
+                f"{retained_content_id}."
+            )
+
+        decisions.append(
+
+            decision.model_copy(
+
+                update={
+
+                    "priority":
+                        "IGNORE",
+
+                    "relevance_score":
+                        min(
+                            decision.relevance_score,
+                            24,
+                        ),
+
+                    "reason":
+                        reason,
+
+                    "matched_priorities":
+                        [],
+
+                },
+
+            )
+
+        )
+
+    return DigestCandidateSelectionResult(
+
+        decisions=decisions,
 
     )
 
@@ -410,6 +540,8 @@ def _build_fallback_outcome(
                 content_id=(
                     candidate.content_id
                 ),
+
+                event_key=None,
 
                 priority=(
                     "SELECT"
@@ -567,6 +699,26 @@ def select_digest_candidates(
             DigestCandidateSelectionResult(
 
                 decisions=sorted_decisions,
+
+            )
+        )
+
+        selection = (
+            _deduplicate_selected_events(
+
+                selection=selection,
+
+                language=profile.language,
+
+            )
+        )
+
+        selection = (
+            DigestCandidateSelectionResult(
+
+                decisions=_sort_decisions(
+                    selection.decisions
+                ),
 
             )
         )
