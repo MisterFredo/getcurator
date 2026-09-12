@@ -52,9 +52,6 @@ def build_profile_source_hash(
     geography_1: Optional[str] = None,
     geography_2: Optional[str] = None,
     geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
     language: str = "fr",
 ) -> str:
 
@@ -63,9 +60,6 @@ def build_profile_source_hash(
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
     )
 
@@ -165,30 +159,16 @@ def extract_json_object(
 
 def validate_profile_source(
     profile_text: Optional[str],
-    companies: Optional[List[str]],
-    solutions: Optional[List[str]],
-    topics: Optional[List[str]],
 ) -> Optional[str]:
 
-    has_profile_text = bool(
+    if not (
         profile_text
         and profile_text.strip()
-    )
-
-    has_favourites = bool(
-        companies
-        or solutions
-        or topics
-    )
-
-    if (
-        not has_profile_text
-        and not has_favourites
     ):
 
         return (
-            "Impossible de structurer un profil vide : "
-            "aucun texte ni favori disponible"
+            "Impossible de structurer "
+            "un profil vide"
         )
 
     return None
@@ -203,18 +183,12 @@ def transform_user_profile(
     geography_1: Optional[str] = None,
     geography_2: Optional[str] = None,
     geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
     language: str = "fr",
     model: Optional[str] = None,
 ) -> TransformResult:
 
     source_error = validate_profile_source(
         profile_text=profile_text,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
     )
 
     if source_error:
@@ -229,9 +203,6 @@ def transform_user_profile(
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
     )
 
@@ -240,9 +211,6 @@ def transform_user_profile(
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
         language=language,
     )
 
