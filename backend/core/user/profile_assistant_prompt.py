@@ -14,7 +14,11 @@ from typing import (
 
 PROFILE_ASSISTANT_VERSION = "1.1"
 
-PROFILE_ASSISTANT_MIN_QUESTIONS = 5
+PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY = 5
+
+PROFILE_ASSISTANT_MIN_QUESTIONS_CONTEXTUAL = 3
+
+PROFILE_ASSISTANT_MIN_QUESTIONS_EXISTING = 2
 
 PROFILE_ASSISTANT_MAX_QUESTIONS = 7
 
@@ -423,6 +427,47 @@ def build_profile_assistant_context(
         cleaned_profile_text is None
     )
 
+    cleaned_account = (
+        clean_account_context(
+            account_context
+        )
+    )
+    
+    has_account_context = any(
+        [
+            cleaned_account.get(
+                "name"
+            ),
+            cleaned_account.get(
+                "display_name"
+            ),
+            cleaned_account.get(
+                "company"
+            ),
+            cleaned_account.get(
+                "description"
+            ),
+        ]
+    )
+
+    if not profile_is_empty:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_EXISTING
+        )
+    
+    elif has_account_context:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_CONTEXTUAL
+        )
+    
+    else:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY
+        )
+
     return {
         "output_language": (
             language
@@ -434,9 +479,7 @@ def build_profile_assistant_context(
         ),
 
         "account_context": (
-            clean_account_context(
-                account_context
-            )
+            cleaned_account
         ),
         "current_profile": (
             cleaned_profile_text
@@ -479,8 +522,8 @@ def build_profile_assistant_context(
         "questions_already_asked": (
             questions_already_asked
         ),
-        "minimum_questions": (
-            PROFILE_ASSISTANT_MIN_QUESTIONS
+       "minimum_questions": (
+            minimum_questions
         ),
         "maximum_questions": (
             PROFILE_ASSISTANT_MAX_QUESTIONS
@@ -530,11 +573,14 @@ def build_profile_assistant_user_prompt(
         ),
     )
 
+    minimum_questions = context[
+        "minimum_questions"
+    ]
+    
     minimum_questions_reached = (
         questions_already_asked
-        >= PROFILE_ASSISTANT_MIN_QUESTIONS
+        >= minimum_questions
     )
-
     return f"""
 Evaluate the user's current profile information and decide whether
 to ask one useful follow-up question or propose the final profile.
@@ -555,6 +601,9 @@ CONVERSATION PROGRESS
 
 Questions already asked:
 {questions_already_asked}
+
+Minimum questions for this profile:
+{minimum_questions}
 
 Questions remaining:
 {questions_remaining}
