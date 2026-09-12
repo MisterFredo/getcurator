@@ -35,6 +35,10 @@ DISPLAY_TITLES = {
     "Strategic Implications":
         "What This Means for You",
 
+    "Selected for You":
+        "Selected for You",
+
+    # Compatibilité avec les anciens Digests
     "Articles":
         "Supporting Articles",
 
