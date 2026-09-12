@@ -88,7 +88,7 @@ def get_user_profile(
         LIMIT 1
         """,
         {
-            "user_id_id": user_id,
+            "user_id": user_id,
         },
     )
 
@@ -300,7 +300,7 @@ def save_validated_user_profile(
         USING (
             SELECT
                 @user_id AS ID_USER,
-                @geography__COPY_1 AS GEOGRAPHY_1,
+                @geography_1 AS GEOGRAPHY_1,
                 @geography_2 AS GEOGRAPHY_2,
                 @geography_3 AS GEOGRAPHY_3,
                 @profile_text AS PROFILE_TEXT,
@@ -356,7 +356,7 @@ def save_validated_user_profile(
                 ID_USER,
                 GEOGRAPHY_1,
                 GEOGRAPHY_2,
-                GEOGRAPHY_3TITLE_3,
+                GEOGRAPHY_3,
                 PROFILE_TEXT,
                 PROFILE_STRUCTURED_JSON,
                 PROFILE_SOURCE_HASH,
