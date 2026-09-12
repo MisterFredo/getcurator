@@ -458,7 +458,7 @@ def profile_assistant(
                 "display_name": user.get(
                     "DISPLAY_NAME"
                 ),
-                " Continua: "company": user.get(
+                "company": user.get(
                     "COMPANY"
                 ),
                 "description": user.get(
