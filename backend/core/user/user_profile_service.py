@@ -288,9 +288,7 @@ def save_validated_user_profile(
     structured_json = (
         transformer_result
         .structured_profile
-        .json(
-            ensure_ascii=False,
-        )
+        .model_dump_json()
     )
 
     query_bq(
