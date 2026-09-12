@@ -26,8 +26,16 @@ from core.digest.document_service import (
     build_digest_document,
 )
 
+from core.digest.candidate_service import (
+    build_digest_candidates,
+)
+
+from core.digest.selection_service import (
+    select_digest_candidates,
+)
+
 from core.expertise.service import (
-    generate_expertise_from_profile,
+    generate_expertise_from_contents,
 )
 
 from core.delivery.models import (
@@ -123,21 +131,65 @@ def generate_digest(
             digest.user_id,
         )
 
+       # ====================================================
+        # BUILD CONTENT CANDIDATES
         # ====================================================
-        # BUILD EXPERTISE
-        # ====================================================
-
-        expertise = generate_expertise_from_profile(
-
+        
+        (
+            candidate_profile,
+            candidates,
+        ) = build_digest_candidates(
+        
             user_id=digest.user_id,
         
-            period_start=campaign.period_start.isoformat(),
+            period_start=(
+                campaign
+                .period_start
+                .isoformat()
+            ),
         
-            period_end=campaign.period_end.isoformat(),
+            period_end=(
+                campaign
+                .period_end
+                .isoformat()
+            ),
         
-            limit=DEFAULT_DIGEST_LIMIT,
+        )
         
-            include_keywords=False,
+        # ====================================================
+        # SELECT CONTENTS
+        # ====================================================
+        
+        selection_outcome = (
+            select_digest_candidates(
+        
+                profile=candidate_profile,
+        
+                candidates=candidates,
+        
+                selection_limit=(
+                    DEFAULT_DIGEST_LIMIT
+                ),
+        
+            )
+        )
+        
+        # ====================================================
+        # LOAD SELECTED CONTENTS
+        # ====================================================
+        
+        expertise = (
+            generate_expertise_from_contents(
+        
+                user_id=digest.user_id,
+        
+                content_ids=(
+                    selection_outcome
+                    .selected_content_ids
+                ),
+        
+            )
+        )
         
         )
         # ====================================================
@@ -162,10 +214,12 @@ def generate_digest(
         # BUILD DOCUMENT
         # ====================================================
 
-        digest.total_contents = expertise.count
-
+        digest.total_contents = len(
+            candidates
+        )
+        
         digest.analyzed_contents = len(
-            expertise.contents,
+            expertise.contents
         )
 
         digest.knowledge = knowledge
