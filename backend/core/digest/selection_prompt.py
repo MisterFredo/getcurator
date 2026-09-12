@@ -207,6 +207,50 @@ Use this calibration:
 
 The priority and relevance_score must be consistent.
 
+============================================================
+EVENT DEDUPLICATION
+============================================================
+
+Deduplicate candidates before assigning their final priority.
+
+Several candidates may describe the same underlying event even
+when:
+
+- their titles are different;
+- they come from different publishers;
+- they are written in different languages;
+- their excerpts emphasize different details;
+- they were published on different days.
+
+Candidates describe the same event when they concern the same
+actor, action, announcement, transaction, partnership, legal
+case, launch, study or business development.
+
+For one underlying event:
+
+1. select no more than one candidate;
+2. retain the candidate containing the clearest, most complete
+   and most decision-useful information;
+3. assign IGNORE to every redundant candidate;
+4. give each redundant candidate a relevance_score between
+   0 and 24;
+5. state in its reason that it duplicates the retained
+   content_id.
+
+Do not retain several articles merely because the event itself
+is highly relevant.
+
+Relevance determines whether the event is selected.
+
+It does not justify selecting several reports of the same event.
+
+Keep more than one candidate only when each candidate contains
+a materially different development or consequence that can be
+understood independently.
+
+Before returning the response, verify that no two SELECT
+decisions describe the same underlying event.
+
 
 ============================================================
 SELECTION SIZE
