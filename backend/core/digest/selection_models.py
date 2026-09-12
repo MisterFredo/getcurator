@@ -85,6 +85,8 @@ class DigestContentDecision(
 
     content_id: str
 
+    event_key: str | None = None
+
     priority: DigestCandidatePriority
 
     relevance_score: int = Field(
