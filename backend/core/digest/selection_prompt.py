@@ -279,6 +279,29 @@ Several contents about the same topic may be selected only when
 they provide clearly different mechanisms, results or
 consequences.
 
+Assign an event_key to every decision.
+
+The event_key must identify the underlying event, not the
+article.
+
+Build it from the principal actor, action and object.
+
+Use lowercase words separated by hyphens.
+
+Candidates describing the same underlying event must receive
+exactly the same event_key, regardless of source, language,
+headline or publication date.
+
+Example:
+
+amazon-ftc-ad-auction-lawsuit
+
+Only the highest-scoring candidate for one event_key may have
+priority SELECT.
+
+Every other candidate with the same event_key must have
+priority IGNORE.
+
 
 ============================================================
 DECISIONS
@@ -321,6 +344,7 @@ Return only one valid JSON object with this exact structure:
   "decisions": [
     {
       "content_id": "exact supplied identifier",
+      "event_key": "canonical-event-identifier",
       "priority": "SELECT | IGNORE",
       "relevance_score": 0,
       "reason": "Concise user-specific explanation",
