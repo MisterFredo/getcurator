@@ -170,9 +170,6 @@ def build_profile_source_payload(
     geography_1: Optional[str] = None,
     geography_2: Optional[str] = None,
     geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
     language: str = "fr",
 ) -> Dict[str, Any]:
 
@@ -197,17 +194,6 @@ def build_profile_source_payload(
             or ""
         ),
         "explicit_geographies": geographies,
-        "explicit_favourites": {
-            "companies": _clean_string_list(
-                companies
-            ),
-            "solutions": _clean_string_list(
-                solutions
-            ),
-            "topics": _clean_string_list(
-                topics
-            ),
-        },
     }
 
 
