@@ -564,7 +564,7 @@ def send_digest(
 # LIST FOR PROFILE
 # ============================================================
 
-defreit list_digests_for_profile(
+def list_digests_for_profile(
     user_id: str,
 ) -> list[Digest]:
     """
