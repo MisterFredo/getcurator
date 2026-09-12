@@ -221,23 +221,47 @@ def clean_account_context(
     ],
 ) -> Dict[str, Optional[str]]:
 
-    if not account_context:
-
-        return {
-            "name": None,
-            "display_name": None,
-            "company": None,
-            "description": None,
-            "profile_type": None,
-            "role": None,
-        }
+    source = (
+        account_context
+        if isinstance(
+            account_context,
+            dict,
+        )
+        else {}
+    )
 
     return {
         "name": clean_optional_text(
-            account_context.get(
-                ":
+            source.get(
                 "name"
-            ) ?? no. Need produce correct. Let's be cautious, no corrupted artifacts. 
+            )
+        ),
+        "display_name": clean_optional_text(
+            source.get(
+                "display_name"
+            )
+        ),
+        "company": clean_optional_text(
+            source.get(
+                "company"
+            )
+        ),
+        "description": clean_optional_text(
+            source.get(
+                "description"
+            )
+        ),
+        "profile_type": clean_optional_text(
+            source.get(
+                "profile_type"
+            )
+        ),
+        "role": clean_optional_text(
+            source.get(
+                "role"
+            )
+        ),
+    }
 
 
 def clean_string_list(
