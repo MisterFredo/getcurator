@@ -216,7 +216,7 @@ def generate_and_save_user_profile(
             "structured_profile": (
                 transformer_result
                 .structured_profile
-                .dict()
+                .model_dump()
             ),
             "source_hash": (
                 transformer_result
