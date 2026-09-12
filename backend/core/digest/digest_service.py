@@ -195,8 +195,7 @@ def generate_digest(
         # ====================================================
 
         priority_counts = {
-            "MUST_HAVE": 0,
-            "NICE_TO_HAVE": 0,
+            "SELECT": 0,
             "IGNORE": 0,
         }
 
@@ -208,7 +207,13 @@ def generate_digest(
 
             priority_counts[
                 decision.priority
-            ] += 1
+            ] = (
+                priority_counts.get(
+                    decision.priority,
+                    0,
+                )
+                + 1
+            )
 
         selected_ids = set(
             selection_outcome
@@ -302,64 +307,6 @@ def generate_digest(
         )
 
         # ====================================================
-        # BUILD ANALYSIS EXPERTISE
-        # ====================================================
-
-        must_have_ids = {
-
-            decision.content_id
-
-            for decision in (
-                selection_outcome
-                .selection
-                .decisions
-            )
-
-            if (
-                decision.priority
-                == "MUST_HAVE"
-
-                and decision.content_id
-                in selection_outcome.selected_content_ids
-            )
-
-        }
-
-        analysis_contents = [
-
-            content
-
-            for content in expertise.contents
-
-            if content.id in must_have_ids
-
-        ]
-
-        if not analysis_contents:
-
-            analysis_contents = list(
-                expertise.contents
-            )
-
-        analysis_expertise = (
-            expertise.model_copy(
-
-                update={
-
-                    "contents":
-                        analysis_contents,
-
-                    "count":
-                        len(
-                            analysis_contents
-                        ),
-
-                },
-
-            )
-        )
-
-        # ====================================================
         # DELIVERY
         # ====================================================
 
@@ -373,15 +320,11 @@ def generate_digest(
                     DIGEST_CAPABILITIES
                 ),
 
-                expertise=analysis_expertise,
+                expertise=expertise,
 
             )
 
         )
-
-        # Keep every selected content in the persisted
-        # KnowledgeResult and in the Digest article sections.
-        knowledge.expertise = expertise
 
         # ====================================================
         # STORE SELECTION METADATA
@@ -438,7 +381,7 @@ def generate_digest(
         )
 
         digest.analyzed_contents = len(
-            analysis_expertise.contents
+            expertise.contents
         )
 
         digest.knowledge = knowledge
