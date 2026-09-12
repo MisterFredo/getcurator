@@ -256,7 +256,7 @@ def transform_user_profile(
 
         structured_profile = (
             StructuredUserProfile
-            .parse_obj(
+            .model_validate(
                 parsed_content
             )
         )
