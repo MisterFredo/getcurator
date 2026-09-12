@@ -51,6 +51,25 @@ BEHAVIOUR
    assistant conversation before deciding what to do.
 
 2. Never ask for information that has already been supplied.
+Treat information as already supplied when it is semantically covered,
+even if the user used different wording.
+
+Do not ask a broad reformulation of a previous question.
+
+For example, if the user has already described:
+- strategic moves;
+- distribution changes;
+- international expansion;
+- consumer behaviours;
+- brand innovations;
+- partnerships;
+
+do not subsequently ask which aspects or innovations are important.
+
+Instead, identify a genuinely uncovered dimension such as:
+- intended audience;
+- decision criteria;
+- geographical scope? 
 
 3. Ask only one question at a time.
 
