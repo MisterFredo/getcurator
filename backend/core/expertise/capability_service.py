@@ -38,7 +38,7 @@ from core.expertise.capabilities import (
 
 CAPABILITY_TEMPERATURE = 0.0
 
-IMPLICATIONS_MAX_ATTEMPTS = 2
+IMPLICATIONS_MAX_ATTEMPTS = 3
 
 
 # ============================================================
@@ -48,50 +48,29 @@ IMPLICATIONS_MAX_ATTEMPTS = 2
 FORBIDDEN_IMPLICATION_PATTERNS = [
 
     r"\byou should\b",
-
     r"\byou must\b",
-
-    r"\byou need to\b",
-
+    r"\byou need\b",
     r"\byou have to\b",
-
-    r"\byou can explore\b",
-
-    r"\byou can consider\b",
-
-    r"\byou can assess\b",
-
-    r"\byou can evaluate\b",
+    r"\byou can\b",
 
     r"\bconsider\b",
-
     r"\bfocus on\b",
-
     r"\bexplore\b",
-
+    r"\bassess\b",
+    r"\bevaluate\b",
     r"\badopt\b",
-
     r"\bintegrate\b",
-
-    r"\binvest in\b",
-
+    r"\binvest\b",
     r"\bprioriti[sz]e\b",
-
     r"\bleverage\b",
 
-    r"\bneed to assess\b",
-
-    r"\bneed to evaluate\b",
-
-    r"\bneed to explore\b",
-
-    r"\bhighlights the need to\b",
-
-    r"\bsuggests a need to\b",
-
-    r"\brequires you to\b",
-
-    r"\bopportunity to\b",
+    r"\bneed for\b",
+    r"\bneed to\b",
+    r"\bpoint to assess\b",
+    r"\bhighlights? (?:the )?need\b",
+    r"\bsuggests? (?:a )?need\b",
+    r"\brequires? you\b",
+    r"\bopportunit(?:y|ies) to\b",
 
 ]
 
@@ -278,48 +257,45 @@ def _execute_implications(
     prompt: str,
 ) -> str:
 
-    result = _run_capability_prompt(
-        prompt
-    )
+    current_prompt = prompt
 
-    if not result:
+    for _ in range(
+        IMPLICATIONS_MAX_ATTEMPTS
+    ):
 
-        return ""
-
-    violations = (
-        _find_forbidden_implication_patterns(
-            result
+        result = _run_capability_prompt(
+            current_prompt
         )
-    )
 
-    if not violations:
+        if not result:
 
-        return result
+            return ""
 
-    correction_prompt = (
-        _build_implications_correction_prompt(
-
-            original_prompt=prompt,
-
-            rejected_result=result,
-
-            violations=violations,
-
+        violations = (
+            _find_forbidden_implication_patterns(
+                result
+            )
         )
-    )
 
-    corrected_result = (
-        _run_capability_prompt(
-            correction_prompt
+        if not violations:
+
+            return result
+
+        current_prompt = (
+            _build_implications_correction_prompt(
+
+                original_prompt=prompt,
+
+                rejected_result=result,
+
+                violations=violations,
+
+            )
         )
-    )
 
-    if corrected_result:
-
-        return corrected_result
-
-    return result
-
+    # Ne pas publier un texte qui enfreint encore
+    # explicitement les règles éditoriales.
+    return ""
 
 # ============================================================
 # EXECUTE CAPABILITY
