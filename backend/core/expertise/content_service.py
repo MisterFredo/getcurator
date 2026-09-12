@@ -31,6 +31,7 @@ def load_contents_by_ids(
 ):
 
     if not content_ids:
+
         return []
 
     client = get_bigquery_client()
@@ -38,54 +39,89 @@ def load_contents_by_ids(
     if language == "en":
 
         title_sql = (
-            "COALESCE(TITLE_EN, TITLE) AS title"
+            "COALESCE(c.TITLE_EN, c.TITLE) "
+            "AS title"
         )
 
         excerpt_sql = (
-            "COALESCE(EXCERPT_EN, EXCERPT) AS excerpt"
+            "COALESCE(c.EXCERPT_EN, c.EXCERPT) "
+            "AS excerpt"
         )
 
     else:
 
-        title_sql = "TITLE AS title"
+        title_sql = (
+            "c.TITLE AS title"
+        )
 
-        excerpt_sql = "EXCERPT AS excerpt"
+        excerpt_sql = (
+            "c.EXCERPT AS excerpt"
+        )
 
     query = f"""
+    WITH requested_contents AS (
+
+        SELECT
+
+            content_id,
+
+            position
+
+        FROM UNNEST(
+            @content_ids
+        ) AS content_id
+
+        WITH OFFSET AS position
+
+    )
+
     SELECT
 
-        ID_CONTENT AS id,
+        c.ID_CONTENT AS id,
 
-        SOURCE_ID AS source_id,
-        SOURCE_TITLE AS source_title,
-        SOURCE_URL AS source_url,
+        c.SOURCE_ID AS source_id,
+        c.SOURCE_TITLE AS source_title,
+        c.SOURCE_URL AS source_url,
 
-        PUBLISHED_AT AS published_at,
+        c.PUBLISHED_AT AS published_at,
 
         {title_sql},
         {excerpt_sql},
 
-        CONTENT_BODY AS content_body,
+        c.CONTENT_BODY AS content_body,
 
-        SIGNAL_ANALYTIQUE AS signal_analytique,
-        MECANIQUE_EXPLIQUEE AS mecanique_expliquee,
-        ENJEU_STRATEGIQUE AS enjeu_strategique,
-        POINT_DE_FRICTION AS point_de_friction,
+        c.SIGNAL_ANALYTIQUE
+            AS signal_analytique,
 
-        CHIFFRES AS chiffres,
+        c.MECANIQUE_EXPLIQUEE
+            AS mecanique_expliquee,
 
-        ID_PRIMARY_COMPANY,
+        c.ENJEU_STRATEGIQUE
+            AS enjeu_strategique,
 
-        COMPANIES AS companies,
-        SOLUTIONS AS solutions,
-        TOPICS AS topics,
-        UNIVERSES AS universes,
-        CONCEPTS AS concepts
+        c.POINT_DE_FRICTION
+            AS point_de_friction,
 
-    FROM `{TABLE_CONTENT}`
+        c.CHIFFRES AS chiffres,
 
-    WHERE
-        ID_CONTENT IN UNNEST(@content_ids)
+        c.ID_PRIMARY_COMPANY,
+
+        c.COMPANIES AS companies,
+        c.SOLUTIONS AS solutions,
+        c.TOPICS AS topics,
+        c.UNIVERSES AS universes,
+        c.CONCEPTS AS concepts
+
+    FROM `{TABLE_CONTENT}` c
+
+    INNER JOIN requested_contents requested
+
+        ON requested.content_id =
+            c.ID_CONTENT
+
+    ORDER BY
+
+        requested.position
     """
 
     job_config = bigquery.QueryJobConfig(
@@ -96,9 +132,9 @@ def load_contents_by_ids(
                 "content_ids",
                 "STRING",
                 content_ids,
-            )
+            ),
 
-        ]
+        ],
 
     )
 
@@ -108,5 +144,8 @@ def load_contents_by_ids(
     ).result()
 
     return normalize_contents(
-        [dict(row) for row in rows]
+        [
+            dict(row)
+            for row in rows
+        ]
     )
