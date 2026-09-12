@@ -1,6 +1,8 @@
-# backend/core/expertise/capability_service.py
+import re
 
-from utils.llm import run_llm
+from utils.llm import (
+    run_llm,
+)
 
 from api.expertise.models import (
     Expertise,
@@ -31,13 +33,77 @@ from core.expertise.capabilities import (
 
 
 # ============================================================
+# CONFIGURATION
+# ============================================================
+
+CAPABILITY_TEMPERATURE = 0.0
+
+IMPLICATIONS_MAX_ATTEMPTS = 2
+
+
+# ============================================================
+# FORBIDDEN IMPLICATION FORMULATIONS
+# ============================================================
+
+FORBIDDEN_IMPLICATION_PATTERNS = [
+
+    r"\byou should\b",
+
+    r"\byou must\b",
+
+    r"\byou need to\b",
+
+    r"\byou have to\b",
+
+    r"\byou can explore\b",
+
+    r"\byou can consider\b",
+
+    r"\byou can assess\b",
+
+    r"\byou can evaluate\b",
+
+    r"\bconsider\b",
+
+    r"\bfocus on\b",
+
+    r"\bexplore\b",
+
+    r"\badopt\b",
+
+    r"\bintegrate\b",
+
+    r"\binvest in\b",
+
+    r"\bprioriti[sz]e\b",
+
+    r"\bleverage\b",
+
+    r"\bneed to assess\b",
+
+    r"\bneed to evaluate\b",
+
+    r"\bneed to explore\b",
+
+    r"\bhighlights the need to\b",
+
+    r"\bsuggests a need to\b",
+
+    r"\brequires you to\b",
+
+    r"\bopportunity to\b",
+
+]
+
+
+# ============================================================
 # BUILD PROMPT
 # ============================================================
 
 def _build_prompt(
     capability: str,
     expertise: Expertise,
-    context: dict[str, str] | None = None,
+    context: dict | None = None,
 ) -> str:
 
     context = context or {}
@@ -85,6 +151,7 @@ def _build_prompt(
         )
 
     # ========================================================
+
     # UNKNOWN
     # ========================================================
 
@@ -94,16 +161,178 @@ def _build_prompt(
 
 
 # ============================================================
+# VALIDATE IMPLICATIONS
+# ============================================================
+
+def _find_forbidden_implication_patterns(
+    result: str,
+) -> list[str]:
+
+    if not result:
+
+        return []
+
+    return [
+
+        pattern
+
+        for pattern in (
+            FORBIDDEN_IMPLICATION_PATTERNS
+        )
+
+        if re.search(
+            pattern,
+            result,
+            flags=re.IGNORECASE,
+        )
+
+    ]
+
+
+# ============================================================
+# BUILD IMPLICATIONS CORRECTION PROMPT
+# ============================================================
+
+def _build_implications_correction_prompt(
+    original_prompt: str,
+    rejected_result: str,
+    violations: list[str],
+) -> str:
+
+    violations_text = "\n".join(
+
+        f"- {violation}"
+
+        for violation in violations
+
+    )
+
+    return f"""
+{original_prompt}
+
+
+============================================================
+CORRECTION REQUIRED
+============================================================
+
+The previous response did not respect the instructions.
+
+It contained prescriptive or recommendation-oriented language.
+
+Detected violations:
+
+{violations_text}
+
+Previous response:
+
+{rejected_result}
+
+
+Rewrite the entire response.
+
+Preserve only conclusions supported by the established
+developments and supporting content.
+
+Remove every recommendation, instruction, obligation and call
+to action.
+
+Describe what the developments affect.
+
+Do not tell the reader how to respond.
+
+Do not claim that advertiser ROAS improves publisher CPM,
+publisher yield or publisher revenue.
+
+Do not claim that a profile metric will improve unless the
+provided evidence establishes that effect for the same actor.
+
+When a causal effect is not established, describe the issue as
+a decision or measurement question.
+
+Return only the corrected implications in the originally
+requested format.
+""".strip()
+
+
+# ============================================================
+# RUN CAPABILITY
+# ============================================================
+
+def _run_capability_prompt(
+    prompt: str,
+) -> str:
+
+    return run_llm(
+        prompt=prompt,
+        temperature=(
+            CAPABILITY_TEMPERATURE
+        ),
+    )
+
+
+# ============================================================
+# EXECUTE IMPLICATIONS
+# ============================================================
+
+def _execute_implications(
+    prompt: str,
+) -> str:
+
+    result = _run_capability_prompt(
+        prompt
+    )
+
+    if not result:
+
+        return ""
+
+    violations = (
+        _find_forbidden_implication_patterns(
+            result
+        )
+    )
+
+    if not violations:
+
+        return result
+
+    correction_prompt = (
+        _build_implications_correction_prompt(
+
+            original_prompt=prompt,
+
+            rejected_result=result,
+
+            violations=violations,
+
+        )
+    )
+
+    corrected_result = (
+        _run_capability_prompt(
+            correction_prompt
+        )
+    )
+
+    if corrected_result:
+
+        return corrected_result
+
+    return result
+
+
+# ============================================================
 # EXECUTE CAPABILITY
 # ============================================================
 
 def execute_capability(
     expertise: Expertise,
     capability: str,
-    context: dict[str, str] | None = None,
+    context: dict | None = None,
 ) -> str:
 
     if expertise.count == 0:
+
         return ""
 
     # ========================================================
@@ -111,22 +340,31 @@ def execute_capability(
     # ========================================================
 
     prompt = _build_prompt(
+
         capability=capability,
+
         expertise=expertise,
+
         context=context,
+
     )
 
     # ========================================================
-    # LLM
+    # IMPLICATIONS WITH VALIDATION
     # ========================================================
 
-    result = run_llm(
-        prompt=prompt,
-        temperature=0.2,
+    if capability == CAPABILITY_IMPLICATIONS:
+
+        return _execute_implications(
+            prompt
+        )
+
+    # ========================================================
+    # STANDARD CAPABILITY
+    # ========================================================
+
+    result = _run_capability_prompt(
+        prompt
     )
-
-    # ========================================================
-    # RESULT
-    # ========================================================
 
     return result or ""
