@@ -206,22 +206,78 @@ def _validate_decision_ids(
             "un ou plusieurs content_id"
         )
 
-    missing_ids = (
-        set(
-            candidate_ids
-        )
-        - set(
-            decision_ids
-        )
+# ============================================================
+# COMPLETE MISSING DECISIONS
+# ============================================================
+
+def _complete_missing_decisions(
+    candidates: list[
+        DigestContentCandidate
+    ],
+    selection: DigestCandidateSelectionResult,
+    language: str,
+) -> DigestCandidateSelectionResult:
+
+    evaluated_ids = {
+
+        decision.content_id
+
+        for decision in selection.decisions
+
+    }
+
+    completed_decisions = list(
+        selection.decisions
     )
 
-    if missing_ids:
+    for candidate in candidates:
 
-        raise ValueError(
-            "Le moteur de sélection n'a pas "
-            "évalué tous les candidats"
+        if (
+            candidate.content_id
+            in evaluated_ids
+        ):
+
+            continue
+
+        if language == "fr":
+
+            reason = (
+                "Contenu non retenu par "
+                "le moteur de sélection."
+            )
+
+        else:
+
+            reason = (
+                "Content not retained by "
+                "the selection engine."
+            )
+
+        completed_decisions.append(
+
+            DigestContentDecision(
+
+                content_id=(
+                    candidate.content_id
+                ),
+
+                priority="IGNORE",
+
+                relevance_score=0,
+
+                reason=reason,
+
+                matched_priorities=[],
+
+            )
+
         )
 
+    return DigestCandidateSelectionResult(
+
+        decisions=completed_decisions,
+
+    )
 
 # ============================================================
 # BUILD SELECTED IDS
