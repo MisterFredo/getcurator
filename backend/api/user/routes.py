@@ -40,7 +40,11 @@ from core.user.user_keyword_service import (
 
 from core.user.user_profile_service import (
     get_user_profile,
-    update_user_profile,
+)
+
+from core.user.profile_orchestrator_service import (
+    generate_and_save_user_profile,
+    regenerate_current_user_profile,
 )
 
 from core.user.user_expert_service import (
@@ -312,31 +316,161 @@ def get_my_profile(request: Request):
 @router.post("/profile/update")
 def update_profile(
     request: Request,
-    payload: UserProfilePayload
+    payload: UserProfilePayload,
 ):
 
     user_id = (
         payload.user_id
-        or get_user_id_from_request(request)
+        or get_user_id_from_request(
+            request
+        )
     )
 
     if not user_id:
+
         raise HTTPException(
             status_code=401,
-            detail="Not authenticated"
+            detail="Not authenticated",
         )
 
-    update_user_profile(
-        user_id=user_id,
-        geography_1=payload.geography_1,
-        geography_2=payload.geography_2,
-        geography_3=payload.geography_3,
-        profile_text=payload.profile_text,
+    user = get_user_by_id(
+        user_id
     )
 
-    return {
-        "status": "ok"
-    }
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    language = (
+        user.get("LANGUAGE")
+        or "fr"
+    )
+
+    try:
+
+        (
+            result,
+            error,
+        ) = generate_and_save_user_profile(
+            user_id=user_id,
+            geography_1=payload.geography_1,
+            geography_2=payload.geography_2,
+            geography_3=payload.geography_3,
+            profile_text=(
+                payload.profile_text
+                or ""
+            ),
+            language=language,
+        )
+
+        if error:
+
+            raise HTTPException(
+                status_code=400,
+                detail=error,
+            )
+
+        return {
+            "status": (
+                result.get("status")
+                if result
+                else "generated"
+            ),
+            "profile": result,
+        }
+
+    except HTTPException:
+
+        raise
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur génération du profil "
+                f"structuré : {error}"
+            ),
+        )
+
+# =========================================================
+# REGENERATE STRUCTURED USER PROFILE
+# =========================================================
+
+@router.post("/profile/regenerate")
+def regenerate_profile(
+    request: Request,
+    payload: dict,
+):
+
+    user_id = (
+        payload.get("user_id")
+        or get_user_id_from_request(
+            request
+        )
+    )
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    language = (
+        user.get("LANGUAGE")
+        or "fr"
+    )
+
+    try:
+
+        (
+            result,
+            error,
+        ) = regenerate_current_user_profile(
+            user_id=user_id,
+            language=language,
+        )
+
+        if error:
+
+            raise HTTPException(
+                status_code=400,
+                detail=error,
+            )
+
+        return {
+            "status": "regenerated",
+            "profile": result,
+        }
+
+    except HTTPException:
+
+        raise
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur régénération du profil "
+                f"structuré : {error}"
+            ),
+        )
 
 # =========================================================
 # USER LANGUAGE
