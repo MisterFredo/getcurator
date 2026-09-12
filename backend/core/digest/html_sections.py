@@ -38,7 +38,32 @@ DISPLAY_TITLES = {
     "Articles":
         "Supporting Articles",
 
+    "Must Read":
+        "Must Read",
+
+    "Also Worth Your Attention":
+        "Also Worth Your Attention",
+
 }
+
+
+# ============================================================
+# DISPLAY SECTION
+# ============================================================
+
+def _build_display_section(
+    section: DigestSection,
+    display_title: str,
+) -> DigestSection:
+
+    return section.model_copy(
+
+        update={
+            "title":
+                display_title,
+        },
+
+    )
 
 
 # ============================================================
@@ -49,11 +74,12 @@ def render_sections(
     document: DigestDocument,
 ) -> str:
     """
-    Render all digest sections.
+    Render all Digest sections.
 
     Used for:
-    - email
-    - admin preview
+    - email;
+    - admin preview;
+    - manual copy and paste.
     """
 
     html = ""
@@ -65,11 +91,21 @@ def render_sections(
             section.title,
         )
 
+        display_section = (
+            _build_display_section(
+                section=section,
+                display_title=display_title,
+            )
+        )
+
         # ====================================================
         # EXECUTIVE SUMMARY
         # ====================================================
 
-        if section.title == "Executive Summary":
+        if (
+            section.title
+            == "Executive Summary"
+        ):
 
             html += f"""
 <tr>
@@ -88,43 +124,45 @@ def render_sections(
 """
 
             html += render_summary_section(
-                section,
+                display_section,
             )
 
         # ====================================================
         # KEY POINTS
         # ====================================================
 
-        elif section.title == "Key Points":
-
-            section.title = display_title
+        elif (
+            section.title
+            == "Key Points"
+        ):
 
             html += render_key_points_section(
-                section,
+                display_section,
             )
 
         # ====================================================
         # STRATEGIC IMPLICATIONS
         # ====================================================
 
-        elif section.title == "Strategic Implications":
+        elif (
+            section.title
+            == "Strategic Implications"
+        ):
 
-            section.title = display_title
-
-            html += render_implications_section(
-                section,
+            html += (
+                render_implications_section(
+                    display_section
+                )
             )
 
         # ====================================================
-        # ARTICLES
+        # ARTICLE SECTIONS
         # ====================================================
 
-        elif section.title == "Articles":
-
-            section.title = display_title
+        elif section.cards:
 
             html += render_articles_section(
-                section,
+                display_section,
             )
 
         # ====================================================
@@ -133,10 +171,8 @@ def render_sections(
 
         else:
 
-            section.title = display_title
-
             html += render_default_section(
-                section,
+                display_section,
             )
 
     return html
@@ -152,8 +188,8 @@ def render_front_sections(
     """
     Render Digest sections for the public front.
 
-    Same analytical output as the full Digest,
-    but Supporting Articles are intentionally hidden.
+    Article cards remain intentionally hidden
+    from this reduced rendering.
     """
 
     html = ""
@@ -161,10 +197,11 @@ def render_front_sections(
     for section in document.sections:
 
         # ====================================================
-        # ARTICLES — NOT DISPLAYED ON FRONT
+        # ARTICLE CARDS — NOT DISPLAYED ON REDUCED FRONT
         # ====================================================
 
-        if section.title == "Articles":
+        if section.cards:
+
             continue
 
         display_title = DISPLAY_TITLES.get(
@@ -172,11 +209,21 @@ def render_front_sections(
             section.title,
         )
 
+        display_section = (
+            _build_display_section(
+                section=section,
+                display_title=display_title,
+            )
+        )
+
         # ====================================================
         # EXECUTIVE SUMMARY
         # ====================================================
 
-        if section.title == "Executive Summary":
+        if (
+            section.title
+            == "Executive Summary"
+        ):
 
             html += f"""
 <tr>
@@ -195,31 +242,35 @@ def render_front_sections(
 """
 
             html += render_summary_section(
-                section,
+                display_section,
             )
 
         # ====================================================
         # KEY POINTS
         # ====================================================
 
-        elif section.title == "Key Points":
-
-            section.title = display_title
+        elif (
+            section.title
+            == "Key Points"
+        ):
 
             html += render_key_points_section(
-                section,
+                display_section,
             )
 
         # ====================================================
         # STRATEGIC IMPLICATIONS
         # ====================================================
 
-        elif section.title == "Strategic Implications":
+        elif (
+            section.title
+            == "Strategic Implications"
+        ):
 
-            section.title = display_title
-
-            html += render_implications_section(
-                section,
+            html += (
+                render_implications_section(
+                    display_section
+                )
             )
 
         # ====================================================
@@ -228,10 +279,8 @@ def render_front_sections(
 
         else:
 
-            section.title = display_title
-
             html += render_default_section(
-                section,
+                display_section,
             )
 
     return html
@@ -245,7 +294,7 @@ def render_default_section(
     section: DigestSection,
 ) -> str:
     """
-    Default rendering for a digest section.
+    Default rendering for a Digest section.
     """
 
     return f"""
