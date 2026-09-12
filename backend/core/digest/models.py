@@ -112,8 +112,10 @@ class DigestCard(
     )
 
     selection_priority: Literal[
-        "MUST_HAVE",
+        "SELECT",
         "IGNORE",
+        "MUST_HAVE",
+        "NICE_TO_HAVE",
     ] | None = None
 
     selection_score: int | None = None
