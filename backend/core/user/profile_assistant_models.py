@@ -1,11 +1,13 @@
 from typing import (
     Literal,
     Optional,
+    Self,
 )
 
 from pydantic import (
     BaseModel,
-    root_validator,
+    ConfigDict,
+    model_validator,
 )
 
 
@@ -16,6 +18,10 @@ from pydantic import (
 class ProfileAssistantResult(
     BaseModel,
 ):
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     action: Literal[
         "ASK",
@@ -29,45 +35,36 @@ class ProfileAssistantResult(
     profile_complete: bool = False
 
 
-    @root_validator
+    @model_validator(
+        mode="after",
+    )
     def validate_action_result(
-        cls,
-        values,
-    ):
+        self,
+    ) -> Self:
 
-        action = values.get(
-            "action"
-        )
+        if self.action == "ASK":
 
-        proposed_profile_text = values.get(
-            "proposed_profile_text"
-        )
-
-        profile_complete = values.get(
-            "profile_complete"
-        )
-
-        if action == "ASK":
-
-            if proposed_profile_text:
+            if self.proposed_profile_text:
 
                 raise ValueError(
                     "ASK ne doit pas contenir "
                     "de proposition de profil"
                 )
 
-            if profile_complete:
+            if self.profile_complete:
 
                 raise ValueError(
                     "ASK doit avoir "
                     "profile_complete=false"
                 )
 
-        if action == "PROPOSE":
+        if self.action == "PROPOSE":
 
             if not (
-                proposed_profile_text
-                and proposed_profile_text.strip()
+                self.proposed_profile_text
+                and self
+                .proposed_profile_text
+                .strip()
             ):
 
                 raise ValueError(
@@ -75,16 +72,11 @@ class ProfileAssistantResult(
                     "un profil complet"
                 )
 
-            if not profile_complete:
+            if not self.profile_complete:
 
                 raise ValueError(
                     "PROPOSE doit avoir "
                     "profile_complete=true"
                 )
 
-        return values
-
-
-    class Config:
-
-        extra = "forbid"
+        return self
