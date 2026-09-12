@@ -243,3 +243,16 @@ class UserProfilePayload(
     geography_3: Optional[str] = None
 
     profile_text: Optional[str] = None
+
+
+# =========================================================
+# VALIDATE PROFILE PROPOSAL
+# =========================================================
+
+class ValidateUserProfileProposalPayload(
+    BaseModel,
+):
+
+    user_id: Optional[str] = None
+
+    session_id: str
