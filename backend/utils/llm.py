@@ -128,3 +128,78 @@ def run_llm(
     except Exception:
 
         return ""
+
+
+# ============================================================
+# RUN LLM JSON
+# ============================================================
+
+def run_llm_json(
+    prompt: str,
+    model: str = None,
+    temperature: float = 0.0,
+    system_prompt: str = None,
+) -> str:
+
+    cfg, error = get_llm(
+        model=model,
+        temperature=temperature,
+    )
+
+    if error:
+
+        return ""
+
+    try:
+
+        completion = (
+            cfg["client"]
+            .chat
+            .completions
+            .create(
+                model=cfg["model"],
+
+                messages=[
+                    {
+                        "role": "system",
+                        "content":
+                            system_prompt
+                            or DEFAULT_SYSTEM_PROMPT,
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+
+                response_format={
+                    "type": "json_object",
+                },
+
+                temperature=
+                    cfg["temperature"],
+            )
+        )
+
+        message = (
+            completion
+            .choices[0]
+            .message
+        )
+
+        content = (
+            message.content
+        )
+
+        if isinstance(
+            content,
+            str,
+        ):
+
+            return content
+
+        return ""
+
+    except Exception:
+
+        return ""
