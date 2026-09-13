@@ -774,25 +774,39 @@ def matching_full_dismiss():
 # ============================================================
 
 def _copy_dataset(
+    source_project: str,
     source_dataset: str,
+    target_project: str,
     target_dataset: str,
 ):
+    tables_sql = f"""
+        SELECT table_name
+        FROM `{source_project}.{source_dataset}.INFORMATION_SCHEMA.TABLES`
+        WHERE table_type = 'BASE TABLE'
+        ORDER BY table_name
+    """
 
-    for table in BACKUP_TABLES:
+    tables = query_bq(tables_sql)
+
+    for table in tables:
+        table_name = table["table_name"]
+
+        source_table = (
+            f"`{source_project}.{source_dataset}.{table_name}`"
+        )
+
+        target_table = (
+            f"`{target_project}.{target_dataset}.{table_name}`"
+        )
 
         sql = f"""
-        CREATE OR REPLACE TABLE
-        `{BQ_PROJECT}.{target_dataset}.{table}`
+        DROP TABLE IF EXISTS {target_table};
 
-        AS
-
-        SELECT *
-
-        FROM `{BQ_PROJECT}.{source_dataset}.{table}`
+        CREATE TABLE {target_table}
+        COPY {source_table};
         """
 
         query_bq(sql)
-
 # ============================================================
 # BACKUP PROD
 # ============================================================
