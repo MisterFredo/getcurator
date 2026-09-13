@@ -1,3 +1,5 @@
+import re
+
 from typing import (
     Any,
     Dict,
@@ -50,6 +52,13 @@ VALID_ENTITY_TYPES = {
     "company",
     "topic",
     "solution",
+}
+
+VALID_VALUE_STATUSES = {
+    "ACTUAL",
+    "FORECAST",
+    "TARGET",
+    "UNKNOWN",
 }
 
 
@@ -124,17 +133,13 @@ def _serialize_entities(
         for entity in entities
     ]
 
+
 def _normalize_condition(
     condition: Optional[str],
 ) -> str:
     """
-    Convert a SQL fragment returned as:
-
-        AND (...)
-        WHERE (...)
-
-    into a standalone condition that can safely
-    be added to the conditions list.
+    Convert a SQL fragment beginning with AND or WHERE
+    into a standalone condition.
     """
 
     normalized = (
@@ -142,9 +147,7 @@ def _normalize_condition(
         or ""
     ).strip()
 
-    upper = (
-        normalized.upper()
-    )
+    upper = normalized.upper()
 
     if upper.startswith(
         "AND "
@@ -167,41 +170,71 @@ def _normalize_condition(
     return normalized
 
 
-# ============================================================
-# SEARCH VALIDATED NUMBERS
-# ============================================================
+def _entity_aggregation_sql() -> str:
 
-def search_validated_numbers(
-    query: Optional[str] = None,
+    return f"""
+    entity_aggregation AS (
+
+        SELECT
+
+            ID_NUMBER,
+
+            ARRAY_AGG(
+
+                STRUCT(
+
+                    ENTITY_TYPE
+                        AS ENTITY_TYPE,
+
+                    ENTITY_ID
+                        AS ENTITY_ID,
+
+                    ENTITY_LABEL
+                        AS ENTITY_LABEL
+
+                )
+
+                ORDER BY
+                    ENTITY_TYPE,
+                    ENTITY_LABEL
+
+            ) AS ENTITIES,
+
+            ARRAY_AGG(
+                DISTINCT ENTITY_TYPE
+                IGNORE NULLS
+            ) AS ENTITY_TYPES,
+
+            ARRAY_AGG(
+                DISTINCT ENTITY_ID
+                IGNORE NULLS
+            ) AS ENTITY_IDS,
+
+            STRING_AGG(
+                DISTINCT ENTITY_LABEL,
+                ' '
+            ) AS ENTITY_SEARCH
+
+        FROM `{TABLE_NUMBER_ENTITY}`
+
+        GROUP BY
+            ID_NUMBER
+    )
+    """
+
+
+def _build_scope_conditions(
     user_id: Optional[str] = None,
     universe_id: Optional[str] = None,
-    entity_type: Optional[str] = None,
-    entity_id: Optional[str] = None,
-    metric_type: Optional[str] = None,
-    zone: Optional[str] = None,
-    period: Optional[str] = None,
-    limit: int = DEFAULT_LIMIT,
-    offset: int = 0,
-) -> Dict[str, Any]:
+    query: Optional[str] = None,
+) -> tuple[
+    List[str],
+    Dict[str, Any],
+]:
     """
-    Search effectively ACCEPTED Numbers.
-
-    Raw article Numbers remain available separately
-    through the article drawer.
+    Build common visibility conditions used by both
+    the public results and their facets.
     """
-
-    safe_limit = max(
-        1,
-        min(
-            int(limit),
-            MAX_LIMIT,
-        ),
-    )
-
-    safe_offset = max(
-        0,
-        int(offset),
-    )
 
     conditions = [
         """
@@ -209,17 +242,14 @@ def search_validated_numbers(
         """,
     ]
 
-    params: Dict[str, Any] = {
-        "limit": safe_limit,
-        "offset": safe_offset,
-    }
+    params: Dict[str, Any] = {}
 
     # ========================================================
-    # USER FILTER
+    # USER
     # ========================================================
-    
+
     if user_id:
-    
+
         user_condition = (
             _normalize_condition(
                 build_user_filter(
@@ -227,19 +257,17 @@ def search_validated_numbers(
                 )
             )
         )
-    
+
         if user_condition:
-    
+
             conditions.append(
                 user_condition
             )
-    
-        params["user_id"] = (
-            user_id
-        )
+
+        params["user_id"] = user_id
 
     # ========================================================
-    # UNIVERSE FILTER
+    # UNIVERSE
     # ========================================================
 
     if universe_id:
@@ -265,11 +293,12 @@ def search_validated_numbers(
         )
 
     # ========================================================
-    # SEARCH
+    # QUERY
     # ========================================================
 
     normalized_query = (
-        query or ""
+        query
+        or ""
     ).strip()
 
     if normalized_query:
@@ -349,6 +378,60 @@ def search_validated_numbers(
             normalized_query
         )
 
+    return (
+        conditions,
+        params,
+    )
+
+
+# ============================================================
+# SEARCH VALIDATED NUMBERS
+# ============================================================
+
+def search_validated_numbers(
+    query: Optional[str] = None,
+    user_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    metric_type: Optional[str] = None,
+    zone: Optional[str] = None,
+    period: Optional[str] = None,
+    year: Optional[str] = None,
+    value_status: Optional[str] = None,
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    """
+    Search effectively ACCEPTED Numbers.
+    """
+
+    safe_limit = max(
+        1,
+        min(
+            int(limit),
+            MAX_LIMIT,
+        ),
+    )
+
+    safe_offset = max(
+        0,
+        int(offset),
+    )
+
+    conditions, params = (
+        _build_scope_conditions(
+            user_id=user_id,
+            universe_id=universe_id,
+            query=query,
+        )
+    )
+
+    params.update({
+        "limit": safe_limit,
+        "offset": safe_offset,
+    })
+
     # ========================================================
     # ENTITY TYPE
     # ========================================================
@@ -404,7 +487,7 @@ def search_validated_numbers(
         )
 
         params["entity_id"] = (
-            entity_id
+            entity_id.strip()
         )
 
     # ========================================================
@@ -447,7 +530,7 @@ def search_validated_numbers(
         )
 
     # ========================================================
-    # PERIOD
+    # EXACT PERIOD
     # ========================================================
 
     if period:
@@ -466,6 +549,77 @@ def search_validated_numbers(
             period.strip()
         )
 
+    # ========================================================
+    # YEAR
+    # ========================================================
+
+    if year:
+
+        normalized_year = (
+            str(year)
+            .strip()
+        )
+
+        if not re.fullmatch(
+            r"(?:19|20)\d{2}",
+            normalized_year,
+        ):
+
+            raise ValueError(
+                f"Invalid year: {year}"
+            )
+
+        conditions.append(
+            """
+            @year IN UNNEST(
+                REGEXP_EXTRACT_ALL(
+                    IFNULL(
+                        number.PERIOD_LABEL,
+                        ''
+                    ),
+                    r'(?:19|20)\\d{2}'
+                )
+            )
+            """
+        )
+
+        params["year"] = (
+            normalized_year
+        )
+
+    # ========================================================
+    # VALUE STATUS
+    # ========================================================
+
+    if value_status:
+
+        normalized_value_status = (
+            value_status
+            .strip()
+            .upper()
+        )
+
+        if (
+            normalized_value_status
+            not in VALID_VALUE_STATUSES
+        ):
+
+            raise ValueError(
+                "Invalid value status: "
+                f"{value_status}"
+            )
+
+        conditions.append(
+            """
+            number.VALUE_STATUS
+                = @value_status
+            """
+        )
+
+        params["value_status"] = (
+            normalized_value_status
+        )
+
     where_sql = " AND ".join(
         conditions
     )
@@ -476,53 +630,9 @@ def search_validated_numbers(
 
     rows = query_bq(
         f"""
-        WITH entity_aggregation AS (
+        WITH
 
-            SELECT
-
-                ID_NUMBER,
-
-                ARRAY_AGG(
-
-                    STRUCT(
-
-                        ENTITY_TYPE
-                            AS ENTITY_TYPE,
-
-                        ENTITY_ID
-                            AS ENTITY_ID,
-
-                        ENTITY_LABEL
-                            AS ENTITY_LABEL
-
-                    )
-
-                    ORDER BY
-                        ENTITY_TYPE,
-                        ENTITY_LABEL
-
-                ) AS ENTITIES,
-
-                ARRAY_AGG(
-                    DISTINCT ENTITY_TYPE
-                    IGNORE NULLS
-                ) AS ENTITY_TYPES,
-
-                ARRAY_AGG(
-                    DISTINCT ENTITY_ID
-                    IGNORE NULLS
-                ) AS ENTITY_IDS,
-
-                STRING_AGG(
-                    DISTINCT ENTITY_LABEL,
-                    ' '
-                ) AS ENTITY_SEARCH
-
-            FROM `{TABLE_NUMBER_ENTITY}`
-
-            GROUP BY
-                ID_NUMBER
-        )
+        {_entity_aggregation_sql()}
 
         SELECT
 
@@ -591,10 +701,12 @@ def search_validated_numbers(
     ) or []
 
     total = (
-        _row_value(
-            rows[0],
-            "TOTAL_COUNT",
-            0,
+        int(
+            _row_value(
+                rows[0],
+                "TOTAL_COUNT",
+                0,
+            )
         )
         if rows
         else 0
@@ -722,3 +834,248 @@ def search_validated_numbers(
             ),
         },
     }
+
+
+# ============================================================
+# GET PUBLIC NUMBER FILTERS
+# ============================================================
+
+def get_validated_number_filters(
+    user_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+    query: Optional[str] = None,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Return available facets for the visible and effectively
+    ACCEPTED Numbers.
+    """
+
+    conditions, params = (
+        _build_scope_conditions(
+            user_id=user_id,
+            universe_id=universe_id,
+            query=query,
+        )
+    )
+
+    where_sql = " AND ".join(
+        conditions
+    )
+
+    rows = query_bq(
+        f"""
+        WITH
+
+        {_entity_aggregation_sql()},
+
+        base AS (
+
+            SELECT
+
+                number.ID_NUMBER,
+
+                number.METRIC_TYPE,
+
+                number.ZONE,
+
+                number.PERIOD_LABEL,
+
+                number.VALUE_STATUS
+
+            FROM `{VIEW_NUMBER}` number
+
+            JOIN `{TABLE_CONTENT}` content
+              ON content.id_content
+                 = number.ID_CONTENT
+
+            LEFT JOIN entity_aggregation
+              ON entity_aggregation.ID_NUMBER
+                 = number.ID_NUMBER
+
+            WHERE {where_sql}
+        ),
+
+        year_values AS (
+
+            SELECT DISTINCT
+
+                base.ID_NUMBER,
+
+                year
+
+            FROM base
+
+            CROSS JOIN UNNEST(
+                REGEXP_EXTRACT_ALL(
+                    IFNULL(
+                        base.PERIOD_LABEL,
+                        ''
+                    ),
+                    r'(?:19|20)\\d{2}'
+                )
+            ) year
+        )
+
+        SELECT
+
+            'metric_type'
+                AS FACET_TYPE,
+
+            METRIC_TYPE
+                AS FACET_VALUE,
+
+            COUNT(*)
+                AS FACET_COUNT
+
+        FROM base
+
+        WHERE METRIC_TYPE IS NOT NULL
+          AND TRIM(METRIC_TYPE) != ''
+
+        GROUP BY
+            METRIC_TYPE
+
+        UNION ALL
+
+        SELECT
+
+            'year'
+                AS FACET_TYPE,
+
+            year
+                AS FACET_VALUE,
+
+            COUNT(*)
+                AS FACET_COUNT
+
+        FROM year_values
+
+        GROUP BY
+            year
+
+        UNION ALL
+
+        SELECT
+
+            'zone'
+                AS FACET_TYPE,
+
+            ZONE
+                AS FACET_VALUE,
+
+            COUNT(*)
+                AS FACET_COUNT
+
+        FROM base
+
+        WHERE ZONE IS NOT NULL
+          AND TRIM(ZONE) != ''
+
+        GROUP BY
+            ZONE
+
+        UNION ALL
+
+        SELECT
+
+            'value_status'
+                AS FACET_TYPE,
+
+            VALUE_STATUS
+                AS FACET_VALUE,
+
+            COUNT(*)
+                AS FACET_COUNT
+
+        FROM base
+
+        WHERE VALUE_STATUS IS NOT NULL
+          AND TRIM(VALUE_STATUS) != ''
+
+        GROUP BY
+            VALUE_STATUS
+
+        ORDER BY
+
+            FACET_TYPE ASC,
+
+            FACET_COUNT DESC,
+
+            FACET_VALUE ASC
+        """,
+        params,
+    ) or []
+
+    result: Dict[
+        str,
+        List[Dict[str, Any]],
+    ] = {
+        "metric_types": [],
+        "years": [],
+        "zones": [],
+        "value_statuses": [],
+    }
+
+    target_by_type = {
+        "metric_type":
+            "metric_types",
+
+        "year":
+            "years",
+
+        "zone":
+            "zones",
+
+        "value_status":
+            "value_statuses",
+    }
+
+    for row in rows:
+
+        facet_type = _row_value(
+            row,
+            "FACET_TYPE",
+        )
+
+        target = target_by_type.get(
+            facet_type
+        )
+
+        if not target:
+            continue
+
+        value = _row_value(
+            row,
+            "FACET_VALUE",
+        )
+
+        if value is None:
+            continue
+
+        result[target].append({
+            "value": str(value),
+
+            "label": (
+                str(value)
+                .replace(
+                    "_",
+                    " ",
+                )
+                .title()
+            ),
+
+            "count": int(
+                _row_value(
+                    row,
+                    "FACET_COUNT",
+                    0,
+                )
+            ),
+        })
+
+    result["years"].sort(
+        key=lambda item: item["value"],
+        reverse=True,
+    )
+
+    return result
