@@ -2,6 +2,7 @@ from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
+from google.cloud import bigquery
 from utils.bigquery_utils import query_bq
 from datetime import datetime
 
@@ -774,39 +775,70 @@ def matching_full_dismiss():
 # ============================================================
 
 def _copy_dataset(
-    source_project: str,
     source_dataset: str,
-    target_project: str,
     target_dataset: str,
 ):
-    tables_sql = f"""
-        SELECT table_name
-        FROM `{source_project}.{source_dataset}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_type = 'BASE TABLE'
-        ORDER BY table_name
+    """
+    Copy all configured tables from one dataset to another.
+
+    BigQuery copy jobs preserve:
+    - schema
+    - partitioning
+    - clustering
+    - table metadata
+
+    Existing destination tables are overwritten.
     """
 
-    tables = query_bq(tables_sql)
+    client = bigquery.Client(
+        project=BQ_PROJECT,
+    )
 
-    for table in tables:
-        table_name = table["table_name"]
+    copied = []
+
+    for table in BACKUP_TABLES:
 
         source_table = (
-            f"`{source_project}.{source_dataset}.{table_name}`"
+            f"{BQ_PROJECT}."
+            f"{source_dataset}."
+            f"{table}"
         )
 
         target_table = (
-            f"`{target_project}.{target_dataset}.{table_name}`"
+            f"{BQ_PROJECT}."
+            f"{target_dataset}."
+            f"{table}"
         )
 
-        sql = f"""
-        DROP TABLE IF EXISTS {target_table};
+        print(
+            "[DATASET COPY]",
+            source_table,
+            "→",
+            target_table,
+        )
 
-        CREATE TABLE {target_table}
-        COPY {source_table};
-        """
+        job_config = bigquery.CopyJobConfig(
+            write_disposition=(
+                bigquery.WriteDisposition.WRITE_TRUNCATE
+            ),
+        )
 
-        query_bq(sql)
+        copy_job = client.copy_table(
+            sources=source_table,
+            destination=target_table,
+            job_config=job_config,
+        )
+
+        copy_job.result()
+
+        copied.append(table)
+
+        print(
+            "[DATASET COPY OK]",
+            table,
+        )
+
+    return copied
 # ============================================================
 # BACKUP PROD
 # ============================================================
