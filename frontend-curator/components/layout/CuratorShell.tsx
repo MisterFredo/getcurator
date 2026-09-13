@@ -133,7 +133,7 @@ export default function CuratorShell({
 
     {
       href: "/settings",
-      label: "Experts",
+      label: "Settings",
       icon: Users,
     },
 
