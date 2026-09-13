@@ -6,18 +6,35 @@ import {
   useState,
 } from "react";
 
-import { api } from "@/lib/api";
-import { useUser } from "@/hooks/useUser";
+import {
+  api,
+} from "@/lib/api";
 
 import {
+  getValidatedNumberFilters,
   searchValidatedNumbers,
 } from "@/lib/numbers";
 
-import ValidatedNumberCard from "@/components/numbers/ValidatedNumberCard";
-import ValidatedNumbersSearchBar from "@/components/numbers/ValidatedNumbersSearchBar";
+import {
+  useUser,
+} from "@/hooks/useUser";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import NumbersExplorerFilters from "@/components/numbers/explorer/NumbersExplorerFilters";
+import NumbersExplorerPagination from "@/components/numbers/explorer/NumbersExplorerPagination";
+import NumbersExplorerTable from "@/components/numbers/explorer/NumbersExplorerTable";
+
+import type {
+  NumbersExplorerFilterState,
+} from "@/components/numbers/explorer/NumbersExplorerFilters";
 
 import type {
   PublicNumber,
+  PublicNumberFilters,
+  PublicNumbersPagination,
 } from "@/types/numbers";
 
 
@@ -26,8 +43,11 @@ import type {
 ============================================================ */
 
 type Universe = {
+
   id_universe: string;
+
   label: string;
+
 };
 
 
@@ -36,6 +56,34 @@ type Universe = {
 ============================================================ */
 
 const PAGE_SIZE = 50;
+
+const INITIAL_FILTER_STATE:
+  NumbersExplorerFilterState = {
+
+    universeId: "",
+
+    metricType: "",
+
+    year: "",
+
+    zone: "",
+
+    valueStatus: "",
+
+  };
+
+const INITIAL_PAGINATION:
+  PublicNumbersPagination = {
+
+    total: 0,
+
+    limit: PAGE_SIZE,
+
+    offset: 0,
+
+    has_more: false,
+
+  };
 
 
 /* ============================================================
@@ -59,7 +107,16 @@ export default function NumbersPage() {
 
 
   /* ========================================================
-     UNIVERSES
+     DRAWER
+  ======================================================== */
+
+  const {
+    openRightDrawer,
+  } = useDrawer();
+
+
+  /* ========================================================
+     UNIVERSes
   ======================================================== */
 
   const [
@@ -67,12 +124,31 @@ export default function NumbersPage() {
     setUniverses,
   ] = useState<Universe[]>([]);
 
+
+  /* ========================================================
+     SEARCH / FILTER STATE
+  ======================================================== */
+
   const [
-    activeUniverse,
-    setActiveUniverse,
-  ] = useState<string | null>(
-    null,
-  );
+    query,
+    setQuery,
+  ] = useState("");
+
+  const [
+    filterState,
+    setFilterState,
+  ] =
+    useState<NumbersExplorerFilterState>(
+      INITIAL_FILTER_STATE,
+    );
+
+  const [
+    availableFilters,
+    setAvailableFilters,
+  ] =
+    useState<PublicNumberFilters | null>(
+      null,
+    );
 
 
   /* ========================================================
@@ -85,19 +161,17 @@ export default function NumbersPage() {
   ] = useState<PublicNumber[]>([]);
 
   const [
-    query,
-    setQuery,
-  ] = useState("");
+    pagination,
+    setPagination,
+  ] =
+    useState<PublicNumbersPagination>(
+      INITIAL_PAGINATION,
+    );
 
-  const [
-    total,
-    setTotal,
-  ] = useState(0);
 
-  const [
-    hasMore,
-    setHasMore,
-  ] = useState(false);
+  /* ========================================================
+     UI STATE
+  ======================================================== */
 
   const [
     loading,
@@ -105,9 +179,9 @@ export default function NumbersPage() {
   ] = useState(true);
 
   const [
-    loadingMore,
-    setLoadingMore,
-  ] = useState(false);
+    filtersLoading,
+    setFiltersLoading,
+  ] = useState(true);
 
   const [
     error,
@@ -127,7 +201,9 @@ export default function NumbersPage() {
       userLoading
       || !userId
     ) {
+
       return;
+
     }
 
     async function loadUniverses() {
@@ -163,6 +239,79 @@ export default function NumbersPage() {
 
 
   /* ========================================================
+     LOAD AVAILABLE FILTERS
+  ======================================================== */
+
+  const loadAvailableFilters = useCallback(
+
+    async ({
+      searchQuery,
+      universeId,
+    }: {
+      searchQuery: string;
+      universeId: string;
+    }) => {
+
+      if (!userId) {
+
+        return;
+
+      }
+
+      setFiltersLoading(
+        true,
+      );
+
+      try {
+
+        const response =
+          await getValidatedNumberFilters({
+
+            user_id:
+              userId,
+
+            query:
+              searchQuery
+              || undefined,
+
+            universe_id:
+              universeId
+              || undefined,
+
+          });
+
+        setAvailableFilters(
+          response.filters,
+        );
+
+      } catch (loadError) {
+
+        console.error(
+          "Unable to load Number filters:",
+          loadError,
+        );
+
+        setAvailableFilters(
+          null,
+        );
+
+      } finally {
+
+        setFiltersLoading(
+          false,
+        );
+
+      }
+
+    },
+
+    [
+      userId,
+    ],
+  );
+
+
+  /* ========================================================
      LOAD NUMBERS
   ======================================================== */
 
@@ -170,33 +319,24 @@ export default function NumbersPage() {
 
     async ({
       searchQuery,
-      universeId,
+      filters,
       offset = 0,
-      append = false,
     }: {
       searchQuery: string;
-      universeId: string | null;
+      filters:
+        NumbersExplorerFilterState;
       offset?: number;
-      append?: boolean;
     }) => {
 
       if (!userId) {
+
         return;
-      }
-
-      if (append) {
-
-        setLoadingMore(
-          true,
-        );
-
-      } else {
-
-        setLoading(
-          true,
-        );
 
       }
+
+      setLoading(
+        true,
+      );
 
       setError(
         null,
@@ -215,7 +355,23 @@ export default function NumbersPage() {
               || undefined,
 
             universe_id:
-              universeId
+              filters.universeId
+              || undefined,
+
+            metric_type:
+              filters.metricType
+              || undefined,
+
+            year:
+              filters.year
+              || undefined,
+
+            zone:
+              filters.zone
+              || undefined,
+
+            value_status:
+              filters.valueStatus
               || undefined,
 
             limit:
@@ -225,28 +381,17 @@ export default function NumbersPage() {
 
           });
 
-        const nextItems =
-          response.items
-          || [];
-
         setItems(
-          current =>
-            append
-              ? [
-                  ...current,
-                  ...nextItems,
-                ]
-              : nextItems,
+          response.items
+          || [],
         );
 
-        setTotal(
-          response.pagination?.total
-          ?? nextItems.length,
-        );
-
-        setHasMore(
-          response.pagination?.has_more
-          ?? false,
+        setPagination(
+          response.pagination
+          || {
+            ...INITIAL_PAGINATION,
+            offset,
+          },
         );
 
       } catch (loadError) {
@@ -256,25 +401,22 @@ export default function NumbersPage() {
           loadError,
         );
 
+        setItems([]);
+
+        setPagination({
+          ...INITIAL_PAGINATION,
+          offset: 0,
+        });
+
         setError(
           "Unable to load Numbers.",
         );
 
-        if (!append) {
-
-          setItems([]);
-
-          setTotal(0);
-
-          setHasMore(false);
-
-        }
-
       } finally {
 
-        setLoading(false);
-
-        setLoadingMore(false);
+        setLoading(
+          false,
+        );
 
       }
 
@@ -287,7 +429,7 @@ export default function NumbersPage() {
 
 
   /* ========================================================
-     INITIAL LOAD / UNIVERSE CHANGE
+     INITIAL LOAD
   ======================================================== */
 
   useEffect(() => {
@@ -296,16 +438,24 @@ export default function NumbersPage() {
       userLoading
       || !userId
     ) {
+
       return;
+
     }
 
     loadNumbers({
-      searchQuery: query,
-      universeId: activeUniverse,
+      searchQuery: "",
+      filters: INITIAL_FILTER_STATE,
+      offset: 0,
+    });
+
+    loadAvailableFilters({
+      searchQuery: "",
+      universeId: "",
     });
 
   }, [
-    activeUniverse,
+    loadAvailableFilters,
     loadNumbers,
     userId,
     userLoading,
@@ -320,47 +470,155 @@ export default function NumbersPage() {
     nextQuery: string,
   ) {
 
-    if (
-      userLoading
-      || !userId
-    ) {
-      return;
-    }
-
     setQuery(
       nextQuery,
     );
 
     loadNumbers({
       searchQuery: nextQuery,
-      universeId: activeUniverse,
+      filters: filterState,
+      offset: 0,
+    });
+
+    loadAvailableFilters({
+      searchQuery: nextQuery,
+      universeId:
+        filterState.universeId,
     });
 
   }
 
 
   /* ========================================================
-     LOAD MORE
+     FILTER CHANGE
   ======================================================== */
 
-  function handleLoadMore() {
+  function handleFilterChange(
+    nextFilters:
+      NumbersExplorerFilterState,
+  ) {
 
-    if (
-      userLoading
-      || !userId
-      || loading
-      || loadingMore
-      || !hasMore
-    ) {
-      return;
-    }
+    const universeChanged =
+      nextFilters.universeId
+      !== filterState.universeId;
+
+    setFilterState(
+      nextFilters,
+    );
 
     loadNumbers({
       searchQuery: query,
-      universeId: activeUniverse,
-      offset: items.length,
-      append: true,
+      filters: nextFilters,
+      offset: 0,
     });
+
+    if (universeChanged) {
+
+      loadAvailableFilters({
+        searchQuery: query,
+        universeId:
+          nextFilters.universeId,
+      });
+
+    }
+
+  }
+
+
+  /* ========================================================
+     RESET
+  ======================================================== */
+
+  function handleReset() {
+
+    setQuery("");
+
+    setFilterState(
+      INITIAL_FILTER_STATE,
+    );
+
+    loadNumbers({
+      searchQuery: "",
+      filters: INITIAL_FILTER_STATE,
+      offset: 0,
+    });
+
+    loadAvailableFilters({
+      searchQuery: "",
+      universeId: "",
+    });
+
+  }
+
+
+  /* ========================================================
+     PREVIOUS PAGE
+  ======================================================== */
+
+  function handlePreviousPage() {
+
+    if (loading) {
+
+      return;
+
+    }
+
+    const previousOffset = Math.max(
+      0,
+      pagination.offset
+      - pagination.limit,
+    );
+
+    loadNumbers({
+      searchQuery: query,
+      filters: filterState,
+      offset: previousOffset,
+    });
+
+  }
+
+
+  /* ========================================================
+     NEXT PAGE
+  ======================================================== */
+
+  function handleNextPage() {
+
+    if (
+      loading
+      || !pagination.has_more
+    ) {
+
+      return;
+
+    }
+
+    const nextOffset =
+      pagination.offset
+      + pagination.limit;
+
+    loadNumbers({
+      searchQuery: query,
+      filters: filterState,
+      offset: nextOffset,
+    });
+
+  }
+
+
+  /* ========================================================
+     OPEN CONTENT
+  ======================================================== */
+
+  function handleOpenContent(
+    contentId: string,
+  ) {
+
+    openRightDrawer(
+      "content",
+      contentId,
+      "silent",
+    );
 
   }
 
@@ -373,6 +631,10 @@ export default function NumbersPage() {
     userLoading
     || loading;
 
+  const controlsLoading =
+    pageLoading
+    || filtersLoading;
+
 
   /* ========================================================
      RENDER
@@ -380,203 +642,115 @@ export default function NumbersPage() {
 
   return (
 
-    <div className="space-y-8">
+    <div
+      className="
+        space-y-6
+      "
+    >
 
       {/* ================================================= */}
       {/* HEADER */}
       {/* ================================================= */}
 
-      <header>
+      <header
+        className="
+          flex
+          flex-col
+          gap-2
+          sm:flex-row
+          sm:items-end
+          sm:justify-between
+        "
+      >
 
-        <h1
-          className="
-            text-2xl
-            font-semibold
-            tracking-tight
-            text-gray-900
-          "
-        >
-          Numbers
-        </h1>
+        <div>
 
-        <p
-          className="
-            mt-2
-            max-w-3xl
-            text-sm
-            leading-6
-            text-gray-500
-          "
-        >
-          Explore verified business metrics extracted from
-          GetCurator&apos;s editorial intelligence.
-        </p>
+          <h1
+            className="
+              text-2xl
+              font-semibold
+              tracking-tight
+              text-gray-900
+            "
+          >
+            Numbers
+          </h1>
+
+          <p
+            className="
+              mt-1
+              max-w-3xl
+              text-sm
+              leading-6
+              text-gray-500
+            "
+          >
+            Explore verified business metrics extracted from
+            GetCurator&apos;s editorial intelligence.
+          </p>
+
+        </div>
+
+        {!pageLoading
+          && !error
+          && (
+
+            <div
+              className="
+                whitespace-nowrap
+                text-sm
+                text-gray-500
+              "
+            >
+              <span
+                className="
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                {pagination.total}
+              </span>
+              {" validated Number"}
+              {pagination.total !== 1
+                ? "s"
+                : ""}
+            </div>
+
+          )}
 
       </header>
 
 
       {/* ================================================= */}
-      {/* SEARCH */}
+      {/* FILTERS */}
       {/* ================================================= */}
 
-      <ValidatedNumbersSearchBar
+      <NumbersExplorerFilters
         query={query}
-        loading={pageLoading}
+        value={filterState}
+        universes={universes}
+        filters={availableFilters}
+        loading={controlsLoading}
         onSearch={handleSearch}
+        onChange={handleFilterChange}
+        onReset={handleReset}
       />
-
-
-      {/* ================================================= */}
-      {/* UNIVERSES */}
-      {/* ================================================= */}
-
-      {universes.length > 0 && (
-
-        <div
-          className="
-            flex
-            flex-wrap
-            gap-2
-          "
-        >
-
-          <button
-            type="button"
-            disabled={pageLoading}
-            onClick={() =>
-              setActiveUniverse(null)
-            }
-            className={`
-              rounded-full
-              px-3
-              py-1.5
-              text-xs
-              font-medium
-              transition
-              disabled:opacity-50
-
-              ${
-                activeUniverse === null
-                  ? `
-                    bg-gray-900
-                    text-white
-                  `
-                  : `
-                    bg-gray-100
-                    text-gray-600
-                    hover:bg-gray-200
-                  `
-              }
-            `}
-          >
-            All
-          </button>
-
-          {universes.map(
-            universe => (
-
-              <button
-                key={universe.id_universe}
-                type="button"
-                disabled={pageLoading}
-                onClick={() =>
-                  setActiveUniverse(
-                    universe.id_universe,
-                  )
-                }
-                className={`
-                  rounded-full
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-medium
-                  transition
-                  disabled:opacity-50
-
-                  ${
-                    activeUniverse
-                    === universe.id_universe
-                      ? `
-                        bg-gray-900
-                        text-white
-                      `
-                      : `
-                        bg-gray-100
-                        text-gray-600
-                        hover:bg-gray-200
-                      `
-                  }
-                `}
-              >
-                {universe.label}
-              </button>
-
-            ),
-          )}
-
-        </div>
-
-      )}
-
-
-      {/* ================================================= */}
-      {/* COUNTER */}
-      {/* ================================================= */}
-
-      {!pageLoading && !error && (
-
-        <div
-          className="
-            text-xs
-            text-gray-400
-          "
-        >
-          {total} validated Number
-          {total !== 1
-            ? "s"
-            : ""}
-        </div>
-
-      )}
-
-
-      {/* ================================================= */}
-      {/* LOADING */}
-      {/* ================================================= */}
-
-      {pageLoading && (
-
-        <div
-          className="
-            rounded-2xl
-            border
-            border-gray-200
-            bg-white
-            p-8
-            text-center
-            text-sm
-            text-gray-400
-          "
-        >
-          Loading Numbers...
-        </div>
-
-      )}
 
 
       {/* ================================================= */}
       {/* ERROR */}
       {/* ================================================= */}
 
-      {!pageLoading && error && (
+      {error && (
 
         <div
           className="
-            rounded-2xl
+            rounded-xl
             border
             border-red-100
             bg-red-50
-            p-5
+            px-4
+            py-3
             text-sm
             text-red-700
           "
@@ -588,131 +762,40 @@ export default function NumbersPage() {
 
 
       {/* ================================================= */}
-      {/* EMPTY */}
+      {/* TABLE */}
       {/* ================================================= */}
 
-      {!pageLoading
-        && !error
-        && items.length === 0
+      {!error && (
+
+        <NumbersExplorerTable
+          items={items}
+          loading={pageLoading}
+          onOpenContent={
+            handleOpenContent
+          }
+        />
+
+      )}
+
+
+      {/* ================================================= */}
+      {/* PAGINATION */}
+      {/* ================================================= */}
+
+      {!error
+        && !pageLoading
         && (
 
-          <div
-            className="
-              rounded-2xl
-              border
-              border-gray-200
-              bg-white
-              p-8
-              text-center
-            "
-          >
-
-            <div
-              className="
-                text-sm
-                font-medium
-                text-gray-700
-              "
-            >
-              No validated Number found.
-            </div>
-
-            <div
-              className="
-                mt-1
-                text-xs
-                text-gray-400
-              "
-            >
-              Try another search or universe.
-            </div>
-
-          </div>
-
-        )}
-
-
-      {/* ================================================= */}
-      {/* GRID */}
-      {/* ================================================= */}
-
-      {!pageLoading
-        && !error
-        && items.length > 0
-        && (
-
-          <div
-            className="
-              grid
-              grid-cols-1
-              gap-3
-              sm:grid-cols-2
-              md:grid-cols-3
-              lg:grid-cols-4
-              xl:grid-cols-5
-              2xl:grid-cols-6
-            "
-          >
-
-            {items.map(
-              item => (
-
-                <ValidatedNumberCard
-                  key={item.id_number}
-                  item={item}
-                />
-
-              ),
-            )}
-
-          </div>
-
-        )}
-
-
-      {/* ================================================= */}
-      {/* LOAD MORE */}
-      {/* ================================================= */}
-
-      {!pageLoading
-        && !error
-        && hasMore
-        && (
-
-          <div
-            className="
-              flex
-              justify-center
-              pt-2
-            "
-          >
-
-            <button
-              type="button"
-              disabled={loadingMore}
-              onClick={handleLoadMore}
-              className="
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                px-5
-                py-2.5
-                text-sm
-                font-medium
-                text-gray-700
-                transition
-                hover:bg-gray-50
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-              "
-            >
-              {loadingMore
-                ? "Loading..."
-                : "Load more"}
-            </button>
-
-          </div>
+          <NumbersExplorerPagination
+            pagination={pagination}
+            loading={loading}
+            onPrevious={
+              handlePreviousPage
+            }
+            onNext={
+              handleNextPage
+            }
+          />
 
         )}
 
