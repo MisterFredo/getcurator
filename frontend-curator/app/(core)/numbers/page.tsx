@@ -64,11 +64,13 @@ const INITIAL_FILTER_STATE:
 
     metricType: "",
 
-    year: "",
-
     zone: "",
 
-    valueStatus: "",
+    companyId: "",
+
+    solutionId: "",
+
+    topicId: "",
 
   };
 
@@ -116,7 +118,7 @@ export default function NumbersPage() {
 
 
   /* ========================================================
-     UNIVERSes
+     UNIVERSES
   ======================================================== */
 
   const [
@@ -358,20 +360,24 @@ export default function NumbersPage() {
               filters.universeId
               || undefined,
 
+            company_id:
+              filters.companyId
+              || undefined,
+
+            solution_id:
+              filters.solutionId
+              || undefined,
+
+            topic_id:
+              filters.topicId
+              || undefined,
+
             metric_type:
               filters.metricType
               || undefined,
 
-            year:
-              filters.year
-              || undefined,
-
             zone:
               filters.zone
-              || undefined,
-
-            value_status:
-              filters.valueStatus
               || undefined,
 
             limit:
@@ -445,7 +451,8 @@ export default function NumbersPage() {
 
     loadNumbers({
       searchQuery: "",
-      filters: INITIAL_FILTER_STATE,
+      filters:
+        INITIAL_FILTER_STATE,
       offset: 0,
     });
 
@@ -475,13 +482,16 @@ export default function NumbersPage() {
     );
 
     loadNumbers({
-      searchQuery: nextQuery,
-      filters: filterState,
+      searchQuery:
+        nextQuery,
+      filters:
+        filterState,
       offset: 0,
     });
 
     loadAvailableFilters({
-      searchQuery: nextQuery,
+      searchQuery:
+        nextQuery,
       universeId:
         filterState.universeId,
     });
@@ -507,15 +517,18 @@ export default function NumbersPage() {
     );
 
     loadNumbers({
-      searchQuery: query,
-      filters: nextFilters,
+      searchQuery:
+        query,
+      filters:
+        nextFilters,
       offset: 0,
     });
 
     if (universeChanged) {
 
       loadAvailableFilters({
-        searchQuery: query,
+        searchQuery:
+          query,
         universeId:
           nextFilters.universeId,
       });
@@ -539,7 +552,8 @@ export default function NumbersPage() {
 
     loadNumbers({
       searchQuery: "",
-      filters: INITIAL_FILTER_STATE,
+      filters:
+        INITIAL_FILTER_STATE,
       offset: 0,
     });
 
@@ -570,9 +584,12 @@ export default function NumbersPage() {
     );
 
     loadNumbers({
-      searchQuery: query,
-      filters: filterState,
-      offset: previousOffset,
+      searchQuery:
+        query,
+      filters:
+        filterState,
+      offset:
+        previousOffset,
     });
 
   }
@@ -598,9 +615,12 @@ export default function NumbersPage() {
       + pagination.limit;
 
     loadNumbers({
-      searchQuery: query,
-      filters: filterState,
-      offset: nextOffset,
+      searchQuery:
+        query,
+      filters:
+        filterState,
+      offset:
+        nextOffset,
     });
 
   }
@@ -642,11 +662,7 @@ export default function NumbersPage() {
 
   return (
 
-    <div
-      className="
-        space-y-6
-      "
-    >
+    <div className="space-y-6">
 
       {/* ================================================= */}
       {/* HEADER */}
@@ -702,6 +718,7 @@ export default function NumbersPage() {
                 text-gray-500
               "
             >
+
               <span
                 className="
                   font-semibold
@@ -710,10 +727,13 @@ export default function NumbersPage() {
               >
                 {pagination.total}
               </span>
+
               {" validated Number"}
+
               {pagination.total !== 1
                 ? "s"
                 : ""}
+
             </div>
 
           )}
