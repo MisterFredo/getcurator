@@ -421,6 +421,9 @@ def search_validated_numbers(
     universe_id: Optional[str] = None,
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
+    company_id: Optional[str] = None,
+    solution_id: Optional[str] = None,
+    topic_id: Optional[str] = None,
     metric_type: Optional[str] = None,
     zone: Optional[str] = None,
     period: Optional[str] = None,
@@ -515,6 +518,71 @@ def search_validated_numbers(
 
         params["entity_id"] = (
             entity_id.strip()
+        )
+
+    # ========================================================
+    # COMPANY
+    # ========================================================
+    
+    if company_id:
+    
+        conditions.append(
+            """
+            @company_id IN UNNEST(
+                IFNULL(
+                    entity_aggregation.COMPANY_IDS,
+                    ARRAY<STRING>[]
+                )
+            )
+            """
+        )
+    
+        params["company_id"] = (
+            company_id.strip()
+        )
+    
+    
+    # ========================================================
+    # SOLUTION
+    # ========================================================
+    
+    if solution_id:
+    
+        conditions.append(
+            """
+            @solution_id IN UNNEST(
+                IFNULL(
+                    entity_aggregation.SOLUTION_IDS,
+                    ARRAY<STRING>[]
+                )
+            )
+            """
+        )
+    
+        params["solution_id"] = (
+            solution_id.strip()
+        )
+    
+    
+    # ========================================================
+    # TOPIC
+    # ========================================================
+    
+    if topic_id:
+    
+        conditions.append(
+            """
+            @topic_id IN UNNEST(
+                IFNULL(
+                    entity_aggregation.TOPIC_IDS,
+                    ARRAY<STRING>[]
+                )
+            )
+            """
+        )
+    
+        params["topic_id"] = (
+            topic_id.strip()
         )
 
     # ========================================================
@@ -862,7 +930,6 @@ def search_validated_numbers(
         },
     }
 
-
 # ============================================================
 # GET PUBLIC NUMBER FILTERS
 # ============================================================
@@ -873,8 +940,8 @@ def get_validated_number_filters(
     query: Optional[str] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Return available facets for the visible and effectively
-    ACCEPTED Numbers.
+    Return useful business facets for visible,
+    effectively ACCEPTED Numbers.
     """
 
     conditions, params = (
@@ -903,11 +970,7 @@ def get_validated_number_filters(
 
                 number.METRIC_TYPE,
 
-                number.ZONE,
-
-                number.PERIOD_LABEL,
-
-                number.VALUE_STATUS
+                number.ZONE
 
             FROM `{VIEW_NUMBER}` number
 
@@ -922,25 +985,39 @@ def get_validated_number_filters(
             WHERE {where_sql}
         ),
 
-        year_values AS (
+        entity_facets AS (
 
-            SELECT DISTINCT
+            SELECT
 
-                base.ID_NUMBER,
+                entity.ENTITY_TYPE,
 
-                year
+                entity.ENTITY_ID,
+
+                ANY_VALUE(
+                    entity.ENTITY_LABEL
+                ) AS ENTITY_LABEL,
+
+                COUNT(
+                    DISTINCT base.ID_NUMBER
+                ) AS FACET_COUNT
 
             FROM base
 
-            CROSS JOIN UNNEST(
-                REGEXP_EXTRACT_ALL(
-                    IFNULL(
-                        base.PERIOD_LABEL,
-                        ''
-                    ),
-                    r'(?:19|20)\\d{2}'
-                )
-            ) year
+            JOIN `{TABLE_NUMBER_ENTITY}` entity
+              ON entity.ID_NUMBER
+                 = base.ID_NUMBER
+
+            WHERE entity.ENTITY_TYPE IN (
+                'company',
+                'solution',
+                'topic'
+            )
+
+            GROUP BY
+
+                entity.ENTITY_TYPE,
+
+                entity.ENTITY_ID
         )
 
         SELECT
@@ -950,6 +1027,9 @@ def get_validated_number_filters(
 
             METRIC_TYPE
                 AS FACET_VALUE,
+
+            METRIC_TYPE
+                AS FACET_LABEL,
 
             COUNT(*)
                 AS FACET_COUNT
@@ -966,29 +1046,14 @@ def get_validated_number_filters(
 
         SELECT
 
-            'year'
-                AS FACET_TYPE,
-
-            year
-                AS FACET_VALUE,
-
-            COUNT(*)
-                AS FACET_COUNT
-
-        FROM year_values
-
-        GROUP BY
-            year
-
-        UNION ALL
-
-        SELECT
-
             'zone'
                 AS FACET_TYPE,
 
             ZONE
                 AS FACET_VALUE,
+
+            ZONE
+                AS FACET_LABEL,
 
             COUNT(*)
                 AS FACET_COUNT
@@ -1005,22 +1070,18 @@ def get_validated_number_filters(
 
         SELECT
 
-            'value_status'
+            ENTITY_TYPE
                 AS FACET_TYPE,
 
-            VALUE_STATUS
+            ENTITY_ID
                 AS FACET_VALUE,
 
-            COUNT(*)
-                AS FACET_COUNT
+            ENTITY_LABEL
+                AS FACET_LABEL,
 
-        FROM base
+            FACET_COUNT
 
-        WHERE VALUE_STATUS IS NOT NULL
-          AND TRIM(VALUE_STATUS) != ''
-
-        GROUP BY
-            VALUE_STATUS
+        FROM entity_facets
 
         ORDER BY
 
@@ -1028,7 +1089,7 @@ def get_validated_number_filters(
 
             FACET_COUNT DESC,
 
-            FACET_VALUE ASC
+            FACET_LABEL ASC
         """,
         params,
     ) or []
@@ -1038,23 +1099,27 @@ def get_validated_number_filters(
         List[Dict[str, Any]],
     ] = {
         "metric_types": [],
-        "years": [],
         "zones": [],
-        "value_statuses": [],
+        "companies": [],
+        "solutions": [],
+        "topics": [],
     }
 
     target_by_type = {
         "metric_type":
             "metric_types",
 
-        "year":
-            "years",
-
         "zone":
             "zones",
 
-        "value_status":
-            "value_statuses",
+        "company":
+            "companies",
+
+        "solution":
+            "solutions",
+
+        "topic":
+            "topics",
     }
 
     for row in rows:
@@ -1076,6 +1141,11 @@ def get_validated_number_filters(
             "FACET_VALUE",
         )
 
+        label = _row_value(
+            row,
+            "FACET_LABEL",
+        )
+
         if value is None:
             continue
 
@@ -1083,7 +1153,10 @@ def get_validated_number_filters(
             "value": str(value),
 
             "label": (
-                str(value)
+                str(
+                    label
+                    or value
+                )
                 .replace(
                     "_",
                     " ",
@@ -1099,10 +1172,5 @@ def get_validated_number_filters(
                 )
             ),
         })
-
-    result["years"].sort(
-        key=lambda item: item["value"],
-        reverse=True,
-    )
 
     return result
