@@ -6,13 +6,15 @@ import {
   useState,
 } from "react";
 
+import NumbersExplorerEntitySelect from "@/components/numbers/explorer/NumbersExplorerEntitySelect";
+
 import type {
   PublicNumberFilters,
 } from "@/types/numbers";
 
 
 /* ============================================================
-   TYPES
+   FILTER STATE
 ============================================================ */
 
 export type NumbersExplorerFilterState = {
@@ -21,14 +23,20 @@ export type NumbersExplorerFilterState = {
 
   metricType: string;
 
-  year: string;
-
   zone: string;
 
-  valueStatus: string;
+  companyId: string;
+
+  solutionId: string;
+
+  topicId: string;
 
 };
 
+
+/* ============================================================
+   TYPES
+============================================================ */
 
 type Universe = {
 
@@ -122,12 +130,14 @@ export default function NumbersExplorerFilters({
     Key extends keyof NumbersExplorerFilterState
   >(
     key: Key,
-    nextValue: NumbersExplorerFilterState[Key],
+    nextValue:
+      NumbersExplorerFilterState[Key],
   ) {
 
     onChange({
       ...value,
-      [key]: nextValue,
+      [key]:
+        nextValue,
     });
 
   }
@@ -179,11 +189,13 @@ export default function NumbersExplorerFilters({
 
     || value.metricType
 
-    || value.year
-
     || value.zone
 
-    || value.valueStatus
+    || value.companyId
+
+    || value.solutionId
+
+    || value.topicId
 
   );
 
@@ -271,7 +283,7 @@ export default function NumbersExplorerFilters({
 
 
       {/* ================================================= */}
-      {/* FILTERS */}
+      {/* GENERAL FILTERS */}
       {/* ================================================= */}
 
       <div
@@ -281,7 +293,7 @@ export default function NumbersExplorerFilters({
           grid-cols-1
           gap-3
           sm:grid-cols-2
-          lg:grid-cols-5
+          lg:grid-cols-3
         "
       >
 
@@ -291,6 +303,7 @@ export default function NumbersExplorerFilters({
 
           <span
             className="
+              block
               text-[10px]
               font-semibold
               uppercase
@@ -348,12 +361,13 @@ export default function NumbersExplorerFilters({
         </label>
 
 
-        {/* METRIC TYPE */}
+        {/* METRIC */}
 
         <label className="space-y-1">
 
           <span
             className="
+              block
               text-[10px]
               font-semibold
               uppercase
@@ -411,75 +425,13 @@ export default function NumbersExplorerFilters({
         </label>
 
 
-        {/* YEAR */}
-
-        <label className="space-y-1">
-
-          <span
-            className="
-              text-[10px]
-              font-semibold
-              uppercase
-              tracking-wide
-              text-gray-400
-            "
-          >
-            Year
-          </span>
-
-          <select
-            value={value.year}
-            disabled={loading}
-            onChange={event =>
-              updateFilter(
-                "year",
-                event.target.value,
-              )
-            }
-            className="
-              w-full
-              rounded-lg
-              border
-              border-gray-200
-              bg-white
-              px-3
-              py-2
-              text-xs
-              text-gray-700
-              outline-none
-              focus:border-gray-400
-              disabled:bg-gray-50
-            "
-          >
-
-            <option value="">
-              All years
-            </option>
-
-            {(filters?.years ?? []).map(
-              option => (
-
-                <option
-                  key={option.value}
-                  value={option.value}
-                >
-                  {option.value} ({option.count})
-                </option>
-
-              ),
-            )}
-
-          </select>
-
-        </label>
-
-
         {/* ZONE */}
 
         <label className="space-y-1">
 
           <span
             className="
+              block
               text-[10px]
               font-semibold
               uppercase
@@ -536,68 +488,74 @@ export default function NumbersExplorerFilters({
 
         </label>
 
+      </div>
 
-        {/* VALUE STATUS */}
 
-        <label className="space-y-1">
+      {/* ================================================= */}
+      {/* ENTITY FILTERS */}
+      {/* ================================================= */}
 
-          <span
-            className="
-              text-[10px]
-              font-semibold
-              uppercase
-              tracking-wide
-              text-gray-400
-            "
-          >
-            Status
-          </span>
+      <div
+        className="
+          mt-3
+          grid
+          grid-cols-1
+          gap-3
+          sm:grid-cols-2
+          lg:grid-cols-3
+        "
+      >
 
-          <select
-            value={value.valueStatus}
-            disabled={loading}
-            onChange={event =>
-              updateFilter(
-                "valueStatus",
-                event.target.value,
-              )
-            }
-            className="
-              w-full
-              rounded-lg
-              border
-              border-gray-200
-              bg-white
-              px-3
-              py-2
-              text-xs
-              text-gray-700
-              outline-none
-              focus:border-gray-400
-              disabled:bg-gray-50
-            "
-          >
+        <NumbersExplorerEntitySelect
+          label="Company"
+          placeholder="All companies"
+          value={value.companyId}
+          options={
+            filters?.companies
+            ?? []
+          }
+          disabled={loading}
+          onChange={nextValue =>
+            updateFilter(
+              "companyId",
+              nextValue,
+            )
+          }
+        />
 
-            <option value="">
-              All statuses
-            </option>
+        <NumbersExplorerEntitySelect
+          label="Solution"
+          placeholder="All solutions"
+          value={value.solutionId}
+          options={
+            filters?.solutions
+            ?? []
+          }
+          disabled={loading}
+          onChange={nextValue =>
+            updateFilter(
+              "solutionId",
+              nextValue,
+            )
+          }
+        />
 
-            {(filters?.value_statuses ?? []).map(
-              option => (
-
-                <option
-                  key={option.value}
-                  value={option.value}
-                >
-                  {option.label} ({option.count})
-                </option>
-
-              ),
-            )}
-
-          </select>
-
-        </label>
+        <NumbersExplorerEntitySelect
+          label="Topic"
+          placeholder="All topics"
+          value={value.topicId}
+          options={
+            filters?.topics
+            ?? []
+          }
+          disabled={loading}
+          onChange={nextValue =>
+            updateFilter(
+              "topicId",
+              nextValue,
+            )
+          }
+        />
 
       </div>
 
