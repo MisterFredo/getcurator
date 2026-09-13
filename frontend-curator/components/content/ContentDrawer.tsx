@@ -1,19 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useUser } from "@/hooks/useUser";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+  usePathname,
+} from "next/navigation";
+
+import {
+  X,
+  ExternalLink,
+} from "lucide-react";
+
+import {
+  useUser,
+} from "@/hooks/useUser";
 
 import {
   getContent,
 } from "@/lib/watch";
 
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+import ContentNumbers from "@/components/content/ContentNumbers";
+
 import type {
   Content,
 } from "@/types/watch";
-import { X, ExternalLink } from "lucide-react";
-import { useDrawer } from "@/contexts/DrawerContext";
-import ContentNumbers from "@/components/content/ContentNumbers";
 
 /* ========================================================= */
 
