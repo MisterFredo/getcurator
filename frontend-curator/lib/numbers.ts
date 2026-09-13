@@ -95,6 +95,24 @@ export async function searchValidatedNumbers(
 
   addOptionalParameter(
     searchParams,
+    "company_id",
+    params.company_id,
+  );
+
+  addOptionalParameter(
+    searchParams,
+    "solution_id",
+    params.solution_id,
+  );
+
+  addOptionalParameter(
+    searchParams,
+    "topic_id",
+    params.topic_id,
+  );
+
+  addOptionalParameter(
+    searchParams,
     "metric_type",
     params.metric_type,
   );
@@ -109,18 +127,6 @@ export async function searchValidatedNumbers(
     searchParams,
     "period",
     params.period,
-  );
-
-  addOptionalParameter(
-    searchParams,
-    "year",
-    params.year,
-  );
-
-  addOptionalParameter(
-    searchParams,
-    "value_status",
-    params.value_status,
   );
 
   return api.get(
