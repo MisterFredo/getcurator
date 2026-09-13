@@ -22,6 +22,10 @@ from core.universe.service import (
     list_universes_for_user,
 )
 
+from core.numbers.content_service import (
+    get_validated_numbers_for_content,
+)
+
 
 # ============================================================
 # LATEST
@@ -241,6 +245,16 @@ def get_watch_content(
         return None
 
     # ========================================================
+    # VALIDATED NUMBERS
+    # ========================================================
+
+    validated_numbers = (
+        get_validated_numbers_for_content(
+            id_content=content_id,
+        )
+    )
+
+    # ========================================================
     # USER LANGUAGE
     # ========================================================
 
@@ -414,6 +428,9 @@ def get_watch_content(
             content.get(
                 "POINT_DE_FRICTION"
             ),
+
+        "numbers":
+            validated_numbers,
 
         "chiffres":
             content.get(
