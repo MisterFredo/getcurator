@@ -69,9 +69,11 @@ export type PublicNumber = {
 
   published_at: string | null;
 
-  content: PublicNumberContent;
+  content:
+    PublicNumberContent;
 
-  entities: PublicNumberEntity[];
+  entities:
+    PublicNumberEntity[];
 
 };
 
@@ -127,15 +129,17 @@ export type PublicNumbersSearchParams = {
 
   entity_id?: string | null;
 
+  company_id?: string | null;
+
+  solution_id?: string | null;
+
+  topic_id?: string | null;
+
   metric_type?: string | null;
 
   zone?: string | null;
 
   period?: string | null;
-
-  year?: string | null;
-
-  value_status?: string | null;
 
   limit?: number;
 
@@ -168,13 +172,16 @@ export type PublicNumberFilters = {
   metric_types:
     PublicNumberFilterOption[];
 
-  years:
-    PublicNumberFilterOption[];
-
   zones:
     PublicNumberFilterOption[];
 
-  value_statuses:
+  companies:
+    PublicNumberFilterOption[];
+
+  solutions:
+    PublicNumberFilterOption[];
+
+  topics:
     PublicNumberFilterOption[];
 
 };
