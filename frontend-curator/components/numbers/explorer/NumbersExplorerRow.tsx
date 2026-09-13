@@ -215,9 +215,7 @@ function formatValue(
       numericValue,
       scale,
     ]
-      .filter(
-        Boolean,
-      )
+      .filter(Boolean)
       .join(" ");
 
   }
@@ -227,16 +225,14 @@ function formatValue(
     scale,
     unit,
   ]
-    .filter(
-      Boolean,
-    )
+    .filter(Boolean)
     .join(" ");
 
 }
 
 
 /* ============================================================
-   FORMAT TEXT
+   FORMAT TECHNICAL VALUE
 ============================================================ */
 
 function formatTechnicalValue(
@@ -272,12 +268,11 @@ function formatTechnicalValue(
 ============================================================ */
 
 function getEntityClasses(
-  entityType: PublicNumberEntity["entity_type"],
+  entityType:
+    PublicNumberEntity["entity_type"],
 ) {
 
-  switch (
-    entityType
-  ) {
+  switch (entityType) {
 
     case "company":
 
@@ -303,42 +298,38 @@ function getEntityClasses(
 
 
 /* ============================================================
-   VALUE STATUS COLOR
+   VALUE QUALIFIER
 ============================================================ */
 
-function getStatusClasses(
+function getValueQualifier(
   valueStatus?: string | null,
 ) {
 
-  switch (
-    valueStatus
+  if (
+    valueStatus === "FORECAST"
   ) {
 
-    case "ACTUAL":
-
-      return (
-        "bg-emerald-50 text-emerald-700"
-      );
-
-    case "FORECAST":
-
-      return (
-        "bg-amber-50 text-amber-700"
-      );
-
-    case "TARGET":
-
-      return (
-        "bg-blue-50 text-blue-700"
-      );
-
-    default:
-
-      return (
-        "bg-gray-100 text-gray-500"
-      );
+    return {
+      label: "Forecast",
+      classes:
+        "bg-amber-50 text-amber-700",
+    };
 
   }
+
+  if (
+    valueStatus === "TARGET"
+  ) {
+
+    return {
+      label: "Target",
+      classes:
+        "bg-blue-50 text-blue-700",
+    };
+
+  }
+
+  return null;
 
 }
 
@@ -363,13 +354,19 @@ export default function NumbersExplorerRow({
     item.entities?.[0]
     || null;
 
-  const additionalEntities = Math.max(
-    0,
-    (
-      item.entities?.length
-      || 0
-    ) - 1,
-  );
+  const additionalEntities =
+    Math.max(
+      0,
+      (
+        item.entities?.length
+        || 0
+      ) - 1,
+    );
+
+  const valueQualifier =
+    getValueQualifier(
+      item.value_status,
+    );
 
 
   /* ========================================================
@@ -395,9 +392,9 @@ export default function NumbersExplorerRow({
         onClick={onToggle}
         className="
           grid
-          min-w-[1050px]
+          min-w-[950px]
           w-full
-          grid-cols-[150px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_140px_130px_110px_32px]
+          grid-cols-[180px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_150px_140px_32px]
           items-center
           gap-4
           px-4
@@ -412,24 +409,51 @@ export default function NumbersExplorerRow({
 
         <div
           className="
-            truncate
-            text-sm
-            font-semibold
-            text-gray-950
+            flex
+            min-w-0
+            items-center
+            gap-2
           "
-          title={formatValue(item)}
         >
-          {formatValue(item)}
+
+          <span
+            className="
+              truncate
+              text-sm
+              font-semibold
+              text-gray-950
+            "
+            title={formatValue(item)}
+          >
+            {formatValue(item)}
+          </span>
+
+          {valueQualifier && (
+
+            <span
+              className={`
+                shrink-0
+                rounded-full
+                px-1.5
+                py-0.5
+                text-[8px]
+                font-semibold
+                uppercase
+                tracking-wide
+                ${valueQualifier.classes}
+              `}
+            >
+              {valueQualifier.label}
+            </span>
+
+          )}
+
         </div>
 
 
-        {/* LABEL */}
+        {/* INDICATOR */}
 
-        <div
-          className="
-            min-w-0
-          "
-        >
+        <div className="min-w-0">
 
           <div
             className="
@@ -478,7 +502,7 @@ export default function NumbersExplorerRow({
 
               <span
                 className={`
-                  max-w-[150px]
+                  max-w-[160px]
                   truncate
                   rounded-full
                   px-2
@@ -527,7 +551,7 @@ export default function NumbersExplorerRow({
         </div>
 
 
-        {/* ZONE */}
+        {/* GEOGRAPHY */}
 
         <div
           className="
@@ -564,33 +588,6 @@ export default function NumbersExplorerRow({
           {formatTechnicalValue(
             item.period_label,
           )}
-        </div>
-
-
-        {/* VALUE STATUS */}
-
-        <div>
-
-          <span
-            className={`
-              inline-flex
-              rounded-full
-              px-2
-              py-1
-              text-[9px]
-              font-semibold
-              uppercase
-              tracking-wide
-              ${getStatusClasses(
-                item.value_status,
-              )}
-            `}
-          >
-            {formatTechnicalValue(
-              item.value_status,
-            )}
-          </span>
-
         </div>
 
 
@@ -681,44 +678,42 @@ export default function NumbersExplorerRow({
 
               )}
 
-              {onOpenContent && item.id_content && (
+              {onOpenContent
+                && item.id_content
+                && (
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    onOpenContent(
-                      item.id_content,
-                    )
-                  }
-                  className="
-                    mt-3
-                    inline-flex
-                    items-center
-                    gap-1.5
-                    text-xs
-                    font-medium
-                    text-blue-600
-                    transition
-                    hover:text-blue-800
-                  "
-                >
-                  <ExternalLink size={13} />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenContent(
+                        item.id_content,
+                      )
+                    }
+                    className="
+                      mt-3
+                      inline-flex
+                      items-center
+                      gap-1.5
+                      text-xs
+                      font-medium
+                      text-blue-600
+                      transition
+                      hover:text-blue-800
+                    "
+                  >
+                    <ExternalLink size={13} />
 
-                  Open content
-                </button>
+                    Open content
+                  </button>
 
-              )}
+                )}
 
             </div>
 
 
-            {/* TECHNICAL DETAILS */}
+            {/* DETAILS */}
 
-            <div
-              className="
-                space-y-4
-              "
-            >
+            <div className="space-y-4">
 
               <div>
 
@@ -785,7 +780,6 @@ export default function NumbersExplorerRow({
                 </div>
 
               </div>
-
 
               <div
                 className="
