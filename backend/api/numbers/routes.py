@@ -48,6 +48,10 @@ from core.numbers.retrieval_service import (
     search_validated_numbers,
 )
 
+from core.numbers.content_service import (
+    get_validated_numbers_for_content,
+)
+
 router = APIRouter()
 
 
@@ -362,6 +366,42 @@ def public_numbers_route(
             detail=(
                 "Erreur interne recherche "
                 f"Numbers : {e}"
+            ),
+        )
+
+# ============================================================
+# VALIDATED NUMBERS FOR CONTENT
+# ============================================================
+
+@router.get(
+    "/content/{id_content}"
+)
+def validated_numbers_for_content_route(
+    id_content: str,
+):
+
+    try:
+
+        items = (
+            get_validated_numbers_for_content(
+                id_content=id_content,
+            )
+        )
+
+        return {
+            "status": "ok",
+            "id_content": id_content,
+            "count": len(items),
+            "items": items,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne Numbers "
+                f"du contenu : {e}"
             ),
         )
 
