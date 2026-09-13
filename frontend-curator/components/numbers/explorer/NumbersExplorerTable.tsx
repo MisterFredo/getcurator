@@ -100,11 +100,7 @@ export default function NumbersExplorerTable({
       "
     >
 
-      <div
-        className="
-          overflow-x-auto
-        "
-      >
+      <div className="overflow-x-auto">
 
         {/* ================================================= */}
         {/* HEADER */}
@@ -113,8 +109,8 @@ export default function NumbersExplorerTable({
         <div
           className="
             grid
-            min-w-[1050px]
-            grid-cols-[150px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_140px_130px_110px_32px]
+            min-w-[950px]
+            grid-cols-[180px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_150px_140px_32px]
             items-center
             gap-4
             border-b
@@ -150,10 +146,6 @@ export default function NumbersExplorerTable({
             Period
           </div>
 
-          <div>
-            Status
-          </div>
-
           <div />
 
         </div>
@@ -176,8 +168,8 @@ export default function NumbersExplorerTable({
                   key={index}
                   className="
                     grid
-                    min-w-[1050px]
-                    grid-cols-[150px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_140px_130px_110px_32px]
+                    min-w-[950px]
+                    grid-cols-[180px_minmax(240px,1.8fr)_minmax(180px,1.2fr)_150px_140px_32px]
                     items-center
                     gap-4
                     border-b
@@ -188,21 +180,22 @@ export default function NumbersExplorerTable({
                   "
                 >
 
+                  {/* VALUE */}
+
                   <div
                     className="
                       h-4
-                      w-20
+                      w-24
                       animate-pulse
                       rounded
                       bg-gray-100
                     "
                   />
 
-                  <div
-                    className="
-                      space-y-1.5
-                    "
-                  >
+
+                  {/* INDICATOR */}
+
+                  <div className="space-y-1.5">
 
                     <div
                       className="
@@ -226,6 +219,9 @@ export default function NumbersExplorerTable({
 
                   </div>
 
+
+                  {/* ENTITY */}
+
                   <div
                     className="
                       h-5
@@ -235,6 +231,9 @@ export default function NumbersExplorerTable({
                       bg-gray-100
                     "
                   />
+
+
+                  {/* GEOGRAPHY */}
 
                   <div
                     className="
@@ -246,6 +245,9 @@ export default function NumbersExplorerTable({
                     "
                   />
 
+
+                  {/* PERIOD */}
+
                   <div
                     className="
                       h-3
@@ -256,15 +258,8 @@ export default function NumbersExplorerTable({
                     "
                   />
 
-                  <div
-                    className="
-                      h-5
-                      w-16
-                      animate-pulse
-                      rounded-full
-                      bg-gray-100
-                    "
-                  />
+
+                  {/* EXPAND */}
 
                   <div
                     className="
