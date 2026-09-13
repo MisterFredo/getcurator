@@ -324,66 +324,9 @@ export default function ContentDrawer({
             </div>
           )}
 
-          {content.chiffres?.length > 0 && (
-            <div>
-              {/* HEADER + LEGEND */}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs uppercase text-gray-500">
-                  Key Figures
-                </h2>
-
-                <div className="text-[10px] text-gray-400 hidden md:flex gap-2">
-                  <span>Label</span>
-                  <span>•</span>
-                  <span>Value</span>
-                  <span>•</span>
-                  <span>Unit</span>
-                  <span>•</span>
-                  <span>Actor</span>
-                  <span>•</span>
-                  <span>Market</span>
-                  <span>•</span>
-                  <span>Period</span>
-                </div>
-              </div>
-
-              {/* LIST */}
-              <ul className="space-y-2">
-                {content.chiffres.map((c, i) => {
-                  const parts = c
-                    .split("|")
-                    .map((p) => p.trim());
-
-                  return (
-                    <li
-                      key={i}
-                      className="
-                        border rounded p-3
-                        text-sm bg-gray-50
-                      "
-                    >
-                      {/* LABEL */}
-                      <div className="font-medium text-gray-900">
-                        {parts[0]}
-                      </div>
-
-                      {/* META */}
-                      {parts.length > 1 && (
-                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
-                          {parts.slice(1).map((p, idx) => (
-                            <span key={idx}>
-                              {p}
-                              {idx < parts.length - 2 && " •"}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          <ContentNumbers
+            numbers={content.numbers}
+          />
 
           {content.acteurs_cites?.length > 0 && (
             <div className="text-sm text-gray-600">
