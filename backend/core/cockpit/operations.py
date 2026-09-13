@@ -2,7 +2,7 @@ from config import (
     BQ_PROJECT,
     BQ_DATASET,
 )
-from google.cloud import bigquery
+
 from utils.bigquery_utils import query_bq
 from datetime import datetime
 
@@ -778,21 +778,6 @@ def _copy_dataset(
     source_dataset: str,
     target_dataset: str,
 ):
-    """
-    Copy all configured tables from one dataset to another.
-
-    BigQuery copy jobs preserve:
-    - schema
-    - partitioning
-    - clustering
-    - table metadata
-
-    Existing destination tables are overwritten.
-    """
-
-    client = bigquery.Client(
-        project=BQ_PROJECT,
-    )
 
     copied = []
 
@@ -817,19 +802,22 @@ def _copy_dataset(
             target_table,
         )
 
-        job_config = bigquery.CopyJobConfig(
-            write_disposition=(
-                bigquery.WriteDisposition.WRITE_TRUNCATE
-            ),
+        # La table cible est supprimée pour éviter les conflits
+        # de partitionnement et de clustering.
+        query_bq(
+            f"""
+            DROP TABLE IF EXISTS `{target_table}`
+            """
         )
 
-        copy_job = client.copy_table(
-            sources=source_table,
-            destination=target_table,
-            job_config=job_config,
+        # CLONE conserve la structure physique de la source :
+        # schéma, partitionnement et clustering.
+        query_bq(
+            f"""
+            CREATE TABLE `{target_table}`
+            CLONE `{source_table}`
+            """
         )
-
-        copy_job.result()
 
         copied.append(table)
 
@@ -839,6 +827,8 @@ def _copy_dataset(
         )
 
     return copied
+
+
 # ============================================================
 # BACKUP PROD
 # ============================================================
