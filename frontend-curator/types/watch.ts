@@ -42,6 +42,59 @@ export type Concept = {
 
 };
 
+/* =========================================================
+   VALIDATED NUMBERS
+========================================================= */
+
+export type ContentNumberEntityType =
+  | "company"
+  | "solution"
+  | "topic";
+
+
+export type ContentNumberEntity = {
+
+  entity_type: ContentNumberEntityType;
+
+  entity_id: string;
+
+  entity_label: string;
+
+};
+
+
+export type ContentNumber = {
+
+  id_number: string;
+
+  id_content: string;
+
+  label: string;
+
+  metric_type: string;
+
+  value: number | null;
+
+  value_min: number | null;
+
+  value_max: number | null;
+
+  unit: string;
+
+  scale: string;
+
+  zone: string;
+
+  period_label: string;
+
+  value_status: string;
+
+  confidence: number;
+
+  entities: ContentNumberEntity[];
+
+};
+
 
 /* =========================================================
    BADGES
@@ -123,6 +176,7 @@ export type Content = {
   mecanique_expliquee?: string;
 
   enjeu_strategique?: string;
+  numbers?: ContentNumber[];
 
   point_de_friction?: string;
 
