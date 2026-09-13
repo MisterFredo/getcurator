@@ -45,6 +45,7 @@ from core.numbers.moderation_service import (
 )
 
 from core.numbers.retrieval_service import (
+    get_validated_number_filters,
     search_validated_numbers,
 )
 
@@ -303,6 +304,40 @@ def apply_number_decisions_route(
             ),
         )
 
+# ============================================================
+# PUBLIC VALIDATED NUMBERS FILTERS
+# ============================================================
+
+@router.get("/public/filters")
+def public_number_filters_route(
+    user_id: Optional[str] = None,
+    universe_id: Optional[str] = None,
+    query: Optional[str] = None,
+):
+
+    try:
+
+        result = get_validated_number_filters(
+            user_id=user_id,
+            universe_id=universe_id,
+            query=query,
+        )
+
+        return {
+            "status": "ok",
+            "filters": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur interne filtres "
+                f"Numbers : {e}"
+            ),
+        )
+
 
 # ============================================================
 # PUBLIC VALIDATED NUMBERS
@@ -318,6 +353,8 @@ def public_numbers_route(
     metric_type: Optional[str] = None,
     zone: Optional[str] = None,
     period: Optional[str] = None,
+    year: Optional[str] = None,
+    value_status: Optional[str] = None,
     limit: int = Query(
         50,
         ge=1,
@@ -340,6 +377,8 @@ def public_numbers_route(
             metric_type=metric_type,
             zone=zone,
             period=period,
+            year=year,
+            value_status=value_status,
             limit=limit,
             offset=offset,
         )
