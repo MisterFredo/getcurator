@@ -210,6 +210,33 @@ def _entity_aggregation_sql() -> str:
                 IGNORE NULLS
             ) AS ENTITY_IDS,
 
+            ARRAY_AGG(
+                DISTINCT IF(
+                    ENTITY_TYPE = 'company',
+                    ENTITY_ID,
+                    NULL
+                )
+                IGNORE NULLS
+            ) AS COMPANY_IDS,
+
+            ARRAY_AGG(
+                DISTINCT IF(
+                    ENTITY_TYPE = 'solution',
+                    ENTITY_ID,
+                    NULL
+                )
+                IGNORE NULLS
+            ) AS SOLUTION_IDS,
+
+            ARRAY_AGG(
+                DISTINCT IF(
+                    ENTITY_TYPE = 'topic',
+                    ENTITY_ID,
+                    NULL
+                )
+                IGNORE NULLS
+            ) AS TOPIC_IDS,
+
             STRING_AGG(
                 DISTINCT ENTITY_LABEL,
                 ' '
