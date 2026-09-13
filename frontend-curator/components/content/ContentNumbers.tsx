@@ -1,24 +1,370 @@
 "use client";
 
-/* ========================================================= */
 
-type Props = {
+/* ============================================================
+   TYPES
+============================================================ */
 
-  chiffres?: string[];
+type ContentNumberEntity = {
+
+  entity_type:
+    | "company"
+    | "solution"
+    | "topic";
+
+  entity_id: string;
+
+  entity_label: string;
 
 };
 
-/* ========================================================= */
+
+type ContentNumber = {
+
+  id_number: string;
+
+  id_content: string;
+
+  label: string;
+
+  metric_type: string;
+
+  value: number | null;
+
+  value_min: number | null;
+
+  value_max: number | null;
+
+  unit: string;
+
+  scale: string;
+
+  zone: string;
+
+  period_label: string;
+
+  value_status: string;
+
+  confidence: number;
+
+  entities: ContentNumberEntity[];
+
+};
+
+
+type Props = {
+
+  numbers?: ContentNumber[];
+
+};
+
+
+/* ============================================================
+   FORMAT NUMBER
+============================================================ */
+
+function formatNumber(
+  value: number,
+) {
+
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      maximumFractionDigits: 2,
+    },
+  ).format(
+    value,
+  );
+
+}
+
+
+/* ============================================================
+   FORMAT SCALE
+============================================================ */
+
+function formatScale(
+  scale?: string | null,
+) {
+
+  const normalizedScale = (
+    scale
+    || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  const scaleMap:
+    Record<string, string> = {
+
+      NONE: "",
+
+      THOUSAND: "K",
+
+      MILLION: "M",
+
+      BILLION: "Bn",
+
+      TRILLION: "T",
+
+  };
+
+  return (
+    scaleMap[
+      normalizedScale
+    ]
+    ?? scale
+    ?? ""
+  );
+
+}
+
+
+/* ============================================================
+   FORMAT UNIT
+============================================================ */
+
+function formatUnit(
+  unit?: string | null,
+) {
+
+  const normalizedUnit = (
+    unit
+    || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  const unitMap:
+    Record<string, string> = {
+
+      PERCENT: "%",
+
+      PERCENTAGE_POINTS:
+        "percentage points",
+
+      EUR: "€",
+
+      USD: "$",
+
+      GBP: "£",
+
+      USERS: "users",
+
+      PEOPLE: "people",
+
+      ACCOUNTS: "accounts",
+
+      STORES: "stores",
+
+      UNITS: "units",
+
+      MINUTES: "minutes",
+
+      HOURS: "hours",
+
+      DAYS: "days",
+
+      YEARS: "years",
+
+      AREA_SQFT: "sq ft",
+
+      POWER_KW: "kW",
+
+      CURRENCY_UNKNOWN: "",
+
+      OTHER: "",
+
+  };
+
+  return (
+    unitMap[
+      normalizedUnit
+    ]
+    ?? unit
+    ?? ""
+  );
+
+}
+
+
+/* ============================================================
+   FORMAT VALUE
+============================================================ */
+
+function formatValue(
+  item: ContentNumber,
+) {
+
+  let numericValue = "";
+
+  if (
+    item.value_min !== null
+    && item.value_max !== null
+  ) {
+
+    numericValue = [
+      formatNumber(
+        item.value_min,
+      ),
+
+      formatNumber(
+        item.value_max,
+      ),
+    ].join(
+      " – ",
+    );
+
+  } else if (
+    item.value !== null
+  ) {
+
+    numericValue = formatNumber(
+      item.value,
+    );
+
+  }
+
+  const scale = formatScale(
+    item.scale,
+  );
+
+  const unit = formatUnit(
+    item.unit,
+  );
+
+  if (
+    unit === "€"
+    || unit === "$"
+    || unit === "£"
+  ) {
+
+    return [
+      unit,
+      numericValue,
+      scale,
+    ]
+      .filter(
+        Boolean,
+      )
+      .join(" ");
+
+  }
+
+  return [
+    numericValue,
+    scale,
+    unit,
+  ]
+    .filter(
+      Boolean,
+    )
+    .join(" ");
+
+}
+
+
+/* ============================================================
+   FORMAT METADATA
+============================================================ */
+
+function formatMetadata(
+  item: ContentNumber,
+) {
+
+  const values = [];
+
+  if (
+    item.zone
+    && item.zone !== "UNKNOWN"
+    && item.zone !== "GLOBAL"
+  ) {
+
+    values.push(
+      item.zone,
+    );
+
+  }
+
+  if (
+    item.period_label
+    && item.period_label !== "UNKNOWN"
+  ) {
+
+    values.push(
+      item.period_label,
+    );
+
+  }
+
+  if (
+    item.value_status
+    && item.value_status !== "UNKNOWN"
+  ) {
+
+    values.push(
+      item.value_status.toLowerCase(),
+    );
+
+  }
+
+  return values.join(
+    " · ",
+  );
+
+}
+
+
+/* ============================================================
+   ENTITY COLOR
+============================================================ */
+
+function getEntityClasses(
+  entityType: ContentNumberEntity["entity_type"],
+) {
+
+  switch (
+    entityType
+  ) {
+
+    case "company":
+
+      return (
+        "bg-blue-50 text-blue-700"
+      );
+
+    case "solution":
+
+      return (
+        "bg-purple-50 text-purple-700"
+      );
+
+    case "topic":
+
+      return (
+        "bg-emerald-50 text-emerald-700"
+      );
+
+  }
+
+}
+
+
+/* ============================================================
+   COMPONENT
+============================================================ */
 
 export default function ContentNumbers({
 
-  chiffres,
+  numbers,
 
 }: Props) {
 
   if (
-    !chiffres ||
-    chiffres.length === 0
+    !Array.isArray(
+      numbers,
+    )
+    || numbers.length === 0
   ) {
 
     return null;
@@ -29,74 +375,152 @@ export default function ContentNumbers({
 
     <section
       className="
-        pt-8
         border-t
         border-gray-200
+        pt-8
       "
     >
 
       <h2
         className="
+          mb-5
           text-xs
+          font-semibold
           uppercase
           tracking-wide
-          font-semibold
           text-gray-500
-          mb-5
         "
       >
-
         Chiffres clés
-
       </h2>
 
       <div
         className="
-          rounded-xl
-          border
-          border-gray-200
-          overflow-hidden
+          grid
+          grid-cols-1
+          gap-3
+          sm:grid-cols-2
         "
       >
 
-        {chiffres.map(
+        {numbers.map(
+          item => {
 
-          (value, index) => (
+            const metadata =
+              formatMetadata(
+                item,
+              );
 
-            <div
+            return (
 
-              key={index}
-
-              className={`
-                px-5
-                py-4
-
-                ${
-                  index !==
-                  chiffres.length - 1
-                    ? "border-b border-gray-100"
-                    : ""
+              <article
+                key={
+                  item.id_number
                 }
-              `}
-
-            >
-
-              <div
                 className="
-                  text-[16px]
-                  leading-8
-                  text-gray-900
+                  rounded-xl
+                  border
+                  border-gray-200
+                  bg-white
+                  p-4
                 "
               >
 
-                {value}
+                {/* VALUE */}
 
-              </div>
+                <div
+                  className="
+                    text-lg
+                    font-semibold
+                    tracking-tight
+                    text-gray-950
+                  "
+                >
+                  {formatValue(
+                    item,
+                  )}
+                </div>
 
-            </div>
 
-          ),
+                {/* LABEL */}
 
+                <div
+                  className="
+                    mt-1
+                    text-sm
+                    leading-5
+                    text-gray-700
+                  "
+                >
+                  {item.label}
+                </div>
+
+
+                {/* METADATA */}
+
+                {metadata && (
+
+                  <div
+                    className="
+                      mt-2
+                      text-[11px]
+                      capitalize
+                      text-gray-400
+                    "
+                  >
+                    {metadata}
+                  </div>
+
+                )}
+
+
+                {/* ENTITIES */}
+
+                {item.entities.length > 0 && (
+
+                  <div
+                    className="
+                      mt-3
+                      flex
+                      flex-wrap
+                      gap-1
+                    "
+                  >
+
+                    {item.entities.map(
+                      entity => (
+
+                        <span
+                          key={
+                            `${entity.entity_type}:${entity.entity_id}`
+                          }
+                          className={`
+                            rounded-full
+                            px-2
+                            py-0.5
+                            text-[9px]
+                            font-medium
+                            uppercase
+                            ${getEntityClasses(
+                              entity.entity_type,
+                            )}
+                          `}
+                        >
+                          {entity.entity_label}
+                        </span>
+
+                      ),
+                    )}
+
+                  </div>
+
+                )}
+
+              </article>
+
+            );
+
+          },
         )}
 
       </div>
