@@ -3,9 +3,39 @@ import {
 } from "@/lib/api";
 
 import type {
+  PublicNumberFiltersParams,
+  PublicNumberFiltersResponse,
   PublicNumbersResponse,
   PublicNumbersSearchParams,
 } from "@/types/numbers";
+
+
+/* =========================================================
+   ADD OPTIONAL PARAMETER
+========================================================= */
+
+function addOptionalParameter(
+  searchParams: URLSearchParams,
+  key: string,
+  value?: string | null,
+) {
+
+  const normalizedValue = (
+    value
+    || ""
+  ).trim();
+
+  if (!normalizedValue) {
+    return;
+  }
+
+  searchParams.set(
+    key,
+    normalizedValue,
+  );
+
+}
+
 
 /* =========================================================
    SEARCH VALIDATED NUMBERS
@@ -26,81 +56,72 @@ export async function searchValidatedNumbers(
   searchParams.set(
     "limit",
     String(
-      params.limit ?? 20,
+      params.limit
+      ?? 50,
     ),
   );
 
   searchParams.set(
     "offset",
     String(
-      params.offset ?? 0,
+      params.offset
+      ?? 0,
     ),
   );
 
-  if (
-    params.query
-    && params.query.trim()
-  ) {
+  addOptionalParameter(
+    searchParams,
+    "query",
+    params.query,
+  );
 
-    searchParams.set(
-      "query",
-      params.query.trim(),
-    );
+  addOptionalParameter(
+    searchParams,
+    "universe_id",
+    params.universe_id,
+  );
 
-  }
+  addOptionalParameter(
+    searchParams,
+    "entity_type",
+    params.entity_type,
+  );
 
-  if (params.universe_id) {
+  addOptionalParameter(
+    searchParams,
+    "entity_id",
+    params.entity_id,
+  );
 
-    searchParams.set(
-      "universe_id",
-      params.universe_id,
-    );
+  addOptionalParameter(
+    searchParams,
+    "metric_type",
+    params.metric_type,
+  );
 
-  }
+  addOptionalParameter(
+    searchParams,
+    "zone",
+    params.zone,
+  );
 
-  if (
-    params.entity_type
-    && params.entity_id
-  ) {
+  addOptionalParameter(
+    searchParams,
+    "period",
+    params.period,
+  );
 
-    searchParams.set(
-      "entity_type",
-      params.entity_type,
-    );
+  addOptionalParameter(
+    searchParams,
+    "year",
+    params.year,
+  );
 
-    searchParams.set(
-      "entity_id",
-      params.entity_id,
-    );
-
-  }
-
-  if (params.metric_type) {
-
-    searchParams.set(
-      "metric_type",
-      params.metric_type,
-    );
-
-  }
-
-  if (params.zone) {
-
-    searchParams.set(
-      "zone",
-      params.zone,
-    );
-
-  }
-
-  if (params.period) {
-
-    searchParams.set(
-      "period",
-      params.period,
-    );
-
-  }
+  addOptionalParameter(
+    searchParams,
+    "value_status",
+    params.value_status,
+  );
 
   return api.get(
     (
@@ -108,4 +129,43 @@ export async function searchValidatedNumbers(
       + searchParams.toString()
     ),
   ) as Promise<PublicNumbersResponse>;
+
+}
+
+
+/* =========================================================
+   GET VALIDATED NUMBER FILTERS
+========================================================= */
+
+export async function getValidatedNumberFilters(
+  params: PublicNumberFiltersParams,
+): Promise<PublicNumberFiltersResponse> {
+
+  const searchParams =
+    new URLSearchParams();
+
+  searchParams.set(
+    "user_id",
+    params.user_id,
+  );
+
+  addOptionalParameter(
+    searchParams,
+    "universe_id",
+    params.universe_id,
+  );
+
+  addOptionalParameter(
+    searchParams,
+    "query",
+    params.query,
+  );
+
+  return api.get(
+    (
+      "/numbers/public/filters?"
+      + searchParams.toString()
+    ),
+  ) as Promise<PublicNumberFiltersResponse>;
+
 }
