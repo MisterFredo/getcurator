@@ -1,56 +1,14 @@
 "use client";
 
+import type {
+  ContentNumber,
+  ContentNumberEntityType,
+} from "@/types/watch";
+
 
 /* ============================================================
-   TYPES
+   PROPS
 ============================================================ */
-
-type ContentNumberEntity = {
-
-  entity_type:
-    | "company"
-    | "solution"
-    | "topic";
-
-  entity_id: string;
-
-  entity_label: string;
-
-};
-
-
-type ContentNumber = {
-
-  id_number: string;
-
-  id_content: string;
-
-  label: string;
-
-  metric_type: string;
-
-  value: number | null;
-
-  value_min: number | null;
-
-  value_max: number | null;
-
-  unit: string;
-
-  scale: string;
-
-  zone: string;
-
-  period_label: string;
-
-  value_status: string;
-
-  confidence: number;
-
-  entities: ContentNumberEntity[];
-
-};
-
 
 type Props = {
 
@@ -272,7 +230,7 @@ function formatMetadata(
   item: ContentNumber,
 ) {
 
-  const values = [];
+  const values: string[] = [];
 
   if (
     item.zone
@@ -320,7 +278,7 @@ function formatMetadata(
 ============================================================ */
 
 function getEntityClasses(
-  entityType: ContentNumberEntity["entity_type"],
+  entityType: ContentNumberEntityType,
 ) {
 
   switch (
@@ -343,6 +301,12 @@ function getEntityClasses(
 
       return (
         "bg-emerald-50 text-emerald-700"
+      );
+
+    default:
+
+      return (
+        "bg-gray-100 text-gray-600"
       );
 
   }
@@ -476,45 +440,49 @@ export default function ContentNumbers({
 
                 {/* ENTITIES */}
 
-                {item.entities.length > 0 && (
+                {Array.isArray(
+                  item.entities,
+                )
+                  && item.entities.length > 0
+                  && (
 
-                  <div
-                    className="
-                      mt-3
-                      flex
-                      flex-wrap
-                      gap-1
-                    "
-                  >
+                    <div
+                      className="
+                        mt-3
+                        flex
+                        flex-wrap
+                        gap-1
+                      "
+                    >
 
-                    {item.entities.map(
-                      entity => (
+                      {item.entities.map(
+                        entity => (
 
-                        <span
-                          key={
-                            `${entity.entity_type}:${entity.entity_id}`
-                          }
-                          className={`
-                            rounded-full
-                            px-2
-                            py-0.5
-                            text-[9px]
-                            font-medium
-                            uppercase
-                            ${getEntityClasses(
-                              entity.entity_type,
-                            )}
-                          `}
-                        >
-                          {entity.entity_label}
-                        </span>
+                          <span
+                            key={
+                              `${entity.entity_type}:${entity.entity_id}`
+                            }
+                            className={`
+                              rounded-full
+                              px-2
+                              py-0.5
+                              text-[9px]
+                              font-medium
+                              uppercase
+                              ${getEntityClasses(
+                                entity.entity_type,
+                              )}
+                            `}
+                          >
+                            {entity.entity_label}
+                          </span>
 
-                      ),
-                    )}
+                        ),
+                      )}
 
-                  </div>
+                    </div>
 
-                )}
+                  )}
 
               </article>
 
