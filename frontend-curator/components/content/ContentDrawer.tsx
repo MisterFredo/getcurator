@@ -13,6 +13,7 @@ import type {
 } from "@/types/watch";
 import { X, ExternalLink } from "lucide-react";
 import { useDrawer } from "@/contexts/DrawerContext";
+import ContentNumbers from "@/components/content/ContentNumbers";
 
 /* ========================================================= */
 
