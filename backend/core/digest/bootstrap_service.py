@@ -32,7 +32,7 @@ from core.digest.profile_service import (
 # CONFIGURATION
 # ============================================================
 
-BOOTSTRAP_WEEKS_COUNT = 3
+BOOTSTRAP_WEEKS_COUNT = 5
 
 
 # ============================================================
