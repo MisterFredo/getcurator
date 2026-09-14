@@ -40,15 +40,49 @@ def search_touch(
             brief=brief,
         )
 
+        response = outcome.model_dump(
+            mode="json",
+        )
+
+        # ====================================================
+        # LIGHT CANDIDATE RESPONSE
+        # ====================================================
+
+        internal_fields = {
+
+            "content_body",
+
+            "signal_analytique",
+
+            "mecanique_expliquee",
+
+            "enjeu_strategique",
+
+            "point_de_friction",
+
+            "chiffres",
+
+        }
+
+        for candidate in response.get(
+            "candidates",
+            [],
+        ):
+
+            for field_name in internal_fields:
+
+                candidate.pop(
+                    field_name,
+                    None,
+                )
+
         return {
 
             "status":
                 "ok",
 
             "search":
-                outcome.model_dump(
-                    mode="json",
-                ),
+                response,
 
         }
 
