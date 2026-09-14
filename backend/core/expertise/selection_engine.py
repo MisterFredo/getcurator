@@ -1,5 +1,3 @@
-# backend/core/expertise/selection_engine.py
-
 from api.expertise.models import (
     ExpertiseContent,
     ExpertiseProfile,
@@ -14,8 +12,8 @@ from .content_mapper import (
 )
 
 from .query_builder import (
-    build_selection_query,
     build_selection_count_query,
+    build_selection_query,
 )
 
 
@@ -24,7 +22,7 @@ from .query_builder import (
 # ============================================================
 
 def select_contents(
-    profile: ExpertiseProfile,
+    profile: ExpertiseProfile | None = None,
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
@@ -36,10 +34,41 @@ def select_contents(
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
     allowed_universe_ids: list[str] | None = None,
+    language: str | None = None,
 ) -> tuple[
     list[ExpertiseContent],
     int,
 ]:
+
+    # ========================================================
+    # PROFILE REQUIREMENT
+    # ========================================================
+
+    if (
+        apply_profile_selection
+        and profile is None
+    ):
+
+        raise ValueError(
+            "profile is required when "
+            "apply_profile_selection=True"
+        )
+
+    # ========================================================
+    # LANGUAGE
+    # ========================================================
+
+    effective_language = (
+
+        language
+
+        or (
+            profile.language
+            if profile is not None
+            else "fr"
+        )
+
+    ).lower()
 
     # ========================================================
     # CONTENT QUERY
@@ -67,9 +96,15 @@ def select_contents(
 
         topic_id=topic_id,
 
-        apply_profile_selection=apply_profile_selection,
+        apply_profile_selection=(
+            apply_profile_selection
+        ),
 
-        allowed_universe_ids=allowed_universe_ids,
+        allowed_universe_ids=(
+            allowed_universe_ids
+        ),
+
+        language=effective_language,
 
     )
 
@@ -108,9 +143,13 @@ def select_contents(
 
             topic_id=topic_id,
 
-            apply_profile_selection=apply_profile_selection,
+            apply_profile_selection=(
+                apply_profile_selection
+            ),
 
-            allowed_universe_ids=allowed_universe_ids,
+            allowed_universe_ids=(
+                allowed_universe_ids
+            ),
 
         )
     )
