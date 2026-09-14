@@ -11,6 +11,7 @@ import type {
   TouchSearchResult,
 } from "@/types/touch";
 
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -47,7 +48,10 @@ export async function searchTouchContents(
 
   return response.search;
 
-  /* =========================================================
+}
+
+
+/* =========================================================
    GENERATE ONE-PAGER
 ========================================================= */
 
@@ -63,7 +67,5 @@ export async function generateTouchOnePager(
       );
 
   return response.generation;
-
-}
 
 }
