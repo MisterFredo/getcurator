@@ -308,3 +308,112 @@ def _normalize_draft(
                 what_to_watch,
         },
     )
+
+# ============================================================
+# GENERATE TOUCH ONE-PAGER
+# ============================================================
+
+def generate_touch_one_pager(
+    request: TouchGenerationRequest,
+    model: Optional[str] = None,
+) -> TouchGenerationOutcome:
+
+    try:
+
+        content_ids = _unique_ids(
+            request.content_ids
+        )
+
+        if not content_ids:
+
+            raise ValueError(
+                "Le corpus Touch est vide"
+            )
+
+        language = _normalize_language(
+            request.output_language
+        )
+
+        contents = load_contents_by_ids(
+
+            content_ids=content_ids,
+
+            language=language,
+
+        )
+
+        loaded_content_ids = {
+
+            content.id
+
+            for content in contents
+
+        }
+
+        missing_content_ids = (
+
+            set(
+                content_ids
+            )
+
+            - loaded_content_ids
+
+        )
+
+        if missing_content_ids:
+
+            raise ValueError(
+                "Certains contenus Touch sont "
+                "introuvables : "
+                + ", ".join(
+                    sorted(
+                        missing_content_ids
+                    )
+                )
+            )
+
+        draft = _generate_draft(
+
+            request=request,
+
+            contents=contents,
+
+            model=model,
+
+            max_attempts=(
+                DEFAULT_TOUCH_GENERATION_ATTEMPTS
+            ),
+
+        )
+
+        sources = _build_document_sources(
+            contents=contents,
+        )
+
+        return TouchGenerationOutcome(
+
+            status="GENERATED",
+
+            draft=draft,
+
+            sources=sources,
+
+            error=None,
+
+        )
+
+    except Exception as exc:
+
+        return TouchGenerationOutcome(
+
+            status="GENERATION_FAILED",
+
+            draft=None,
+
+            sources=[],
+
+            error=str(
+                exc
+            )[:2000],
+
+        )
