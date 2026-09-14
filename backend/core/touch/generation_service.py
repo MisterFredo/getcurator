@@ -217,34 +217,35 @@ def _normalize_draft(
     executive_takeaways = [
 
         takeaway.model_copy(
-
             update={
-
                 "statement":
                     takeaway.statement.strip(),
 
                 "source_content_ids":
                     _unique_ids(
-                        takeaway
-                        .source_content_ids
+                        takeaway.source_content_ids
                     ),
-
             },
-
         )
 
-        for takeaway in (
-            draft.executive_takeaways
+        for takeaway in draft.executive_takeaways
+
+    ]
+
+    sections = [
+
+        _normalize_section(
+            section
         )
+
+        for section in draft.sections
 
     ]
 
     key_numbers = [
 
         number.model_copy(
-
             update={
-
                 "value":
                     number.value.strip(),
 
@@ -256,56 +257,38 @@ def _normalize_draft(
 
                 "source_content_ids":
                     _unique_ids(
-                        number
-                        .source_content_ids
+                        number.source_content_ids
                     ),
-
             },
-
         )
 
-        for number in (
-            draft.key_numbers
-        )
+        for number in draft.key_numbers
 
     ]
 
     what_to_watch = [
 
         watch_point.model_copy(
-
             update={
-
                 "label":
                     watch_point.label.strip(),
 
                 "explanation":
-                    (
-                        watch_point
-                        .explanation
-                        .strip()
-                    ),
+                    watch_point.explanation.strip(),
 
                 "source_content_ids":
                     _unique_ids(
-                        watch_point
-                        .source_content_ids
+                        watch_point.source_content_ids
                     ),
-
             },
-
         )
 
-        for watch_point in (
-            draft.what_to_watch
-        )
+        for watch_point in draft.what_to_watch
 
     ]
 
     return draft.model_copy(
-
         update={
-
             "title":
                 draft.title.strip(),
 
@@ -315,11 +298,13 @@ def _normalize_draft(
             "executive_takeaways":
                 executive_takeaways,
 
-            "sections": [
+            "sections":
+                sections,
 
-                _normalize_section(
-                    section
-                )
+            "key_numbers":
+                key_numbers,
 
-                for section in (
-                   
+            "what_to_watch":
+                what_to_watch,
+        },
+    )
