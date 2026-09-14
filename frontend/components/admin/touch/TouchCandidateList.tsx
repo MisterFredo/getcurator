@@ -58,6 +58,39 @@ export default function TouchCandidateList({
       dismissedContentIds,
     );
 
+  const visibleCandidates =
+    candidates.filter(
+      candidate => {
+
+        const contentId =
+          candidate.content_id;
+
+        if (
+          dismissedIds.has(
+            contentId,
+          )
+        ) {
+          return false;
+        }
+
+        const decision =
+          decisionsByContentId.get(
+            contentId,
+          );
+
+        if (
+          decision
+          && decision.relevance
+            === "OUT_OF_SCOPE"
+        ) {
+          return false;
+        }
+
+        return true;
+
+      },
+    );
+
   return (
 
     <div className="space-y-4">
@@ -77,13 +110,13 @@ export default function TouchCandidateList({
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          {candidates.length}
-          {" contents found"}
+          {visibleCandidates.length}
+          {" contents proposed"}
         </p>
 
       </div>
 
-      {candidates.length === 0 && (
+      {visibleCandidates.length === 0 && (
 
         <div
           className="
@@ -111,11 +144,11 @@ export default function TouchCandidateList({
 
       )}
 
-      {candidates.length > 0 && (
+      {visibleCandidates.length > 0 && (
 
         <div className="space-y-4">
 
-          {candidates.map(
+          {visibleCandidates.map(
             candidate => {
 
               const contentId =
@@ -146,11 +179,7 @@ export default function TouchCandidateList({
                       contentId,
                     )
                   }
-                  dismissed={
-                    dismissedIds.has(
-                      contentId,
-                    )
-                  }
+                  dismissed={false}
                   onToggle={() => {
                     onToggleContent(
                       contentId,
