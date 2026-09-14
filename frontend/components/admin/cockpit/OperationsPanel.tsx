@@ -169,7 +169,7 @@ const GROUPS: Group[] = [
         label: "Initialize Digest Histories",
 
         description:
-          "Create or complete the three most recent Digests for every active profile.",
+          "Create or complete the five most recent Digests for every active profile.",
 
         icon: BookOpen,
       },
