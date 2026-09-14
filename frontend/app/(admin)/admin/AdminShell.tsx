@@ -200,7 +200,7 @@ export default function AdminShell({
       {/* SIDEBAR */}
       {/* ===================================================== */}
 
-      <aside className="w-64 bg-ratecard-blue text-white p-6 flex flex-col">
+      <aside className="w-64 shrink-0 bg-ratecard-blue text-white p-6 flex flex-col">
 
         {/* HEADER */}
 
@@ -218,7 +218,7 @@ export default function AdminShell({
 
         {/* NAVIGATION */}
 
-        <nav className="flex-1 overflow-y-auto space-y-8">
+        <main className="min-w-0 flex-1 p-10 bg-gray-50">
 
           {sections.map((section) => (
 
