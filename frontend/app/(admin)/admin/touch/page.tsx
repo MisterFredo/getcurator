@@ -10,6 +10,10 @@ import {
 } from "@/lib/api";
 
 import {
+  generateTouchOnePager,
+} from "@/lib/touch";
+
+import {
   useTouchResearch,
 } from "@/hooks/useTouchResearch";
 
@@ -25,6 +29,7 @@ import type {
 import type {
   TouchEntityReference,
   TouchEntityType,
+  TouchGenerationOutcome,
 } from "@/types/touch";
 
 
@@ -136,7 +141,7 @@ function normalizeOptions(
 
 
 /* =========================================================
-   ENTITY REFERENCES
+   BUILD ENTITY REFERENCES
 ========================================================= */
 
 function buildEntityReferences(
@@ -163,7 +168,7 @@ function buildEntityReferences(
 
 
 /* =========================================================
-   START DATE
+   BUILD PERIOD START
 ========================================================= */
 
 function buildPeriodStart(
@@ -180,7 +185,7 @@ function buildPeriodStart(
 
 
 /* =========================================================
-   EXCLUSIVE END DATE
+   BUILD EXCLUSIVE PERIOD END
 ========================================================= */
 
 function buildPeriodEnd(
@@ -220,7 +225,7 @@ function buildPeriodEnd(
 export default function TouchPage() {
 
   /* =======================================================
-     FORM STATE
+     FORM
   ======================================================= */
 
   const [
@@ -278,6 +283,29 @@ export default function TouchPage() {
   ] = useState(true);
 
   /* =======================================================
+     GENERATION
+  ======================================================= */
+
+  const [
+    generating,
+    setGenerating,
+  ] = useState(false);
+
+  const [
+    generation,
+    setGeneration,
+  ] = useState<
+    TouchGenerationOutcome | null
+  >(null);
+
+  const [
+    generationError,
+    setGenerationError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  /* =======================================================
      RESEARCH
   ======================================================= */
 
@@ -321,7 +349,9 @@ export default function TouchPage() {
 
       try {
 
-        setLookupsLoading(true);
+        setLookupsLoading(
+          true,
+        );
 
         const [
           companiesResponse,
@@ -421,7 +451,9 @@ export default function TouchPage() {
 
       } finally {
 
-        setLookupsLoading(false);
+        setLookupsLoading(
+          false,
+        );
 
       }
 
@@ -490,6 +522,81 @@ export default function TouchPage() {
   }
 
   /* =======================================================
+     GENERATE ONE-PAGER
+  ======================================================= */
+
+  async function handleGenerateOnePager() {
+
+    if (
+      selectedContentIds.length === 0
+      || generating
+      || !interpretation
+    ) {
+      return;
+    }
+
+    try {
+
+      setGenerating(
+        true,
+      );
+
+      setGenerationError(
+        null,
+      );
+
+      const result =
+        await generateTouchOnePager({
+
+          subject:
+            interpretation.subject,
+
+          objective:
+            interpretation.objective,
+
+          output_language:
+            "fr",
+
+          content_ids:
+            selectedContentIds,
+
+        });
+
+      setGeneration(
+        result,
+      );
+
+    } catch (caughtError) {
+
+      console.error(
+        "Touch generation error",
+        caughtError,
+      );
+
+      setGenerationError(
+
+        caughtError instanceof Error
+
+          ? caughtError.message
+
+          : (
+              "Unable to generate "
+              + "the one-pager."
+            )
+
+      );
+
+    } finally {
+
+      setGenerating(
+        false,
+      );
+
+    }
+
+  }
+
+  /* =======================================================
      RESET
   ======================================================= */
 
@@ -509,30 +616,11 @@ export default function TouchPage() {
 
     setSelectedTopics([]);
 
-  }
+    setGeneration(null);
 
-  /* =======================================================
-     VALIDATE PLACEHOLDER
-  ======================================================= */
+    setGenerationError(null);
 
-  function handleValidateCorpus() {
-
-    console.log(
-      "TOUCH_SELECTED_CORPUS",
-      {
-        content_ids:
-          selectedContentIds,
-      },
-    );
-
-    alert(
-      (
-        `${selectedContentIds.length} `
-        + "contents selected. "
-        + "Corpus persistence will be added "
-        + "in the next step."
-      ),
-    );
+    setGenerating(false);
 
   }
 
@@ -573,7 +661,9 @@ export default function TouchPage() {
 
       <TouchResearchForm
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={
+          setQuery
+        }
 
         companyOptions={
           companyOptions
@@ -622,6 +712,7 @@ export default function TouchPage() {
         loading={
           loading
         }
+
         hasResearch={
           conversationHistory.length > 0
         }
@@ -629,13 +720,14 @@ export default function TouchPage() {
         onSubmit={
           handleSearch
         }
+
         onReset={
           handleReset
         }
       />
 
       {/* ================================================= */}
-      {/* LOOKUPS WARNING */}
+      {/* LOOKUPS */}
       {/* ================================================= */}
 
       {lookupsLoading && (
@@ -750,7 +842,7 @@ export default function TouchPage() {
       )}
 
       {/* ================================================= */}
-      {/* ERRORS */}
+      {/* RESEARCH ERROR */}
       {/* ================================================= */}
 
       {error && (
@@ -771,6 +863,10 @@ export default function TouchPage() {
         </div>
 
       )}
+
+      {/* ================================================= */}
+      {/* RESEARCH WARNINGS */}
+      {/* ================================================= */}
 
       {backendErrors.length > 0 && (
 
@@ -835,10 +931,141 @@ export default function TouchPage() {
         consolidation={
           consolidation
         }
+
         onFollowUp={
           setQuery
         }
       />
+
+      {/* ================================================= */}
+      {/* GENERATION ERROR */}
+      {/* ================================================= */}
+
+      {generationError && (
+
+        <div
+          className="
+            rounded-lg
+            border
+            border-red-200
+            bg-red-50
+            px-4
+            py-3
+            text-sm
+            text-red-700
+          "
+        >
+          {generationError}
+        </div>
+
+      )}
+
+      {/* ================================================= */}
+      {/* GENERATED DRAFT */}
+      {/* ================================================= */}
+
+      {generation?.draft && (
+
+        <section
+          className="
+            rounded-xl
+            border
+            border-emerald-200
+            bg-emerald-50
+            px-5
+            py-4
+          "
+        >
+
+          <p
+            className="
+              text-xs
+              font-medium
+              uppercase
+              tracking-wide
+              text-emerald-700
+            "
+          >
+            One-pager generated
+          </p>
+
+          <h2
+            className="
+              mt-2
+              text-xl
+              font-semibold
+              text-gray-900
+            "
+          >
+            {generation.draft.title}
+          </h2>
+
+          <p
+            className="
+              mt-1
+              text-sm
+              leading-6
+              text-gray-700
+            "
+          >
+            {generation.draft.subtitle}
+          </p>
+
+          <div
+            className="
+              mt-3
+              flex
+              flex-wrap
+              gap-4
+              text-xs
+              text-gray-600
+            "
+          >
+
+            <span>
+              {
+                generation
+                  .draft
+                  .executive_takeaways
+                  .length
+              }
+              {" takeaways"}
+            </span>
+
+            <span>
+              {
+                generation
+                  .draft
+                  .sections
+                  .length
+              }
+              {" sections"}
+            </span>
+
+            <span>
+              {
+                generation
+                  .draft
+                  .key_numbers
+                  .length
+              }
+              {" key numbers"}
+            </span>
+
+            <span>
+              {
+                generation
+                  .sources
+                  .length
+              }
+              {" sources"}
+            </span>
+
+          </div>
+
+        </section>
+
+      )}
 
       {/* ================================================= */}
       {/* WORK AREA */}
@@ -857,21 +1084,27 @@ export default function TouchPage() {
           candidates={
             candidates
           }
+
           decisionsByContentId={
             decisionsByContentId
           }
+
           selectedContentIds={
             selectedContentIds
           }
+
           dismissedContentIds={
             dismissedContentIds
           }
+
           onToggleContent={
             toggleContent
           }
+
           onDismissContent={
             dismissContent
           }
+
           onRestoreContent={
             restoreContent
           }
@@ -881,14 +1114,21 @@ export default function TouchPage() {
           candidates={
             selectedCandidates
           }
+
           decisionsByContentId={
             decisionsByContentId
           }
+
           onRemove={
             unselectContent
           }
+
           onValidate={
-            handleValidateCorpus
+            handleGenerateOnePager
+          }
+
+          validating={
+            generating
           }
         />
 
