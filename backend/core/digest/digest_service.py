@@ -48,7 +48,6 @@ from core.delivery.service import (
 
 from core.expertise.capabilities import (
     CAPABILITY_EXECUTIVE_SUMMARY,
-    CAPABILITY_KEY_POINTS,
     CAPABILITY_IMPLICATIONS,
 )
 
@@ -84,7 +83,6 @@ logger = logging.getLogger(
 
 DIGEST_CAPABILITIES = [
     CAPABILITY_EXECUTIVE_SUMMARY,
-    CAPABILITY_KEY_POINTS,
     CAPABILITY_IMPLICATIONS,
 ]
 
