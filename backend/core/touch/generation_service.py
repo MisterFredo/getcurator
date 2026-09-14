@@ -160,11 +160,10 @@ def _unique_ids(
 
         cleaned_value = value.strip()
 
-        if not cleaned_value:
-
-            continue
-
-        if cleaned_value in seen_values:
+        if (
+            not cleaned_value
+            or cleaned_value in seen_values
+        ):
 
             continue
 
