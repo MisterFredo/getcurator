@@ -2,6 +2,7 @@ from fastapi import (
     APIRouter,
     HTTPException,
 )
+from typing import Literal
 
 from core.touch.search_models import (
     TouchResearchBrief,
@@ -19,9 +20,18 @@ router = APIRouter()
 # SEARCH
 # ============================================================
 
+# ============================================================
+# SEARCH
+# ============================================================
+
 @router.post("/search")
 def search_touch(
     brief: TouchResearchBrief,
+    response_mode: Literal[
+        "full",
+        "analysis",
+        "consolidation",
+    ] = "full",
 ):
 
     if not brief.query.strip():
@@ -75,6 +85,27 @@ def search_touch(
                     field_name,
                     None,
                 )
+
+        # ====================================================
+        # RESPONSE MODE
+        # ====================================================
+
+        if response_mode in (
+            "analysis",
+            "consolidation",
+        ):
+
+            response.pop(
+                "candidates",
+                None,
+            )
+
+        if response_mode == "consolidation":
+
+            response.pop(
+                "evaluation",
+                None,
+            )
 
         return {
 
