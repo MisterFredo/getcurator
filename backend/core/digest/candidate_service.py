@@ -26,6 +26,10 @@ from core.expertise.selection_engine import (
     select_contents,
 )
 
+from core.user.user_preferences_service import (
+    get_user_preferences_detailed,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -201,6 +205,9 @@ def _add_profile_term(
 
 def build_digest_candidate_context(
     profile: ExpertiseProfile,
+    detailed_preferences: Optional[
+        dict[str, Any]
+    ] = None,
 ) -> DigestCandidateContext:
 
     context = DigestCandidateContext(
@@ -218,6 +225,73 @@ def build_digest_candidate_context(
         ),
 
     )
+
+    # ========================================================
+    # FAVORITE LABELS
+    # ========================================================
+
+    detailed_preferences = (
+        detailed_preferences
+        if isinstance(
+            detailed_preferences,
+            dict,
+        )
+        else {}
+    )
+
+    for preference_type in (
+        "companies",
+        "solutions",
+        "topics",
+    ):
+
+        values = (
+            detailed_preferences.get(
+                preference_type
+            )
+            or []
+        )
+
+        for value in values:
+
+            if not isinstance(
+                value,
+                dict,
+            ):
+
+                continue
+
+            label = ""
+
+            for field_name in (
+                "label",
+                "name",
+                "canonical_label",
+                "title",
+            ):
+
+                label = _clean_text(
+                    value.get(
+                        field_name
+                    )
+                )
+
+                if label:
+                    break
+
+            if not label:
+
+                continue
+
+            _add_profile_term(
+                context=context,
+                term=label,
+                watch_label="",
+            )
+
+    # ========================================================
+    # STRUCTURED PROFILE
+    # ========================================================
 
     structured_profile = (
         profile.structured_profile
@@ -298,6 +372,16 @@ def build_digest_candidate_context(
                 )
             )
 
+            # Preserve the textual label even when
+            # the entity has already been resolved.
+            if entity_label:
+
+                _add_profile_term(
+                    context=context,
+                    term=entity_label,
+                    watch_label=watch_label,
+                )
+
             if (
                 entity_type == "company"
                 and entity_id
@@ -352,13 +436,9 @@ def build_digest_candidate_context(
 
                 continue
 
-            if entity_label:
-
-                _add_profile_term(
-                    context=context,
-                    term=entity_label,
-                    watch_label=watch_label,
-                )
+        # ====================================================
+        # WATCH TERMS
+        # ====================================================
 
         for field_name in (
             "topics",
@@ -381,8 +461,19 @@ def build_digest_candidate_context(
                     watch_label=watch_label,
                 )
 
-    return context
+    # ========================================================
+    # USER KEYWORDS
+    # ========================================================
 
+    for keyword in profile.keywords:
+
+        _add_profile_term(
+            context=context,
+            term=keyword,
+            watch_label="",
+        )
+
+    return context
 
 # ============================================================
 # BUILD FAVORITES PROFILE
@@ -938,8 +1029,18 @@ def build_digest_candidates(
         user_id=user_id,
     )
 
+    detailed_preferences = (
+        get_user_preferences_detailed(
+            user_id
+        )
+        or {}
+    )
+
     context = build_digest_candidate_context(
         profile=profile,
+        detailed_preferences=(
+            detailed_preferences
+        ),
     )
 
     favorites_profile = (
