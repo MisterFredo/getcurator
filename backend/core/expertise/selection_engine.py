@@ -35,6 +35,7 @@ def select_contents(
     apply_profile_selection: bool = True,
     allowed_universe_ids: list[str] | None = None,
     language: str | None = None,
+    include_total: bool = True,
 ) -> tuple[
     list[ExpertiseContent],
     int,
@@ -121,61 +122,67 @@ def select_contents(
     )
 
     # ========================================================
-    # COUNT QUERY
+    # OPTIONAL COUNT QUERY
     # ========================================================
 
-    count_sql, count_params = (
-        build_selection_count_query(
-
-            profile=profile,
-
-            period_start=period_start,
-
-            period_end=period_end,
-
-            universe_id=universe_id,
-
-            query=query,
-
-            company_id=company_id,
-
-            solution_id=solution_id,
-
-            topic_id=topic_id,
-
-            apply_profile_selection=(
-                apply_profile_selection
-            ),
-
-            allowed_universe_ids=(
-                allowed_universe_ids
-            ),
-
-        )
+    total = len(
+        contents
     )
 
-    count_rows = query_bq(
+    if include_total:
 
-        sql=count_sql,
+        count_sql, count_params = (
+            build_selection_count_query(
 
-        params=count_params,
+                profile=profile,
 
-    )
+                period_start=period_start,
 
-    total = (
+                period_end=period_end,
 
-        int(
-            count_rows[0].get(
-                "total",
-                0,
+                universe_id=universe_id,
+
+                query=query,
+
+                company_id=company_id,
+
+                solution_id=solution_id,
+
+                topic_id=topic_id,
+
+                apply_profile_selection=(
+                    apply_profile_selection
+                ),
+
+                allowed_universe_ids=(
+                    allowed_universe_ids
+                ),
+
             )
         )
 
-        if count_rows
+        count_rows = query_bq(
 
-        else 0
+            sql=count_sql,
 
-    )
+            params=count_params,
+
+        )
+
+        total = (
+
+            int(
+                count_rows[0].get(
+                    "total",
+                    0,
+                )
+            )
+
+            if count_rows
+
+            else 0
+
+        )
 
     return (
         contents,
