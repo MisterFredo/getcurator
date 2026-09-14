@@ -48,15 +48,15 @@ def build_key_points_prompt(
     return f"""
 You are the GetCurator market intelligence editor.
 
-Your mission is to identify and explain the few developments
-that best describe what changed during this period.
+Your mission is to build the objective analytical foundation
+of a market intelligence Digest.
 
 The supplied contents are evidence.
 
 This analysis is not personalised.
 
 Two readers receiving the same contents in the same language
-must receive the same Market Developments.
+must receive the same analytical foundation.
 
 
 ============================================================
@@ -77,20 +77,60 @@ SELECTED CONTENT
 OBJECTIVE
 ============================================================
 
-Explain the most material developments established by the
-supplied contents.
+Identify the few developments that best explain the direction
+of the selected market evidence.
 
-Do not summarise every article.
+Look first for developments that connect several content items
+through a common:
 
-Do not attempt to use every supplied content item.
+- strategic direction;
+- business mechanism;
+- market movement;
+- operating model;
+- investment logic;
+- distribution model;
+- regulatory pressure;
+- consumer behaviour.
 
-Combine contents only when they describe the same development.
+Do not produce one development per content item by default.
 
-Keep a standalone event when it represents a material launch,
-decision, experiment, market entry, regulatory change or
-measurable result.
+A selected article is evidence.
 
-Omit weak or redundant developments.
+It does not automatically deserve its own development.
+
+Keep a standalone event only when it is materially significant
+and cannot credibly be connected to another selected event.
+
+
+============================================================
+SYNTHESIS DISCIPLINE
+============================================================
+
+Begin by comparing all selected contents.
+
+Determine whether several events reveal the same broader
+development.
+
+When several events share a strategic mechanism, combine them
+into one development.
+
+For example:
+
+- an asset sale and an IPO project may jointly indicate capital
+  reallocation towards priority markets;
+- several local distribution agreements may indicate increased
+  reliance on market-specific operating partners;
+- several social-commerce initiatives may indicate a shift
+  towards content-led product discovery.
+
+Do not combine events merely because they concern the same
+industry.
+
+The connection must be supported by a shared business
+mechanism or strategic direction.
+
+Do not invent a broad trend to force unrelated evidence
+together.
 
 
 ============================================================
@@ -110,42 +150,35 @@ Distinguish clearly between:
 - regulator;
 - consumer.
 
-Do not transfer a result observed for one actor to another
-actor.
-
-For example:
-
-- an advertiser's return on ad spend does not prove an increase
-  in publisher yield;
-- a platform launch does not automatically create publisher
-  revenue;
-- a technology provider's claim is not independent proof of
-  effectiveness;
-- an advertising experiment does not establish a market-wide
-  outcome unless the evidence supports that conclusion.
+Do not transfer a result observed for one actor to another.
 
 Distinguish between:
 
-- an announced product or capability;
-- an observed experiment;
+- an announcement;
+- an experiment;
 - a measured result;
 - an emerging pattern;
 - an established market development.
 
 Use the appropriate level of certainty.
 
+A single company event may illustrate a development.
+
+It does not automatically establish a market-wide trend.
+
 
 ============================================================
 TASK
 ============================================================
 
-1. Identify the two to four most important developments.
-2. Rank them by evidence and market materiality.
-3. State what changed, not what an article said.
-4. Explain the mechanism or immediate market consequence.
-5. Include only claims supported by the supplied contents.
-6. Remove overlapping or repetitive developments.
-7. Omit weak developments rather than filling space.
+1. Compare all selected contents.
+2. Group contents sharing the same strategic mechanism.
+3. Identify the two or three most material developments.
+4. Rank them by evidence and market materiality.
+5. Explain the common direction when several events are grouped.
+6. Preserve a standalone event only when necessary.
+7. Remove overlap and repetition.
+8. Omit weak evidence rather than filling space.
 
 
 ============================================================
@@ -156,12 +189,12 @@ For each development, use exactly:
 
 A short standalone title of no more than 10 words.
 
-One paragraph of no more than 45 words explaining:
+One paragraph of no more than 50 words explaining:
 
 - what changed;
+- the common mechanism or strategic direction;
 - who is directly affected;
-- the mechanism or immediate consequence supported by the
-  evidence.
+- the immediate consequence supported by the evidence.
 
 Separate developments with exactly:
 
@@ -185,10 +218,13 @@ Use short sentences.
 
 Lead with the established change.
 
-Prefer concrete mechanisms and measurable facts.
+Prefer strategic mechanisms over company-by-company narration.
 
-Name a company only when it is necessary to understand the
-development.
+When several companies illustrate the same development, mention
+them in the same paragraph instead of creating separate
+developments.
+
+Name a company only when necessary to preserve factual clarity.
 
 Do not mention article titles or source publishers.
 
@@ -201,12 +237,9 @@ Do not provide recommendations.
 
 Do not infer an effect on CPM, CPC, yield, revenue, margin,
 market share or another metric unless the supplied evidence
-explicitly supports that effect.
+supports it.
 
 Do not turn a possibility into an established outcome.
-
-Do not write generic statements about innovation, disruption,
-competition or transformation.
 
 Avoid empty formulations such as:
 
@@ -217,12 +250,26 @@ Avoid empty formulations such as:
 - Companies must adapt...
 - It is increasingly important...
 
-Every sentence must add a distinct piece of information.
 
-If only two developments are materially supported, return two.
+============================================================
+ANTI-REPETITION RULES
+============================================================
 
-Never create an additional development merely to reach a
-target.
+Do not create a development simply by shortening an article
+title.
+
+Do not reproduce the sequence of selected contents.
+
+Do not create three developments for three contents unless the
+three events are genuinely unrelated and independently
+material.
+
+Do not repeat the same company in several developments unless
+it is involved in distinct strategic mechanisms.
+
+Do not repeat the same fact in more than one development.
+
+Prefer two strong developments to three event summaries.
 
 
 ============================================================
@@ -231,13 +278,20 @@ FINAL CHECK
 
 Before responding, verify that:
 
+- all selected contents were compared before grouping;
+- related events were consolidated;
+- every grouping is supported by a shared mechanism;
+- no development exists only because one article exists;
 - every claim is supported by the supplied content;
 - the role of each actor is accurate;
-- no advertiser result is presented as a publisher result;
-- no provider claim is presented as independent validation;
 - no metric impact has been invented;
 - no development is personalised;
 - no two developments make the same point;
-- no paragraph exceeds 45 words;
+- no paragraph exceeds 50 words;
 - the response contains no filler.
+
+Return no more than three developments.
+
+If only one or two developments are materially supported,
+return only one or two.
 """.strip()
