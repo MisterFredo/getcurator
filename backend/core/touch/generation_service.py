@@ -310,6 +310,341 @@ def _normalize_draft(
     )
 
 # ============================================================
+# VALIDATE DRAFT
+# ============================================================
+
+def _validate_draft(
+    draft: TouchOnePagerDraft,
+    allowed_content_ids: set[str],
+) -> None:
+
+    if not draft.title:
+
+        raise ValueError(
+            "Le draft Touch ne possède "
+            "pas de titre"
+        )
+
+    if not draft.subtitle:
+
+        raise ValueError(
+            "Le draft Touch ne possède "
+            "pas de sous-titre"
+        )
+
+    if not draft.executive_takeaways:
+
+        raise ValueError(
+            "Le draft Touch ne possède "
+            "aucun executive takeaway"
+        )
+
+    section_types = [
+
+        section.section_type
+
+        for section in draft.sections
+
+    ]
+
+    if (
+        section_types.count(
+            "WHAT_HAPPENED"
+        )
+        != 1
+    ):
+
+        raise ValueError(
+            "Le draft Touch doit contenir "
+            "exactement une section "
+            "WHAT_HAPPENED"
+        )
+
+    if (
+        section_types.count(
+            "WHY_IT_MATTERS"
+        )
+        != 1
+    ):
+
+        raise ValueError(
+            "Le draft Touch doit contenir "
+            "exactement une section "
+            "WHY_IT_MATTERS"
+        )
+
+    if (
+        len(section_types)
+        != len(set(section_types))
+    ):
+
+        raise ValueError(
+            "Le draft Touch contient plusieurs "
+            "sections du même type"
+        )
+
+    source_groups = []
+
+    for takeaway in draft.executive_takeaways:
+
+        source_groups.append(
+            takeaway.source_content_ids
+        )
+
+    for section in draft.sections:
+
+        source_groups.append(
+            section.source_content_ids
+        )
+
+    for number in draft.key_numbers:
+
+        source_groups.append(
+            number.source_content_ids
+        )
+
+    for watch_point in draft.what_to_watch:
+
+        source_groups.append(
+            watch_point.source_content_ids
+        )
+
+    for source_content_ids in source_groups:
+
+        if not source_content_ids:
+
+            raise ValueError(
+                "Un bloc du draft Touch "
+                "ne possède aucune source"
+            )
+
+        unknown_ids = (
+
+            set(source_content_ids)
+
+            - allowed_content_ids
+
+        )
+
+        if unknown_ids:
+
+            raise ValueError(
+                "Le draft Touch cite des "
+                "content_id inconnus : "
+                + ", ".join(
+                    sorted(unknown_ids)
+                )
+            )
+
+
+# ============================================================
+# BUILD RETRY PROMPT
+# ============================================================
+
+def _build_generation_retry_prompt(
+    original_prompt: str,
+    error: str,
+) -> str:
+
+    return f"""
+{original_prompt}
+
+
+============================================================
+CORRECTION REQUIRED
+============================================================
+
+The previous response was invalid.
+
+Validation error:
+
+{error}
+
+Return exactly one valid JSON object.
+
+Use only supplied content_id values.
+
+Every generated block must contain at least one valid source.
+
+Return WHAT_HAPPENED exactly once.
+
+Return WHY_IT_MATTERS exactly once.
+
+Do not return duplicate section types.
+
+Do not include Markdown fences.
+
+Do not include text outside the JSON object.
+""".strip()
+
+
+# ============================================================
+# GENERATE DRAFT
+# ============================================================
+
+def _generate_draft(
+    request: TouchGenerationRequest,
+    contents: list,
+    model: Optional[str],
+    max_attempts: int,
+) -> TouchOnePagerDraft:
+
+    original_prompt = (
+        build_touch_generation_prompt(
+
+            request=request,
+
+            contents=contents,
+
+        )
+    )
+
+    prompt = original_prompt
+
+    allowed_content_ids = {
+
+        content.id
+
+        for content in contents
+
+    }
+
+    last_error = (
+        "Erreur inconnue du moteur "
+        "de génération Touch"
+    )
+
+    for attempt in range(
+        max(1, max_attempts)
+    ):
+
+        try:
+
+            raw_content = run_llm_json(
+
+                prompt=prompt,
+
+                model=model,
+
+                temperature=0.0,
+
+                system_prompt=(
+                    TOUCH_GENERATION_SYSTEM_PROMPT
+                ),
+
+            )
+
+            parsed = _extract_json_object(
+                raw_content
+            )
+
+            draft = (
+                TouchOnePagerDraft
+                .model_validate(
+                    parsed
+                )
+            )
+
+            draft = _normalize_draft(
+                draft
+            )
+
+            _validate_draft(
+
+                draft=draft,
+
+                allowed_content_ids=(
+                    allowed_content_ids
+                ),
+
+            )
+
+            return draft
+
+        except Exception as exc:
+
+            last_error = str(exc)
+
+            if (
+                attempt + 1
+                >= max(1, max_attempts)
+            ):
+
+                break
+
+            prompt = (
+                _build_generation_retry_prompt(
+
+                    original_prompt=(
+                        original_prompt
+                    ),
+
+                    error=last_error,
+
+                )
+            )
+
+    raise ValueError(
+        "Échec de la génération Touch "
+        f"après {max_attempts} tentative(s) : "
+        f"{last_error}"
+    )
+
+
+# ============================================================
+# BUILD DOCUMENT SOURCES
+# ============================================================
+
+def _build_document_sources(
+    contents: list,
+) -> list[
+    TouchDocumentSource
+]:
+
+    sources = []
+
+    for content in contents:
+
+        published_at = None
+
+        if content.published_at:
+
+            published_at = (
+                content
+                .published_at
+                .isoformat()
+            )
+
+        sources.append(
+
+            TouchDocumentSource(
+
+                content_id=
+                    content.id,
+
+                title=
+                    content.title,
+
+                source_title=(
+                    content.source_title
+                    or ""
+                ),
+
+                source_url=(
+                    content.source_url
+                    or ""
+                ),
+
+                published_at=
+                    published_at,
+
+            )
+
+        )
+
+    return sources
+
+# ============================================================
 # GENERATE TOUCH ONE-PAGER
 # ============================================================
 
