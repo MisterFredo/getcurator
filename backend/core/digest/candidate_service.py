@@ -1115,6 +1115,27 @@ def build_digest_candidates(
             )
         )
 
+    print(
+        "DIGEST_PROFILE_CONTENTS",
+        {
+            "user_id":
+                user_id,
+
+            "count":
+                len(
+                    profile_contents
+                ),
+
+            "content_ids": [
+
+                content.id
+
+                for content in profile_contents
+
+            ],
+        },
+    )
+
     merged_contents = (
         _merge_content_pools(
 
