@@ -13,7 +13,7 @@ from core.digest.selection_models import (
 # CONFIGURATION
 # ============================================================
 
-DIGEST_SELECTION_VERSION = "1.2"
+DIGEST_SELECTION_VERSION = "1.3"
 
 
 # ============================================================
@@ -307,32 +307,54 @@ priority IGNORE.
 DECISIONS
 ============================================================
 
-Return decisions for every SELECT candidate.
+Return exactly one decision for every candidate supplied in
+the current batch.
 
-You may omit IGNORE candidates. Any omitted candidate will be
-treated as IGNORE by the backend.
-
-You may explicitly return IGNORE for a duplicate or misleading
-thematic match.
+Never omit a candidate.
 
 Never invent or modify a content_id.
+
 Never return the same content_id twice.
+
+The number of decisions must exactly match the number of
+supplied candidates.
+
+Evaluate every candidate independently before assigning the
+final priorities.
+
+Do not treat a candidate as irrelevant merely because it
+appears near the end of the input.
+
+For every decision:
+
+- content_id must reproduce the supplied identifier exactly;
+- event_key must identify the underlying event;
+- priority must be SELECT or IGNORE;
+- relevance_score must be consistent with the priority;
+- reason must explain the decision;
+- matched_priorities must contain only explicit profile
+  priorities.
+
+Return IGNORE explicitly when the candidate is not retained.
+
 Never return more SELECT decisions than selection_limit.
 
-Order SELECT decisions by relevance_score descending.
+Order decisions by:
+
+1. SELECT before IGNORE;
+2. relevance_score descending within each priority.
 
 The reason must be concise, specific and written in the
 requested output language.
 
-It must identify the exact profile connection and clarify the
-relevant actor or transferable mechanism when needed.
+It must identify the exact profile connection or explain why
+that connection is insufficient.
 
-Do not claim an effect on a metric unless the candidate supports
-that effect for the relevant actor.
+Clarify the relevant actor or transferable mechanism when
+needed.
 
-matched_priorities must contain only explicit priorities, watch
-areas or business objectives found in the supplied profile.
-
+Do not claim an effect on a metric unless the candidate
+supports that effect for the relevant actor.
 
 ============================================================
 OUTPUT
@@ -379,6 +401,9 @@ def build_digest_selection_profile_payload(
 
         "geographies":
             profile.geographies,
+
+        "keywords":
+            profile.keywords,
 
         "favourites": {
 
@@ -464,12 +489,17 @@ def build_digest_selection_user_prompt(
     )
 
     return (
-        "Evaluate the supplied candidates "
+        "Evaluate every supplied candidate "
         "against this specific user profile.\n\n"
+        "Return exactly one decision for every "
+        "candidate in the current batch.\n\n"
+        "Do not omit any candidate.\n\n"
+        "The number of decisions must exactly "
+        "match the number of candidates.\n\n"
         "Return SELECT only for candidates with "
         "a relevance score of at least 60.\n\n"
-        "Omitted candidates will automatically "
-        "be treated as IGNORE.\n\n"
+        "Return IGNORE explicitly for every "
+        "candidate that is not selected.\n\n"
         "The selection_limit is a maximum, "
         "not a target.\n\n"
         "INPUT:\n"
