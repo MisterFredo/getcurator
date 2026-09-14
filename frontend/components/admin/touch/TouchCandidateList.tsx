@@ -14,10 +14,6 @@ import type {
 } from "@/types/touch";
 
 
-/* =========================================================
-   TYPES
-========================================================= */
-
 type RelevanceFilter =
   | "ALL"
   | TouchContentRelevance;
@@ -26,7 +22,6 @@ type SortMode =
   | "RELEVANCE"
   | "DATE_DESC"
   | "DATE_ASC";
-
 
 type Props = {
   candidates: TouchContentCandidate[];
@@ -57,80 +52,84 @@ type Props = {
 };
 
 
-/* =========================================================
-   RELEVANCE ORDER
-========================================================= */
+const RELEVANCE_FILTERS: Array<{
+  value: RelevanceFilter;
+  label: string;
+}> = [
+  {
+    value: "ALL",
+    label: "All",
+  },
+  {
+    value: "DIRECT",
+    label: "Direct",
+  },
+  {
+    value: "CONTEXT",
+    label: "Context",
+  },
+  {
+    value: "RELATED",
+    label: "Related",
+  },
+  {
+    value: "OUT_OF_SCOPE",
+    label: "Out of scope",
+  },
+];
+
 
 function getRelevanceOrder(
-  relevance:
-    TouchContentRelevance | null,
-): number {
+  relevance?: TouchContentRelevance,
+) {
 
-  const order:
-    Record<
-      TouchContentRelevance,
-      number
-    > = {
-
-      DIRECT: 0,
-      CONTEXT: 1,
-      RELATED: 2,
-      OUT_OF_SCOPE: 3,
-
-    };
-
-  if (!relevance) {
-    return 4;
-  }
-
-  return order[
-    relevance
-  ];
-
-}
-
-
-/* =========================================================
-   DATE VALUE
-========================================================= */
-
-function getDateValue(
-  publishedAt: string | null,
-): number {
-
-  if (!publishedAt) {
+  if (relevance === "DIRECT") {
     return 0;
   }
 
-  const value =
-    new Date(
-      publishedAt,
-    ).getTime();
+  if (relevance === "CONTEXT") {
+    return 1;
+  }
 
-  return Number.isNaN(
-    value,
-  )
-    ? 0
-    : value;
+  if (relevance === "RELATED") {
+    return 2;
+  }
+
+  if (relevance === "OUT_OF_SCOPE") {
+    return 3;
+  }
+
+  return 4;
 
 }
 
 
-/* =========================================================
-   COMPONENT
-========================================================= */
+function getDateValue(
+  value: string | null,
+) {
+
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp =
+    new Date(value).getTime();
+
+  return Number.isNaN(timestamp)
+    ? 0
+    : timestamp;
+
+}
+
 
 export default function TouchCandidateList({
   candidates,
   decisionsByContentId,
-
   selectedContentIds,
   dismissedContentIds,
-
   onToggleContent,
   onDismissContent,
   onRestoreContent,
-
   onOpenContent,
 }: Props) {
 
@@ -150,9 +149,10 @@ export default function TouchCandidateList({
 
   const selectedIds =
     useMemo(
-      () => new Set(
-        selectedContentIds,
-      ),
+      () =>
+        new Set(
+          selectedContentIds,
+        ),
       [
         selectedContentIds,
       ],
@@ -160,45 +160,48 @@ export default function TouchCandidateList({
 
   const dismissedIds =
     useMemo(
-      () => new Set(
-        dismissedContentIds,
-      ),
+      () =>
+        new Set(
+          dismissedContentIds,
+        ),
       [
         dismissedContentIds,
       ],
     );
 
-  /* =======================================================
-     COUNTS
-  ======================================================= */
-
   const counts =
     useMemo(() => {
 
-      const result = {
-        ALL: candidates.length,
-        DIRECT: 0,
-        CONTEXT: 0,
-        RELATED: 0,
-        OUT_OF_SCOPE: 0,
-      };
+      const result:
+        Record<
+          RelevanceFilter,
+          number
+        > = {
+          ALL: candidates.length,
+          DIRECT: 0,
+          CONTEXT: 0,
+          RELATED: 0,
+          OUT_OF_SCOPE: 0,
+        };
 
-      for (const candidate of candidates) {
+      candidates.forEach(
+        candidate => {
 
-        const decision =
-          decisionsByContentId.get(
-            candidate.content_id,
-          );
+          const decision =
+            decisionsByContentId.get(
+              candidate.content_id,
+            );
 
-        if (!decision) {
-          continue;
-        }
+          if (decision) {
 
-        result[
-          decision.relevance
-        ] += 1;
+            result[
+              decision.relevance
+            ] += 1;
 
-      }
+          }
+
+        },
+      );
 
       return result;
 
@@ -207,44 +210,64 @@ export default function TouchCandidateList({
       decisionsByContentId,
     ]);
 
-  /* =======================================================
-     FILTERED AND SORTED
-  ======================================================= */
-
   const visibleCandidates =
     useMemo(() => {
 
-      const filtered =
+      const result =
         candidates.filter(
           candidate => {
 
             if (
-              relevanceFilter
-              === "ALL"
+              relevanceFilter === "ALL"
             ) {
               return true;
             }
 
-            const decision =
+            return (
               decisionsByContentId.get(
                 candidate.content_id,
-              );
-
-            return (
-              decision?.relevance
+              )?.relevance
               === relevanceFilter
             );
 
           },
         );
 
-      return [
-        ...filtered,
-      ].sort(
+      result.sort(
         (
           left,
           right,
         ) => {
+
+          if (
+            sortMode === "DATE_DESC"
+          ) {
+
+            return (
+              getDateValue(
+                right.published_at,
+              )
+              - getDateValue(
+                left.published_at,
+              )
+            );
+
+          }
+
+          if (
+            sortMode === "DATE_ASC"
+          ) {
+
+            return (
+              getDateValue(
+                left.published_at,
+              )
+              - getDateValue(
+                right.published_at,
+              )
+            );
+
+          }
 
           const leftDecision =
             decisionsByContentId.get(
@@ -256,57 +279,13 @@ export default function TouchCandidateList({
               right.content_id,
             );
 
-          if (
-            sortMode
-            === "DATE_DESC"
-          ) {
-
-            return (
-
-              getDateValue(
-                right.published_at,
-              )
-
-              - getDateValue(
-                left.published_at,
-              )
-
-            );
-
-          }
-
-          if (
-            sortMode
-            === "DATE_ASC"
-          ) {
-
-            return (
-
-              getDateValue(
-                left.published_at,
-              )
-
-              - getDateValue(
-                right.published_at,
-              )
-
-            );
-
-          }
-
-          const relevanceDifference = (
-
+          const relevanceDifference =
             getRelevanceOrder(
-              leftDecision?.relevance
-              ?? null,
+              leftDecision?.relevance,
             )
-
             - getRelevanceOrder(
-              rightDecision?.relevance
-              ?? null,
-            )
-
-          );
+              rightDecision?.relevance,
+            );
 
           if (
             relevanceDifference !== 0
@@ -314,42 +293,35 @@ export default function TouchCandidateList({
             return relevanceDifference;
           }
 
-          const scoreDifference = (
+          const leftScore =
+            leftDecision
+              ?.relevance_score
+            ?? -1;
 
-            (
-              rightDecision
-                ?.relevance_score
-              ?? -1
-            )
-
-            - (
-              leftDecision
-                ?.relevance_score
-              ?? -1
-            )
-
-          );
+          const rightScore =
+            rightDecision
+              ?.relevance_score
+            ?? -1;
 
           if (
-            scoreDifference !== 0
+            leftScore !== rightScore
           ) {
-            return scoreDifference;
+            return rightScore - leftScore;
           }
 
           return (
-
             getDateValue(
               right.published_at,
             )
-
             - getDateValue(
               left.published_at,
             )
-
           );
 
         },
       );
+
+      return result;
 
     }, [
       candidates,
@@ -357,10 +329,6 @@ export default function TouchCandidateList({
       relevanceFilter,
       sortMode,
     ]);
-
-  /* =======================================================
-     EMPTY
-  ======================================================= */
 
   if (
     candidates.length === 0
@@ -396,17 +364,9 @@ export default function TouchCandidateList({
 
   }
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
   return (
 
     <section className="space-y-4">
-
-      {/* ================================================= */}
-      {/* TOOLBAR */}
-      {/* ================================================= */}
 
       <div
         className="
@@ -436,13 +396,9 @@ export default function TouchCandidateList({
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-
               {visibleCandidates.length}
-              {" "}
-              displayed out of
-              {" "}
+              {" displayed out of "}
               {candidates.length}
-
             </p>
 
           </div>
@@ -481,90 +437,82 @@ export default function TouchCandidateList({
 
         </div>
 
-        {/* ================================================= */}
-        {/* FILTERS */}
-        {/* ================================================= */}
-
         <div className="flex flex-wrap gap-2">
 
-          <FilterButton
-            active={
-              relevanceFilter === "ALL"
-            }
-            label="All"
-            count={counts.ALL}
-            onClick={() =>
-              setRelevanceFilter(
-                "ALL",
-              )
-            }
-          />
+          {RELEVANCE_FILTERS.map(
+            filter => {
 
-          <FilterButton
-            active={
-              relevanceFilter
-              === "DIRECT"
-            }
-            label="Direct"
-            count={counts.DIRECT}
-            onClick={() =>
-              setRelevanceFilter(
-                "DIRECT",
-              )
-            }
-          />
+              const active =
+                relevanceFilter
+                === filter.value;
 
-          <FilterButton
-            active={
-              relevanceFilter
-              === "CONTEXT"
-            }
-            label="Context"
-            count={counts.CONTEXT}
-            onClick={() =>
-              setRelevanceFilter(
-                "CONTEXT",
-              )
-            }
-          />
+              return (
 
-          <FilterButton
-            active={
-              relevanceFilter
-              === "RELATED"
-            }
-            label="Related"
-            count={counts.RELATED}
-            onClick={() =>
-              setRelevanceFilter(
-                "RELATED",
-              )
-            }
-          />
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() =>
+                    setRelevanceFilter(
+                      filter.value,
+                    )
+                  }
+                  className={`
+                    inline-flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    px-3
+                    py-1.5
+                    text-sm
+                    transition
+                    ${
+                      active
+                        ? (
+                            "border-ratecard-blue "
+                            + "bg-ratecard-blue "
+                            + "text-white"
+                          )
+                        : (
+                            "border-gray-200 "
+                            + "bg-white "
+                            + "text-gray-600 "
+                            + "hover:bg-gray-50"
+                          )
+                    }
+                  `}
+                >
 
-          <FilterButton
-            active={
-              relevanceFilter
-              === "OUT_OF_SCOPE"
-            }
-            label="Out of scope"
-            count={
-              counts.OUT_OF_SCOPE
-            }
-            onClick={() =>
-              setRelevanceFilter(
-                "OUT_OF_SCOPE",
-              )
-            }
-          />
+                  <span>
+                    {filter.label}
+                  </span>
+
+                  <span
+                    className={`
+                      rounded-full
+                      px-1.5
+                      py-0.5
+                      text-xs
+                      ${
+                        active
+                          ? "bg-white/20"
+                          : "bg-gray-100"
+                      }
+                    `}
+                  >
+                    {counts[filter.value]}
+                  </span>
+
+                </button>
+
+              );
+
+            },
+          )}
 
         </div>
 
       </div>
-
-      {/* ================================================= */}
-      {/* RESULTS */}
-      {/* ================================================= */}
 
       {visibleCandidates.length === 0 ? (
 
@@ -595,18 +543,17 @@ export default function TouchCandidateList({
               const contentId =
                 candidate.content_id;
 
-              const decision =
-                decisionsByContentId.get(
-                  contentId,
-                )
-                ?? null;
-
               return (
 
                 <TouchCandidateCard
                   key={contentId}
                   candidate={candidate}
-                  decision={decision}
+                  decision={
+                    decisionsByContentId.get(
+                      contentId,
+                    )
+                    ?? null
+                  }
                   selected={
                     selectedIds.has(
                       contentId,
@@ -652,82 +599,6 @@ export default function TouchCandidateList({
       )}
 
     </section>
-
-  );
-
-}
-
-
-/* =========================================================
-   FILTER BUTTON
-========================================================= */
-
-type FilterButtonProps = {
-  active: boolean;
-  label: string;
-  count: number;
-  onClick: () => void;
-};
-
-
-function FilterButton({
-  active,
-  label,
-  count,
-  onClick,
-}: FilterButtonProps) {
-
-  return (
-
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        inline-flex
-        items-center
-        gap-2
-        rounded-full
-        border
-        px-3
-        py-1.5
-        text-sm
-        transition
-        ${
-          active
-            ? (
-                "border-ratecard-blue "
-                + "bg-ratecard-blue "
-                + "text-white"
-              )
-            : (
-                "border-gray-200 "
-                + "bg-white "
-                + "text-gray-600 "
-                + "hover:bg-gray-50"
-              )
-        }
-      `}
-    >
-      <span>
-        {label}
-      </span>
-
-      <span
-        className={`
-          rounded-full
-          px-1.5
-          py-0.5
-          text-xs
-          ${
-            active
-              ? "bg-white/20"
-              : "bg-gray-100"
-          }
-        `}
-      >
-        {count}
-      </span>
-    </button>
 
   );
 
