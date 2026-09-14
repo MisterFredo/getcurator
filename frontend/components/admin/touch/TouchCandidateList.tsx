@@ -115,10 +115,14 @@ function getRelevanceCount(
           candidate.content_id,
         );
 
-      return (
-        decision?.relevance
-        === relevance
-      );
+      if (!decision) {
+          return false;
+        }
+
+        return (
+          decision.relevance
+          === relevanceFilter
+        );
 
     },
   ).length;
@@ -181,12 +185,22 @@ function sortCandidates(
           right.content_id,
         );
 
+      const leftRelevance =
+        leftDecision
+          ? leftDecision.relevance
+          : undefined;
+
+      const rightRelevance =
+        rightDecision
+          ? rightDecision.relevance
+          : undefined;
+
       const relevanceDifference =
         getRelevanceOrder(
-          leftDecision?.relevance,
+          leftRelevance,
         )
         - getRelevanceOrder(
-          rightDecision?.relevance,
+          rightRelevance,
         );
 
       if (
