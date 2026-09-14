@@ -135,7 +135,6 @@ def build_entity_sql(
 
     return " AND ".join(filters)
 
-
 # ============================================================
 # BUILD SEARCH SQL
 # ============================================================
@@ -152,56 +151,72 @@ def build_search_sql(
 
     AND (
 
-        LOWER(COALESCE(TITLE,''))
-
+        LOWER(COALESCE(TITLE, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(TITLE_EN,''))
-
+        LOWER(COALESCE(TITLE_EN, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(EXCERPT,''))
-
+        LOWER(COALESCE(EXCERPT, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(EXCERPT_EN,''))
-
+        LOWER(COALESCE(EXCERPT_EN, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(CONTENT_BODY,''))
-
+        LOWER(COALESCE(CONTENT_BODY, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(SIGNAL_ANALYTIQUE,''))
-
+        LOWER(COALESCE(CONTENT_BODY_EN, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(MECANIQUE_EXPLIQUEE,''))
-
+        LOWER(COALESCE(SIGNAL_ANALYTIQUE, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(ENJEU_STRATEGIQUE,''))
-
+        LOWER(COALESCE(SIGNAL_ANALYTIQUE_EN, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
         OR
 
-        LOWER(COALESCE(POINT_DE_FRICTION,''))
+        LOWER(COALESCE(MECANIQUE_EXPLIQUEE, ''))
+            LIKE LOWER(CONCAT('%', @query, '%'))
 
+        OR
+
+        LOWER(COALESCE(MECANIQUE_EXPLIQUEE_EN, ''))
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(ENJEU_STRATEGIQUE, ''))
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(ENJEU_STRATEGIQUE_EN, ''))
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(POINT_DE_FRICTION, ''))
+            LIKE LOWER(CONCAT('%', @query, '%'))
+
+        OR
+
+        LOWER(COALESCE(POINT_DE_FRICTION_EN, ''))
             LIKE LOWER(CONCAT('%', @query, '%'))
 
     )
