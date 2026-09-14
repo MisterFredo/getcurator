@@ -21,6 +21,7 @@ import TouchCandidateList from "@/components/admin/touch/TouchCandidateList";
 import TouchResearchCoverage from "@/components/admin/touch/TouchResearchCoverage";
 import TouchResearchForm from "@/components/admin/touch/TouchResearchForm";
 import TouchSelectedCorpus from "@/components/admin/touch/TouchSelectedCorpus";
+import TouchDraftPreview from "@/components/admin/touch/TouchDraftPreview";
 
 import type {
   SelectOption,
@@ -963,108 +964,18 @@ export default function TouchPage() {
       {/* ================================================= */}
       {/* GENERATED DRAFT */}
       {/* ================================================= */}
-
+      
       {generation?.draft && (
-
-        <section
-          className="
-            rounded-xl
-            border
-            border-emerald-200
-            bg-emerald-50
-            px-5
-            py-4
-          "
-        >
-
-          <p
-            className="
-              text-xs
-              font-medium
-              uppercase
-              tracking-wide
-              text-emerald-700
-            "
-          >
-            One-pager generated
-          </p>
-
-          <h2
-            className="
-              mt-2
-              text-xl
-              font-semibold
-              text-gray-900
-            "
-          >
-            {generation.draft.title}
-          </h2>
-
-          <p
-            className="
-              mt-1
-              text-sm
-              leading-6
-              text-gray-700
-            "
-          >
-            {generation.draft.subtitle}
-          </p>
-
-          <div
-            className="
-              mt-3
-              flex
-              flex-wrap
-              gap-4
-              text-xs
-              text-gray-600
-            "
-          >
-
-            <span>
-              {
-                generation
-                  .draft
-                  .executive_takeaways
-                  .length
-              }
-              {" takeaways"}
-            </span>
-
-            <span>
-              {
-                generation
-                  .draft
-                  .sections
-                  .length
-              }
-              {" sections"}
-            </span>
-
-            <span>
-              {
-                generation
-                  .draft
-                  .key_numbers
-                  .length
-              }
-              {" key numbers"}
-            </span>
-
-            <span>
-              {
-                generation
-                  .sources
-                  .length
-              }
-              {" sources"}
-            </span>
-
-          </div>
-
-        </section>
-
+      
+        <TouchDraftPreview
+          draft={
+            generation.draft
+          }
+          sources={
+            generation.sources
+          }
+        />
+      
       )}
 
       {/* ================================================= */}
