@@ -125,27 +125,51 @@ strategy.
 SEARCH TERMS
 ============================================================
 
-Generate precise textual search terms that can be used against
-the GetCurator content database.
+Generate textual search terms that can be used with exact
+substring matching against the GetCurator content database.
 
-Search terms must help retrieve content that directly covers
-or materially explains the subject.
+Because each term is searched as one literal expression, every
+term must be short and likely to appear exactly in an article.
 
-Use a combination of:
+Order search_terms from the most reliable retrieval anchors to
+the more exploratory expressions.
 
-- exact actor names;
-- product or solution names;
-- partnerships or relationships;
-- actions and announcements;
-- business mechanisms;
-- terminology likely to appear in relevant content;
-- useful French and English variants when appropriate.
+Always begin with standalone names explicitly mentioned in the
+request when they are useful retrieval anchors:
 
-Each search term must be independently usable.
+- company names;
+- product names;
+- solution names;
+- platform names;
+- recognised initiative names.
 
-Prefer several precise expressions to generic one-word terms.
+Then add short combinations of two important anchors.
 
-Avoid overly broad terms such as:
+For example, for a request about Amazon Ads and OpenAI, prefer:
+
+[
+  "OpenAI",
+  "Amazon Ads",
+  "Amazon OpenAI",
+  "OpenAI advertising"
+]
+
+Do not generate long synthetic expressions such as:
+
+- Amazon Ads and OpenAI strategic alliance;
+- OpenAI advertising strategy with Amazon;
+- technological integration between Amazon Ads and OpenAI.
+
+Such expressions are unlikely to occur exactly in stored
+content.
+
+Do not add relationship words such as partnership,
+collaboration, alliance or integration to every term.
+
+Include useful French and English variants when the content
+may use either language.
+
+Avoid generic standalone terms such as:
 
 - AI;
 - advertising;
@@ -154,18 +178,23 @@ Avoid overly broad terms such as:
 - data;
 - media.
 
-A broad term may be used only when combined with a specific
-actor, product, mechanism or action.
+Generate between 4 and 10 search terms.
 
-Do not generate several terms that differ only trivially.
+The first four terms must provide the strongest chance of
+retrieving directly relevant content.
 
-Do not generate speculative facts.
+============================================================
+OUTPUT LANGUAGE
+============================================================
 
-Generate between 4 and 12 search terms when the request
-contains enough information.
+Write subject, objective, related_angles and response_message
+in output_language.
 
-A narrower set is acceptable for a very precise request.
+Company, product and solution names must retain their official
+names.
 
+search_terms may contain French and English expressions when
+this improves retrieval.
 
 ============================================================
 RELATED ANGLES
