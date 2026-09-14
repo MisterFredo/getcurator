@@ -29,7 +29,12 @@ from utils.llm import (
 # ============================================================
 
 DEFAULT_DIGEST_SELECTION_LIMIT = 20
+
 DEFAULT_DIGEST_SELECTION_THRESHOLD = 60
+
+DEFAULT_DIGEST_SELECTION_BATCH_SIZE = 15
+
+DEFAULT_DIGEST_SELECTION_BATCH_ATTEMPTS = 2
 
 
 # ============================================================
@@ -86,9 +91,18 @@ def _extract_json_object(
             last_brace + 1
         ]
 
-        parsed = json.loads(
-            extracted_content
-        )
+        try:
+
+            parsed = json.loads(
+                extracted_content
+            )
+
+        except json.JSONDecodeError as exc:
+
+            raise ValueError(
+                "JSON invalide retourné par "
+                "le moteur de sélection"
+            ) from exc
 
     if not isinstance(
         parsed,
@@ -118,7 +132,7 @@ def _priority_order(
 
     return priorities.get(
         priority,
-        3,
+        2,
     )
 
 
@@ -191,95 +205,247 @@ def _validate_decision_ids(
             "des content_id en double"
         )
 
+    candidate_id_set = set(
+        candidate_ids
+    )
+
+    decision_id_set = set(
+        decision_ids
+    )
+
     unknown_ids = (
-        set(
-            decision_ids
-        )
-        - set(
-            candidate_ids
-        )
+        decision_id_set
+        - candidate_id_set
     )
 
     if unknown_ids:
 
         raise ValueError(
             "Le moteur de sélection a inventé "
-            "un ou plusieurs content_id"
+            "un ou plusieurs content_id : "
+            + ", ".join(
+                sorted(
+                    unknown_ids
+                )
+            )
         )
 
+    missing_ids = (
+        candidate_id_set
+        - decision_id_set
+    )
+
+    if missing_ids:
+
+        raise ValueError(
+            "Le moteur de sélection a omis "
+            "un ou plusieurs content_id : "
+            + ", ".join(
+                sorted(
+                    missing_ids
+                )
+            )
+        )
+
+    if len(
+        decision_ids
+    ) != len(
+        candidate_ids
+    ):
+
+        raise ValueError(
+            "Le nombre de décisions ne correspond "
+            "pas au nombre de candidats"
+        )
+
+
 # ============================================================
-# COMPLETE MISSING DECISIONS
+# BUILD CANDIDATE BATCHES
 # ============================================================
 
-def _complete_missing_decisions(
+def _build_candidate_batches(
     candidates: list[
         DigestContentCandidate
     ],
-    selection: DigestCandidateSelectionResult,
-    language: str,
-) -> DigestCandidateSelectionResult:
+    batch_size: int,
+) -> list[
+    list[DigestContentCandidate]
+]:
 
-    evaluated_ids = {
-
-        decision.content_id
-
-        for decision in selection.decisions
-
-    }
-
-    completed_decisions = list(
-        selection.decisions
+    batch_size = max(
+        1,
+        batch_size,
     )
 
-    for candidate in candidates:
+    return [
 
-        if (
-            candidate.content_id
-            in evaluated_ids
-        ):
+        candidates[
+            start:
+            start + batch_size
+        ]
 
-            continue
-
-        if language == "fr":
-
-            reason = (
-                "Contenu non retenu par "
-                "le moteur de sélection."
-            )
-
-        else:
-
-            reason = (
-                "Content not retained by "
-                "the selection engine."
-            )
-
-        completed_decisions.append(
-
-            DigestContentDecision(
-
-                content_id=(
-                    candidate.content_id
-                ),
-
-                event_key=None,
-
-                priority="IGNORE",
-
-                relevance_score=0,
-
-                reason=reason,
-
-                matched_priorities=[],
-
-            )
-
+        for start in range(
+            0,
+            len(
+                candidates
+            ),
+            batch_size,
         )
 
-    return DigestCandidateSelectionResult(
+    ]
 
-        decisions=completed_decisions,
 
+# ============================================================
+# BUILD RETRY PROMPT
+# ============================================================
+
+def _build_batch_retry_prompt(
+    original_prompt: str,
+    error: str,
+) -> str:
+
+    return f"""
+{original_prompt}
+
+
+============================================================
+CORRECTION REQUIRED
+============================================================
+
+The previous response was invalid.
+
+Validation error:
+
+{error}
+
+Return exactly one decision for every candidate supplied in
+this batch.
+
+Do not omit any content_id.
+
+Do not invent any content_id.
+
+Do not return the same content_id more than once.
+
+The number of decisions must exactly match the number of
+candidates.
+
+Return only the corrected JSON object.
+""".strip()
+
+
+# ============================================================
+# SELECT ONE BATCH
+# ============================================================
+
+def _select_candidate_batch(
+    profile: ExpertiseProfile,
+    candidates: list[
+        DigestContentCandidate
+    ],
+    selection_limit: int,
+    model: Optional[str],
+    max_attempts: int,
+) -> DigestCandidateSelectionResult:
+
+    original_prompt = (
+        build_digest_selection_user_prompt(
+
+            profile=profile,
+
+            candidates=candidates,
+
+            selection_limit=(
+                min(
+                    selection_limit,
+                    len(
+                        candidates
+                    ),
+                )
+            ),
+
+        )
+    )
+
+    prompt = original_prompt
+
+    last_error = (
+        "Erreur inconnue du moteur de sélection"
+    )
+
+    for attempt in range(
+        max(
+            1,
+            max_attempts,
+        )
+    ):
+
+        try:
+
+            raw_content = run_llm_json(
+
+                prompt=prompt,
+
+                model=model,
+
+                temperature=0.0,
+
+                system_prompt=(
+                    DIGEST_SELECTION_SYSTEM_PROMPT
+                ),
+
+            )
+
+            parsed = _extract_json_object(
+                raw_content
+            )
+
+            selection = (
+                DigestCandidateSelectionResult
+                .model_validate(
+                    parsed
+                )
+            )
+
+            _validate_decision_ids(
+
+                candidates=candidates,
+
+                selection=selection,
+
+            )
+
+            return selection
+
+        except Exception as exc:
+
+            last_error = str(
+                exc
+            )
+
+            if (
+                attempt + 1
+                >= max_attempts
+            ):
+
+                break
+
+            prompt = (
+                _build_batch_retry_prompt(
+
+                    original_prompt=(
+                        original_prompt
+                    ),
+
+                    error=last_error,
+
+                )
+            )
+
+    raise ValueError(
+        "Échec de la sélection d'un lot "
+        f"après {max_attempts} tentative(s) : "
+        f"{last_error}"
     )
 
 
@@ -408,6 +574,7 @@ def _deduplicate_selected_events(
         decisions=decisions,
 
     )
+
 
 # ============================================================
 # BUILD SELECTED IDS
@@ -630,75 +797,76 @@ def select_digest_candidates(
 
     try:
 
-        prompt = (
-            build_digest_selection_user_prompt(
-
-                profile=profile,
+        candidate_batches = (
+            _build_candidate_batches(
 
                 candidates=candidates,
 
-                selection_limit=(
-                    selection_limit
+                batch_size=(
+                    DEFAULT_DIGEST_SELECTION_BATCH_SIZE
                 ),
 
             )
         )
 
-        raw_content = run_llm_json(
+        all_decisions: list[
+            DigestContentDecision
+        ] = []
 
-            prompt=prompt,
+        for candidate_batch in (
+            candidate_batches
+        ):
 
-            model=model,
+            batch_selection = (
+                _select_candidate_batch(
 
-            temperature=0.0,
+                    profile=profile,
 
-            system_prompt=(
-                DIGEST_SELECTION_SYSTEM_PROMPT
-            ),
+                    candidates=(
+                        candidate_batch
+                    ),
 
-        )
+                    selection_limit=(
+                        selection_limit
+                    ),
 
-        parsed = _extract_json_object(
-            raw_content
-        )
+                    model=model,
+
+                    max_attempts=(
+                        DEFAULT_DIGEST_SELECTION_BATCH_ATTEMPTS
+                    ),
+
+                )
+            )
+
+            all_decisions.extend(
+                batch_selection.decisions
+            )
 
         selection = (
-            DigestCandidateSelectionResult
-            .model_validate(
-                parsed
+            DigestCandidateSelectionResult(
+
+                decisions=all_decisions,
+
             )
         )
 
+        # Validate the merged result against all
+        # original candidates.
         _validate_decision_ids(
 
             candidates=candidates,
-        
+
             selection=selection,
-        
-        )
-        
-        selection = (
-            _complete_missing_decisions(
-        
-                candidates=candidates,
-        
-                selection=selection,
-        
-                language=profile.language,
-        
-            )
-        )
-        
-        sorted_decisions = (
-            _sort_decisions(
-                selection.decisions
-            )
+
         )
 
         selection = (
             DigestCandidateSelectionResult(
 
-                decisions=sorted_decisions,
+                decisions=_sort_decisions(
+                    selection.decisions
+                ),
 
             )
         )
