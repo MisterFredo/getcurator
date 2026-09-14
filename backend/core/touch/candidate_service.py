@@ -876,28 +876,6 @@ def build_touch_candidates(
     )
 
     # ========================================================
-    # RELATED ANGLE POOLS
-    # ========================================================
-
-    _add_related_angle_pools(
-
-        brief=brief,
-
-        interpretation=interpretation,
-
-        language=language,
-
-        limit_per_pool=(
-            candidate_limit_per_pool
-        ),
-
-        pools=pools,
-
-        errors=errors,
-
-    )
-
-    # ========================================================
     # MATCH METADATA
     # ========================================================
 
