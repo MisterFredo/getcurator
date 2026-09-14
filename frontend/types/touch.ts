@@ -272,3 +272,102 @@ export type TouchSearchResponse = {
   status: string;
   search: TouchSearchResult;
 };
+
+/* =========================================================
+   GENERATION
+========================================================= */
+
+export type TouchDraftStatus =
+  | "GENERATED"
+  | "GENERATION_FAILED";
+
+export type TouchSectionType =
+  | "WHAT_HAPPENED"
+  | "WHY_IT_MATTERS"
+  | "HOW_IT_WORKS"
+  | "BIGGER_PICTURE";
+
+
+export type TouchGenerationRequest = {
+  subject: string;
+  objective: string;
+  output_language: string;
+  content_ids: string[];
+};
+
+
+export type TouchNarrativeSection = {
+  section_type: TouchSectionType;
+  title: string;
+  body: string;
+  source_content_ids: string[];
+};
+
+
+export type TouchExecutiveTakeaway = {
+  statement: string;
+  source_content_ids: string[];
+};
+
+
+export type TouchWatchPoint = {
+  label: string;
+  explanation: string;
+  source_content_ids: string[];
+};
+
+
+export type TouchKeyNumber = {
+  value: string;
+  label: string;
+  context: string;
+  source_content_ids: string[];
+};
+
+
+export type TouchDocumentSource = {
+  content_id: string;
+  title: string;
+  source_title: string;
+  source_url: string;
+  published_at: string | null;
+};
+
+
+export type TouchOnePagerDraft = {
+  title: string;
+  subtitle: string;
+
+  executive_takeaways:
+    TouchExecutiveTakeaway[];
+
+  sections:
+    TouchNarrativeSection[];
+
+  key_numbers:
+    TouchKeyNumber[];
+
+  what_to_watch:
+    TouchWatchPoint[];
+};
+
+
+export type TouchGenerationOutcome = {
+  status: TouchDraftStatus;
+
+  draft:
+    TouchOnePagerDraft | null;
+
+  sources:
+    TouchDocumentSource[];
+
+  error: string | null;
+};
+
+
+export type TouchGenerationResponse = {
+  status: string;
+
+  generation:
+    TouchGenerationOutcome;
+};
