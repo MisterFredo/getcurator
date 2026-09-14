@@ -77,64 +77,127 @@ SELECTED CONTENT
 OBJECTIVE
 ============================================================
 
-Identify the few developments that best explain the direction
-of the selected market evidence.
+Identify the most material facts and evidence-supported
+patterns established during the period.
 
-Look first for developments that connect several content items
-through a common:
+First determine whether the contents describe:
 
-- strategic direction;
-- business mechanism;
-- market movement;
-- operating model;
-- investment logic;
-- distribution model;
-- regulatory pressure;
-- consumer behaviour.
+- the same underlying development;
+- different events sharing the same demonstrated direction;
+- or separate developments with no sufficiently supported
+  common direction.
 
-Do not produce one development per content item by default.
+Combine developments only when their shared strategic
+direction is established by the supplied evidence.
 
-A selected article is evidence.
-
-It does not automatically deserve its own development.
-
-Keep a standalone event only when it is materially significant
-and cannot credibly be connected to another selected event.
+Preserve developments separately when grouping them would
+require an assumption.
 
 
 ============================================================
-SYNTHESIS DISCIPLINE
+GROUPING STANDARD
 ============================================================
 
-Begin by comparing all selected contents.
+A valid grouping requires more than:
 
-Determine whether several events reveal the same broader
-development.
+- belonging to the same industry;
+- involving monitored companies;
+- concerning capital, distribution or expansion;
+- occurring during the same period;
+- using similar business terminology.
 
-When several events share a strategic mechanism, combine them
-into one development.
+Several events may be grouped only when they demonstrate the
+same direction, mechanism or consequence.
 
-For example:
+Never create a common strategic direction merely because
+several events involve:
 
-- an asset sale and an IPO project may jointly indicate capital
-  reallocation towards priority markets;
-- several local distribution agreements may indicate increased
-  reliance on market-specific operating partners;
-- several social-commerce initiatives may indicate a shift
-  towards content-led product discovery.
+- portfolio management;
+- capital;
+- distribution;
+- market expansion;
+- partnerships;
+- product launches;
+- digital commerce.
 
-Do not combine events merely because they concern the same
-industry.
+An asset sale, an IPO project and a distribution agreement are
+not automatically evidence of one common trend.
 
-The connection must be supported by a shared business
-mechanism or strategic direction.
+A divestment does not prove investment elsewhere.
 
-Do not invent a broad trend to force unrelated evidence
-together.
+An IPO project does not prove how the capital will be used.
+
+A distribution agreement does not prove that an entire market
+is moving towards outsourced distribution.
+
+When the common direction is uncertain, preserve the events as
+separate analytical facts.
 
 
 ============================================================
-ANALYTICAL DISCIPLINE
+TREND STANDARD
+============================================================
+
+Use terms such as:
+
+- growing;
+- increasing;
+- accelerating;
+- expanding;
+- becoming more important;
+- shifting towards;
+- moving away from;
+- emerging trend;
+- market-wide development;
+
+only when the supplied evidence demonstrates that direction.
+
+One company event cannot establish that a practice is growing,
+accelerating or becoming more important across the market.
+
+Several articles describing the same event still count as one
+piece of evidence.
+
+Do not present a company-specific decision as an industry-wide
+trend.
+
+Use restrained language when the evidence supports only:
+
+- one transaction;
+- one announcement;
+- one launch;
+- one partnership;
+- one experiment;
+- one regulatory action.
+
+
+============================================================
+GEOGRAPHICAL DISCIPLINE
+============================================================
+
+Preserve the exact geographical scope of every development.
+
+Do not describe a country or region as:
+
+- emerging;
+- mature;
+- strategic;
+- priority;
+- high-growth;
+- declining;
+
+unless that characterization is explicitly supported by the
+supplied evidence.
+
+Do not transfer a development observed in one market to
+another market.
+
+Do not treat several unrelated countries as one coherent
+regional direction without evidence.
+
+
+============================================================
+ACTOR DISCIPLINE
 ============================================================
 
 Preserve the exact role of every actor.
@@ -152,19 +215,49 @@ Distinguish clearly between:
 
 Do not transfer a result observed for one actor to another.
 
+For example:
+
+- advertiser ROAS does not prove higher publisher yield;
+- a platform launch does not establish advertiser adoption;
+- a provider claim is not independent proof;
+- a product launch does not demonstrate consumer demand;
+- regulatory approval does not prove commercial success.
+
 Distinguish between:
 
 - an announcement;
+- an option under consideration;
 - an experiment;
-- a measured result;
+- an observed result;
 - an emerging pattern;
 - an established market development.
 
 Use the appropriate level of certainty.
 
-A single company event may illustrate a development.
 
-It does not automatically establish a market-wide trend.
+============================================================
+MATERIALITY
+============================================================
+
+A selected content item does not automatically deserve its own
+development.
+
+Keep a standalone development when it represents a material:
+
+- transaction;
+- ownership change;
+- market entry or exit;
+- regulatory action;
+- distribution change;
+- partnership;
+- product or channel launch;
+- measured result.
+
+Omit weak or secondary events when they do not materially
+contribute to the analytical foundation.
+
+Do not omit a strong standalone development merely because it
+cannot be grouped with another event.
 
 
 ============================================================
@@ -172,13 +265,14 @@ TASK
 ============================================================
 
 1. Compare all selected contents.
-2. Group contents sharing the same strategic mechanism.
-3. Identify the two or three most material developments.
-4. Rank them by evidence and market materiality.
-5. Explain the common direction when several events are grouped.
-6. Preserve a standalone event only when necessary.
-7. Remove overlap and repetition.
-8. Omit weak evidence rather than filling space.
+2. Identify duplicates or contents describing the same event.
+3. Test whether different events demonstrate the same direction.
+4. Group them only when that direction is supported.
+5. Preserve materially different events separately.
+6. Select the one to three most material developments.
+7. Rank them by evidence and materiality.
+8. State the precise mechanism or immediate consequence.
+9. Remove unsupported conclusions, overlap and repetition.
 
 
 ============================================================
@@ -191,10 +285,16 @@ A short standalone title of no more than 10 words.
 
 One paragraph of no more than 50 words explaining:
 
-- what changed;
-- the common mechanism or strategic direction;
-- who is directly affected;
+- what is established;
+- the relevant actor;
+- the precise mechanism;
 - the immediate consequence supported by the evidence.
+
+When several events are grouped, explain their demonstrated
+common direction.
+
+When an event remains standalone, describe it without
+presenting it as a broader trend.
 
 Separate developments with exactly:
 
@@ -216,15 +316,11 @@ Be direct, factual and specific.
 
 Use short sentences.
 
-Lead with the established change.
+Lead with what is established.
 
-Prefer strategic mechanisms over company-by-company narration.
+Prefer precise mechanisms to broad strategic language.
 
-When several companies illustrate the same development, mention
-them in the same paragraph instead of creating separate
-developments.
-
-Name a company only when necessary to preserve factual clarity.
+Name companies when necessary for factual clarity.
 
 Do not mention article titles or source publishers.
 
@@ -236,19 +332,25 @@ priority or favourite.
 Do not provide recommendations.
 
 Do not infer an effect on CPM, CPC, yield, revenue, margin,
-market share or another metric unless the supplied evidence
-supports it.
+market share or another metric unless the evidence supports
+that effect.
+
+Do not infer the intended use of funds.
+
+Do not infer a company's future investment direction.
 
 Do not turn a possibility into an established outcome.
 
-Avoid empty formulations such as:
+Avoid formulations such as:
 
 - This shift underscores...
 - This evolution highlights...
 - This transformation reshapes...
+- This marks a broader trend...
+- This signals an industry-wide move...
+- Companies are increasingly...
 - The market is rapidly evolving...
-- Companies must adapt...
-- It is increasingly important...
+- It is becoming increasingly important...
 
 
 ============================================================
@@ -258,18 +360,17 @@ ANTI-REPETITION RULES
 Do not create a development simply by shortening an article
 title.
 
-Do not reproduce the sequence of selected contents.
+Do not repeat the same underlying event.
 
-Do not create three developments for three contents unless the
-three events are genuinely unrelated and independently
-material.
+Do not repeat the same fact in several developments.
 
-Do not repeat the same company in several developments unless
-it is involved in distinct strategic mechanisms.
+Do not repeat the same company unless separate events involving
+that company are independently material.
 
-Do not repeat the same fact in more than one development.
+Do not force several events into one development merely to
+avoid separate entries.
 
-Prefer two strong developments to three event summaries.
+Prefer accurate separation to artificial synthesis.
 
 
 ============================================================
@@ -278,20 +379,23 @@ FINAL CHECK
 
 Before responding, verify that:
 
-- all selected contents were compared before grouping;
-- related events were consolidated;
-- every grouping is supported by a shared mechanism;
-- no development exists only because one article exists;
+- every grouping has a demonstrated common direction;
+- no grouping relies only on a similar transaction type;
+- standalone developments remain appropriately qualified;
+- one event is not presented as a growing market trend;
+- no divestment is described as investment without evidence;
+- no intended use of IPO proceeds has been invented;
+- every geographical characterization is supported;
 - every claim is supported by the supplied content;
 - the role of each actor is accurate;
 - no metric impact has been invented;
 - no development is personalised;
-- no two developments make the same point;
+- no fact is repeated;
 - no paragraph exceeds 50 words;
 - the response contains no filler.
 
 Return no more than three developments.
 
-If only one or two developments are materially supported,
-return only one or two.
+If only one or two developments are material, return only one
+or two.
 """.strip()
