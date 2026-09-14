@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import TouchCandidateCard from "@/components/admin/touch/TouchCandidateCard";
+
 import type {
   TouchContentCandidate,
   TouchContentDecision,
@@ -8,174 +15,103 @@ import type {
 
 
 /* =========================================================
-   PROPS
+   TYPES
 ========================================================= */
 
+type RelevanceFilter =
+  | "ALL"
+  | TouchContentRelevance;
+
+type SortMode =
+  | "RELEVANCE"
+  | "DATE_DESC"
+  | "DATE_ASC";
+
+
 type Props = {
-  candidate: TouchContentCandidate;
+  candidates: TouchContentCandidate[];
 
-  decision:
-    TouchContentDecision | null;
+  decisionsByContentId: Map<
+    string,
+    TouchContentDecision
+  >;
 
-  selected: boolean;
-  dismissed: boolean;
+  selectedContentIds: string[];
+  dismissedContentIds: string[];
 
-  onToggle: () => void;
-  onDismiss: () => void;
-  onRestore: () => void;
+  onToggleContent: (
+    contentId: string
+  ) => void;
 
-  onOpen?: () => void;
+  onDismissContent: (
+    contentId: string
+  ) => void;
+
+  onRestoreContent: (
+    contentId: string
+  ) => void;
+
+  onOpenContent?: (
+    contentId: string
+  ) => void;
 };
 
 
 /* =========================================================
-   RELEVANCE LABEL
+   RELEVANCE ORDER
 ========================================================= */
 
-function getRelevanceLabel(
-  relevance: TouchContentRelevance,
-): string {
+function getRelevanceOrder(
+  relevance:
+    TouchContentRelevance | null,
+): number {
 
-  const labels:
+  const order:
     Record<
       TouchContentRelevance,
-      string
+      number
     > = {
 
-      DIRECT:
-        "Direct",
-
-      CONTEXT:
-        "Context",
-
-      RELATED:
-        "Related",
-
-      OUT_OF_SCOPE:
-        "Out of scope",
+      DIRECT: 0,
+      CONTEXT: 1,
+      RELATED: 2,
+      OUT_OF_SCOPE: 3,
 
     };
 
-  return labels[
-    relevance
-  ];
-
-}
-
-
-/* =========================================================
-   RELEVANCE CLASSES
-========================================================= */
-
-function getRelevanceClasses(
-  relevance: TouchContentRelevance,
-): string {
-
-  const classes:
-    Record<
-      TouchContentRelevance,
-      string
-    > = {
-
-      DIRECT:
-        (
-          "border-emerald-200 "
-          + "bg-emerald-50 "
-          + "text-emerald-700"
-        ),
-
-      CONTEXT:
-        (
-          "border-blue-200 "
-          + "bg-blue-50 "
-          + "text-blue-700"
-        ),
-
-      RELATED:
-        (
-          "border-amber-200 "
-          + "bg-amber-50 "
-          + "text-amber-700"
-        ),
-
-      OUT_OF_SCOPE:
-        (
-          "border-gray-200 "
-          + "bg-gray-50 "
-          + "text-gray-500"
-        ),
-
-    };
-
-  return classes[
-    relevance
-  ];
-
-}
-
-
-/* =========================================================
-   FORMAT DATE
-========================================================= */
-
-function formatDate(
-  value: string | null,
-): string {
-
-  if (!value) {
-    return "";
+  if (!relevance) {
+    return 4;
   }
 
-  const date =
+  return order[
+    relevance
+  ];
+
+}
+
+
+/* =========================================================
+   DATE VALUE
+========================================================= */
+
+function getDateValue(
+  publishedAt: string | null,
+): number {
+
+  if (!publishedAt) {
+    return 0;
+  }
+
+  const value =
     new Date(
-      value,
-    );
+      publishedAt,
+    ).getTime();
 
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat(
-    "fr-FR",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    },
-  ).format(
-    date,
-  );
-
-}
-
-
-/* =========================================================
-   GET ENTITY LABEL
-========================================================= */
-
-function getEntityLabel(
-  entity: TouchContentCandidate[
-    "companies"
-  ][number],
-): string {
-
-  return (
-
-    entity.name
-
-    || entity.label
-
-    || entity.canonical_label
-
-    || entity.title
-
-    || ""
-
-  );
+  return Number.isNaN(
+    value,
+  )
+    ? 0
+    : value;
 
 }
 
@@ -184,34 +120,281 @@ function getEntityLabel(
    COMPONENT
 ========================================================= */
 
-export default function TouchCandidateCard({
-  candidate,
-  decision,
-  selected,
-  dismissed,
-  onToggle,
-  onDismiss,
-  onRestore,
-  onOpen,
+export default function TouchCandidateList({
+  candidates,
+  decisionsByContentId,
+
+  selectedContentIds,
+  dismissedContentIds,
+
+  onToggleContent,
+  onDismissContent,
+  onRestoreContent,
+
+  onOpenContent,
 }: Props) {
 
-  const publishedAt =
-    formatDate(
-      candidate.published_at,
+  const [
+    relevanceFilter,
+    setRelevanceFilter,
+  ] = useState<RelevanceFilter>(
+    "ALL",
+  );
+
+  const [
+    sortMode,
+    setSortMode,
+  ] = useState<SortMode>(
+    "RELEVANCE",
+  );
+
+  const selectedIds =
+    useMemo(
+      () => new Set(
+        selectedContentIds,
+      ),
+      [
+        selectedContentIds,
+      ],
     );
 
-  const companyLabels =
-    candidate.companies
-      .map(
-        getEntityLabel,
-      )
-      .filter(
-        Boolean,
-      )
-      .slice(
-        0,
-        5,
+  const dismissedIds =
+    useMemo(
+      () => new Set(
+        dismissedContentIds,
+      ),
+      [
+        dismissedContentIds,
+      ],
+    );
+
+  /* =======================================================
+     COUNTS
+  ======================================================= */
+
+  const counts =
+    useMemo(() => {
+
+      const result = {
+        ALL: candidates.length,
+        DIRECT: 0,
+        CONTEXT: 0,
+        RELATED: 0,
+        OUT_OF_SCOPE: 0,
+      };
+
+      for (const candidate of candidates) {
+
+        const decision =
+          decisionsByContentId.get(
+            candidate.content_id,
+          );
+
+        if (!decision) {
+          continue;
+        }
+
+        result[
+          decision.relevance
+        ] += 1;
+
+      }
+
+      return result;
+
+    }, [
+      candidates,
+      decisionsByContentId,
+    ]);
+
+  /* =======================================================
+     FILTERED AND SORTED
+  ======================================================= */
+
+  const visibleCandidates =
+    useMemo(() => {
+
+      const filtered =
+        candidates.filter(
+          candidate => {
+
+            if (
+              relevanceFilter
+              === "ALL"
+            ) {
+              return true;
+            }
+
+            const decision =
+              decisionsByContentId.get(
+                candidate.content_id,
+              );
+
+            return (
+              decision?.relevance
+              === relevanceFilter
+            );
+
+          },
+        );
+
+      return [
+        ...filtered,
+      ].sort(
+        (
+          left,
+          right,
+        ) => {
+
+          const leftDecision =
+            decisionsByContentId.get(
+              left.content_id,
+            );
+
+          const rightDecision =
+            decisionsByContentId.get(
+              right.content_id,
+            );
+
+          if (
+            sortMode
+            === "DATE_DESC"
+          ) {
+
+            return (
+
+              getDateValue(
+                right.published_at,
+              )
+
+              - getDateValue(
+                left.published_at,
+              )
+
+            );
+
+          }
+
+          if (
+            sortMode
+            === "DATE_ASC"
+          ) {
+
+            return (
+
+              getDateValue(
+                left.published_at,
+              )
+
+              - getDateValue(
+                right.published_at,
+              )
+
+            );
+
+          }
+
+          const relevanceDifference = (
+
+            getRelevanceOrder(
+              leftDecision?.relevance
+              ?? null,
+            )
+
+            - getRelevanceOrder(
+              rightDecision?.relevance
+              ?? null,
+            )
+
+          );
+
+          if (
+            relevanceDifference !== 0
+          ) {
+            return relevanceDifference;
+          }
+
+          const scoreDifference = (
+
+            (
+              rightDecision
+                ?.relevance_score
+              ?? -1
+            )
+
+            - (
+              leftDecision
+                ?.relevance_score
+              ?? -1
+            )
+
+          );
+
+          if (
+            scoreDifference !== 0
+          ) {
+            return scoreDifference;
+          }
+
+          return (
+
+            getDateValue(
+              right.published_at,
+            )
+
+            - getDateValue(
+              left.published_at,
+            )
+
+          );
+
+        },
       );
+
+    }, [
+      candidates,
+      decisionsByContentId,
+      relevanceFilter,
+      sortMode,
+    ]);
+
+  /* =======================================================
+     EMPTY
+  ======================================================= */
+
+  if (
+    candidates.length === 0
+  ) {
+
+    return (
+
+      <div
+        className="
+          rounded-xl
+          border
+          border-dashed
+          border-gray-300
+          bg-white
+          px-6
+          py-16
+          text-center
+        "
+      >
+
+        <p className="text-sm font-medium text-gray-700">
+          No content proposed yet
+        </p>
+
+        <p className="mt-1 text-sm text-gray-500">
+          Start an editorial research to retrieve
+          contents from GetCurator.
+        </p>
+
+      </div>
+
+    );
+
+  }
 
   /* =======================================================
      RENDER
@@ -219,415 +402,22 @@ export default function TouchCandidateCard({
 
   return (
 
-    <article
-      className={`
-        rounded-xl
-        border
-        bg-white
-        transition
-        ${
-          selected
-            ? (
-                "border-ratecard-blue "
-                + "ring-1 "
-                + "ring-ratecard-blue"
-              )
-            : "border-gray-200"
-        }
-        ${
-          dismissed
-            ? "opacity-50"
-            : ""
-        }
-      `}
-    >
-
-      <div className="p-5 space-y-4">
-
-        {/* ================================================= */}
-        {/* HEADER */}
-        {/* ================================================= */}
-
-        <div
-          className="
-            flex
-            items-start
-            gap-4
-          "
-        >
-
-          <input
-            type="checkbox"
-            checked={selected}
-            disabled={dismissed}
-            onChange={onToggle}
-            aria-label={
-              `Select ${candidate.title}`
-            }
-            className="
-              mt-1
-              h-4
-              w-4
-              rounded
-              border-gray-300
-              text-ratecard-blue
-              focus:ring-ratecard-blue
-            "
-          />
-
-          <div className="min-w-0 flex-1">
-
-            <div
-              className="
-                flex
-                flex-wrap
-                items-center
-                gap-2
-                mb-2
-              "
-            >
-
-              {decision && (
-
-                <span
-                  className={`
-                    inline-flex
-                    items-center
-                    rounded-full
-                    border
-                    px-2.5
-                    py-1
-                    text-xs
-                    font-medium
-                    ${getRelevanceClasses(
-                      decision.relevance,
-                    )}
-                  `}
-                >
-                  {
-                    getRelevanceLabel(
-                      decision.relevance,
-                    )
-                  }
-                </span>
-
-              )}
-
-              {decision && (
-
-                <span
-                  className="
-                    inline-flex
-                    items-center
-                    rounded-full
-                    bg-gray-100
-                    px-2.5
-                    py-1
-                    text-xs
-                    font-medium
-                    text-gray-700
-                  "
-                >
-                  Score&nbsp;
-                  {decision.relevance_score}
-                </span>
-
-              )}
-
-              {!decision && (
-
-                <span
-                  className="
-                    inline-flex
-                    items-center
-                    rounded-full
-                    bg-gray-100
-                    px-2.5
-                    py-1
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  Not evaluated
-                </span>
-
-              )}
-
-              {publishedAt && (
-
-                <span className="text-xs text-gray-500">
-                  {publishedAt}
-                </span>
-
-              )}
-
-            </div>
-
-            <h3
-              className="
-                text-base
-                font-semibold
-                leading-snug
-                text-gray-900
-              "
-            >
-              {candidate.title}
-            </h3>
-
-            {candidate.source_title && (
-
-              <p className="mt-1 text-xs text-gray-500">
-                {candidate.source_title}
-              </p>
-
-            )}
-
-          </div>
-
-        </div>
-
-        {/* ================================================= */}
-        {/* EXCERPT */}
-        {/* ================================================= */}
-
-        {candidate.excerpt && (
-
-          <p
-            className="
-              text-sm
-              leading-6
-              text-gray-600
-            "
-          >
-            {candidate.excerpt}
-          </p>
-
-        )}
-
-        {/* ================================================= */}
-        {/* DECISION */}
-        {/* ================================================= */}
-
-        {decision?.reason && (
-
-          <div
-            className="
-              rounded-lg
-              bg-gray-50
-              px-4
-              py-3
-            "
-          >
-
-            <p
-              className="
-                text-xs
-                font-medium
-                uppercase
-                tracking-wide
-                text-gray-500
-              "
-            >
-              Editorial relevance
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-sm
-                leading-6
-                text-gray-700
-              "
-            >
-              {decision.reason}
-            </p>
-
-          </div>
-
-        )}
-
-        {/* ================================================= */}
-        {/* CONTRIBUTIONS */}
-        {/* ================================================= */}
-
-        {(
-          decision
-          && decision
-            .key_contributions
-            .length > 0
-        ) && (
-
-          <div>
-
-            <p
-              className="
-                text-xs
-                font-medium
-                uppercase
-                tracking-wide
-                text-gray-500
-              "
-            >
-              Contribution
-            </p>
-
-            <ul
-              className="
-                mt-2
-                space-y-1.5
-                text-sm
-                text-gray-700
-              "
-            >
-
-              {
-                decision
-                  .key_contributions
-                  .map(
-                    (
-                      contribution,
-                      index,
-                    ) => (
-
-                      <li
-                        key={
-                          `${candidate.content_id}-${index}`
-                        }
-                        className="flex gap-2"
-                      >
-
-                        <span
-                          className="
-                            mt-2
-                            h-1
-                            w-1
-                            shrink-0
-                            rounded-full
-                            bg-gray-400
-                          "
-                        />
-
-                        <span>
-                          {contribution}
-                        </span>
-
-                      </li>
-
-                    ),
-                  )
-              }
-
-            </ul>
-
-          </div>
-
-        )}
-
-        {/* ================================================= */}
-        {/* DIMENSIONS */}
-        {/* ================================================= */}
-
-        {(
-          decision
-          && decision
-            .coverage_dimensions
-            .length > 0
-        ) && (
-
-          <div className="flex flex-wrap gap-2">
-
-            {
-              decision
-                .coverage_dimensions
-                .map(
-                  dimension => (
-
-                    <span
-                      key={dimension}
-                      className="
-                        rounded
-                        bg-slate-100
-                        px-2
-                        py-1
-                        text-xs
-                        text-slate-600
-                      "
-                    >
-                      {
-                        dimension
-                          .toLowerCase()
-                          .replaceAll(
-                            "_",
-                            " ",
-                          )
-                      }
-                    </span>
-
-                  ),
-                )
-            }
-
-          </div>
-
-        )}
-
-        {/* ================================================= */}
-        {/* COMPANIES */}
-        {/* ================================================= */}
-
-        {companyLabels.length > 0 && (
-
-          <div className="flex flex-wrap gap-2">
-
-            {companyLabels.map(
-              label => (
-
-                <span
-                  key={label}
-                  className="
-                    rounded-full
-                    bg-blue-50
-                    px-2.5
-                    py-1
-                    text-xs
-                    text-blue-700
-                  "
-                >
-                  {label}
-                </span>
-
-              ),
-            )}
-
-          </div>
-
-        )}
-
-        {/* ================================================= */}
-        {/* MATCHES */}
-        {/* ================================================= */}
-
-        {candidate.matched_terms.length > 0 && (
-
-          <p className="text-xs text-gray-400">
-
-            Found through:&nbsp;
-
-            {
-              candidate
-                .matched_terms
-                .join(
-                  ", ",
-                )
-            }
-
-          </p>
-
-        )}
-
-        {/* ================================================= */}
-        {/* ACTIONS */}
-        {/* ================================================= */}
+    <section className="space-y-4">
+
+      {/* ================================================= */}
+      {/* TOOLBAR */}
+      {/* ================================================= */}
+
+      <div
+        className="
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+          p-4
+          space-y-4
+        "
+      >
 
         <div
           className="
@@ -635,73 +425,309 @@ export default function TouchCandidateCard({
             flex-wrap
             items-center
             justify-between
-            gap-3
-            border-t
-            border-gray-100
-            pt-4
+            gap-4
           "
         >
 
           <div>
 
-            {onOpen && (
+            <h2 className="text-lg font-semibold text-gray-900">
+              Proposed contents
+            </h2>
 
-              <button
-                type="button"
-                onClick={onOpen}
-                className="
-                  text-sm
-                  font-medium
-                  text-ratecard-blue
-                  hover:underline
-                "
-              >
-                Open content
-              </button>
+            <p className="mt-1 text-sm text-gray-500">
 
-            )}
+              {visibleCandidates.length}
+              {" "}
+              displayed out of
+              {" "}
+              {candidates.length}
+
+            </p>
 
           </div>
 
-          <div>
+          <select
+            value={sortMode}
+            onChange={event =>
+              setSortMode(
+                event.target.value
+                as SortMode,
+              )
+            }
+            className="
+              rounded-lg
+              border
+              border-gray-300
+              bg-white
+              px-3
+              py-2
+              text-sm
+              text-gray-700
+            "
+          >
+            <option value="RELEVANCE">
+              Sort by relevance
+            </option>
 
-            {dismissed ? (
+            <option value="DATE_DESC">
+              Most recent first
+            </option>
 
-              <button
-                type="button"
-                onClick={onRestore}
-                className="
-                  text-sm
-                  text-gray-600
-                  hover:text-gray-900
-                "
-              >
-                Restore
-              </button>
+            <option value="DATE_ASC">
+              Oldest first
+            </option>
+          </select>
 
-            ) : (
+        </div>
 
-              <button
-                type="button"
-                onClick={onDismiss}
-                className="
-                  text-sm
-                  text-gray-400
-                  hover:text-red-600
-                "
-              >
-                Dismiss
-              </button>
+        {/* ================================================= */}
+        {/* FILTERS */}
+        {/* ================================================= */}
 
-            )}
+        <div className="flex flex-wrap gap-2">
 
-          </div>
+          <FilterButton
+            active={
+              relevanceFilter === "ALL"
+            }
+            label="All"
+            count={counts.ALL}
+            onClick={() =>
+              setRelevanceFilter(
+                "ALL",
+              )
+            }
+          />
+
+          <FilterButton
+            active={
+              relevanceFilter
+              === "DIRECT"
+            }
+            label="Direct"
+            count={counts.DIRECT}
+            onClick={() =>
+              setRelevanceFilter(
+                "DIRECT",
+              )
+            }
+          />
+
+          <FilterButton
+            active={
+              relevanceFilter
+              === "CONTEXT"
+            }
+            label="Context"
+            count={counts.CONTEXT}
+            onClick={() =>
+              setRelevanceFilter(
+                "CONTEXT",
+              )
+            }
+          />
+
+          <FilterButton
+            active={
+              relevanceFilter
+              === "RELATED"
+            }
+            label="Related"
+            count={counts.RELATED}
+            onClick={() =>
+              setRelevanceFilter(
+                "RELATED",
+              )
+            }
+          />
+
+          <FilterButton
+            active={
+              relevanceFilter
+              === "OUT_OF_SCOPE"
+            }
+            label="Out of scope"
+            count={
+              counts.OUT_OF_SCOPE
+            }
+            onClick={() =>
+              setRelevanceFilter(
+                "OUT_OF_SCOPE",
+              )
+            }
+          />
 
         </div>
 
       </div>
 
-    </article>
+      {/* ================================================= */}
+      {/* RESULTS */}
+      {/* ================================================= */}
+
+      {visibleCandidates.length === 0 ? (
+
+        <div
+          className="
+            rounded-xl
+            border
+            border-dashed
+            border-gray-300
+            bg-white
+            px-6
+            py-12
+            text-center
+            text-sm
+            text-gray-500
+          "
+        >
+          No content matches this display filter.
+        </div>
+
+      ) : (
+
+        <div className="space-y-4">
+
+          {visibleCandidates.map(
+            candidate => {
+
+              const contentId =
+                candidate.content_id;
+
+              const decision =
+                decisionsByContentId.get(
+                  contentId,
+                )
+                ?? null;
+
+              return (
+
+                <TouchCandidateCard
+                  key={contentId}
+                  candidate={candidate}
+                  decision={decision}
+                  selected={
+                    selectedIds.has(
+                      contentId,
+                    )
+                  }
+                  dismissed={
+                    dismissedIds.has(
+                      contentId,
+                    )
+                  }
+                  onToggle={() =>
+                    onToggleContent(
+                      contentId,
+                    )
+                  }
+                  onDismiss={() =>
+                    onDismissContent(
+                      contentId,
+                    )
+                  }
+                  onRestore={() =>
+                    onRestoreContent(
+                      contentId,
+                    )
+                  }
+                  onOpen={
+                    onOpenContent
+                      ? () =>
+                          onOpenContent(
+                            contentId,
+                          )
+                      : undefined
+                  }
+                />
+
+              );
+
+            },
+          )}
+
+        </div>
+
+      )}
+
+    </section>
+
+  );
+
+}
+
+
+/* =========================================================
+   FILTER BUTTON
+========================================================= */
+
+type FilterButtonProps = {
+  active: boolean;
+  label: string;
+  count: number;
+  onClick: () => void;
+};
+
+
+function FilterButton({
+  active,
+  label,
+  count,
+  onClick,
+}: FilterButtonProps) {
+
+  return (
+
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        inline-flex
+        items-center
+        gap-2
+        rounded-full
+        border
+        px-3
+        py-1.5
+        text-sm
+        transition
+        ${
+          active
+            ? (
+                "border-ratecard-blue "
+                + "bg-ratecard-blue "
+                + "text-white"
+              )
+            : (
+                "border-gray-200 "
+                + "bg-white "
+                + "text-gray-600 "
+                + "hover:bg-gray-50"
+              )
+        }
+      `}
+    >
+      <span>
+        {label}
+      </span>
+
+      <span
+        className={`
+          rounded-full
+          px-1.5
+          py-0.5
+          text-xs
+          ${
+            active
+              ? "bg-white/20"
+              : "bg-gray-100"
+          }
+        `}
+      >
+        {count}
+      </span>
+    </button>
 
   );
 
