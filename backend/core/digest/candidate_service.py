@@ -1028,19 +1028,38 @@ def build_digest_candidates(
     profile = load_profile(
         user_id=user_id,
     )
-
+    
     detailed_preferences = (
         get_user_preferences_detailed(
             user_id
         )
         or {}
     )
-
+    
     context = build_digest_candidate_context(
         profile=profile,
         detailed_preferences=(
             detailed_preferences
         ),
+    )
+    
+    print(
+        "DIGEST_PROFILE_EXPANSION",
+        {
+            "user_id":
+                user_id,
+    
+            "detailed_preferences":
+                detailed_preferences,
+    
+            "profile_terms":
+                sorted(
+                    context.profile_terms
+                ),
+    
+            "profile_keywords":
+                profile.keywords,
+        },
     )
 
     favorites_profile = (
