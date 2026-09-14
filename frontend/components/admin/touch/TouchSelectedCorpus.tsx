@@ -417,8 +417,8 @@ export default function TouchSelectedCorpus({
         >
           {
             validating
-              ? "Validating…"
-              : "Validate corpus"
+              ? "Generating…"
+              : "Generate one-pager"
           }
         </button>
 
@@ -430,8 +430,7 @@ export default function TouchSelectedCorpus({
             text-gray-400
           "
         >
-          Document generation will be added
-          in the next step.
+          The draft will use only the selected contents.
         </p>
 
       </div>
