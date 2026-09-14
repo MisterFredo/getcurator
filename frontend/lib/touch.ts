@@ -3,11 +3,13 @@ import {
 } from "@/lib/api";
 
 import type {
+  TouchGenerationOutcome,
+  TouchGenerationRequest,
+  TouchGenerationResponse,
   TouchResearchBrief,
   TouchSearchResponse,
   TouchSearchResult,
 } from "@/types/touch";
-
 
 /* =========================================================
    TYPES
@@ -44,5 +46,24 @@ export async function searchTouchContents(
       );
 
   return response.search;
+
+  /* =========================================================
+   GENERATE ONE-PAGER
+========================================================= */
+
+export async function generateTouchOnePager(
+  request: TouchGenerationRequest,
+): Promise<TouchGenerationOutcome> {
+
+  const response:
+    TouchGenerationResponse =
+      await api.post(
+        "/touch/generate",
+        request,
+      );
+
+  return response.generation;
+
+}
 
 }
