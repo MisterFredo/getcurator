@@ -227,12 +227,8 @@ def build_search_sql(
 # BUILD SELECTION CONTEXT
 # ============================================================
 
-# ============================================================
-# BUILD SELECTION CONTEXT
-# ============================================================
-
 def build_selection_context(
-    profile: ExpertiseProfile,
+    profile: ExpertiseProfile | None = None,
     period_start: str | None = None,
     period_end: str | None = None,
     universe_id: str | None = None,
@@ -244,9 +240,35 @@ def build_selection_context(
     allowed_universe_ids: list[str] | None = None,
 ) -> tuple[str, dict]:
 
-    selection = build_selection_filters(
-        profile,
-    )
+    # ========================================================
+    # PROFILE REQUIREMENT
+    # ========================================================
+
+    if (
+        apply_profile_selection
+        and profile is None
+    ):
+
+        raise ValueError(
+            "profile is required when "
+            "apply_profile_selection=True"
+        )
+
+    # ========================================================
+    # PROFILE SELECTION
+    # ========================================================
+
+    selection = None
+
+    if apply_profile_selection:
+
+        selection = build_selection_filters(
+            profile=profile,
+        )
+
+    # ========================================================
+    # QUERY
+    # ========================================================
 
     query = (
         query.strip()
@@ -254,18 +276,29 @@ def build_selection_context(
         else None
     )
 
-    params: dict = {
+    # ========================================================
+    # PARAMETERS
+    # ========================================================
 
-        "company_ids":
-            profile.preferences.companies,
+    params: dict = {}
 
-        "solution_ids":
-            profile.preferences.solutions,
+    if (
+        apply_profile_selection
+        and profile is not None
+    ):
 
-        "topic_ids":
-            profile.preferences.topics,
+        params.update({
 
-    }
+            "company_ids":
+                profile.preferences.companies,
+
+            "solution_ids":
+                profile.preferences.solutions,
+
+            "topic_ids":
+                profile.preferences.topics,
+
+        })
 
     # ========================================================
     # ALLOWED UNIVERSES
@@ -335,9 +368,13 @@ def build_selection_context(
 
     entity_filter_sql = (
         build_entity_sql(
+
             company_id=company_id,
+
             solution_id=solution_id,
+
             topic_id=topic_id,
+
         )
     )
 
@@ -378,19 +415,26 @@ def build_selection_context(
     if entity_filter_sql:
 
         selection_sql = f"""
+
         AND (
             {entity_filter_sql}
         )
+
         """
 
-    elif apply_profile_selection:
+    elif (
+        apply_profile_selection
+        and selection is not None
+    ):
 
         selection_sql = f"""
+
         AND (
             ({selection.filters_sql})
             OR
             ({selection.keywords_sql})
         )
+
         """
 
     else:
@@ -425,7 +469,7 @@ def build_selection_context(
 # ============================================================
 
 def build_selection_query(
-    profile: ExpertiseProfile,
+    profile: ExpertiseProfile | None = None,
     period_start: str | None = None,
     period_end: str | None = None,
     limit: int | None = None,
@@ -437,6 +481,7 @@ def build_selection_query(
     topic_id: str | None = None,
     apply_profile_selection: bool = True,
     allowed_universe_ids: list[str] | None = None,
+    language: str | None = None,
 ) -> tuple[str, dict]:
 
     # ========================================================
@@ -462,9 +507,13 @@ def build_selection_query(
 
             topic_id=topic_id,
 
-            apply_profile_selection=apply_profile_selection,
+            apply_profile_selection=(
+                apply_profile_selection
+            ),
 
-            allowed_universe_ids=allowed_universe_ids,
+            allowed_universe_ids=(
+                allowed_universe_ids
+            ),
 
         )
     )
@@ -497,7 +546,19 @@ def build_selection_query(
     # LANGUAGE
     # ========================================================
 
-    if profile.language == "en":
+    effective_language = (
+
+        language
+
+        or (
+            profile.language
+            if profile is not None
+            else "fr"
+        )
+
+    ).lower()
+
+    if effective_language == "en":
 
         title_sql = """
 
@@ -600,12 +661,8 @@ def build_selection_query(
         params,
     )
 
-# ============================================================
-# BUILD SELECTION COUNT QUERY
-# ============================================================
-
 def build_selection_count_query(
-    profile: ExpertiseProfile,
+    profile: ExpertiseProfile | None = None,
     period_start: str | None = None,
     period_end: str | None = None,
     universe_id: str | None = None,
