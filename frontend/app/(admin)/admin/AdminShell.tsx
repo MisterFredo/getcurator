@@ -23,6 +23,11 @@ import {
   Users,
 } from "lucide-react";
 
+
+/* =========================================================
+   ADMIN SHELL
+========================================================= */
+
 export default function AdminShell({
   children,
 }: {
@@ -31,6 +36,10 @@ export default function AdminShell({
 
   const pathname =
     usePathname();
+
+  /* =======================================================
+     ACTIVE LINK
+  ======================================================= */
 
   function isActive(
     href: string,
@@ -41,12 +50,17 @@ export default function AdminShell({
     }
 
     return (
-      pathname === href ||
-      pathname.startsWith(
-        href + "/"
+      pathname === href
+      || pathname.startsWith(
+        `${href}/`,
       )
     );
+
   }
+
+  /* =======================================================
+     SECTIONS
+  ======================================================= */
 
   const sections = [
 
@@ -192,17 +206,33 @@ export default function AdminShell({
 
   ];
 
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
 
     <div className="min-h-screen flex">
 
-      {/* ===================================================== */}
+      {/* ================================================= */}
       {/* SIDEBAR */}
-      {/* ===================================================== */}
+      {/* ================================================= */}
 
-      <aside className="w-64 shrink-0 bg-ratecard-blue text-white p-6 flex flex-col">
+      <aside
+        className="
+          w-64
+          shrink-0
+          bg-ratecard-blue
+          text-white
+          p-6
+          flex
+          flex-col
+        "
+      >
 
+        {/* ================================================= */}
         {/* HEADER */}
+        {/* ================================================= */}
 
         <div className="mb-8">
 
@@ -216,65 +246,95 @@ export default function AdminShell({
 
         </div>
 
+        {/* ================================================= */}
         {/* NAVIGATION */}
+        {/* ================================================= */}
 
-        <main className="min-w-0 flex-1 p-10 bg-gray-50">
+        <nav className="flex-1 overflow-y-auto space-y-8">
 
-          {sections.map((section) => (
+          {sections.map(
+            section => (
 
-            <div key={section.title}>
+              <div key={section.title}>
 
-              <div className="text-xs uppercase tracking-wider opacity-50 mb-2 px-3">
-                {section.title}
+                <div
+                  className="
+                    text-xs
+                    uppercase
+                    tracking-wider
+                    opacity-50
+                    mb-2
+                    px-3
+                  "
+                >
+                  {section.title}
+                </div>
+
+                <div className="space-y-1">
+
+                  {section.items.map(
+                    item => {
+
+                      const Icon =
+                        item.icon;
+
+                      const active =
+                        isActive(
+                          item.href,
+                        );
+
+                      return (
+
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`
+                            flex
+                            items-center
+                            gap-3
+                            px-3
+                            py-2
+                            rounded
+                            transition
+                            ${
+                              active
+                                ? (
+                                    "bg-white "
+                                    + "text-ratecard-blue "
+                                    + "font-semibold"
+                                  )
+                                : (
+                                    "hover:bg-ratecard-green/20"
+                                  )
+                            }
+                          `}
+                        >
+
+                          <Icon size={18} />
+
+                          <span>
+                            {item.label}
+                          </span>
+
+                        </Link>
+
+                      );
+
+                    },
+                  )}
+
+                </div>
+
               </div>
 
-              <div className="space-y-1">
-
-                {section.items.map((item) => {
-
-                  const Icon =
-                    item.icon;
-
-                  const active =
-                    isActive(item.href);
-
-                  return (
-
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`
-                        flex items-center gap-3 px-3 py-2 rounded transition
-                        ${
-                          active
-                            ? "bg-white text-ratecard-blue font-semibold"
-                            : "hover:bg-ratecard-green/20"
-                        }
-                      `}
-
-                    >
-
-                      <Icon size={18} />
-
-                      <span>
-                        {item.label}
-                      </span>
-
-                    </Link>
-
-                  );
-
-                })}
-
-              </div>
-
-            </div>
-
-          ))}
+            ),
+          )}
 
         </nav>
 
+        {/* ================================================= */}
         {/* FOOTER */}
+        {/* ================================================= */}
 
         <div className="pt-8 text-xs opacity-60">
           © {new Date().getFullYear()} Curator
@@ -282,11 +342,18 @@ export default function AdminShell({
 
       </aside>
 
-      {/* ===================================================== */}
+      {/* ================================================= */}
       {/* MAIN */}
-      {/* ===================================================== */}
+      {/* ================================================= */}
 
-      <main className="flex-1 p-10 bg-gray-50">
+      <main
+        className="
+          min-w-0
+          flex-1
+          p-10
+          bg-gray-50
+        "
+      >
         {children}
       </main>
 
