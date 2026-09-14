@@ -18,6 +18,7 @@ import {
   Link as LinkIcon,
   Link2,
   Puzzle,
+  Sparkles,
   Tags,
   Users,
 } from "lucide-react";
@@ -149,6 +150,11 @@ export default function AdminShell({
           href: "/admin/knowledge",
           label: "Knowledge",
           icon: Brain,
+        },
+        {
+          href: "/admin/touch",
+          label: "GetCurator Touch",
+          icon: Sparkles,
         },
         {
           href: "/admin/digest",
