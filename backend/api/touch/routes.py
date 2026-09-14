@@ -12,13 +12,16 @@ from core.touch.search_service import (
     search_touch_contents,
 )
 
+from core.touch.generation_models import (
+    TouchGenerationRequest,
+)
+
+from core.touch.generation_service import (
+    generate_touch_one_pager,
+)
+
 
 router = APIRouter()
-
-
-# ============================================================
-# SEARCH
-# ============================================================
 
 # ============================================================
 # SEARCH
@@ -135,3 +138,65 @@ def search_touch(
                 f"éditoriale Touch : {exc}"
             ),
         ) from exc
+
+
+# ============================================================
+# GENERATE ONE-PAGER
+# ============================================================
+
+@router.post("/generate")
+def generate_touch(
+    request: TouchGenerationRequest,
+):
+
+    if not request.subject.strip():
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Le sujet du one-pager "
+                "ne peut pas être vide."
+            ),
+        )
+
+    if not request.content_ids:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Le corpus du one-pager "
+                "ne peut pas être vide."
+            ),
+        )
+
+    outcome = generate_touch_one_pager(
+        request=request,
+    )
+
+    if (
+        outcome.status
+        == "GENERATION_FAILED"
+    ):
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                outcome.error
+                or (
+                    "La génération du one-pager "
+                    "a échoué."
+                )
+            ),
+        )
+
+    return {
+
+        "status":
+            "ok",
+
+        "generation":
+            outcome.model_dump(
+                mode="json",
+            ),
+
+    }
