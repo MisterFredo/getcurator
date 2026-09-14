@@ -439,7 +439,7 @@ export function useTouchResearch():
           }
 
           setConversationHistory(
-            nextConversationHistoryHistory
+            nextConversationHistory
           );
 
         } catch (caughtError) {
