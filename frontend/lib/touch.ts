@@ -6,6 +6,9 @@ import type {
   TouchGenerationOutcome,
   TouchGenerationRequest,
   TouchGenerationResponse,
+  TouchNotebookOutcome,
+  TouchNotebookRequest,
+  TouchNotebookResponse,
   TouchResearchBrief,
   TouchSearchResponse,
   TouchSearchResult,
@@ -67,5 +70,24 @@ export async function generateTouchOnePager(
       );
 
   return response.generation;
+
+}
+
+/* =========================================================
+   BUILD EDITORIAL NOTEBOOK
+========================================================= */
+
+export async function buildTouchNotebook(
+  request: TouchNotebookRequest,
+): Promise<TouchNotebookOutcome> {
+
+  const response:
+    TouchNotebookResponse =
+      await api.post(
+        "/touch/notebook",
+        request,
+      );
+
+  return response.notebook_generation;
 
 }
