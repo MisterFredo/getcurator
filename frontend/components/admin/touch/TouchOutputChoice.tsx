@@ -15,7 +15,6 @@ import type {
   TouchCorpusNotebook,
 } from "@/types/touch";
 
-import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview";
 import TouchBriefPreview from "@/components/admin/touch/TouchBriefPreview";
 import TouchNotebookDocument from "@/components/admin/touch/TouchNotebookDocument";
 
@@ -177,6 +176,16 @@ export default function TouchOutputChoice({
       );
 
     }
+
+  }
+
+  /* =======================================================
+     PRINT
+  ======================================================= */
+
+  function handlePrint() {
+
+    window.print();
 
   }
 
@@ -499,6 +508,67 @@ export default function TouchOutputChoice({
       </div>
 
       {/* ================================================= */}
+      {/* OUTPUT TOOLBAR */}
+      {/* ================================================= */}
+
+      {(
+        mode === "DOCUMENTARY"
+        || brief
+      ) && (
+
+        <div
+          className="
+            touch-output-toolbar
+            flex
+            flex-wrap
+            items-center
+            justify-between
+            gap-4
+            rounded-xl
+            border
+            border-gray-200
+            bg-white
+            p-4
+          "
+        >
+
+          <div>
+
+            <p className="text-sm font-medium text-gray-900">
+              Document preview
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Print the current output or save it as a PDF.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              handlePrint
+            }
+            className="
+              rounded-lg
+              bg-gray-900
+              px-4
+              py-2
+              text-sm
+              font-semibold
+              text-white
+              transition
+              hover:bg-gray-800
+            "
+          >
+            Print / Save as PDF
+          </button>
+
+        </div>
+
+      )}
+
+      {/* ================================================= */}
       {/* DOCUMENTARY OUTPUT */}
       {/* ================================================= */}
 
@@ -508,6 +578,7 @@ export default function TouchOutputChoice({
 
           <div
             className="
+              touch-output-toolbar
               rounded-xl
               border
               border-blue-200
@@ -528,8 +599,12 @@ export default function TouchOutputChoice({
           </div>
 
           <TouchNotebookDocument
-            notebook={notebook}
-            sources={sources}
+            notebook={
+              notebook
+            }
+            sources={
+              sources
+            }
           />
 
         </div>
@@ -546,6 +621,7 @@ export default function TouchOutputChoice({
 
           <div
             className="
+              touch-output-toolbar
               rounded-xl
               border
               border-gray-200
@@ -615,7 +691,9 @@ export default function TouchOutputChoice({
                 onClick={
                   handleGenerateInterpretation
                 }
-                disabled={loading}
+                disabled={
+                  loading
+                }
                 className="
                   rounded-lg
                   bg-violet-600
@@ -630,11 +708,12 @@ export default function TouchOutputChoice({
                   disabled:opacity-50
                 "
               >
-                {loading
-                  ? "Creating interpretation…"
-                  : brief
-                    ? "Rebuild interpretation"
-                    : "Create interpretation"
+                {
+                  loading
+                    ? "Creating interpretation…"
+                    : brief
+                      ? "Rebuild interpretation"
+                      : "Create interpretation"
                 }
               </button>
 
@@ -646,6 +725,7 @@ export default function TouchOutputChoice({
 
             <div
               className="
+                touch-output-toolbar
                 rounded-xl
                 border
                 border-red-200
@@ -666,17 +746,25 @@ export default function TouchOutputChoice({
 
           )}
 
-         {brief && (
+          {brief && (
 
-          <TouchBriefPreview
-            brief={brief}
-            notebook={notebook}
-            sourceContentIds={
-              sourceContentIds
-            }
-          />
-        
-        )}
+            <TouchBriefPreview
+              brief={
+                brief
+              }
+              notebook={
+                notebook
+              }
+              sourceContentIds={
+                sources.map(
+                  source =>
+                    source.content_id,
+                )
+              }
+            />
+
+          )}
+
         </div>
 
       )}
