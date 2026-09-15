@@ -512,6 +512,194 @@ def _collect_temporary_note_ids(
 
     return unique_temporary_note_ids
 
+# ============================================================
+# COLLECT INPUT NOTES
+# ============================================================
+
+def _collect_input_notes_by_id(
+    extracted_batches: list[dict],
+) -> dict[str, dict]:
+
+    input_notes_by_id: dict[
+        str,
+        dict,
+    ] = {}
+
+    for batch in extracted_batches:
+
+        if not isinstance(
+            batch,
+            dict,
+        ):
+            continue
+
+        notes = (
+            batch.get(
+                "notes",
+                [],
+            )
+            or []
+        )
+
+        if not isinstance(
+            notes,
+            list,
+        ):
+            continue
+
+        for note in notes:
+
+            if not isinstance(
+                note,
+                dict,
+            ):
+                continue
+
+            temporary_note_id = str(
+                note.get(
+                    "temporary_note_id"
+                )
+                or ""
+            ).strip()
+
+            statement = str(
+                note.get(
+                    "statement"
+                )
+                or ""
+            ).strip()
+
+            source_content_ids = (
+                _normalize_string_list(
+                    note.get(
+                        "source_content_ids"
+                    )
+                )
+            )
+
+            if (
+                not temporary_note_id
+                or not statement
+            ):
+
+                continue
+
+            if (
+                temporary_note_id
+                in input_notes_by_id
+            ):
+
+                raise ValueError(
+                    "Une contribution temporaire "
+                    "est dupliquée : "
+                    f"{temporary_note_id}"
+                )
+
+            input_notes_by_id[
+                temporary_note_id
+            ] = {
+                "statement":
+                    statement,
+
+                "source_content_ids":
+                    source_content_ids,
+            }
+
+    if not input_notes_by_id:
+
+        raise ValueError(
+            "Aucune contribution exploitable "
+            "à consolider"
+        )
+
+    return input_notes_by_id
+
+# ============================================================
+# VALIDATE VERBATIM STATEMENTS
+# ============================================================
+
+def _validate_verbatim_statements(
+    notes: list[TouchEvidenceNote],
+    input_notes_by_id: dict[str, dict],
+) -> None:
+
+    for note in notes:
+
+        represented_input_notes = [
+
+            input_notes_by_id[
+                input_note_id
+            ]
+
+            for input_note_id
+            in note.input_note_ids
+
+            if (
+                input_note_id
+                in input_notes_by_id
+            )
+
+        ]
+
+        allowed_statements = {
+
+            input_note[
+                "statement"
+            ]
+
+            for input_note
+            in represented_input_notes
+
+        }
+
+        if (
+            note.statement
+            not in allowed_statements
+        ):
+
+            raise ValueError(
+                "La consolidation a réécrit "
+                "une contribution : "
+                f"{note.note_id}"
+            )
+
+        expected_source_content_ids = {
+
+            content_id
+
+            for input_note
+            in represented_input_notes
+
+            for content_id
+            in input_note[
+                "source_content_ids"
+            ]
+
+        }
+
+        actual_source_content_ids = set(
+            note.source_content_ids
+        )
+
+        if (
+            actual_source_content_ids
+            != expected_source_content_ids
+        ):
+
+            raise ValueError(
+                "La consolidation a modifié "
+                "les sources d’une contribution : "
+                f"{note.note_id}"
+            )
+
+        if note.explanation:
+
+            raise ValueError(
+                "La consolidation a ajouté "
+                "une explication à une contribution : "
+                f"{note.note_id}"
+            )
+
 
 # ============================================================
 # VALIDATE CONSOLIDATED NOTES
