@@ -680,6 +680,42 @@ def _normalize_notebook(
     notebook: TouchCorpusNotebook,
 ) -> TouchCorpusNotebook:
 
+    sections = [
+
+        section.model_copy(
+            update={
+
+                "section_id":
+                    section.section_id.strip(),
+
+                "title":
+                    section.title.strip(),
+
+                "description":
+                    section.description.strip(),
+
+                "event_ids":
+                    _unique_ids(
+                        section.event_ids
+                    ),
+
+                "note_ids":
+                    _unique_ids(
+                        section.note_ids
+                    ),
+
+                "number_ids":
+                    _unique_ids(
+                        section.number_ids
+                    ),
+
+            },
+        )
+
+        for section in notebook.sections
+
+    ]
+
     notes = [
 
         note.model_copy(
@@ -750,6 +786,11 @@ def _normalize_notebook(
                 "note_ids":
                     _unique_ids(
                         event.note_ids
+                    ),
+
+                "number_ids":
+                    _unique_ids(
+                        event.number_ids
                     ),
 
                 "source_content_ids":
@@ -901,11 +942,6 @@ def _normalize_notebook(
                         contradiction.note_ids
                     ),
 
-                "number_ids":
-                    _unique_ids(
-                        event.number_ids
-                    ),
-
                 "source_content_ids":
                     _unique_ids(
                         contradiction.source_content_ids
@@ -936,6 +972,9 @@ def _normalize_notebook(
 
             "corpus_summary":
                 notebook.corpus_summary.strip(),
+
+            "sections":
+                sections,
 
             "notes":
                 notes,
@@ -971,7 +1010,6 @@ def _normalize_notebook(
         },
     )
 
-
 # ============================================================
 # VALIDATE UNIQUE IDENTIFIERS
 # ============================================================
@@ -1005,8 +1043,30 @@ def _validate_unique_identifiers(
 
 
 # ============================================================
-# VALIDATE REFERENCES
+# COUNT REFERENCES
 # ============================================================
+
+def _count_references(
+    references: list[list[str]],
+) -> dict[str, int]:
+
+    counts: dict[str, int] = {}
+
+    for reference_group in references:
+
+        for identifier in reference_group:
+
+            counts[
+                identifier
+            ] = (
+                counts.get(
+                    identifier,
+                    0,
+                )
+                + 1
+            )
+
+    return counts
 
 # ============================================================
 # VALIDATE REFERENCES
@@ -1016,6 +1076,14 @@ def _validate_notebook_references(
     notebook: TouchCorpusNotebook,
     allowed_content_ids: set[str],
 ) -> None:
+
+    section_ids = [
+
+        section.section_id
+
+        for section in notebook.sections
+
+    ]
 
     note_ids = [
 
@@ -1042,6 +1110,11 @@ def _validate_notebook_references(
     ]
 
     _validate_unique_identifiers(
+        values=section_ids,
+        label="section_id",
+    )
+
+    _validate_unique_identifiers(
         values=note_ids,
         label="note_id",
     )
@@ -1056,6 +1129,10 @@ def _validate_notebook_references(
         label="number_id",
     )
 
+    section_id_set = set(
+        section_ids
+    )
+
     note_id_set = set(
         note_ids
     )
@@ -1068,72 +1145,52 @@ def _validate_notebook_references(
         number_ids
     )
 
-    referenced_note_ids = set()
+    if not section_id_set:
 
-    referenced_event_ids = set()
+        raise ValueError(
+            "Le notebook ne contient aucune section "
+            "documentaire"
+        )
 
-    referenced_number_ids = set()
+    if notebook.dimensions:
 
-    referenced_source_ids = set()
+        raise ValueError(
+            "Le moteur doit retourner dimensions "
+            "comme une liste vide"
+        )
+
+    if notebook.quarantined_numbers:
+
+        raise ValueError(
+            "Le notebook Touch ne doit contenir "
+            "aucun Number en quarantaine"
+        )
+
+    referenced_source_ids: set[str] = set()
+
+    # ========================================================
+    # ATOMIC NOTES
+    # ========================================================
 
     for note in notebook.notes:
-
-        referenced_source_ids.update(
-            note.source_content_ids
-        )
 
         if not note.source_content_ids:
 
             raise ValueError(
                 "Une note consolidée ne possède "
-                "aucune source"
+                "aucune source : "
+                f"{note.note_id}"
             )
 
-    for event in notebook.events:
-
-        referenced_note_ids.update(
-            event.note_ids
-        )
-
-        referenced_number_ids.update(
-            event.number_ids
-        )
-
         referenced_source_ids.update(
-            event.source_content_ids
+            note.source_content_ids
         )
 
-    for item in notebook.timeline:
-
-        referenced_note_ids.update(
-            item.note_ids
-        )
-
-        referenced_source_ids.update(
-            item.source_content_ids
-        )
-
-        if item.event_id:
-
-            referenced_event_ids.add(
-                item.event_id
-            )
-
-    for dimension in notebook.dimensions:
-
-        referenced_note_ids.update(
-            dimension.note_ids
-        )
-
-        referenced_source_ids.update(
-            dimension.source_content_ids
-        )
+    # ========================================================
+    # CERTIFIED NUMBERS
+    # ========================================================
 
     for number in notebook.validated_numbers:
-
-        referenced_source_ids.update(
-            number.source_content_ids
-        )
 
         if (
             number.id_content
@@ -1150,81 +1207,407 @@ def _validate_notebook_references(
 
             raise ValueError(
                 "Un Number certifié ne possède "
-                "aucune source"
+                "aucune source : "
+                f"{number.number_id}"
             )
 
-    for number in notebook.quarantined_numbers:
+        if (
+            number.id_content
+            not in number.source_content_ids
+        ):
+
+            raise ValueError(
+                "La source canonique du Number est "
+                "absente de source_content_ids : "
+                f"{number.number_id}"
+            )
 
         referenced_source_ids.update(
             number.source_content_ids
         )
 
+    # ========================================================
+    # EVENTS
+    # ========================================================
+
+    event_note_counts = (
+        _count_references([
+
+            event.note_ids
+
+            for event in notebook.events
+
+        ])
+    )
+
+    event_number_counts = (
+        _count_references([
+
+            event.number_ids
+
+            for event in notebook.events
+
+        ])
+    )
+
+    for event in notebook.events:
+
+        unknown_note_ids = (
+
+            set(
+                event.note_ids
+            )
+            - note_id_set
+
+        )
+
+        if unknown_note_ids:
+
+            raise ValueError(
+                "Un événement référence des note_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_note_ids
+                    )
+                )
+            )
+
+        unknown_number_ids = (
+
+            set(
+                event.number_ids
+            )
+            - number_id_set
+
+        )
+
+        if unknown_number_ids:
+
+            raise ValueError(
+                "Un événement référence des number_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_number_ids
+                    )
+                )
+            )
+
+        if (
+            not event.note_ids
+            and not event.number_ids
+        ):
+
+            raise ValueError(
+                "Un événement ne contient aucune "
+                "pièce documentaire : "
+                f"{event.event_id}"
+            )
+
+        referenced_source_ids.update(
+            event.source_content_ids
+        )
+
+    # ========================================================
+    # SECTIONS
+    # ========================================================
+
+    section_event_counts = (
+        _count_references([
+
+            section.event_ids
+
+            for section in notebook.sections
+
+        ])
+    )
+
+    section_note_counts = (
+        _count_references([
+
+            section.note_ids
+
+            for section in notebook.sections
+
+        ])
+    )
+
+    section_number_counts = (
+        _count_references([
+
+            section.number_ids
+
+            for section in notebook.sections
+
+        ])
+    )
+
+    for section in notebook.sections:
+
+        if not section.title:
+
+            raise ValueError(
+                "Une section documentaire possède "
+                "un titre vide : "
+                f"{section.section_id}"
+            )
+
+        if (
+            not section.event_ids
+            and not section.note_ids
+            and not section.number_ids
+        ):
+
+            raise ValueError(
+                "Une section documentaire est vide : "
+                f"{section.section_id}"
+            )
+
+        unknown_event_ids = (
+
+            set(
+                section.event_ids
+            )
+            - event_id_set
+
+        )
+
+        if unknown_event_ids:
+
+            raise ValueError(
+                "Une section référence des event_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_event_ids
+                    )
+                )
+            )
+
+        unknown_note_ids = (
+
+            set(
+                section.note_ids
+            )
+            - note_id_set
+
+        )
+
+        if unknown_note_ids:
+
+            raise ValueError(
+                "Une section référence des note_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_note_ids
+                    )
+                )
+            )
+
+        unknown_number_ids = (
+
+            set(
+                section.number_ids
+            )
+            - number_id_set
+
+        )
+
+        if unknown_number_ids:
+
+            raise ValueError(
+                "Une section référence des number_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_number_ids
+                    )
+                )
+            )
+
+    # ========================================================
+    # SINGLE PLACEMENT: EVENTS
+    # ========================================================
+
+    invalid_event_placements = [
+
+        event_id
+
+        for event_id in event_ids
+
+        if (
+            section_event_counts.get(
+                event_id,
+                0,
+            )
+            != 1
+        )
+
+    ]
+
+    if invalid_event_placements:
+
+        raise ValueError(
+            "Chaque événement doit apparaître dans "
+            "exactement une section : "
+            + ", ".join(
+                sorted(
+                    invalid_event_placements
+                )
+            )
+        )
+
+    # ========================================================
+    # SINGLE PLACEMENT: NOTES
+    # ========================================================
+
+    invalid_note_placements = [
+
+        note_id
+
+        for note_id in note_ids
+
+        if (
+            event_note_counts.get(
+                note_id,
+                0,
+            )
+            + section_note_counts.get(
+                note_id,
+                0,
+            )
+            != 1
+        )
+
+    ]
+
+    if invalid_note_placements:
+
+        raise ValueError(
+            "Chaque note doit apparaître exactement "
+            "une fois dans le plan : "
+            + ", ".join(
+                sorted(
+                    invalid_note_placements
+                )
+            )
+        )
+
+    # ========================================================
+    # SINGLE PLACEMENT: NUMBERS
+    # ========================================================
+
+    invalid_number_placements = [
+
+        number_id
+
+        for number_id in number_ids
+
+        if (
+            event_number_counts.get(
+                number_id,
+                0,
+            )
+            + section_number_counts.get(
+                number_id,
+                0,
+            )
+            != 1
+        )
+
+    ]
+
+    if invalid_number_placements:
+
+        raise ValueError(
+            "Chaque Number certifié doit apparaître "
+            "exactement une fois dans le plan : "
+            + ", ".join(
+                sorted(
+                    invalid_number_placements
+                )
+            )
+        )
+
+    # ========================================================
+    # TIMELINE
+    # ========================================================
+
+    for item in notebook.timeline:
+
+        unknown_note_ids = (
+
+            set(
+                item.note_ids
+            )
+            - note_id_set
+
+        )
+
+        if unknown_note_ids:
+
+            raise ValueError(
+                "La timeline référence des note_ids "
+                "inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_note_ids
+                    )
+                )
+            )
+
+        if (
+            item.event_id
+            and item.event_id
+            not in event_id_set
+        ):
+
+            raise ValueError(
+                "La timeline référence un event_id "
+                "inconnu : "
+                f"{item.event_id}"
+            )
+
+        referenced_source_ids.update(
+            item.source_content_ids
+        )
+
+    # ========================================================
+    # CONTRADICTIONS
+    # ========================================================
+
     for contradiction in notebook.contradictions:
 
-        referenced_note_ids.update(
-            contradiction.note_ids
+        unknown_note_ids = (
+
+            set(
+                contradiction.note_ids
+            )
+            - note_id_set
+
         )
+
+        if unknown_note_ids:
+
+            raise ValueError(
+                "Une contradiction référence des "
+                "note_ids inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_note_ids
+                    )
+                )
+            )
 
         referenced_source_ids.update(
             contradiction.source_content_ids
         )
 
-    unknown_note_ids = (
-
-        referenced_note_ids
-        - note_id_set
-
-    )
-
-    if unknown_note_ids:
-
-        raise ValueError(
-            "Le notebook référence des note_ids "
-            "inconnus : "
-            + ", ".join(
-                sorted(
-                    unknown_note_ids
-                )
-            )
-        )
-
-    unknown_event_ids = (
-
-        referenced_event_ids
-        - event_id_set
-
-    )
-
-    if unknown_event_ids:
-
-        raise ValueError(
-            "La timeline référence des event_ids "
-            "inconnus : "
-            + ", ".join(
-                sorted(
-                    unknown_event_ids
-                )
-            )
-        )
-
-    unknown_number_ids = (
-
-        referenced_number_ids
-        - number_id_set
-
-    )
-
-    if unknown_number_ids:
-
-        raise ValueError(
-            "Un événement référence des number_ids "
-            "inconnus : "
-            + ", ".join(
-                sorted(
-                    unknown_number_ids
-                )
-            )
-        )
+    # ========================================================
+    # SOURCES
+    # ========================================================
 
     unknown_source_ids = (
 
@@ -1244,7 +1627,6 @@ def _validate_notebook_references(
                 )
             )
         )
-
 # ============================================================
 # CONSOLIDATE NOTEBOOK
 # ============================================================
@@ -1261,16 +1643,19 @@ def _consolidate_notebook(
 
     original_prompt = (
         build_touch_notebook_consolidation_prompt(
-
+    
             request=request,
-
+    
             extracted_batches=(
                 extracted_batches
             ),
-
+    
+            certified_numbers=(
+                certified_numbers
+            ),
+    
         )
     )
-
     prompt = original_prompt
 
     allowed_content_ids = set(
