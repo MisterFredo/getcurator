@@ -911,6 +911,26 @@ def consolidate_notebook_notes(
         )
     )
 
+    input_notes_by_id = (
+        _collect_input_notes_by_id(
+            extracted_batches
+        )
+    )
+
+    if (
+        set(
+            temporary_note_ids
+        )
+        != set(
+            input_notes_by_id
+        )
+    ):
+
+        raise ValueError(
+            "Les identifiants des contributions "
+            "sont incohérents"
+        )
+
     allowed_content_ids = set(
         request.content_ids
     )
@@ -931,7 +951,7 @@ def consolidate_notebook_notes(
 
     last_error = (
         "Erreur inconnue pendant la "
-        "consolidation des notes"
+        "consolidation des contributions"
     )
 
     attempts = max(
@@ -990,6 +1010,16 @@ def consolidate_notebook_notes(
 
             )
 
+            _validate_verbatim_statements(
+
+                notes=result.notes,
+
+                input_notes_by_id=(
+                    input_notes_by_id
+                ),
+
+            )
+
             return result.notes
 
         except Exception as exc:
@@ -1016,7 +1046,8 @@ def consolidate_notebook_notes(
             )
 
     raise ValueError(
-        "Échec de la consolidation des notes "
-        f"après {attempts} tentative(s) : "
+        "Échec de la consolidation des "
+        "contributions après "
+        f"{attempts} tentative(s) : "
         f"{last_error}"
     )
