@@ -15,6 +15,7 @@ import type {
 } from "@/types/touch";
 
 import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview";
+import TouchBriefPreview from "@/components/admin/touch/TouchBriefPreview";
 
 
 /* =========================================================
@@ -665,32 +666,17 @@ export default function TouchOutputChoice({
 
           )}
 
-          {brief && (
+         {brief && (
 
-            <div
-              className="
-                rounded-xl
-                border
-                border-emerald-200
-                bg-emerald-50
-                p-4
-              "
-            >
-
-              <p className="text-sm font-medium text-emerald-800">
-                Interpretation ready
-              </p>
-
-              <p className="mt-1 text-sm text-emerald-700">
-                The notebook has been organised around a
-                central reading. Its complete presentation
-                will appear here in the next component.
-              </p>
-
-            </div>
-
-          )}
-
+          <TouchBriefPreview
+            brief={brief}
+            notebook={notebook}
+            sourceContentIds={
+              sourceContentIds
+            }
+          />
+        
+        )}
         </div>
 
       )}
