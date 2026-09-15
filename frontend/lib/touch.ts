@@ -3,6 +3,9 @@ import {
 } from "@/lib/api";
 
 import type {
+  TouchBriefOutcome,
+  TouchBriefRequest,
+  TouchBriefResponse,
   TouchGenerationOutcome,
   TouchGenerationRequest,
   TouchGenerationResponse,
@@ -89,5 +92,24 @@ export async function buildTouchNotebook(
       );
 
   return response.notebook_generation;
+
+}
+
+/* =========================================================
+   BUILD INTERPRETED BRIEF
+========================================================= */
+
+export async function buildTouchBrief(
+  request: TouchBriefRequest,
+): Promise<TouchBriefOutcome> {
+
+  const response:
+    TouchBriefResponse =
+      await api.post(
+        "/touch/brief",
+        request,
+      );
+
+  return response.brief_generation;
 
 }
