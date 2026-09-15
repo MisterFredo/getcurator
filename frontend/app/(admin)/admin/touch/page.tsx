@@ -22,6 +22,7 @@ import TouchResearchCoverage from "@/components/admin/touch/TouchResearchCoverag
 import TouchResearchForm from "@/components/admin/touch/TouchResearchForm";
 import TouchSelectedCorpus from "@/components/admin/touch/TouchSelectedCorpus";
 import TouchDraftPreview from "@/components/admin/touch/TouchDraftPreview";
+import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder";
 
 import type {
   SelectOption,
@@ -967,13 +968,23 @@ export default function TouchPage() {
       
       {generation?.draft && (
       
-        <TouchDraftPreview
-          draft={
-            generation.draft
+        <TouchNotebookBuilder
+          subject={
+            searchResult
+              ?.interpretation
+              .subject
+            ?? ""
           }
-          sources={
-            generation.sources
+          objective={
+            searchResult
+              ?.interpretation
+              .objective
+            ?? ""
           }
+          selectedContentIds={
+            selectedContentIds
+          }
+          outputLanguage="fr"
         />
       
       )}
