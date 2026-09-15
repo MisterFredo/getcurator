@@ -454,6 +454,7 @@ export default function TouchNotebookDocument({
     <article
       id="touch-notebook-document"
       className="
+        touch-print-root
         mx-auto
         max-w-5xl
         overflow-hidden
