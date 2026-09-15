@@ -16,7 +16,7 @@ from core.touch.notebook_models import (
     TouchNotebookRequest,
 )
 
-from core.touch.notebook_prompt import (
+from core.touch.notebook_extraction_prompt import (
     TOUCH_NOTEBOOK_EXTRACTION_SYSTEM_PROMPT,
     build_touch_notebook_extraction_prompt,
 )
