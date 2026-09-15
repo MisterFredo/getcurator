@@ -11,16 +11,12 @@ from core.numbers.content_service import (
 )
 
 from core.touch.notebook_contribution_service import (
-    build_contribution_batches,
+    build_contribution_notes,
 )
 
 from core.touch.notebook_models import (
     TouchNotebookOutcome,
     TouchNotebookRequest,
-)
-
-from core.touch.notebook_note_service import (
-    consolidate_notebook_notes,
 )
 
 from core.touch.notebook_numbers import (
@@ -89,6 +85,7 @@ def _normalize_request(
 
     return request.model_copy(
         update={
+
             "subject":
                 subject,
 
@@ -100,6 +97,7 @@ def _normalize_request(
 
             "output_language":
                 language,
+
         },
     )
 
@@ -137,9 +135,13 @@ def _validate_selected_contents(
 
         content_id
 
-        for content_id in request.content_ids
+        for content_id
+        in request.content_ids
 
-        if content_id not in contents_by_id
+        if (
+            content_id
+            not in contents_by_id
+        )
 
     ]
 
@@ -159,7 +161,8 @@ def _validate_selected_contents(
             content_id
         ]
 
-        for content_id in request.content_ids
+        for content_id
+        in request.content_ids
 
     ]
 
@@ -233,11 +236,11 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 3. BUILD NOTES FROM EXISTING CONTRIBUTIONS
+        # 3. BUILD IMMUTABLE NOTES FROM CONTRIBUTIONS
         # ====================================================
 
-        contribution_batches = (
-            build_contribution_batches(
+        contribution_notes = (
+            build_contribution_notes(
                 request=(
                     normalized_request
                 ),
@@ -245,31 +248,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 4. CONSOLIDATE CONTRIBUTIONS WITHOUT REWRITING
-        # ====================================================
-
-        consolidated_notes = (
-            consolidate_notebook_notes(
-
-                request=(
-                    normalized_request
-                ),
-
-                extracted_batches=(
-                    contribution_batches
-                ),
-
-                model=model,
-
-                max_attempts=(
-                    DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
-                ),
-
-            )
-        )
-
-        # ====================================================
-        # 5. ORGANIZE DOCUMENTARY PLAN
+        # 4. ORGANIZE DOCUMENTARY PLAN
         # ====================================================
 
         notebook = organize_notebook(
@@ -279,7 +258,7 @@ def build_touch_notebook(
             ),
 
             notes=(
-                consolidated_notes
+                contribution_notes
             ),
 
             certified_numbers=(
@@ -295,7 +274,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 6. REPAIR AND VALIDATE FINAL PLAN
+        # 5. REPAIR AND VALIDATE FINAL PLAN
         # ====================================================
 
         notebook = prepare_notebook(
