@@ -269,6 +269,47 @@ function NotebookSection({
 
 }
 
+/* =========================================================
+   FORMAT NUMBER VALUE
+========================================================= */
+
+function formatNumberValue(
+  value:
+    | string
+    | number
+    | null,
+): string {
+
+  // helper donné précédemment
+
+}
+
+
+/* =========================================================
+   FORMAT NUMBER SCALE
+========================================================= */
+
+function formatNumberScale(
+  scale: string | null,
+): string {
+
+  // helper donné précédemment
+
+}
+
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
+export default function TouchNotebookPreview({
+  notebook,
+  sourceContentIds,
+}: Props) {
+
+  // composant existant
+}
+
 
 /* =========================================================
    COMPONENT
@@ -1032,7 +1073,13 @@ export default function TouchNotebookPreview({
 
       {notebook.validated_numbers.length > 0 && (
 
-        <NotebookSection title="Validated numbers">
+        <NotebookSection
+          title="Validated numbers"
+          description={
+            "Certified figures attached to the "
+            + "selected contents."
+          }
+        >
 
           <div
             className="
@@ -1044,96 +1091,262 @@ export default function TouchNotebookPreview({
           >
 
             {notebook.validated_numbers.map(
-              number => (
+              number => {
 
-                <article
-                  key={number.number_id}
-                  className="
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    p-5
-                  "
-                >
+                const entityLabels = (
+                  number.entities
+                    .map(
+                      entity =>
+                        entity.entity_label,
+                    )
+                    .filter(
+                      (
+                        label,
+                      ): label is string =>
+                        Boolean(
+                          label,
+                        ),
+                    )
+                );
 
-                  <p
+                const hasRange = (
+                  number.value_min !== null
+                  && number.value_max !== null
+                );
+
+                return (
+
+                  <article
+                    key={number.number_id}
                     className="
-                      text-2xl
-                      font-semibold
-                      text-gray-900
-                    "
-                  >
-                    {number.value}
-                    {number.unit && (
-                      <>
-                        {" "}
-                        {number.unit}
-                      </>
-                    )}
-                  </p>
-
-                  <p className="mt-2 font-medium text-gray-800">
-                    {number.metric}
-                  </p>
-
-                  <p
-                    className="
-                      mt-2
-                      text-sm
-                      leading-6
-                      text-gray-600
-                    "
-                  >
-                    {number.context}
-                  </p>
-
-                  <div
-                    className="
-                      mt-3
-                      space-y-1
-                      text-xs
-                      text-gray-500
+                      rounded-xl
+                      border
+                      border-gray-200
+                      bg-white
+                      p-5
                     "
                   >
 
-                    {number.actor && (
-                      <p>
-                        Actor:
-                        {" "}
-                        {number.actor}
+                    {/* =================================== */}
+                    {/* VALUE */}
+                    {/* =================================== */}
+
+                    <div
+                      className="
+                        flex
+                        flex-wrap
+                        items-baseline
+                        gap-x-2
+                        gap-y-1
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-2xl
+                          font-semibold
+                          text-gray-900
+                        "
+                      >
+
+                        {hasRange ? (
+
+                          <>
+                            {
+                              formatNumberValue(
+                                number.value_min,
+                              )
+                            }
+
+                            {" – "}
+
+                            {
+                              formatNumberValue(
+                                number.value_max,
+                              )
+                            }
+                          </>
+
+                        ) : (
+
+                          formatNumberValue(
+                            number.value,
+                          )
+
+                        )}
+
                       </p>
-                    )}
 
-                    {number.geography && (
-                      <p>
-                        Geography:
-                        {" "}
-                        {number.geography}
+                      {number.scale && (
+
+                        <span
+                          className="
+                            text-base
+                            font-medium
+                            text-gray-700
+                          "
+                        >
+                          {
+                            formatNumberScale(
+                              number.scale,
+                            )
+                          }
+                        </span>
+
+                      )}
+
+                      {number.unit && (
+
+                        <span
+                          className="
+                            text-base
+                            font-medium
+                            text-gray-700
+                          "
+                        >
+                          {number.unit}
+                        </span>
+
+                      )}
+
+                    </div>
+
+                    {/* =================================== */}
+                    {/* LABEL */}
+                    {/* =================================== */}
+
+                    {number.label && (
+
+                      <p
+                        className="
+                          mt-3
+                          font-medium
+                          leading-6
+                          text-gray-900
+                        "
+                      >
+                        {number.label}
                       </p>
+
                     )}
 
-                    {number.period && (
-                      <p>
-                        Period:
-                        {" "}
-                        {number.period}
-                      </p>
+                    {/* =================================== */}
+                    {/* METADATA */}
+                    {/* =================================== */}
+
+                    <div
+                      className="
+                        mt-3
+                        flex
+                        flex-wrap
+                        gap-2
+                      "
+                    >
+
+                      {number.metric_type && (
+
+                        <span
+                          className="
+                            rounded
+                            bg-violet-50
+                            px-2
+                            py-1
+                            text-xs
+                            font-medium
+                            text-violet-700
+                          "
+                        >
+                          {number.metric_type}
+                        </span>
+
+                      )}
+
+                      {entityLabels.map(
+                        (
+                          label,
+                          index,
+                        ) => (
+
+                          <span
+                            key={
+                              `${number.number_id}-${label}-${index}`
+                            }
+                            className="
+                              rounded
+                              bg-gray-100
+                              px-2
+                              py-1
+                              text-xs
+                              text-gray-600
+                            "
+                          >
+                            {label}
+                          </span>
+
+                        ),
+                      )}
+
+                    </div>
+
+                    {/* =================================== */}
+                    {/* CONTEXT */}
+                    {/* =================================== */}
+
+                    {(
+                      number.zone
+                      || number.period_label
+                    ) && (
+
+                      <div
+                        className="
+                          mt-3
+                          space-y-1
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+
+                        {number.zone && (
+
+                          <p>
+                            Geography:
+                            {" "}
+                            {number.zone}
+                          </p>
+
+                        )}
+
+                        {number.period_label && (
+
+                          <p>
+                            Period:
+                            {" "}
+                            {number.period_label}
+                          </p>
+
+                        )}
+
+                      </div>
+
                     )}
 
-                  </div>
+                    {/* =================================== */}
+                    {/* SOURCES */}
+                    {/* =================================== */}
 
-                  <div className="mt-4">
+                    <div className="mt-4">
 
-                    {renderSourceReferences(
-                      number.source_content_ids,
-                    )}
+                      {renderSourceReferences(
+                        number.source_content_ids,
+                      )}
 
-                  </div>
+                    </div>
 
-                </article>
+                  </article>
 
-              ),
+                );
+
+              },
             )}
 
           </div>
@@ -1141,7 +1354,6 @@ export default function TouchNotebookPreview({
         </NotebookSection>
 
       )}
-
       {/* ================================================= */}
       {/* QUARANTINED NUMBERS */}
       {/* ================================================= */}
