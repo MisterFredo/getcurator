@@ -1,4 +1,5 @@
 from core.touch.notebook_models import (
+    TouchEvidenceNote,
     TouchNotebookRequest,
 )
 
@@ -22,22 +23,20 @@ def _normalize_statement(
 
 
 # ============================================================
-# BUILD CONTRIBUTION BATCHES
+# BUILD CONTRIBUTION NOTES
 # ============================================================
 
-def build_contribution_batches(
+def build_contribution_notes(
     request: TouchNotebookRequest,
-) -> list[dict]:
+) -> list[TouchEvidenceNote]:
 
     allowed_content_ids = set(
         request.content_ids
     )
 
-    seen_statements_by_content: set[
-        tuple[str, str]
-    ] = set()
+    supplied_content_ids: set[str] = set()
 
-    notes = []
+    contribution_records: dict[str, dict] = {}
 
     contribution_index = 0
 
@@ -62,6 +61,10 @@ def build_contribution_batches(
                 f"{content_id}"
             )
 
+        supplied_content_ids.add(
+            content_id
+        )
+
         statements = unique_ids([
 
             _normalize_statement(
@@ -70,6 +73,10 @@ def build_contribution_batches(
 
             for statement
             in contribution.statements
+
+            if _normalize_statement(
+                statement
+            )
 
         ])
 
@@ -83,69 +90,139 @@ def build_contribution_batches(
 
         for statement in statements:
 
-            statement_key = (
-                content_id,
-                statement,
+            contribution_index += 1
+
+            input_note_id = (
+                "contribution-"
+                f"{contribution_index:04d}"
             )
 
-            if (
-                statement_key
-                in seen_statements_by_content
-            ):
+            # Exact deterministic deduplication.
+            # The original wording is preserved.
+            statement_key = (
+                statement.casefold()
+            )
+
+            existing_record = (
+                contribution_records.get(
+                    statement_key
+                )
+            )
+
+            if existing_record:
+
+                existing_record[
+                    "input_note_ids"
+                ].append(
+                    input_note_id
+                )
+
+                existing_record[
+                    "source_content_ids"
+                ].append(
+                    content_id
+                )
 
                 continue
 
-            seen_statements_by_content.add(
+            contribution_records[
                 statement_key
-            )
-
-            contribution_index += 1
-
-            notes.append({
-                "temporary_note_id": (
-                    "contribution-"
-                    f"{contribution_index:04d}"
-                ),
-
-                "note_type":
-                    "FACT",
+            ] = {
 
                 "statement":
                     statement,
 
-                "explanation":
-                    "",
-
-                "actors":
-                    [],
-
-                "geographies":
-                    [],
-
-                "dates":
-                    [],
-
-                "confidence":
-                    "MEDIUM",
-
-                "status":
-                    "VALIDATED",
+                "input_note_ids": [
+                    input_note_id,
+                ],
 
                 "source_content_ids": [
                     content_id,
                 ],
-            })
 
-    if not notes:
+            }
+
+    missing_content_ids = (
+        allowed_content_ids
+        - supplied_content_ids
+    )
+
+    if missing_content_ids:
+
+        raise ValueError(
+            "Certains contenus sélectionnés ne "
+            "possèdent aucune contribution : "
+            + ", ".join(
+                sorted(
+                    missing_content_ids
+                )
+            )
+        )
+
+    if not contribution_records:
 
         raise ValueError(
             "Le corpus sélectionné ne contient "
             "aucune contribution"
         )
 
-    return [
-        {
-            "notes":
-                notes,
-        }
-    ]
+    notes = []
+
+    for note_index, record in enumerate(
+        contribution_records.values(),
+        start=1,
+    ):
+
+        notes.append(
+
+            TouchEvidenceNote(
+
+                note_id=(
+                    f"note-{note_index:03d}"
+                ),
+
+                input_note_ids=(
+                    unique_ids(
+                        record[
+                            "input_note_ids"
+                        ]
+                    )
+                ),
+
+                note_type=
+                    "FACT",
+
+                statement=(
+                    record[
+                        "statement"
+                    ]
+                ),
+
+                explanation=
+                    "",
+
+                actors=[],
+
+                geographies=[],
+
+                dates=[],
+
+                confidence=
+                    "MEDIUM",
+
+                status=
+                    "VALIDATED",
+
+                source_content_ids=(
+                    unique_ids(
+                        record[
+                            "source_content_ids"
+                        ]
+                    )
+                ),
+
+            )
+
+        )
+
+    return notes
