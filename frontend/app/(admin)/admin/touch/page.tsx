@@ -970,15 +970,11 @@ export default function TouchPage() {
       
         <TouchNotebookBuilder
           subject={
-            searchResult
-              ?.interpretation
-              .subject
+            interpretation?.subject
             ?? ""
           }
           objective={
-            searchResult
-              ?.interpretation
-              .objective
+            interpretation?.objective
             ?? ""
           }
           selectedContentIds={
