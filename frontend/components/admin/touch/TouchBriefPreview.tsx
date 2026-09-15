@@ -291,8 +291,13 @@ function formatNumberValue(
     return "—";
   }
 
+  const numericValue =
+    Number(value);
+
   if (
-    typeof value === "number"
+    !Number.isNaN(
+      numericValue,
+    )
   ) {
 
     return new Intl.NumberFormat(
@@ -301,54 +306,133 @@ function formatNumberValue(
         maximumFractionDigits: 4,
       },
     ).format(
-      value,
+      numericValue,
     );
 
   }
 
-  return value;
+  return String(value);
 
 }
 
 
-/* =========================================================
-   FORMAT NUMBER SCALE
-========================================================= */
-
 function formatNumberScale(
   scale: string | null,
+  value:
+    | string
+    | number
+    | null,
 ): string {
 
   if (!scale) {
     return "";
   }
 
+  const normalized =
+    scale.toUpperCase();
+
+  if (
+    normalized === "NONE"
+    || normalized === "UNIT"
+  ) {
+    return "";
+  }
+
+  const singular =
+    Number(value) === 1;
+
+  const labels:
+    Record<
+      string,
+      [string, string]
+    > = {
+
+    THOUSAND:
+      [
+        "millier",
+        "milliers",
+      ],
+
+    MILLION:
+      [
+        "million",
+        "millions",
+      ],
+
+    BILLION:
+      [
+        "milliard",
+        "milliards",
+      ],
+
+    TRILLION:
+      [
+        "billion",
+        "billions",
+      ],
+
+  };
+
+  const label =
+    labels[normalized];
+
+  if (!label) {
+    return scale.toLowerCase();
+  }
+
+  return singular
+    ? label[0]
+    : label[1];
+
+}
+
+
+function formatNumberUnit(
+  unit: string | null,
+): string {
+
+  if (!unit) {
+    return "";
+  }
+
+  const normalized =
+    unit.toUpperCase();
+
   const labels:
     Record<string, string> = {
 
-    THOUSAND:
-      "thousand",
+    NONE:
+      "",
 
-    MILLION:
-      "million",
+    PERCENT:
+      "%",
 
-    BILLION:
-      "billion",
+    USD:
+      "USD",
 
-    TRILLION:
-      "trillion",
+    EUR:
+      "EUR",
+
+    GBP:
+      "GBP",
+
+    USERS:
+      "utilisateurs",
+
+    ACCOUNTS:
+      "comptes",
+
+    LOCATIONS:
+      "marchés",
 
   };
 
   return (
-    labels[
-      scale.toUpperCase()
-    ]
-    ?? scale.toLowerCase()
+    labels[normalized]
+    ?? unit
   );
 
 }
-
 
 /* =========================================================
    NUMBER CARD
@@ -459,6 +543,7 @@ function NumberCard({
             {
               formatNumberScale(
                 number.scale,
+                number.value,
               )
             }
           </span>
@@ -474,7 +559,11 @@ function NumberCard({
               text-gray-700
             "
           >
-            {number.unit}
+            {
+              formatNumberUnit(
+                number.unit,
+              )
+            }
           </span>
 
         )}
