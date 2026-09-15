@@ -2,7 +2,6 @@ import json
 
 from core.touch.notebook_models import (
     TouchEvidenceNote,
-    TouchNotebookNumber,
     TouchNotebookRequest,
 )
 
@@ -18,67 +17,115 @@ You receive:
 
 1. A research request.
 2. A definitive collection of consolidated evidence notes.
-3. A definitive collection of certified numbers.
 
-Your task is to organize this documentary material into a clear
-professional notebook structure.
+Your task is to organize these documentary notes into a clear,
+concise and professional notebook structure.
 
 You are NOT responsible for extracting, rewriting, merging,
 summarizing or validating the evidence.
 
-The supplied notes and certified numbers are immutable documentary
-objects.
+The supplied notes are immutable documentary objects.
 
 You must only:
 
 - identify the principal editorial sections;
-- group related documentary objects;
+- group related notes;
 - reconstruct meaningful events when justified;
 - construct a chronological timeline when dates are available;
 - identify contradictions;
 - assess the strengths and limitations of the corpus.
 
+
+============================================================
+DOCUMENTARY PRINCIPLE
+============================================================
+
+The evidence notes are the substance of the notebook.
+
+The organization must make them easier to read without producing
+a second, repetitive layer of editorial prose.
+
+Do not transform the notebook into an article, report, essay or
+narrative document.
+
+Do not repeat the content of notes inside section descriptions,
+event descriptions or timeline descriptions.
+
+Use section and event titles as navigation labels.
+
+Descriptions must remain empty unless they carry indispensable
+information that is not already expressed by the referenced
+notes.
+
+Section descriptions must always be empty strings.
+
+
+============================================================
 ABSOLUTE RULES
+============================================================
 
 1. Never create a new note.
-2. Never rewrite a note.
+
+2. Never rewrite, translate, shorten or expand a note.
+
 3. Never omit a supplied note.
-4. Never create a new certified number.
-5. Never modify a certified number.
-6. Never invent a note_id, number_id or content_id.
-7. Never attach an item only because it mentions the same company.
-8. Do not create generic or repetitive sections.
-9. Do not create a section called "Additional documented elements".
-10. Prefer a small number of meaningful sections.
-11. An event must represent an actual documented development.
-12. A general observation, interpretation or market context is not
-    automatically an event.
-13. Every event must reference at least one supplied note_id.
-    A certified number may support an event, but a number alone
-    must never be transformed into an event.
-14. Every supplied note_id must appear exactly once in the documentary
-    plan:
-    - either inside one event;
-    - or directly inside one section.
-15. Every supplied number_id must appear exactly once in the
+
+4. Never invent or modify a note_id or content_id.
+
+5. Do not handle, create, position or reference certified
+   Numbers.
+
+6. Never attach notes only because they mention the same company,
+   actor or broad topic.
+
+7. Do not create generic or repetitive sections.
+
+8. Do not create a section called:
+   "Additional documented elements".
+
+9. Prefer a small number of meaningful sections.
+
+10. Every supplied note_id must appear exactly once in the
     documentary plan:
+
     - either inside one event;
     - or directly inside one section.
-16. An item assigned to an event must not also be assigned directly
-    to a section.
-17. Every event_id must appear exactly once in a section.
-18. The timeline is a navigation layer and may reference events or
-    notes already used in the documentary plan.
-19. The timeline must contain only dated developments.
-20. Keep source_content_ids exactly within the supplied research
+
+11. A note assigned to an event must not also be assigned
+    directly to a section.
+
+12. Every event_id must appear exactly once in one section.
+
+13. Every event must reference at least one supplied note_id.
+
+14. An event must represent an actual documented development.
+
+15. A general observation, interpretation, limitation or market
+    context is not automatically an event.
+
+16. The timeline is a secondary navigation layer. It may reference
+    events or notes already used in the documentary plan.
+
+17. The timeline must contain only dated developments.
+
+18. Keep source_content_ids strictly within the supplied research
     corpus.
-21. Return valid JSON only.
-22. Do not return Markdown.
-23. Do not add comments outside the JSON object.
 
+19. Return valid JSON only.
+
+20. Do not return Markdown.
+
+21. Do not include comments or text outside the JSON object.
+
+
+============================================================
 SECTION DESIGN
+============================================================
 
-Sections should correspond to useful editorial chapters, for example:
+Sections must correspond to meaningful editorial chapters
+supported by the supplied notes.
+
+Possible examples include:
 
 - a strategic move;
 - a market transformation;
@@ -90,13 +137,43 @@ Sections should correspond to useful editorial chapters, for example:
 
 These are examples, not mandatory templates.
 
-The structure must adapt to the actual corpus. It must not impose a
-predefined analytical format such as comparative, chronological,
-pedagogical or market analysis.
+The structure must adapt to the actual corpus.
 
+Do not impose a predefined format such as:
+
+- comparative;
+- chronological;
+- pedagogical;
+- market analysis;
+- strategic event.
+
+Use the smallest number of sections that allows the notes to be
+read clearly.
+
+Avoid sections containing only one note when that note can
+logically belong to an existing section.
+
+Do not create vague section titles such as:
+
+- General context;
+- Other information;
+- Additional elements;
+- Miscellaneous;
+- Background.
+
+Section titles must be precise, concise and directly supported by
+the notes.
+
+The description of every section must be an empty string.
+
+
+============================================================
 EVENT DESIGN
+============================================================
 
-An event is a documented occurrence or decision, such as:
+An event is a documented occurrence, decision or development.
+
+Examples include:
 
 - a partnership announcement;
 - an acquisition;
@@ -107,68 +184,200 @@ An event is a documented occurrence or decision, such as:
 - a restructuring;
 - a measurable market development.
 
-An event can combine several notes or certified numbers only when
-they describe the same underlying development.
+An event may combine several notes only when they describe the
+same underlying development.
 
+Do not create an event merely because several notes concern the
+same actor or subject.
+
+An event title must identify the documented development concisely.
+
+An event description should normally be an empty string because
+the referenced notes already contain the documentary information.
+
+Only provide a description when it adds indispensable scope that
+cannot be understood from the event title and its notes.
+
+Never use an event description to paraphrase or summarize the
+referenced notes.
+
+An event_date must only be supplied when the date is explicitly
+supported by the notes.
+
+Do not infer or invent a date.
+
+
+============================================================
+TIMELINE DESIGN
+============================================================
+
+The timeline is optional.
+
+Use it only when the corpus contains at least two useful dated
+developments.
+
+Do not create a timeline from undated or vaguely dated material.
+
+A timeline item must reference:
+
+- a valid event_id;
+- or one or more valid note_ids.
+
+Timeline labels must be concise.
+
+Timeline descriptions should normally be empty strings.
+
+Do not repeat the wording of the referenced notes in timeline
+descriptions.
+
+Sort timeline items chronologically from oldest to newest whenever
+the dates are comparable.
+
+
+============================================================
+CONTRADICTIONS
+============================================================
+
+Create a contradiction only when supplied notes genuinely conflict
+on the same factual proposition.
+
+Different perspectives, scopes, dates or levels of confidence are
+not automatically contradictions.
+
+Every contradiction must reference the relevant supplied note_ids.
+
+Do not invent a resolution.
+
+Use a resolution only when the supplied notes explicitly resolve
+the contradiction.
+
+
+============================================================
+CORPUS SUMMARY
+============================================================
+
+corpus_summary must be concise.
+
+It must explain what the selected corpus documents without
+repeating the detailed evidence.
+
+Use no more than two short sentences.
+
+Do not introduce external knowledge, conclusions or
+recommendations.
+
+
+============================================================
 CORPUS ASSESSMENT
+============================================================
 
-corpus_strengths must describe what the selected material documents
-well.
+corpus_strengths must describe what the selected material
+documents well.
 
-corpus_limits must describe genuinely missing, uncertain, partial or
-weakly supported areas.
+corpus_limits must describe genuinely missing, uncertain, partial
+or weakly supported areas.
 
-Do not interpret corpus limits as business limitations unless the
-sources explicitly support that distinction.
+Do not confuse:
 
+- limitations of the corpus;
+- limitations of a company, product, market or strategy.
+
+A business limitation belongs in the documentary notes.
+
+A corpus limitation describes missing or insufficient evidence.
+
+Keep each strength and limit concise.
+
+Do not repeat individual evidence notes.
+
+
+============================================================
 OUTPUT SCHEMA
+============================================================
+
+Return exactly one JSON object with this structure:
 
 {
-  "corpus_summary": "string",
+  "corpus_summary": "Short documentary summary",
   "sections": [
     {
       "section_id": "section-001",
-      "title": "string",
-      "description": "string",
-      "event_ids": ["event-001"],
-      "note_ids": ["note-001"],
-      "number_ids": ["number-id"]
+      "title": "Precise section title",
+      "description": "",
+      "event_ids": [
+        "event-001"
+      ],
+      "note_ids": [
+        "note-001"
+      ]
     }
   ],
   "events": [
     {
       "event_id": "event-001",
-      "title": "string",
-      "description": "string",
-      "event_date": "string or null",
-      "actors": ["string"],
-      "note_ids": ["note-001"],
-      "number_ids": ["number-id"],
-      "source_content_ids": ["content-id"]
+      "title": "Documented development",
+      "description": "",
+      "event_date": "YYYY-MM-DD or YYYY-MM or YYYY or null",
+      "actors": [
+        "Actor"
+      ],
+      "note_ids": [
+        "note-002"
+      ],
+      "source_content_ids": [
+        "exact supplied content_id"
+      ]
     }
   ],
   "timeline": [
     {
-      "date": "string",
-      "label": "string",
-      "description": "string",
+      "date": "YYYY-MM-DD or YYYY-MM or YYYY",
+      "label": "Concise dated development",
+      "description": "",
       "event_id": "event-001 or null",
-      "note_ids": ["note-001"],
-      "source_content_ids": ["content-id"]
+      "note_ids": [],
+      "source_content_ids": [
+        "exact supplied content_id"
+      ]
     }
   ],
   "contradictions": [
     {
-      "subject": "string",
-      "description": "string",
-      "note_ids": ["note-001"],
-      "source_content_ids": ["content-id"],
-      "resolution": "string or null"
+      "subject": "Contradicted proposition",
+      "description": "Precise description of the conflict",
+      "note_ids": [
+        "note-001",
+        "note-002"
+      ],
+      "source_content_ids": [
+        "exact supplied content_id"
+      ],
+      "resolution": "Documented resolution or null"
     }
   ],
-  "corpus_strengths": ["string"],
-  "corpus_limits": ["string"]
+  "corpus_strengths": [
+    "Concise corpus strength"
+  ],
+  "corpus_limits": [
+    "Concise corpus limitation"
+  ]
 }
+
+Do not return number_ids.
+
+Do not return certified_numbers.
+
+Do not return dimensions.
+
+Do not return quarantined_numbers.
+
+Do not return the full notes.
+
+Do not include Markdown fences.
+
+Do not include comments.
+
+Do not include text outside the JSON object.
 """.strip()
 
 
@@ -194,27 +403,6 @@ def _serialize_notes(
 
 
 # ============================================================
-# SERIALIZE CERTIFIED NUMBERS
-# ============================================================
-
-def _serialize_certified_numbers(
-    certified_numbers: list[
-        TouchNotebookNumber
-    ],
-) -> list[dict]:
-
-    return [
-
-        number.model_dump(
-            mode="json",
-        )
-
-        for number in certified_numbers
-
-    ]
-
-
-# ============================================================
 # BUILD ORGANIZATION PROMPT
 # ============================================================
 
@@ -223,13 +411,12 @@ def build_touch_notebook_organization_prompt(
     notes: list[
         TouchEvidenceNote
     ],
-    certified_numbers: list[
-        TouchNotebookNumber
-    ],
 ) -> str:
 
     payload = {
+
         "research_request": {
+
             "subject":
                 request.subject,
 
@@ -240,7 +427,12 @@ def build_touch_notebook_organization_prompt(
                 request.output_language,
 
             "allowed_content_ids":
-                request.content_ids,
+                list(
+                    dict.fromkeys(
+                        request.content_ids
+                    )
+                ),
+
         },
 
         "consolidated_notes":
@@ -248,24 +440,42 @@ def build_touch_notebook_organization_prompt(
                 notes
             ),
 
-        "certified_numbers":
-            _serialize_certified_numbers(
-                certified_numbers
-            ),
     }
 
-    return (
-        "Organize the following definitive documentary "
-        "material into an editorial notebook.\n\n"
-        "The consolidated notes and certified numbers are "
-        "immutable. Use their identifiers to construct the "
-        "documentary plan.\n\n"
-        "Write all human-readable fields in the requested "
-        "output language.\n\n"
-        "INPUT JSON:\n"
-        + json.dumps(
+    serialized_payload = (
+        json.dumps(
             payload,
             ensure_ascii=False,
             indent=2,
         )
+    )
+
+    return (
+        "Organize the following definitive evidence notes "
+        "into a concise editorial notebook.\n\n"
+
+        "Use the notes as immutable documentary objects. "
+        "Do not rewrite, summarize, translate or omit "
+        "them.\n\n"
+
+        "Every supplied note_id must appear exactly once "
+        "in the documentary plan, either inside one event "
+        "or directly inside one section.\n\n"
+
+        "Do not organize or reference certified Numbers. "
+        "They are managed separately by the application.\n\n"
+
+        "Use section and event titles to make the notebook "
+        "readable without adding repetitive prose.\n\n"
+
+        "Section descriptions must be empty strings.\n\n"
+
+        "Write only the organizational fields in the "
+        "requested output language. The supplied note "
+        "statements must remain untouched.\n\n"
+
+        "Return only the required JSON object.\n\n"
+
+        "INPUT JSON:\n"
+        f"{serialized_payload}"
     )
