@@ -1110,6 +1110,10 @@ def _normalize_notebook(
     notebook: TouchCorpusNotebook,
 ) -> TouchCorpusNotebook:
 
+    # ========================================================
+    # SECTIONS
+    # ========================================================
+
     sections = [
 
         section.model_copy(
@@ -1146,6 +1150,10 @@ def _normalize_notebook(
 
     ]
 
+    # ========================================================
+    # NOTES
+    # ========================================================
+
     notes = [
 
         note.model_copy(
@@ -1158,7 +1166,11 @@ def _normalize_notebook(
                     note.statement.strip(),
 
                 "explanation":
-                    note.explanation.strip(),
+                    (
+                        note.explanation.strip()
+                        if note.explanation
+                        else ""
+                    ),
 
                 "actors":
                     _unique_ids(
@@ -1187,6 +1199,10 @@ def _normalize_notebook(
 
     ]
 
+    # ========================================================
+    # EVENTS
+    # ========================================================
+
     events = [
 
         event.model_copy(
@@ -1199,7 +1215,11 @@ def _normalize_notebook(
                     event.title.strip(),
 
                 "description":
-                    event.description.strip(),
+                    (
+                        event.description.strip()
+                        if event.description
+                        else ""
+                    ),
 
                 "event_date":
                     (
@@ -1236,7 +1256,32 @@ def _normalize_notebook(
     ]
 
     # ========================================================
-    # REMOVE EVENT ITEMS FROM STANDALONE SECTION ITEMS
+    # REMOVE EMPTY EVENTS
+    # ========================================================
+
+    events = [
+
+        event
+
+        for event in events
+
+        if (
+            event.note_ids
+            or event.number_ids
+        )
+
+    ]
+
+    valid_event_ids = {
+
+        event.event_id
+
+        for event in events
+
+    }
+
+    # ========================================================
+    # EVENT-OWNED ITEMS
     # ========================================================
 
     event_note_ids = {
@@ -1259,37 +1304,83 @@ def _normalize_notebook(
 
     }
 
-    sections = [
+    # ========================================================
+    # SANITIZE SECTIONS
+    # ========================================================
 
-        section.model_copy(
-            update={
+    sanitized_sections = []
 
-                "note_ids": [
+    for section in sections:
 
-                    note_id
+        section_event_ids = [
 
-                    for note_id in section.note_ids
+            event_id
 
-                    if note_id not in event_note_ids
+            for event_id in section.event_ids
 
-                ],
+            if event_id in valid_event_ids
 
-                "number_ids": [
+        ]
 
-                    number_id
+        # A note displayed inside an event must not also
+        # appear as a standalone section note.
+        section_note_ids = [
 
-                    for number_id in section.number_ids
+            note_id
 
-                    if number_id not in event_number_ids
+            for note_id in section.note_ids
 
-                ],
+            if note_id not in event_note_ids
 
-            },
+        ]
+
+        # A Number displayed inside an event must not also
+        # appear as a standalone section Number.
+        section_number_ids = [
+
+            number_id
+
+            for number_id in section.number_ids
+
+            if number_id not in event_number_ids
+
+        ]
+
+        # Remove organisational sections that became empty
+        # after empty events or duplicate placements were
+        # removed.
+        if (
+            not section_event_ids
+            and not section_note_ids
+            and not section_number_ids
+        ):
+
+            continue
+
+        sanitized_sections.append(
+
+            section.model_copy(
+                update={
+
+                    "event_ids":
+                        section_event_ids,
+
+                    "note_ids":
+                        section_note_ids,
+
+                    "number_ids":
+                        section_number_ids,
+
+                },
+            )
+
         )
 
-        for section in sections
+    sections = sanitized_sections
 
-    ]
+    # ========================================================
+    # TIMELINE
+    # ========================================================
 
     timeline = [
 
@@ -1303,12 +1394,22 @@ def _normalize_notebook(
                     item.label.strip(),
 
                 "description":
-                    item.description.strip(),
+                    (
+                        item.description.strip()
+                        if item.description
+                        else ""
+                    ),
 
                 "event_id":
                     (
                         item.event_id.strip()
-                        if item.event_id
+
+                        if (
+                            item.event_id
+                            and item.event_id.strip()
+                            in valid_event_ids
+                        )
+
                         else None
                     ),
 
@@ -1328,6 +1429,10 @@ def _normalize_notebook(
         for item in notebook.timeline
 
     ]
+
+    # ========================================================
+    # LEGACY DIMENSIONS
+    # ========================================================
 
     dimensions = [
 
@@ -1357,6 +1462,10 @@ def _normalize_notebook(
 
     ]
 
+    # ========================================================
+    # CERTIFIED NUMBERS
+    # ========================================================
+
     validated_numbers = [
 
         number.model_copy(
@@ -1380,25 +1489,49 @@ def _normalize_notebook(
 
     ]
 
+    # ========================================================
+    # LEGACY QUARANTINED NUMBERS
+    # ========================================================
+
     quarantined_numbers = [
 
         number.model_copy(
             update={
 
                 "value":
-                    number.value.strip(),
+                    (
+                        number.value.strip()
+                        if number.value
+                        else ""
+                    ),
 
                 "unit":
-                    number.unit.strip(),
+                    (
+                        number.unit.strip()
+                        if number.unit
+                        else ""
+                    ),
 
                 "metric":
-                    number.metric.strip(),
+                    (
+                        number.metric.strip()
+                        if number.metric
+                        else ""
+                    ),
 
                 "context":
-                    number.context.strip(),
+                    (
+                        number.context.strip()
+                        if number.context
+                        else ""
+                    ),
 
                 "reason":
-                    number.reason.strip(),
+                    (
+                        number.reason.strip()
+                        if number.reason
+                        else ""
+                    ),
 
                 "source_content_ids":
                     _unique_ids(
@@ -1411,6 +1544,10 @@ def _normalize_notebook(
         for number in notebook.quarantined_numbers
 
     ]
+
+    # ========================================================
+    # CONTRADICTIONS
+    # ========================================================
 
     contradictions = [
 
@@ -1446,6 +1583,10 @@ def _normalize_notebook(
         for contradiction in notebook.contradictions
 
     ]
+
+    # ========================================================
+    # RESULT
+    # ========================================================
 
     return notebook.model_copy(
         update={
@@ -1495,7 +1636,6 @@ def _normalize_notebook(
 
         },
     )
-
 # ============================================================
 # VALIDATE UNIQUE IDENTIFIERS
 # ============================================================
