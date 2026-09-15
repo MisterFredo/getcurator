@@ -613,18 +613,31 @@ export type TouchCorpusNotebook = {
 };
 
 /* =========================================================
+   NOTEBOOK CONTRIBUTION
+========================================================= */
+
+export type TouchNotebookContribution = {
+  content_id: string;
+
+  statements: string[];
+};
+
+/* =========================================================
    NOTEBOOK REQUEST
 ========================================================= */
 
 export type TouchNotebookRequest = {
   subject: string;
+
   objective: string;
 
   content_ids: string[];
 
+  contributions:
+    TouchNotebookContribution[];
+
   output_language: string;
 };
-
 
 /* =========================================================
    NOTEBOOK OUTCOME
