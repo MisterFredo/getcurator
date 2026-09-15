@@ -4,7 +4,8 @@ import type {
   TouchContentCandidate,
   TouchCorpusNotebook,
   TouchEvidenceNote,
-  TouchEvidenceNoteType,
+  TouchNotebookEvent,
+  TouchNotebookNumber,
 } from "@/types/touch";
 
 
@@ -14,62 +15,8 @@ import type {
 
 type Props = {
   notebook: TouchCorpusNotebook;
-
   sources: TouchContentCandidate[];
 };
-
-
-/* =========================================================
-   NOTE GROUPS
-========================================================= */
-
-type NoteGroup = {
-  title: string;
-  description: string;
-
-  types: TouchEvidenceNoteType[];
-};
-
-
-const NOTE_GROUPS: NoteGroup[] = [
-  {
-    title: "Faits documentés",
-    description:
-      "Les informations établies par les sources sélectionnées.",
-    types: [
-      "FACT",
-      "MILESTONE",
-    ],
-  },
-  {
-    title: "Fonctionnement",
-    description:
-      "Les mécanismes, processus et modalités décrits dans le corpus.",
-    types: [
-      "MECHANISM",
-    ],
-  },
-  {
-    title: "Éléments de contexte",
-    description:
-      "Les exemples, comparaisons et lectures rapportées par les sources.",
-    types: [
-      "EXAMPLE",
-      "COMPARISON",
-      "STRATEGIC_READING",
-    ],
-  },
-  {
-    title: "Tensions et limites",
-    description:
-      "Les restrictions, incertitudes et points de tension documentés.",
-    types: [
-      "TENSION",
-      "LIMITATION",
-      "UNCERTAINTY",
-    ],
-  },
-];
 
 
 /* =========================================================
@@ -84,19 +31,14 @@ function formatDate(
     return "";
   }
 
-  const date =
-    new Date(
-      value,
-    );
+  const date = new Date(value);
 
   if (
     Number.isNaN(
       date.getTime(),
     )
   ) {
-
     return value;
-
   }
 
   return new Intl.DateTimeFormat(
@@ -106,25 +48,75 @@ function formatDate(
       month: "long",
       year: "numeric",
     },
-  ).format(
-    date,
-  );
+  ).format(date);
 
 }
 
 
 /* =========================================================
-   UNIQUE IDS
+   FORMAT NUMBER
 ========================================================= */
 
-function uniqueIds(
-  values: string[],
-): string[] {
+function formatNumberValue(
+  value:
+    | string
+    | number
+    | null,
+): string {
 
-  return Array.from(
-    new Set(
-      values,
-    ),
+  if (
+    value === null
+    || value === ""
+  ) {
+    return "—";
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+
+    return new Intl.NumberFormat(
+      "fr-FR",
+      {
+        maximumFractionDigits: 4,
+      },
+    ).format(value);
+
+  }
+
+  return value;
+
+}
+
+
+function formatNumberScale(
+  scale: string | null,
+): string {
+
+  if (!scale) {
+    return "";
+  }
+
+  const labels:
+    Record<string, string> = {
+
+    THOUSAND:
+      "milliers",
+
+    MILLION:
+      "millions",
+
+    BILLION:
+      "milliards",
+
+    TRILLION:
+      "billions",
+
+  };
+
+  return (
+    labels[scale.toUpperCase()]
+    ?? scale.toLowerCase()
   );
 
 }
@@ -139,25 +131,20 @@ function SourceReferences({
   sourceNumberById,
 }: {
   sourceContentIds: string[];
-
-  sourceNumberById:
-    Map<string, number>;
+  sourceNumberById: Map<string, number>;
 }) {
 
-  const references =
-    uniqueIds(
-      sourceContentIds,
+  const references = (
+    Array.from(
+      new Set(sourceContentIds),
     )
       .map(
         contentId => ({
-
           contentId,
-
           number:
             sourceNumberById.get(
               contentId,
             ),
-
         }),
       )
       .filter(
@@ -168,14 +155,13 @@ function SourceReferences({
           number: number;
         } =>
           reference.number !== undefined,
-      );
+      )
+  );
 
   if (
     references.length === 0
   ) {
-
     return null;
-
   }
 
   return (
@@ -193,9 +179,7 @@ function SourceReferences({
         reference => (
 
           <a
-            key={
-              reference.contentId
-            }
+            key={reference.contentId}
             href={
               `#touch-document-source-`
               + reference.contentId
@@ -233,6 +217,68 @@ function SourceReferences({
 
 
 /* =========================================================
+   DOCUMENT SECTION
+========================================================= */
+
+function DocumentSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+
+  return (
+
+    <section className="space-y-4">
+
+      <div
+        className="
+          border-b
+          border-slate-200
+          pb-2
+        "
+      >
+
+        <h2
+          className="
+            text-xl
+            font-semibold
+            text-slate-900
+          "
+        >
+          {title}
+        </h2>
+
+        {description && (
+
+          <p
+            className="
+              mt-1
+              text-sm
+              leading-6
+              text-slate-500
+            "
+          >
+            {description}
+          </p>
+
+        )}
+
+      </div>
+
+      {children}
+
+    </section>
+
+  );
+
+}
+
+
+/* =========================================================
    NOTE CARD
 ========================================================= */
 
@@ -241,9 +287,7 @@ function NoteCard({
   sourceNumberById,
 }: {
   note: TouchEvidenceNote;
-
-  sourceNumberById:
-    Map<string, number>;
+  sourceNumberById: Map<string, number>;
 }) {
 
   return (
@@ -304,33 +348,21 @@ function NoteCard({
         >
 
           {note.actors.length > 0 && (
-
             <span>
-              {note.actors.join(
-                " · ",
-              )}
+              {note.actors.join(" · ")}
             </span>
-
           )}
 
           {note.geographies.length > 0 && (
-
             <span>
-              {note.geographies.join(
-                " · ",
-              )}
+              {note.geographies.join(" · ")}
             </span>
-
           )}
 
           {note.dates.length > 0 && (
-
             <span>
-              {note.dates.join(
-                " · ",
-              )}
+              {note.dates.join(" · ")}
             </span>
-
           )}
 
         </div>
@@ -354,143 +386,486 @@ function NoteCard({
 
 
 /* =========================================================
-   DOCUMENT SECTION
+   NUMBER CARD
 ========================================================= */
 
-function DocumentSection({
-  title,
-  description,
-  children,
+function NumberCard({
+  number,
+  sourceNumberById,
 }: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
+  number: TouchNotebookNumber;
+  sourceNumberById: Map<string, number>;
 }) {
+
+  const entityLabels = (
+    number.entities
+      .map(
+        entity =>
+          entity.entity_label,
+      )
+      .filter(
+        (
+          label,
+        ): label is string =>
+          Boolean(label),
+      )
+  );
+
+  const hasRange = (
+    number.value_min !== null
+    && number.value_max !== null
+  );
 
   return (
 
-    <section
+    <article
       className="
-        break-inside-avoid-page
-        space-y-4
+        break-inside-avoid
+        rounded-lg
+        border
+        border-violet-200
+        bg-violet-50/30
+        p-4
+        print:bg-white
       "
     >
 
       <div
         className="
-          border-b
-          border-slate-200
-          pb-2
+          flex
+          flex-wrap
+          items-baseline
+          gap-x-2
+          gap-y-1
         "
       >
 
-        <h2
+        <p
           className="
-            text-xl
+            text-2xl
             font-semibold
             text-slate-900
           "
         >
-          {title}
-        </h2>
 
-        {description && (
+          {hasRange ? (
 
-          <p
+            <>
+              {
+                formatNumberValue(
+                  number.value_min,
+                )
+              }
+
+              {" – "}
+
+              {
+                formatNumberValue(
+                  number.value_max,
+                )
+              }
+            </>
+
+          ) : (
+
+            formatNumberValue(
+              number.value,
+            )
+
+          )}
+
+        </p>
+
+        {number.scale && (
+
+          <span
             className="
-              mt-1
               text-sm
-              leading-6
-              text-slate-500
+              font-semibold
+              text-slate-700
             "
           >
-            {description}
-          </p>
+            {
+              formatNumberScale(
+                number.scale,
+              )
+            }
+          </span>
+
+        )}
+
+        {number.unit && (
+
+          <span
+            className="
+              text-sm
+              font-semibold
+              text-slate-700
+            "
+          >
+            {number.unit}
+          </span>
 
         )}
 
       </div>
 
-      {children}
+      {number.label && (
 
-    </section>
+        <p
+          className="
+            mt-2
+            text-sm
+            font-semibold
+            leading-5
+            text-slate-800
+          "
+        >
+          {number.label}
+        </p>
+
+      )}
+
+      {(
+        number.metric_type
+        || entityLabels.length > 0
+      ) && (
+
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-1.5
+          "
+        >
+
+          {number.metric_type && (
+
+            <span
+              className="
+                rounded
+                bg-violet-100
+                px-2
+                py-1
+                text-xs
+                font-medium
+                text-violet-700
+              "
+            >
+              {number.metric_type}
+            </span>
+
+          )}
+
+          {entityLabels.map(
+            (
+              label,
+              index,
+            ) => (
+
+              <span
+                key={
+                  `${number.number_id}-${label}-${index}`
+                }
+                className="
+                  rounded
+                  bg-white
+                  px-2
+                  py-1
+                  text-xs
+                  text-slate-600
+                "
+              >
+                {label}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {(
+        number.zone
+        || number.period_label
+      ) && (
+
+        <div
+          className="
+            mt-3
+            space-y-1
+            text-xs
+            text-slate-500
+          "
+        >
+
+          {number.zone && (
+            <p>
+              Zone :
+              {" "}
+              {number.zone}
+            </p>
+          )}
+
+          {number.period_label && (
+            <p>
+              Période :
+              {" "}
+              {number.period_label}
+            </p>
+          )}
+
+        </div>
+
+      )}
+
+      <SourceReferences
+        sourceContentIds={
+          number.source_content_ids
+        }
+        sourceNumberById={
+          sourceNumberById
+        }
+      />
+
+    </article>
 
   );
 
 }
 
-/* =========================================================
-   FORMAT NUMBER VALUE
-========================================================= */
-
-function formatNumberValue(
-  value:
-    | string
-    | number
-    | null,
-): string {
-
-  if (
-    value === null
-    || value === ""
-  ) {
-    return "—";
-  }
-
-  if (
-    typeof value === "number"
-  ) {
-
-    return new Intl.NumberFormat(
-      "fr-FR",
-      {
-        maximumFractionDigits: 4,
-      },
-    ).format(
-      value,
-    );
-
-  }
-
-  return value;
-
-}
-
 
 /* =========================================================
-   FORMAT NUMBER SCALE
+   EVENT CARD
 ========================================================= */
 
-function formatNumberScale(
-  scale: string | null,
-): string {
+function EventCard({
+  event,
+  noteById,
+  numberById,
+  sourceNumberById,
+}: {
+  event: TouchNotebookEvent;
+  noteById: Map<string, TouchEvidenceNote>;
+  numberById: Map<string, TouchNotebookNumber>;
+  sourceNumberById: Map<string, number>;
+}) {
 
-  if (!scale) {
-    return "";
-  }
+  const notes = (
+    event.note_ids
+      .map(
+        noteId =>
+          noteById.get(noteId),
+      )
+      .filter(
+        (
+          note,
+        ): note is TouchEvidenceNote =>
+          Boolean(note),
+      )
+  );
 
-  const labels:
-    Record<string, string> = {
-
-    THOUSAND:
-      "milliers",
-
-    MILLION:
-      "millions",
-
-    BILLION:
-      "milliards",
-
-    TRILLION:
-      "billions",
-
-  };
+  const numbers = (
+    event.number_ids
+      .map(
+        numberId =>
+          numberById.get(numberId),
+      )
+      .filter(
+        (
+          number,
+        ): number is TouchNotebookNumber =>
+          Boolean(number),
+      )
+  );
 
   return (
-    labels[
-      scale.toUpperCase()
-    ]
-    ?? scale.toLowerCase()
+
+    <article
+      className="
+        break-inside-avoid
+        rounded-xl
+        border
+        border-slate-200
+        bg-slate-50
+        p-5
+        print:bg-white
+      "
+    >
+
+      <div
+        className="
+          flex
+          flex-wrap
+          items-start
+          justify-between
+          gap-3
+        "
+      >
+
+        <div className="min-w-0">
+
+          <p
+            className="
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-blue-700
+            "
+          >
+            Événement
+          </p>
+
+          <h3
+            className="
+              mt-1
+              text-base
+              font-semibold
+              text-slate-900
+            "
+          >
+            {event.title}
+          </h3>
+
+        </div>
+
+        {event.event_date && (
+
+          <span
+            className="
+              rounded-full
+              bg-white
+              px-3
+              py-1
+              text-xs
+              font-medium
+              text-slate-600
+            "
+          >
+            {event.event_date}
+          </span>
+
+        )}
+
+      </div>
+
+      {event.description && (
+
+        <p
+          className="
+            mt-2
+            text-sm
+            leading-6
+            text-slate-600
+          "
+        >
+          {event.description}
+        </p>
+
+      )}
+
+      {event.actors.length > 0 && (
+
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-2
+          "
+        >
+
+          {event.actors.map(
+            actor => (
+
+              <span
+                key={
+                  `${event.event_id}-${actor}`
+                }
+                className="
+                  rounded-full
+                  bg-white
+                  px-2.5
+                  py-1
+                  text-xs
+                  text-slate-600
+                "
+              >
+                {actor}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {notes.length > 0 && (
+
+        <div
+          className="
+            mt-4
+            grid
+            gap-3
+            md:grid-cols-2
+            print:grid-cols-2
+          "
+        >
+
+          {notes.map(
+            note => (
+
+              <NoteCard
+                key={note.note_id}
+                note={note}
+                sourceNumberById={
+                  sourceNumberById
+                }
+              />
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {numbers.length > 0 && (
+
+        <div
+          className="
+            mt-4
+            grid
+            gap-3
+            md:grid-cols-2
+            print:grid-cols-2
+          "
+        >
+
+          {numbers.map(
+            number => (
+
+              <NumberCard
+                key={number.number_id}
+                number={number}
+                sourceNumberById={
+                  sourceNumberById
+                }
+              />
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+    </article>
+
   );
 
 }
@@ -505,7 +880,7 @@ export default function TouchNotebookDocument({
   sources,
 }: Props) {
 
-  const sourceNumberById =
+  const sourceNumberById = (
     new Map(
       sources.map(
         (
@@ -516,14 +891,41 @@ export default function TouchNotebookDocument({
           index + 1,
         ],
       ),
-    );
+    )
+  );
 
-  const visibleNotes =
-    notebook.notes.filter(
-      note =>
-        note.status
-        !== "CONTRADICTED",
-    );
+  const noteById = (
+    new Map(
+      notebook.notes.map(
+        note => [
+          note.note_id,
+          note,
+        ],
+      ),
+    )
+  );
+
+  const eventById = (
+    new Map(
+      notebook.events.map(
+        event => [
+          event.event_id,
+          event,
+        ],
+      ),
+    )
+  );
+
+  const numberById = (
+    new Map(
+      notebook.validated_numbers.map(
+        number => [
+          number.number_id,
+          number,
+        ],
+      ),
+    )
+  );
 
   return (
 
@@ -547,7 +949,7 @@ export default function TouchNotebookDocument({
     >
 
       {/* ================================================= */}
-      {/* DOCUMENT HEADER */}
+      {/* HEADER */}
       {/* ================================================= */}
 
       <header
@@ -628,9 +1030,19 @@ export default function TouchNotebookDocument({
           </span>
 
           <span>
-            {visibleNotes.length}
+            {notebook.sections.length}
             {" "}
-            notes consolidées
+            parties documentaires
+          </span>
+
+          <span aria-hidden="true">
+            ·
+          </span>
+
+          <span>
+            {notebook.validated_numbers.length}
+            {" "}
+            chiffres certifiés
           </span>
 
           <span aria-hidden="true">
@@ -659,7 +1071,7 @@ export default function TouchNotebookDocument({
       </header>
 
       {/* ================================================= */}
-      {/* DOCUMENT BODY */}
+      {/* BODY */}
       {/* ================================================= */}
 
       <div
@@ -720,145 +1132,145 @@ export default function TouchNotebookDocument({
         )}
 
         {/* ================================================= */}
-        {/* DIMENSIONS */}
+        {/* DOCUMENTARY PLAN */}
         {/* ================================================= */}
 
-        {notebook.dimensions.length > 0 && (
+        {notebook.sections.map(
+          (
+            section,
+            sectionIndex,
+          ) => {
 
-          <DocumentSection
-            title="Dimensions documentées"
-            description={
-              "Les principaux aspects couverts par "
-              + "les sources sélectionnées."
-            }
-          >
+            const events = (
+              section.event_ids
+                .map(
+                  eventId =>
+                    eventById.get(eventId),
+                )
+                .filter(
+                  (
+                    event,
+                  ): event is TouchNotebookEvent =>
+                    Boolean(event),
+                )
+            );
 
-            <div
-              className="
-                grid
-                gap-4
-                md:grid-cols-2
-                print:grid-cols-2
-              "
-            >
+            const standaloneNotes = (
+              section.note_ids
+                .map(
+                  noteId =>
+                    noteById.get(noteId),
+                )
+                .filter(
+                  (
+                    note,
+                  ): note is TouchEvidenceNote =>
+                    Boolean(note),
+                )
+            );
 
-              {notebook.dimensions.map(
-                (
-                  dimension,
-                  index,
-                ) => (
-
-                  <article
-                    key={
-                      `${dimension.label}-${index}`
-                    }
-                    className="
-                      break-inside-avoid
-                      rounded-lg
-                      border
-                      border-slate-200
-                      p-4
-                    "
-                  >
-
-                    <h3
-                      className="
-                        text-sm
-                        font-semibold
-                        text-slate-900
-                      "
-                    >
-                      {dimension.label}
-                    </h3>
-
-                    <p
-                      className="
-                        mt-2
-                        text-sm
-                        leading-6
-                        text-slate-600
-                      "
-                    >
-                      {dimension.summary}
-                    </p>
-
-                    <SourceReferences
-                      sourceContentIds={
-                        dimension
-                          .source_content_ids
-                      }
-                      sourceNumberById={
-                        sourceNumberById
-                      }
-                    />
-
-                  </article>
-
-                ),
-              )}
-
-            </div>
-
-          </DocumentSection>
-
-        )}
-
-        {/* ================================================= */}
-        {/* NOTE GROUPS */}
-        {/* ================================================= */}
-
-        {NOTE_GROUPS.map(
-          group => {
-
-            const notes =
-              visibleNotes.filter(
-                note =>
-                  group.types.includes(
-                    note.note_type,
-                  ),
-              );
-
-            if (
-              notes.length === 0
-            ) {
-
-              return null;
-
-            }
+            const standaloneNumbers = (
+              section.number_ids
+                .map(
+                  numberId =>
+                    numberById.get(numberId),
+                )
+                .filter(
+                  (
+                    number,
+                  ): number is TouchNotebookNumber =>
+                    Boolean(number),
+                )
+            );
 
             return (
 
               <DocumentSection
-                key={group.title}
-                title={group.title}
+                key={section.section_id}
+                title={
+                  `${sectionIndex + 1}. `
+                  + section.title
+                }
                 description={
-                  group.description
+                  section.description
                 }
               >
 
-                <div
-                  className="
-                    grid
-                    gap-3
-                    md:grid-cols-2
-                    print:grid-cols-2
-                  "
-                >
+                <div className="space-y-4">
 
-                  {notes.map(
-                    note => (
+                  {events.map(
+                    event => (
 
-                      <NoteCard
-                        key={
-                          note.note_id
-                        }
-                        note={note}
+                      <EventCard
+                        key={event.event_id}
+                        event={event}
+                        noteById={noteById}
+                        numberById={numberById}
                         sourceNumberById={
                           sourceNumberById
                         }
                       />
 
                     ),
+                  )}
+
+                  {standaloneNotes.length > 0 && (
+
+                    <div
+                      className="
+                        grid
+                        gap-3
+                        md:grid-cols-2
+                        print:grid-cols-2
+                      "
+                    >
+
+                      {standaloneNotes.map(
+                        note => (
+
+                          <NoteCard
+                            key={note.note_id}
+                            note={note}
+                            sourceNumberById={
+                              sourceNumberById
+                            }
+                          />
+
+                        ),
+                      )}
+
+                    </div>
+
+                  )}
+
+                  {standaloneNumbers.length > 0 && (
+
+                    <div
+                      className="
+                        grid
+                        gap-3
+                        md:grid-cols-2
+                        lg:grid-cols-3
+                        print:grid-cols-3
+                      "
+                    >
+
+                      {standaloneNumbers.map(
+                        number => (
+
+                          <NumberCard
+                            key={number.number_id}
+                            number={number}
+                            sourceNumberById={
+                              sourceNumberById
+                            }
+                          />
+
+                        ),
+                      )}
+
+                    </div>
+
                   )}
 
                 </div>
@@ -941,8 +1353,7 @@ export default function TouchNotebookDocument({
 
                       <SourceReferences
                         sourceContentIds={
-                          item
-                            .source_content_ids
+                          item.source_content_ids
                         }
                         sourceNumberById={
                           sourceNumberById
@@ -954,307 +1365,6 @@ export default function TouchNotebookDocument({
                   </article>
 
                 ),
-              )}
-
-            </div>
-
-          </DocumentSection>
-
-        )}
-
-        {/* ================================================= */}
-        {/* VALIDATED NUMBERS */}
-        {/* ================================================= */}
-
-        {notebook.validated_numbers.length > 0 && (
-
-          <DocumentSection
-            title="Chiffres documentés"
-            description={
-              "Observations certifiées associées "
-              + "aux contenus sélectionnés."
-            }
-          >
-
-            <div
-              className="
-                grid
-                gap-4
-                sm:grid-cols-2
-                lg:grid-cols-3
-                print:grid-cols-3
-              "
-            >
-
-              {notebook.validated_numbers.map(
-                number => {
-
-                  const entityLabels = (
-                    number.entities
-                      .map(
-                        entity =>
-                          entity.entity_label,
-                      )
-                      .filter(
-                        (
-                          label,
-                        ): label is string =>
-                          Boolean(
-                            label,
-                          ),
-                      )
-                  );
-
-                  const hasRange = (
-                    number.value_min !== null
-                    && number.value_max !== null
-                  );
-
-                  return (
-
-                    <article
-                      key={
-                        number.number_id
-                      }
-                      className="
-                        break-inside-avoid
-                        rounded-lg
-                        border
-                        border-slate-200
-                        p-4
-                      "
-                    >
-
-                      {/* =============================== */}
-                      {/* VALUE */}
-                      {/* =============================== */}
-
-                      <div
-                        className="
-                          flex
-                          flex-wrap
-                          items-baseline
-                          gap-x-2
-                          gap-y-1
-                        "
-                      >
-
-                        <p
-                          className="
-                            text-2xl
-                            font-semibold
-                            text-slate-900
-                          "
-                        >
-
-                          {hasRange ? (
-
-                            <>
-                              {
-                                formatNumberValue(
-                                  number.value_min,
-                                )
-                              }
-
-                              {" – "}
-
-                              {
-                                formatNumberValue(
-                                  number.value_max,
-                                )
-                              }
-                            </>
-
-                          ) : (
-
-                            formatNumberValue(
-                              number.value,
-                            )
-
-                          )}
-
-                        </p>
-
-                        {number.scale && (
-
-                          <span
-                            className="
-                              text-sm
-                              font-semibold
-                              text-slate-700
-                            "
-                          >
-                            {
-                              formatNumberScale(
-                                number.scale,
-                              )
-                            }
-                          </span>
-
-                        )}
-
-                        {number.unit && (
-
-                          <span
-                            className="
-                              text-sm
-                              font-semibold
-                              text-slate-700
-                            "
-                          >
-                            {number.unit}
-                          </span>
-
-                        )}
-
-                      </div>
-
-                      {/* =============================== */}
-                      {/* LABEL */}
-                      {/* =============================== */}
-
-                      {number.label && (
-
-                        <p
-                          className="
-                            mt-2
-                            text-sm
-                            font-semibold
-                            leading-5
-                            text-slate-800
-                          "
-                        >
-                          {number.label}
-                        </p>
-
-                      )}
-
-                      {/* =============================== */}
-                      {/* METRIC AND ENTITIES */}
-                      {/* =============================== */}
-
-                      {(
-                        number.metric_type
-                        || entityLabels.length > 0
-                      ) && (
-
-                        <div
-                          className="
-                            mt-3
-                            flex
-                            flex-wrap
-                            gap-1.5
-                          "
-                        >
-
-                          {number.metric_type && (
-
-                            <span
-                              className="
-                                rounded
-                                bg-violet-50
-                                px-2
-                                py-1
-                                text-xs
-                                font-medium
-                                text-violet-700
-                              "
-                            >
-                              {number.metric_type}
-                            </span>
-
-                          )}
-
-                          {entityLabels.map(
-                            (
-                              label,
-                              index,
-                            ) => (
-
-                              <span
-                                key={
-                                  `${number.number_id}-${label}-${index}`
-                                }
-                                className="
-                                  rounded
-                                  bg-slate-100
-                                  px-2
-                                  py-1
-                                  text-xs
-                                  text-slate-600
-                                "
-                              >
-                                {label}
-                              </span>
-
-                            ),
-                          )}
-
-                        </div>
-
-                      )}
-
-                      {/* =============================== */}
-                      {/* CONTEXT */}
-                      {/* =============================== */}
-
-                      {(
-                        number.zone
-                        || number.period_label
-                      ) && (
-
-                        <div
-                          className="
-                            mt-3
-                            space-y-1
-                            text-xs
-                            text-slate-500
-                          "
-                        >
-
-                          {number.zone && (
-
-                            <p>
-                              Zone :
-                              {" "}
-                              {number.zone}
-                            </p>
-
-                          )}
-
-                          {number.period_label && (
-
-                            <p>
-                              Période :
-                              {" "}
-                              {number.period_label}
-                            </p>
-
-                          )}
-
-                        </div>
-
-                      )}
-
-                      {/* =============================== */}
-                      {/* SOURCE */}
-                      {/* =============================== */}
-
-                      <SourceReferences
-                        sourceContentIds={
-                          number
-                            .source_content_ids
-                        }
-                        sourceNumberById={
-                          sourceNumberById
-                        }
-                      />
-
-                    </article>
-
-                  );
-
-                },
               )}
 
             </div>
@@ -1331,10 +1441,7 @@ export default function TouchNotebookDocument({
                           Élément de résolution :
                         </strong>
                         {" "}
-                        {
-                          contradiction
-                            .resolution
-                        }
+                        {contradiction.resolution}
                       </p>
 
                     )}
@@ -1361,44 +1468,168 @@ export default function TouchNotebookDocument({
         )}
 
         {/* ================================================= */}
-        {/* CORPUS LIMITS */}
+        {/* CORPUS ASSESSMENT */}
         {/* ================================================= */}
 
-        {notebook.corpus_limits.length > 0 && (
+        {(
+          notebook.corpus_strengths.length > 0
+          || notebook.corpus_limits.length > 0
+        ) && (
 
-          <DocumentSection
-            title="Ce que le corpus ne permet pas d’établir"
-          >
+          <DocumentSection title="Évaluation du corpus">
 
-            <ul
+            <div
               className="
-                list-disc
-                space-y-2
-                pl-5
-                text-sm
-                leading-6
-                text-slate-700
+                grid
+                gap-4
+                md:grid-cols-2
+                print:grid-cols-2
               "
             >
 
-              {notebook.corpus_limits.map(
-                (
-                  limit,
-                  index,
-                ) => (
+              <div
+                className="
+                  break-inside-avoid
+                  rounded-lg
+                  border
+                  border-emerald-200
+                  bg-emerald-50
+                  p-4
+                  print:bg-white
+                "
+              >
 
-                  <li
-                    key={
-                      `${limit}-${index}`
-                    }
+                <h3
+                  className="
+                    text-sm
+                    font-semibold
+                    text-emerald-800
+                  "
+                >
+                  Points forts
+                </h3>
+
+                {notebook.corpus_strengths.length === 0 ? (
+
+                  <p
+                    className="
+                      mt-3
+                      text-sm
+                      text-slate-500
+                    "
                   >
-                    {limit}
-                  </li>
+                    Aucun point fort spécifique identifié.
+                  </p>
 
-                ),
-              )}
+                ) : (
 
-            </ul>
+                  <ul
+                    className="
+                      mt-3
+                      list-disc
+                      space-y-2
+                      pl-5
+                      text-sm
+                      leading-6
+                      text-slate-700
+                    "
+                  >
+
+                    {notebook.corpus_strengths.map(
+                      (
+                        strength,
+                        index,
+                      ) => (
+
+                        <li
+                          key={
+                            `${strength}-${index}`
+                          }
+                        >
+                          {strength}
+                        </li>
+
+                      ),
+                    )}
+
+                  </ul>
+
+                )}
+
+              </div>
+
+              <div
+                className="
+                  break-inside-avoid
+                  rounded-lg
+                  border
+                  border-amber-200
+                  bg-amber-50
+                  p-4
+                  print:bg-white
+                "
+              >
+
+                <h3
+                  className="
+                    text-sm
+                    font-semibold
+                    text-amber-800
+                  "
+                >
+                  Limites
+                </h3>
+
+                {notebook.corpus_limits.length === 0 ? (
+
+                  <p
+                    className="
+                      mt-3
+                      text-sm
+                      text-slate-500
+                    "
+                  >
+                    Aucune limite spécifique identifiée.
+                  </p>
+
+                ) : (
+
+                  <ul
+                    className="
+                      mt-3
+                      list-disc
+                      space-y-2
+                      pl-5
+                      text-sm
+                      leading-6
+                      text-slate-700
+                    "
+                  >
+
+                    {notebook.corpus_limits.map(
+                      (
+                        limit,
+                        index,
+                      ) => (
+
+                        <li
+                          key={
+                            `${limit}-${index}`
+                          }
+                        >
+                          {limit}
+                        </li>
+
+                      ),
+                    )}
+
+                  </ul>
+
+                )}
+
+              </div>
+
+            </div>
 
           </DocumentSection>
 
@@ -1423,10 +1654,11 @@ export default function TouchNotebookDocument({
                 index,
               ) => {
 
-                const publishedAt =
+                const publishedAt = (
                   formatDate(
                     source.published_at,
-                  );
+                  )
+                );
 
                 return (
 
@@ -1435,9 +1667,7 @@ export default function TouchNotebookDocument({
                       `touch-document-source-`
                       + source.content_id
                     }
-                    key={
-                      source.content_id
-                    }
+                    key={source.content_id}
                     className="
                       break-inside-avoid
                       grid
@@ -1507,9 +1737,7 @@ export default function TouchNotebookDocument({
                       {source.source_url && (
 
                         <a
-                          href={
-                            source.source_url
-                          }
+                          href={source.source_url}
                           target="_blank"
                           rel="noreferrer"
                           className="
