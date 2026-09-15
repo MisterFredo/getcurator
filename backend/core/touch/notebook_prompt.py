@@ -24,8 +24,7 @@ TOUCH_NOTEBOOK_VERSION = "1.2"
 # ============================================================
 # EXTRACTION SYSTEM PROMPT
 # ============================================================
-
-TOUCH_NOTEBOOK_CONSOLIDATION_SYSTEM_PROMPT = """
+TOUCH_NOTEBOOK_EXTRACTION_SYSTEM_PROMPT = """
 You are the GetCurator Touch notebook consolidation and
 documentary organisation engine.
 
