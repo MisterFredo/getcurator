@@ -419,6 +419,82 @@ function DocumentSection({
 
 }
 
+/* =========================================================
+   FORMAT NUMBER VALUE
+========================================================= */
+
+function formatNumberValue(
+  value:
+    | string
+    | number
+    | null,
+): string {
+
+  if (
+    value === null
+    || value === ""
+  ) {
+    return "—";
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+
+    return new Intl.NumberFormat(
+      "fr-FR",
+      {
+        maximumFractionDigits: 4,
+      },
+    ).format(
+      value,
+    );
+
+  }
+
+  return value;
+
+}
+
+
+/* =========================================================
+   FORMAT NUMBER SCALE
+========================================================= */
+
+function formatNumberScale(
+  scale: string | null,
+): string {
+
+  if (!scale) {
+    return "";
+  }
+
+  const labels:
+    Record<string, string> = {
+
+    THOUSAND:
+      "milliers",
+
+    MILLION:
+      "millions",
+
+    BILLION:
+      "milliards",
+
+    TRILLION:
+      "billions",
+
+  };
+
+  return (
+    labels[
+      scale.toUpperCase()
+    ]
+    ?? scale.toLowerCase()
+  );
+
+}
+
 
 /* =========================================================
    COMPONENT
@@ -892,7 +968,13 @@ export default function TouchNotebookDocument({
 
         {notebook.validated_numbers.length > 0 && (
 
-          <DocumentSection title="Chiffres documentés">
+          <DocumentSection
+            title="Chiffres documentés"
+            description={
+              "Observations certifiées associées "
+              + "aux contenus sélectionnés."
+            }
+          >
 
             <div
               className="
@@ -905,107 +987,274 @@ export default function TouchNotebookDocument({
             >
 
               {notebook.validated_numbers.map(
-                number => (
+                number => {
 
-                  <article
-                    key={
-                      number.number_id
-                    }
-                    className="
-                      break-inside-avoid
-                      rounded-lg
-                      border
-                      border-slate-200
-                      p-4
-                    "
-                  >
+                  const entityLabels = (
+                    number.entities
+                      .map(
+                        entity =>
+                          entity.entity_label,
+                      )
+                      .filter(
+                        (
+                          label,
+                        ): label is string =>
+                          Boolean(
+                            label,
+                          ),
+                      )
+                  );
 
-                    <p
+                  const hasRange = (
+                    number.value_min !== null
+                    && number.value_max !== null
+                  );
+
+                  return (
+
+                    <article
+                      key={
+                        number.number_id
+                      }
                       className="
-                        text-2xl
-                        font-semibold
-                        text-slate-900
+                        break-inside-avoid
+                        rounded-lg
+                        border
+                        border-slate-200
+                        p-4
                       "
                     >
-                      {number.value}
 
-                      {number.unit && (
-                        <>
-                          {" "}
-                          {number.unit}
-                        </>
-                      )}
+                      {/* =============================== */}
+                      {/* VALUE */}
+                      {/* =============================== */}
 
-                    </p>
-
-                    <p
-                      className="
-                        mt-1
-                        text-sm
-                        font-semibold
-                        text-slate-800
-                      "
-                    >
-                      {number.metric}
-                    </p>
-
-                    {number.context && (
-
-                      <p
+                      <div
                         className="
-                          mt-2
-                          text-sm
-                          leading-6
-                          text-slate-600
+                          flex
+                          flex-wrap
+                          items-baseline
+                          gap-x-2
+                          gap-y-1
                         "
                       >
-                        {number.context}
-                      </p>
 
-                    )}
+                        <p
+                          className="
+                            text-2xl
+                            font-semibold
+                            text-slate-900
+                          "
+                        >
 
-                    <div
-                      className="
-                        mt-3
-                        space-y-1
-                        text-xs
-                        text-slate-500
-                      "
-                    >
+                          {hasRange ? (
 
-                      {number.actor && (
-                        <p>
-                          {number.actor}
+                            <>
+                              {
+                                formatNumberValue(
+                                  number.value_min,
+                                )
+                              }
+
+                              {" – "}
+
+                              {
+                                formatNumberValue(
+                                  number.value_max,
+                                )
+                              }
+                            </>
+
+                          ) : (
+
+                            formatNumberValue(
+                              number.value,
+                            )
+
+                          )}
+
                         </p>
+
+                        {number.scale && (
+
+                          <span
+                            className="
+                              text-sm
+                              font-semibold
+                              text-slate-700
+                            "
+                          >
+                            {
+                              formatNumberScale(
+                                number.scale,
+                              )
+                            }
+                          </span>
+
+                        )}
+
+                        {number.unit && (
+
+                          <span
+                            className="
+                              text-sm
+                              font-semibold
+                              text-slate-700
+                            "
+                          >
+                            {number.unit}
+                          </span>
+
+                        )}
+
+                      </div>
+
+                      {/* =============================== */}
+                      {/* LABEL */}
+                      {/* =============================== */}
+
+                      {number.label && (
+
+                        <p
+                          className="
+                            mt-2
+                            text-sm
+                            font-semibold
+                            leading-5
+                            text-slate-800
+                          "
+                        >
+                          {number.label}
+                        </p>
+
                       )}
 
-                      {number.geography && (
-                        <p>
-                          {number.geography}
-                        </p>
+                      {/* =============================== */}
+                      {/* METRIC AND ENTITIES */}
+                      {/* =============================== */}
+
+                      {(
+                        number.metric_type
+                        || entityLabels.length > 0
+                      ) && (
+
+                        <div
+                          className="
+                            mt-3
+                            flex
+                            flex-wrap
+                            gap-1.5
+                          "
+                        >
+
+                          {number.metric_type && (
+
+                            <span
+                              className="
+                                rounded
+                                bg-violet-50
+                                px-2
+                                py-1
+                                text-xs
+                                font-medium
+                                text-violet-700
+                              "
+                            >
+                              {number.metric_type}
+                            </span>
+
+                          )}
+
+                          {entityLabels.map(
+                            (
+                              label,
+                              index,
+                            ) => (
+
+                              <span
+                                key={
+                                  `${number.number_id}-${label}-${index}`
+                                }
+                                className="
+                                  rounded
+                                  bg-slate-100
+                                  px-2
+                                  py-1
+                                  text-xs
+                                  text-slate-600
+                                "
+                              >
+                                {label}
+                              </span>
+
+                            ),
+                          )}
+
+                        </div>
+
                       )}
 
-                      {number.period && (
-                        <p>
-                          {number.period}
-                        </p>
+                      {/* =============================== */}
+                      {/* CONTEXT */}
+                      {/* =============================== */}
+
+                      {(
+                        number.zone
+                        || number.period_label
+                      ) && (
+
+                        <div
+                          className="
+                            mt-3
+                            space-y-1
+                            text-xs
+                            text-slate-500
+                          "
+                        >
+
+                          {number.zone && (
+
+                            <p>
+                              Zone :
+                              {" "}
+                              {number.zone}
+                            </p>
+
+                          )}
+
+                          {number.period_label && (
+
+                            <p>
+                              Période :
+                              {" "}
+                              {number.period_label}
+                            </p>
+
+                          )}
+
+                        </div>
+
                       )}
 
-                    </div>
+                      {/* =============================== */}
+                      {/* SOURCE */}
+                      {/* =============================== */}
 
-                    <SourceReferences
-                      sourceContentIds={
-                        number
-                          .source_content_ids
-                      }
-                      sourceNumberById={
-                        sourceNumberById
-                      }
-                    />
+                      <SourceReferences
+                        sourceContentIds={
+                          number
+                            .source_content_ids
+                        }
+                        sourceNumberById={
+                          sourceNumberById
+                        }
+                      />
 
-                  </article>
+                    </article>
 
-                ),
+                  );
+
+                },
               )}
 
             </div>
