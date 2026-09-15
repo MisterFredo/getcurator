@@ -297,11 +297,48 @@ class TouchNotebookDimension(
         default_factory=list,
     )
 
+# ============================================================
+# NOTEBOOK SECTION
+# ============================================================
+
+class TouchNotebookSection(
+    StrictTouchNotebookModel,
+):
+    """
+    One ordered documentary section.
+
+    event_ids identify the events displayed in the section.
+
+    note_ids contain only standalone notes that are not
+    already attached to one of the section events.
+
+    number_ids contain only standalone certified Numbers
+    that are not already attached to one of the section
+    events.
+    """
+
+    section_id: str
+
+    title: str
+
+    description: str = ""
+
+    event_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    note_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    number_ids: list[str] = Field(
+        default_factory=list,
+    )
+
 
 # ============================================================
 # CORPUS NOTEBOOK
 # ============================================================
-
 class TouchCorpusNotebook(
     StrictTouchNotebookModel,
 ):
@@ -311,6 +348,12 @@ class TouchCorpusNotebook(
     objective: str
 
     corpus_summary: str
+
+    sections: list[
+        TouchNotebookSection
+    ] = Field(
+        default_factory=list,
+    )
 
     notes: list[
         TouchEvidenceNote
@@ -361,7 +404,6 @@ class TouchCorpusNotebook(
     corpus_limits: list[str] = Field(
         default_factory=list,
     )
-
 
 # ============================================================
 # REQUEST
