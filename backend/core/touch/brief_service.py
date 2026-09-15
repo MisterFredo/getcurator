@@ -202,11 +202,11 @@ Correct the brief structure.
 
 Use only identifiers supplied in the notebook.
 
-Every notebook note_id must be either displayed in a section
-or returned in hidden_note_ids.
+Select only the notebook notes and certified Numbers that are
+useful for the assisted interpretation.
 
-Every validated number_id must be either displayed in a section
-or returned in hidden_number_ids.
+The backend automatically classifies every unselected note and
+Number as hidden.
 
 Do not invent or modify identifiers.
 
@@ -422,6 +422,68 @@ def _collect_visible_references(
         note_ids,
         number_ids,
         event_ids,
+    )
+
+# ============================================================
+# SYNCHRONIZE HIDDEN REFERENCES
+# ============================================================
+
+def _synchronize_hidden_references(
+    request: TouchBriefRequest,
+    brief: TouchBriefStructure,
+) -> TouchBriefStructure:
+
+    (
+        visible_note_ids,
+        visible_number_ids,
+        _,
+    ) = _collect_visible_references(
+        brief
+    )
+
+    visible_note_id_set = set(
+        visible_note_ids
+    )
+
+    visible_number_id_set = set(
+        visible_number_ids
+    )
+
+    hidden_note_ids = [
+
+        note.note_id
+
+        for note in request.notebook.notes
+
+        if (
+            note.note_id
+            not in visible_note_id_set
+        )
+
+    ]
+
+    hidden_number_ids = [
+
+        number.number_id
+
+        for number
+        in request.notebook.validated_numbers
+
+        if (
+            number.number_id
+            not in visible_number_id_set
+        )
+
+    ]
+
+    return brief.model_copy(
+        update={
+            "hidden_note_ids":
+                hidden_note_ids,
+
+            "hidden_number_ids":
+                hidden_number_ids,
+        },
     )
 
 
@@ -924,13 +986,19 @@ def build_touch_brief(
                     brief
                 )
 
-                _validate_brief(
+                brief = (
+                    _synchronize_hidden_references(
 
-                    request=normalized_request,
+                        request=(
+                            normalized_request
+                        ),
 
-                    brief=brief,
+                        brief=brief,
 
+                    )
                 )
+
+                _validate_brief(
 
                 return TouchBriefOutcome(
 
