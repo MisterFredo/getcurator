@@ -586,6 +586,9 @@ export type TouchCorpusNotebook = {
 
   corpus_summary: string;
 
+  sections:
+    TouchNotebookSection[];
+
   notes: TouchEvidenceNote[];
 
   events: TouchNotebookEvent[];
@@ -608,7 +611,6 @@ export type TouchCorpusNotebook = {
   corpus_strengths: string[];
   corpus_limits: string[];
 };
-
 
 /* =========================================================
    NOTEBOOK REQUEST
