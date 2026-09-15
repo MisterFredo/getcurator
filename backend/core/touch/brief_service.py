@@ -1000,6 +1000,26 @@ def build_touch_brief(
 
                 _validate_brief(
 
+                    request=(
+                        normalized_request
+                    ),
+
+                    brief=brief,
+
+                )
+
+                return TouchBriefOutcome(
+
+                    status="GENERATED",
+
+                    brief=brief,
+
+                    error=None,
+
+                )
+
+                _validate_brief(
+
                 return TouchBriefOutcome(
 
                     status="GENERATED",
