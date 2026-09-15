@@ -26,6 +26,15 @@ type Props = {
 
   selectedContentIds: string[];
 
+  notebook:
+    TouchCorpusNotebook | null;
+
+  onNotebookChange: (
+    notebook: TouchCorpusNotebook | null
+  ) => void;
+
+  onContinue?: () => void;
+
   outputLanguage?: string;
 };
 
@@ -38,15 +47,11 @@ export default function TouchNotebookBuilder({
   subject,
   objective,
   selectedContentIds,
+  notebook,
+  onNotebookChange,
+  onContinue,
   outputLanguage = "fr",
 }: Props) {
-
-  const [
-    notebook,
-    setNotebook,
-  ] = useState<
-    TouchCorpusNotebook | null
-  >(null);
 
   const [
     loading,
@@ -71,12 +76,12 @@ export default function TouchNotebookBuilder({
     );
 
   /* =======================================================
-     INVALIDATE NOTEBOOK WHEN CORPUS CHANGES
+     INVALIDATE NOTEBOOK
   ======================================================= */
 
   useEffect(() => {
 
-    setNotebook(
+    onNotebookChange(
       null,
     );
 
@@ -93,6 +98,7 @@ export default function TouchNotebookBuilder({
     subject,
     objective,
     outputLanguage,
+    onNotebookChange,
   ]);
 
   /* =======================================================
@@ -151,8 +157,7 @@ export default function TouchNotebookBuilder({
         });
 
       if (
-        outcome.status
-        !== "GENERATED"
+        outcome.status !== "GENERATED"
         || !outcome.notebook
       ) {
 
@@ -163,7 +168,7 @@ export default function TouchNotebookBuilder({
 
       }
 
-      setNotebook(
+      onNotebookChange(
         outcome.notebook,
       );
 
@@ -178,7 +183,7 @@ export default function TouchNotebookBuilder({
         exception,
       );
 
-      setNotebook(
+      onNotebookChange(
         null,
       );
 
@@ -234,7 +239,8 @@ export default function TouchNotebookBuilder({
         </p>
 
         <p className="mt-1 text-sm text-gray-500">
-          Select contents before building the notebook.
+          Return to the corpus step and select contents
+          before building the notebook.
         </p>
 
       </div>
@@ -283,12 +289,12 @@ export default function TouchNotebookBuilder({
 
             <p className="mt-1 text-sm text-gray-500">
 
-              Consolidate the evidence contained in
+              Extract and consolidate the evidence contained
+              in
               {" "}
               {selectedContentIds.length}
               {" "}
-              selected sources before creating the
-              editorial plan.
+              selected sources.
 
             </p>
 
@@ -347,8 +353,8 @@ export default function TouchNotebookBuilder({
             </p>
 
             <p className="mt-1 text-sm text-blue-700">
-              The contents are being processed in batches,
-              then consolidated into one evidence notebook.
+              Contents are processed in batches and then
+              consolidated into one evidence notebook.
             </p>
 
           </div>
@@ -385,6 +391,11 @@ export default function TouchNotebookBuilder({
           <div
             className="
               mt-4
+              flex
+              flex-wrap
+              items-center
+              justify-between
+              gap-4
               rounded-lg
               border
               border-emerald-200
@@ -393,21 +404,47 @@ export default function TouchNotebookBuilder({
             "
           >
 
-            <p className="text-sm font-medium text-emerald-800">
-              Editorial notebook ready
-            </p>
+            <div>
 
-            <p className="mt-1 text-sm text-emerald-700">
+              <p className="text-sm font-medium text-emerald-800">
+                Editorial notebook ready
+              </p>
 
-              {sourceCount}
-              {" "}
-              sources were analysed and consolidated into
-              {" "}
-              {notebook.notes.length}
-              {" "}
-              evidence notes.
+              <p className="mt-1 text-sm text-emerald-700">
 
-            </p>
+                {sourceCount || selectedContentIds.length}
+                {" "}
+                sources consolidated into
+                {" "}
+                {notebook.notes.length}
+                {" "}
+                evidence notes.
+
+              </p>
+
+            </div>
+
+            {onContinue && (
+
+              <button
+                type="button"
+                onClick={onContinue}
+                className="
+                  rounded-lg
+                  bg-emerald-700
+                  px-4
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-emerald-800
+                "
+              >
+                Continue to output
+              </button>
+
+            )}
 
           </div>
 
@@ -416,7 +453,7 @@ export default function TouchNotebookBuilder({
       </div>
 
       {/* ================================================= */}
-      {/* NOTEBOOK */}
+      {/* NOTEBOOK PREVIEW */}
       {/* ================================================= */}
 
       {notebook && (
