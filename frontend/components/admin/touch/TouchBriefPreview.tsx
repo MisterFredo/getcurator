@@ -273,6 +273,82 @@ function EventCard({
 
 }
 
+/* =========================================================
+   FORMAT NUMBER VALUE
+========================================================= */
+
+function formatNumberValue(
+  value:
+    | string
+    | number
+    | null,
+): string {
+
+  if (
+    value === null
+    || value === ""
+  ) {
+    return "—";
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+
+    return new Intl.NumberFormat(
+      "fr-FR",
+      {
+        maximumFractionDigits: 4,
+      },
+    ).format(
+      value,
+    );
+
+  }
+
+  return value;
+
+}
+
+
+/* =========================================================
+   FORMAT NUMBER SCALE
+========================================================= */
+
+function formatNumberScale(
+  scale: string | null,
+): string {
+
+  if (!scale) {
+    return "";
+  }
+
+  const labels:
+    Record<string, string> = {
+
+    THOUSAND:
+      "thousand",
+
+    MILLION:
+      "million",
+
+    BILLION:
+      "billion",
+
+    TRILLION:
+      "trillion",
+
+  };
+
+  return (
+    labels[
+      scale.toUpperCase()
+    ]
+    ?? scale.toLowerCase()
+  );
+
+}
+
 
 /* =========================================================
    NUMBER CARD
@@ -288,6 +364,27 @@ function NumberCard({
     Map<string, number>;
 }) {
 
+  const entityLabels = (
+    number.entities
+      .map(
+        entity =>
+          entity.entity_label,
+      )
+      .filter(
+        (
+          label,
+        ): label is string =>
+          Boolean(
+            label,
+          ),
+      )
+  );
+
+  const hasRange = (
+    number.value_min !== null
+    && number.value_max !== null
+  );
+
   return (
 
     <article
@@ -300,76 +397,216 @@ function NumberCard({
       "
     >
 
-      <p
+      {/* ================================================= */}
+      {/* VALUE */}
+      {/* ================================================= */}
+
+      <div
         className="
-          text-2xl
-          font-semibold
-          text-gray-900
+          flex
+          flex-wrap
+          items-baseline
+          gap-x-2
+          gap-y-1
         "
       >
-        {number.value}
+
+        <p
+          className="
+            text-2xl
+            font-semibold
+            text-gray-900
+          "
+        >
+
+          {hasRange ? (
+
+            <>
+              {
+                formatNumberValue(
+                  number.value_min,
+                )
+              }
+
+              {" – "}
+
+              {
+                formatNumberValue(
+                  number.value_max,
+                )
+              }
+            </>
+
+          ) : (
+
+            formatNumberValue(
+              number.value,
+            )
+
+          )}
+
+        </p>
+
+        {number.scale && (
+
+          <span
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+            {
+              formatNumberScale(
+                number.scale,
+              )
+            }
+          </span>
+
+        )}
 
         {number.unit && (
-          <>
-            {" "}
+
+          <span
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
             {number.unit}
-          </>
+          </span>
+
         )}
-      </p>
 
-      <p className="mt-1 text-sm font-medium text-gray-800">
-        {number.metric}
-      </p>
+      </div>
 
-      {number.context && (
+      {/* ================================================= */}
+      {/* LABEL */}
+      {/* ================================================= */}
+
+      {number.label && (
 
         <p
           className="
             mt-2
             text-sm
-            leading-6
-            text-gray-600
+            font-medium
+            leading-5
+            text-gray-800
           "
         >
-          {number.context}
+          {number.label}
         </p>
 
       )}
 
-      <div
-        className="
-          mt-3
-          space-y-1
-          text-xs
-          text-gray-500
-        "
-      >
+      {/* ================================================= */}
+      {/* METADATA */}
+      {/* ================================================= */}
 
-        {number.actor && (
-          <p>
-            Actor:
-            {" "}
-            {number.actor}
-          </p>
-        )}
+      {(
+        number.metric_type
+        || entityLabels.length > 0
+      ) && (
 
-        {number.geography && (
-          <p>
-            Geography:
-            {" "}
-            {number.geography}
-          </p>
-        )}
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-1.5
+          "
+        >
 
-        {number.period && (
-          <p>
-            Period:
-            {" "}
-            {number.period}
-          </p>
-        )}
+          {number.metric_type && (
 
-      </div>
+            <span
+              className="
+                rounded
+                bg-violet-50
+                px-2
+                py-1
+                text-xs
+                font-medium
+                text-violet-700
+              "
+            >
+              {number.metric_type}
+            </span>
+
+          )}
+
+          {entityLabels.map(
+            (
+              label,
+              index,
+            ) => (
+
+              <span
+                key={
+                  `${number.number_id}-${label}-${index}`
+                }
+                className="
+                  rounded
+                  bg-gray-100
+                  px-2
+                  py-1
+                  text-xs
+                  text-gray-600
+                "
+              >
+                {label}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {/* ================================================= */}
+      {/* CONTEXT */}
+      {/* ================================================= */}
+
+      {(
+        number.zone
+        || number.period_label
+      ) && (
+
+        <div
+          className="
+            mt-3
+            space-y-1
+            text-xs
+            text-gray-500
+          "
+        >
+
+          {number.zone && (
+
+            <p>
+              Geography:
+              {" "}
+              {number.zone}
+            </p>
+
+          )}
+
+          {number.period_label && (
+
+            <p>
+              Period:
+              {" "}
+              {number.period_label}
+            </p>
+
+          )}
+
+        </div>
+
+      )}
 
       <SourceReferences
         sourceIds={
