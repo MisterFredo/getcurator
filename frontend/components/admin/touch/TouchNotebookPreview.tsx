@@ -280,7 +280,29 @@ function formatNumberValue(
     | null,
 ): string {
 
-  // helper donné précédemment
+  if (
+    value === null
+    || value === ""
+  ) {
+    return "—";
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+
+    return new Intl.NumberFormat(
+      "fr-FR",
+      {
+        maximumFractionDigits: 4,
+      },
+    ).format(
+      value,
+    );
+
+  }
+
+  return value;
 
 }
 
@@ -293,7 +315,33 @@ function formatNumberScale(
   scale: string | null,
 ): string {
 
-  // helper donné précédemment
+  if (!scale) {
+    return "";
+  }
+
+  const labels:
+    Record<string, string> = {
+
+    THOUSAND:
+      "thousand",
+
+    MILLION:
+      "million",
+
+    BILLION:
+      "billion",
+
+    TRILLION:
+      "trillion",
+
+  };
+
+  return (
+    labels[
+      scale.toUpperCase()
+    ]
+    ?? scale.toLowerCase()
+  );
 
 }
 
