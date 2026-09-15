@@ -423,6 +423,9 @@ export default function TouchNotebookBuilder({
 
         <TouchNotebookPreview
           notebook={notebook}
+          sourceContentIds={
+            selectedContentIds
+          }
         />
 
       )}
