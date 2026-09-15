@@ -381,60 +381,63 @@ export default function TouchSelectedCorpus({
 
       </div>
 
-      {/* ================================================= */}
-      {/* VALIDATION */}
-      {/* ================================================= */}
-
-      <div
-        className="
-          border-t
-          border-gray-100
-          p-4
-        "
-      >
-
-        <button
-          type="button"
-          onClick={onValidate}
-          disabled={
-            candidates.length === 0
-            || validating
-            || !onValidate
-          }
-          className="
-            w-full
-            rounded-lg
-            bg-ratecard-blue
-            px-4
-            py-2.5
-            text-sm
-            font-medium
-            text-white
-            hover:opacity-90
-            disabled:cursor-not-allowed
-            disabled:opacity-40
-          "
-        >
-          {
-            validating
-              ? "Generating…"
-              : "Generate one-pager"
-          }
-        </button>
-
-        <p
-          className="
-            mt-2
-            text-center
-            text-xs
-            text-gray-400
-          "
-        >
-          The draft will use only the selected contents.
-        </p>
-
-      </div>
-
+            {/* ================================================= */}
+            {/* CONTINUE TO NOTEBOOK */}
+            {/* ================================================= */}
+      
+            <div
+              className="
+                border-t
+                border-gray-100
+                p-4
+              "
+            >
+      
+              <button
+                type="button"
+                onClick={
+                  onValidate
+                }
+                disabled={
+                  candidates.length === 0
+                  || validating
+                  || !onValidate
+                }
+                className="
+                  w-full
+                  rounded-lg
+                  bg-ratecard-blue
+                  px-4
+                  py-2.5
+                  text-sm
+                  font-medium
+                  text-white
+                  hover:opacity-90
+                  disabled:cursor-not-allowed
+                  disabled:opacity-40
+                "
+              >
+                {
+                  validating
+                    ? "Preparing notebook…"
+                    : "Continue to notebook"
+                }
+              </button>
+      
+              <p
+                className="
+                  mt-2
+                  text-center
+                  text-xs
+                  leading-5
+                  text-gray-400
+                "
+              >
+                The notebook will extract and consolidate
+                evidence from the selected contents only.
+              </p>
+      
+            </div>
     </aside>
 
   );
