@@ -69,7 +69,7 @@ class TouchExtractedNote(
 
     statement: str
 
-    explanation: str = ""
+    explanation: str | None = None
 
     actors: list[str] = Field(
         default_factory=list,
@@ -669,8 +669,14 @@ def _prefix_extraction_ids(
             f"-note-{note_index:03d}"
         )
 
-    return payload
+        note["explanation"] = str(
+            note.get(
+                "explanation"
+            )
+            or ""
+        ).strip()
 
+    return payload
 
 # ============================================================
 # NORMALIZE NOTEBOOK
