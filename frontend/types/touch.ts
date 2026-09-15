@@ -439,6 +439,63 @@ export type TouchNotebookEvent = {
   actors: string[];
 
   note_ids: string[];
+  number_ids: string[];
+
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK NUMBER ENTITY
+========================================================= */
+
+export type TouchNotebookNumberEntity = {
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+};
+
+
+/* =========================================================
+   NOTEBOOK NUMBER
+========================================================= */
+
+export type TouchNotebookNumber = {
+  number_id: string;
+
+  id_content: string;
+
+  label: string | null;
+  metric_type: string | null;
+
+  value:
+    | string
+    | number
+    | null;
+
+  value_min:
+    | string
+    | number
+    | null;
+
+  value_max:
+    | string
+    | number
+    | null;
+
+  unit: string | null;
+  scale: string | null;
+
+  zone: string | null;
+  period_label: string | null;
+
+  value_status: string | null;
+
+  confidence: number;
+
+  entities:
+    TouchNotebookNumberEntity[];
+
   source_content_ids: string[];
 };
 
@@ -467,30 +524,6 @@ export type TouchNotebookTimelineItem = {
 export type TouchNotebookDimension = {
   label: string;
   summary: string;
-
-  note_ids: string[];
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   NOTEBOOK NUMBER
-========================================================= */
-
-export type TouchNotebookNumber = {
-  number_id: string;
-
-  value: string;
-  unit: string;
-  metric: string;
-  context: string;
-
-  actor: string | null;
-  geography: string | null;
-  period: string | null;
-
-  confidence:
-    TouchEvidenceConfidence;
 
   note_ids: string[];
   source_content_ids: string[];
