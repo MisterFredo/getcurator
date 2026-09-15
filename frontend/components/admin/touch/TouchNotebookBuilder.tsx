@@ -69,37 +69,6 @@ export default function TouchNotebookBuilder({
     setSourceCount,
   ] = useState(0);
 
-  const selectionSignature =
-    selectedContentIds.join(
-      "|",
-    );
-
-  /* =======================================================
-     INVALIDATE NOTEBOOK
-  ======================================================= */
-
-  useEffect(() => {
-
-    onNotebookChange(
-      null,
-    );
-
-    setSourceCount(
-      0,
-    );
-
-    setError(
-      null,
-    );
-
-  }, [
-    selectionSignature,
-    subject,
-    objective,
-    outputLanguage,
-    onNotebookChange,
-  ]);
-
   /* =======================================================
      BUILD NOTEBOOK
   ======================================================= */
