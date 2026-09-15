@@ -10,13 +10,6 @@ import type {
 
 
 /* =========================================================
-   CONFIGURATION
-========================================================= */
-
-const MAX_FEATURED_NUMBERS_PER_SECTION = 4;
-
-
-/* =========================================================
    PROPS
 ========================================================= */
 
@@ -36,7 +29,9 @@ function uniqueValues(
 
   return Array.from(
     new Set(
-      values.filter(Boolean),
+      values.filter(
+        Boolean,
+      ),
     ),
   );
 
@@ -48,17 +43,24 @@ function formatDate(
 ): string {
 
   if (!value) {
+
     return "";
+
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(
+      value,
+    );
 
   if (
     Number.isNaN(
       date.getTime(),
     )
   ) {
+
     return value;
+
   }
 
   return new Intl.DateTimeFormat(
@@ -68,7 +70,9 @@ function formatDate(
       month: "short",
       year: "numeric",
     },
-  ).format(date);
+  ).format(
+    date,
+  );
 
 }
 
@@ -88,16 +92,19 @@ function formatNumberValue(
     value === null
     || value === ""
   ) {
+
     return "—";
+
   }
 
-  const numericValue = Number(
-    value
-  );
+  const numericValue =
+    Number(
+      value,
+    );
 
   if (
     !Number.isNaN(
-      numericValue
+      numericValue,
     )
   ) {
 
@@ -107,12 +114,14 @@ function formatNumberValue(
         maximumFractionDigits: 4,
       },
     ).format(
-      numericValue
+      numericValue,
     );
 
   }
 
-  return String(value);
+  return String(
+    value,
+  );
 
 }
 
@@ -128,10 +137,17 @@ function isSingleValue(
     value === null
     || value === ""
   ) {
+
     return false;
+
   }
 
-  return Number(value) === 1;
+  return (
+    Number(
+      value,
+    )
+    === 1
+  );
 
 }
 
@@ -145,21 +161,31 @@ function formatNumberScale(
 ): string {
 
   if (!scale) {
+
     return "";
+
   }
 
   const normalized =
-    scale.toUpperCase();
+    scale
+      .trim()
+      .toUpperCase();
 
   if (
     normalized === "NONE"
     || normalized === "UNIT"
+    || normalized === "UNKNOWN"
+    || normalized === "NULL"
   ) {
+
     return "";
+
   }
 
   const singular =
-    isSingleValue(value);
+    isSingleValue(
+      value,
+    );
 
   const labels:
     Record<
@@ -167,42 +193,46 @@ function formatNumberScale(
       [string, string]
     > = {
 
-    THOUSAND:
-      [
+      THOUSAND: [
         "millier",
         "milliers",
       ],
 
-    MILLION:
-      [
+      MILLION: [
         "million",
         "millions",
       ],
 
-    BILLION:
-      [
+      BILLION: [
         "milliard",
         "milliards",
       ],
 
-    TRILLION:
-      [
+      TRILLION: [
         "billion",
         "billions",
       ],
 
-  };
+    };
 
   const label =
-    labels[normalized];
+    labels[
+      normalized
+    ];
 
   if (!label) {
-    return scale.toLowerCase();
+
+    return (
+      scale.toLowerCase()
+    );
+
   }
 
-  return singular
-    ? label[0]
-    : label[1];
+  return (
+    singular
+      ? label[0]
+      : label[1]
+  );
 
 }
 
@@ -212,43 +242,58 @@ function formatNumberUnit(
 ): string {
 
   if (!unit) {
+
     return "";
+
   }
 
   const normalized =
-    unit.toUpperCase();
+    unit
+      .trim()
+      .toUpperCase();
 
   const labels:
     Record<string, string> = {
 
-    NONE:
-      "",
+      NONE:
+        "",
 
-    PERCENT:
-      "%",
+      UNKNOWN:
+        "",
 
-    USD:
-      "USD",
+      NULL:
+        "",
 
-    EUR:
-      "EUR",
+      PERCENT:
+        "%",
 
-    GBP:
-      "GBP",
+      PERCENTAGE:
+        "%",
 
-    USERS:
-      "utilisateurs",
+      USD:
+        "USD",
 
-    ACCOUNTS:
-      "comptes",
+      EUR:
+        "EUR",
 
-    LOCATIONS:
-      "marchés",
+      GBP:
+        "GBP",
 
-  };
+      USERS:
+        "utilisateurs",
+
+      ACCOUNTS:
+        "comptes",
+
+      LOCATIONS:
+        "marchés",
+
+    };
 
   return (
-    labels[normalized]
+    labels[
+      normalized
+    ]
     ?? unit
   );
 
@@ -264,19 +309,23 @@ function formatNumberHeadline(
     && number.value_max !== null
   );
 
-  const value = hasRange
-    ? (
-        formatNumberValue(
-          number.value_min,
+  const value = (
+    hasRange
+
+      ? (
+          formatNumberValue(
+            number.value_min,
+          )
+          + " – "
+          + formatNumberValue(
+            number.value_max,
+          )
         )
-        + " – "
-        + formatNumberValue(
-          number.value_max,
+
+      : formatNumberValue(
+          number.value,
         )
-      )
-    : formatNumberValue(
-        number.value,
-      );
+  );
 
   const scale =
     formatNumberScale(
@@ -294,8 +343,12 @@ function formatNumberHeadline(
     scale,
     unit,
   ]
-    .filter(Boolean)
-    .join(" ");
+    .filter(
+      Boolean,
+    )
+    .join(
+      " ",
+    );
 
 }
 
@@ -314,15 +367,18 @@ function SourceReferences({
 
   const references = (
     uniqueValues(
-      sourceContentIds
+      sourceContentIds,
     )
       .map(
         contentId => ({
+
           contentId,
+
           number:
             sourceNumberById.get(
               contentId,
             ),
+
         }),
       )
       .filter(
@@ -331,15 +387,19 @@ function SourceReferences({
         ): reference is {
           contentId: string;
           number: number;
-        } =>
-          reference.number !== undefined,
+        } => (
+          reference.number
+          !== undefined
+        ),
       )
   );
 
   if (
     references.length === 0
   ) {
+
     return null;
+
   }
 
   return (
@@ -366,7 +426,11 @@ function SourceReferences({
           index,
         ) => (
 
-          <span key={reference.contentId}>
+          <span
+            key={
+              reference.contentId
+            }
+          >
 
             <a
               href={
@@ -411,12 +475,10 @@ function SourceReferences({
 
 function DocumentSection({
   title,
-  description,
   children,
   className = "",
 }: {
   title: string;
-  description?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -449,21 +511,6 @@ function DocumentSection({
           {title}
         </h2>
 
-        {description && (
-
-          <p
-            className="
-              mt-1
-              text-sm
-              leading-5
-              text-slate-500
-            "
-          >
-            {description}
-          </p>
-
-        )}
-
       </div>
 
       {children}
@@ -494,11 +541,12 @@ function EvidenceNote({
     || note.status !== "VALIDATED"
   );
 
-  const context = uniqueValues([
-    ...note.actors,
-    ...note.geographies,
-    ...note.dates,
-  ]);
+  const context =
+    uniqueValues([
+      ...note.actors,
+      ...note.geographies,
+      ...note.dates,
+    ]);
 
   return (
 
@@ -571,10 +619,17 @@ function EvidenceNote({
             "
           >
 
-            {showContext && context.length > 0 && (
+            {(
+              showContext
+              && context.length > 0
+            ) && (
 
               <span>
-                {context.join(" · ")}
+                {
+                  context.join(
+                    " · ",
+                  )
+                }
               </span>
 
             )}
@@ -621,116 +676,7 @@ function EvidenceNote({
 
 
 /* =========================================================
-   FEATURED NUMBER
-========================================================= */
-
-function FeaturedNumber({
-  number,
-  sourceNumberById,
-}: {
-  number: TouchNotebookNumber;
-  sourceNumberById: Map<string, number>;
-}) {
-
-  const entityLabels = uniqueValues(
-    number.entities
-      .map(
-        entity =>
-          entity.entity_label
-          ?? "",
-      ),
-  );
-
-  const context = [
-    number.zone
-      && number.zone !== "UNKNOWN"
-        ? number.zone
-        : "",
-
-    number.period_label
-      && number.period_label !== "UNKNOWN"
-        ? number.period_label
-        : "",
-
-    ...entityLabels,
-  ].filter(Boolean);
-
-  return (
-
-    <div
-      className="
-        break-inside-avoid
-        border-l-2
-        border-violet-300
-        pl-3
-      "
-    >
-
-      <p
-        className="
-          text-lg
-          font-semibold
-          text-slate-900
-        "
-      >
-        {formatNumberHeadline(number)}
-      </p>
-
-      {number.label && (
-
-        <p
-          className="
-            text-xs
-            font-medium
-            leading-5
-            text-slate-700
-          "
-        >
-          {number.label}
-        </p>
-
-      )}
-
-      <div
-        className="
-          mt-1
-          flex
-          flex-wrap
-          items-center
-          gap-x-2
-          text-[11px]
-          text-slate-400
-        "
-      >
-
-        {context.length > 0 && (
-
-          <span>
-            {context.join(" · ")}
-          </span>
-
-        )}
-
-        <SourceReferences
-          sourceContentIds={
-            number.source_content_ids
-          }
-          sourceNumberById={
-            sourceNumberById
-          }
-        />
-
-      </div>
-
-    </div>
-
-  );
-
-}
-
-
-/* =========================================================
-   NUMBER REGISTER ITEM
+   CERTIFIED NUMBER REGISTER ITEM
 ========================================================= */
 
 function NumberRegisterItem({
@@ -741,31 +687,53 @@ function NumberRegisterItem({
   sourceNumberById: Map<string, number>;
 }) {
 
-  const entities = uniqueValues(
-    number.entities
-      .map(
-        entity =>
-          entity.entity_label
-          ?? "",
-      ),
+  const entities =
+    uniqueValues(
+      number.entities
+        .map(
+          entity =>
+            entity.entity_label
+            ?? "",
+        ),
+    );
+
+  const metricType = (
+    number.metric_type
+    && number.metric_type !== "UNKNOWN"
+    && number.metric_type !== "NONE"
+      ? number.metric_type
+      : ""
+  );
+
+  const zone = (
+    number.zone
+    && number.zone !== "UNKNOWN"
+    && number.zone !== "NONE"
+      ? number.zone
+      : ""
+  );
+
+  const period = (
+    number.period_label
+    && number.period_label !== "UNKNOWN"
+    && number.period_label !== "NONE"
+      ? number.period_label
+      : ""
   );
 
   const context = [
-    number.metric_type,
+
+    metricType,
+
     ...entities,
-    (
-      number.zone
-      && number.zone !== "UNKNOWN"
-        ? number.zone
-        : ""
-    ),
-    (
-      number.period_label
-      && number.period_label !== "UNKNOWN"
-        ? number.period_label
-        : ""
-    ),
-  ].filter(Boolean);
+
+    zone,
+
+    period,
+
+  ].filter(
+    Boolean,
+  );
 
   return (
 
@@ -794,7 +762,11 @@ function NumberRegisterItem({
             text-slate-900
           "
         >
-          {formatNumberHeadline(number)}
+          {
+            formatNumberHeadline(
+              number,
+            )
+          }
         </p>
 
         <SourceReferences
@@ -834,7 +806,11 @@ function NumberRegisterItem({
             text-slate-400
           "
         >
-          {context.join(" · ")}
+          {
+            context.join(
+              " · ",
+            )
+          }
         </p>
 
       )}
@@ -850,67 +826,15 @@ function NumberRegisterItem({
    EVENT
 ========================================================= */
 
-function isRedundantDescription(
-  event: TouchNotebookEvent,
-  notes: TouchEvidenceNote[],
-): boolean {
-
-  const description = (
-    event.description
-    || ""
-  )
-    .trim()
-    .toLowerCase();
-
-  if (!description) {
-    return true;
-  }
-
-  return notes.some(
-    note => {
-
-      const statement = (
-        note.statement
-        || ""
-      )
-        .trim()
-        .toLowerCase();
-
-      return (
-        statement === description
-        || statement.includes(
-          description
-        )
-        || description.includes(
-          statement
-        )
-      );
-
-    },
-  );
-
-}
-
-
 function EventBlock({
   event,
   notes,
-  numbers,
   sourceNumberById,
 }: {
   event: TouchNotebookEvent;
   notes: TouchEvidenceNote[];
-  numbers: TouchNotebookNumber[];
   sourceNumberById: Map<string, number>;
 }) {
-
-  const showDescription = (
-    event.description
-    && !isRedundantDescription(
-      event,
-      notes,
-    )
-  );
 
   return (
 
@@ -977,21 +901,6 @@ function EventBlock({
 
       </div>
 
-      {showDescription && (
-
-        <p
-          className="
-            mt-1
-            text-xs
-            leading-5
-            text-slate-600
-          "
-        >
-          {event.description}
-        </p>
-
-      )}
-
       {event.actors.length > 0 && (
 
         <p
@@ -1001,51 +910,31 @@ function EventBlock({
             text-slate-400
           "
         >
-          {event.actors.join(" · ")}
+          {
+            event.actors.join(
+              " · ",
+            )
+          }
         </p>
 
       )}
 
-      <div className="mt-3 space-y-2.5">
+      {notes.length > 0 && (
 
-        {notes.map(
-          note => (
+        <div className="mt-3 space-y-2.5">
 
-            <EvidenceNote
-              key={note.note_id}
-              note={note}
-              sourceNumberById={
-                sourceNumberById
-              }
-              showContext={false}
-            />
+          {notes.map(
+            note => (
 
-          ),
-        )}
-
-      </div>
-
-      {numbers.length > 0 && (
-
-        <div
-          className="
-            mt-3
-            grid
-            gap-3
-            sm:grid-cols-2
-            print:grid-cols-2
-          "
-        >
-
-          {numbers.map(
-            number => (
-
-              <FeaturedNumber
-                key={number.number_id}
-                number={number}
+              <EvidenceNote
+                key={
+                  note.note_id
+                }
+                note={note}
                 sourceNumberById={
                   sourceNumberById
                 }
+                showContext={false}
               />
 
             ),
@@ -1071,43 +960,46 @@ export default function TouchNotebookDocument({
   sources,
 }: Props) {
 
-  const sourceNumberById = new Map(
-    sources.map(
-      (
-        source,
-        index,
-      ) => [
-        source.content_id,
-        index + 1,
-      ],
-    ),
+  const sourceNumberById = (
+    new Map(
+      sources.map(
+        (
+          source,
+          index,
+        ) => [
+
+          source.content_id,
+          index + 1,
+
+        ],
+      ),
+    )
   );
 
-  const noteById = new Map(
-    notebook.notes.map(
-      note => [
-        note.note_id,
-        note,
-      ],
-    ),
+  const noteById = (
+    new Map(
+      notebook.notes.map(
+        note => [
+
+          note.note_id,
+          note,
+
+        ],
+      ),
+    )
   );
 
-  const eventById = new Map(
-    notebook.events.map(
-      event => [
-        event.event_id,
-        event,
-      ],
-    ),
-  );
+  const eventById = (
+    new Map(
+      notebook.events.map(
+        event => [
 
-  const numberById = new Map(
-    notebook.validated_numbers.map(
-      number => [
-        number.number_id,
-        number,
-      ],
-    ),
+          event.event_id,
+          event,
+
+        ],
+      ),
+    )
   );
 
   return (
@@ -1132,7 +1024,9 @@ export default function TouchNotebookDocument({
       "
     >
 
+      {/* ================================================= */}
       {/* HEADER */}
+      {/* ================================================= */}
 
       <header
         className="
@@ -1225,7 +1119,9 @@ export default function TouchNotebookDocument({
 
       </header>
 
+      {/* ================================================= */}
       {/* BODY */}
+      {/* ================================================= */}
 
       <div
         className="
@@ -1236,6 +1132,10 @@ export default function TouchNotebookDocument({
           print:py-6
         "
       >
+
+        {/* ================================================= */}
+        {/* CORPUS SUMMARY */}
+        {/* ================================================= */}
 
         {notebook.corpus_summary && (
 
@@ -1278,7 +1178,9 @@ export default function TouchNotebookDocument({
 
         )}
 
+        {/* ================================================= */}
         {/* DOCUMENTARY PLAN */}
+        {/* ================================================= */}
 
         {notebook.sections.map(
           (
@@ -1290,13 +1192,18 @@ export default function TouchNotebookDocument({
               section.event_ids
                 .map(
                   eventId =>
-                    eventById.get(eventId),
+                    eventById.get(
+                      eventId,
+                    ),
                 )
                 .filter(
                   (
                     event,
-                  ): event is TouchNotebookEvent =>
-                    Boolean(event),
+                  ): event is TouchNotebookEvent => (
+                    Boolean(
+                      event,
+                    )
+                  ),
                 )
             );
 
@@ -1304,63 +1211,30 @@ export default function TouchNotebookDocument({
               section.note_ids
                 .map(
                   noteId =>
-                    noteById.get(noteId),
+                    noteById.get(
+                      noteId,
+                    ),
                 )
                 .filter(
                   (
                     note,
-                  ): note is TouchEvidenceNote =>
-                    Boolean(note),
-                )
-            );
-
-            const orderedNumberIds =
-              uniqueValues([
-                ...events.flatMap(
-                  event =>
-                    event.number_ids,
-                ),
-                ...section.number_ids,
-              ]);
-
-            const featuredNumberIds =
-              new Set(
-                orderedNumberIds.slice(
-                  0,
-                  MAX_FEATURED_NUMBERS_PER_SECTION,
-                ),
-              );
-
-            const standaloneNumbers = (
-              section.number_ids
-                .filter(
-                  numberId =>
-                    featuredNumberIds.has(
-                      numberId,
-                    ),
-                )
-                .map(
-                  numberId =>
-                    numberById.get(numberId),
-                )
-                .filter(
-                  (
-                    number,
-                  ): number is TouchNotebookNumber =>
-                    Boolean(number),
+                  ): note is TouchEvidenceNote => (
+                    Boolean(
+                      note,
+                    )
+                  ),
                 )
             );
 
             return (
 
               <DocumentSection
-                key={section.section_id}
+                key={
+                  section.section_id
+                }
                 title={
                   `${sectionIndex + 1}. `
                   + section.title
-                }
-                description={
-                  section.description
                 }
               >
 
@@ -1373,43 +1247,31 @@ export default function TouchNotebookDocument({
                         event.note_ids
                           .map(
                             noteId =>
-                              noteById.get(noteId),
+                              noteById.get(
+                                noteId,
+                              ),
                           )
                           .filter(
                             (
                               note,
-                            ): note is TouchEvidenceNote =>
-                              Boolean(note),
-                          )
-                      );
-
-                      const eventNumbers = (
-                        event.number_ids
-                          .filter(
-                            numberId =>
-                              featuredNumberIds.has(
-                                numberId,
-                              ),
-                          )
-                          .map(
-                            numberId =>
-                              numberById.get(numberId),
-                          )
-                          .filter(
-                            (
-                              number,
-                            ): number is TouchNotebookNumber =>
-                              Boolean(number),
+                            ): note is TouchEvidenceNote => (
+                              Boolean(
+                                note,
+                              )
+                            ),
                           )
                       );
 
                       return (
 
                         <EventBlock
-                          key={event.event_id}
+                          key={
+                            event.event_id
+                          }
                           event={event}
-                          notes={eventNotes}
-                          numbers={eventNumbers}
+                          notes={
+                            eventNotes
+                          }
                           sourceNumberById={
                             sourceNumberById
                           }
@@ -1428,37 +1290,10 @@ export default function TouchNotebookDocument({
                         note => (
 
                           <EvidenceNote
-                            key={note.note_id}
-                            note={note}
-                            sourceNumberById={
-                              sourceNumberById
+                            key={
+                              note.note_id
                             }
-                          />
-
-                        ),
-                      )}
-
-                    </div>
-
-                  )}
-
-                  {standaloneNumbers.length > 0 && (
-
-                    <div
-                      className="
-                        grid
-                        gap-3
-                        sm:grid-cols-2
-                        print:grid-cols-2
-                      "
-                    >
-
-                      {standaloneNumbers.map(
-                        number => (
-
-                          <FeaturedNumber
-                            key={number.number_id}
-                            number={number}
+                            note={note}
                             sourceNumberById={
                               sourceNumberById
                             }
@@ -1480,7 +1315,9 @@ export default function TouchNotebookDocument({
           },
         )}
 
+        {/* ================================================= */}
         {/* TIMELINE */}
+        {/* ================================================= */}
 
         {notebook.timeline.length > 0 && (
 
@@ -1524,31 +1361,36 @@ export default function TouchNotebookDocument({
                       {item.date}
                     </p>
 
-                    <p
+                    <div
                       className="
                         mt-0.5
-                        text-sm
-                        font-medium
-                        text-slate-900
+                        flex
+                        flex-wrap
+                        items-center
+                        gap-2
                       "
                     >
-                      {item.label}
-                    </p>
-
-                    {item.description && (
 
                       <p
                         className="
-                          mt-0.5
-                          text-xs
-                          leading-5
-                          text-slate-500
+                          text-sm
+                          font-medium
+                          text-slate-900
                         "
                       >
-                        {item.description}
+                        {item.label}
                       </p>
 
-                    )}
+                      <SourceReferences
+                        sourceContentIds={
+                          item.source_content_ids
+                        }
+                        sourceNumberById={
+                          sourceNumberById
+                        }
+                      />
+
+                    </div>
 
                   </div>
 
@@ -1561,7 +1403,9 @@ export default function TouchNotebookDocument({
 
         )}
 
+        {/* ================================================= */}
         {/* CONTRADICTIONS */}
+        {/* ================================================= */}
 
         {notebook.contradictions.length > 0 && (
 
@@ -1629,6 +1473,20 @@ export default function TouchNotebookDocument({
 
                     )}
 
+                    <div className="mt-1">
+
+                      <SourceReferences
+                        sourceContentIds={
+                          contradiction
+                            .source_content_ids
+                        }
+                        sourceNumberById={
+                          sourceNumberById
+                        }
+                      />
+
+                    </div>
+
                   </div>
 
                 ),
@@ -1640,7 +1498,9 @@ export default function TouchNotebookDocument({
 
         )}
 
+        {/* ================================================= */}
         {/* CORPUS ASSESSMENT */}
+        {/* ================================================= */}
 
         {(
           notebook.corpus_strengths.length > 0
@@ -1670,36 +1530,52 @@ export default function TouchNotebookDocument({
                   Points forts
                 </h3>
 
-                <ul
-                  className="
-                    mt-2
-                    list-disc
-                    space-y-1
-                    pl-4
-                    text-xs
-                    leading-5
-                    text-slate-600
-                  "
-                >
+                {notebook.corpus_strengths.length > 0 ? (
 
-                  {notebook.corpus_strengths.map(
-                    (
-                      strength,
-                      index,
-                    ) => (
+                  <ul
+                    className="
+                      mt-2
+                      list-disc
+                      space-y-1
+                      pl-4
+                      text-xs
+                      leading-5
+                      text-slate-600
+                    "
+                  >
 
-                      <li
-                        key={
-                          `${strength}-${index}`
-                        }
-                      >
-                        {strength}
-                      </li>
+                    {notebook.corpus_strengths.map(
+                      (
+                        strength,
+                        index,
+                      ) => (
 
-                    ),
-                  )}
+                        <li
+                          key={
+                            `${strength}-${index}`
+                          }
+                        >
+                          {strength}
+                        </li>
 
-                </ul>
+                      ),
+                    )}
+
+                  </ul>
+
+                ) : (
+
+                  <p
+                    className="
+                      mt-2
+                      text-xs
+                      text-slate-400
+                    "
+                  >
+                    Aucun point fort spécifique identifié.
+                  </p>
+
+                )}
 
               </div>
 
@@ -1715,36 +1591,52 @@ export default function TouchNotebookDocument({
                   Limites
                 </h3>
 
-                <ul
-                  className="
-                    mt-2
-                    list-disc
-                    space-y-1
-                    pl-4
-                    text-xs
-                    leading-5
-                    text-slate-600
-                  "
-                >
+                {notebook.corpus_limits.length > 0 ? (
 
-                  {notebook.corpus_limits.map(
-                    (
-                      limit,
-                      index,
-                    ) => (
+                  <ul
+                    className="
+                      mt-2
+                      list-disc
+                      space-y-1
+                      pl-4
+                      text-xs
+                      leading-5
+                      text-slate-600
+                    "
+                  >
 
-                      <li
-                        key={
-                          `${limit}-${index}`
-                        }
-                      >
-                        {limit}
-                      </li>
+                    {notebook.corpus_limits.map(
+                      (
+                        limit,
+                        index,
+                      ) => (
 
-                    ),
-                  )}
+                        <li
+                          key={
+                            `${limit}-${index}`
+                          }
+                        >
+                          {limit}
+                        </li>
 
-                </ul>
+                      ),
+                    )}
+
+                  </ul>
+
+                ) : (
+
+                  <p
+                    className="
+                      mt-2
+                      text-xs
+                      text-slate-400
+                    "
+                  >
+                    Aucune limite spécifique identifiée.
+                  </p>
+
+                )}
 
               </div>
 
@@ -1754,18 +1646,33 @@ export default function TouchNotebookDocument({
 
         )}
 
-        {/* COMPLETE NUMBER REGISTER */}
+        {/* ================================================= */}
+        {/* CERTIFIED NUMBERS APPENDIX */}
+        {/* ================================================= */}
 
         {notebook.validated_numbers.length > 0 && (
 
           <DocumentSection
             title="Annexe — Registre des chiffres certifiés"
-            description={
-              `${notebook.validated_numbers.length} `
-              + "observations validées issues du corpus."
-            }
             className="print:break-before-page"
           >
+
+            <p
+              className="
+                text-xs
+                leading-5
+                text-slate-500
+              "
+            >
+              {
+                notebook
+                  .validated_numbers
+                  .length
+              }
+              {" "}
+              observations acceptées issues du corpus et
+              conservées dans le référentiel Numbers.
+            </p>
 
             <ol
               className="
@@ -1780,8 +1687,12 @@ export default function TouchNotebookDocument({
                 number => (
 
                   <NumberRegisterItem
-                    key={number.number_id}
-                    number={number}
+                    key={
+                      number.number_id
+                    }
+                    number={
+                      number
+                    }
                     sourceNumberById={
                       sourceNumberById
                     }
@@ -1796,13 +1707,12 @@ export default function TouchNotebookDocument({
 
         )}
 
+        {/* ================================================= */}
         {/* SOURCES */}
+        {/* ================================================= */}
 
         <DocumentSection
           title="Sources"
-          description={
-            "Corpus sélectionné et analysé par GetCurator."
-          }
           className="print:break-before-page"
         >
 
@@ -1834,7 +1744,9 @@ export default function TouchNotebookDocument({
                       `touch-document-source-`
                       + source.content_id
                     }
-                    key={source.content_id}
+                    key={
+                      source.content_id
+                    }
                     className="
                       break-inside-avoid
                       border-b
@@ -1867,7 +1779,9 @@ export default function TouchNotebookDocument({
                         {source.source_url ? (
 
                           <a
-                            href={source.source_url}
+                            href={
+                              source.source_url
+                            }
                             target="_blank"
                             rel="noreferrer"
                             className="
@@ -1910,8 +1824,12 @@ export default function TouchNotebookDocument({
                               source.source_title,
                               publishedAt,
                             ]
-                              .filter(Boolean)
-                              .join(" · ")
+                              .filter(
+                                Boolean,
+                              )
+                              .join(
+                                " · ",
+                              )
                           }
                         </p>
 
