@@ -83,9 +83,9 @@ class TouchExtractedNote(
         default_factory=list,
     )
 
-    confidence: str
+    confidence: str = "MEDIUM"
 
-    status: str
+    status: str = "VALIDATED"
 
     source_content_id: str
 
@@ -675,6 +675,20 @@ def _prefix_extraction_ids(
             )
             or ""
         ).strip()
+
+        note["confidence"] = (
+            note.get(
+                "confidence"
+            )
+            or "MEDIUM"
+        )
+
+        note["status"] = (
+            note.get(
+                "status"
+            )
+            or "VALIDATED"
+        )
 
     return payload
 
@@ -1637,6 +1651,10 @@ def _validate_notebook_references(
 # CONSOLIDATE NOTEBOOK
 # ============================================================
 
+# ============================================================
+# CONSOLIDATE NOTEBOOK
+# ============================================================
+
 def _consolidate_notebook(
     request: TouchNotebookRequest,
     extracted_batches: list[dict],
@@ -1649,19 +1667,20 @@ def _consolidate_notebook(
 
     original_prompt = (
         build_touch_notebook_consolidation_prompt(
-    
+
             request=request,
-    
+
             extracted_batches=(
                 extracted_batches
             ),
-    
+
             certified_numbers=(
                 certified_numbers
             ),
-    
+
         )
     )
+
     prompt = original_prompt
 
     allowed_content_ids = set(
@@ -1699,6 +1718,44 @@ def _consolidate_notebook(
             parsed = _extract_json_object(
                 raw_content
             )
+
+            # Normalize optional note fields before
+            # validating the strict notebook model.
+            for note in (
+                parsed.get(
+                    "notes",
+                    [],
+                )
+                or []
+            ):
+
+                if not isinstance(
+                    note,
+                    dict,
+                ):
+
+                    continue
+
+                note["explanation"] = str(
+                    note.get(
+                        "explanation"
+                    )
+                    or ""
+                ).strip()
+
+                note["confidence"] = (
+                    note.get(
+                        "confidence"
+                    )
+                    or "MEDIUM"
+                )
+
+                note["status"] = (
+                    note.get(
+                        "status"
+                    )
+                    or "VALIDATED"
+                )
 
             # Numbers are sourced exclusively from the
             # certified Numbers pipeline. Any list generated
