@@ -114,15 +114,13 @@ class TouchBriefSection(
 
     section_id: str
 
-    section_type:
-        TouchBriefSectionType
+    section_type: TouchBriefSectionType
 
     title: str
 
     introduction: str = ""
 
-    layout:
-        TouchBriefSectionLayout
+    layout: TouchBriefSectionLayout
 
     note_ids: list[str] = Field(
         default_factory=list,
@@ -151,8 +149,7 @@ class TouchBriefStructure(
     StrictTouchBriefModel,
 ):
 
-    brief_type:
-        TouchBriefType
+    brief_type: TouchBriefType
 
     secondary_brief_type:
         TouchBriefType | None = None
@@ -194,8 +191,7 @@ class TouchBriefRequest(
     StrictTouchBriefModel,
 ):
 
-    notebook:
-        TouchCorpusNotebook
+    notebook: TouchCorpusNotebook
 
     requested_brief_type:
         TouchBriefTypeRequest = "AUTO"
@@ -213,10 +209,8 @@ class TouchBriefOutcome(
     StrictTouchBriefModel,
 ):
 
-    status:
-        TouchBriefStatus
+    status: TouchBriefStatus
 
-    brief:
-        TouchBriefStructure | None = None
+    brief: TouchBriefStructure | None = None
 
     error: str | None = None
