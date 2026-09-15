@@ -28,10 +28,14 @@ import type {
   SelectOption,
 } from "@/components/ui/SearchableMultiSelect";
 
+import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
+
 import type {
   TouchEntityReference,
   TouchEntityType,
   TouchGenerationOutcome,
+  TouchCorpusNotebook,
+  TouchBriefStructure,
   TouchCorpusNotebook,
 } from "@/types/touch";
 
@@ -39,6 +43,13 @@ const [
   notebook,
   setNotebook,
 ] = useState<TouchCorpusNotebook | null>(
+  null,
+);
+
+const [
+  brief,
+  setBrief,
+] = useState<TouchBriefStructure | null>(
   null,
 );
 
