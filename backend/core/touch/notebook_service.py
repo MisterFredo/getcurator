@@ -535,6 +535,10 @@ def _validate_extraction_sources(
 # EXTRACT ONE BATCH
 # ============================================================
 
+# ============================================================
+# EXTRACT ONE BATCH
+# ============================================================
+
 def _extract_batch(
     request: TouchNotebookRequest,
     contents: list[Any],
@@ -593,6 +597,333 @@ def _extract_batch(
             parsed = _extract_json_object(
                 raw_content
             )
+
+            # =================================================
+            # NORMALIZE RAW NOTES
+            # =================================================
+
+            raw_notes = (
+                parsed.get(
+                    "notes",
+                    [],
+                )
+                or []
+            )
+
+            if not isinstance(
+                raw_notes,
+                list,
+            ):
+
+                raise ValueError(
+                    "Le champ notes retourné par "
+                    "le moteur n’est pas une liste"
+                )
+
+            for note_index, note in enumerate(
+                raw_notes,
+                start=1,
+            ):
+
+                if not isinstance(
+                    note,
+                    dict,
+                ):
+
+                    raise ValueError(
+                        "Une note retournée par le "
+                        "moteur n’est pas un objet"
+                    )
+
+                # ---------------------------------------------
+                # IDENTIFIER
+                # ---------------------------------------------
+
+                note["temporary_note_id"] = str(
+                    note.get(
+                        "temporary_note_id"
+                    )
+                    or f"note-{note_index:03d}"
+                ).strip()
+
+                # ---------------------------------------------
+                # SINGULAR ALIASES
+                # ---------------------------------------------
+
+                singular_actor = (
+                    note.pop(
+                        "actor",
+                        None,
+                    )
+                )
+
+                singular_geography = (
+                    note.pop(
+                        "geography",
+                        None,
+                    )
+                )
+
+                singular_date = (
+                    note.pop(
+                        "date",
+                        None,
+                    )
+                )
+
+                # ---------------------------------------------
+                # ACTORS
+                # ---------------------------------------------
+
+                raw_actors = note.get(
+                    "actors"
+                )
+
+                if isinstance(
+                    raw_actors,
+                    str,
+                ):
+
+                    actors = [
+
+                        raw_actors.strip()
+
+                    ] if raw_actors.strip() else []
+
+                elif isinstance(
+                    raw_actors,
+                    list,
+                ):
+
+                    actors = [
+
+                        value.strip()
+
+                        for value in raw_actors
+
+                        if (
+                            isinstance(
+                                value,
+                                str,
+                            )
+                            and value.strip()
+                        )
+
+                    ]
+
+                else:
+
+                    actors = []
+
+                if (
+                    isinstance(
+                        singular_actor,
+                        str,
+                    )
+                    and singular_actor.strip()
+                    and singular_actor.strip()
+                    not in actors
+                ):
+
+                    actors.append(
+                        singular_actor.strip()
+                    )
+
+                note["actors"] = actors
+
+                # ---------------------------------------------
+                # GEOGRAPHIES
+                # ---------------------------------------------
+
+                raw_geographies = note.get(
+                    "geographies"
+                )
+
+                if isinstance(
+                    raw_geographies,
+                    str,
+                ):
+
+                    geographies = [
+
+                        raw_geographies.strip()
+
+                    ] if raw_geographies.strip() else []
+
+                elif isinstance(
+                    raw_geographies,
+                    list,
+                ):
+
+                    geographies = [
+
+                        value.strip()
+
+                        for value in raw_geographies
+
+                        if (
+                            isinstance(
+                                value,
+                                str,
+                            )
+                            and value.strip()
+                        )
+
+                    ]
+
+                else:
+
+                    geographies = []
+
+                if (
+                    isinstance(
+                        singular_geography,
+                        str,
+                    )
+                    and singular_geography.strip()
+                    and singular_geography.strip()
+                    not in geographies
+                ):
+
+                    geographies.append(
+                        singular_geography.strip()
+                    )
+
+                note["geographies"] = (
+                    geographies
+                )
+
+                # ---------------------------------------------
+                # DATES
+                # ---------------------------------------------
+
+                raw_dates = note.get(
+                    "dates"
+                )
+
+                if isinstance(
+                    raw_dates,
+                    str,
+                ):
+
+                    dates = [
+
+                        raw_dates.strip()
+
+                    ] if raw_dates.strip() else []
+
+                elif isinstance(
+                    raw_dates,
+                    list,
+                ):
+
+                    dates = [
+
+                        value.strip()
+
+                        for value in raw_dates
+
+                        if (
+                            isinstance(
+                                value,
+                                str,
+                            )
+                            and value.strip()
+                        )
+
+                    ]
+
+                else:
+
+                    dates = []
+
+                if (
+                    isinstance(
+                        singular_date,
+                        str,
+                    )
+                    and singular_date.strip()
+                    and singular_date.strip()
+                    not in dates
+                ):
+
+                    dates.append(
+                        singular_date.strip()
+                    )
+
+                note["dates"] = dates
+
+                # ---------------------------------------------
+                # TEXT
+                # ---------------------------------------------
+
+                note["statement"] = str(
+                    note.get(
+                        "statement"
+                    )
+                    or ""
+                ).strip()
+
+                note["explanation"] = str(
+                    note.get(
+                        "explanation"
+                    )
+                    or ""
+                ).strip()
+
+                # ---------------------------------------------
+                # ENUM-LIKE FIELDS
+                # ---------------------------------------------
+
+                note["note_type"] = str(
+                    note.get(
+                        "note_type"
+                    )
+                    or "FACT"
+                ).strip().upper()
+
+                note["confidence"] = str(
+                    note.get(
+                        "confidence"
+                    )
+                    or "MEDIUM"
+                ).strip().upper()
+
+                note["status"] = str(
+                    note.get(
+                        "status"
+                    )
+                    or "VALIDATED"
+                ).strip().upper()
+
+                # ---------------------------------------------
+                # SOURCE IDENTIFIER
+                # ---------------------------------------------
+
+                source_content_id = (
+                    note.get(
+                        "source_content_id"
+                    )
+                    or note.pop(
+                        "content_id",
+                        None,
+                    )
+                    or note.pop(
+                        "source_id",
+                        None,
+                    )
+                    or ""
+                )
+
+                note["source_content_id"] = str(
+                    source_content_id
+                ).strip()
+
+            parsed["notes"] = raw_notes
+
+            # =================================================
+            # STRICT VALIDATION
+            # =================================================
 
             extraction = (
                 TouchExtractionResult
