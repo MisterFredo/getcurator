@@ -1,4 +1,4 @@
-notebook_organization_prompt.pyimport json
+import json
 
 from core.touch.notebook_models import (
     TouchEvidenceNote,
