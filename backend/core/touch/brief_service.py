@@ -908,7 +908,6 @@ def _validate_brief(
         brief
     )
 
-
 # ============================================================
 # BUILD TOUCH BRIEF
 # ============================================================
@@ -923,7 +922,6 @@ def build_touch_brief(
         normalized_request = (
             request.model_copy(
                 update={
-
                     "editorial_instruction":
                         request
                         .editorial_instruction
@@ -933,7 +931,6 @@ def build_touch_brief(
                         _normalize_language(
                             request.output_language
                         ),
-
                 },
             )
         )
@@ -1007,18 +1004,6 @@ def build_touch_brief(
                     brief=brief,
 
                 )
-
-                return TouchBriefOutcome(
-
-                    status="GENERATED",
-
-                    brief=brief,
-
-                    error=None,
-
-                )
-
-                _validate_brief(
 
                 return TouchBriefOutcome(
 
