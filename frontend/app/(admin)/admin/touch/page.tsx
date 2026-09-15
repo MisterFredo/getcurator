@@ -1173,8 +1173,8 @@ export default function TouchPage() {
           notebook={
             notebook
           }
-          sourceContentIds={
-            selectedContentIds
+          sources={
+            selectedCandidates
           }
           brief={
             brief
