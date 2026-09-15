@@ -827,119 +827,121 @@ export default function TouchNotebookPreview({
 
       </NotebookSection>
 
-      {/* ================================================= */}
-      {/* EVENTS */}
-      {/* ================================================= */}
-
-      {notebook.events.length > 0 && (
-
-        <NotebookSection
-          title="Events"
-          description={
-            "Underlying developments reconstructed "
-            + "from complementary sources."
-          }
-        >
-
-          <div className="space-y-3">
-
-            {notebook.events.map(
-              event => (
-
-                <article
-                  key={event.event_id}
-                  className="
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    p-5
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      flex-wrap
-                      items-start
-                      justify-between
-                      gap-3
-                    "
-                  >
-
-                    <div>
-
-                      <h4 className="font-semibold text-gray-900">
-                        {event.title}
-                      </h4>
-
-                      {event.event_date && (
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          {event.event_date}
+            {/* ================================================= */}
+            {/* EVENTS */}
+            {/* ================================================= */}
+      
+            {notebook.events.length > 0 && (
+      
+              <NotebookSection
+                title="Events"
+                description={
+                  "Underlying developments reconstructed "
+                  + "from complementary sources."
+                }
+              >
+      
+                <div className="space-y-3">
+      
+                  {notebook.events.map(
+                    event => (
+      
+                      <article
+                        key={event.event_id}
+                        className="
+                          rounded-xl
+                          border
+                          border-gray-200
+                          bg-white
+                          p-5
+                        "
+                      >
+      
+                        <div
+                          className="
+                            flex
+                            flex-wrap
+                            items-start
+                            justify-between
+                            gap-3
+                          "
+                        >
+      
+                          <div>
+      
+                            <h4 className="font-semibold text-gray-900">
+                              {event.title}
+                            </h4>
+      
+                            {event.event_date && (
+      
+                              <p className="mt-1 text-xs text-gray-500">
+                                {event.event_date}
+                              </p>
+      
+                            )}
+      
+                          </div>
+      
+                        </div>
+      
+                        <p
+                          className="
+                            mt-3
+                            text-sm
+                            leading-6
+                            text-gray-600
+                          "
+                        >
+                          {event.description}
                         </p>
-
-                      )}
-
-                    </div>
-                  <p
-                    className="
-                      mt-3
-                      text-sm
-                      leading-6
-                      text-gray-600
-                    "
-                  >
-                    {event.description}
-                  </p>
-
-                  {event.actors.length > 0 && (
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-
-                      {event.actors.map(
-                        actor => (
-
-                          <span
-                            key={actor}
-                            className="
-                              rounded-full
-                              bg-gray-100
-                              px-2.5
-                              py-1
-                              text-xs
-                              text-gray-600
-                            "
-                          >
-                            {actor}
-                          </span>
-
-                        ),
-                      )}
-
-                    </div>
-
+      
+                        {event.actors.length > 0 && (
+      
+                          <div className="mt-3 flex flex-wrap gap-2">
+      
+                            {event.actors.map(
+                              actor => (
+      
+                                <span
+                                  key={actor}
+                                  className="
+                                    rounded-full
+                                    bg-gray-100
+                                    px-2.5
+                                    py-1
+                                    text-xs
+                                    text-gray-600
+                                  "
+                                >
+                                  {actor}
+                                </span>
+      
+                              ),
+                            )}
+      
+                          </div>
+      
+                        )}
+      
+                        <div className="mt-4">
+      
+                          {renderSourceReferences(
+                            event.source_content_ids,
+                          )}
+      
+                        </div>
+      
+                      </article>
+      
+                    ),
                   )}
-
-                  <div className="mt-4">
-
-                    {renderSourceReferences(
-                      event.source_content_ids,
-                    )}
-
-                  </div>
-
-                </article>
-
-              ),
-            )}
-
-          </div>
-
-        </NotebookSection>
+      
+                </div>
+      
+              </NotebookSection>
 
       )}
-
       {/* ================================================= */}
       {/* TIMELINE */}
       {/* ================================================= */}
