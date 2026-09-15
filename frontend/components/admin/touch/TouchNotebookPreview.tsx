@@ -14,6 +14,8 @@ import type {
 
 type Props = {
   notebook: TouchCorpusNotebook;
+
+  sourceContentIds: string[];
 };
 
 
@@ -225,58 +227,6 @@ function getStatusClasses(
 
 }
 
-
-/* =========================================================
-   SOURCE REFERENCES
-========================================================= */
-
-function SourceReferences({
-  sourceContentIds,
-}: {
-  sourceContentIds: string[];
-}) {
-
-  if (
-    sourceContentIds.length === 0
-  ) {
-
-    return null;
-
-  }
-
-  return (
-
-    <div className="flex flex-wrap gap-1.5">
-
-      {sourceContentIds.map(
-        contentId => (
-
-          <span
-            key={contentId}
-            title={contentId}
-            className="
-              rounded
-              bg-gray-100
-              px-2
-              py-1
-              font-mono
-              text-[11px]
-              text-gray-500
-            "
-          >
-            {contentId.slice(0, 8)}
-          </span>
-
-        ),
-      )}
-
-    </div>
-
-  );
-
-}
-
-
 /* =========================================================
    SECTION
 ========================================================= */
@@ -326,7 +276,90 @@ function NotebookSection({
 
 export default function TouchNotebookPreview({
   notebook,
+  sourceContentIds,
 }: Props) {
+
+  const sourceNumberById =
+    new Map(
+      sourceContentIds.map(
+        (
+          contentId,
+          index,
+        ) => [
+
+          contentId,
+          index + 1,
+
+        ],
+      ),
+    );
+
+  function renderSourceReferences(
+    referencedContentIds: string[],
+  ) {
+
+    const references =
+      referencedContentIds
+        .map(
+          contentId => ({
+
+            contentId,
+
+            sourceNumber:
+              sourceNumberById.get(
+                contentId,
+              ),
+
+          }),
+        )
+        .filter(
+          reference =>
+            reference.sourceNumber
+            !== undefined,
+        );
+
+    if (
+      references.length === 0
+    ) {
+
+      return null;
+
+    }
+
+    return (
+
+      <div className="flex flex-wrap gap-1.5">
+
+        {references.map(
+          reference => (
+
+            <span
+              key={
+                reference.contentId
+              }
+              className="
+                rounded
+                bg-gray-100
+                px-2
+                py-1
+                text-xs
+                font-medium
+                text-gray-600
+              "
+            >
+              Source
+              {" "}
+              {reference.sourceNumber}
+            </span>
+
+          ),
+        )}
+
+      </div>
+
+    );
+
+  }
 
   return (
 
@@ -534,11 +567,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        dimension.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      dimension.source_content_ids,
+                    )}
 
                   </div>
 
@@ -790,11 +821,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        note.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      note.source_content_ids,
+                    )}
 
                   </div>
 
@@ -918,11 +947,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        event.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      event.source_content_ids,
+                    )}
 
                   </div>
 
@@ -1002,11 +1029,9 @@ export default function TouchNotebookPreview({
 
                     <div className="mt-3">
 
-                      <SourceReferences
-                        sourceContentIds={
-                          item.source_content_ids
-                        }
-                      />
+                      {renderSourceReferences(
+                        item.source_content_ids,
+                      )}
 
                     </div>
 
@@ -1122,11 +1147,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        number.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      number.source_content_ids,
+                    )}
 
                   </div>
 
@@ -1223,11 +1246,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        number.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      number.source_content_ids,
+                    )}
 
                   </div>
 
@@ -1305,11 +1326,9 @@ export default function TouchNotebookPreview({
 
                   <div className="mt-4">
 
-                    <SourceReferences
-                      sourceContentIds={
-                        contradiction.source_content_ids
-                      }
-                    />
+                    {renderSourceReferences(
+                      contradiction.source_content_ids,
+                    )}
 
                   </div>
 
