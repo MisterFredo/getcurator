@@ -14,8 +14,13 @@ from core.expertise.content_service import (
     load_contents_by_ids,
 )
 
+from core.numbers.content_service import (
+    get_validated_numbers_for_contents,
+)
+
 from core.touch.notebook_models import (
     TouchCorpusNotebook,
+    TouchNotebookNumber,
     TouchNotebookOutcome,
     TouchNotebookRequest,
 )
@@ -275,6 +280,188 @@ def _unique_ids(
         )
 
     return result
+
+# ============================================================
+# SAFE FLOAT
+# ============================================================
+
+def _safe_float(
+    value: Any,
+) -> float:
+
+    if value is None:
+        return 0.0
+
+    try:
+
+        return float(
+            value
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        return 0.0
+
+
+# ============================================================
+# BUILD CERTIFIED NUMBERS
+# ============================================================
+
+def _build_certified_numbers(
+    content_ids: list[str],
+    numbers_by_content: dict[
+        str,
+        list[dict],
+    ],
+) -> list[
+    TouchNotebookNumber
+]:
+
+    certified_numbers = []
+
+    seen_number_ids = set()
+
+    for content_id in content_ids:
+
+        content_numbers = (
+            numbers_by_content.get(
+                content_id,
+                [],
+            )
+            or []
+        )
+
+        for number in content_numbers:
+
+            number_id = str(
+                number.get(
+                    "id_number"
+                )
+                or ""
+            ).strip()
+
+            number_content_id = str(
+                number.get(
+                    "id_content"
+                )
+                or content_id
+            ).strip()
+
+            if not number_id:
+
+                raise ValueError(
+                    "Une observation Number certifiée "
+                    "ne possède pas de id_number"
+                )
+
+            if (
+                number_content_id
+                != content_id
+            ):
+
+                raise ValueError(
+                    "Une observation Number certifiée "
+                    "référence un mauvais contenu : "
+                    f"{number_id}"
+                )
+
+            if number_id in seen_number_ids:
+
+                raise ValueError(
+                    "Une observation Number certifiée "
+                    "est présente plusieurs fois : "
+                    f"{number_id}"
+                )
+
+            seen_number_ids.add(
+                number_id
+            )
+
+            certified_numbers.append(
+
+                TouchNotebookNumber(
+
+                    number_id=
+                        number_id,
+
+                    id_content=
+                        number_content_id,
+
+                    label=
+                        number.get(
+                            "label"
+                        ),
+
+                    metric_type=
+                        number.get(
+                            "metric_type"
+                        ),
+
+                    value=
+                        number.get(
+                            "value"
+                        ),
+
+                    value_min=
+                        number.get(
+                            "value_min"
+                        ),
+
+                    value_max=
+                        number.get(
+                            "value_max"
+                        ),
+
+                    unit=
+                        number.get(
+                            "unit"
+                        ),
+
+                    scale=
+                        number.get(
+                            "scale"
+                        ),
+
+                    zone=
+                        number.get(
+                            "zone"
+                        ),
+
+                    period_label=
+                        number.get(
+                            "period_label"
+                        ),
+
+                    value_status=
+                        number.get(
+                            "value_status"
+                        ),
+
+                    confidence=
+                        _safe_float(
+                            number.get(
+                                "confidence"
+                            )
+                        ),
+
+                    entities=
+                        number.get(
+                            "entities"
+                        )
+                        or [],
+
+                    source_content_ids=[
+                        number_content_id,
+                    ],
+
+                )
+
+            )
+
+    return certified_numbers
 
 
 # ============================================================
@@ -708,43 +895,8 @@ def _normalize_notebook(
                 "number_id":
                     number.number_id.strip(),
 
-                "value":
-                    number.value.strip(),
-
-                "unit":
-                    number.unit.strip(),
-
-                "metric":
-                    number.metric.strip(),
-
-                "context":
-                    number.context.strip(),
-
-                "actor":
-                    (
-                        number.actor.strip()
-                        if number.actor
-                        else None
-                    ),
-
-                "geography":
-                    (
-                        number.geography.strip()
-                        if number.geography
-                        else None
-                    ),
-
-                "period":
-                    (
-                        number.period.strip()
-                        if number.period
-                        else None
-                    ),
-
-                "note_ids":
-                    _unique_ids(
-                        number.note_ids
-                    ),
+                "id_content":
+                    number.id_content.strip(),
 
                 "source_content_ids":
                     _unique_ids(
@@ -804,6 +956,11 @@ def _normalize_notebook(
                 "note_ids":
                     _unique_ids(
                         contradiction.note_ids
+                    ),
+
+                "number_ids":
+                    _unique_ids(
+                        event.number_ids
                     ),
 
                 "source_content_ids":
@@ -908,6 +1065,10 @@ def _validate_unique_identifiers(
 # VALIDATE REFERENCES
 # ============================================================
 
+# ============================================================
+# VALIDATE REFERENCES
+# ============================================================
+
 def _validate_notebook_references(
     notebook: TouchCorpusNotebook,
     allowed_content_ids: set[str],
@@ -960,9 +1121,15 @@ def _validate_notebook_references(
         event_ids
     )
 
+    number_id_set = set(
+        number_ids
+    )
+
     referenced_note_ids = set()
 
     referenced_event_ids = set()
+
+    referenced_number_ids = set()
 
     referenced_source_ids = set()
 
@@ -983,6 +1150,10 @@ def _validate_notebook_references(
 
         referenced_note_ids.update(
             event.note_ids
+        )
+
+        referenced_number_ids.update(
+            event.number_ids
         )
 
         referenced_source_ids.update(
@@ -1017,18 +1188,25 @@ def _validate_notebook_references(
 
     for number in notebook.validated_numbers:
 
-        referenced_note_ids.update(
-            number.note_ids
-        )
-
         referenced_source_ids.update(
             number.source_content_ids
         )
 
+        if (
+            number.id_content
+            not in allowed_content_ids
+        ):
+
+            raise ValueError(
+                "Un Number certifié référence "
+                "un contenu extérieur au corpus : "
+                f"{number.number_id}"
+            )
+
         if not number.source_content_ids:
 
             raise ValueError(
-                "Un chiffre validé ne possède "
+                "Un Number certifié ne possède "
                 "aucune source"
             )
 
@@ -1086,6 +1264,25 @@ def _validate_notebook_references(
             )
         )
 
+    unknown_number_ids = (
+
+        referenced_number_ids
+        - number_id_set
+
+    )
+
+    if unknown_number_ids:
+
+        raise ValueError(
+            "Un événement référence des number_ids "
+            "inconnus : "
+            + ", ".join(
+                sorted(
+                    unknown_number_ids
+                )
+            )
+        )
+
     unknown_source_ids = (
 
         referenced_source_ids
@@ -1105,7 +1302,6 @@ def _validate_notebook_references(
             )
         )
 
-
 # ============================================================
 # CONSOLIDATE NOTEBOOK
 # ============================================================
@@ -1113,6 +1309,9 @@ def _validate_notebook_references(
 def _consolidate_notebook(
     request: TouchNotebookRequest,
     extracted_batches: list[dict],
+    certified_numbers: list[
+        TouchNotebookNumber
+    ],
     model: Optional[str],
     max_attempts: int,
 ) -> TouchCorpusNotebook:
@@ -1166,6 +1365,21 @@ def _consolidate_notebook(
             parsed = _extract_json_object(
                 raw_content
             )
+
+            # Numbers are sourced exclusively from the
+            # certified Numbers pipeline. Any list generated
+            # by the Touch LLM is discarded.
+            parsed["validated_numbers"] = [
+
+                number.model_dump(
+                    mode="json",
+                )
+
+                for number in certified_numbers
+
+            ]
+
+            parsed["quarantined_numbers"] = []
 
             notebook = (
                 TouchCorpusNotebook
@@ -1324,6 +1538,24 @@ def build_touch_notebook(
 
         ]
 
+        numbers_by_content = (
+            get_validated_numbers_for_contents(
+                content_ids=content_ids,
+            )
+        )
+
+        certified_numbers = (
+            _build_certified_numbers(
+
+                content_ids=content_ids,
+
+                numbers_by_content=(
+                    numbers_by_content
+                ),
+
+            )
+        )
+
         content_batches = _build_batches(
 
             values=ordered_contents,
@@ -1373,6 +1605,10 @@ def build_touch_notebook(
 
             extracted_batches=(
                 extracted_batches
+            ),
+
+            certified_numbers=(
+                certified_numbers
             ),
 
             model=model,
