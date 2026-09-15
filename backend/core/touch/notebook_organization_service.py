@@ -91,6 +91,7 @@ def _normalize_string_list(
 ) -> list[str]:
 
     if value is None:
+
         return []
 
     if isinstance(
@@ -138,11 +139,14 @@ def _normalize_optional_string(
 ) -> str | None:
 
     if value is None:
+
         return None
 
-    normalized_value = str(
-        value
-    ).strip()
+    normalized_value = (
+        str(
+            value
+        ).strip()
+    )
 
     return (
         normalized_value
@@ -171,6 +175,7 @@ def _normalize_section(
         )
 
     return {
+
         "section_id":
             str(
                 raw_section.get(
@@ -209,12 +214,11 @@ def _normalize_section(
                 )
             ),
 
+        # Certified Numbers are not organised
+        # inside documentary sections.
         "number_ids":
-            _normalize_string_list(
-                raw_section.get(
-                    "number_ids"
-                )
-            ),
+            [],
+
     }
 
 
@@ -238,6 +242,7 @@ def _normalize_event(
         )
 
     return {
+
         "event_id":
             str(
                 raw_event.get(
@@ -283,12 +288,10 @@ def _normalize_event(
                 )
             ),
 
+        # Certified Numbers are not organised
+        # inside documentary events.
         "number_ids":
-            _normalize_string_list(
-                raw_event.get(
-                    "number_ids"
-                )
-            ),
+            [],
 
         "source_content_ids":
             _normalize_string_list(
@@ -296,6 +299,7 @@ def _normalize_event(
                     "source_content_ids"
                 )
             ),
+
     }
 
 
@@ -318,6 +322,7 @@ def _normalize_timeline_item(
         )
 
     return {
+
         "date":
             str(
                 raw_item.get(
@@ -362,6 +367,7 @@ def _normalize_timeline_item(
                     "source_content_ids"
                 )
             ),
+
     }
 
 
@@ -384,6 +390,7 @@ def _normalize_contradiction(
         )
 
     return {
+
         "subject":
             str(
                 raw_contradiction.get(
@@ -420,6 +427,7 @@ def _normalize_contradiction(
                     "resolution"
                 )
             ),
+
     }
 
 
@@ -492,6 +500,7 @@ def _normalize_organization_payload(
         raw_contradictions = []
 
     return {
+
         "corpus_summary":
             str(
                 parsed.get(
@@ -507,7 +516,8 @@ def _normalize_organization_payload(
                 index=index,
             )
 
-            for index, raw_section in enumerate(
+            for index, raw_section
+            in enumerate(
                 raw_sections
             )
 
@@ -520,7 +530,8 @@ def _normalize_organization_payload(
                 index=index,
             )
 
-            for index, raw_event in enumerate(
+            for index, raw_event
+            in enumerate(
                 raw_events
             )
 
@@ -532,7 +543,8 @@ def _normalize_organization_payload(
                 raw_item
             )
 
-            for raw_item in raw_timeline
+            for raw_item
+            in raw_timeline
 
         ],
 
@@ -560,6 +572,7 @@ def _normalize_organization_payload(
                     "corpus_limits"
                 )
             ),
+
     }
 
 
@@ -611,6 +624,8 @@ def _build_notebook(
 
         dimensions=[],
 
+        # Certified Numbers remain complete and unchanged,
+        # but are not part of the documentary plan.
         validated_numbers=(
             certified_numbers
         ),
@@ -648,10 +663,12 @@ def organize_notebook(
     max_attempts: int = 2,
 ) -> TouchCorpusNotebook:
 
-    if not notes and not certified_numbers:
+    # The documentary plan is built exclusively
+    # from qualitative contribution notes.
+    if not notes:
 
         raise ValueError(
-            "Aucune pièce documentaire "
+            "Aucune note documentaire "
             "à organiser"
         )
 
@@ -661,10 +678,6 @@ def organize_notebook(
             request=request,
 
             notes=notes,
-
-            certified_numbers=(
-                certified_numbers
-            ),
 
         )
     )
