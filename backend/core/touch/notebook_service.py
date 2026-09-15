@@ -87,7 +87,9 @@ class TouchExtractedNote(
 
     status: str = "VALIDATED"
 
-    source_content_id: str
+    source_content_ids: list[str] = Field(
+        default_factory=list,
+    )
 
 class TouchExtractionResult(
     StrictTouchExtractionModel,
@@ -499,6 +501,10 @@ Return only the corrected JSON object.
 # VALIDATE EXTRACTION SOURCES
 # ============================================================
 
+# ============================================================
+# VALIDATE EXTRACTION SOURCES
+# ============================================================
+
 def _validate_extraction_sources(
     extraction: TouchExtractionResult,
     allowed_content_ids: set[str],
@@ -506,9 +512,12 @@ def _validate_extraction_sources(
 
     returned_source_ids = {
 
-        note.source_content_id
+        source_content_id
 
         for note in extraction.notes
+
+        for source_content_id
+        in note.source_content_ids
 
     }
 
@@ -531,10 +540,25 @@ def _validate_extraction_sources(
             )
         )
 
-# ============================================================
-# EXTRACT ONE BATCH
-# ============================================================
+    notes_without_sources = [
 
+        note.temporary_note_id
+
+        for note in extraction.notes
+
+        if not note.source_content_ids
+
+    ]
+
+    if notes_without_sources:
+
+        raise ValueError(
+            "Le moteur d’extraction a retourné "
+            "des notes sans source : "
+            + ", ".join(
+                notes_without_sources
+            )
+        )
 # ============================================================
 # EXTRACT ONE BATCH
 # ============================================================
@@ -897,12 +921,13 @@ def _extract_batch(
                 ).strip().upper()
 
                 # ---------------------------------------------
-                # SOURCE IDENTIFIER
+                # SOURCE IDENTIFIERS
                 # ---------------------------------------------
 
-                source_content_id = (
-                    note.get(
-                        "source_content_id"
+                singular_source_id = (
+                    note.pop(
+                        "source_content_id",
+                        None,
                     )
                     or note.pop(
                         "content_id",
@@ -912,12 +937,66 @@ def _extract_batch(
                         "source_id",
                         None,
                     )
-                    or ""
                 )
 
-                note["source_content_id"] = str(
-                    source_content_id
-                ).strip()
+                raw_source_ids = note.get(
+                    "source_content_ids"
+                )
+
+                if isinstance(
+                    raw_source_ids,
+                    str,
+                ):
+
+                    source_content_ids = [
+
+                        raw_source_ids.strip()
+
+                    ] if raw_source_ids.strip() else []
+
+                elif isinstance(
+                    raw_source_ids,
+                    list,
+                ):
+
+                    source_content_ids = [
+
+                        str(value).strip()
+
+                        for value in raw_source_ids
+
+                        if (
+                            value is not None
+                            and str(value).strip()
+                        )
+
+                    ]
+
+                else:
+
+                    source_content_ids = []
+
+                if (
+                    singular_source_id is not None
+                    and str(
+                        singular_source_id
+                    ).strip()
+                    not in source_content_ids
+                ):
+
+                    source_content_ids.append(
+                        str(
+                            singular_source_id
+                        ).strip()
+                    )
+
+                note["source_content_ids"] = (
+                    list(
+                        dict.fromkeys(
+                            source_content_ids
+                        )
+                    )
+                )
 
             parsed["notes"] = raw_notes
 
@@ -1978,9 +2057,6 @@ def _validate_notebook_references(
                 )
             )
         )
-# ============================================================
-# CONSOLIDATE NOTEBOOK
-# ============================================================
 
 # ============================================================
 # CONSOLIDATE NOTEBOOK
