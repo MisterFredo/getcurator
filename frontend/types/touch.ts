@@ -529,6 +529,21 @@ export type TouchNotebookDimension = {
   source_content_ids: string[];
 };
 
+/* =========================================================
+   NOTEBOOK SECTION
+========================================================= */
+
+export type TouchNotebookSection = {
+  section_id: string;
+
+  title: string;
+  description: string;
+
+  event_ids: string[];
+  note_ids: string[];
+  number_ids: string[];
+};
+
 
 /* =========================================================
    QUARANTINED NUMBER
