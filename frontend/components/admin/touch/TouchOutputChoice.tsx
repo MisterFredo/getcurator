@@ -11,11 +11,13 @@ import {
 
 import type {
   TouchBriefStructure,
+  TouchContentCandidate,
   TouchCorpusNotebook,
 } from "@/types/touch";
 
 import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview";
 import TouchBriefPreview from "@/components/admin/touch/TouchBriefPreview";
+import TouchNotebookDocument from "@/components/admin/touch/TouchNotebookDocument";
 
 
 /* =========================================================
@@ -30,7 +32,7 @@ type TouchOutputMode =
 type Props = {
   notebook: TouchCorpusNotebook;
 
-  sourceContentIds: string[];
+  sources: TouchContentCandidate[];
 
   brief:
     TouchBriefStructure | null;
@@ -47,7 +49,7 @@ type Props = {
 
 export default function TouchOutputChoice({
   notebook,
-  sourceContentIds,
+  sources,
   brief,
   onBriefChange,
 }: Props) {
@@ -525,11 +527,9 @@ export default function TouchOutputChoice({
 
           </div>
 
-          <TouchNotebookPreview
+          <TouchNotebookDocument
             notebook={notebook}
-            sourceContentIds={
-              sourceContentIds
-            }
+            sources={sources}
           />
 
         </div>
