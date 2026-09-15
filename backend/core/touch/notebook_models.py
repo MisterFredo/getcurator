@@ -410,6 +410,21 @@ class TouchCorpusNotebook(
     )
 
 # ============================================================
+# NOTEBOOK CONTRIBUTION
+# ============================================================
+
+class TouchNotebookContribution(
+    StrictTouchNotebookModel,
+):
+
+    content_id: str
+
+    statements: list[str] = Field(
+        ...,
+        min_length=1,
+    )
+
+# ============================================================
 # REQUEST
 # ============================================================
 
@@ -426,8 +441,14 @@ class TouchNotebookRequest(
         min_length=1,
     )
 
-    output_language: str = "fr"
+    contributions: list[
+        TouchNotebookContribution
+    ] = Field(
+        ...,
+        min_length=1,
+    )
 
+    output_language: str = "fr"
 
 # ============================================================
 # OUTCOME
