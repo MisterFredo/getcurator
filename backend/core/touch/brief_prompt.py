@@ -9,7 +9,7 @@ from core.touch.brief_models import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_BRIEF_VERSION = "1.0"
+TOUCH_BRIEF_VERSION = "1.1"
 
 
 # ============================================================
@@ -338,22 +338,21 @@ message.
 HIDDEN MATERIAL
 ============================================================
 
-Place unused notes in hidden_note_ids.
+Select only the notes, validated Numbers and events that are
+useful for the assisted brief.
 
-Place unused validated numbers in hidden_number_ids.
+Do not attempt to enumerate unused notebook elements.
 
-A hidden item is not rejected or deleted. It remains available
-inside the internal notebook.
+The backend automatically calculates hidden_note_ids and
+hidden_number_ids from the elements that are not displayed.
 
-Hide notes when they are:
+Always return hidden_note_ids and hidden_number_ids as empty
+arrays.
 
-- redundant;
-- too detailed for the brief;
-- weakly connected to the central question;
-- useful only as internal verification;
-- already represented by a stronger consolidated note.
+An unselected item is not rejected or deleted. It remains
+available inside the complete editorial notebook.
 
-Do not hide important uncertainty merely to make the brief
+Do not omit important uncertainty merely to make the brief
 appear more conclusive.
 
 
@@ -447,12 +446,15 @@ Do not include text outside the JSON object.
 # BUILD PROMPT
 # ============================================================
 
+# ============================================================
+# BUILD PROMPT
+# ============================================================
+
 def build_touch_brief_prompt(
     request: TouchBriefRequest,
 ) -> str:
 
     payload = {
-
         "output_language":
             request.output_language,
 
@@ -466,7 +468,6 @@ def build_touch_brief_prompt(
             request.notebook.model_dump(
                 mode="json",
             ),
-
     }
 
     serialized_payload = json.dumps(
@@ -481,11 +482,14 @@ def build_touch_brief_prompt(
         "professional brief.\n\n"
         "Use the existing notebook elements rather than "
         "rewriting their content.\n\n"
-        "Select the most suitable editorial structure, "
-        "unless a supported structure was explicitly "
-        "requested.\n\n"
-        "Return all unused note_ids and validated number_ids "
-        "in the corresponding hidden lists.\n\n"
+        "Select only the notes, certified Numbers and events "
+        "that materially help answer the central question.\n\n"
+        "Do not enumerate unused identifiers. Return "
+        "hidden_note_ids and hidden_number_ids as empty "
+        "arrays because the backend calculates them "
+        "automatically.\n\n"
+        "Select the most suitable editorial structure unless "
+        "a supported structure was explicitly requested.\n\n"
         "Return the result in the requested output "
         "language.\n\n"
         "INPUT:\n"
