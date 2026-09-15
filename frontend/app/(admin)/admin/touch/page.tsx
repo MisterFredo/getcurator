@@ -32,7 +32,15 @@ import type {
   TouchEntityReference,
   TouchEntityType,
   TouchGenerationOutcome,
+  TouchCorpusNotebook,
 } from "@/types/touch";
+
+const [
+  notebook,
+  setNotebook,
+] = useState<TouchCorpusNotebook | null>(
+  null,
+);
 
 
 /* =========================================================
@@ -979,6 +987,15 @@ export default function TouchPage() {
           }
           selectedContentIds={
             selectedContentIds
+          }
+          notebook={notebook}
+          onNotebookChange={
+            setNotebook
+          }
+          onContinue={() =>
+            setCurrentStep(
+              "OUTPUT",
+            )
           }
           outputLanguage="fr"
         />
