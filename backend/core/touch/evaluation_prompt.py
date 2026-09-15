@@ -221,37 +221,97 @@ Use the supplied content, not assumptions.
 KEY CONTRIBUTIONS
 ============================================================
 
-key_contributions must identify the concrete information or
-analytical value supplied by the content.
+key_contributions must contain the concrete documentary
+propositions supplied by the content.
 
-Each contribution must be:
+Each contribution must state the information directly.
+
+A contribution must never describe what the article, content,
+source or author does.
+
+Every contribution must be:
 
 - supported by the supplied content;
+- self-contained;
 - concise;
 - specific;
-- useful for comparing this source with other sources;
-- written in the requested output language.
+- understandable without seeing the article;
+- useful as a documentary note;
+- written in the requested output language;
+- limited to one factual or analytical proposition.
+
+Preserve important precision concerning:
+
+- actors;
+- actions;
+- products;
+- mechanisms;
+- geography;
+- dates;
+- amounts;
+- percentages;
+- periods;
+- limitations;
+- projections;
+- uncertainties.
+
+Use declarative sentences.
 
 Good contributions include:
 
-- specifies the products included in the partnership;
-- explains how the technical integration operates;
-- provides the announced launch timetable;
-- connects the development to the actor's monetisation
-  strategy;
-- identifies an unresolved geographic limitation;
-- supplies a quantified result.
+- Advertisers can buy ChatGPT ads through Amazon's
+  demand-side platform.
+- OpenAI controls advertising delivery according to the
+  context of the conversation.
+- The pilot programme is initially limited to the United
+  States.
+- Delta Vacations is one of the first participating brands.
+- Amazon has invested up to 50 billion dollars in OpenAI.
+- Algorithmic optimisation reduced CPC by 50% in ten days.
+- Amazon limits ChatGPT's access to its ecommerce catalogue.
 
-Bad contributions include:
+Forbidden formulations include:
 
-- talks about the partnership;
-- provides useful context;
-- is relevant to the topic;
-- explains the market.
+- The article describes...
+- The content explains...
+- The source highlights...
+- The author mentions...
+- It indicates that...
+- It emphasizes...
+- It provides information about...
+- It discusses...
+- Décrit...
+- Explique...
+- Souligne...
+- Mentionne...
+- Indique...
+- Met en évidence...
+- Fournit des informations sur...
+- Traite de...
 
-Return an empty list when no reliable contribution can be
-identified.
+Bad:
 
+- Explains how advertisers can buy ads through Amazon.
+- Highlights OpenAI's role in advertising delivery.
+- Mentions that Delta Vacations participates in the pilot.
+- Provides information about Amazon's investment in OpenAI.
+
+Good:
+
+- Advertisers can buy ChatGPT ads through Amazon's platform.
+- OpenAI controls advertising delivery.
+- Delta Vacations participates in the pilot programme.
+- Amazon has invested up to 50 billion dollars in OpenAI.
+
+Do not introduce a contribution with a reporting verb.
+
+Do not transform a precise figure into a vague observation.
+
+Do not combine several independent propositions into one
+contribution.
+
+Return an empty list when no reliable documentary proposition
+can be identified.
 
 ============================================================
 OVERLAPS
@@ -676,8 +736,11 @@ def build_touch_evaluation_prompt(
         "coverages of the same event.\n\n"
         "Group common events with event_key, but do "
         "not deduplicate or eliminate their sources.\n\n"
-        "Identify the analytical contribution of "
-        "each content.\n\n"
+        "Extract the concrete documentary propositions "
+        "supplied by each content.\n\n"
+        "State every key contribution directly. Never "
+        "describe what the article explains, highlights, "
+        "mentions or discusses.\n\n"
         "Return exactly one decision for every "
         "candidate.\n\n"
         "Do not omit or invent any content_id.\n\n"
