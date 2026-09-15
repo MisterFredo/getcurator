@@ -10,48 +10,31 @@ import {
 } from "@/lib/api";
 
 import {
-  generateTouchOnePager,
-} from "@/lib/touch";
-
-import {
   useTouchResearch,
 } from "@/hooks/useTouchResearch";
 
 import TouchCandidateList from "@/components/admin/touch/TouchCandidateList";
+import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder";
+import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
 import TouchResearchCoverage from "@/components/admin/touch/TouchResearchCoverage";
 import TouchResearchForm from "@/components/admin/touch/TouchResearchForm";
 import TouchSelectedCorpus from "@/components/admin/touch/TouchSelectedCorpus";
-import TouchDraftPreview from "@/components/admin/touch/TouchDraftPreview";
-import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder";
+import TouchWorkflowSteps from "@/components/admin/touch/TouchWorkflowSteps";
+
+import type {
+  TouchWorkflowStep,
+} from "@/components/admin/touch/TouchWorkflowSteps";
 
 import type {
   SelectOption,
 } from "@/components/ui/SearchableMultiSelect";
 
-import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
-
 import type {
-  TouchEntityReference,
-  TouchEntityType,
-  TouchGenerationOutcome,
-  TouchCorpusNotebook,
   TouchBriefStructure,
   TouchCorpusNotebook,
+  TouchEntityReference,
+  TouchEntityType,
 } from "@/types/touch";
-
-const [
-  notebook,
-  setNotebook,
-] = useState<TouchCorpusNotebook | null>(
-  null,
-);
-
-const [
-  brief,
-  setBrief,
-] = useState<TouchBriefStructure | null>(
-  null,
-);
 
 
 /* =========================================================
@@ -135,7 +118,9 @@ function normalizeOptions(
       continue;
     }
 
-    seenIds.add(id);
+    seenIds.add(
+      id,
+    );
 
     options.push({
       id,
@@ -246,6 +231,31 @@ function buildPeriodEnd(
 export default function TouchPage() {
 
   /* =======================================================
+     WORKFLOW
+  ======================================================= */
+
+  const [
+    currentStep,
+    setCurrentStep,
+  ] = useState<TouchWorkflowStep>(
+    "RESEARCH",
+  );
+
+  const [
+    notebook,
+    setNotebook,
+  ] = useState<TouchCorpusNotebook | null>(
+    null,
+  );
+
+  const [
+    brief,
+    setBrief,
+  ] = useState<TouchBriefStructure | null>(
+    null,
+  );
+
+  /* =======================================================
      FORM
   ======================================================= */
 
@@ -304,29 +314,6 @@ export default function TouchPage() {
   ] = useState(true);
 
   /* =======================================================
-     GENERATION
-  ======================================================= */
-
-  const [
-    generating,
-    setGenerating,
-  ] = useState(false);
-
-  const [
-    generation,
-    setGeneration,
-  ] = useState<
-    TouchGenerationOutcome | null
-  >(null);
-
-  const [
-    generationError,
-    setGenerationError,
-  ] = useState<string | null>(
-    null,
-  );
-
-  /* =======================================================
      RESEARCH
   ======================================================= */
 
@@ -359,6 +346,18 @@ export default function TouchPage() {
 
     resetResearch,
   } = useTouchResearch();
+
+  const researchReady = Boolean(
+    interpretation
+    || conversationHistory.length > 0
+    || candidates.length > 0,
+  );
+
+  const corpusReady =
+    selectedContentIds.length > 0;
+
+  const notebookReady =
+    notebook !== null;
 
   /* =======================================================
      LOAD LOOKUPS
@@ -543,77 +542,89 @@ export default function TouchPage() {
   }
 
   /* =======================================================
-     GENERATE ONE-PAGER
+     INVALIDATE GENERATED OUTPUTS
   ======================================================= */
 
-  async function handleGenerateOnePager() {
+  function invalidateGeneratedOutputs() {
 
-    if (
-      selectedContentIds.length === 0
-      || generating
-      || !interpretation
-    ) {
-      return;
-    }
+    setNotebook(
+      null,
+    );
 
-    try {
+    setBrief(
+      null,
+    );
 
-      setGenerating(
-        true,
-      );
+  }
 
-      setGenerationError(
-        null,
-      );
+  /* =======================================================
+     CORPUS ACTIONS
+  ======================================================= */
 
-      const result =
-        await generateTouchOnePager({
+  function handleToggleContent(
+    contentId: string,
+  ) {
 
-          subject:
-            interpretation.subject,
+    toggleContent(
+      contentId,
+    );
 
-          objective:
-            interpretation.objective,
+    invalidateGeneratedOutputs();
 
-          output_language:
-            "fr",
+  }
 
-          content_ids:
-            selectedContentIds,
 
-        });
+  function handleUnselectContent(
+    contentId: string,
+  ) {
 
-      setGeneration(
-        result,
-      );
+    unselectContent(
+      contentId,
+    );
 
-    } catch (caughtError) {
+    invalidateGeneratedOutputs();
 
-      console.error(
-        "Touch generation error",
-        caughtError,
-      );
+  }
 
-      setGenerationError(
 
-        caughtError instanceof Error
+  function handleDismissContent(
+    contentId: string,
+  ) {
 
-          ? caughtError.message
+    dismissContent(
+      contentId,
+    );
 
-          : (
-              "Unable to generate "
-              + "the one-pager."
-            )
+    invalidateGeneratedOutputs();
 
-      );
+  }
 
-    } finally {
 
-      setGenerating(
-        false,
-      );
+  function handleRestoreContent(
+    contentId: string,
+  ) {
 
-    }
+    restoreContent(
+      contentId,
+    );
+
+  }
+
+  /* =======================================================
+     FOLLOW-UP
+  ======================================================= */
+
+  function handleFollowUp(
+    followUp: string,
+  ) {
+
+    setQuery(
+      followUp,
+    );
+
+    setCurrentStep(
+      "RESEARCH",
+    );
 
   }
 
@@ -637,11 +648,17 @@ export default function TouchPage() {
 
     setSelectedTopics([]);
 
-    setGeneration(null);
+    setNotebook(
+      null,
+    );
 
-    setGenerationError(null);
+    setBrief(
+      null,
+    );
 
-    setGenerating(false);
+    setCurrentStep(
+      "RESEARCH",
+    );
 
   }
 
@@ -670,323 +687,451 @@ export default function TouchPage() {
         </h1>
 
         <p className="mt-1 text-gray-500">
-          Build an editorial corpus from the complete
-          GetCurator content base.
+          Research a subject, build a reliable corpus
+          and transform it into a structured evidence
+          notebook.
         </p>
 
       </div>
 
       {/* ================================================= */}
-      {/* FORM */}
+      {/* WORKFLOW */}
       {/* ================================================= */}
 
-      <TouchResearchForm
-        query={query}
-        onQueryChange={
-          setQuery
+      <TouchWorkflowSteps
+        currentStep={
+          currentStep
         }
-
-        companyOptions={
-          companyOptions
+        researchReady={
+          researchReady
         }
-        solutionOptions={
-          solutionOptions
+        corpusReady={
+          corpusReady
         }
-        topicOptions={
-          topicOptions
+        notebookReady={
+          notebookReady
         }
-
-        selectedCompanies={
-          selectedCompanies
-        }
-        selectedSolutions={
-          selectedSolutions
-        }
-        selectedTopics={
-          selectedTopics
-        }
-
-        onCompaniesChange={
-          setSelectedCompanies
-        }
-        onSolutionsChange={
-          setSelectedSolutions
-        }
-        onTopicsChange={
-          setSelectedTopics
-        }
-
-        periodStart={
-          periodStart
-        }
-        periodEnd={
-          periodEnd
-        }
-
-        onPeriodStartChange={
-          setPeriodStart
-        }
-        onPeriodEndChange={
-          setPeriodEnd
-        }
-
-        loading={
-          loading
-        }
-
-        hasResearch={
-          conversationHistory.length > 0
-        }
-
-        onSubmit={
-          handleSearch
-        }
-
-        onReset={
-          handleReset
+        onStepChange={
+          setCurrentStep
         }
       />
 
       {/* ================================================= */}
-      {/* LOOKUPS */}
+      {/* STEP 1 — RESEARCH */}
       {/* ================================================= */}
 
-      {lookupsLoading && (
+      {currentStep === "RESEARCH" && (
 
-        <p className="text-sm text-gray-500">
-          Loading companies, solutions and topics…
-        </p>
+        <div className="space-y-6">
 
-      )}
-
-      {/* ================================================= */}
-      {/* INTERPRETATION */}
-      {/* ================================================= */}
-
-      {interpretation && (
-
-        <section
-          className="
-            rounded-xl
-            border
-            border-blue-100
-            bg-blue-50
-            px-5
-            py-4
-          "
-        >
-
-          <p
-            className="
-              text-xs
-              font-medium
-              uppercase
-              tracking-wide
-              text-blue-600
-            "
-          >
-            Research interpretation
-          </p>
-
-          <h2
-            className="
-              mt-1
-              text-lg
-              font-semibold
-              text-gray-900
-            "
-          >
-            {interpretation.subject}
-          </h2>
-
-          <p
-            className="
-              mt-1
-              text-sm
-              leading-6
-              text-gray-700
-            "
-          >
-            {
-              interpretation
-                .response_message
+          <TouchResearchForm
+            query={query}
+            onQueryChange={
+              setQuery
             }
-          </p>
 
-          {(
-            interpretation
-              .search_terms
-              .length > 0
-          ) && (
+            companyOptions={
+              companyOptions
+            }
+            solutionOptions={
+              solutionOptions
+            }
+            topicOptions={
+              topicOptions
+            }
 
-            <div
+            selectedCompanies={
+              selectedCompanies
+            }
+            selectedSolutions={
+              selectedSolutions
+            }
+            selectedTopics={
+              selectedTopics
+            }
+
+            onCompaniesChange={
+              setSelectedCompanies
+            }
+            onSolutionsChange={
+              setSelectedSolutions
+            }
+            onTopicsChange={
+              setSelectedTopics
+            }
+
+            periodStart={
+              periodStart
+            }
+            periodEnd={
+              periodEnd
+            }
+
+            onPeriodStartChange={
+              setPeriodStart
+            }
+            onPeriodEndChange={
+              setPeriodEnd
+            }
+
+            loading={
+              loading
+            }
+
+            hasResearch={
+              conversationHistory.length > 0
+            }
+
+            onSubmit={
+              handleSearch
+            }
+
+            onReset={
+              handleReset
+            }
+          />
+
+          {lookupsLoading && (
+
+            <p className="text-sm text-gray-500">
+              Loading companies, solutions and topics…
+            </p>
+
+          )}
+
+          {interpretation && (
+
+            <section
               className="
-                mt-3
-                flex
-                flex-wrap
-                gap-2
+                rounded-xl
+                border
+                border-blue-100
+                bg-blue-50
+                px-5
+                py-4
               "
             >
 
-              {
+              <p
+                className="
+                  text-xs
+                  font-medium
+                  uppercase
+                  tracking-wide
+                  text-blue-600
+                "
+              >
+                Research interpretation
+              </p>
+
+              <h2
+                className="
+                  mt-1
+                  text-lg
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                {interpretation.subject}
+              </h2>
+
+              <p
+                className="
+                  mt-1
+                  text-sm
+                  leading-6
+                  text-gray-700
+                "
+              >
+                {
+                  interpretation
+                    .response_message
+                }
+              </p>
+
+              {(
                 interpretation
                   .search_terms
-                  .map(
-                    term => (
+                  .length > 0
+              ) && (
 
-                      <span
-                        key={term}
-                        className="
-                          rounded-full
-                          border
-                          border-blue-200
-                          bg-white
-                          px-2.5
-                          py-1
-                          text-xs
-                          text-blue-700
-                        "
-                      >
-                        {term}
-                      </span>
+                <div
+                  className="
+                    mt-3
+                    flex
+                    flex-wrap
+                    gap-2
+                  "
+                >
 
-                    ),
-                  )
-              }
+                  {
+                    interpretation
+                      .search_terms
+                      .map(
+                        term => (
+
+                          <span
+                            key={term}
+                            className="
+                              rounded-full
+                              border
+                              border-blue-200
+                              bg-white
+                              px-2.5
+                              py-1
+                              text-xs
+                              text-blue-700
+                            "
+                          >
+                            {term}
+                          </span>
+
+                        ),
+                      )
+                  }
+
+                </div>
+
+              )}
+
+            </section>
+
+          )}
+
+          {error && (
+
+            <div
+              className="
+                rounded-lg
+                border
+                border-red-200
+                bg-red-50
+                px-4
+                py-3
+                text-sm
+                text-red-700
+              "
+            >
+              {error}
+            </div>
+
+          )}
+
+          {backendErrors.length > 0 && (
+
+            <div
+              className="
+                rounded-lg
+                border
+                border-amber-200
+                bg-amber-50
+                px-4
+                py-3
+              "
+            >
+
+              <p
+                className="
+                  text-sm
+                  font-medium
+                  text-amber-800
+                "
+              >
+                The research completed with warnings.
+              </p>
+
+              <ul
+                className="
+                  mt-2
+                  space-y-1
+                  text-sm
+                  text-amber-700
+                "
+              >
+
+                {backendErrors.map(
+                  (
+                    backendError,
+                    index,
+                  ) => (
+
+                    <li
+                      key={
+                        `${backendError}-${index}`
+                      }
+                    >
+                      {backendError}
+                    </li>
+
+                  ),
+                )}
+
+              </ul>
 
             </div>
 
           )}
 
-        </section>
+          <TouchResearchCoverage
+            consolidation={
+              consolidation
+            }
+            onFollowUp={
+              handleFollowUp
+            }
+          />
 
-      )}
+          {researchReady && (
 
-      {/* ================================================= */}
-      {/* RESEARCH ERROR */}
-      {/* ================================================= */}
+            <div className="flex justify-end">
 
-      {error && (
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentStep(
+                    "CORPUS",
+                  )
+                }
+                className="
+                  rounded-lg
+                  bg-ratecard-blue
+                  px-4
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                "
+              >
+                Review proposed corpus
+              </button>
 
-        <div
-          className="
-            rounded-lg
-            border
-            border-red-200
-            bg-red-50
-            px-4
-            py-3
-            text-sm
-            text-red-700
-          "
-        >
-          {error}
+            </div>
+
+          )}
+
         </div>
 
       )}
 
       {/* ================================================= */}
-      {/* RESEARCH WARNINGS */}
+      {/* STEP 2 — CORPUS */}
       {/* ================================================= */}
 
-      {backendErrors.length > 0 && (
+      {currentStep === "CORPUS" && (
 
-        <div
-          className="
-            rounded-lg
-            border
-            border-amber-200
-            bg-amber-50
-            px-4
-            py-3
-          "
-        >
+        <div className="space-y-6">
 
-          <p
+          <div
             className="
-              text-sm
-              font-medium
-              text-amber-800
-            "
-          >
-            The research completed with warnings.
-          </p>
-
-          <ul
-            className="
-              mt-2
-              space-y-1
-              text-sm
-              text-amber-700
+              flex
+              flex-wrap
+              items-center
+              justify-between
+              gap-4
             "
           >
 
-            {backendErrors.map(
-              (
-                backendError,
-                index,
-              ) => (
+            <div>
 
-                <li
-                  key={
-                    `${backendError}-${index}`
-                  }
-                >
-                  {backendError}
-                </li>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Editorial corpus
+              </h2>
 
-              ),
-            )}
+              <p className="mt-1 text-sm text-gray-500">
+                Review the proposed contents and retain all
+                sources that contribute useful evidence.
+              </p>
 
-          </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentStep(
+                  "RESEARCH",
+                )
+              }
+              className="
+                rounded-lg
+                border
+                border-gray-300
+                bg-white
+                px-4
+                py-2
+                text-sm
+                font-medium
+                text-gray-700
+                hover:bg-gray-50
+              "
+            >
+              Refine research
+            </button>
+
+          </div>
+
+          <div
+            className="
+              grid
+              grid-cols-1
+              gap-6
+              xl:grid-cols-[minmax(0,1fr)_360px]
+            "
+          >
+
+            <TouchCandidateList
+              candidates={
+                candidates
+              }
+              decisionsByContentId={
+                decisionsByContentId
+              }
+              selectedContentIds={
+                selectedContentIds
+              }
+              dismissedContentIds={
+                dismissedContentIds
+              }
+              onToggleContent={
+                handleToggleContent
+              }
+              onDismissContent={
+                handleDismissContent
+              }
+              onRestoreContent={
+                handleRestoreContent
+              }
+            />
+
+            <TouchSelectedCorpus
+              candidates={
+                selectedCandidates
+              }
+              decisionsByContentId={
+                decisionsByContentId
+              }
+              onRemove={
+                handleUnselectContent
+              }
+              onValidate={() =>
+                setCurrentStep(
+                  "NOTEBOOK",
+                )
+              }
+              validating={false}
+            />
+
+          </div>
 
         </div>
 
       )}
 
       {/* ================================================= */}
-      {/* COVERAGE */}
+      {/* STEP 3 — NOTEBOOK */}
       {/* ================================================= */}
 
-      <TouchResearchCoverage
-        consolidation={
-          consolidation
-        }
+      {currentStep === "NOTEBOOK" && (
 
-        onFollowUp={
-          setQuery
-        }
-      />
-
-      {/* ================================================= */}
-      {/* GENERATION ERROR */}
-      {/* ================================================= */}
-
-      {generationError && (
-
-        <div
-          className="
-            rounded-lg
-            border
-            border-red-200
-            bg-red-50
-            px-4
-            py-3
-            text-sm
-            text-red-700
-          "
-        >
-          {generationError}
-        </div>
-
-      )}
-
-      {/* ================================================= */}
-      {/* GENERATED DRAFT */}
-      {/* ================================================= */}
-      
-      {generation?.draft && (
-      
         <TouchNotebookBuilder
           subject={
             interpretation?.subject
@@ -999,7 +1144,9 @@ export default function TouchPage() {
           selectedContentIds={
             selectedContentIds
           }
-          notebook={notebook}
+          notebook={
+            notebook
+          }
           onNotebookChange={
             setNotebook
           }
@@ -1010,75 +1157,34 @@ export default function TouchPage() {
           }
           outputLanguage="fr"
         />
-      
+
       )}
 
       {/* ================================================= */}
-      {/* WORK AREA */}
+      {/* STEP 4 — OUTPUT */}
       {/* ================================================= */}
 
-      <div
-        className="
-          grid
-          grid-cols-1
-          gap-6
-          xl:grid-cols-[minmax(0,1fr)_360px]
-        "
-      >
+      {(
+        currentStep === "OUTPUT"
+        && notebook
+      ) && (
 
-        <TouchCandidateList
-          candidates={
-            candidates
+        <TouchOutputChoice
+          notebook={
+            notebook
           }
-
-          decisionsByContentId={
-            decisionsByContentId
-          }
-
-          selectedContentIds={
+          sourceContentIds={
             selectedContentIds
           }
-
-          dismissedContentIds={
-            dismissedContentIds
+          brief={
+            brief
           }
-
-          onToggleContent={
-            toggleContent
-          }
-
-          onDismissContent={
-            dismissContent
-          }
-
-          onRestoreContent={
-            restoreContent
+          onBriefChange={
+            setBrief
           }
         />
 
-        <TouchSelectedCorpus
-          candidates={
-            selectedCandidates
-          }
-
-          decisionsByContentId={
-            decisionsByContentId
-          }
-
-          onRemove={
-            unselectContent
-          }
-
-          onValidate={
-            handleGenerateOnePager
-          }
-
-          validating={
-            generating
-          }
-        />
-
-      </div>
+      )}
 
     </div>
 
