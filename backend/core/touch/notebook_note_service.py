@@ -13,7 +13,7 @@ from core.touch.notebook_models import (
     TouchNotebookRequest,
 )
 
-from core.touch.notebook_prompt import (
+from core.touch.notebook_note_prompt import (
     TOUCH_NOTEBOOK_NOTE_CONSOLIDATION_SYSTEM_PROMPT,
     build_touch_notebook_note_consolidation_prompt,
 )
