@@ -371,3 +371,236 @@ export type TouchGenerationResponse = {
   generation:
     TouchGenerationOutcome;
 };
+
+/* =========================================================
+   EDITORIAL NOTEBOOK
+========================================================= */
+
+export type TouchEvidenceNoteType =
+  | "FACT"
+  | "MECHANISM"
+  | "NUMBER"
+  | "STRATEGIC_READING"
+  | "TENSION"
+  | "LIMITATION"
+  | "UNCERTAINTY"
+  | "COMPARISON"
+  | "MILESTONE"
+  | "EXAMPLE";
+
+
+export type TouchEvidenceConfidence =
+  | "HIGH"
+  | "MEDIUM"
+  | "LOW";
+
+
+export type TouchEvidenceStatus =
+  | "VALIDATED"
+  | "TO_VERIFY"
+  | "CONTRADICTED";
+
+
+export type TouchEvidenceNote = {
+  note_id: string;
+
+  note_type:
+    TouchEvidenceNoteType;
+
+  statement: string;
+  explanation: string;
+
+  actors: string[];
+  geographies: string[];
+  dates: string[];
+
+  confidence:
+    TouchEvidenceConfidence;
+
+  status:
+    TouchEvidenceStatus;
+
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK EVENT
+========================================================= */
+
+export type TouchNotebookEvent = {
+  event_id: string;
+
+  title: string;
+  description: string;
+
+  event_date: string | null;
+
+  actors: string[];
+
+  note_ids: string[];
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK TIMELINE
+========================================================= */
+
+export type TouchNotebookTimelineItem = {
+  date: string;
+
+  label: string;
+  description: string;
+
+  event_id: string | null;
+
+  note_ids: string[];
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK DIMENSION
+========================================================= */
+
+export type TouchNotebookDimension = {
+  label: string;
+  summary: string;
+
+  note_ids: string[];
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK NUMBER
+========================================================= */
+
+export type TouchNotebookNumber = {
+  number_id: string;
+
+  value: string;
+  unit: string;
+  metric: string;
+  context: string;
+
+  actor: string | null;
+  geography: string | null;
+  period: string | null;
+
+  confidence:
+    TouchEvidenceConfidence;
+
+  note_ids: string[];
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   QUARANTINED NUMBER
+========================================================= */
+
+export type TouchQuarantinedNumber = {
+  value: string;
+  unit: string;
+  metric: string;
+  context: string;
+
+  reason: string;
+
+  source_content_ids: string[];
+};
+
+
+/* =========================================================
+   CONTRADICTION
+========================================================= */
+
+export type TouchNotebookContradiction = {
+  subject: string;
+  description: string;
+
+  note_ids: string[];
+  source_content_ids: string[];
+
+  resolution: string | null;
+};
+
+
+/* =========================================================
+   CORPUS NOTEBOOK
+========================================================= */
+
+export type TouchCorpusNotebook = {
+  subject: string;
+  objective: string;
+
+  corpus_summary: string;
+
+  notes: TouchEvidenceNote[];
+
+  events: TouchNotebookEvent[];
+
+  timeline:
+    TouchNotebookTimelineItem[];
+
+  dimensions:
+    TouchNotebookDimension[];
+
+  validated_numbers:
+    TouchNotebookNumber[];
+
+  quarantined_numbers:
+    TouchQuarantinedNumber[];
+
+  contradictions:
+    TouchNotebookContradiction[];
+
+  corpus_strengths: string[];
+  corpus_limits: string[];
+};
+
+
+/* =========================================================
+   NOTEBOOK REQUEST
+========================================================= */
+
+export type TouchNotebookRequest = {
+  subject: string;
+  objective: string;
+
+  content_ids: string[];
+
+  output_language: string;
+};
+
+
+/* =========================================================
+   NOTEBOOK OUTCOME
+========================================================= */
+
+export type TouchNotebookOutcome = {
+  status:
+    | "GENERATED"
+    | "GENERATION_FAILED";
+
+  notebook:
+    TouchCorpusNotebook | null;
+
+  source_count: number;
+
+  error: string | null;
+};
+
+
+/* =========================================================
+   NOTEBOOK RESPONSE
+========================================================= */
+
+export type TouchNotebookResponse = {
+  status: string;
+
+  notebook_generation:
+    TouchNotebookOutcome;
+};
