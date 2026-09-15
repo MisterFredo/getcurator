@@ -1861,31 +1861,66 @@ def _validate_notebook_references(
     # SINGLE PLACEMENT: EVENTS
     # ========================================================
 
-    invalid_event_placements = [
+    invalid_note_placements = []
 
-        event_id
+    for note_id in note_ids:
 
-        for event_id in event_ids
-
-        if (
-            section_event_counts.get(
-                event_id,
+        event_count = (
+            event_note_counts.get(
+                note_id,
                 0,
             )
-            != 1
         )
 
-    ]
+        section_count = (
+            section_note_counts.get(
+                note_id,
+                0,
+            )
+        )
 
-    if invalid_event_placements:
+        total_count = (
+            event_count
+            + section_count
+        )
+
+        if total_count == 1:
+            continue
+
+        invalid_note_placements.append(
+            (
+                note_id,
+                event_count,
+                section_count,
+                total_count,
+            )
+        )
+
+    if invalid_note_placements:
+
+        details = [
+
+            (
+                f"{note_id} "
+                f"(events={event_count}, "
+                f"sections={section_count}, "
+                f"total={total_count})"
+            )
+
+            for (
+                note_id,
+                event_count,
+                section_count,
+                total_count,
+            ) in invalid_note_placements
+
+        ]
 
         raise ValueError(
-            "Chaque événement doit apparaître dans "
-            "exactement une section : "
-            + ", ".join(
-                sorted(
-                    invalid_event_placements
-                )
+            "Chaque note doit apparaître exactement "
+            "une fois dans le plan. Placements invalides : "
+            + "; ".join(
+                details
             )
         )
 
@@ -1929,35 +1964,67 @@ def _validate_notebook_references(
     # SINGLE PLACEMENT: NUMBERS
     # ========================================================
 
-    invalid_number_placements = [
+    invalid_number_placements = []
 
-        number_id
+    for number_id in number_ids:
 
-        for number_id in number_ids
-
-        if (
+        event_count = (
             event_number_counts.get(
                 number_id,
                 0,
             )
-            + section_number_counts.get(
+        )
+
+        section_count = (
+            section_number_counts.get(
                 number_id,
                 0,
             )
-            != 1
         )
 
-    ]
+        total_count = (
+            event_count
+            + section_count
+        )
+
+        if total_count == 1:
+            continue
+
+        invalid_number_placements.append(
+            (
+                number_id,
+                event_count,
+                section_count,
+                total_count,
+            )
+        )
 
     if invalid_number_placements:
 
+        details = [
+
+            (
+                f"{number_id} "
+                f"(events={event_count}, "
+                f"sections={section_count}, "
+                f"total={total_count})"
+            )
+
+            for (
+                number_id,
+                event_count,
+                section_count,
+                total_count,
+            ) in invalid_number_placements
+
+        ]
+
         raise ValueError(
             "Chaque Number certifié doit apparaître "
-            "exactement une fois dans le plan : "
-            + ", ".join(
-                sorted(
-                    invalid_number_placements
-                )
+            "exactement une fois dans le plan. "
+            "Placements invalides : "
+            + "; ".join(
+                details
             )
         )
 
