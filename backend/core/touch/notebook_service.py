@@ -23,6 +23,7 @@ from core.touch.notebook_models import (
     TouchNotebookNumber,
     TouchNotebookOutcome,
     TouchNotebookRequest,
+    TouchNotebookSection,
 )
 
 from core.touch.notebook_prompt import (
@@ -1636,6 +1637,399 @@ def _normalize_notebook(
 
         },
     )
+
+# ============================================================
+# REPAIR DOCUMENTARY PLAN
+# ============================================================
+
+def _repair_documentary_plan(
+    notebook: TouchCorpusNotebook,
+) -> TouchCorpusNotebook:
+
+    valid_note_ids = {
+
+        note.note_id
+
+        for note in notebook.notes
+
+    }
+
+    valid_number_ids = {
+
+        number.number_id
+
+        for number in notebook.validated_numbers
+
+    }
+
+    # ========================================================
+    # EVENTS
+    # ========================================================
+
+    repaired_events = []
+
+    used_event_note_ids = set()
+
+    used_event_number_ids = set()
+
+    for event in notebook.events:
+
+        note_ids = [
+
+            note_id
+
+            for note_id in event.note_ids
+
+            if (
+                note_id in valid_note_ids
+                and note_id
+                not in used_event_note_ids
+            )
+
+        ]
+
+        number_ids = [
+
+            number_id
+
+            for number_id in event.number_ids
+
+            if (
+                number_id in valid_number_ids
+                and number_id
+                not in used_event_number_ids
+            )
+
+        ]
+
+        if (
+            not note_ids
+            and not number_ids
+        ):
+
+            continue
+
+        used_event_note_ids.update(
+            note_ids
+        )
+
+        used_event_number_ids.update(
+            number_ids
+        )
+
+        repaired_events.append(
+
+            event.model_copy(
+                update={
+                    "note_ids":
+                        note_ids,
+
+                    "number_ids":
+                        number_ids,
+                },
+            )
+
+        )
+
+    valid_event_ids = {
+
+        event.event_id
+
+        for event in repaired_events
+
+    }
+
+    # ========================================================
+    # SECTIONS
+    # ========================================================
+
+    repaired_sections = []
+
+    used_section_event_ids = set()
+
+    used_section_note_ids = set()
+
+    used_section_number_ids = set()
+
+    for section in notebook.sections:
+
+        event_ids = [
+
+            event_id
+
+            for event_id in section.event_ids
+
+            if (
+                event_id in valid_event_ids
+                and event_id
+                not in used_section_event_ids
+            )
+
+        ]
+
+        note_ids = [
+
+            note_id
+
+            for note_id in section.note_ids
+
+            if (
+                note_id in valid_note_ids
+                and note_id
+                not in used_event_note_ids
+                and note_id
+                not in used_section_note_ids
+            )
+
+        ]
+
+        number_ids = [
+
+            number_id
+
+            for number_id in section.number_ids
+
+            if (
+                number_id in valid_number_ids
+                and number_id
+                not in used_event_number_ids
+                and number_id
+                not in used_section_number_ids
+            )
+
+        ]
+
+        if (
+            not event_ids
+            and not note_ids
+            and not number_ids
+        ):
+
+            continue
+
+        used_section_event_ids.update(
+            event_ids
+        )
+
+        used_section_note_ids.update(
+            note_ids
+        )
+
+        used_section_number_ids.update(
+            number_ids
+        )
+
+        repaired_sections.append(
+
+            section.model_copy(
+                update={
+                    "event_ids":
+                        event_ids,
+
+                    "note_ids":
+                        note_ids,
+
+                    "number_ids":
+                        number_ids,
+                },
+            )
+
+        )
+
+    # ========================================================
+    # UNASSIGNED ITEMS
+    # ========================================================
+
+    missing_event_ids = [
+
+        event_id
+
+        for event_id in valid_event_ids
+
+        if event_id
+        not in used_section_event_ids
+
+    ]
+
+    missing_note_ids = [
+
+        note_id
+
+        for note_id in valid_note_ids
+
+        if (
+            note_id
+            not in used_event_note_ids
+            and note_id
+            not in used_section_note_ids
+        )
+
+    ]
+
+    missing_number_ids = [
+
+        number_id
+
+        for number_id in valid_number_ids
+
+        if (
+            number_id
+            not in used_event_number_ids
+            and number_id
+            not in used_section_number_ids
+        )
+
+    ]
+
+    if (
+        missing_event_ids
+        or missing_note_ids
+        or missing_number_ids
+    ):
+
+        existing_section_ids = {
+
+            section.section_id
+
+            for section in repaired_sections
+
+        }
+
+        fallback_section_id = (
+            "section-additional"
+        )
+
+        suffix = 1
+
+        while (
+            fallback_section_id
+            in existing_section_ids
+        ):
+
+            suffix += 1
+
+            fallback_section_id = (
+                "section-additional-"
+                f"{suffix}"
+            )
+
+        from core.touch.notebook_models import (
+            TouchNotebookSection,
+        )
+
+        repaired_sections.append(
+
+            TouchNotebookSection(
+
+                section_id=(
+                    fallback_section_id
+                ),
+
+                title=(
+                    "Additional documented elements"
+                ),
+
+                description=(
+                    "Documentary elements not attached "
+                    "to another section."
+                ),
+
+                event_ids=(
+                    missing_event_ids
+                ),
+
+                note_ids=(
+                    missing_note_ids
+                ),
+
+                number_ids=(
+                    missing_number_ids
+                ),
+
+            )
+
+        )
+
+    # ========================================================
+    # TIMELINE
+    # ========================================================
+
+    repaired_timeline = [
+
+        item.model_copy(
+            update={
+                "event_id":
+                    (
+                        item.event_id
+
+                        if item.event_id
+                        in valid_event_ids
+
+                        else None
+                    ),
+
+                "note_ids": [
+
+                    note_id
+
+                    for note_id in item.note_ids
+
+                    if note_id
+                    in valid_note_ids
+
+                ],
+            },
+        )
+
+        for item in notebook.timeline
+
+    ]
+
+    # ========================================================
+    # CONTRADICTIONS
+    # ========================================================
+
+    repaired_contradictions = [
+
+        contradiction.model_copy(
+            update={
+                "note_ids": [
+
+                    note_id
+
+                    for note_id
+                    in contradiction.note_ids
+
+                    if note_id
+                    in valid_note_ids
+
+                ],
+            },
+        )
+
+        for contradiction
+        in notebook.contradictions
+
+    ]
+
+    return notebook.model_copy(
+        update={
+            "sections":
+                repaired_sections,
+
+            "events":
+                repaired_events,
+
+            "timeline":
+                repaired_timeline,
+
+            "dimensions":
+                [],
+
+            "contradictions":
+                repaired_contradictions,
+        },
+    )
 # ============================================================
 # VALIDATE UNIQUE IDENTIFIERS
 # ============================================================
@@ -2450,6 +2844,10 @@ def _consolidate_notebook(
             )
 
             notebook = _normalize_notebook(
+                notebook
+            )
+
+            notebook = _repair_documentary_plan(
                 notebook
             )
 
