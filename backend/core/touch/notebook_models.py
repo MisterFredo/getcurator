@@ -70,6 +70,10 @@ class TouchEvidenceNote(
 
     note_id: str
 
+    input_note_ids: list[str] = Field(
+        default_factory=list,
+    )
+
     note_type: TouchEvidenceNoteType
 
     statement: str
