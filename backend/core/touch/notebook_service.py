@@ -10,8 +10,8 @@ from core.numbers.content_service import (
     get_validated_numbers_for_contents,
 )
 
-from core.touch.notebook_extraction_service import (
-    extract_notebook_batches,
+from core.touch.notebook_contribution_service import (
+    build_contribution_batches,
 )
 
 from core.touch.notebook_models import (
@@ -44,8 +44,6 @@ from core.touch.notebook_utils import (
 # ============================================================
 # CONFIGURATION
 # ============================================================
-
-DEFAULT_TOUCH_NOTEBOOK_BATCH_SIZE = 5
 
 DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS = 2
 
@@ -107,10 +105,10 @@ def _normalize_request(
 
 
 # ============================================================
-# LOAD ORDERED CONTENTS
+# VALIDATE SELECTED CONTENTS
 # ============================================================
 
-def _load_ordered_contents(
+def _validate_selected_contents(
     request: TouchNotebookRequest,
 ):
 
@@ -215,11 +213,11 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 1. LOAD SELECTED CORPUS
+        # 1. VALIDATE SELECTED CORPUS
         # ====================================================
 
-        ordered_contents = (
-            _load_ordered_contents(
+        selected_contents = (
+            _validate_selected_contents(
                 normalized_request
             )
         )
@@ -235,35 +233,19 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 3. EXTRACT RAW DOCUMENTARY NOTES
+        # 3. BUILD NOTES FROM EXISTING CONTRIBUTIONS
         # ====================================================
 
-        extracted_batches = (
-            extract_notebook_batches(
-
+        contribution_batches = (
+            build_contribution_batches(
                 request=(
                     normalized_request
                 ),
-
-                contents=(
-                    ordered_contents
-                ),
-
-                model=model,
-
-                batch_size=(
-                    DEFAULT_TOUCH_NOTEBOOK_BATCH_SIZE
-                ),
-
-                max_attempts=(
-                    DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
-                ),
-
             )
         )
 
         # ====================================================
-        # 4. CONSOLIDATE NOTES WITH FULL TRACEABILITY
+        # 4. CONSOLIDATE CONTRIBUTIONS WITHOUT REWRITING
         # ====================================================
 
         consolidated_notes = (
@@ -274,7 +256,7 @@ def build_touch_notebook(
                 ),
 
                 extracted_batches=(
-                    extracted_batches
+                    contribution_batches
                 ),
 
                 model=model,
@@ -313,7 +295,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 6. REPAIR AND VALIDATE FINAL REFERENCES
+        # 6. REPAIR AND VALIDATE FINAL PLAN
         # ====================================================
 
         notebook = prepare_notebook(
@@ -327,10 +309,6 @@ def build_touch_notebook(
 
         )
 
-        # ====================================================
-        # RESULT
-        # ====================================================
-
         return TouchNotebookOutcome(
 
             status="GENERATED",
@@ -338,7 +316,7 @@ def build_touch_notebook(
             notebook=notebook,
 
             source_count=len(
-                ordered_contents
+                selected_contents
             ),
 
             error=None,
