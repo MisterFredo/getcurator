@@ -165,8 +165,11 @@ be clearly identified as context rather than local execution.
 TRACEABILITY
 ============================================================
 
-Every consolidated note must contain the exact
-source_content_ids supporting it.
+Every note must contain one or more supplied
+source_content_ids.
+
+A note may reference several source_content_ids when several
+contents directly support the same proposition.
 
 Do not cite a source that does not support the consolidated
 statement.
