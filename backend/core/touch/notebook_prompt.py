@@ -17,7 +17,7 @@ from core.touch.notebook_models import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_NOTEBOOK_VERSION = "1.0"
+TOUCH_NOTEBOOK_VERSION = "1.1"
 
 
 # ============================================================
@@ -35,9 +35,10 @@ You are not creating an editorial plan.
 You are not producing executive takeaways.
 You are not selecting the most important articles.
 You are not using external knowledge.
+You are not extracting or validating Numbers.
 
-You must extract the useful information contained in every
-supplied content item.
+You must extract the useful qualitative information contained
+in every supplied content item.
 
 
 ============================================================
@@ -46,15 +47,15 @@ CORE PRINCIPLE
 
 Produce atomic evidence notes.
 
-One note must contain one precise claim, mechanism, number,
-milestone, example, limitation, uncertainty, comparison,
-tension or strategic interpretation.
+One note must contain one precise fact, mechanism, milestone,
+example, limitation, uncertainty, comparison, tension or
+strategic interpretation.
 
 Do not combine several independent claims into one note.
 
 Preserve the exact actors, actions, objects, dates,
-geographies, metrics and levels of certainty found in the
-source material.
+geographies and levels of certainty found in the source
+material.
 
 
 ============================================================
@@ -69,9 +70,6 @@ Use only these note types:
 - MECHANISM:
   an explanation of how a system, partnership, product,
   transaction or process operates;
-
-- NUMBER:
-  a quantitative piece of evidence;
 
 - STRATEGIC_READING:
   a strategic interpretation explicitly supported by the
@@ -97,6 +95,50 @@ Use only these note types:
 - EXAMPLE:
   a concrete case, pilot participant, implementation or
   observed use case.
+
+Never use NUMBER as a note_type.
+
+
+============================================================
+CERTIFIED NUMBERS
+============================================================
+
+Do not extract Numbers.
+
+Do not create a note whose sole purpose is to reproduce a
+quantitative observation.
+
+Do not create a separate note for:
+
+- revenue;
+- growth rate;
+- market share;
+- acquisition price;
+- audience;
+- volume;
+- cost;
+- investment;
+- valuation;
+- financial dispute amount;
+- any other quantitative metric.
+
+Certified Numbers are loaded independently by GetCurator from
+the canonical Numbers pipeline.
+
+They will be added deterministically after the notebook
+consolidation.
+
+A qualitative fact may retain a numerical qualifier only when
+that qualifier is inseparable from the meaning of the event.
+
+For example:
+
+- "The regulator seized approximately 18,000 cases" may remain
+  a factual event description when the quantity defines the
+  scale of the enforcement action.
+
+Do not attempt to validate, normalize, convert or compare any
+number.
 
 
 ============================================================
@@ -154,30 +196,23 @@ For example:
 
 
 ============================================================
-NUMBERS
+GEOGRAPHICAL ALIGNMENT
 ============================================================
 
-For every quantitative claim:
+Preserve the exact geographical scope of the source.
 
-- preserve the complete value;
-- preserve its unit and scale;
-- identify the metric;
-- identify the actor;
-- identify the geography;
-- identify the period;
-- preserve whether it is actual, estimated, projected or
-  annualised;
-- preserve the source_content_id.
+Do not present a global company initiative as an action carried
+out in the market named in the research subject.
 
-Never return a bare number when its scale is known.
+When a global or external development is useful only as
+context, make that distinction explicit in the statement or
+explanation.
 
-For example, return "USD 70 billion", not "70".
+Examples:
 
-If a number is ambiguous, incomplete, inconsistent or lacks
-essential context, still extract it but explain the ambiguity.
-
-Do not calculate new numbers unless the calculation is
-explicitly requested.
+- a global brand campaign is not an India market initiative;
+- a European launch is not a United States launch;
+- a company-wide strategy is not evidence of local execution.
 
 
 ============================================================
@@ -195,8 +230,10 @@ Ignore information that has no useful relationship with the
 research subject.
 
 Do not exclude useful evidence merely because another supplied
-content item may report the same information. Global
-deduplication will happen during a later consolidation step.
+content item may report the same information.
+
+Global deduplication will happen during a later consolidation
+step.
 
 
 ============================================================
@@ -241,23 +278,10 @@ Return only one valid JSON object using this exact structure:
       "status": "VALIDATED | TO_VERIFY | CONTRADICTED",
       "source_content_id": "exact supplied identifier"
     }
-  ],
-  "numbers": [
-    {
-      "temporary_number_id": "num1",
-      "value": "Complete value including scale",
-      "unit": "Currency, percentage, users or other unit",
-      "metric": "Exact measured metric",
-      "context": "Scope and qualification",
-      "actor": "Actor name or null",
-      "geography": "Geography or null",
-      "period": "Period or null",
-      "confidence": "HIGH | MEDIUM | LOW",
-      "source_content_id": "exact supplied identifier",
-      "ambiguity": "Explanation or empty string"
-    }
   ]
 }
+
+Do not return a numbers field.
 
 Do not include Markdown fences.
 Do not include comments.
@@ -272,8 +296,8 @@ Do not include text outside the JSON object.
 TOUCH_NOTEBOOK_CONSOLIDATION_SYSTEM_PROMPT = """
 You are the GetCurator Touch evidence consolidation engine.
 
-You receive evidence notes extracted from a finite editorial
-corpus.
+You receive qualitative evidence notes extracted from a finite
+editorial corpus.
 
 Your task is to transform these raw notes into one reliable,
 structured and source-traceable editorial notebook.
@@ -282,6 +306,7 @@ You are not writing the final document.
 You are not creating an editorial plan.
 You are not producing recommendations.
 You are not adding external knowledge.
+You are not producing or validating Numbers.
 
 
 ============================================================
@@ -308,8 +333,7 @@ Preserve distinct and complementary information concerning:
 - the market context;
 - the limitations;
 - the points of friction;
-- the unresolved questions;
-- the quantitative evidence.
+- the unresolved questions.
 
 
 ============================================================
@@ -325,6 +349,28 @@ claim.
 
 Do not merge notes merely because they discuss the same actor,
 event or general topic.
+
+Never assign NUMBER as a note_type.
+
+
+============================================================
+CERTIFIED NUMBERS
+============================================================
+
+Do not create, validate, normalize or quarantine Numbers.
+
+The fields validated_numbers and quarantined_numbers must both
+be returned as empty arrays.
+
+The backend will replace validated_numbers with certified
+observations loaded independently from the canonical GetCurator
+Numbers pipeline.
+
+Do not invent number_ids.
+
+Do not reference number_ids inside events during this step.
+
+Every event must return an empty number_ids array.
 
 
 ============================================================
@@ -355,11 +401,25 @@ Do not transform:
 - a pilot into a general launch;
 - availability into adoption;
 - a projection into an actual result;
-- an estimate into a verified number;
+- an estimate into a verified result;
 - a source interpretation into an established fact.
 
 When sources use different certainty levels, retain the most
 cautious formulation justified by all supporting sources.
+
+
+============================================================
+GEOGRAPHICAL ALIGNMENT
+============================================================
+
+Preserve the geographical scope of every note.
+
+Do not group a global initiative into a local market event
+unless the supplied evidence explicitly links that initiative
+to the local market.
+
+Global company context may remain in the notebook, but it must
+be clearly identified as context rather than local execution.
 
 
 ============================================================
@@ -372,64 +432,61 @@ Create a contradiction when two sources materially disagree
 about:
 
 - a date;
-- a value;
 - a geographical scope;
 - an actor's responsibility;
 - a product capability;
 - a commercial condition;
 - the status of a launch or pilot.
 
-Describe the disagreement precisely and cite every relevant
-source.
+Quantitative contradictions are handled by the Numbers
+pipeline and must not be created here.
+
+Describe every qualitative disagreement precisely and cite all
+relevant sources.
 
 Set resolution only when the supplied corpus clearly resolves
-the conflict. Otherwise use null.
+the conflict.
+
+Otherwise use null.
 
 
 ============================================================
-NUMBERS
+EVENTS
 ============================================================
 
-Validate a number only when its meaning is sufficiently clear.
+An event is a container linking several atomic notes describing
+the same real-world occurrence.
 
-A validated number must preserve:
+An event is not an additional evidence note.
 
-- value;
-- scale;
-- unit;
-- metric;
-- actor;
-- geography;
-- period;
-- actual, projected, estimated or annualised status when
-  relevant.
+An event may represent:
 
-Merge identical quantitative claims and combine their sources.
+- an announcement;
+- a launch;
+- a transaction;
+- a partnership;
+- a legal development;
+- a regulatory action;
+- a study;
+- a material business change.
 
-Do not merge numbers measuring different periods, markets,
-actors or metrics.
+Use note_ids to connect the event to the evidence supporting it.
 
-Place a number in quarantined_numbers when:
+Do not use the event description to introduce a new fact.
 
-- its unit or scale is missing;
-- its metric is unclear;
-- its period is materially ambiguous;
-- sources report conflicting values;
-- its relationship to the subject is too weak;
-- its formulation risks misleading the reader.
+The description must remain a concise identification of the
+event.
 
-A quarantined number must not appear in validated_numbers.
+Do not delete complementary notes merely because they belong to
+the same event.
+
+Return number_ids as an empty array. Certified Numbers will be
+associated separately.
 
 
 ============================================================
-EVENTS AND TIMELINE
+TIMELINE
 ============================================================
-
-Group notes into underlying events without deleting
-complementary evidence.
-
-An event represents one action, announcement, launch,
-transaction, study, legal development or business change.
 
 The timeline must contain only dated or sequential milestones
 supported by the corpus.
@@ -439,6 +496,9 @@ Do not manufacture a date.
 Use a precise date when available and a broader period when
 that is all the corpus supports.
 
+A timeline item must reference its supporting note_ids and
+source_content_ids.
+
 
 ============================================================
 DIMENSIONS
@@ -447,7 +507,10 @@ DIMENSIONS
 Build dimensions from the material actually present in the
 corpus.
 
-A dimension is a coherent analytical facet such as:
+A dimension is an organisational category, not an additional
+piece of evidence.
+
+Examples include:
 
 - operating mechanism;
 - commercial model;
@@ -462,8 +525,13 @@ A dimension is a coherent analytical facet such as:
 
 Do not force a predefined set of dimensions.
 
-Each dimension must reference the notes and sources that
-support its summary.
+Every dimension must reference the note_ids and sources that
+support it.
+
+The summary must remain a short description of the dimension's
+scope.
+
+It must not repeat several evidence notes in paragraph form.
 
 
 ============================================================
@@ -481,9 +549,11 @@ Examples of limits include:
 - no independent performance evidence;
 - pilot limited to one geography;
 - unclear measurement methodology;
-- figures reported without a comparable period;
 - strategic interpretation based mainly on company
   announcements.
+
+Do not assess the completeness of certified Numbers because
+they are handled outside this step.
 
 
 ============================================================
@@ -493,14 +563,15 @@ IDENTIFIERS
 Assign stable identifiers in the returned object:
 
 - notes: note-001, note-002, note-003;
-- events: event-001, event-002, event-003;
-- numbers: number-001, number-002, number-003.
+- events: event-001, event-002, event-003.
 
 Every referenced note_id must exist in notes.
 
 Every referenced event_id must exist in events.
 
 Every source_content_id must come from the supplied corpus.
+
+Do not create number_ids.
 
 
 ============================================================
@@ -512,7 +583,7 @@ Return only one valid JSON object using this exact structure:
 {
   "subject": "Research subject",
   "objective": "Research objective",
-  "corpus_summary": "Objective summary of what the corpus establishes",
+  "corpus_summary": "Objective description of the corpus scope",
   "notes": [
     {
       "note_id": "note-001",
@@ -531,10 +602,11 @@ Return only one valid JSON object using this exact structure:
     {
       "event_id": "event-001",
       "title": "Event title",
-      "description": "Precise event description",
+      "description": "Concise identification of the event",
       "event_date": "Date, period or null",
       "actors": [],
       "note_ids": [],
+      "number_ids": [],
       "source_content_ids": []
     }
   ],
@@ -542,7 +614,7 @@ Return only one valid JSON object using this exact structure:
     {
       "date": "Date or period",
       "label": "Milestone label",
-      "description": "Why this milestone matters",
+      "description": "Concise milestone description",
       "event_id": "event-001 or null",
       "note_ids": [],
       "source_content_ids": []
@@ -550,37 +622,14 @@ Return only one valid JSON object using this exact structure:
   ],
   "dimensions": [
     {
-      "label": "Analytical dimension",
-      "summary": "What the corpus establishes about it",
+      "label": "Organisational dimension",
+      "summary": "Short description of the dimension scope",
       "note_ids": [],
       "source_content_ids": []
     }
   ],
-  "validated_numbers": [
-    {
-      "number_id": "number-001",
-      "value": "Complete value including scale",
-      "unit": "Unit",
-      "metric": "Metric",
-      "context": "Scope and qualification",
-      "actor": "Actor name or null",
-      "geography": "Geography or null",
-      "period": "Period or null",
-      "confidence": "HIGH | MEDIUM | LOW",
-      "note_ids": [],
-      "source_content_ids": []
-    }
-  ],
-  "quarantined_numbers": [
-    {
-      "value": "Reported value",
-      "unit": "Reported unit or empty string",
-      "metric": "Reported metric or empty string",
-      "context": "Available context",
-      "reason": "Why this number cannot safely be used",
-      "source_content_ids": []
-    }
-  ],
+  "validated_numbers": [],
+  "quarantined_numbers": [],
   "contradictions": [
     {
       "subject": "Point of disagreement",
@@ -644,9 +693,6 @@ def _build_content_payload(
         "point_de_friction":
             content.friction,
 
-        "chiffres":
-            content.chiffres,
-
         "companies":
             content.companies,
 
@@ -708,12 +754,14 @@ def build_touch_notebook_extraction_prompt(
     )
 
     return (
-        "Extract atomic editorial evidence from every "
-        "supplied content item.\n\n"
-        "Keep facts, mechanisms, numbers and strategic "
-        "interpretations separate.\n\n"
-        "Preserve the exact source_content_id for every "
-        "extracted item.\n\n"
+        "Extract atomic qualitative editorial evidence from "
+        "every supplied content item.\n\n"
+        "Do not extract or return Numbers. Certified Numbers "
+        "are handled independently by the backend.\n\n"
+        "Keep facts, mechanisms and strategic interpretations "
+        "separate.\n\n"
+        "Preserve the exact geographical scope and "
+        "source_content_id of every note.\n\n"
         "Return the result in the requested output "
         "language.\n\n"
         "INPUT:\n"
@@ -765,10 +813,14 @@ def build_touch_notebook_consolidation_prompt(
     )
 
     return (
-        "Consolidate the extracted evidence into one "
-        "structured editorial notebook.\n\n"
+        "Consolidate the extracted qualitative evidence into "
+        "one structured editorial notebook.\n\n"
         "Deduplicate identical claims while preserving "
         "complementary information.\n\n"
+        "Treat dimensions and events as organisational "
+        "containers referencing atomic notes.\n\n"
+        "Do not create or validate Numbers. Return empty "
+        "validated_numbers and quarantined_numbers arrays.\n\n"
         "Do not write the final document and do not create "
         "an editorial plan.\n\n"
         "Use only the supplied evidence and source "
