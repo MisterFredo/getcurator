@@ -307,19 +307,6 @@ export default function TouchNotebookPreview({
   sourceContentIds,
 }: Props) {
 
-  // composant existant
-}
-
-
-/* =========================================================
-   COMPONENT
-========================================================= */
-
-export default function TouchNotebookPreview({
-  notebook,
-  sourceContentIds,
-}: Props) {
-
   const sourceNumberById =
     new Map(
       sourceContentIds.map(
