@@ -604,3 +604,138 @@ export type TouchNotebookResponse = {
   notebook_generation:
     TouchNotebookOutcome;
 };
+
+/* =========================================================
+   TOUCH BRIEF
+========================================================= */
+
+export type TouchBriefType =
+  | "STRATEGIC_EVENT"
+  | "COMPARATIVE"
+  | "CHRONOLOGICAL"
+  | "PEDAGOGICAL"
+  | "MARKET_ANALYSIS"
+  | "HYBRID";
+
+
+export type TouchBriefSectionType =
+  | "ESSENTIAL"
+  | "EXPLANATION"
+  | "MECHANISM"
+  | "ACTOR_READING"
+  | "COMPARISON"
+  | "TIMELINE"
+  | "MARKET_DYNAMICS"
+  | "TENSIONS"
+  | "KEY_NUMBERS"
+  | "EXAMPLES"
+  | "OPEN_QUESTIONS"
+  | "OTHER";
+
+
+export type TouchBriefSectionLayout =
+  | "BULLETS"
+  | "STEPS"
+  | "COLUMNS"
+  | "TIMELINE"
+  | "NUMBER_CARDS";
+
+
+export type TouchBriefSectionGroup = {
+  label: string;
+
+  note_ids: string[];
+  number_ids: string[];
+  event_ids: string[];
+};
+
+
+export type TouchBriefSection = {
+  section_id: string;
+
+  section_type:
+    TouchBriefSectionType;
+
+  title: string;
+  introduction: string;
+
+  layout:
+    TouchBriefSectionLayout;
+
+  note_ids: string[];
+  number_ids: string[];
+  event_ids: string[];
+
+  groups:
+    TouchBriefSectionGroup[];
+};
+
+
+export type TouchBriefStructure = {
+  brief_type:
+    TouchBriefType;
+
+  secondary_brief_type:
+    TouchBriefType | null;
+
+  recommendation_reason: string;
+
+  headline: string;
+  subheadline: string;
+
+  central_question: string;
+  key_message: string;
+
+  sections:
+    TouchBriefSection[];
+
+  hidden_note_ids: string[];
+  hidden_number_ids: string[];
+
+  editorial_cautions: string[];
+};
+
+
+/* =========================================================
+   BRIEF REQUEST
+========================================================= */
+
+export type TouchBriefRequest = {
+  notebook:
+    TouchCorpusNotebook;
+
+  requested_brief_type:
+    "AUTO";
+
+  editorial_instruction: string;
+
+  output_language: string;
+};
+
+
+/* =========================================================
+   BRIEF OUTCOME
+========================================================= */
+
+export type TouchBriefOutcome = {
+  status:
+    | "GENERATED"
+    | "GENERATION_FAILED";
+
+  brief:
+    TouchBriefStructure | null;
+
+  error: string | null;
+};
+
+
+/* =========================================================
+   BRIEF RESPONSE
+========================================================= */
+
+export type TouchBriefResponse = {
+  status: string;
+
+  brief_generation:
+    TouchBriefOutcome;
+};
