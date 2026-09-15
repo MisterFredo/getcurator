@@ -802,6 +802,7 @@ export default function TouchBriefPreview({
 
     <article
       className="
+        touch-print-root
         overflow-hidden
         rounded-xl
         border
