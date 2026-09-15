@@ -28,6 +28,14 @@ from core.touch.notebook_service import (
     build_touch_notebook,
 )
 
+from core.touch.brief_models import (
+    TouchBriefRequest,
+)
+
+from core.touch.brief_service import (
+    build_touch_brief,
+)
+
 
 router = APIRouter()
 
@@ -163,6 +171,27 @@ def build_editorial_notebook(
     return {
         "status": "ok",
         "notebook_generation":
+            outcome.model_dump(
+                mode="json",
+            ),
+    }
+
+# ============================================================
+# BUILD EDITORIAL BRIEF
+# ============================================================
+
+@router.post("/brief")
+def build_editorial_brief(
+    request: TouchBriefRequest,
+):
+
+    outcome = build_touch_brief(
+        request=request,
+    )
+
+    return {
+        "status": "ok",
+        "brief_generation":
             outcome.model_dump(
                 mode="json",
             ),
