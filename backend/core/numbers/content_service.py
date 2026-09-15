@@ -64,51 +64,180 @@ def _serialize_entities(
         return []
 
     return [
+
         {
-            "entity_type": _value(
-                entity,
-                "ENTITY_TYPE",
-            ),
+            "entity_type":
+                _value(
+                    entity,
+                    "ENTITY_TYPE",
+                ),
 
-            "entity_id": _value(
-                entity,
-                "ENTITY_ID",
-            ),
+            "entity_id":
+                _value(
+                    entity,
+                    "ENTITY_ID",
+                ),
 
-            "entity_label": _value(
-                entity,
-                "ENTITY_LABEL",
-            ),
+            "entity_label":
+                _value(
+                    entity,
+                    "ENTITY_LABEL",
+                ),
         }
 
         for entity in entities
+
     ]
 
 
+def _serialize_number_row(
+    row,
+) -> Dict[str, Any]:
+
+    return {
+
+        "id_number":
+            _value(
+                row,
+                "ID_NUMBER",
+            ),
+
+        "id_content":
+            _value(
+                row,
+                "ID_CONTENT",
+            ),
+
+        "label":
+            _value(
+                row,
+                "LABEL",
+            ),
+
+        "metric_type":
+            _value(
+                row,
+                "METRIC_TYPE",
+            ),
+
+        "value":
+            _value(
+                row,
+                "VALUE",
+            ),
+
+        "value_min":
+            _value(
+                row,
+                "VALUE_MIN",
+            ),
+
+        "value_max":
+            _value(
+                row,
+                "VALUE_MAX",
+            ),
+
+        "unit":
+            _value(
+                row,
+                "UNIT",
+            ),
+
+        "scale":
+            _value(
+                row,
+                "SCALE",
+            ),
+
+        "zone":
+            _value(
+                row,
+                "ZONE",
+            ),
+
+        "period_label":
+            _value(
+                row,
+                "PERIOD_LABEL",
+            ),
+
+        "value_status":
+            _value(
+                row,
+                "VALUE_STATUS",
+            ),
+
+        "confidence":
+            _value(
+                row,
+                "CONFIDENCE",
+                0,
+            ),
+
+        "entities":
+            _serialize_entities(
+                _value(
+                    row,
+                    "ENTITIES",
+                    [],
+                )
+            ),
+
+    }
+
+
+def _normalize_content_ids(
+    content_ids: List[str],
+) -> List[str]:
+
+    normalized_ids = []
+
+    seen_ids = set()
+
+    for content_id in content_ids:
+
+        if not isinstance(
+            content_id,
+            str,
+        ):
+
+            continue
+
+        normalized_id = (
+            content_id.strip()
+        )
+
+        if (
+            not normalized_id
+            or normalized_id in seen_ids
+        ):
+
+            continue
+
+        seen_ids.add(
+            normalized_id
+        )
+
+        normalized_ids.append(
+            normalized_id
+        )
+
+    return normalized_ids
+
+
 # ============================================================
-# GET ACCEPTED NUMBERS FOR CONTENT
+# LOAD ACCEPTED NUMBERS
 # ============================================================
 
-def get_validated_numbers_for_content(
-    id_content: str,
-) -> List[Dict[str, Any]]:
-    """
-    Return only effectively ACCEPTED Numbers
-    attached to one content.
+def _load_validated_number_rows(
+    content_ids: List[str],
+):
 
-    This is the canonical Numbers reader for
-    article drawers and future downstream uses.
-    """
-
-    normalized_content_id = (
-        id_content
-        or ""
-    ).strip()
-
-    if not normalized_content_id:
+    if not content_ids:
         return []
 
-    rows = query_bq(
+    return query_bq(
         f"""
         WITH entity_aggregation AS (
 
@@ -183,7 +312,7 @@ def get_validated_numbers_for_content(
              = number.ID_NUMBER
 
         WHERE number.ID_CONTENT
-              = @id_content
+              IN UNNEST(@content_ids)
 
           AND number.EFFECTIVE_STATUS
               = 'ACCEPTED'
@@ -195,88 +324,118 @@ def get_validated_numbers_for_content(
             number.ID_NUMBER ASC
         """,
         {
-            "id_content": (
-                normalized_content_id
-            ),
+            "content_ids":
+                content_ids,
         },
     ) or []
 
-    return [
-        {
-            "id_number": _value(
-                row,
-                "ID_NUMBER",
-            ),
 
-            "id_content": _value(
-                row,
-                "ID_CONTENT",
-            ),
+# ============================================================
+# GET ACCEPTED NUMBERS FOR CONTENTS
+# ============================================================
 
-            "label": _value(
-                row,
-                "LABEL",
-            ),
+def get_validated_numbers_for_contents(
+    content_ids: List[str],
+) -> Dict[
+    str,
+    List[Dict[str, Any]],
+]:
+    """
+    Return effectively ACCEPTED Numbers grouped
+    by content identifier.
 
-            "metric_type": _value(
-                row,
-                "METRIC_TYPE",
-            ),
+    Every requested content identifier is present
+    in the returned dictionary, including contents
+    with no accepted Number.
+    """
 
-            "value": _value(
-                row,
-                "VALUE",
-            ),
+    normalized_content_ids = (
+        _normalize_content_ids(
+            content_ids
+        )
+    )
 
-            "value_min": _value(
-                row,
-                "VALUE_MIN",
-            ),
+    numbers_by_content: Dict[
+        str,
+        List[Dict[str, Any]],
+    ] = {
 
-            "value_max": _value(
-                row,
-                "VALUE_MAX",
-            ),
+        content_id:
+            []
 
-            "unit": _value(
-                row,
-                "UNIT",
-            ),
+        for content_id in normalized_content_ids
 
-            "scale": _value(
-                row,
-                "SCALE",
-            ),
+    }
 
-            "zone": _value(
-                row,
-                "ZONE",
-            ),
+    rows = _load_validated_number_rows(
+        content_ids=(
+            normalized_content_ids
+        ),
+    )
 
-            "period_label": _value(
-                row,
-                "PERIOD_LABEL",
-            ),
+    for row in rows:
 
-            "value_status": _value(
-                row,
-                "VALUE_STATUS",
-            ),
+        serialized_number = (
+            _serialize_number_row(
+                row
+            )
+        )
 
-            "confidence": _value(
-                row,
-                "CONFIDENCE",
-                0,
-            ),
+        content_id = (
+            serialized_number.get(
+                "id_content"
+            )
+        )
 
-            "entities": _serialize_entities(
-                _value(
-                    row,
-                    "ENTITIES",
-                    [],
-                )
-            ),
-        }
+        if (
+            not content_id
+            or content_id
+            not in numbers_by_content
+        ):
 
-        for row in rows
-    ]
+            continue
+
+        numbers_by_content[
+            content_id
+        ].append(
+            serialized_number
+        )
+
+    return numbers_by_content
+
+
+# ============================================================
+# GET ACCEPTED NUMBERS FOR CONTENT
+# ============================================================
+
+def get_validated_numbers_for_content(
+    id_content: str,
+) -> List[Dict[str, Any]]:
+    """
+    Return only effectively ACCEPTED Numbers
+    attached to one content.
+
+    This is the canonical Numbers reader for
+    article drawers and downstream uses.
+    """
+
+    normalized_content_id = (
+        id_content
+        or ""
+    ).strip()
+
+    if not normalized_content_id:
+        return []
+
+    numbers_by_content = (
+        get_validated_numbers_for_contents(
+            content_ids=[
+                normalized_content_id,
+            ],
+        )
+    )
+
+    return numbers_by_content.get(
+        normalized_content_id,
+        [],
+    )
