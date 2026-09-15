@@ -1144,9 +1144,10 @@ export default function TouchPage() {
           selectedContentIds={
             selectedContentIds
           }
-          notebook={
-            notebook
+          decisionsByContentId={
+            decisionsByContentId
           }
+          notebook={notebook}
           onNotebookChange={
             setNotebook
           }
