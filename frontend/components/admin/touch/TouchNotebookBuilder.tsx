@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useMemo,
   useState,
 } from "react";
 
@@ -9,7 +10,9 @@ import {
 } from "@/lib/touch";
 
 import type {
+  TouchContentDecision,
   TouchCorpusNotebook,
+  TouchNotebookContribution,
 } from "@/types/touch";
 
 import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview";
@@ -25,6 +28,11 @@ type Props = {
 
   selectedContentIds: string[];
 
+  decisionsByContentId: Map<
+    string,
+    TouchContentDecision
+  >;
+
   notebook:
     TouchCorpusNotebook | null;
 
@@ -39,6 +47,54 @@ type Props = {
 
 
 /* =========================================================
+   UNIQUE STATEMENTS
+========================================================= */
+
+function uniqueStatements(
+  values: string[],
+): string[] {
+
+  const statements: string[] = [];
+
+  const seenStatements =
+    new Set<string>();
+
+  for (const value of values) {
+
+    if (
+      typeof value !== "string"
+    ) {
+      continue;
+    }
+
+    const statement =
+      value.trim();
+
+    if (
+      !statement
+      || seenStatements.has(
+        statement,
+      )
+    ) {
+      continue;
+    }
+
+    seenStatements.add(
+      statement,
+    );
+
+    statements.push(
+      statement,
+    );
+
+  }
+
+  return statements;
+
+}
+
+
+/* =========================================================
    COMPONENT
 ========================================================= */
 
@@ -46,6 +102,7 @@ export default function TouchNotebookBuilder({
   subject,
   objective,
   selectedContentIds,
+  decisionsByContentId,
   notebook,
   onNotebookChange,
   onContinue,
@@ -68,6 +125,81 @@ export default function TouchNotebookBuilder({
     sourceCount,
     setSourceCount,
   ] = useState(0);
+
+  /* =======================================================
+     CONTRIBUTIONS
+  ======================================================= */
+
+  const contributions =
+    useMemo<
+      TouchNotebookContribution[]
+    >(
+      () =>
+        selectedContentIds.map(
+          contentId => {
+
+            const decision =
+              decisionsByContentId.get(
+                contentId,
+              );
+
+            return {
+              content_id:
+                contentId,
+
+              statements:
+                uniqueStatements(
+                  decision
+                    ?.key_contributions
+                  ?? [],
+                ),
+            };
+
+          },
+        ),
+      [
+        decisionsByContentId,
+        selectedContentIds,
+      ],
+    );
+
+  const contributionCount =
+    useMemo(
+      () =>
+        contributions.reduce(
+          (
+            total,
+            contribution,
+          ) =>
+            total
+            + contribution
+                .statements
+                .length,
+          0,
+        ),
+      [
+        contributions,
+      ],
+    );
+
+  const missingContributionIds =
+    useMemo(
+      () =>
+        contributions
+          .filter(
+            contribution =>
+              contribution
+                .statements
+                .length === 0,
+          )
+          .map(
+            contribution =>
+              contribution.content_id,
+          ),
+      [
+        contributions,
+      ],
+    );
 
   /* =======================================================
      BUILD NOTEBOOK
@@ -97,6 +229,35 @@ export default function TouchNotebookBuilder({
 
     }
 
+    if (
+      missingContributionIds.length > 0
+    ) {
+
+      setError(
+        "Some selected contents do not contain "
+        + "editorial contributions: "
+        + missingContributionIds.join(
+          ", ",
+        ),
+      );
+
+      return;
+
+    }
+
+    if (
+      contributionCount === 0
+    ) {
+
+      setError(
+        "The selected corpus does not contain "
+        + "any editorial contribution.",
+      );
+
+      return;
+
+    }
+
     try {
 
       setLoading(
@@ -118,6 +279,8 @@ export default function TouchNotebookBuilder({
 
           content_ids:
             selectedContentIds,
+
+          contributions,
 
           output_language:
             outputLanguage,
@@ -225,9 +388,7 @@ export default function TouchNotebookBuilder({
 
     <section className="space-y-6">
 
-      {/* ================================================= */}
       {/* ACTION */}
-      {/* ================================================= */}
 
       <div
         className="
@@ -257,8 +418,11 @@ export default function TouchNotebookBuilder({
 
             <p className="mt-1 text-sm text-gray-500">
 
-              Extract and consolidate the evidence contained
-              in
+              Organise
+              {" "}
+              {contributionCount}
+              {" "}
+              editorial contributions from
               {" "}
               {selectedContentIds.length}
               {" "}
@@ -276,6 +440,8 @@ export default function TouchNotebookBuilder({
             disabled={
               loading
               || !subject.trim()
+              || contributionCount === 0
+              || missingContributionIds.length > 0
             }
             className="
               rounded-lg
@@ -292,16 +458,44 @@ export default function TouchNotebookBuilder({
             "
           >
 
-            {loading
-              ? "Building notebook…"
-              : notebook
-                ? "Rebuild notebook"
-                : "Build editorial notebook"
+            {
+              loading
+                ? "Building notebook…"
+                : notebook
+                  ? "Rebuild notebook"
+                  : "Build editorial notebook"
             }
 
           </button>
 
         </div>
+
+        {missingContributionIds.length > 0 && (
+
+          <div
+            className="
+              mt-4
+              rounded-lg
+              border
+              border-amber-200
+              bg-amber-50
+              p-4
+            "
+          >
+
+            <p className="text-sm font-medium text-amber-800">
+              Contributions are missing
+            </p>
+
+            <p className="mt-1 text-sm text-amber-700">
+              Some selected contents have no editorial
+              contribution and cannot be added to the
+              notebook.
+            </p>
+
+          </div>
+
+        )}
 
         {loading && (
 
@@ -317,12 +511,12 @@ export default function TouchNotebookBuilder({
           >
 
             <p className="text-sm font-medium text-blue-800">
-              Analysing the selected corpus…
+              Organising editorial contributions…
             </p>
 
             <p className="mt-1 text-sm text-blue-700">
-              Contents are processed in batches and then
-              consolidated into one evidence notebook.
+              Duplicate contributions are consolidated
+              before the documentary plan is constructed.
             </p>
 
           </div>
@@ -382,7 +576,11 @@ export default function TouchNotebookBuilder({
 
                 {sourceCount || selectedContentIds.length}
                 {" "}
-                sources consolidated into
+                sources and
+                {" "}
+                {contributionCount}
+                {" "}
+                contributions consolidated into
                 {" "}
                 {notebook.notes.length}
                 {" "}
@@ -420,9 +618,7 @@ export default function TouchNotebookBuilder({
 
       </div>
 
-      {/* ================================================= */}
       {/* NOTEBOOK PREVIEW */}
-      {/* ================================================= */}
 
       {notebook && (
 
