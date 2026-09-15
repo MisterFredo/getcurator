@@ -89,34 +89,6 @@ class TouchExtractedNote(
 
     source_content_id: str
 
-
-class TouchExtractedNumber(
-    StrictTouchExtractionModel,
-):
-
-    temporary_number_id: str
-
-    value: str
-
-    unit: str = ""
-
-    metric: str = ""
-
-    context: str = ""
-
-    actor: str | None = None
-
-    geography: str | None = None
-
-    period: str | None = None
-
-    confidence: str
-
-    source_content_id: str
-
-    ambiguity: str = ""
-
-
 class TouchExtractionResult(
     StrictTouchExtractionModel,
 ):
@@ -126,13 +98,6 @@ class TouchExtractionResult(
     ] = Field(
         default_factory=list,
     )
-
-    numbers: list[
-        TouchExtractedNumber
-    ] = Field(
-        default_factory=list,
-    )
-
 
 # ============================================================
 # EXTRACT JSON
@@ -547,14 +512,6 @@ def _validate_extraction_sources(
 
     }
 
-    returned_source_ids.update({
-
-        number.source_content_id
-
-        for number in extraction.numbers
-
-    })
-
     unknown_source_ids = (
 
         returned_source_ids
@@ -573,7 +530,6 @@ def _validate_extraction_sources(
                 )
             )
         )
-
 
 # ============================================================
 # EXTRACT ONE BATCH
@@ -711,19 +667,6 @@ def _prefix_extraction_ids(
         note["temporary_note_id"] = (
             f"batch-{batch_index:03d}"
             f"-note-{note_index:03d}"
-        )
-
-    for number_index, number in enumerate(
-        payload.get(
-            "numbers",
-            [],
-        ),
-        start=1,
-    ):
-
-        number["temporary_number_id"] = (
-            f"batch-{batch_index:03d}"
-            f"-number-{number_index:03d}"
         )
 
     return payload
