@@ -53,8 +53,9 @@ ABSOLUTE RULES
 11. An event must represent an actual documented development.
 12. A general observation, interpretation or market context is not
     automatically an event.
-13. Every event must reference at least one supplied note_id or
-    number_id.
+13. Every event must reference at least one supplied note_id.
+    A certified number may support an event, but a number alone
+    must never be transformed into an event.
 14. Every supplied note_id must appear exactly once in the documentary
     plan:
     - either inside one event;
