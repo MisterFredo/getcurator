@@ -1235,6 +1235,62 @@ def _normalize_notebook(
 
     ]
 
+    # ========================================================
+    # REMOVE EVENT ITEMS FROM STANDALONE SECTION ITEMS
+    # ========================================================
+
+    event_note_ids = {
+
+        note_id
+
+        for event in events
+
+        for note_id in event.note_ids
+
+    }
+
+    event_number_ids = {
+
+        number_id
+
+        for event in events
+
+        for number_id in event.number_ids
+
+    }
+
+    sections = [
+
+        section.model_copy(
+            update={
+
+                "note_ids": [
+
+                    note_id
+
+                    for note_id in section.note_ids
+
+                    if note_id not in event_note_ids
+
+                ],
+
+                "number_ids": [
+
+                    number_id
+
+                    for number_id in section.number_ids
+
+                    if number_id not in event_number_ids
+
+                ],
+
+            },
+        )
+
+        for section in sections
+
+    ]
+
     timeline = [
 
         item.model_copy(
