@@ -20,6 +20,14 @@ from core.touch.generation_service import (
     generate_touch_one_pager,
 )
 
+from core.touch.notebook_models import (
+    TouchNotebookRequest,
+)
+
+from core.touch.notebook_service import (
+    build_touch_notebook,
+)
+
 
 router = APIRouter()
 
@@ -138,6 +146,27 @@ def search_touch(
                 f"éditoriale Touch : {exc}"
             ),
         ) from exc
+
+# ============================================================
+# BUILD EDITORIAL NOTEBOOK
+# ============================================================
+
+@router.post("/notebook")
+def build_editorial_notebook(
+    request: TouchNotebookRequest,
+):
+
+    outcome = build_touch_notebook(
+        request=request,
+    )
+
+    return {
+        "status": "ok",
+        "notebook_generation":
+            outcome.model_dump(
+                mode="json",
+            ),
+    }
 
 
 # ============================================================
