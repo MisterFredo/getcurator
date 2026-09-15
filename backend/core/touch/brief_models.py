@@ -151,8 +151,7 @@ class TouchBriefStructure(
 
     brief_type: TouchBriefType
 
-    secondary_brief_type:
-        TouchBriefType | None = None
+    secondary_brief_type: TouchBriefType | None = None
 
     recommendation_reason: str
 
@@ -193,8 +192,7 @@ class TouchBriefRequest(
 
     notebook: TouchCorpusNotebook
 
-    requested_brief_type:
-        TouchBriefTypeRequest = "AUTO"
+    requested_brief_type: TouchBriefTypeRequest = "AUTO"
 
     editorial_instruction: str = ""
 
