@@ -3,8 +3,11 @@
 import type {
   TouchCorpusNotebook,
   TouchEvidenceConfidence,
+  TouchEvidenceNote,
   TouchEvidenceNoteType,
   TouchEvidenceStatus,
+  TouchNotebookEvent,
+  TouchNotebookNumber,
 } from "@/types/touch";
 
 
@@ -14,7 +17,6 @@ import type {
 
 type Props = {
   notebook: TouchCorpusNotebook;
-
   sourceContentIds: string[];
 };
 
@@ -112,9 +114,9 @@ function getNoteTypeClasses(
   ) {
 
     return (
-      "bg-blue-50 "
-      + "text-blue-700 "
-      + "border-blue-200"
+      "border-blue-200 "
+      + "bg-blue-50 "
+      + "text-blue-700"
     );
 
   }
@@ -125,9 +127,9 @@ function getNoteTypeClasses(
   ) {
 
     return (
-      "bg-emerald-50 "
-      + "text-emerald-700 "
-      + "border-emerald-200"
+      "border-emerald-200 "
+      + "bg-emerald-50 "
+      + "text-emerald-700"
     );
 
   }
@@ -138,9 +140,9 @@ function getNoteTypeClasses(
   ) {
 
     return (
-      "bg-violet-50 "
-      + "text-violet-700 "
-      + "border-violet-200"
+      "border-violet-200 "
+      + "bg-violet-50 "
+      + "text-violet-700"
     );
 
   }
@@ -152,17 +154,17 @@ function getNoteTypeClasses(
   ) {
 
     return (
-      "bg-amber-50 "
-      + "text-amber-700 "
-      + "border-amber-200"
+      "border-amber-200 "
+      + "bg-amber-50 "
+      + "text-amber-700"
     );
 
   }
 
   return (
-    "bg-gray-50 "
-    + "text-gray-700 "
-    + "border-gray-200"
+    "border-gray-200 "
+    + "bg-gray-50 "
+    + "text-gray-700"
   );
 
 }
@@ -173,27 +175,14 @@ function getConfidenceClasses(
 ): string {
 
   if (confidence === "HIGH") {
-
-    return (
-      "bg-emerald-50 "
-      + "text-emerald-700"
-    );
-
+    return "bg-emerald-50 text-emerald-700";
   }
 
   if (confidence === "MEDIUM") {
-
-    return (
-      "bg-amber-50 "
-      + "text-amber-700"
-    );
-
+    return "bg-amber-50 text-amber-700";
   }
 
-  return (
-    "bg-red-50 "
-    + "text-red-700"
-  );
+  return "bg-red-50 text-red-700";
 
 }
 
@@ -203,74 +192,20 @@ function getStatusClasses(
 ): string {
 
   if (status === "VALIDATED") {
-
-    return (
-      "bg-emerald-50 "
-      + "text-emerald-700"
-    );
-
+    return "bg-emerald-50 text-emerald-700";
   }
 
   if (status === "TO_VERIFY") {
-
-    return (
-      "bg-amber-50 "
-      + "text-amber-700"
-    );
-
+    return "bg-amber-50 text-amber-700";
   }
 
-  return (
-    "bg-red-50 "
-    + "text-red-700"
-  );
+  return "bg-red-50 text-red-700";
 
 }
 
-/* =========================================================
-   SECTION
-========================================================= */
-
-function NotebookSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-
-  return (
-
-    <section className="space-y-4">
-
-      <div>
-
-        <h3 className="text-lg font-semibold text-gray-900">
-          {title}
-        </h3>
-
-        {description && (
-
-          <p className="mt-1 text-sm text-gray-500">
-            {description}
-          </p>
-
-        )}
-
-      </div>
-
-      {children}
-
-    </section>
-
-  );
-
-}
 
 /* =========================================================
-   FORMAT NUMBER VALUE
+   FORMAT NUMBER
 ========================================================= */
 
 function formatNumberValue(
@@ -306,10 +241,6 @@ function formatNumberValue(
 
 }
 
-
-/* =========================================================
-   FORMAT NUMBER SCALE
-========================================================= */
 
 function formatNumberScale(
   scale: string | null,
@@ -347,6 +278,891 @@ function formatNumberScale(
 
 
 /* =========================================================
+   NOTEBOOK SECTION
+========================================================= */
+
+function NotebookSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+
+  return (
+
+    <section className="space-y-4">
+
+      <div>
+
+        <h3
+          className="
+            text-lg
+            font-semibold
+            text-gray-900
+          "
+        >
+          {title}
+        </h3>
+
+        {description && (
+
+          <p
+            className="
+              mt-1
+              text-sm
+              leading-6
+              text-gray-500
+            "
+          >
+            {description}
+          </p>
+
+        )}
+
+      </div>
+
+      {children}
+
+    </section>
+
+  );
+
+}
+
+
+/* =========================================================
+   SOURCE REFERENCES
+========================================================= */
+
+function SourceReferences({
+  sourceContentIds,
+  sourceNumberById,
+}: {
+  sourceContentIds: string[];
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  const references = (
+    Array.from(
+      new Set(
+        sourceContentIds,
+      ),
+    )
+      .map(
+        contentId => ({
+
+          contentId,
+
+          sourceNumber:
+            sourceNumberById.get(
+              contentId,
+            ),
+
+        }),
+      )
+      .filter(
+        (
+          reference,
+        ): reference is {
+          contentId: string;
+          sourceNumber: number;
+        } =>
+          reference.sourceNumber
+          !== undefined,
+      )
+  );
+
+  if (
+    references.length === 0
+  ) {
+    return null;
+  }
+
+  return (
+
+    <div
+      className="
+        mt-3
+        flex
+        flex-wrap
+        gap-1.5
+      "
+    >
+
+      {references.map(
+        reference => (
+
+          <span
+            key={reference.contentId}
+            className="
+              rounded
+              bg-gray-100
+              px-2
+              py-1
+              text-xs
+              font-medium
+              text-gray-600
+            "
+          >
+            Source
+            {" "}
+            {reference.sourceNumber}
+          </span>
+
+        ),
+      )}
+
+    </div>
+
+  );
+
+}
+
+
+/* =========================================================
+   NOTE CARD
+========================================================= */
+
+function NoteCard({
+  note,
+  sourceNumberById,
+}: {
+  note: TouchEvidenceNote;
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  return (
+
+    <article
+      className="
+        rounded-lg
+        border
+        border-gray-200
+        bg-white
+        p-4
+      "
+    >
+
+      <div
+        className="
+          flex
+          flex-wrap
+          items-center
+          gap-2
+        "
+      >
+
+        <span
+          className={`
+            rounded-full
+            border
+            px-2.5
+            py-1
+            text-xs
+            font-medium
+            ${getNoteTypeClasses(
+              note.note_type,
+            )}
+          `}
+        >
+          {
+            NOTE_TYPE_LABELS[
+              note.note_type
+            ]
+          }
+        </span>
+
+        <span
+          className={`
+            rounded-full
+            px-2.5
+            py-1
+            text-xs
+            font-medium
+            ${getConfidenceClasses(
+              note.confidence,
+            )}
+          `}
+        >
+          {
+            CONFIDENCE_LABELS[
+              note.confidence
+            ]
+          }
+        </span>
+
+        {note.status !== "VALIDATED" && (
+
+          <span
+            className={`
+              rounded-full
+              px-2.5
+              py-1
+              text-xs
+              font-medium
+              ${getStatusClasses(
+                note.status,
+              )}
+            `}
+          >
+            {
+              STATUS_LABELS[
+                note.status
+              ]
+            }
+          </span>
+
+        )}
+
+      </div>
+
+      <p
+        className="
+          mt-3
+          font-medium
+          leading-6
+          text-gray-900
+        "
+      >
+        {note.statement}
+      </p>
+
+      {note.explanation && (
+
+        <p
+          className="
+            mt-2
+            text-sm
+            leading-6
+            text-gray-600
+          "
+        >
+          {note.explanation}
+        </p>
+
+      )}
+
+      {(
+        note.actors.length > 0
+        || note.geographies.length > 0
+        || note.dates.length > 0
+      ) && (
+
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-2
+            text-xs
+            text-gray-500
+          "
+        >
+
+          {note.actors.map(
+            actor => (
+
+              <span
+                key={`actor-${note.note_id}-${actor}`}
+                className="
+                  rounded
+                  bg-gray-50
+                  px-2
+                  py-1
+                "
+              >
+                Actor:
+                {" "}
+                {actor}
+              </span>
+
+            ),
+          )}
+
+          {note.geographies.map(
+            geography => (
+
+              <span
+                key={`geography-${note.note_id}-${geography}`}
+                className="
+                  rounded
+                  bg-gray-50
+                  px-2
+                  py-1
+                "
+              >
+                Geography:
+                {" "}
+                {geography}
+              </span>
+
+            ),
+          )}
+
+          {note.dates.map(
+            date => (
+
+              <span
+                key={`date-${note.note_id}-${date}`}
+                className="
+                  rounded
+                  bg-gray-50
+                  px-2
+                  py-1
+                "
+              >
+                Date:
+                {" "}
+                {date}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      <SourceReferences
+        sourceContentIds={
+          note.source_content_ids
+        }
+        sourceNumberById={
+          sourceNumberById
+        }
+      />
+
+    </article>
+
+  );
+
+}
+
+
+/* =========================================================
+   NUMBER CARD
+========================================================= */
+
+function NumberCard({
+  number,
+  sourceNumberById,
+}: {
+  number: TouchNotebookNumber;
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  const entityLabels = (
+    number.entities
+      .map(
+        entity =>
+          entity.entity_label,
+      )
+      .filter(
+        (
+          label,
+        ): label is string =>
+          Boolean(
+            label,
+          ),
+      )
+  );
+
+  const hasRange = (
+    number.value_min !== null
+    && number.value_max !== null
+  );
+
+  return (
+
+    <article
+      className="
+        rounded-lg
+        border
+        border-violet-200
+        bg-violet-50/30
+        p-4
+      "
+    >
+
+      <div
+        className="
+          flex
+          flex-wrap
+          items-baseline
+          gap-x-2
+          gap-y-1
+        "
+      >
+
+        <p
+          className="
+            text-2xl
+            font-semibold
+            text-gray-900
+          "
+        >
+
+          {hasRange ? (
+
+            <>
+              {
+                formatNumberValue(
+                  number.value_min,
+                )
+              }
+
+              {" – "}
+
+              {
+                formatNumberValue(
+                  number.value_max,
+                )
+              }
+            </>
+
+          ) : (
+
+            formatNumberValue(
+              number.value,
+            )
+
+          )}
+
+        </p>
+
+        {number.scale && (
+
+          <span
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+            {
+              formatNumberScale(
+                number.scale,
+              )
+            }
+          </span>
+
+        )}
+
+        {number.unit && (
+
+          <span
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+            {number.unit}
+          </span>
+
+        )}
+
+      </div>
+
+      {number.label && (
+
+        <p
+          className="
+            mt-2
+            text-sm
+            font-medium
+            leading-5
+            text-gray-900
+          "
+        >
+          {number.label}
+        </p>
+
+      )}
+
+      {(
+        number.metric_type
+        || entityLabels.length > 0
+      ) && (
+
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-1.5
+          "
+        >
+
+          {number.metric_type && (
+
+            <span
+              className="
+                rounded
+                bg-violet-100
+                px-2
+                py-1
+                text-xs
+                font-medium
+                text-violet-700
+              "
+            >
+              {number.metric_type}
+            </span>
+
+          )}
+
+          {entityLabels.map(
+            (
+              label,
+              index,
+            ) => (
+
+              <span
+                key={
+                  `${number.number_id}-${label}-${index}`
+                }
+                className="
+                  rounded
+                  bg-white
+                  px-2
+                  py-1
+                  text-xs
+                  text-gray-600
+                "
+              >
+                {label}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {(
+        number.zone
+        || number.period_label
+      ) && (
+
+        <div
+          className="
+            mt-3
+            space-y-1
+            text-xs
+            text-gray-500
+          "
+        >
+
+          {number.zone && (
+
+            <p>
+              Geography:
+              {" "}
+              {number.zone}
+            </p>
+
+          )}
+
+          {number.period_label && (
+
+            <p>
+              Period:
+              {" "}
+              {number.period_label}
+            </p>
+
+          )}
+
+        </div>
+
+      )}
+
+      <SourceReferences
+        sourceContentIds={
+          number.source_content_ids
+        }
+        sourceNumberById={
+          sourceNumberById
+        }
+      />
+
+    </article>
+
+  );
+
+}
+
+
+/* =========================================================
+   EVENT CARD
+========================================================= */
+
+function EventCard({
+  event,
+  noteById,
+  numberById,
+  sourceNumberById,
+}: {
+  event: TouchNotebookEvent;
+
+  noteById:
+    Map<string, TouchEvidenceNote>;
+
+  numberById:
+    Map<string, TouchNotebookNumber>;
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  const notes = (
+    event.note_ids
+      .map(
+        noteId =>
+          noteById.get(
+            noteId,
+          ),
+      )
+      .filter(
+        (
+          note,
+        ): note is TouchEvidenceNote =>
+          Boolean(
+            note,
+          ),
+      )
+  );
+
+  const numbers = (
+    event.number_ids
+      .map(
+        numberId =>
+          numberById.get(
+            numberId,
+          ),
+      )
+      .filter(
+        (
+          number,
+        ): number is TouchNotebookNumber =>
+          Boolean(
+            number,
+          ),
+      )
+  );
+
+  return (
+
+    <article
+      className="
+        rounded-xl
+        border
+        border-gray-200
+        bg-gray-50
+        p-5
+      "
+    >
+
+      <div
+        className="
+          flex
+          flex-wrap
+          items-start
+          justify-between
+          gap-3
+        "
+      >
+
+        <div className="min-w-0">
+
+          <p
+            className="
+              text-xs
+              font-semibold
+              uppercase
+              tracking-wide
+              text-ratecard-blue
+            "
+          >
+            Event
+          </p>
+
+          <h4
+            className="
+              mt-1
+              text-base
+              font-semibold
+              text-gray-900
+            "
+          >
+            {event.title}
+          </h4>
+
+        </div>
+
+        {event.event_date && (
+
+          <span
+            className="
+              rounded-full
+              bg-white
+              px-3
+              py-1
+              text-xs
+              font-medium
+              text-gray-600
+            "
+          >
+            {event.event_date}
+          </span>
+
+        )}
+
+      </div>
+
+      {event.description && (
+
+        <p
+          className="
+            mt-2
+            text-sm
+            leading-6
+            text-gray-600
+          "
+        >
+          {event.description}
+        </p>
+
+      )}
+
+      {event.actors.length > 0 && (
+
+        <div
+          className="
+            mt-3
+            flex
+            flex-wrap
+            gap-2
+          "
+        >
+
+          {event.actors.map(
+            actor => (
+
+              <span
+                key={`${event.event_id}-${actor}`}
+                className="
+                  rounded-full
+                  bg-white
+                  px-2.5
+                  py-1
+                  text-xs
+                  text-gray-600
+                "
+              >
+                {actor}
+              </span>
+
+            ),
+          )}
+
+        </div>
+
+      )}
+
+      {(notes.length > 0 || numbers.length > 0) && (
+
+        <div className="mt-5 space-y-4">
+
+          {notes.length > 0 && (
+
+            <div
+              className="
+                grid
+                gap-3
+                xl:grid-cols-2
+              "
+            >
+
+              {notes.map(
+                note => (
+
+                  <NoteCard
+                    key={note.note_id}
+                    note={note}
+                    sourceNumberById={
+                      sourceNumberById
+                    }
+                  />
+
+                ),
+              )}
+
+            </div>
+
+          )}
+
+          {numbers.length > 0 && (
+
+            <div
+              className="
+                grid
+                gap-3
+                md:grid-cols-2
+                xl:grid-cols-3
+              "
+            >
+
+              {numbers.map(
+                number => (
+
+                  <NumberCard
+                    key={number.number_id}
+                    number={number}
+                    sourceNumberById={
+                      sourceNumberById
+                    }
+                  />
+
+                ),
+              )}
+
+            </div>
+
+          )}
+
+        </div>
+
+      )}
+
+      <SourceReferences
+        sourceContentIds={
+          event.source_content_ids
+        }
+        sourceNumberById={
+          sourceNumberById
+        }
+      />
+
+    </article>
+
+  );
+
+}
+
+
+/* =========================================================
    COMPONENT
 ========================================================= */
 
@@ -355,87 +1171,52 @@ export default function TouchNotebookPreview({
   sourceContentIds,
 }: Props) {
 
-  const sourceNumberById =
+  const sourceNumberById = (
     new Map(
       sourceContentIds.map(
         (
           contentId,
           index,
         ) => [
-
           contentId,
           index + 1,
-
         ],
       ),
-    );
+    )
+  );
 
-  function renderSourceReferences(
-    referencedContentIds: string[],
-  ) {
+  const noteById = (
+    new Map(
+      notebook.notes.map(
+        note => [
+          note.note_id,
+          note,
+        ],
+      ),
+    )
+  );
 
-    const references =
-      referencedContentIds
-        .map(
-          contentId => ({
+  const eventById = (
+    new Map(
+      notebook.events.map(
+        event => [
+          event.event_id,
+          event,
+        ],
+      ),
+    )
+  );
 
-            contentId,
-
-            sourceNumber:
-              sourceNumberById.get(
-                contentId,
-              ),
-
-          }),
-        )
-        .filter(
-          reference =>
-            reference.sourceNumber
-            !== undefined,
-        );
-
-    if (
-      references.length === 0
-    ) {
-
-      return null;
-
-    }
-
-    return (
-
-      <div className="flex flex-wrap gap-1.5">
-
-        {references.map(
-          reference => (
-
-            <span
-              key={
-                reference.contentId
-              }
-              className="
-                rounded
-                bg-gray-100
-                px-2
-                py-1
-                text-xs
-                font-medium
-                text-gray-600
-              "
-            >
-              Source
-              {" "}
-              {reference.sourceNumber}
-            </span>
-
-          ),
-        )}
-
-      </div>
-
-    );
-
-  }
+  const numberById = (
+    new Map(
+      notebook.validated_numbers.map(
+        number => [
+          number.number_id,
+          number,
+        ],
+      ),
+    )
+  );
 
   return (
 
@@ -445,7 +1226,7 @@ export default function TouchNotebookPreview({
       {/* HEADER */}
       {/* ================================================= */}
 
-      <div
+      <header
         className="
           rounded-xl
           border
@@ -492,7 +1273,14 @@ export default function TouchNotebookPreview({
 
             {notebook.objective && (
 
-              <p className="mt-2 text-sm text-gray-500">
+              <p
+                className="
+                  mt-2
+                  text-sm
+                  leading-6
+                  text-gray-500
+                "
+              >
                 {notebook.objective}
               </p>
 
@@ -501,6 +1289,22 @@ export default function TouchNotebookPreview({
           </div>
 
           <div className="flex flex-wrap gap-2">
+
+            <span
+              className="
+                rounded-full
+                bg-gray-100
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-gray-600
+              "
+            >
+              {notebook.sections.length}
+              {" "}
+              sections
+            </span>
 
             <span
               className="
@@ -547,484 +1351,255 @@ export default function TouchNotebookPreview({
             >
               {notebook.validated_numbers.length}
               {" "}
-              validated numbers
+              certified numbers
             </span>
 
           </div>
 
         </div>
 
-        <div
-          className="
-            mt-6
-            rounded-lg
-            border
-            border-blue-100
-            bg-blue-50
-            p-4
-          "
-        >
-
-          <p
-            className="
-              text-xs
-              font-semibold
-              uppercase
-              tracking-wide
-              text-blue-700
-            "
-          >
-            Corpus summary
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-gray-700">
-            {notebook.corpus_summary}
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* ================================================= */}
-      {/* DIMENSIONS */}
-      {/* ================================================= */}
-
-      {notebook.dimensions.length > 0 && (
-
-        <NotebookSection
-          title="Covered dimensions"
-          description={
-            "The main analytical facets supported "
-            + "by the selected corpus."
-          }
-        >
+        {notebook.corpus_summary && (
 
           <div
             className="
-              grid
-              gap-4
-              xl:grid-cols-2
-            "
-          >
-
-            {notebook.dimensions.map(
-              (
-                dimension,
-                index,
-              ) => (
-
-                <article
-                  key={
-                    `${dimension.label}-${index}`
-                  }
-                  className="
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    p-5
-                  "
-                >
-
-                  <h4 className="font-semibold text-gray-900">
-                    {dimension.label}
-                  </h4>
-
-                  <p
-                    className="
-                      mt-2
-                      text-sm
-                      leading-6
-                      text-gray-600
-                    "
-                  >
-                    {dimension.summary}
-                  </p>
-
-                  <div className="mt-4">
-
-                    {renderSourceReferences(
-                      dimension.source_content_ids,
-                    )}
-
-                  </div>
-
-                </article>
-
-              ),
-            )}
-
-          </div>
-
-        </NotebookSection>
-
-      )}
-
-      {/* ================================================= */}
-      {/* EVIDENCE NOTES */}
-      {/* ================================================= */}
-
-      <NotebookSection
-        title="Evidence notes"
-        description={
-          "Atomic facts, mechanisms, interpretations "
-          + "and limitations extracted from the corpus."
-        }
-      >
-
-        {notebook.notes.length === 0 ? (
-
-          <div
-            className="
-              rounded-xl
+              mt-6
+              rounded-lg
               border
-              border-dashed
-              border-gray-300
-              bg-white
-              p-8
-              text-center
-              text-sm
-              text-gray-500
+              border-blue-100
+              bg-blue-50
+              p-4
             "
           >
-            No evidence note was produced.
-          </div>
 
-        ) : (
+            <p
+              className="
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wide
+                text-blue-700
+              "
+            >
+              Corpus summary
+            </p>
 
-          <div className="space-y-3">
-
-            {notebook.notes.map(
-              note => (
-
-                <article
-                  key={note.note_id}
-                  className="
-                    rounded-xl
-                    border
-                    border-gray-200
-                    bg-white
-                    p-5
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      flex-wrap
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <span
-                      className={`
-                        rounded-full
-                        border
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        ${getNoteTypeClasses(
-                          note.note_type,
-                        )}
-                      `}
-                    >
-                      {
-                        NOTE_TYPE_LABELS[
-                          note.note_type
-                        ]
-                      }
-                    </span>
-
-                    <span
-                      className={`
-                        rounded-full
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        ${getConfidenceClasses(
-                          note.confidence,
-                        )}
-                      `}
-                    >
-                      {
-                        CONFIDENCE_LABELS[
-                          note.confidence
-                        ]
-                      }
-                    </span>
-
-                    <span
-                      className={`
-                        rounded-full
-                        px-2.5
-                        py-1
-                        text-xs
-                        font-medium
-                        ${getStatusClasses(
-                          note.status,
-                        )}
-                      `}
-                    >
-                      {
-                        STATUS_LABELS[
-                          note.status
-                        ]
-                      }
-                    </span>
-
-                  </div>
-
-                  <p
-                    className="
-                      mt-4
-                      font-medium
-                      leading-6
-                      text-gray-900
-                    "
-                  >
-                    {note.statement}
-                  </p>
-
-                  {note.explanation && (
-
-                    <p
-                      className="
-                        mt-2
-                        text-sm
-                        leading-6
-                        text-gray-600
-                      "
-                    >
-                      {note.explanation}
-                    </p>
-
-                  )}
-
-                  {(
-                    note.actors.length > 0
-                    || note.geographies.length > 0
-                    || note.dates.length > 0
-                  ) && (
-
-                    <div
-                      className="
-                        mt-4
-                        flex
-                        flex-wrap
-                        gap-2
-                        text-xs
-                        text-gray-500
-                      "
-                    >
-
-                      {note.actors.map(
-                        actor => (
-
-                          <span
-                            key={`actor-${actor}`}
-                            className="
-                              rounded
-                              bg-gray-50
-                              px-2
-                              py-1
-                            "
-                          >
-                            Actor:
-                            {" "}
-                            {actor}
-                          </span>
-
-                        ),
-                      )}
-
-                      {note.geographies.map(
-                        geography => (
-
-                          <span
-                            key={`geography-${geography}`}
-                            className="
-                              rounded
-                              bg-gray-50
-                              px-2
-                              py-1
-                            "
-                          >
-                            Geography:
-                            {" "}
-                            {geography}
-                          </span>
-
-                        ),
-                      )}
-
-                      {note.dates.map(
-                        date => (
-
-                          <span
-                            key={`date-${date}`}
-                            className="
-                              rounded
-                              bg-gray-50
-                              px-2
-                              py-1
-                            "
-                          >
-                            Date:
-                            {" "}
-                            {date}
-                          </span>
-
-                        ),
-                      )}
-
-                    </div>
-
-                  )}
-
-                  <div className="mt-4">
-
-                    {renderSourceReferences(
-                      note.source_content_ids,
-                    )}
-
-                  </div>
-
-                </article>
-
-              ),
-            )}
+            <p
+              className="
+                mt-2
+                text-sm
+                leading-6
+                text-gray-700
+              "
+            >
+              {notebook.corpus_summary}
+            </p>
 
           </div>
 
         )}
 
-      </NotebookSection>
+      </header>
 
-            {/* ================================================= */}
-            {/* EVENTS */}
-            {/* ================================================= */}
-      
-            {notebook.events.length > 0 && (
-      
-              <NotebookSection
-                title="Events"
-                description={
-                  "Underlying developments reconstructed "
-                  + "from complementary sources."
-                }
-              >
-      
-                <div className="space-y-3">
-      
-                  {notebook.events.map(
-                    event => (
-      
-                      <article
-                        key={event.event_id}
+      {/* ================================================= */}
+      {/* DOCUMENTARY PLAN */}
+      {/* ================================================= */}
+
+      {notebook.sections.length === 0 ? (
+
+        <div
+          className="
+            rounded-xl
+            border
+            border-dashed
+            border-gray-300
+            bg-white
+            p-10
+            text-center
+            text-sm
+            text-gray-500
+          "
+        >
+          No documentary section was produced.
+        </div>
+
+      ) : (
+
+        <div className="space-y-8">
+
+          {notebook.sections.map(
+            (
+              section,
+              sectionIndex,
+            ) => {
+
+              const events = (
+                section.event_ids
+                  .map(
+                    eventId =>
+                      eventById.get(
+                        eventId,
+                      ),
+                  )
+                  .filter(
+                    (
+                      event,
+                    ): event is TouchNotebookEvent =>
+                      Boolean(
+                        event,
+                      ),
+                  )
+              );
+
+              const standaloneNotes = (
+                section.note_ids
+                  .map(
+                    noteId =>
+                      noteById.get(
+                        noteId,
+                      ),
+                  )
+                  .filter(
+                    (
+                      note,
+                    ): note is TouchEvidenceNote =>
+                      Boolean(
+                        note,
+                      ),
+                  )
+              );
+
+              const standaloneNumbers = (
+                section.number_ids
+                  .map(
+                    numberId =>
+                      numberById.get(
+                        numberId,
+                      ),
+                  )
+                  .filter(
+                    (
+                      number,
+                    ): number is TouchNotebookNumber =>
+                      Boolean(
+                        number,
+                      ),
+                  )
+              );
+
+              return (
+
+                <NotebookSection
+                  key={section.section_id}
+                  title={
+                    `${sectionIndex + 1}. `
+                    + section.title
+                  }
+                  description={
+                    section.description
+                  }
+                >
+
+                  <div className="space-y-4">
+
+                    {events.map(
+                      event => (
+
+                        <EventCard
+                          key={event.event_id}
+                          event={event}
+                          noteById={noteById}
+                          numberById={numberById}
+                          sourceNumberById={
+                            sourceNumberById
+                          }
+                        />
+
+                      ),
+                    )}
+
+                    {standaloneNotes.length > 0 && (
+
+                      <div
                         className="
-                          rounded-xl
-                          border
-                          border-gray-200
-                          bg-white
-                          p-5
+                          grid
+                          gap-3
+                          xl:grid-cols-2
                         "
                       >
-      
-                        <div
-                          className="
-                            flex
-                            flex-wrap
-                            items-start
-                            justify-between
-                            gap-3
-                          "
-                        >
-      
-                          <div>
-      
-                            <h4 className="font-semibold text-gray-900">
-                              {event.title}
-                            </h4>
-      
-                            {event.event_date && (
-      
-                              <p className="mt-1 text-xs text-gray-500">
-                                {event.event_date}
-                              </p>
-      
-                            )}
-      
-                          </div>
-      
-                        </div>
-      
-                        <p
-                          className="
-                            mt-3
-                            text-sm
-                            leading-6
-                            text-gray-600
-                          "
-                        >
-                          {event.description}
-                        </p>
-      
-                        {event.actors.length > 0 && (
-      
-                          <div className="mt-3 flex flex-wrap gap-2">
-      
-                            {event.actors.map(
-                              actor => (
-      
-                                <span
-                                  key={actor}
-                                  className="
-                                    rounded-full
-                                    bg-gray-100
-                                    px-2.5
-                                    py-1
-                                    text-xs
-                                    text-gray-600
-                                  "
-                                >
-                                  {actor}
-                                </span>
-      
-                              ),
-                            )}
-      
-                          </div>
-      
+
+                        {standaloneNotes.map(
+                          note => (
+
+                            <NoteCard
+                              key={note.note_id}
+                              note={note}
+                              sourceNumberById={
+                                sourceNumberById
+                              }
+                            />
+
+                          ),
                         )}
-      
-                        <div className="mt-4">
-      
-                          {renderSourceReferences(
-                            event.source_content_ids,
-                          )}
-      
-                        </div>
-      
-                      </article>
-      
-                    ),
-                  )}
-      
-                </div>
-      
-              </NotebookSection>
+
+                      </div>
+
+                    )}
+
+                    {standaloneNumbers.length > 0 && (
+
+                      <div
+                        className="
+                          grid
+                          gap-3
+                          md:grid-cols-2
+                          xl:grid-cols-3
+                        "
+                      >
+
+                        {standaloneNumbers.map(
+                          number => (
+
+                            <NumberCard
+                              key={number.number_id}
+                              number={number}
+                              sourceNumberById={
+                                sourceNumberById
+                              }
+                            />
+
+                          ),
+                        )}
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                </NotebookSection>
+
+              );
+
+            },
+          )}
+
+        </div>
 
       )}
+
       {/* ================================================= */}
       {/* TIMELINE */}
       {/* ================================================= */}
 
       {notebook.timeline.length > 0 && (
 
-        <NotebookSection title="Timeline">
+        <NotebookSection
+          title="Timeline"
+          description={
+            "Dated and sequential developments "
+            + "documented by the corpus."
+          }
+        >
 
           <div className="space-y-3">
 
@@ -1062,7 +1637,12 @@ export default function TouchNotebookPreview({
 
                   <div className="min-w-0 flex-1">
 
-                    <h4 className="font-semibold text-gray-900">
+                    <h4
+                      className="
+                        font-semibold
+                        text-gray-900
+                      "
+                    >
                       {item.label}
                     </h4>
 
@@ -1081,399 +1661,14 @@ export default function TouchNotebookPreview({
 
                     )}
 
-                    <div className="mt-3">
-
-                      {renderSourceReferences(
-                        item.source_content_ids,
-                      )}
-
-                    </div>
-
-                  </div>
-
-                </article>
-
-              ),
-            )}
-
-          </div>
-
-        </NotebookSection>
-
-      )}
-
-      {/* ================================================= */}
-      {/* VALIDATED NUMBERS */}
-      {/* ================================================= */}
-
-      {notebook.validated_numbers.length > 0 && (
-
-        <NotebookSection
-          title="Validated numbers"
-          description={
-            "Certified figures attached to the "
-            + "selected contents."
-          }
-        >
-
-          <div
-            className="
-              grid
-              gap-4
-              md:grid-cols-2
-              xl:grid-cols-3
-            "
-          >
-
-            {notebook.validated_numbers.map(
-              number => {
-
-                const entityLabels = (
-                  number.entities
-                    .map(
-                      entity =>
-                        entity.entity_label,
-                    )
-                    .filter(
-                      (
-                        label,
-                      ): label is string =>
-                        Boolean(
-                          label,
-                        ),
-                    )
-                );
-
-                const hasRange = (
-                  number.value_min !== null
-                  && number.value_max !== null
-                );
-
-                return (
-
-                  <article
-                    key={number.number_id}
-                    className="
-                      rounded-xl
-                      border
-                      border-gray-200
-                      bg-white
-                      p-5
-                    "
-                  >
-
-                    {/* =================================== */}
-                    {/* VALUE */}
-                    {/* =================================== */}
-
-                    <div
-                      className="
-                        flex
-                        flex-wrap
-                        items-baseline
-                        gap-x-2
-                        gap-y-1
-                      "
-                    >
-
-                      <p
-                        className="
-                          text-2xl
-                          font-semibold
-                          text-gray-900
-                        "
-                      >
-
-                        {hasRange ? (
-
-                          <>
-                            {
-                              formatNumberValue(
-                                number.value_min,
-                              )
-                            }
-
-                            {" – "}
-
-                            {
-                              formatNumberValue(
-                                number.value_max,
-                              )
-                            }
-                          </>
-
-                        ) : (
-
-                          formatNumberValue(
-                            number.value,
-                          )
-
-                        )}
-
-                      </p>
-
-                      {number.scale && (
-
-                        <span
-                          className="
-                            text-base
-                            font-medium
-                            text-gray-700
-                          "
-                        >
-                          {
-                            formatNumberScale(
-                              number.scale,
-                            )
-                          }
-                        </span>
-
-                      )}
-
-                      {number.unit && (
-
-                        <span
-                          className="
-                            text-base
-                            font-medium
-                            text-gray-700
-                          "
-                        >
-                          {number.unit}
-                        </span>
-
-                      )}
-
-                    </div>
-
-                    {/* =================================== */}
-                    {/* LABEL */}
-                    {/* =================================== */}
-
-                    {number.label && (
-
-                      <p
-                        className="
-                          mt-3
-                          font-medium
-                          leading-6
-                          text-gray-900
-                        "
-                      >
-                        {number.label}
-                      </p>
-
-                    )}
-
-                    {/* =================================== */}
-                    {/* METADATA */}
-                    {/* =================================== */}
-
-                    <div
-                      className="
-                        mt-3
-                        flex
-                        flex-wrap
-                        gap-2
-                      "
-                    >
-
-                      {number.metric_type && (
-
-                        <span
-                          className="
-                            rounded
-                            bg-violet-50
-                            px-2
-                            py-1
-                            text-xs
-                            font-medium
-                            text-violet-700
-                          "
-                        >
-                          {number.metric_type}
-                        </span>
-
-                      )}
-
-                      {entityLabels.map(
-                        (
-                          label,
-                          index,
-                        ) => (
-
-                          <span
-                            key={
-                              `${number.number_id}-${label}-${index}`
-                            }
-                            className="
-                              rounded
-                              bg-gray-100
-                              px-2
-                              py-1
-                              text-xs
-                              text-gray-600
-                            "
-                          >
-                            {label}
-                          </span>
-
-                        ),
-                      )}
-
-                    </div>
-
-                    {/* =================================== */}
-                    {/* CONTEXT */}
-                    {/* =================================== */}
-
-                    {(
-                      number.zone
-                      || number.period_label
-                    ) && (
-
-                      <div
-                        className="
-                          mt-3
-                          space-y-1
-                          text-xs
-                          text-gray-500
-                        "
-                      >
-
-                        {number.zone && (
-
-                          <p>
-                            Geography:
-                            {" "}
-                            {number.zone}
-                          </p>
-
-                        )}
-
-                        {number.period_label && (
-
-                          <p>
-                            Period:
-                            {" "}
-                            {number.period_label}
-                          </p>
-
-                        )}
-
-                      </div>
-
-                    )}
-
-                    {/* =================================== */}
-                    {/* SOURCES */}
-                    {/* =================================== */}
-
-                    <div className="mt-4">
-
-                      {renderSourceReferences(
-                        number.source_content_ids,
-                      )}
-
-                    </div>
-
-                  </article>
-
-                );
-
-              },
-            )}
-
-          </div>
-
-        </NotebookSection>
-
-      )}
-      {/* ================================================= */}
-      {/* QUARANTINED NUMBERS */}
-      {/* ================================================= */}
-
-      {notebook.quarantined_numbers.length > 0 && (
-
-        <NotebookSection
-          title="Numbers to verify"
-          description={
-            "These figures must not be used in the "
-            + "final document without verification."
-          }
-        >
-
-          <div className="space-y-3">
-
-            {notebook.quarantined_numbers.map(
-              (
-                number,
-                index,
-              ) => (
-
-                <article
-                  key={
-                    `${number.value}-${number.metric}-${index}`
-                  }
-                  className="
-                    rounded-xl
-                    border
-                    border-amber-200
-                    bg-amber-50
-                    p-5
-                  "
-                >
-
-                  <p className="font-semibold text-gray-900">
-
-                    {number.value}
-
-                    {number.unit && (
-                      <>
-                        {" "}
-                        {number.unit}
-                      </>
-                    )}
-
-                    {number.metric && (
-                      <>
-                        {" — "}
-                        {number.metric}
-                      </>
-                    )}
-
-                  </p>
-
-                  {number.context && (
-
-                    <p
-                      className="
-                        mt-2
-                        text-sm
-                        text-gray-600
-                      "
-                    >
-                      {number.context}
-                    </p>
-
-                  )}
-
-                  <p
-                    className="
-                      mt-2
-                      text-sm
-                      font-medium
-                      text-amber-800
-                    "
-                  >
-                    {number.reason}
-                  </p>
-
-                  <div className="mt-4">
-
-                    {renderSourceReferences(
-                      number.source_content_ids,
-                    )}
+                    <SourceReferences
+                      sourceContentIds={
+                        item.source_content_ids
+                      }
+                      sourceNumberById={
+                        sourceNumberById
+                      }
+                    />
 
                   </div>
 
@@ -1494,7 +1689,13 @@ export default function TouchNotebookPreview({
 
       {notebook.contradictions.length > 0 && (
 
-        <NotebookSection title="Contradictions">
+        <NotebookSection
+          title="Contradictions"
+          description={
+            "Qualitative disagreements identified "
+            + "between the selected sources."
+          }
+        >
 
           <div className="space-y-3">
 
@@ -1517,7 +1718,12 @@ export default function TouchNotebookPreview({
                   "
                 >
 
-                  <h4 className="font-semibold text-gray-900">
+                  <h4
+                    className="
+                      font-semibold
+                      text-gray-900
+                    "
+                  >
                     {contradiction.subject}
                   </h4>
 
@@ -1549,13 +1755,15 @@ export default function TouchNotebookPreview({
 
                   )}
 
-                  <div className="mt-4">
-
-                    {renderSourceReferences(
-                      contradiction.source_content_ids,
-                    )}
-
-                  </div>
+                  <SourceReferences
+                    sourceContentIds={
+                      contradiction
+                        .source_content_ids
+                    }
+                    sourceNumberById={
+                      sourceNumberById
+                    }
+                  />
 
                 </article>
 
@@ -1597,13 +1805,24 @@ export default function TouchNotebookPreview({
               "
             >
 
-              <h4 className="font-semibold text-emerald-800">
+              <h4
+                className="
+                  font-semibold
+                  text-emerald-800
+                "
+              >
                 Strengths
               </h4>
 
               {notebook.corpus_strengths.length === 0 ? (
 
-                <p className="mt-3 text-sm text-gray-500">
+                <p
+                  className="
+                    mt-3
+                    text-sm
+                    text-gray-500
+                  "
+                >
                   No specific strength identified.
                 </p>
 
@@ -1627,7 +1846,11 @@ export default function TouchNotebookPreview({
                       index,
                     ) => (
 
-                      <li key={`${strength}-${index}`}>
+                      <li
+                        key={
+                          `${strength}-${index}`
+                        }
+                      >
                         {strength}
                       </li>
 
@@ -1650,13 +1873,24 @@ export default function TouchNotebookPreview({
               "
             >
 
-              <h4 className="font-semibold text-amber-800">
+              <h4
+                className="
+                  font-semibold
+                  text-amber-800
+                "
+              >
                 Limits
               </h4>
 
               {notebook.corpus_limits.length === 0 ? (
 
-                <p className="mt-3 text-sm text-gray-500">
+                <p
+                  className="
+                    mt-3
+                    text-sm
+                    text-gray-500
+                  "
+                >
                   No specific limitation identified.
                 </p>
 
@@ -1680,7 +1914,11 @@ export default function TouchNotebookPreview({
                       index,
                     ) => (
 
-                      <li key={`${limit}-${index}`}>
+                      <li
+                        key={
+                          `${limit}-${index}`
+                        }
+                      >
                         {limit}
                       </li>
 
