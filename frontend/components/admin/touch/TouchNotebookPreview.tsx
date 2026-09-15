@@ -174,15 +174,32 @@ function getConfidenceClasses(
   confidence: TouchEvidenceConfidence,
 ): string {
 
-  if (confidence === "HIGH") {
-    return "bg-emerald-50 text-emerald-700";
+  if (
+    confidence === "HIGH"
+  ) {
+
+    return (
+      "bg-emerald-50 "
+      + "text-emerald-700"
+    );
+
   }
 
-  if (confidence === "MEDIUM") {
-    return "bg-amber-50 text-amber-700";
+  if (
+    confidence === "MEDIUM"
+  ) {
+
+    return (
+      "bg-amber-50 "
+      + "text-amber-700"
+    );
+
   }
 
-  return "bg-red-50 text-red-700";
+  return (
+    "bg-red-50 "
+    + "text-red-700"
+  );
 
 }
 
@@ -191,15 +208,32 @@ function getStatusClasses(
   status: TouchEvidenceStatus,
 ): string {
 
-  if (status === "VALIDATED") {
-    return "bg-emerald-50 text-emerald-700";
+  if (
+    status === "VALIDATED"
+  ) {
+
+    return (
+      "bg-emerald-50 "
+      + "text-emerald-700"
+    );
+
   }
 
-  if (status === "TO_VERIFY") {
-    return "bg-amber-50 text-amber-700";
+  if (
+    status === "TO_VERIFY"
+  ) {
+
+    return (
+      "bg-amber-50 "
+      + "text-amber-700"
+    );
+
   }
 
-  return "bg-red-50 text-red-700";
+  return (
+    "bg-red-50 "
+    + "text-red-700"
+  );
 
 }
 
@@ -219,7 +253,9 @@ function formatNumberValue(
     value === null
     || value === ""
   ) {
+
     return "—";
+
   }
 
   if (
@@ -242,37 +278,176 @@ function formatNumberValue(
 }
 
 
+function formatOptionalToken(
+  value: string | null,
+): string {
+
+  const normalized =
+    (
+      value
+      || ""
+    )
+      .trim();
+
+  if (!normalized) {
+
+    return "";
+
+  }
+
+  if (
+    normalized.toUpperCase()
+    === "NONE"
+    || normalized.toUpperCase()
+    === "UNKNOWN"
+    || normalized.toUpperCase()
+    === "NULL"
+  ) {
+
+    return "";
+
+  }
+
+  return normalized;
+
+}
+
+
 function formatNumberScale(
   scale: string | null,
 ): string {
 
-  if (!scale) {
+  const normalized =
+    formatOptionalToken(
+      scale,
+    );
+
+  if (!normalized) {
+
     return "";
+
   }
 
   const labels:
     Record<string, string> = {
 
-    THOUSAND:
-      "thousand",
+      THOUSAND:
+        "thousand",
 
-    MILLION:
-      "million",
+      MILLION:
+        "million",
 
-    BILLION:
-      "billion",
+      BILLION:
+        "billion",
 
-    TRILLION:
-      "trillion",
+      TRILLION:
+        "trillion",
 
-  };
+    };
 
   return (
     labels[
-      scale.toUpperCase()
+      normalized.toUpperCase()
     ]
-    ?? scale.toLowerCase()
+    ?? normalized.toLowerCase()
   );
+
+}
+
+
+function formatNumberUnit(
+  unit: string | null,
+): string {
+
+  const normalized =
+    formatOptionalToken(
+      unit,
+    );
+
+  if (!normalized) {
+
+    return "";
+
+  }
+
+  const labels:
+    Record<string, string> = {
+
+      PERCENT:
+        "%",
+
+      PERCENTAGE:
+        "%",
+
+      USD:
+        "USD",
+
+      EUR:
+        "EUR",
+
+      GBP:
+        "GBP",
+
+    };
+
+  return (
+    labels[
+      normalized.toUpperCase()
+    ]
+    ?? normalized
+  );
+
+}
+
+
+function formatCertifiedNumberValue(
+  number: TouchNotebookNumber,
+): string {
+
+  const hasRange = (
+    number.value_min !== null
+    && number.value_max !== null
+  );
+
+  const value = (
+    hasRange
+
+      ? (
+          formatNumberValue(
+            number.value_min,
+          )
+          + " – "
+          + formatNumberValue(
+            number.value_max,
+          )
+        )
+
+      : formatNumberValue(
+          number.value,
+        )
+  );
+
+  const scale =
+    formatNumberScale(
+      number.scale,
+    );
+
+  const unit =
+    formatNumberUnit(
+      number.unit,
+    );
+
+  return [
+    value,
+    scale,
+    unit,
+  ]
+    .filter(
+      Boolean,
+    )
+    .join(
+      " ",
+    );
 
 }
 
@@ -283,11 +458,9 @@ function formatNumberScale(
 
 function NotebookSection({
   title,
-  description,
   children,
 }: {
   title: string;
-  description?: string;
   children: React.ReactNode;
 }) {
 
@@ -295,34 +468,15 @@ function NotebookSection({
 
     <section className="space-y-4">
 
-      <div>
-
-        <h3
-          className="
-            text-lg
-            font-semibold
-            text-gray-900
-          "
-        >
-          {title}
-        </h3>
-
-        {description && (
-
-          <p
-            className="
-              mt-1
-              text-sm
-              leading-6
-              text-gray-500
-            "
-          >
-            {description}
-          </p>
-
-        )}
-
-      </div>
+      <h3
+        className="
+          text-lg
+          font-semibold
+          text-gray-900
+        "
+      >
+        {title}
+      </h3>
 
       {children}
 
@@ -371,16 +525,19 @@ function SourceReferences({
         ): reference is {
           contentId: string;
           sourceNumber: number;
-        } =>
+        } => (
           reference.sourceNumber
-          !== undefined,
+          !== undefined
+        ),
       )
   );
 
   if (
     references.length === 0
   ) {
+
     return null;
+
   }
 
   return (
@@ -398,7 +555,9 @@ function SourceReferences({
         reference => (
 
           <span
-            key={reference.contentId}
+            key={
+              reference.contentId
+            }
             className="
               rounded
               bg-gray-100
@@ -570,7 +729,9 @@ function NoteCard({
             actor => (
 
               <span
-                key={`actor-${note.note_id}-${actor}`}
+                key={
+                  `actor-${note.note_id}-${actor}`
+                }
                 className="
                   rounded
                   bg-gray-50
@@ -590,7 +751,9 @@ function NoteCard({
             geography => (
 
               <span
-                key={`geography-${note.note_id}-${geography}`}
+                key={
+                  `geography-${note.note_id}-${geography}`
+                }
                 className="
                   rounded
                   bg-gray-50
@@ -610,7 +773,9 @@ function NoteCard({
             date => (
 
               <span
-                key={`date-${note.note_id}-${date}`}
+                key={
+                  `date-${note.note_id}-${date}`
+                }
                 className="
                   rounded
                   bg-gray-50
@@ -647,280 +812,18 @@ function NoteCard({
 
 
 /* =========================================================
-   NUMBER CARD
-========================================================= */
-
-function NumberCard({
-  number,
-  sourceNumberById,
-}: {
-  number: TouchNotebookNumber;
-
-  sourceNumberById:
-    Map<string, number>;
-}) {
-
-  const entityLabels = (
-    number.entities
-      .map(
-        entity =>
-          entity.entity_label,
-      )
-      .filter(
-        (
-          label,
-        ): label is string =>
-          Boolean(
-            label,
-          ),
-      )
-  );
-
-  const hasRange = (
-    number.value_min !== null
-    && number.value_max !== null
-  );
-
-  return (
-
-    <article
-      className="
-        rounded-lg
-        border
-        border-violet-200
-        bg-violet-50/30
-        p-4
-      "
-    >
-
-      <div
-        className="
-          flex
-          flex-wrap
-          items-baseline
-          gap-x-2
-          gap-y-1
-        "
-      >
-
-        <p
-          className="
-            text-2xl
-            font-semibold
-            text-gray-900
-          "
-        >
-
-          {hasRange ? (
-
-            <>
-              {
-                formatNumberValue(
-                  number.value_min,
-                )
-              }
-
-              {" – "}
-
-              {
-                formatNumberValue(
-                  number.value_max,
-                )
-              }
-            </>
-
-          ) : (
-
-            formatNumberValue(
-              number.value,
-            )
-
-          )}
-
-        </p>
-
-        {number.scale && (
-
-          <span
-            className="
-              text-sm
-              font-medium
-              text-gray-700
-            "
-          >
-            {
-              formatNumberScale(
-                number.scale,
-              )
-            }
-          </span>
-
-        )}
-
-        {number.unit && (
-
-          <span
-            className="
-              text-sm
-              font-medium
-              text-gray-700
-            "
-          >
-            {number.unit}
-          </span>
-
-        )}
-
-      </div>
-
-      {number.label && (
-
-        <p
-          className="
-            mt-2
-            text-sm
-            font-medium
-            leading-5
-            text-gray-900
-          "
-        >
-          {number.label}
-        </p>
-
-      )}
-
-      {(
-        number.metric_type
-        || entityLabels.length > 0
-      ) && (
-
-        <div
-          className="
-            mt-3
-            flex
-            flex-wrap
-            gap-1.5
-          "
-        >
-
-          {number.metric_type && (
-
-            <span
-              className="
-                rounded
-                bg-violet-100
-                px-2
-                py-1
-                text-xs
-                font-medium
-                text-violet-700
-              "
-            >
-              {number.metric_type}
-            </span>
-
-          )}
-
-          {entityLabels.map(
-            (
-              label,
-              index,
-            ) => (
-
-              <span
-                key={
-                  `${number.number_id}-${label}-${index}`
-                }
-                className="
-                  rounded
-                  bg-white
-                  px-2
-                  py-1
-                  text-xs
-                  text-gray-600
-                "
-              >
-                {label}
-              </span>
-
-            ),
-          )}
-
-        </div>
-
-      )}
-
-      {(
-        number.zone
-        || number.period_label
-      ) && (
-
-        <div
-          className="
-            mt-3
-            space-y-1
-            text-xs
-            text-gray-500
-          "
-        >
-
-          {number.zone && (
-
-            <p>
-              Geography:
-              {" "}
-              {number.zone}
-            </p>
-
-          )}
-
-          {number.period_label && (
-
-            <p>
-              Period:
-              {" "}
-              {number.period_label}
-            </p>
-
-          )}
-
-        </div>
-
-      )}
-
-      <SourceReferences
-        sourceContentIds={
-          number.source_content_ids
-        }
-        sourceNumberById={
-          sourceNumberById
-        }
-      />
-
-    </article>
-
-  );
-
-}
-
-
-/* =========================================================
    EVENT CARD
 ========================================================= */
 
 function EventCard({
   event,
   noteById,
-  numberById,
   sourceNumberById,
 }: {
   event: TouchNotebookEvent;
 
   noteById:
     Map<string, TouchEvidenceNote>;
-
-  numberById:
-    Map<string, TouchNotebookNumber>;
 
   sourceNumberById:
     Map<string, number>;
@@ -937,28 +840,11 @@ function EventCard({
       .filter(
         (
           note,
-        ): note is TouchEvidenceNote =>
+        ): note is TouchEvidenceNote => (
           Boolean(
             note,
-          ),
-      )
-  );
-
-  const numbers = (
-    event.number_ids
-      .map(
-        numberId =>
-          numberById.get(
-            numberId,
-          ),
-      )
-      .filter(
-        (
-          number,
-        ): number is TouchNotebookNumber =>
-          Boolean(
-            number,
-          ),
+          )
+        ),
       )
   );
 
@@ -1031,21 +917,6 @@ function EventCard({
 
       </div>
 
-      {event.description && (
-
-        <p
-          className="
-            mt-2
-            text-sm
-            leading-6
-            text-gray-600
-          "
-        >
-          {event.description}
-        </p>
-
-      )}
-
       {event.actors.length > 0 && (
 
         <div
@@ -1061,7 +932,9 @@ function EventCard({
             actor => (
 
               <span
-                key={`${event.event_id}-${actor}`}
+                key={
+                  `${event.event_id}-${actor}`
+                }
                 className="
                   rounded-full
                   bg-white
@@ -1081,54 +954,367 @@ function EventCard({
 
       )}
 
-      {(notes.length > 0 || numbers.length > 0) && (
+      {notes.length > 0 && (
 
-        <div className="mt-5 space-y-4">
+        <div
+          className="
+            mt-5
+            grid
+            gap-3
+            xl:grid-cols-2
+          "
+        >
 
-          {notes.length > 0 && (
+          {notes.map(
+            note => (
 
-            <div
-              className="
-                grid
-                gap-3
-                xl:grid-cols-2
-              "
-            >
+              <NoteCard
+                key={
+                  note.note_id
+                }
+                note={note}
+                sourceNumberById={
+                  sourceNumberById
+                }
+              />
 
-              {notes.map(
-                note => (
-
-                  <NoteCard
-                    key={note.note_id}
-                    note={note}
-                    sourceNumberById={
-                      sourceNumberById
-                    }
-                  />
-
-                ),
-              )}
-
-            </div>
-
+            ),
           )}
 
-          {numbers.length > 0 && (
+        </div>
 
-            <div
-              className="
-                grid
-                gap-3
-                md:grid-cols-2
-                xl:grid-cols-3
-              "
-            >
+      )}
+
+    </article>
+
+  );
+
+}
+
+
+/* =========================================================
+   CERTIFIED NUMBER ROW
+========================================================= */
+
+function CertifiedNumberRow({
+  number,
+  sourceNumberById,
+}: {
+  number: TouchNotebookNumber;
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  const entityLabels = (
+    Array.from(
+      new Set(
+        number.entities
+          .map(
+            entity =>
+              entity.entity_label,
+          )
+          .filter(
+            (
+              label,
+            ): label is string => (
+              Boolean(
+                label,
+              )
+            ),
+          ),
+      ),
+    )
+  );
+
+  const metricType =
+    formatOptionalToken(
+      number.metric_type,
+    );
+
+  const zone =
+    formatOptionalToken(
+      number.zone,
+    );
+
+  const period =
+    formatOptionalToken(
+      number.period_label,
+    );
+
+  return (
+
+    <tr
+      className="
+        border-t
+        border-gray-100
+        align-top
+      "
+    >
+
+      <td
+        className="
+          px-4
+          py-4
+          text-sm
+          font-semibold
+          text-gray-900
+        "
+      >
+        {
+          formatCertifiedNumberValue(
+            number,
+          )
+        }
+      </td>
+
+      <td
+        className="
+          px-4
+          py-4
+          text-sm
+          leading-5
+          text-gray-700
+        "
+      >
+
+        <p className="font-medium text-gray-900">
+          {number.label || "Unlabelled metric"}
+        </p>
+
+        {metricType && (
+
+          <p className="mt-1 text-xs text-gray-500">
+            {metricType}
+          </p>
+
+        )}
+
+      </td>
+
+      <td
+        className="
+          px-4
+          py-4
+          text-sm
+          text-gray-600
+        "
+      >
+
+        {entityLabels.length > 0 ? (
+
+          <div className="flex flex-wrap gap-1.5">
+
+            {entityLabels.map(
+              label => (
+
+                <span
+                  key={
+                    `${number.number_id}-${label}`
+                  }
+                  className="
+                    rounded
+                    bg-gray-100
+                    px-2
+                    py-1
+                    text-xs
+                    text-gray-600
+                  "
+                >
+                  {label}
+                </span>
+
+              ),
+            )}
+
+          </div>
+
+        ) : (
+
+          <span className="text-gray-400">
+            —
+          </span>
+
+        )}
+
+      </td>
+
+      <td
+        className="
+          px-4
+          py-4
+          text-sm
+          text-gray-600
+        "
+      >
+
+        {zone && (
+          <p>{zone}</p>
+        )}
+
+        {period && (
+          <p className="mt-1 text-xs text-gray-500">
+            {period}
+          </p>
+        )}
+
+        {!zone && !period && (
+
+          <span className="text-gray-400">
+            —
+          </span>
+
+        )}
+
+      </td>
+
+      <td
+        className="
+          px-4
+          py-4
+          text-sm
+          text-gray-600
+        "
+      >
+
+        <SourceReferences
+          sourceContentIds={
+            number.source_content_ids
+          }
+          sourceNumberById={
+            sourceNumberById
+          }
+        />
+
+      </td>
+
+    </tr>
+
+  );
+
+}
+
+
+/* =========================================================
+   CERTIFIED NUMBERS APPENDIX
+========================================================= */
+
+function CertifiedNumbersAppendix({
+  numbers,
+  sourceNumberById,
+}: {
+  numbers: TouchNotebookNumber[];
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  if (
+    numbers.length === 0
+  ) {
+
+    return null;
+
+  }
+
+  return (
+
+    <NotebookSection title="Certified numbers">
+
+      <div
+        className="
+          overflow-hidden
+          rounded-xl
+          border
+          border-gray-200
+          bg-white
+        "
+      >
+
+        <div
+          className="
+            border-b
+            border-gray-200
+            bg-gray-50
+            px-5
+            py-4
+          "
+        >
+
+          <p
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+            Technical appendix
+          </p>
+
+          <p
+            className="
+              mt-1
+              text-xs
+              leading-5
+              text-gray-500
+            "
+          >
+            Accepted observations supplied by the canonical
+            Numbers pipeline. They are not used to organize
+            the documentary plan.
+          </p>
+
+        </div>
+
+        <div className="overflow-x-auto">
+
+          <table className="min-w-full">
+
+            <thead className="bg-white">
+
+              <tr
+                className="
+                  text-left
+                  text-xs
+                  uppercase
+                  tracking-wide
+                  text-gray-500
+                "
+              >
+
+                <th className="px-4 py-3 font-medium">
+                  Value
+                </th>
+
+                <th className="px-4 py-3 font-medium">
+                  Metric
+                </th>
+
+                <th className="px-4 py-3 font-medium">
+                  Entities
+                </th>
+
+                <th className="px-4 py-3 font-medium">
+                  Scope
+                </th>
+
+                <th className="px-4 py-3 font-medium">
+                  Source
+                </th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
 
               {numbers.map(
                 number => (
 
-                  <NumberCard
-                    key={number.number_id}
+                  <CertifiedNumberRow
+                    key={
+                      number.number_id
+                    }
                     number={number}
                     sourceNumberById={
                       sourceNumberById
@@ -1138,24 +1324,15 @@ function EventCard({
                 ),
               )}
 
-            </div>
+            </tbody>
 
-          )}
+          </table>
 
         </div>
 
-      )}
+      </div>
 
-      <SourceReferences
-        sourceContentIds={
-          event.source_content_ids
-        }
-        sourceNumberById={
-          sourceNumberById
-        }
-      />
-
-    </article>
+    </NotebookSection>
 
   );
 
@@ -1178,8 +1355,10 @@ export default function TouchNotebookPreview({
           contentId,
           index,
         ) => [
+
           contentId,
           index + 1,
+
         ],
       ),
     )
@@ -1189,8 +1368,10 @@ export default function TouchNotebookPreview({
     new Map(
       notebook.notes.map(
         note => [
+
           note.note_id,
           note,
+
         ],
       ),
     )
@@ -1200,19 +1381,10 @@ export default function TouchNotebookPreview({
     new Map(
       notebook.events.map(
         event => [
+
           event.event_id,
           event,
-        ],
-      ),
-    )
-  );
 
-  const numberById = (
-    new Map(
-      notebook.validated_numbers.map(
-        number => [
-          number.number_id,
-          number,
         ],
       ),
     )
@@ -1443,10 +1615,11 @@ export default function TouchNotebookPreview({
                   .filter(
                     (
                       event,
-                    ): event is TouchNotebookEvent =>
+                    ): event is TouchNotebookEvent => (
                       Boolean(
                         event,
-                      ),
+                      )
+                    ),
                   )
               );
 
@@ -1461,41 +1634,23 @@ export default function TouchNotebookPreview({
                   .filter(
                     (
                       note,
-                    ): note is TouchEvidenceNote =>
+                    ): note is TouchEvidenceNote => (
                       Boolean(
                         note,
-                      ),
-                  )
-              );
-
-              const standaloneNumbers = (
-                section.number_ids
-                  .map(
-                    numberId =>
-                      numberById.get(
-                        numberId,
-                      ),
-                  )
-                  .filter(
-                    (
-                      number,
-                    ): number is TouchNotebookNumber =>
-                      Boolean(
-                        number,
-                      ),
+                      )
+                    ),
                   )
               );
 
               return (
 
                 <NotebookSection
-                  key={section.section_id}
+                  key={
+                    section.section_id
+                  }
                   title={
                     `${sectionIndex + 1}. `
                     + section.title
-                  }
-                  description={
-                    section.description
                   }
                 >
 
@@ -1505,10 +1660,13 @@ export default function TouchNotebookPreview({
                       event => (
 
                         <EventCard
-                          key={event.event_id}
+                          key={
+                            event.event_id
+                          }
                           event={event}
-                          noteById={noteById}
-                          numberById={numberById}
+                          noteById={
+                            noteById
+                          }
                           sourceNumberById={
                             sourceNumberById
                           }
@@ -1531,37 +1689,10 @@ export default function TouchNotebookPreview({
                           note => (
 
                             <NoteCard
-                              key={note.note_id}
-                              note={note}
-                              sourceNumberById={
-                                sourceNumberById
+                              key={
+                                note.note_id
                               }
-                            />
-
-                          ),
-                        )}
-
-                      </div>
-
-                    )}
-
-                    {standaloneNumbers.length > 0 && (
-
-                      <div
-                        className="
-                          grid
-                          gap-3
-                          md:grid-cols-2
-                          xl:grid-cols-3
-                        "
-                      >
-
-                        {standaloneNumbers.map(
-                          number => (
-
-                            <NumberCard
-                              key={number.number_id}
-                              number={number}
+                              note={note}
                               sourceNumberById={
                                 sourceNumberById
                               }
@@ -1593,13 +1724,7 @@ export default function TouchNotebookPreview({
 
       {notebook.timeline.length > 0 && (
 
-        <NotebookSection
-          title="Timeline"
-          description={
-            "Dated and sequential developments "
-            + "documented by the corpus."
-          }
-        >
+        <NotebookSection title="Timeline">
 
           <div className="space-y-3">
 
@@ -1646,21 +1771,6 @@ export default function TouchNotebookPreview({
                       {item.label}
                     </h4>
 
-                    {item.description && (
-
-                      <p
-                        className="
-                          mt-1
-                          text-sm
-                          leading-6
-                          text-gray-600
-                        "
-                      >
-                        {item.description}
-                      </p>
-
-                    )}
-
                     <SourceReferences
                       sourceContentIds={
                         item.source_content_ids
@@ -1689,13 +1799,7 @@ export default function TouchNotebookPreview({
 
       {notebook.contradictions.length > 0 && (
 
-        <NotebookSection
-          title="Contradictions"
-          description={
-            "Qualitative disagreements identified "
-            + "between the selected sources."
-          }
-        >
+        <NotebookSection title="Contradictions">
 
           <div className="space-y-3">
 
@@ -1936,6 +2040,19 @@ export default function TouchNotebookPreview({
         </NotebookSection>
 
       )}
+
+      {/* ================================================= */}
+      {/* CERTIFIED NUMBERS APPENDIX */}
+      {/* ================================================= */}
+
+      <CertifiedNumbersAppendix
+        numbers={
+          notebook.validated_numbers
+        }
+        sourceNumberById={
+          sourceNumberById
+        }
+      />
 
     </div>
 
