@@ -699,17 +699,6 @@ export default function TouchNotebookPreview({
                       }
                     </span>
 
-                    <span
-                      className="
-                        ml-auto
-                        font-mono
-                        text-xs
-                        text-gray-400
-                      "
-                    >
-                      {note.note_id}
-                    </span>
-
                   </div>
 
                   <p
@@ -893,19 +882,6 @@ export default function TouchNotebookPreview({
                       )}
 
                     </div>
-
-                    <span
-                      className="
-                        font-mono
-                        text-xs
-                        text-gray-400
-                      "
-                    >
-                      {event.event_id}
-                    </span>
-
-                  </div>
-
                   <p
                     className="
                       mt-3
