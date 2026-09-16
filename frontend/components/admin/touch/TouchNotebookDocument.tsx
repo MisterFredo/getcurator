@@ -451,7 +451,7 @@ function EventBlock({
               text-blue-700
             "
           >
-            Événement
+            Event
           </p>
 
           <h3
@@ -678,7 +678,7 @@ export default function TouchNotebookDocument({
           {" sources · "}
 
           {notebook.sections.length}
-          {" parties · "}
+          {" sections · "}
 
           {notebook.notes.length}
           {" notes · "}
@@ -740,7 +740,7 @@ export default function TouchNotebookDocument({
                 text-blue-700
               "
             >
-              Périmètre documentaire
+              Corpus scope
             </p>
 
             <p
@@ -988,7 +988,7 @@ export default function TouchNotebookDocument({
 
         {notebook.timeline.length > 0 && (
 
-          <DocumentSection title="Repères chronologiques">
+          <DocumentSection title="Timeline">
 
             <div
               className="
@@ -1077,7 +1077,7 @@ export default function TouchNotebookDocument({
         {notebook.contradictions.length > 0 && (
 
           <DocumentSection
-            title="Divergences entre les sources"
+            title="Source discrepancies"
           >
 
             <div className="space-y-2">
@@ -1132,7 +1132,7 @@ export default function TouchNotebookDocument({
                         "
                       >
                         <strong>
-                          Résolution :
+                          Resolution:
                         </strong>
                         {" "}
                         {contradiction.resolution}
@@ -1174,7 +1174,7 @@ export default function TouchNotebookDocument({
           || notebook.corpus_limits.length > 0
         ) && (
 
-          <DocumentSection title="Évaluation du corpus">
+          <DocumentSection title="Corpus assessment">
 
             <div
               className="
@@ -1194,7 +1194,7 @@ export default function TouchNotebookDocument({
                     text-emerald-800
                   "
                 >
-                  Points forts
+                  Strengths
                 </h3>
 
                 {notebook.corpus_strengths.length > 0 ? (
@@ -1239,7 +1239,7 @@ export default function TouchNotebookDocument({
                       text-slate-400
                     "
                   >
-                    Aucun point fort spécifique identifié.
+                    No specific strengths identified.
                   </p>
 
                 )}
@@ -1255,7 +1255,7 @@ export default function TouchNotebookDocument({
                     text-amber-800
                   "
                 >
-                  Limites
+                  Limits
                 </h3>
 
                 {notebook.corpus_limits.length > 0 ? (
@@ -1300,7 +1300,7 @@ export default function TouchNotebookDocument({
                       text-slate-400
                     "
                   >
-                    Aucune limite spécifique identifiée.
+                    No specific limits identified.
                   </p>
 
                 )}
