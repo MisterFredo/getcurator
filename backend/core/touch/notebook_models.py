@@ -373,6 +373,12 @@ class TouchCorpusNotebook(
 
     corpus_summary: str
 
+    executive_summary: list[
+        TouchNotebookExecutiveSummaryItem
+    ] = Field(
+        default_factory=list,
+    )
+
     sections: list[
         TouchNotebookSection
     ] = Field(
