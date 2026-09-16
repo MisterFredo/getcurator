@@ -601,12 +601,9 @@ export default function TouchOutputChoice({
           </div>
 
           <TouchNotebookDocument
-            notebook={
-              notebook
-            }
-            sources={
-              sources
-            }
+            notebook={notebook}
+            sources={sources}
+            outputLanguage={outputLanguage}
           />
 
         </div>
