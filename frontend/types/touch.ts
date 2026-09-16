@@ -575,6 +575,13 @@ export type TouchNotebookContradiction = {
   resolution: string | null;
 };
 
+export type TouchNotebookExecutiveSummaryItem = {
+  summary_id: string;
+  statement: string;
+  note_ids: string[];
+  source_content_ids: string[];
+};
+
 
 /* =========================================================
    CORPUS NOTEBOOK
@@ -585,6 +592,7 @@ export type TouchCorpusNotebook = {
   objective: string;
 
   corpus_summary: string;
+  executive_summary: TouchNotebookExecutiveSummaryItem[];
 
   sections:
     TouchNotebookSection[];
@@ -802,3 +810,5 @@ export type TouchBriefResponse = {
   brief_generation:
     TouchBriefOutcome;
 };
+
+
