@@ -19,6 +19,10 @@ from core.touch.notebook_models import (
     TouchNotebookRequest,
 )
 
+from core.touch.notebook_note_service import (
+    deduplicate_notebook_notes,
+)
+
 from core.touch.notebook_numbers import (
     build_certified_numbers,
 )
@@ -203,12 +207,27 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 4. ORGANIZE DOCUMENTARY PLAN
+        # 4. DEDUPLICATE WITHOUT REWRITING
+        # ====================================================
+
+        deduplicated_notes = (
+            deduplicate_notebook_notes(
+                request=normalized_request,
+                notes=contribution_notes,
+                model=model,
+                max_attempts=(
+                    DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
+                ),
+            )
+        )
+
+        # ====================================================
+        # 5. ORGANIZE DOCUMENTARY PLAN
         # ====================================================
 
         notebook = organize_notebook(
             request=normalized_request,
-            notes=contribution_notes,
+            notes=deduplicated_notes,
             certified_numbers=certified_numbers,
             model=model,
             max_attempts=(
@@ -217,7 +236,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 5. REPAIR AND VALIDATE FINAL PLAN
+        # 6. REPAIR AND VALIDATE FINAL PLAN
         # ====================================================
 
         notebook = prepare_notebook(
@@ -228,7 +247,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 6. BUILD EVIDENCE-GROUNDED EXECUTIVE SUMMARY
+        # 7. BUILD EVIDENCE-GROUNDED EXECUTIVE SUMMARY
         # ====================================================
 
         notebook = build_notebook_executive_summary(
@@ -241,7 +260,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 7. VALIDATE SUMMARY REFERENCES AND SOURCES
+        # 8. VALIDATE SUMMARY REFERENCES AND SOURCES
         # ====================================================
 
         validate_executive_summary(
