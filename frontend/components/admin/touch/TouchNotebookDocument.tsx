@@ -537,7 +537,7 @@ function EvidenceNote({
 }) {
 
   const exceptionalStatus = (
-    note.confidence !== "HIGH"
+    note.confidence === "LOW"
     || note.status !== "VALIDATED"
   );
 
@@ -646,9 +646,18 @@ function EvidenceNote({
                   text-amber-700
                 "
               >
-                {note.confidence}
-                {" · "}
-                {note.status}
+                {[
+                  note.confidence === "LOW"
+                    ? "LOW"
+                    : null,
+                
+                  note.status !== "VALIDATED"
+                    ? note.status
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+                }
               </span>
 
             )}
