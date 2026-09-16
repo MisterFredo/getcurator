@@ -36,6 +36,7 @@ def select_contents(
     allowed_universe_ids: list[str] | None = None,
     language: str | None = None,
     include_total: bool = True,
+    monthly_quota: int | None = None,
 ) -> tuple[
     list[ExpertiseContent],
     int,
@@ -106,6 +107,8 @@ def select_contents(
         ),
 
         language=effective_language,
+
+        monthly_quota=monthly_quota,
 
     )
 
