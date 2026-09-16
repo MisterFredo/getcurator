@@ -9,6 +9,8 @@ import {
   api,
 } from "@/lib/api";
 
+import Link from "next/link";
+
 import {
   useTouchResearch,
 } from "@/hooks/useTouchResearch";
@@ -691,6 +693,22 @@ export default function TouchPage() {
           and transform it into a structured evidence
           notebook.
         </p>
+
+        <Link
+          href="/admin/touch/reports"
+          className="
+            mt-3
+            inline-block
+            text-sm
+            font-medium
+            text-ratecard-blue
+            hover:underline
+          "
+        >
+          View saved reports
+        </Link>
+
+      </div>
 
       </div>
 
