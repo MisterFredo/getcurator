@@ -36,6 +36,12 @@ from core.touch.brief_service import (
     build_touch_brief,
 )
 
+from core.touch.notebook_report_service import (
+    get_touch_report,
+    list_touch_reports,
+    save_touch_report,
+)
+
 
 router = APIRouter()
 
@@ -163,17 +169,43 @@ def search_touch(
 def build_editorial_notebook(
     request: TouchNotebookRequest,
 ):
+    outcome = build_touch_notebook(request=request)
 
-    outcome = build_touch_notebook(
-        request=request,
-    )
+    response = outcome.model_dump(mode="json")
+
+    if outcome.status == "GENERATED" and outcome.notebook:
+        response["report_id"] = save_touch_report(
+            request=request,
+            notebook=outcome.notebook,
+        )
 
     return {
         "status": "ok",
-        "notebook_generation":
-            outcome.model_dump(
-                mode="json",
-            ),
+        "notebook_generation": response,
+    }
+
+
+@router.get("/reports")
+def list_editorial_reports():
+    return {
+        "status": "ok",
+        "reports": list_touch_reports(),
+    }
+
+
+@router.get("/reports/{report_id}")
+def get_editorial_report(report_id: str):
+    report = get_touch_report(report_id)
+
+    if report is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Rapport Touch introuvable.",
+        )
+
+    return {
+        "status": "ok",
+        "report": report,
     }
 
 # ============================================================
