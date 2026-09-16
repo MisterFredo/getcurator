@@ -997,6 +997,67 @@ export default function TouchNotebookPreview({
 
       </header>
 
+      {notebook.executive_summary?.length > 0 && (
+
+        <NotebookSection title="Executive summary">
+      
+          <ol className="space-y-3">
+      
+            {notebook.executive_summary.map(
+              (item, index) => (
+      
+                <li
+                  key={item.summary_id}
+                  className="
+                    flex
+                    gap-4
+                    rounded-xl
+                    border
+                    border-gray-200
+                    bg-white
+                    p-4
+                  "
+                >
+      
+                  <span
+                    className="
+                      shrink-0
+                      text-sm
+                      font-semibold
+                      text-ratecard-blue
+                    "
+                  >
+                    {index + 1}.
+                  </span>
+      
+                  <div className="min-w-0">
+      
+                    <p className="text-sm leading-6 text-gray-900">
+                      {item.statement}
+                    </p>
+      
+                    <SourceReferences
+                      sourceContentIds={
+                        item.source_content_ids
+                      }
+                      sourceNumberById={
+                        sourceNumberById
+                      }
+                    />
+      
+                  </div>
+      
+                </li>
+      
+              ),
+            )}
+      
+          </ol>
+      
+        </NotebookSection>
+      
+      )}
+
       {/* ================================================= */}
       {/* DOCUMENTARY PLAN */}
       {/* ================================================= */}
