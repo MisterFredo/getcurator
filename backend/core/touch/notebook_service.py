@@ -40,6 +40,10 @@ from core.touch.notebook_utils import (
     unique_ids,
 )
 
+from core.touch.notebook_summary_service import (
+    build_notebook_executive_summary,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -312,6 +316,24 @@ def build_touch_notebook(
             allowed_content_ids=set(
                 normalized_request
                 .content_ids
+            ),
+
+        )
+
+        # ====================================================
+        # 7. BUILD EVIDENCE-GROUNDED EXECUTIVE SUMMARY
+        # ====================================================
+
+        notebook = build_notebook_executive_summary(
+
+            request=normalized_request,
+
+            notebook=notebook,
+
+            model=model,
+
+            max_attempts=(
+                DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
             ),
 
         )
