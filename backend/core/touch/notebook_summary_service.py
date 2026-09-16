@@ -304,10 +304,7 @@ def _validate_summary(
 
         # A small tolerance is accepted around the
         # editorial target of 30 to 55 words.
-        if (
-            word_count < 20
-            or word_count > 70
-        ):
+        if word_count > 70:
 
             invalid_length_indexes.append(
                 (
