@@ -638,24 +638,28 @@ function NoteCard({
           }
         </span>
 
-        <span
-          className={`
-            rounded-full
-            px-2.5
-            py-1
-            text-xs
-            font-medium
-            ${getConfidenceClasses(
-              note.confidence,
-            )}
-          `}
-        >
-          {
-            CONFIDENCE_LABELS[
-              note.confidence
-            ]
-          }
-        </span>
+        {note.confidence === "LOW" && (
+
+          <span
+            className={`
+              rounded-full
+              px-2.5
+              py-1
+              text-xs
+              font-medium
+              ${getConfidenceClasses(
+                note.confidence,
+              )}
+            `}
+          >
+            {
+              CONFIDENCE_LABELS[
+                note.confidence
+              ]
+            }
+          </span>
+        
+        )}
 
         {note.status !== "VALIDATED" && (
 
