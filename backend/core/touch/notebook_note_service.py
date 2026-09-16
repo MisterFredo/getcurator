@@ -14,8 +14,8 @@ from core.touch.notebook_models import (
 )
 
 from core.touch.notebook_note_prompt import (
-    TOUCH_NOTEBOOK_NOTE_CONSOLIDATION_SYSTEM_PROMPT,
-    build_touch_notebook_note_consolidation_prompt,
+    TOUCH_NOTEBOOK_NOTE_DEDUPLICATION_SYSTEM_PROMPT,
+    build_touch_notebook_note_deduplication_prompt,
 )
 
 from core.touch.notebook_utils import (
@@ -30,15 +30,30 @@ from utils.llm import (
 
 
 # ============================================================
-# INTERNAL MODEL
+# INTERNAL MODELS
 # ============================================================
 
-class TouchNoteConsolidationResult(
+class TouchNoteDeduplicationGroup(
     BaseModel,
 ):
 
-    notes: list[
-        TouchEvidenceNote
+    representative_note_id: str
+
+    note_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    class Config:
+
+        extra = "forbid"
+
+
+class TouchNoteDeduplicationResult(
+    BaseModel,
+):
+
+    groups: list[
+        TouchNoteDeduplicationGroup
     ] = Field(
         default_factory=list,
     )
@@ -49,7 +64,7 @@ class TouchNoteConsolidationResult(
 
 
 # ============================================================
-# STRING LIST
+# NORMALIZE STRING LIST
 # ============================================================
 
 def _normalize_string_list(
@@ -57,6 +72,7 @@ def _normalize_string_list(
 ) -> list[str]:
 
     if value is None:
+
         return []
 
     if isinstance(
@@ -64,13 +80,13 @@ def _normalize_string_list(
         str,
     ):
 
-        cleaned_value = (
+        normalized_value = (
             value.strip()
         )
 
         return (
-            [cleaned_value]
-            if cleaned_value
+            [normalized_value]
+            if normalized_value
             else []
         )
 
@@ -82,6 +98,7 @@ def _normalize_string_list(
         return []
 
     return unique_ids([
+
         str(item).strip()
 
         for item in value
@@ -90,303 +107,45 @@ def _normalize_string_list(
             item is not None
             and str(item).strip()
         )
+
     ])
 
 
 # ============================================================
-# NORMALIZE NOTE TYPE
+# NORMALIZE GROUP
 # ============================================================
 
-def _normalize_note_type(
-    value: Any,
-) -> str:
-
-    normalized = (
-        str(
-            value
-            or "FACT"
-        )
-        .strip()
-        .upper()
-        .replace(
-            " ",
-            "_",
-        )
-        .replace(
-            "-",
-            "_",
-        )
-    )
-
-    allowed_values = {
-        "FACT",
-        "MECHANISM",
-        "NUMBER",
-        "STRATEGIC_READING",
-        "TENSION",
-        "LIMITATION",
-        "UNCERTAINTY",
-        "COMPARISON",
-        "MILESTONE",
-        "EXAMPLE",
-    }
-
-    if normalized not in allowed_values:
-        return "FACT"
-
-    return normalized
-
-
-# ============================================================
-# NORMALIZE CONFIDENCE
-# ============================================================
-
-def _normalize_confidence(
-    value: Any,
-) -> str:
-
-    normalized = (
-        str(
-            value
-            or "MEDIUM"
-        )
-        .strip()
-        .upper()
-    )
-
-    if normalized not in {
-        "HIGH",
-        "MEDIUM",
-        "LOW",
-    }:
-
-        return "MEDIUM"
-
-    return normalized
-
-
-# ============================================================
-# NORMALIZE STATUS
-# ============================================================
-
-def _normalize_status(
-    value: Any,
-) -> str:
-
-    normalized = (
-        str(
-            value
-            or "VALIDATED"
-        )
-        .strip()
-        .upper()
-        .replace(
-            " ",
-            "_",
-        )
-        .replace(
-            "-",
-            "_",
-        )
-    )
-
-    if normalized not in {
-        "VALIDATED",
-        "TO_VERIFY",
-        "CONTRADICTED",
-    }:
-
-        return "VALIDATED"
-
-    return normalized
-
-
-# ============================================================
-# NORMALIZE RAW NOTE
-# ============================================================
-
-def _normalize_raw_note(
-    raw_note: Any,
-    index: int,
+def _normalize_group(
+    raw_group: Any,
 ) -> dict:
 
     if not isinstance(
-        raw_note,
+        raw_group,
         dict,
     ):
 
         raise ValueError(
-            "Une note consolidée n’est pas "
-            "un objet JSON"
-        )
-
-    note_id = str(
-        raw_note.get(
-            "note_id"
-        )
-        or f"note-{index + 1:03d}"
-    ).strip()
-
-    statement = str(
-        raw_note.get(
-            "statement"
-        )
-        or ""
-    ).strip()
-
-    if not statement:
-
-        raise ValueError(
-            f"La note {note_id} ne contient "
-            "aucun statement"
-        )
-
-    input_note_ids = (
-        raw_note.get(
-            "input_note_ids"
-        )
-    )
-
-    if input_note_ids is None:
-
-        input_note_ids = (
-            raw_note.get(
-                "temporary_note_ids"
-            )
-        )
-
-    if input_note_ids is None:
-
-        input_note_ids = (
-            raw_note.get(
-                "source_note_ids"
-            )
-        )
-
-    source_content_ids = (
-        raw_note.get(
-            "source_content_ids"
-        )
-    )
-
-    if source_content_ids is None:
-
-        source_content_ids = (
-            raw_note.get(
-                "content_ids"
-            )
-        )
-
-    if source_content_ids is None:
-
-        source_content_ids = (
-            raw_note.get(
-                "source_content_id"
-            )
-        )
-
-    actors = (
-        raw_note.get(
-            "actors"
-        )
-    )
-
-    if actors is None:
-
-        actors = (
-            raw_note.get(
-                "actor"
-            )
-        )
-
-    geographies = (
-        raw_note.get(
-            "geographies"
-        )
-    )
-
-    if geographies is None:
-
-        geographies = (
-            raw_note.get(
-                "geography"
-            )
-        )
-
-    dates = (
-        raw_note.get(
-            "dates"
-        )
-    )
-
-    if dates is None:
-
-        dates = (
-            raw_note.get(
-                "date"
-            )
+            "Un groupe de déduplication "
+            "n’est pas un objet JSON"
         )
 
     return {
-        "note_id":
-            note_id,
 
-        "note_type":
-            _normalize_note_type(
-                raw_note.get(
-                    "note_type"
-                )
-            ),
-
-        "statement":
-            statement,
-
-        "explanation":
+        "representative_note_id":
             str(
-                raw_note.get(
-                    "explanation"
+                raw_group.get(
+                    "representative_note_id"
                 )
                 or ""
             ).strip(),
 
-        "actors":
+        "note_ids":
             _normalize_string_list(
-                actors
-            ),
-
-        "geographies":
-            _normalize_string_list(
-                geographies
-            ),
-
-        "dates":
-            _normalize_string_list(
-                dates
-            ),
-
-        "confidence":
-            _normalize_confidence(
-                raw_note.get(
-                    "confidence"
+                raw_group.get(
+                    "note_ids"
                 )
             ),
 
-        "status":
-            _normalize_status(
-                raw_note.get(
-                    "status"
-                )
-            ),
-
-        "input_note_ids":
-            _normalize_string_list(
-                input_note_ids
-            ),
-
-        "source_content_ids":
-            _normalize_string_list(
-                source_content_ids
-            ),
     }
 
 
@@ -398,459 +157,241 @@ def _normalize_payload(
     parsed: dict,
 ) -> dict:
 
-    raw_notes = (
+    raw_groups = (
         parsed.get(
-            "notes",
+            "groups",
             [],
         )
         or []
     )
 
     if not isinstance(
-        raw_notes,
+        raw_groups,
         list,
     ):
 
         raise ValueError(
-            "Le champ notes de la consolidation "
-            "doit être une liste"
+            "Le champ groups doit être "
+            "une liste"
         )
 
     return {
-        "notes": [
 
-            _normalize_raw_note(
-                raw_note=raw_note,
-                index=index,
+        "groups": [
+
+            _normalize_group(
+                raw_group
             )
 
-            for index, raw_note in enumerate(
-                raw_notes
-            )
+            for raw_group
+            in raw_groups
 
         ],
+
     }
 
 
 # ============================================================
-# COLLECT TEMPORARY NOTE IDS
+# VALIDATE INPUT NOTES
 # ============================================================
 
-def _collect_temporary_note_ids(
-    extracted_batches: list[dict],
-) -> list[str]:
-
-    temporary_note_ids: list[str] = []
-
-    for batch in extracted_batches:
-
-        if not isinstance(
-            batch,
-            dict,
-        ):
-            continue
-
-        notes = (
-            batch.get(
-                "notes",
-                [],
-            )
-            or []
-        )
-
-        if not isinstance(
-            notes,
-            list,
-        ):
-            continue
-
-        for note in notes:
-
-            if not isinstance(
-                note,
-                dict,
-            ):
-                continue
-
-            temporary_note_id = str(
-                note.get(
-                    "temporary_note_id"
-                )
-                or note.get(
-                    "note_id"
-                )
-                or ""
-            ).strip()
-
-            if temporary_note_id:
-
-                temporary_note_ids.append(
-                    temporary_note_id
-                )
-
-    unique_temporary_note_ids = (
-        unique_ids(
-            temporary_note_ids
-        )
-    )
-
-    if (
-        len(unique_temporary_note_ids)
-        != len(temporary_note_ids)
-    ):
-
-        raise ValueError(
-            "Les lots d’extraction contiennent "
-            "des temporary_note_id dupliqués"
-        )
-
-    if not unique_temporary_note_ids:
-
-        raise ValueError(
-            "Aucune note temporaire à consolider"
-        )
-
-    return unique_temporary_note_ids
-
-# ============================================================
-# COLLECT INPUT NOTES
-# ============================================================
-
-def _collect_input_notes_by_id(
-    extracted_batches: list[dict],
-) -> dict[str, dict]:
-
-    input_notes_by_id: dict[
-        str,
-        dict,
-    ] = {}
-
-    for batch in extracted_batches:
-
-        if not isinstance(
-            batch,
-            dict,
-        ):
-            continue
-
-        notes = (
-            batch.get(
-                "notes",
-                [],
-            )
-            or []
-        )
-
-        if not isinstance(
-            notes,
-            list,
-        ):
-            continue
-
-        for note in notes:
-
-            if not isinstance(
-                note,
-                dict,
-            ):
-                continue
-
-            temporary_note_id = str(
-                note.get(
-                    "temporary_note_id"
-                )
-                or ""
-            ).strip()
-
-            statement = str(
-                note.get(
-                    "statement"
-                )
-                or ""
-            ).strip()
-
-            source_content_ids = (
-                _normalize_string_list(
-                    note.get(
-                        "source_content_ids"
-                    )
-                )
-            )
-
-            if (
-                not temporary_note_id
-                or not statement
-            ):
-
-                continue
-
-            if (
-                temporary_note_id
-                in input_notes_by_id
-            ):
-
-                raise ValueError(
-                    "Une contribution temporaire "
-                    "est dupliquée : "
-                    f"{temporary_note_id}"
-                )
-
-            input_notes_by_id[
-                temporary_note_id
-            ] = {
-                "statement":
-                    statement,
-
-                "source_content_ids":
-                    source_content_ids,
-            }
-
-    if not input_notes_by_id:
-
-        raise ValueError(
-            "Aucune contribution exploitable "
-            "à consolider"
-        )
-
-    return input_notes_by_id
-
-# ============================================================
-# VALIDATE VERBATIM STATEMENTS
-# ============================================================
-
-def _validate_verbatim_statements(
-    notes: list[TouchEvidenceNote],
-    input_notes_by_id: dict[str, dict],
-) -> None:
-
-    for note in notes:
-
-        represented_input_notes = [
-
-            input_notes_by_id[
-                input_note_id
-            ]
-
-            for input_note_id
-            in note.input_note_ids
-
-            if (
-                input_note_id
-                in input_notes_by_id
-            )
-
-        ]
-
-        allowed_statements = {
-
-            input_note[
-                "statement"
-            ]
-
-            for input_note
-            in represented_input_notes
-
-        }
-
-        if (
-            note.statement
-            not in allowed_statements
-        ):
-
-            raise ValueError(
-                "La consolidation a réécrit "
-                "une contribution : "
-                f"{note.note_id}"
-            )
-
-        expected_source_content_ids = {
-
-            content_id
-
-            for input_note
-            in represented_input_notes
-
-            for content_id
-            in input_note[
-                "source_content_ids"
-            ]
-
-        }
-
-        actual_source_content_ids = set(
-            note.source_content_ids
-        )
-
-        if (
-            actual_source_content_ids
-            != expected_source_content_ids
-        ):
-
-            raise ValueError(
-                "La consolidation a modifié "
-                "les sources d’une contribution : "
-                f"{note.note_id}"
-            )
-
-        if note.explanation:
-
-            raise ValueError(
-                "La consolidation a ajouté "
-                "une explication à une contribution : "
-                f"{note.note_id}"
-            )
-
-
-# ============================================================
-# VALIDATE CONSOLIDATED NOTES
-# ============================================================
-
-def _validate_consolidated_notes(
-    notes: list[TouchEvidenceNote],
-    temporary_note_ids: list[str],
-    allowed_content_ids: set[str],
-) -> None:
+def _validate_input_notes(
+    request: TouchNotebookRequest,
+    notes: list[
+        TouchEvidenceNote
+    ],
+) -> dict[str, TouchEvidenceNote]:
 
     if not notes:
 
         raise ValueError(
-            "La consolidation n’a produit "
-            "aucune note"
+            "Aucune contribution à dédupliquer"
         )
 
-    note_ids = [
+    notes_by_id = {
 
-        note.note_id
+        note.note_id:
+            note
 
         for note in notes
 
-    ]
+    }
 
     if (
-        len(note_ids)
-        != len(
-            set(
-                note_ids
-            )
-        )
+        len(notes_by_id)
+        != len(notes)
     ):
 
         raise ValueError(
-            "La consolidation contient "
+            "Les contributions contiennent "
             "des note_id dupliqués"
         )
 
-    expected_temporary_ids = set(
-        temporary_note_ids
+    allowed_content_ids = set(
+        request.content_ids
     )
-
-    placement_counts = {
-
-        temporary_note_id: 0
-
-        for temporary_note_id
-        in temporary_note_ids
-
-    }
-
-    unknown_input_note_ids = set()
-
-    unknown_content_ids = set()
-
-    notes_without_inputs = []
-
-    notes_without_sources = []
 
     for note in notes:
 
-        if not note.input_note_ids:
+        if not note.note_id.strip():
 
-            notes_without_inputs.append(
-                note.note_id
+            raise ValueError(
+                "Une contribution possède "
+                "un note_id vide"
+            )
+
+        if not note.statement.strip():
+
+            raise ValueError(
+                "Une contribution possède "
+                "un statement vide : "
+                f"{note.note_id}"
             )
 
         if not note.source_content_ids:
 
-            notes_without_sources.append(
-                note.note_id
+            raise ValueError(
+                "Une contribution ne possède "
+                "aucune source : "
+                f"{note.note_id}"
             )
 
-        for input_note_id in (
-            note.input_note_ids
+        unknown_content_ids = (
+
+            set(
+                note.source_content_ids
+            )
+
+            - allowed_content_ids
+
+        )
+
+        if unknown_content_ids:
+
+            raise ValueError(
+                "Une contribution référence des "
+                "contenus extérieurs au corpus : "
+                f"{note.note_id} · "
+                + ", ".join(
+                    sorted(
+                        unknown_content_ids
+                    )
+                )
+            )
+
+    return notes_by_id
+
+
+# ============================================================
+# VALIDATE GROUPS
+# ============================================================
+
+def _validate_groups(
+    result:
+        TouchNoteDeduplicationResult,
+    notes_by_id:
+        dict[str, TouchEvidenceNote],
+) -> None:
+
+    if not result.groups:
+
+        raise ValueError(
+            "La déduplication n’a produit "
+            "aucun groupe"
+        )
+
+    expected_note_ids = set(
+        notes_by_id
+    )
+
+    placement_counts = {
+
+        note_id:
+            0
+
+        for note_id
+        in expected_note_ids
+
+    }
+
+    unknown_note_ids = set()
+
+    empty_groups = []
+
+    invalid_representatives = []
+
+    for group_index, group in enumerate(
+        result.groups,
+        start=1,
+    ):
+
+        if not group.note_ids:
+
+            empty_groups.append(
+                str(
+                    group_index
+                )
+            )
+
+            continue
+
+        if (
+            group.representative_note_id
+            not in group.note_ids
         ):
 
+            invalid_representatives.append(
+                group.representative_note_id
+                or f"group-{group_index}"
+            )
+
+        for note_id in group.note_ids:
+
             if (
-                input_note_id
-                not in expected_temporary_ids
+                note_id
+                not in expected_note_ids
             ):
 
-                unknown_input_note_ids.add(
-                    input_note_id
+                unknown_note_ids.add(
+                    note_id
                 )
 
                 continue
 
             placement_counts[
-                input_note_id
+                note_id
             ] += 1
 
-        for content_id in (
-            note.source_content_ids
-        ):
-
-            if (
-                content_id
-                not in allowed_content_ids
-            ):
-
-                unknown_content_ids.add(
-                    content_id
-                )
-
-    if unknown_input_note_ids:
+    if empty_groups:
 
         raise ValueError(
-            "La consolidation référence des "
-            "notes temporaires inconnues : "
+            "Certains groupes de déduplication "
+            "sont vides : "
+            + ", ".join(
+                empty_groups
+            )
+        )
+
+    if invalid_representatives:
+
+        raise ValueError(
+            "Certains représentants ne sont pas "
+            "membres de leur groupe : "
             + ", ".join(
                 sorted(
-                    unknown_input_note_ids
+                    invalid_representatives
                 )
             )
         )
 
-    if unknown_content_ids:
+    if unknown_note_ids:
 
         raise ValueError(
-            "La consolidation référence des "
-            "content_id inconnus : "
+            "La déduplication référence des "
+            "note_id inconnus : "
             + ", ".join(
                 sorted(
-                    unknown_content_ids
-                )
-            )
-        )
-
-    if notes_without_inputs:
-
-        raise ValueError(
-            "Certaines notes consolidées ne "
-            "référencent aucune note extraite : "
-            + ", ".join(
-                sorted(
-                    notes_without_inputs
-                )
-            )
-        )
-
-    if notes_without_sources:
-
-        raise ValueError(
-            "Certaines notes consolidées ne "
-            "référencent aucune source : "
-            + ", ".join(
-                sorted(
-                    notes_without_sources
+                    unknown_note_ids
                 )
             )
         )
@@ -858,14 +399,12 @@ def _validate_consolidated_notes(
     invalid_placements = [
 
         (
-            temporary_note_id,
+            note_id,
             count,
         )
 
-        for (
-            temporary_note_id,
-            count,
-        ) in placement_counts.items()
+        for note_id, count
+        in placement_counts.items()
 
         if count != 1
 
@@ -876,87 +415,315 @@ def _validate_consolidated_notes(
         details = "; ".join(
 
             (
-                f"{temporary_note_id} "
+                f"{note_id} "
                 f"(placements={count})"
             )
 
-            for (
-                temporary_note_id,
-                count,
-            ) in invalid_placements
+            for note_id, count
+            in sorted(
+                invalid_placements
+            )
 
         )
 
         raise ValueError(
-            "Chaque note temporaire doit être "
-            "représentée exactement une fois. "
+            "Chaque contribution doit apparaître "
+            "exactement une fois. "
             f"Placements invalides : {details}"
         )
 
 
 # ============================================================
-# CONSOLIDATE NOTES
+# MERGE CONFIDENCE
 # ============================================================
 
-def consolidate_notebook_notes(
+def _merge_confidence(
+    notes: list[
+        TouchEvidenceNote
+    ],
+) -> str:
+
+    confidence_rank = {
+        "LOW": 0,
+        "MEDIUM": 1,
+        "HIGH": 2,
+    }
+
+    return min(
+
+        (
+            note.confidence
+
+            for note in notes
+        ),
+
+        key=lambda confidence:
+            confidence_rank.get(
+                confidence,
+                1,
+            ),
+
+    )
+
+
+# ============================================================
+# MERGE STATUS
+# ============================================================
+
+def _merge_status(
+    notes: list[
+        TouchEvidenceNote
+    ],
+) -> str:
+
+    statuses = {
+
+        note.status
+
+        for note in notes
+
+    }
+
+    if (
+        "CONTRADICTED"
+        in statuses
+    ):
+
+        return "CONTRADICTED"
+
+    if (
+        "TO_VERIFY"
+        in statuses
+    ):
+
+        return "TO_VERIFY"
+
+    return "VALIDATED"
+
+
+# ============================================================
+# BUILD DEDUPLICATED NOTES
+# ============================================================
+
+def _build_deduplicated_notes(
+    result:
+        TouchNoteDeduplicationResult,
+    original_notes: list[
+        TouchEvidenceNote
+    ],
+    notes_by_id:
+        dict[str, TouchEvidenceNote],
+) -> list[TouchEvidenceNote]:
+
+    original_position = {
+
+        note.note_id:
+            index
+
+        for index, note
+        in enumerate(
+            original_notes
+        )
+
+    }
+
+    ordered_groups = sorted(
+
+        result.groups,
+
+        key=lambda group:
+            min(
+
+                original_position[
+                    note_id
+                ]
+
+                for note_id
+                in group.note_ids
+
+            ),
+
+    )
+
+    deduplicated_notes = []
+
+    for note_index, group in enumerate(
+        ordered_groups,
+        start=1,
+    ):
+
+        member_notes = [
+
+            notes_by_id[
+                note_id
+            ]
+
+            for note_id
+            in group.note_ids
+
+        ]
+
+        representative = notes_by_id[
+            group.representative_note_id
+        ]
+
+        input_note_ids = unique_ids([
+
+            input_note_id
+
+            for note in member_notes
+
+            for input_note_id
+            in note.input_note_ids
+
+        ])
+
+        source_content_ids = unique_ids([
+
+            content_id
+
+            for note in member_notes
+
+            for content_id
+            in note.source_content_ids
+
+        ])
+
+        actors = unique_ids([
+
+            actor
+
+            for note in member_notes
+
+            for actor
+            in note.actors
+
+        ])
+
+        geographies = unique_ids([
+
+            geography
+
+            for note in member_notes
+
+            for geography
+            in note.geographies
+
+        ])
+
+        dates = unique_ids([
+
+            date
+
+            for note in member_notes
+
+            for date
+            in note.dates
+
+        ])
+
+        deduplicated_notes.append(
+
+            representative.model_copy(
+                update={
+
+                    "note_id":
+                        f"note-{note_index:03d}",
+
+                    "input_note_ids":
+                        input_note_ids,
+
+                    # The representative statement is copied
+                    # verbatim from an original contribution.
+                    "statement":
+                        representative.statement,
+
+                    "explanation":
+                        "",
+
+                    "actors":
+                        actors,
+
+                    "geographies":
+                        geographies,
+
+                    "dates":
+                        dates,
+
+                    "confidence":
+                        _merge_confidence(
+                            member_notes
+                        ),
+
+                    "status":
+                        _merge_status(
+                            member_notes
+                        ),
+
+                    "source_content_ids":
+                        source_content_ids,
+
+                },
+            )
+
+        )
+
+    return deduplicated_notes
+
+
+# ============================================================
+# DEDUPLICATE NOTEBOOK NOTES
+# ============================================================
+
+def deduplicate_notebook_notes(
     request: TouchNotebookRequest,
-    extracted_batches: list[dict],
+    notes: list[
+        TouchEvidenceNote
+    ],
     model: Optional[str] = None,
     max_attempts: int = 2,
 ) -> list[TouchEvidenceNote]:
 
-    temporary_note_ids = (
-        _collect_temporary_note_ids(
-            extracted_batches
+    notes_by_id = (
+        _validate_input_notes(
+            request=request,
+            notes=notes,
         )
     )
 
-    input_notes_by_id = (
-        _collect_input_notes_by_id(
-            extracted_batches
-        )
-    )
+    if len(notes) == 1:
 
-    if (
-        set(
-            temporary_note_ids
-        )
-        != set(
-            input_notes_by_id
-        )
-    ):
+        return [
 
-        raise ValueError(
-            "Les identifiants des contributions "
-            "sont incohérents"
-        )
+            notes[0].model_copy(
+                update={
+                    "note_id":
+                        "note-001",
+                },
+            )
 
-    allowed_content_ids = set(
-        request.content_ids
-    )
+        ]
 
     original_prompt = (
-        build_touch_notebook_note_consolidation_prompt(
+        build_touch_notebook_note_deduplication_prompt(
 
             request=request,
 
-            extracted_batches=(
-                extracted_batches
-            ),
+            notes=notes,
 
         )
     )
 
     prompt = original_prompt
 
-    last_error = (
-        "Erreur inconnue pendant la "
-        "consolidation des contributions"
-    )
-
     attempts = max(
         1,
         max_attempts,
+    )
+
+    last_error = (
+        "Erreur inconnue pendant la "
+        "déduplication des contributions"
     )
 
     for attempt in range(
@@ -974,7 +741,7 @@ def consolidate_notebook_notes(
                 temperature=0.0,
 
                 system_prompt=(
-                    TOUCH_NOTEBOOK_NOTE_CONSOLIDATION_SYSTEM_PROMPT
+                    TOUCH_NOTEBOOK_NOTE_DEDUPLICATION_SYSTEM_PROMPT
                 ),
 
             )
@@ -990,37 +757,26 @@ def consolidate_notebook_notes(
             )
 
             result = (
-                TouchNoteConsolidationResult
+                TouchNoteDeduplicationResult
                 .model_validate(
                     normalized_payload
                 )
             )
 
-            _validate_consolidated_notes(
-
-                notes=result.notes,
-
-                temporary_note_ids=(
-                    temporary_note_ids
-                ),
-
-                allowed_content_ids=(
-                    allowed_content_ids
-                ),
-
+            _validate_groups(
+                result=result,
+                notes_by_id=notes_by_id,
             )
 
-            _validate_verbatim_statements(
+            return _build_deduplicated_notes(
 
-                notes=result.notes,
+                result=result,
 
-                input_notes_by_id=(
-                    input_notes_by_id
-                ),
+                original_notes=notes,
+
+                notes_by_id=notes_by_id,
 
             )
-
-            return result.notes
 
         except Exception as exc:
 
@@ -1046,7 +802,7 @@ def consolidate_notebook_notes(
             )
 
     raise ValueError(
-        "Échec de la consolidation des "
+        "Échec de la déduplication des "
         "contributions après "
         f"{attempts} tentative(s) : "
         f"{last_error}"
