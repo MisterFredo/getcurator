@@ -32,6 +32,7 @@ type Props = {
   notebook: TouchCorpusNotebook;
 
   sources: TouchContentCandidate[];
+  outputLanguage?: string;
 
   brief:
     TouchBriefStructure | null;
@@ -51,6 +52,7 @@ export default function TouchOutputChoice({
   sources,
   brief,
   onBriefChange,
+  outputLanguage = "fr",
 }: Props) {
 
   const [
@@ -128,7 +130,7 @@ export default function TouchOutputChoice({
             editorialInstruction.trim(),
 
           output_language:
-            "fr",
+            outputLanguage,
 
         });
 
