@@ -16,6 +16,8 @@ import type {
   TouchResearchBrief,
   TouchSearchResponse,
   TouchSearchResult,
+  TouchSavedReportSummary,
+  TouchSavedReport,
 } from "@/types/touch";
 
 
@@ -113,6 +115,35 @@ export async function saveTouchReport(
   );
 
   return response.report_id;
+
+}
+
+export async function listTouchReports():
+  Promise<TouchSavedReportSummary[]> {
+
+  const response: {
+    status: string;
+    reports: TouchSavedReportSummary[];
+  } = await api.get(
+    "/touch/reports",
+  );
+
+  return response.reports;
+
+}
+
+export async function getTouchReport(
+  reportId: string,
+): Promise<TouchSavedReport> {
+
+  const response: {
+    status: string;
+    report: TouchSavedReport;
+  } = await api.get(
+    `/touch/reports/${encodeURIComponent(reportId)}`,
+  );
+
+  return response.report;
 
 }
 
