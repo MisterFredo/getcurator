@@ -273,6 +273,9 @@ export default function TouchReportsPage() {
             notebook={
               selectedReport.notebook
             }
+            outputLanguage={
+              selectedReport.output_language
+            }
             sources={
               reportSources(
                 selectedReport,
