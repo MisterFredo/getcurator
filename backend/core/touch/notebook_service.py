@@ -44,6 +44,11 @@ from core.touch.notebook_summary_service import (
     build_notebook_executive_summary,
 )
 
+from core.touch.notebook_plan_service import (
+    prepare_notebook,
+    validate_executive_summary,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -325,45 +330,35 @@ def build_touch_notebook(
         # ====================================================
 
         notebook = build_notebook_executive_summary(
-
             request=normalized_request,
-
             notebook=notebook,
-
             model=model,
+            max_attempts=DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS,
+        )
 
-            max_attempts=(
-                DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
+        # ====================================================
+        # 8. VALIDATE SUMMARY REFERENCES AND SOURCES
+        # ====================================================
+
+        validate_executive_summary(
+            notebook=notebook,
+            allowed_content_ids=set(
+                normalized_request.content_ids
             ),
-
         )
 
         return TouchNotebookOutcome(
-
             status="GENERATED",
-
             notebook=notebook,
-
-            source_count=len(
-                selected_contents
-            ),
-
+            source_count=len(selected_contents),
             error=None,
-
         )
 
     except Exception as exc:
 
         return TouchNotebookOutcome(
-
             status="GENERATION_FAILED",
-
             notebook=None,
-
             source_count=0,
-
-            error=str(
-                exc
-            )[:2000],
-
+            error=str(exc)[:2000],
         )
