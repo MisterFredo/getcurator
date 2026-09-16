@@ -2,17 +2,20 @@
 
 import {
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import {
   buildTouchNotebook,
+  saveTouchReport,
 } from "@/lib/touch";
 
 import type {
   TouchContentDecision,
   TouchCorpusNotebook,
   TouchNotebookContribution,
+  TouchNotebookRequest,
 } from "@/types/touch";
 
 import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview";
@@ -126,6 +129,24 @@ export default function TouchNotebookBuilder({
     setSourceCount,
   ] = useState(0);
 
+  const lastRequestRef =
+    useRef<TouchNotebookRequest | null>(null);
+
+  const [
+    reportId,
+    setReportId,
+  ] = useState<string | null>(null);
+
+  const [
+    persistenceError,
+    setPersistenceError,
+  ] = useState<string | null>(null);
+
+  const [
+    savingReport,
+    setSavingReport,
+  ] = useState(false);
+
   /* =======================================================
      CONTRIBUTIONS
   ======================================================= */
@@ -211,92 +232,70 @@ export default function TouchNotebookBuilder({
       loading
       || selectedContentIds.length === 0
     ) {
-
       return;
-
     }
 
     const normalizedSubject =
       subject.trim();
 
     if (!normalizedSubject) {
-
       setError(
         "A research subject is required.",
       );
-
       return;
-
     }
 
-    if (
-      missingContributionIds.length > 0
-    ) {
-
+    if (missingContributionIds.length > 0) {
       setError(
         "Some selected contents do not contain "
         + "editorial contributions: "
-        + missingContributionIds.join(
-          ", ",
-        ),
+        + missingContributionIds.join(", "),
       );
-
       return;
-
     }
 
-    if (
-      contributionCount === 0
-    ) {
-
+    if (contributionCount === 0) {
       setError(
         "The selected corpus does not contain "
         + "any editorial contribution.",
       );
-
       return;
-
     }
+
+    const notebookRequest: TouchNotebookRequest = {
+      subject: normalizedSubject,
+      objective: objective.trim(),
+      content_ids: [...selectedContentIds],
+      contributions: contributions.map(
+        contribution => ({
+          content_id: contribution.content_id,
+          statements: [...contribution.statements],
+        }),
+      ),
+      output_language: outputLanguage,
+    };
 
     try {
 
-      setLoading(
-        true,
-      );
-
-      setError(
-        null,
-      );
+      setLoading(true);
+      setError(null);
+      setReportId(null);
+      setPersistenceError(null);
+      lastRequestRef.current = null;
 
       const outcome =
-        await buildTouchNotebook({
-
-          subject:
-            normalizedSubject,
-
-          objective:
-            objective.trim(),
-
-          content_ids:
-            selectedContentIds,
-
-          contributions,
-
-          output_language:
-            outputLanguage,
-
-        });
+        await buildTouchNotebook(
+          notebookRequest,
+        );
 
       if (
         outcome.status !== "GENERATED"
         || !outcome.notebook
       ) {
-
         throw new Error(
           outcome.error
           || "Unable to build the editorial notebook.",
         );
-
       }
 
       onNotebookChange(
@@ -307,6 +306,23 @@ export default function TouchNotebookBuilder({
         outcome.source_count,
       );
 
+      lastRequestRef.current =
+        notebookRequest;
+
+      setReportId(
+        outcome.report_id ?? null,
+      );
+
+      setPersistenceError(
+        outcome.report_id
+          ? null
+          : (
+              outcome.persistence_error
+              || "The notebook is ready, but the report "
+                 + "could not be saved."
+            ),
+      );
+
     } catch (exception) {
 
       console.error(
@@ -314,34 +330,69 @@ export default function TouchNotebookBuilder({
         exception,
       );
 
-      onNotebookChange(
-        null,
-      );
-
-      setSourceCount(
-        0,
-      );
+      onNotebookChange(null);
+      setSourceCount(0);
+      lastRequestRef.current = null;
+      setReportId(null);
+      setPersistenceError(null);
 
       setError(
-
         exception instanceof Error
-
           ? exception.message
-
           : "Unable to build the editorial notebook.",
-
       );
 
     } finally {
 
-      setLoading(
-        false,
-      );
+      setLoading(false);
 
     }
 
   }
 
+  async function handleRetrySave() {
+
+    const request =
+      lastRequestRef.current;
+
+    if (
+      savingReport
+      || !request
+      || !notebook
+    ) {
+      return;
+    }
+
+    try {
+
+      setSavingReport(true);
+      setPersistenceError(null);
+
+      const savedReportId =
+        await saveTouchReport(
+          request,
+          notebook,
+        );
+
+      setReportId(
+        savedReportId,
+      );
+
+    } catch (exception) {
+
+      setPersistenceError(
+        exception instanceof Error
+          ? exception.message
+          : "Unable to save the report.",
+      );
+
+    } finally {
+
+      setSavingReport(false);
+
+    }
+
+  }
   /* =======================================================
      EMPTY CORPUS
   ======================================================= */
@@ -380,7 +431,7 @@ export default function TouchNotebookBuilder({
 
   }
 
-  /* =======================================================
+   /* =======================================================
      RENDER
   ======================================================= */
 
@@ -434,9 +485,7 @@ export default function TouchNotebookBuilder({
 
           <button
             type="button"
-            onClick={
-              handleBuildNotebook
-            }
+            onClick={handleBuildNotebook}
             disabled={
               loading
               || !subject.trim()
@@ -457,7 +506,6 @@ export default function TouchNotebookBuilder({
               disabled:opacity-50
             "
           >
-
             {
               loading
                 ? "Building notebook…"
@@ -465,7 +513,6 @@ export default function TouchNotebookBuilder({
                   ? "Rebuild notebook"
                   : "Build editorial notebook"
             }
-
           </button>
 
         </div>
@@ -588,6 +635,14 @@ export default function TouchNotebookBuilder({
 
               </p>
 
+              {reportId && (
+
+                <p className="mt-1 text-sm text-emerald-700">
+                  Report saved. You can reopen it later.
+                </p>
+
+              )}
+
             </div>
 
             {onContinue && (
@@ -611,6 +666,65 @@ export default function TouchNotebookBuilder({
               </button>
 
             )}
+
+          </div>
+
+        )}
+
+        {notebook && !loading && persistenceError && (
+
+          <div
+            className="
+              mt-4
+              flex
+              flex-wrap
+              items-center
+              justify-between
+              gap-4
+              rounded-lg
+              border
+              border-amber-200
+              bg-amber-50
+              p-4
+            "
+          >
+
+            <div>
+
+              <p className="text-sm font-medium text-amber-800">
+                Notebook ready, report not saved
+              </p>
+
+              <p className="mt-1 text-sm text-amber-700">
+                {persistenceError}
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRetrySave}
+              disabled={savingReport}
+              className="
+                rounded-lg
+                bg-amber-700
+                px-4
+                py-2
+                text-sm
+                font-semibold
+                text-white
+                transition
+                hover:bg-amber-800
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+              "
+            >
+              {
+                savingReport
+                  ? "Saving…"
+                  : "Retry saving"
+              }
+            </button>
 
           </div>
 
