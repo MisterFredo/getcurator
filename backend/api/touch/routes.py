@@ -4,6 +4,8 @@ from fastapi import (
 )
 from typing import Literal
 
+from pydantic import BaseModel
+
 from core.touch.search_models import (
     TouchResearchBrief,
 )
@@ -21,6 +23,7 @@ from core.touch.generation_service import (
 )
 
 from core.touch.notebook_models import (
+    TouchCorpusNotebook,
     TouchNotebookRequest,
 )
 
@@ -39,6 +42,15 @@ from core.touch.brief_service import (
 from core.touch.notebook_report_service import (
     get_touch_report,
     list_touch_reports,
+    save_touch_report,
+)
+
+from core.touch.notebook_plan_service import (
+    validate_executive_summary,
+    validate_notebook,
+)
+
+from core.touch.notebook_report_service import (
     save_touch_report,
 )
 
@@ -169,20 +181,75 @@ def search_touch(
 def build_editorial_notebook(
     request: TouchNotebookRequest,
 ):
-    outcome = build_touch_notebook(request=request)
+    outcome = build_touch_notebook(
+        request=request,
+    )
 
-    response = outcome.model_dump(mode="json")
+    response = outcome.model_dump(
+        mode="json",
+    )
 
-    if outcome.status == "GENERATED" and outcome.notebook:
-        response["report_id"] = save_touch_report(
-            request=request,
-            notebook=outcome.notebook,
-        )
+    if (
+        outcome.status == "GENERATED"
+        and outcome.notebook is not None
+    ):
+        try:
+            response["report_id"] = save_touch_report(
+                request=request,
+                notebook=outcome.notebook,
+            )
+        except Exception as exc:
+            # La génération a réussi : on conserve le
+            # Notebook et on permet de retenter sa sauvegarde.
+            response["report_id"] = None
+            response["persistence_error"] = str(exc)
 
     return {
         "status": "ok",
         "notebook_generation": response,
     }
+
+
+class TouchReportSaveRequest(BaseModel):
+    request: TouchNotebookRequest
+    notebook: TouchCorpusNotebook
+
+
+@router.post("/reports")
+def save_editorial_report(
+    payload: TouchReportSaveRequest,
+):
+    allowed_content_ids = set(
+        payload.request.content_ids
+    )
+
+    try:
+        validate_notebook(
+            notebook=payload.notebook,
+            allowed_content_ids=allowed_content_ids,
+        )
+
+        validate_executive_summary(
+            notebook=payload.notebook,
+            allowed_content_ids=allowed_content_ids,
+        )
+
+        report_id = save_touch_report(
+            request=payload.request,
+            notebook=payload.notebook,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "status": "ok",
+        "report_id": report_id,
+    }
+
 
 
 @router.get("/reports")
