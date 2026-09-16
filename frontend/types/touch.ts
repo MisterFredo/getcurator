@@ -660,6 +660,8 @@ export type TouchNotebookOutcome = {
     TouchCorpusNotebook | null;
 
   source_count: number;
+  report_id?: string | null;
+  persistence_error?: string | null;
 
   error: string | null;
 };
