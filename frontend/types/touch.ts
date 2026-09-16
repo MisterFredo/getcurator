@@ -678,6 +678,38 @@ export type TouchNotebookResponse = {
     TouchNotebookOutcome;
 };
 
+export type TouchSavedReportSummary = {
+  report_id: string;
+  parent_report_id: string | null;
+  version_number: number;
+  created_at: string;
+  subject: string;
+  objective: string;
+  output_language: string;
+  source_count: number;
+};
+
+export type TouchSavedReport = {
+  report_id: string;
+  parent_report_id: string | null;
+  version_number: number;
+  created_at: string;
+  subject: string;
+  objective: string;
+  output_language: string;
+  content_ids: string[];
+  contributions: TouchNotebookContribution[];
+  sources: Array<{
+    content_id: string;
+    title: string | null;
+    original_title: string | null;
+    source_name: string | null;
+    url: string | null;
+    published_at: string | null;
+  }>;
+  notebook: TouchCorpusNotebook;
+};
+
 /* =========================================================
    TOUCH BRIEF
 ========================================================= */
