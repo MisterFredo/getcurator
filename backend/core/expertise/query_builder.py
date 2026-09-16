@@ -465,6 +465,7 @@ def build_selection_context(
     )
 
 # ============================================================
+# ============================================================
 # BUILD SELECTION QUERY
 # ============================================================
 
@@ -482,6 +483,7 @@ def build_selection_query(
     apply_profile_selection: bool = True,
     allowed_universe_ids: list[str] | None = None,
     language: str | None = None,
+    monthly_quota: int | None = None,
 ) -> tuple[str, dict]:
 
     # ========================================================
@@ -593,6 +595,71 @@ def build_selection_query(
         """
 
     # ========================================================
+    # MONTHLY DISTRIBUTION
+    # ========================================================
+
+    monthly_filter_sql = ""
+
+    order_sql = """
+        PUBLISHED_AT DESC
+    """
+
+    if (
+        monthly_quota is not None
+        and period_start
+    ):
+
+        if monthly_quota < 1:
+
+            raise ValueError(
+                "monthly_quota must be positive"
+            )
+
+        params["monthly_quota"] = (
+            monthly_quota
+        )
+
+        monthly_filter_sql = """
+
+        QUALIFY ROW_NUMBER() OVER (
+
+            PARTITION BY
+                DATE_TRUNC(
+                    DATE(PUBLISHED_AT),
+                    MONTH
+                )
+
+            ORDER BY
+                PUBLISHED_AT DESC,
+                ID_CONTENT ASC
+
+        ) <= @monthly_quota
+
+        """
+
+        order_sql = """
+
+        ROW_NUMBER() OVER (
+
+            PARTITION BY
+                DATE_TRUNC(
+                    DATE(PUBLISHED_AT),
+                    MONTH
+                )
+
+            ORDER BY
+                PUBLISHED_AT DESC,
+                ID_CONTENT ASC
+
+        ) ASC,
+
+        PUBLISHED_AT DESC,
+
+        ID_CONTENT ASC
+
+        """
+
+    # ========================================================
     # QUERY
     # ========================================================
 
@@ -648,9 +715,11 @@ def build_selection_query(
 
         {filters_sql}
 
+    {monthly_filter_sql}
+
     ORDER BY
 
-        PUBLISHED_AT DESC
+        {order_sql}
 
     {pagination_sql}
 
