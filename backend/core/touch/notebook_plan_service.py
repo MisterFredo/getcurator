@@ -1533,6 +1533,88 @@ def validate_notebook(
                 )
             )
 
+def validate_executive_summary(
+    notebook: TouchCorpusNotebook,
+    allowed_content_ids: set[str],
+) -> None:
+
+    notes_by_id = {
+        note.note_id: note
+        for note in notebook.notes
+    }
+
+    summary_ids = [
+        item.summary_id
+        for item in notebook.executive_summary
+    ]
+
+    _validate_unique_identifiers(
+        summary_ids,
+        "summary_id",
+    )
+
+    for item in notebook.executive_summary:
+
+        if not item.statement.strip():
+            raise ValueError(
+                "Un élément de l’Executive Summary "
+                "possède un texte vide"
+            )
+
+        if not item.note_ids:
+            raise ValueError(
+                "Un élément de l’Executive Summary "
+                "ne référence aucune note : "
+                f"{item.summary_id}"
+            )
+
+        if len(item.note_ids) != len(set(item.note_ids)):
+            raise ValueError(
+                "Un élément de l’Executive Summary "
+                "référence deux fois la même note : "
+                f"{item.summary_id}"
+            )
+
+        unknown_note_ids = (
+            set(item.note_ids)
+            - set(notes_by_id)
+        )
+
+        if unknown_note_ids:
+            raise ValueError(
+                "L’Executive Summary référence des "
+                "notes inconnues : "
+                + ", ".join(sorted(unknown_note_ids))
+            )
+
+        expected_source_ids = {
+            content_id
+            for note_id in item.note_ids
+            for content_id in notes_by_id[
+                note_id
+            ].source_content_ids
+        }
+
+        if (
+            set(item.source_content_ids)
+            != expected_source_ids
+        ):
+            raise ValueError(
+                "Les sources de l’Executive Summary "
+                "ne correspondent pas aux notes : "
+                f"{item.summary_id}"
+            )
+
+        if (
+            expected_source_ids
+            - allowed_content_ids
+        ):
+            raise ValueError(
+                "L’Executive Summary référence des "
+                "sources hors du corpus : "
+                f"{item.summary_id}"
+            )
+
 
 # ============================================================
 # PREPARE NOTEBOOK
