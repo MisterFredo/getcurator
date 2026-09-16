@@ -281,6 +281,47 @@ def _validate_input_notes(
 
     return notes_by_id
 
+def _restore_missing_notes(
+    result: TouchNoteDeduplicationResult,
+    notes: list[TouchEvidenceNote],
+) -> TouchNoteDeduplicationResult:
+
+    expected_ids = {
+        note.note_id
+        for note in notes
+    }
+
+    returned_ids = {
+        note_id
+        for group in result.groups
+        for note_id in group.note_ids
+    }
+
+    missing_ids = expected_ids - returned_ids
+
+    if not missing_ids:
+        return result
+
+    restored_groups = list(result.groups)
+
+    for note in notes:
+
+        if note.note_id not in missing_ids:
+            continue
+
+        restored_groups.append(
+            TouchNoteDeduplicationGroup(
+                representative_note_id=note.note_id,
+                note_ids=[note.note_id],
+            )
+        )
+
+    return result.model_copy(
+        update={
+            "groups": restored_groups,
+        }
+    )
+
 
 # ============================================================
 # VALIDATE GROUPS
@@ -677,73 +718,52 @@ def _build_deduplicated_notes(
 
 def deduplicate_notebook_notes(
     request: TouchNotebookRequest,
-    notes: list[
-        TouchEvidenceNote
-    ],
+    notes: list[TouchEvidenceNote],
     model: Optional[str] = None,
     max_attempts: int = 2,
 ) -> list[TouchEvidenceNote]:
 
-    notes_by_id = (
-        _validate_input_notes(
-            request=request,
-            notes=notes,
-        )
+    notes_by_id = _validate_input_notes(
+        request=request,
+        notes=notes,
     )
 
     if len(notes) == 1:
 
         return [
-
             notes[0].model_copy(
                 update={
-                    "note_id":
-                        "note-001",
+                    "note_id": "note-001",
                 },
             )
-
         ]
 
     original_prompt = (
         build_touch_notebook_note_deduplication_prompt(
-
             request=request,
-
             notes=notes,
-
         )
     )
 
     prompt = original_prompt
-
-    attempts = max(
-        1,
-        max_attempts,
-    )
+    attempts = max(1, max_attempts)
 
     last_error = (
         "Erreur inconnue pendant la "
         "déduplication des contributions"
     )
 
-    for attempt in range(
-        attempts
-    ):
+    for attempt in range(attempts):
 
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
                 system_prompt=(
                     TOUCH_NOTEBOOK_NOTE_DEDUPLICATION_SYSTEM_PROMPT
                 ),
-
             )
 
             parsed = extract_json_object(
@@ -763,42 +783,37 @@ def deduplicate_notebook_notes(
                 )
             )
 
+            # Une contribution omise reste une note autonome.
+            # Son texte et ses sources sont conservés.
+            result = _restore_missing_notes(
+                result=result,
+                notes=notes,
+            )
+
+            # Les identifiants inventés, les représentants
+            # invalides et les placements multiples restent
+            # des erreurs.
             _validate_groups(
                 result=result,
                 notes_by_id=notes_by_id,
             )
 
             return _build_deduplicated_notes(
-
                 result=result,
-
                 original_notes=notes,
-
                 notes_by_id=notes_by_id,
-
             )
 
         except Exception as exc:
 
-            last_error = str(
-                exc
-            )
+            last_error = str(exc)
 
-            if (
-                attempt + 1
-                >= attempts
-            ):
-
+            if attempt + 1 >= attempts:
                 break
 
             prompt = build_retry_prompt(
-
-                original_prompt=(
-                    original_prompt
-                ),
-
+                original_prompt=original_prompt,
                 error=last_error,
-
             )
 
     raise ValueError(
