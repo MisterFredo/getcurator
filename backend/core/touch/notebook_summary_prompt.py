@@ -179,7 +179,7 @@ Not every supplied note must appear in the executive summary.
 LENGTH
 ============================================================
 
-Each statement should normally contain between 30 and 55 words.
+Be as concise as the documented information allows; use at most 70 words »
 
 Use at most two sentences per item.
 
@@ -365,9 +365,6 @@ def build_touch_notebook_summary_prompt(
 
             "maximum_item_count":
                 maximum_item_count,
-
-            "minimum_words_per_item":
-                30,
 
             "maximum_words_per_item":
                 55,
