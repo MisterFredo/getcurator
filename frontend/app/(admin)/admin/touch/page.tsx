@@ -267,6 +267,13 @@ export default function TouchPage() {
   ] = useState("");
 
   const [
+    reportLanguage,
+    setReportLanguage,
+  ] = useState<"fr" | "en">(
+    "fr",
+  );
+
+  const [
     periodStart,
     setPeriodStart,
   ] = useState("");
@@ -507,7 +514,7 @@ export default function TouchPage() {
         cleanedQuery,
 
       outputLanguage:
-        "fr",
+        reportLanguage,
 
       periodStart:
         buildPeriodStart(
@@ -715,21 +722,11 @@ export default function TouchPage() {
       {/* ================================================= */}
 
       <TouchWorkflowSteps
-        currentStep={
-          currentStep
-        }
-        researchReady={
-          researchReady
-        }
-        corpusReady={
-          corpusReady
-        }
-        notebookReady={
-          notebookReady
-        }
-        onStepChange={
-          setCurrentStep
-        }
+        currentStep={currentStep}
+        researchReady={researchReady}
+        corpusReady={corpusReady}
+        notebookReady={notebookReady}
+        onStepChange={setCurrentStep}
       />
 
       {/* ================================================= */}
@@ -739,6 +736,65 @@ export default function TouchPage() {
       {currentStep === "RESEARCH" && (
 
         <div className="space-y-6">
+
+          <div
+            className="
+              rounded-xl
+              border
+              border-gray-200
+              bg-white
+              p-4
+            "
+          >
+
+            <label
+              htmlFor="touch-report-language"
+              className="
+                block
+                text-sm
+                font-medium
+                text-gray-900
+              "
+            >
+              Report language
+            </label>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Choose before starting the research.
+              Reset the research to change it later.
+            </p>
+
+            <select
+              id="touch-report-language"
+              value={reportLanguage}
+              onChange={event =>
+                setReportLanguage(
+                  event.target.value as "fr" | "en",
+                )
+              }
+              disabled={
+                loading
+                || researchReady
+                || corpusReady
+              }
+              className="
+                mt-3
+                rounded-lg
+                border
+                border-gray-300
+                bg-white
+                px-3
+                py-2
+                text-sm
+                text-gray-900
+                disabled:opacity-50
+              "
+            >
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+            </select>
+
+          </div>
 
           <TouchResearchForm
             query={query}
@@ -1172,7 +1228,7 @@ export default function TouchPage() {
               "OUTPUT",
             )
           }
-          outputLanguage="fr"
+          outputLanguage={reportLanguage}
         />
 
       )}
@@ -1190,6 +1246,9 @@ export default function TouchPage() {
           notebook={
             notebook
           }
+
+          outputLanguage={reportLanguage}
+          
           sources={
             selectedCandidates
           }
