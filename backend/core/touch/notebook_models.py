@@ -465,3 +465,21 @@ class TouchNotebookOutcome(
     source_count: int = 0
 
     error: str | None = None
+
+
+class TouchNotebookExecutiveSummaryItem(
+    StrictTouchNotebookModel,
+):
+
+    summary_id: str
+
+    statement: str
+
+    note_ids: list[str] = Field(
+        ...,
+        min_length=1,
+    )
+
+    source_content_ids: list[str] = Field(
+        default_factory=list,
+    )
