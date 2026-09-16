@@ -6,6 +6,7 @@ import type {
   TouchBriefOutcome,
   TouchBriefRequest,
   TouchBriefResponse,
+  TouchCorpusNotebook,
   TouchGenerationOutcome,
   TouchGenerationRequest,
   TouchGenerationResponse,
@@ -92,6 +93,26 @@ export async function buildTouchNotebook(
       );
 
   return response.notebook_generation;
+
+}
+
+export async function saveTouchReport(
+  request: TouchNotebookRequest,
+  notebook: TouchCorpusNotebook,
+): Promise<string> {
+
+  const response: {
+    status: string;
+    report_id: string;
+  } = await api.post(
+    "/touch/reports",
+    {
+      request,
+      notebook,
+    },
+  );
+
+  return response.report_id;
 
 }
 
