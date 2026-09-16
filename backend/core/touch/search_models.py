@@ -2,11 +2,13 @@ from datetime import datetime
 
 from typing import (
     Literal,
+    get_args,
 )
 
 from pydantic import (
     BaseModel,
     Field,
+    field_validator,
 )
 
 
@@ -53,6 +55,21 @@ TouchCoverageDimension = Literal[
     "LIMITATIONS",
     "OUTLOOK",
 ]
+
+ALLOWED_TOUCH_COVERAGE_DIMENSIONS = set(
+    get_args(TouchCoverageDimension)
+)
+
+
+def _valid_coverage_dimensions(value):
+    if not isinstance(value, list):
+        return value
+
+    return [
+        dimension
+        for dimension in value
+        if dimension in ALLOWED_TOUCH_COVERAGE_DIMENSIONS
+    ]
 
 
 TouchConversationRole = Literal[
@@ -299,6 +316,19 @@ class TouchContentDecision(
         default_factory=list,
     )
 
+    @field_validator(
+        "coverage_dimensions",
+        mode="before",
+    )
+    @classmethod
+    def validate_coverage_dimensions(
+        cls,
+        value,
+    ):
+        return _valid_coverage_dimensions(
+            value
+        )
+
     key_contributions: list[str] = Field(
         default_factory=list,
     )
@@ -310,7 +340,6 @@ class TouchContentDecision(
     contradictions_with: list[str] = Field(
         default_factory=list,
     )
-
 
 # ============================================================
 # CANDIDATE EVALUATION RESULT
