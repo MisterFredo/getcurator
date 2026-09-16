@@ -3,6 +3,12 @@ from dataclasses import (
     field,
 )
 
+from datetime import (
+    datetime,
+    timedelta,
+    timezone,
+)
+
 from typing import (
     Callable,
 )
@@ -259,43 +265,125 @@ def _search_content_pool(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
-) -> list[
-    ExpertiseContent
-]:
+) -> list[ExpertiseContent]:
 
-    contents, _ = select_contents(
-
-        profile=None,
-
-        period_start=_period_value(
+    selection_args = {
+        "profile": None,
+        "period_start": _period_value(
             brief.period_start
         ),
-
-        period_end=_period_value(
+        "period_end": _period_value(
             brief.period_end
         ),
+        "limit": limit,
+        "offset": 0,
+        "query": query,
+        "company_id": company_id,
+        "solution_id": solution_id,
+        "topic_id": topic_id,
+        "apply_profile_selection": False,
+        "allowed_universe_ids": None,
+        "language": language,
+        "include_total": False,
+    }
 
-        limit=limit,
+    monthly_quota = None
 
-        offset=0,
+    if brief.period_start:
 
-        query=query,
+        start = brief.period_start
 
-        company_id=company_id,
+        if start.tzinfo is None:
+            start = start.replace(
+                tzinfo=timezone.utc
+            )
+        else:
+            start = start.astimezone(
+                timezone.utc
+            )
 
-        solution_id=solution_id,
+        end = (
+            brief.period_end
+            or datetime.now(timezone.utc)
+        )
 
-        topic_id=topic_id,
+        if end.tzinfo is None:
+            end = end.replace(
+                tzinfo=timezone.utc
+            )
+        else:
+            end = end.astimezone(
+                timezone.utc
+            )
 
-        apply_profile_selection=False,
+        # Ne réserve pas de places à des mois futurs.
+        end = min(
+            end,
+            datetime.now(timezone.utc),
+        )
 
-        allowed_universe_ids=None,
+        if end > start:
 
-        language=language,
+            last_included = (
+                end
+                - timedelta(
+                    microseconds=1
+                )
+            )
 
-        include_total=False,
+            month_count = (
+                (
+                    last_included.year
+                    - start.year
+                ) * 12
+                + last_included.month
+                - start.month
+                + 1
+            )
 
+            if month_count > 1:
+
+                monthly_quota = max(
+                    1,
+                    (
+                        limit
+                        + month_count
+                        - 1
+                    ) // month_count,
+                )
+
+    contents, _ = select_contents(
+        **selection_args,
+        monthly_quota=monthly_quota,
     )
+
+    if (
+        monthly_quota is None
+        or len(contents) >= limit
+    ):
+        return contents
+
+    # Si certains mois sont peu fournis, complète
+    # jusqu'à la limite avec le tri habituel.
+    recent_contents, _ = select_contents(
+        **selection_args,
+    )
+
+    seen_ids = {
+        content.id
+        for content in contents
+    }
+
+    for content in recent_contents:
+
+        if content.id in seen_ids:
+            continue
+
+        contents.append(content)
+        seen_ids.add(content.id)
+
+        if len(contents) >= limit:
+            break
 
     return contents
 
