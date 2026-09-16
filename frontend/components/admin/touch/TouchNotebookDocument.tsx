@@ -759,6 +759,93 @@ export default function TouchNotebookDocument({
         )}
 
         {/* ================================================= */}
+        {/* EXECUTIVE SUMMARY */}
+        {/* ================================================= */}
+        
+        {notebook.executive_summary?.length > 0 && (
+        
+          <section className="space-y-4 print:break-after-page">
+        
+            <div
+              className="
+                break-after-avoid
+                border-b
+                border-slate-300
+                pb-2
+              "
+            >
+              <h2 className="text-xl font-semibold text-slate-900">
+                Executive summary
+              </h2>
+            </div>
+        
+            <ol className="space-y-3">
+        
+              {notebook.executive_summary.map(
+                (item, index) => (
+        
+                  <li
+                    key={item.summary_id}
+                    className="
+                      break-inside-avoid
+                      flex
+                      gap-3
+                      border-l-2
+                      border-blue-300
+                      pl-3
+                    "
+                  >
+        
+                    <span
+                      className="
+                        shrink-0
+                        text-sm
+                        font-semibold
+                        text-blue-700
+                      "
+                    >
+                      {index + 1}.
+                    </span>
+        
+                    <div className="min-w-0">
+        
+                      <p
+                        className="
+                          text-sm
+                          leading-6
+                          text-slate-900
+                        "
+                      >
+                        {item.statement}
+                      </p>
+        
+                      <div className="mt-1">
+        
+                        <SourceReferences
+                          sourceContentIds={
+                            item.source_content_ids
+                          }
+                          sourceNumberById={
+                            sourceNumberById
+                          }
+                        />
+        
+                      </div>
+        
+                    </div>
+        
+                  </li>
+        
+                ),
+              )}
+        
+            </ol>
+        
+          </section>
+        
+        )}
+
+        {/* ================================================= */}
         {/* DOCUMENTARY PLAN */}
         {/* ================================================= */}
 
