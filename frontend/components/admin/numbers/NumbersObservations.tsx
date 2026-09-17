@@ -15,6 +15,7 @@ import {
 import type {
   NumberObservation,
   NumberStatus,
+  NumberObservationsResponse,
 } from "@/types/numbers";
 
 /* =========================================================
@@ -755,6 +756,104 @@ export default function NumbersObservations() {
         )}
 
       </div>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-gray-900">
+          Comparer les Numbers par entité
+        </h2>
+      
+        <div className="mt-3 flex flex-col gap-3 md:flex-row">
+          <select
+            value={entityType ?? ""}
+            disabled={moderating}
+            onChange={(event) => {
+              const nextType = event.target.value as EntityType | "";
+      
+              setEntityFilter(nextType || null, null);
+              setEntitySearch("");
+              setSelectedEntityLabel("");
+              setEntityOptions([]);
+            }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            aria-label="Type d’entité"
+          >
+            <option value="">Toutes les entités</option>
+            <option value="company">Company</option>
+            <option value="solution">Solution</option>
+            <option value="topic">Topic</option>
+          </select>
+      
+          {entityType && !entityId && (
+            <div className="min-w-0 flex-1">
+              <input
+                type="search"
+                value={entitySearch}
+                disabled={moderating}
+                onChange={(event) => setEntitySearch(event.target.value)}
+                placeholder={`Rechercher une ${entityType}…`}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                aria-label="Rechercher une entité"
+              />
+      
+              {entityLoading && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Recherche…
+                </p>
+              )}
+      
+              {entitySearchError && (
+                <p className="mt-2 text-xs text-red-700">
+                  {entitySearchError}
+                </p>
+              )}
+      
+              {!entityLoading && entityOptions.length > 0 && (
+                <div className="mt-2 max-h-52 overflow-auto rounded-lg border border-gray-200">
+                  {entityOptions.map((option) => (
+                    <button
+                      key={option.entity_id}
+                      type="button"
+                      onClick={() => {
+                        setEntityFilter(
+                          option.entity_type,
+                          option.entity_id,
+                        );
+                        setSelectedEntityLabel(option.entity_label);
+                        setEntitySearch("");
+                        setEntityOptions([]);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                    >
+                      {option.entity_label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+      
+          {entityId && (
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
+              <span className="truncate font-medium text-ratecard-blue">
+                {selectedEntityLabel}
+              </span>
+      
+              <button
+                type="button"
+                disabled={moderating}
+                onClick={() => {
+                  setEntityFilter(entityType, null);
+                  setSelectedEntityLabel("");
+                  setEntitySearch("");
+                }}
+                className="shrink-0 text-ratecard-blue underline disabled:opacity-50"
+              >
+                Changer
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* SEARCH */}
 
