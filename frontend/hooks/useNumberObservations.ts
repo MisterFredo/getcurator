@@ -43,6 +43,12 @@ export function useNumberObservations() {
     setQueryState,
   ] = useState("");
 
+  const [entityType, setEntityTypeState] = useState<
+    "company" | "solution" | "topic" | null
+  >(null);
+  
+  const [entityId, setEntityIdState] = useState<string | null>(null);
+
   const [
     offset,
     setOffset,
@@ -110,46 +116,28 @@ export function useNumberObservations() {
       requestedOffset: number,
       requestedLimit: number,
       requestedQuery?: string,
+      requestedEntityType?: "company" | "solution" | "topic" | null,
+      requestedEntityId?: string | null,
     ) => {
-
-      const params =
-        new URLSearchParams();
-
-      params.set(
-        "status",
-        requestedStatus,
-      );
-
-      params.set(
-        "limit",
-        String(requestedLimit),
-      );
-
-      params.set(
-        "offset",
-        String(requestedOffset),
-      );
-
-      if (
-        requestedQuery
-        && requestedQuery.trim()
-      ) {
-
-        params.set(
-          "query",
-          requestedQuery.trim(),
-        );
-
+      const params = new URLSearchParams();
+  
+      params.set("status", requestedStatus);
+      params.set("limit", String(requestedLimit));
+      params.set("offset", String(requestedOffset));
+  
+      if (requestedQuery?.trim()) {
+        params.set("query", requestedQuery.trim());
       }
-
-      return (
-        "/numbers/observations?"
-        + params.toString()
-      );
-
+  
+      if (requestedEntityType && requestedEntityId) {
+        params.set("entity_type", requestedEntityType);
+        params.set("entity_id", requestedEntityId);
+      }
+  
+      return `/numbers/observations?${params.toString()}`;
     },
     [],
-  );
+);
 
   /* =======================================================
      LOAD COUNTS
@@ -240,7 +228,9 @@ export function useNumberObservations() {
               offset,
               PAGE_SIZE,
               query,
-            ),
+              entityType,
+              entityId,
+            )
           ) as NumberObservationsResponse;
 
         setItems(
@@ -320,6 +310,20 @@ export function useNumberObservations() {
         new Set(),
       );
 
+    },
+    [],
+  );
+
+  const setEntityFilter = useCallback(
+    (
+      nextType: "company" | "solution" | "topic" | null,
+      nextId: string | null,
+    ) => {
+      setEntityTypeState(nextType);
+      setEntityIdState(nextId);
+      setOffset(0);
+      setSelectedIds(new Set());
+      setLastModeration(null);
     },
     [],
   );
@@ -558,6 +562,10 @@ export function useNumberObservations() {
       selectedIds.size,
 
     allPageSelected,
+
+    entityType,
+    entityId,
+    setEntityFilter,
 
     loading,
     moderating,
