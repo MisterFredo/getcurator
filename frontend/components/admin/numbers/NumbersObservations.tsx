@@ -2,8 +2,11 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
+
+import { api } from "@/lib/api";
 
 import {
   useNumberObservations,
@@ -504,6 +507,102 @@ function ObservationRow({
   );
 }
 
+type EntityType = "company" | "solution" | "topic";
+
+type EntityOption = {
+  entity_type: EntityType;
+  entity_id: string;
+  entity_label: string;
+};
+
+const [entitySearch, setEntitySearch] = useState("");
+const [entityOptions, setEntityOptions] = useState<EntityOption[]>([]);
+const [selectedEntityLabel, setSelectedEntityLabel] = useState("");
+const [entityLoading, setEntityLoading] = useState(false);
+const [entitySearchError, setEntitySearchError] = useState("");
+
+useEffect(() => {
+  const term = entitySearch.trim();
+
+  if (!entityType || entityId || term.length < 2) {
+    setEntityOptions([]);
+    setEntityLoading(false);
+    setEntitySearchError("");
+    return;
+  }
+
+  let cancelled = false;
+
+  const timer = window.setTimeout(async () => {
+    setEntityLoading(true);
+    setEntitySearchError("");
+
+    try {
+      const params = new URLSearchParams({
+        status: "ACCEPTED",
+        entity_type: entityType,
+        query: term,
+        limit: "500",
+        offset: "0",
+      });
+
+      const response = await api.get(
+        `/numbers/observations?${params.toString()}`,
+      ) as NumberObservationsResponse;
+
+      const unique = new Map<string, EntityOption>();
+
+      for (const observation of response.items) {
+        for (const entity of observation.entities) {
+          if (
+            entity.entity_type === entityType
+            && entity.entity_label
+              .toLocaleLowerCase()
+              .includes(term.toLocaleLowerCase())
+          ) {
+            unique.set(entity.entity_id, {
+              entity_type: entityType,
+              entity_id: entity.entity_id,
+              entity_label: entity.entity_label,
+            });
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setEntityOptions(
+          [...unique.values()]
+            .sort((a, b) =>
+              a.entity_label.localeCompare(
+                b.entity_label,
+                "fr",
+              ),
+            )
+            .slice(0, 20),
+        );
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setEntityOptions([]);
+        setEntitySearchError(
+          error instanceof Error
+            ? error.message
+            : "Recherche des entités indisponible.",
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setEntityLoading(false);
+      }
+    }
+  }, 300);
+
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timer);
+  };
+}, [entityType, entityId, entitySearch]);
+
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -527,6 +626,10 @@ export default function NumbersObservations() {
     moderating,
     error,
     lastModeration,
+
+    entityType,
+    entityId,
+    setEntityFilter,
 
     pageSize,
 
