@@ -625,7 +625,7 @@ export default function NumbersObservations() {
   
         if (!cancelled) {
           setEntityOptions(
-            [...unique.values()]
+            Array.from(unique.values())
               .sort((a, b) =>
                 a.entity_label.localeCompare(
                   b.entity_label,
