@@ -202,7 +202,7 @@ def discover_html(
         href_domain = parsed_href.netloc.lower()
 
         is_linkedin_newsletter = (
-            page_domain == "www.linkedin.com"
+            page_domain in ("linkedin.com", "www.linkedin.com")
             and "/newsletters/" in urlparse(page_url).path
         )
 
