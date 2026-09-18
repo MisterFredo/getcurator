@@ -198,18 +198,26 @@ def discover_html(
         # DOMAIN FILTER
         # ====================================================
 
-        href_domain = (
-            urlparse(
-                href
-            )
-            .netloc
-            .lower()
+        parsed_href = urlparse(href)
+        href_domain = parsed_href.netloc.lower()
+
+        is_linkedin_newsletter = (
+            page_domain == "www.linkedin.com"
+            and "/newsletters/" in urlparse(page_url).path
         )
 
-        if (
-            href_domain !=
-            page_domain
-        ):
+        is_linkedin_edition = (
+            is_linkedin_newsletter
+            and href_domain.endswith(".linkedin.com")
+            and parsed_href.path.startswith("/pulse/")
+        )
+
+        if href_domain != page_domain and not is_linkedin_edition:
+            continue
+
+        # Sur une page de newsletter LinkedIn, ne retenir
+        # que les éditions, pas les liens de navigation.
+        if is_linkedin_newsletter and not is_linkedin_edition:
             continue
 
         # ====================================================
