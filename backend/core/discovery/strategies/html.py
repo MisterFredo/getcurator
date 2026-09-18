@@ -119,6 +119,19 @@ def discover_html(
         f"[DISCOVERY HTML] LINKS={len(soup.find_all('a'))}"
     )
 
+    pulse_links = [
+        urljoin(response.url, link["href"])
+        for link in soup.find_all("a", href=True)
+        if "/pulse/" in link["href"]
+    ]
+
+    print(
+        f"[DISCOVERY HTML] PULSE_LINKS={len(pulse_links)}"
+    )
+
+    for url in pulse_links[:10]:
+        print(f"[DISCOVERY HTML] PULSE_URL={url}")
+
     # ========================================================
     # PAGE DOMAIN
     # ========================================================
