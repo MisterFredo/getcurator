@@ -40,6 +40,10 @@ from core.touch.notebook_summary_service import (
     build_notebook_executive_summary,
 )
 
+from core.touch.notebook_report_service import (
+    save_touch_report,
+)
+
 from core.touch.notebook_utils import (
     normalize_language,
     unique_ids,
@@ -163,6 +167,10 @@ def _load_certified_numbers(
 # BUILD TOUCH NOTEBOOK
 # ============================================================
 
+# ============================================================
+# BUILD TOUCH NOTEBOOK
+# ============================================================
+
 def build_touch_notebook(
     request: TouchNotebookRequest,
     model: Optional[str] = None,
@@ -270,12 +278,25 @@ def build_touch_notebook(
             ),
         )
 
+        # ====================================================
+        # 9. CREATE OR REPLACE SAVED REPORT
+        # ====================================================
+
+        report_id = save_touch_report(
+            request=normalized_request,
+            notebook=notebook,
+            report_id=(
+                normalized_request.report_id
+            ),
+        )
+
         return TouchNotebookOutcome(
             status="GENERATED",
             notebook=notebook,
             source_count=len(
                 selected_contents
             ),
+            report_id=report_id,
             error=None,
         )
 
@@ -285,5 +306,6 @@ def build_touch_notebook(
             status="GENERATION_FAILED",
             notebook=None,
             source_count=0,
+            report_id=None,
             error=str(exc)[:2000],
         )
