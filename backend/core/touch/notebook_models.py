@@ -458,6 +458,8 @@ class TouchNotebookRequest(
     StrictTouchNotebookModel,
 ):
 
+    report_id: str | None = None
+
     subject: str
 
     objective: str = ""
