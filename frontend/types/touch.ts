@@ -665,6 +665,9 @@ export type TouchNotebookOutcome = {
   report_id:
     string | null;
 
+  persistence_error?:
+    string | null;
+
   error:
     string | null;
 };
