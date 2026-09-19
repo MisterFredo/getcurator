@@ -42,7 +42,7 @@ from core.touch.brief_service import (
 from core.touch.notebook_report_service import (
     get_touch_report,
     list_touch_reports,
-    save_touch_report,
+    delete_touch_report,
 )
 
 from core.touch.notebook_plan_service import (
@@ -181,32 +181,17 @@ def search_touch(
 def build_editorial_notebook(
     request: TouchNotebookRequest,
 ):
+
     outcome = build_touch_notebook(
         request=request,
     )
 
-    response = outcome.model_dump(
-        mode="json",
-    )
-
-    if (
-        outcome.status == "GENERATED"
-        and outcome.notebook is not None
-    ):
-        try:
-            response["report_id"] = save_touch_report(
-                request=request,
-                notebook=outcome.notebook,
-            )
-        except Exception as exc:
-            # La génération a réussi : on conserve le
-            # Notebook et on permet de retenter sa sauvegarde.
-            response["report_id"] = None
-            response["persistence_error"] = str(exc)
-
     return {
         "status": "ok",
-        "notebook_generation": response,
+        "notebook_generation":
+            outcome.model_dump(
+                mode="json",
+            ),
     }
 
 
@@ -356,4 +341,29 @@ def generate_touch(
                 mode="json",
             ),
 
+    }
+
+# ============================================================
+# DELETE SAVED TOUCH REPORT
+# ============================================================
+
+@router.delete("/reports/{report_id}")
+def delete_saved_touch_report(
+    report_id: str,
+):
+
+    deleted = delete_touch_report(
+        report_id=report_id,
+    )
+
+    if not deleted:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Touch report not found.",
+        )
+
+    return {
+        "status": "ok",
+        "report_id": report_id,
     }
