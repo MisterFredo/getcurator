@@ -44,6 +44,11 @@ type Props = {
   ) => void;
 
   onContinue?: () => void;
+  reportId: string | null;
+
+  onReportIdChange: (
+    reportId: string | null
+  ) => void;
 
   outputLanguage?: string;
 };
@@ -108,6 +113,8 @@ export default function TouchNotebookBuilder({
   decisionsByContentId,
   notebook,
   onNotebookChange,
+  reportId,
+  onReportIdChange,
   onContinue,
   outputLanguage = "fr",
 }: Props) {
@@ -131,11 +138,6 @@ export default function TouchNotebookBuilder({
 
   const lastRequestRef =
     useRef<TouchNotebookRequest | null>(null);
-
-  const [
-    reportId,
-    setReportId,
-  ] = useState<string | null>(null);
 
   const [
     persistenceError,
@@ -263,23 +265,35 @@ export default function TouchNotebookBuilder({
     }
 
     const notebookRequest: TouchNotebookRequest = {
-      subject: normalizedSubject,
-      objective: objective.trim(),
-      content_ids: [...selectedContentIds],
-      contributions: contributions.map(
-        contribution => ({
-          content_id: contribution.content_id,
-          statements: [...contribution.statements],
-        }),
-      ),
-      output_language: outputLanguage,
-    };
+      report_id: reportId,
 
+      subject:
+        normalizedSubject,
+
+      objective:
+        objective.trim(),
+
+      content_ids:
+        [...selectedContentIds],
+
+      contributions:
+        contributions.map(
+          contribution => ({
+            content_id:
+              contribution.content_id,
+
+            statements:
+              [...contribution.statements],
+          }),
+        ),
+
+      output_language:
+        outputLanguage,
+    };
     try {
 
       setLoading(true);
       setError(null);
-      setReportId(null);
       setPersistenceError(null);
       lastRequestRef.current = null;
 
@@ -309,9 +323,19 @@ export default function TouchNotebookBuilder({
       lastRequestRef.current =
         notebookRequest;
 
-      setReportId(
-        outcome.report_id ?? null,
-      );
+      if (outcome.report_id) {
+
+        onReportIdChange(
+          outcome.report_id,
+        );
+
+        lastRequestRef.current = {
+          ...notebookRequest,
+          report_id:
+            outcome.report_id,
+        };
+
+      }
 
       setPersistenceError(
         outcome.report_id
@@ -333,7 +357,15 @@ export default function TouchNotebookBuilder({
       onNotebookChange(null);
       setSourceCount(0);
       lastRequestRef.current = null;
-      setReportId(null);
+      onReportIdChange(
+        savedReportId,
+      );
+
+      lastRequestRef.current = {
+        ...request,
+        report_id:
+          savedReportId,
+      };
       setPersistenceError(null);
 
       setError(
