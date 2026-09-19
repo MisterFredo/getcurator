@@ -818,8 +818,7 @@ def repair_documentary_plan(
                     fallback_id,
 
                 title=(
-                    "Repères documentaires "
-                    "complémentaires"
+                    "Additional References"
                 ),
 
                 description="",
