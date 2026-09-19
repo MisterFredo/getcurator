@@ -241,61 +241,88 @@ export default function TouchNotebookBuilder({
       subject.trim();
 
     if (!normalizedSubject) {
+
       setError(
         "A research subject is required.",
       );
+
       return;
+
     }
 
-    if (missingContributionIds.length > 0) {
+    if (
+      missingContributionIds.length > 0
+    ) {
+
       setError(
         "Some selected contents do not contain "
         + "editorial contributions: "
-        + missingContributionIds.join(", "),
+        + missingContributionIds.join(
+          ", ",
+        ),
       );
+
       return;
+
     }
 
     if (contributionCount === 0) {
+
       setError(
         "The selected corpus does not contain "
         + "any editorial contribution.",
       );
+
       return;
+
     }
 
-    const notebookRequest: TouchNotebookRequest = {
-      report_id: reportId,
+    const notebookRequest:
+      TouchNotebookRequest = {
 
-      subject:
-        normalizedSubject,
+        report_id:
+          reportId,
 
-      objective:
-        objective.trim(),
+        subject:
+          normalizedSubject,
 
-      content_ids:
-        [...selectedContentIds],
+        objective:
+          objective.trim(),
 
-      contributions:
-        contributions.map(
-          contribution => ({
-            content_id:
-              contribution.content_id,
+        content_ids:
+          [...selectedContentIds],
 
-            statements:
-              [...contribution.statements],
-          }),
-        ),
+        contributions:
+          contributions.map(
+            contribution => ({
+              content_id:
+                contribution.content_id,
 
-      output_language:
-        outputLanguage,
-    };
+              statements:
+                [...contribution.statements],
+            }),
+          ),
+
+        output_language:
+          outputLanguage,
+      };
+
     try {
 
-      setLoading(true);
-      setError(null);
-      setPersistenceError(null);
-      lastRequestRef.current = null;
+      setLoading(
+        true,
+      );
+
+      setError(
+        null,
+      );
+
+      setPersistenceError(
+        null,
+      );
+
+      lastRequestRef.current =
+        notebookRequest;
 
       const outcome =
         await buildTouchNotebook(
@@ -306,10 +333,12 @@ export default function TouchNotebookBuilder({
         outcome.status !== "GENERATED"
         || !outcome.notebook
       ) {
+
         throw new Error(
           outcome.error
           || "Unable to build the editorial notebook.",
         );
+
       }
 
       onNotebookChange(
@@ -320,9 +349,6 @@ export default function TouchNotebookBuilder({
         outcome.source_count,
       );
 
-      lastRequestRef.current =
-        notebookRequest;
-
       if (outcome.report_id) {
 
         onReportIdChange(
@@ -331,6 +357,7 @@ export default function TouchNotebookBuilder({
 
         lastRequestRef.current = {
           ...notebookRequest,
+
           report_id:
             outcome.report_id,
         };
@@ -354,19 +381,20 @@ export default function TouchNotebookBuilder({
         exception,
       );
 
-      onNotebookChange(null);
-      setSourceCount(0);
-      lastRequestRef.current = null;
-      onReportIdChange(
-        savedReportId,
+      onNotebookChange(
+        null,
       );
 
-      lastRequestRef.current = {
-        ...request,
-        report_id:
-          savedReportId,
-      };
-      setPersistenceError(null);
+      setSourceCount(
+        0,
+      );
+
+      lastRequestRef.current =
+        null;
+
+      setPersistenceError(
+        null,
+      );
 
       setError(
         exception instanceof Error
@@ -374,13 +402,24 @@ export default function TouchNotebookBuilder({
           : "Unable to build the editorial notebook.",
       );
 
+      // Do not reset reportId here.
+      // An unsuccessful rebuild must not lose the identity
+      // of the existing saved report.
+
     } finally {
 
-      setLoading(false);
+      setLoading(
+        false,
+      );
 
     }
 
   }
+
+
+  /* =======================================================
+     RETRY REPORT SAVE
+  ======================================================= */
 
   async function handleRetrySave() {
 
@@ -397,18 +436,40 @@ export default function TouchNotebookBuilder({
 
     try {
 
-      setSavingReport(true);
-      setPersistenceError(null);
+      setSavingReport(
+        true,
+      );
+
+      setPersistenceError(
+        null,
+      );
+
+      const requestToSave:
+        TouchNotebookRequest = {
+
+        ...request,
+
+        report_id:
+          reportId,
+
+      };
 
       const savedReportId =
         await saveTouchReport(
-          request,
+          requestToSave,
           notebook,
         );
 
-      setReportId(
+      onReportIdChange(
         savedReportId,
       );
+
+      lastRequestRef.current = {
+        ...requestToSave,
+
+        report_id:
+          savedReportId,
+      };
 
     } catch (exception) {
 
@@ -420,7 +481,9 @@ export default function TouchNotebookBuilder({
 
     } finally {
 
-      setSavingReport(false);
+      setSavingReport(
+        false,
+      );
 
     }
 
