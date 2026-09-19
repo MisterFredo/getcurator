@@ -251,6 +251,13 @@ export default function TouchPage() {
   );
 
   const [
+    reportId,
+    setReportId,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
     brief,
     setBrief,
   ] = useState<TouchBriefStructure | null>(
@@ -557,6 +564,10 @@ export default function TouchPage() {
   function invalidateGeneratedOutputs() {
 
     setNotebook(
+      null,
+    );
+
+    setReportId(
       null,
     );
 
@@ -1219,17 +1230,29 @@ export default function TouchPage() {
           decisionsByContentId={
             decisionsByContentId
           }
-          notebook={notebook}
+          notebook={
+            notebook
+          }
           onNotebookChange={
             setNotebook
+          }
+          reportId={
+            reportId
+          }
+          onReportIdChange={
+            setReportId
           }
           onContinue={() =>
             setCurrentStep(
               "OUTPUT",
             )
           }
-          outputLanguage={reportLanguage}
+          outputLanguage={
+            reportLanguage
+          }
         />
+
+      )}
 
       )}
 
