@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 
 import {
+  deleteTouchReport,
   getTouchReport,
   listTouchReports,
 } from "@/lib/touch";
@@ -21,6 +22,10 @@ import type {
   TouchSavedReportSummary,
 } from "@/types/touch";
 
+
+/* =========================================================
+   REPORT SOURCES
+========================================================= */
 
 function reportSources(
   report: TouchSavedReport,
@@ -39,40 +44,62 @@ function reportSources(
     contentId => {
 
       const source =
-        sourcesById.get(contentId);
+        sourcesById.get(
+          contentId,
+        );
 
       return {
-        content_id: contentId,
+        content_id:
+          contentId,
 
         title:
           source?.title
           || source?.original_title
           || "Untitled source",
 
-        excerpt: "",
+        excerpt:
+          "",
 
         source_title:
-          source?.original_title
+          source?.source_name
+          || source?.original_title
           || source?.title
           || "Untitled source",
 
         source_url:
-          source?.url || "",
+          source?.url
+          || "",
 
         published_at:
-          source?.published_at || null,
+          source?.published_at
+          || null,
 
-        companies: [],
-        solutions: [],
-        topics: [],
-        universes: [],
-        concepts: [],
+        companies:
+          [],
 
-        selection_sources: [],
+        solutions:
+          [],
 
-        matched_entities: [],
-        matched_terms: [],
-        matched_angles: [],
+        topics:
+          [],
+
+        universes:
+          [],
+
+        concepts:
+          [],
+
+        selection_sources:
+          [],
+
+        matched_entities:
+          [],
+
+        matched_terms:
+          [],
+
+        matched_angles:
+          [],
       };
 
     },
@@ -81,37 +108,65 @@ function reportSources(
 }
 
 
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function TouchReportsPage() {
 
   const [
     reports,
     setReports,
-  ] = useState<TouchSavedReportSummary[]>([]);
+  ] = useState<
+    TouchSavedReportSummary[]
+  >([]);
 
   const [
     selectedReport,
     setSelectedReport,
-  ] = useState<TouchSavedReport | null>(null);
+  ] = useState<
+    TouchSavedReport | null
+  >(null);
 
   const [
     brief,
     setBrief,
-  ] = useState<TouchBriefStructure | null>(null);
+  ] = useState<
+    TouchBriefStructure | null
+  >(null);
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] = useState(
+    true,
+  );
 
   const [
     openingId,
     setOpeningId,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     error,
     setError,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
+
+
+  /* =======================================================
+     LOAD REPORTS
+  ======================================================= */
 
   useEffect(() => {
 
@@ -121,11 +176,19 @@ export default function TouchReportsPage() {
 
       try {
 
+        setError(
+          null,
+        );
+
         const result =
           await listTouchReports();
 
         if (active) {
-          setReports(result);
+
+          setReports(
+            result,
+          );
+
         }
 
       } catch (exception) {
@@ -143,7 +206,11 @@ export default function TouchReportsPage() {
       } finally {
 
         if (active) {
-          setLoading(false);
+
+          setLoading(
+            false,
+          );
+
         }
 
       }
@@ -153,31 +220,53 @@ export default function TouchReportsPage() {
     void loadReports();
 
     return () => {
+
       active = false;
+
     };
 
   }, []);
+
+
+  /* =======================================================
+     OPEN REPORT
+  ======================================================= */
 
   async function handleOpen(
     reportId: string,
   ) {
 
-    if (openingId) {
+    if (
+      openingId
+      || deletingId
+    ) {
+
       return;
+
     }
 
     try {
 
-      setOpeningId(reportId);
-      setError(null);
+      setOpeningId(
+        reportId,
+      );
+
+      setError(
+        null,
+      );
 
       const report =
         await getTouchReport(
           reportId,
         );
 
-      setBrief(null);
-      setSelectedReport(report);
+      setBrief(
+        null,
+      );
+
+      setSelectedReport(
+        report,
+      );
 
     } catch (exception) {
 
@@ -189,11 +278,104 @@ export default function TouchReportsPage() {
 
     } finally {
 
-      setOpeningId(null);
+      setOpeningId(
+        null,
+      );
 
     }
 
   }
+
+
+  /* =======================================================
+     DELETE REPORT
+  ======================================================= */
+
+  async function handleDelete(
+    report: TouchSavedReportSummary,
+  ) {
+
+    if (
+      deletingId
+      || openingId
+    ) {
+
+      return;
+
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete “${report.subject}”? `
+        + "This action cannot be undone.",
+      );
+
+    if (!confirmed) {
+
+      return;
+
+    }
+
+    try {
+
+      setDeletingId(
+        report.report_id,
+      );
+
+      setError(
+        null,
+      );
+
+      await deleteTouchReport(
+        report.report_id,
+      );
+
+      setReports(
+        currentReports =>
+          currentReports.filter(
+            currentReport =>
+              currentReport.report_id
+              !== report.report_id,
+          ),
+      );
+
+      if (
+        selectedReport?.report_id
+        === report.report_id
+      ) {
+
+        setSelectedReport(
+          null,
+        );
+
+        setBrief(
+          null,
+        );
+
+      }
+
+    } catch (exception) {
+
+      setError(
+        exception instanceof Error
+          ? exception.message
+          : "Unable to delete the report.",
+      );
+
+    } finally {
+
+      setDeletingId(
+        null,
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -225,8 +407,8 @@ export default function TouchReportsPage() {
         </h1>
 
         <p className="mt-1 text-sm text-gray-500">
-          Open an existing report without rebuilding
-          its notebook.
+          Open or delete an existing report without
+          rebuilding its notebook.
         </p>
 
       </header>
@@ -256,8 +438,15 @@ export default function TouchReportsPage() {
           <button
             type="button"
             onClick={() => {
-              setSelectedReport(null);
-              setBrief(null);
+
+              setSelectedReport(
+                null,
+              );
+
+              setBrief(
+                null,
+              );
+
             }}
             className="
               text-sm
@@ -281,8 +470,12 @@ export default function TouchReportsPage() {
                 selectedReport,
               )
             }
-            brief={brief}
-            onBriefChange={setBrief}
+            brief={
+              brief
+            }
+            onBriefChange={
+              setBrief
+            }
           />
 
         </div>
@@ -301,99 +494,188 @@ export default function TouchReportsPage() {
 
           {!loading && reports.length === 0 && (
 
-            <p className="text-sm text-gray-500">
-              No saved reports yet.
-            </p>
+            <div
+              className="
+                rounded-xl
+                border
+                border-dashed
+                border-gray-300
+                bg-white
+                px-6
+                py-12
+                text-center
+              "
+            >
+
+              <p className="text-sm font-medium text-gray-700">
+                No saved reports yet
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Generated Touch reports will appear here.
+              </p>
+
+            </div>
 
           )}
 
           {reports.map(
-            report => (
+            report => {
 
-              <button
-                key={report.report_id}
-                type="button"
-                onClick={() =>
-                  handleOpen(
-                    report.report_id,
-                  )
-                }
-                disabled={openingId !== null}
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-gray-200
-                  bg-white
-                  p-5
-                  text-left
-                  hover:border-blue-300
-                  disabled:opacity-60
-                "
-              >
+              const isOpening =
+                openingId
+                === report.report_id;
 
-                <span
+              const isDeleting =
+                deletingId
+                === report.report_id;
+
+              const interactionsDisabled =
+                openingId !== null
+                || deletingId !== null;
+
+              return (
+
+                <article
+                  key={
+                    report.report_id
+                  }
                   className="
-                    block
-                    font-semibold
-                    text-gray-900
+                    flex
+                    items-start
+                    gap-4
+                    rounded-xl
+                    border
+                    border-gray-200
+                    bg-white
+                    p-5
+                    transition
+                    hover:border-blue-300
                   "
                 >
-                  {report.subject}
-                </span>
 
-                {report.objective && (
-
-                  <span
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleOpen(
+                        report.report_id,
+                      )
+                    }
+                    disabled={
+                      interactionsDisabled
+                    }
                     className="
-                      mt-1
-                      block
-                      text-sm
-                      text-gray-600
+                      min-w-0
+                      flex-1
+                      text-left
+                      disabled:cursor-not-allowed
+                      disabled:opacity-60
                     "
                   >
-                    {report.objective}
-                  </span>
 
-                )}
+                    <span
+                      className="
+                        block
+                        font-semibold
+                        text-gray-900
+                      "
+                    >
+                      {report.subject}
+                    </span>
 
-                <span
-                  className="
-                    mt-3
-                    block
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  {report.source_count}
-                  {" sources · "}
-                  {new Date(
-                    report.created_at,
-                  ).toLocaleDateString(
-                    "fr-FR",
-                  )}
-                  {" · Version "}
-                  {report.version_number}
-                </span>
+                    {report.objective && (
 
-                {openingId === report.report_id && (
+                      <span
+                        className="
+                          mt-1
+                          block
+                          text-sm
+                          text-gray-600
+                        "
+                      >
+                        {report.objective}
+                      </span>
 
-                  <span
+                    )}
+
+                    <span
+                      className="
+                        mt-3
+                        block
+                        text-xs
+                        text-gray-500
+                      "
+                    >
+                      {report.source_count}
+                      {" sources · "}
+                      {new Date(
+                        report.created_at,
+                      ).toLocaleDateString(
+                        "en-GB",
+                      )}
+                      {" · Version "}
+                      {report.version_number}
+                    </span>
+
+                    {isOpening && (
+
+                      <span
+                        className="
+                          mt-2
+                          block
+                          text-xs
+                          font-medium
+                          text-ratecard-blue
+                        "
+                      >
+                        Opening…
+                      </span>
+
+                    )}
+
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+
+                      void handleDelete(
+                        report,
+                      );
+
+                    }}
+                    disabled={
+                      interactionsDisabled
+                    }
                     className="
-                      mt-2
-                      block
+                      shrink-0
+                      rounded-lg
+                      border
+                      border-red-200
+                      px-3
+                      py-2
                       text-xs
-                      text-ratecard-blue
+                      font-semibold
+                      text-red-700
+                      transition
+                      hover:border-red-300
+                      hover:bg-red-50
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
                     "
                   >
-                    Opening…
-                  </span>
+                    {
+                      isDeleting
+                        ? "Deleting…"
+                        : "Delete"
+                    }
+                  </button>
 
-                )}
+                </article>
 
-              </button>
+              );
 
-            ),
+            },
           )}
 
         </section>
