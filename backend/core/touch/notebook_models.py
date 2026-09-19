@@ -489,7 +489,7 @@ class TouchNotebookOutcome(
     status: TouchGenerationStatus
 
     notebook: TouchCorpusNotebook | None = None
-
+    report_id: str | None = None
     source_count: int = 0
 
     error: str | None = None
