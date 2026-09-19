@@ -635,8 +635,9 @@ export type TouchNotebookContribution = {
 ========================================================= */
 
 export type TouchNotebookRequest = {
-  subject: string;
+  report_id?: string | null;
 
+  subject: string;
   objective: string;
 
   content_ids: string[];
@@ -660,11 +661,27 @@ export type TouchNotebookOutcome = {
     TouchCorpusNotebook | null;
 
   source_count: number;
-  report_id?: string | null;
-  persistence_error?: string | null;
 
-  error: string | null;
+  report_id:
+    string | null;
+
+  error:
+    string | null;
 };
+
+/* =========================================================
+   DELETE SAVED TOUCH REPORT
+========================================================= */
+
+export async function deleteTouchReport(
+  reportId: string,
+): Promise<void> {
+
+  await api.delete(
+    `/touch/reports/${reportId}`,
+  );
+
+}
 
 
 /* =========================================================
