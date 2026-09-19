@@ -1254,8 +1254,6 @@ export default function TouchPage() {
 
       )}
 
-      )}
-
       {/* ================================================= */}
       {/* STEP 4 — OUTPUT */}
       {/* ================================================= */}
@@ -1269,9 +1267,9 @@ export default function TouchPage() {
           notebook={
             notebook
           }
-
-          outputLanguage={reportLanguage}
-          
+          outputLanguage={
+            reportLanguage
+          }
           sources={
             selectedCandidates
           }
@@ -1284,7 +1282,6 @@ export default function TouchPage() {
         />
 
       )}
-
     </div>
 
   );
