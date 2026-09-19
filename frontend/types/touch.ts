@@ -672,20 +672,6 @@ export type TouchNotebookOutcome = {
     string | null;
 };
 
-/* =========================================================
-   DELETE SAVED TOUCH REPORT
-========================================================= */
-
-export async function deleteTouchReport(
-  reportId: string,
-): Promise<void> {
-
-  await api.delete(
-    `/touch/reports/${reportId}`,
-  );
-
-}
-
 
 /* =========================================================
    NOTEBOOK RESPONSE
