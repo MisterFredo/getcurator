@@ -3,33 +3,42 @@ import {
   NextResponse,
 } from "next/server";
 
+/* =========================================================
+   LEGACY FEED REDIRECT
+========================================================= */
+
 export function GET(
   request: NextRequest,
 ) {
 
-  const target =
-    new URL(
-      "/",
-      request.url,
-    );
+  const query =
+    request.nextUrl.searchParams
+      .toString();
 
-  request.nextUrl.searchParams.forEach(
-    (
-      value,
-      key,
-    ) => {
+  /*
+   * Use a relative Location header.
+   *
+   * This preserves the public domain used
+   * by the browser and avoids Render's
+   * internal localhost:3001 address.
+   */
 
-      target.searchParams.set(
-        key,
-        value,
-      );
+  const location =
+    query
+      ? `/?${query}`
+      : "/";
 
+  return new NextResponse(
+    null,
+    {
+      status:
+        307,
+
+      headers: {
+        Location:
+          location,
+      },
     },
-  );
-
-  return NextResponse.redirect(
-    target,
-    307,
   );
 
 }
