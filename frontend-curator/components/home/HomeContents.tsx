@@ -164,6 +164,7 @@ export default function HomeContents({
     openRightDrawer(
       "content",
       item.id,
+      "route",
     );
 
   }
