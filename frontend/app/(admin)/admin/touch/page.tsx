@@ -47,6 +47,7 @@ import type {
   TouchEntityReference,
   TouchEntityType,
   TouchGuidedResearchPlan,
+  TouchNotebookReportDesign,
   TouchResearchInterpretation,
   TouchResearchMode,
 } from "@/types/touch";
@@ -238,6 +239,157 @@ function buildPeriodEnd(
 
 }
 
+/* =========================================================
+   BUILD DEFAULT REPORT DESIGN
+========================================================= */
+
+function buildDefaultReportDesign():
+  TouchNotebookReportDesign {
+
+  return {
+    report_archetype:
+      "DOCUMENTARY_SYNTHESIS",
+
+    organization_mode:
+      "THEMATIC",
+
+    time_granularity:
+      "AUTO",
+
+    research_type:
+      null,
+
+    central_question:
+      "",
+
+    scope_summary:
+      "",
+
+    target_context:
+      null,
+
+    period_start:
+      null,
+
+    period_end:
+      null,
+
+    geographies:
+      [],
+
+    axes:
+      [],
+
+    assumptions:
+      [],
+
+    editorial_cautions:
+      [],
+
+    missing_information:
+      [],
+  };
+
+}
+
+
+/* =========================================================
+   BUILD GUIDED REPORT DESIGN
+========================================================= */
+
+function buildGuidedReportDesign(
+  plan: TouchGuidedResearchPlan,
+): TouchNotebookReportDesign {
+
+  let reportArchetype:
+    TouchNotebookReportDesign[
+      "report_archetype"
+    ] = "DOCUMENTARY_SYNTHESIS";
+
+  if (
+    plan.research_type
+    === "COMPARATIVE"
+  ) {
+
+    reportArchetype =
+      "COMPARATIVE_ANALYSIS";
+
+  } else if (
+    plan.research_type
+    === "CROSS_SECTOR"
+  ) {
+
+    reportArchetype =
+      "CROSS_CONTEXT_ANALYSIS";
+
+  }
+
+  const organizationMode:
+    TouchNotebookReportDesign[
+      "organization_mode"
+    ] = (
+      plan.research_type
+      === "EVOLUTION"
+    )
+      ? "CHRONOLOGICAL"
+      : "THEMATIC";
+
+  return {
+    report_archetype:
+      reportArchetype,
+
+    organization_mode:
+      organizationMode,
+
+    time_granularity:
+      "AUTO",
+
+    research_type:
+      plan.research_type,
+
+    central_question:
+      plan.central_question,
+
+    scope_summary:
+      plan.scope_summary,
+
+    target_context:
+      plan.target_context,
+
+    period_start:
+      plan.period_start,
+
+    period_end:
+      plan.period_end,
+
+    geographies:
+      [...plan.geographies],
+
+    axes:
+      plan.axes.map(
+        axis => ({
+          ...axis,
+
+          search_terms:
+            [...axis.search_terms],
+
+          related_angles:
+            [...axis.related_angles],
+        }),
+      ),
+
+    assumptions:
+      [...plan.assumptions],
+
+    editorial_cautions:
+      [...plan.editorial_cautions],
+
+    missing_information:
+      [...plan.missing_information],
+  };
+
+}
+
 
 /* =========================================================
    PAGE
@@ -282,6 +434,16 @@ export default function TouchPage() {
     setBrief,
   ] = useState<TouchBriefStructure | null>(
     null,
+  );
+
+  const [
+    reportDesign,
+    setReportDesign,
+  ] = useState<
+    TouchNotebookReportDesign
+  >(
+    () =>
+      buildDefaultReportDesign(),
   );
 
   /* =======================================================
@@ -631,6 +793,11 @@ export default function TouchPage() {
     ) {
       return;
     }
+    setReportDesign(
+      buildGuidedReportDesign(
+        plan,
+      ),
+    );
   
     const preparedInterpretation:
       TouchResearchInterpretation = {
@@ -886,7 +1053,11 @@ export default function TouchPage() {
     setBrief(
       null,
     );
-  
+
+    setReportDesign(
+      buildDefaultReportDesign(),
+    );
+
     setCurrentStep(
       "RESEARCH",
     );
@@ -1538,6 +1709,9 @@ export default function TouchPage() {
           objective={
             interpretation?.objective
             ?? ""
+          }
+          reportDesign={
+            reportDesign
           }
           selectedContentIds={
             selectedContentIds
