@@ -624,26 +624,6 @@ export default function TouchNotebookBuilder({
 
             </p>
 
-          <div>
-
-            <h2 className="text-lg font-semibold text-gray-900">
-              Editorial notebook
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-
-              Organise
-              {" "}
-              {contributionCount}
-              {" "}
-              editorial contributions from
-              {" "}
-              {selectedContentIds.length}
-              {" "}
-              selected sources.
-
-            </p>
-
             <div
               className="
                 mt-3
@@ -726,12 +706,6 @@ export default function TouchNotebookBuilder({
           <button
             type="button"
             onClick={handleBuildNotebook}
-
-          </div>
-
-          <button
-            type="button"
-            onClick={handleBuildNotebook}
             disabled={
               loading
               || !subject.trim()
@@ -760,8 +734,6 @@ export default function TouchNotebookBuilder({
                   : "Build editorial notebook"
             }
           </button>
-
-        </div>
 
         {missingContributionIds.length > 0 && (
 
