@@ -14,7 +14,7 @@ import Link from "next/link";
 
 import {
   useTouchResearch,
-} from "@/hooks/useTouchResearch";ƒ
+} from "@/hooks/useTouchResearch";
 
 import {
   useTouchGuidedResearch,
