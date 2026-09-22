@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -288,6 +289,103 @@ function buildDefaultReportDesign():
 
     missing_information:
       [],
+  };
+
+}
+
+/* =========================================================
+   BUILD INTERPRETED REPORT DESIGN
+========================================================= */
+
+function buildInterpretedReportDesign(
+  interpretation:
+    TouchResearchInterpretation,
+
+  periodStart:
+    string,
+
+  periodEnd:
+    string,
+): TouchNotebookReportDesign {
+
+  const reportArchetype:
+    TouchNotebookReportDesign[
+      "report_archetype"
+    ] =
+
+      interpretation.research_type
+        === "COMPARATIVE"
+        ? "COMPARATIVE_ANALYSIS"
+
+        : interpretation.research_type
+            === "CROSS_SECTOR"
+          ? "CROSS_CONTEXT_ANALYSIS"
+
+          : "DOCUMENTARY_SYNTHESIS";
+
+  return {
+
+    report_archetype:
+      reportArchetype,
+
+    organization_mode:
+      interpretation.organization_mode,
+
+    time_granularity:
+      interpretation.time_granularity,
+
+    research_type:
+      interpretation.research_type,
+
+    central_question:
+      interpretation.central_question,
+
+    scope_summary:
+      interpretation.scope_summary,
+
+    target_context:
+      interpretation.target_context,
+
+    period_start:
+      buildPeriodStart(
+        periodStart,
+      ),
+
+    period_end:
+      buildPeriodEnd(
+        periodEnd,
+      ),
+
+    geographies:
+      [...interpretation.geographies],
+
+    axes:
+      interpretation.axes.map(
+        axis => ({
+
+          ...axis,
+
+          search_terms:
+            [...axis.search_terms],
+
+        }),
+      ),
+
+    assumptions:
+      [...interpretation.assumptions],
+
+    editorial_cautions:
+      [
+        ...interpretation
+          .editorial_cautions,
+      ],
+
+    missing_information:
+      [
+        ...interpretation
+          .missing_information,
+      ],
+
   };
 
 }
@@ -687,6 +785,40 @@ export default function TouchPage() {
     loadLookups();
 
   }, []);
+
+  /* =========================================================
+     DIRECT RESEARCH REPORT DESIGN
+  ========================================================= */
+  
+  useEffect(() => {
+  
+    if (
+      researchMode !== "DIRECT"
+      || !interpretation
+    ) {
+      return;
+    }
+  
+    setReportDesign(
+  
+      buildInterpretedReportDesign(
+  
+        interpretation,
+  
+        periodStart,
+  
+        periodEnd,
+  
+      ),
+  
+    );
+  
+  }, [
+    interpretation,
+    periodEnd,
+    periodStart,
+    researchMode,
+  ]);
 
   /* =======================================================
    RESEARCH MODE
