@@ -480,6 +480,46 @@ export default function TouchGuidedResearch({
 
 
   /* =======================================================
+     BLOCKING AND RETRIEVAL MENTIONS
+  ======================================================= */
+
+  const blockingUnresolvedMentions =
+    useMemo(
+      () =>
+        mentionResolution
+          .unresolved
+          .filter(
+            mention =>
+              mention.research_role
+                === "PRIMARY"
+              || mention.research_role
+                === "COMPARISON",
+          ),
+      [
+        mentionResolution.unresolved,
+      ],
+    );
+
+
+  const resolvedRetrievalMentions =
+    useMemo(
+      () =>
+        mentionResolution
+          .resolved
+          .filter(
+            item =>
+              item.mention.research_role
+                === "PRIMARY"
+              || item.mention.research_role
+                === "COMPARISON",
+          ),
+      [
+        mentionResolution.resolved,
+      ],
+    );
+
+
+  /* =======================================================
      EFFECTIVE OPTIONS
   ======================================================= */
 
@@ -503,7 +543,7 @@ export default function TouchGuidedResearch({
           mention,
           option,
         }
-        of mentionResolution.resolved
+        of resolvedRetrievalMentions
       ) {
 
         if (
@@ -554,7 +594,7 @@ export default function TouchGuidedResearch({
       };
 
     }, [
-      mentionResolution.resolved,
+      resolvedRetrievalMentions,
       selectedCompanies,
       selectedSolutions,
       selectedTopics,
@@ -774,9 +814,10 @@ export default function TouchGuidedResearch({
 
     if (
       !displayPlan
-      || mentionResolution
-          .unresolved
-          .length > 0
+      || !displayPlan.ready_for_search
+      || blockingUnresolvedMentions.length > 0
+      || guided.loading
+      || validating
     ) {
       return;
     }
@@ -1132,30 +1173,7 @@ export default function TouchGuidedResearch({
       {/* ENTITY RESOLUTION */}
       {/* ================================================= */}
 
-      {(
-        guided.plan
-        && guided.plan.entity_mentions.some(
-          mention => {
-
-            const options =
-              getOptionsForType(
-
-                mention.entity_type,
-
-                companyOptions,
-                solutionOptions,
-                topicOptions,
-
-              );
-
-            return !findExactOption(
-              mention,
-              options,
-            );
-
-          },
-        )
-      ) && (
+      {blockingUnresolvedMentions.length > 0 && (
 
         <section
           className="
@@ -1197,7 +1215,7 @@ export default function TouchGuidedResearch({
             "
           >
 
-            {guided.plan.entity_mentions.map(
+            {blockingUnresolvedMentions.map(
               mention => {
 
                 const options =
@@ -1210,16 +1228,6 @@ export default function TouchGuidedResearch({
                     topicOptions,
 
                   );
-
-                const exactOption =
-                  findExactOption(
-                    mention,
-                    options,
-                  );
-
-                if (exactOption) {
-                  return null;
-                }
 
                 const mentionKey =
                   getMentionKey(
@@ -1293,7 +1301,7 @@ export default function TouchGuidedResearch({
                             * 100,
                           )
                         }
-                        % confidence
+                        % detection confidence
                       </span>
 
                     </div>
@@ -1591,7 +1599,7 @@ export default function TouchGuidedResearch({
         <TouchGuidedResearchPlanView
           plan={displayPlan}
           unresolvedEntityMentions={
-            mentionResolution.unresolved
+            blockingUnresolvedMentions
           }
           onValidate={
             handleValidatePlan
