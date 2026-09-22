@@ -15,6 +15,12 @@ import {
   useTouchResearch,
 } from "@/hooks/useTouchResearch";
 
+import {
+  useTouchGuidedResearch,
+} from "@/hooks/useTouchGuidedResearch";
+
+import TouchGuidedResearch from "@/components/admin/touch/TouchGuidedResearch";
+import TouchResearchModeChoice from "@/components/admin/touch/TouchResearchModeChoice";
 import TouchCandidateList from "@/components/admin/touch/TouchCandidateList";
 import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder";
 import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
@@ -32,10 +38,17 @@ import type {
 } from "@/components/ui/SearchableMultiSelect";
 
 import type {
+  TouchGuidedResolvedEntityGroups,
+} from "@/components/admin/touch/TouchGuidedResearch";
+
+import type {
   TouchBriefStructure,
   TouchCorpusNotebook,
   TouchEntityReference,
   TouchEntityType,
+  TouchGuidedResearchPlan,
+  TouchResearchInterpretation,
+  TouchResearchMode,
 } from "@/types/touch";
 
 
@@ -244,6 +257,13 @@ export default function TouchPage() {
   );
 
   const [
+    researchMode,
+    setResearchMode,
+  ] = useState<
+    TouchResearchMode | null
+  >(null);
+
+  const [
     notebook,
     setNotebook,
   ] = useState<TouchCorpusNotebook | null>(
@@ -363,11 +383,18 @@ export default function TouchPage() {
     resetResearch,
   } = useTouchResearch();
 
+  const guidedResearch =
+    useTouchGuidedResearch();
+  
   const researchReady = Boolean(
     interpretation
     || conversationHistory.length > 0
     || candidates.length > 0,
   );
+  
+  const researchStarted =
+    researchReady
+    || guidedResearch.started;
 
   const corpusReady =
     selectedContentIds.length > 0;
@@ -500,6 +527,29 @@ export default function TouchPage() {
   }, []);
 
   /* =======================================================
+   RESEARCH MODE
+  ======================================================= */
+  
+  function handleResearchModeChange(
+    mode: TouchResearchMode,
+  ) {
+  
+    if (
+      loading
+      || guidedResearch.loading
+      || researchStarted
+      || corpusReady
+    ) {
+      return;
+    }
+  
+    setResearchMode(
+      mode,
+    );
+  
+  }
+
+  /* =======================================================
      SEARCH
   ======================================================= */
 
@@ -507,14 +557,22 @@ export default function TouchPage() {
 
     const cleanedQuery =
       query.trim();
-
+  
+    const canRunDirectSearch =
+      researchMode === "DIRECT"
+      || (
+        researchMode === "GUIDED"
+        && researchReady
+      );
+  
     if (
-      !cleanedQuery
+      !canRunDirectSearch
+      || !cleanedQuery
       || loading
     ) {
       return;
     }
-
+  
     await runSearch({
 
       query:
@@ -555,6 +613,148 @@ export default function TouchPage() {
 
     setQuery("");
 
+  }
+
+  /* =======================================================
+     EXECUTE GUIDED PLAN
+  ======================================================= */
+  
+  async function handleValidateGuidedPlan(
+    plan: TouchGuidedResearchPlan,
+    entities: TouchGuidedResolvedEntityGroups,
+  ) {
+  
+    if (
+      loading
+      || guidedResearch.loading
+      || !plan.ready_for_search
+    ) {
+      return;
+    }
+  
+    const preparedInterpretation:
+      TouchResearchInterpretation = {
+  
+        subject:
+          plan.subject,
+  
+        objective:
+          plan.objective,
+  
+        companies:
+          entities.companies,
+  
+        solutions:
+          entities.solutions,
+  
+        topics:
+          entities.topics,
+  
+        search_terms:
+          [...plan.search_terms],
+  
+        related_angles:
+          [...plan.related_angles],
+  
+        response_message:
+          reportLanguage === "fr"
+            ? (
+                "Le plan de recherche guidée validé "
+                + "est utilisé pour constituer le corpus."
+              )
+            : (
+                "The validated guided research plan "
+                + "is being used to build the corpus."
+              ),
+  
+      };
+  
+    setSelectedCompanies(
+  
+      entities.companies.map(
+        entity => ({
+  
+          id:
+            entity.entity_id,
+  
+          label:
+            entity.entity_label,
+  
+        }),
+      ),
+  
+    );
+  
+    setSelectedSolutions(
+  
+      entities.solutions.map(
+        entity => ({
+  
+          id:
+            entity.entity_id,
+  
+          label:
+            entity.entity_label,
+  
+        }),
+      ),
+  
+    );
+  
+    setSelectedTopics(
+  
+      entities.topics.map(
+        entity => ({
+  
+          id:
+            entity.entity_id,
+  
+          label:
+            entity.entity_label,
+  
+        }),
+      ),
+  
+    );
+  
+    await runSearch({
+  
+      query:
+        plan.central_question
+        || plan.subject,
+  
+      outputLanguage:
+        reportLanguage,
+  
+      periodStart:
+        plan.period_start
+        ?? buildPeriodStart(
+          periodStart,
+        ),
+  
+      periodEnd:
+        plan.period_end
+        ?? buildPeriodEnd(
+          periodEnd,
+        ),
+  
+      companies:
+        entities.companies,
+  
+      solutions:
+        entities.solutions,
+  
+      topics:
+        entities.topics,
+  
+      preparedInterpretation,
+  
+    });
+  
+    setQuery(
+      "",
+    );
+  
   }
 
   /* =======================================================
@@ -655,31 +855,42 @@ export default function TouchPage() {
   function handleReset() {
 
     resetResearch();
-
+  
+    guidedResearch
+      .resetGuidedResearch();
+  
+    setResearchMode(
+      null,
+    );
+  
     setQuery("");
-
+  
     setPeriodStart("");
-
+  
     setPeriodEnd("");
-
+  
     setSelectedCompanies([]);
-
+  
     setSelectedSolutions([]);
-
+  
     setSelectedTopics([]);
-
+  
     setNotebook(
       null,
     );
-
+  
+    setReportId(
+      null,
+    );
+  
     setBrief(
       null,
     );
-
+  
     setCurrentStep(
       "RESEARCH",
     );
-
+  
   }
 
   /* =======================================================
@@ -747,7 +958,20 @@ export default function TouchPage() {
       {currentStep === "RESEARCH" && (
 
         <div className="space-y-6">
-
+      
+          <TouchResearchModeChoice
+            value={researchMode}
+            disabled={
+              loading
+              || guidedResearch.loading
+              || researchStarted
+              || corpusReady
+            }
+            onChange={
+              handleResearchModeChange
+            }
+          />
+      
           <div
             className="
               rounded-xl
@@ -758,6 +982,15 @@ export default function TouchPage() {
             "
           >
 
+          <div
+            className="
+              rounded-xl
+              border
+              border-gray-200
+              bg-white
+              p-4
+            "
+          >
             <label
               htmlFor="touch-report-language"
               className="
@@ -785,7 +1018,8 @@ export default function TouchPage() {
               }
               disabled={
                 loading
-                || researchReady
+                || guidedResearch.loading
+                || researchStarted
                 || corpusReady
               }
               className="
@@ -807,72 +1041,125 @@ export default function TouchPage() {
 
           </div>
 
-          <TouchResearchForm
-            query={query}
-            onQueryChange={
-              setQuery
-            }
+          {(
+            researchMode === "DIRECT"
+            || (
+              researchMode === "GUIDED"
+              && researchReady
+            )
+          ) && (
+          
+            <TouchResearchForm
+              query={query}
+              onQueryChange={
+                setQuery
+              }
+          
+              companyOptions={
+                companyOptions
+              }
+              solutionOptions={
+                solutionOptions
+              }
+              topicOptions={
+                topicOptions
+              }
+          
+              selectedCompanies={
+                selectedCompanies
+              }
+              selectedSolutions={
+                selectedSolutions
+              }
+              selectedTopics={
+                selectedTopics
+              }
+          
+              onCompaniesChange={
+                setSelectedCompanies
+              }
+              onSolutionsChange={
+                setSelectedSolutions
+              }
+              onTopicsChange={
+                setSelectedTopics
+              }
+          
+              periodStart={
+                periodStart
+              }
+              periodEnd={
+                periodEnd
+              }
+          
+              onPeriodStartChange={
+                setPeriodStart
+              }
+              onPeriodEndChange={
+                setPeriodEnd
+              }
+          
+              loading={
+                loading
+              }
+          
+              hasResearch={
+                conversationHistory.length > 0
+              }
+          
+              onSubmit={
+                handleSearch
+              }
+          
+              onReset={
+                handleReset
+              }
+            />
+          
+                    )}
 
-            companyOptions={
-              companyOptions
-            }
-            solutionOptions={
-              solutionOptions
-            }
-            topicOptions={
-              topicOptions
-            }
-
-            selectedCompanies={
-              selectedCompanies
-            }
-            selectedSolutions={
-              selectedSolutions
-            }
-            selectedTopics={
-              selectedTopics
-            }
-
-            onCompaniesChange={
-              setSelectedCompanies
-            }
-            onSolutionsChange={
-              setSelectedSolutions
-            }
-            onTopicsChange={
-              setSelectedTopics
-            }
-
-            periodStart={
-              periodStart
-            }
-            periodEnd={
-              periodEnd
-            }
-
-            onPeriodStartChange={
-              setPeriodStart
-            }
-            onPeriodEndChange={
-              setPeriodEnd
-            }
-
-            loading={
-              loading
-            }
-
-            hasResearch={
-              conversationHistory.length > 0
-            }
-
-            onSubmit={
-              handleSearch
-            }
-
-            onReset={
-              handleReset
-            }
-          />
+                    {(
+                      researchMode === "GUIDED"
+                      && !researchReady
+                    ) && (
+          
+                      <TouchGuidedResearch
+                        outputLanguage={
+                          reportLanguage
+                        }
+          
+                        companyOptions={
+                          companyOptions
+                        }
+                        solutionOptions={
+                          solutionOptions
+                        }
+                        topicOptions={
+                          topicOptions
+                        }
+          
+                        loading={
+                          guidedResearch.loading
+                        }
+                        error={
+                          guidedResearch.error
+                        }
+                        outcome={
+                          guidedResearch.outcome
+                        }
+          
+                        onSubmit={
+                          guidedResearch.runGuidedResearch
+                        }
+                        onValidate={
+                          handleValidateGuidedPlan
+                        }
+                        onReset={
+                          handleReset
+                        }
+                      />
+          
+                    )}
 
           {lookupsLoading && (
 
@@ -1064,7 +1351,10 @@ export default function TouchPage() {
             }
           />
 
-          {researchReady && (
+          {(
+            researchReady
+            && candidates.length > 0
+          ) && (
 
             <div className="flex justify-end">
 
