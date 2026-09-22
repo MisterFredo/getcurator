@@ -333,7 +333,6 @@ def _validate_interpretation(
 
     )
 
-
 # ============================================================
 # NORMALIZE INTERPRETATION
 # ============================================================
@@ -344,6 +343,37 @@ def _normalize_interpretation(
     ),
 ) -> TouchResearchInterpretation:
 
+    normalized_axes = [
+
+        axis.model_copy(
+
+            update={
+
+                "title":
+                    axis.title.strip(),
+
+                "objective":
+                    axis.objective.strip(),
+
+                "search_terms":
+                    _normalize_text_list(
+                        axis.search_terms
+                    ),
+
+            },
+
+        )
+
+        for axis in interpretation.axes
+
+        if (
+            axis.title.strip()
+            or axis.objective.strip()
+            or axis.search_terms
+        )
+
+    ]
+
     return interpretation.model_copy(
 
         update={
@@ -353,6 +383,53 @@ def _normalize_interpretation(
 
             "objective":
                 interpretation.objective.strip(),
+
+            "central_question":
+                (
+                    interpretation
+                    .central_question
+                    .strip()
+                ),
+
+            "scope_summary":
+                (
+                    interpretation
+                    .scope_summary
+                    .strip()
+                ),
+
+            "target_context":
+                (
+                    interpretation
+                    .target_context
+                    .strip()
+                    or None
+                )
+                if interpretation.target_context
+                else None,
+
+            "geographies":
+                _normalize_text_list(
+                    interpretation.geographies
+                ),
+
+            "axes":
+                normalized_axes,
+
+            "assumptions":
+                _normalize_text_list(
+                    interpretation.assumptions
+                ),
+
+            "editorial_cautions":
+                _normalize_text_list(
+                    interpretation.editorial_cautions
+                ),
+
+            "missing_information":
+                _normalize_text_list(
+                    interpretation.missing_information
+                ),
 
             "search_terms":
                 _normalize_text_list(
