@@ -609,13 +609,13 @@ class TouchNotebookRequest(
 
     output_language: str = "fr"
 
-    report_design:
-        TouchNotebookReportDesign = Field(
-            default_factory=(
-                TouchNotebookReportDesign
-            ),
-        )
-
+    report_design: (
+        TouchNotebookReportDesign
+    ) = Field(
+        default_factory=(
+            TouchNotebookReportDesign
+        ),
+    )
 # ============================================================
 # OUTCOME
 # ============================================================
