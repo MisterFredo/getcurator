@@ -119,60 +119,6 @@ class TouchConversationMessage(
     content: str
 
 
-# ============================================================
-# RESEARCH BRIEF
-# ============================================================
-
-class TouchResearchBrief(
-    StrictTouchSearchModel,
-):
-
-    query: str
-
-    output_language: str = "fr"
-
-    period_start: datetime | None = None
-
-    period_end: datetime | None = None
-
-    companies: list[
-        TouchEntityReference
-    ] = Field(
-        default_factory=list,
-    )
-
-    solutions: list[
-        TouchEntityReference
-    ] = Field(
-        default_factory=list,
-    )
-
-    topics: list[
-        TouchEntityReference
-    ] = Field(
-        default_factory=list,
-    )
-
-    conversation_history: list[
-        TouchConversationMessage
-    ] = Field(
-        default_factory=list,
-    )
-
-    selected_content_ids: list[str] = Field(
-        default_factory=list,
-    )
-
-    dismissed_content_ids: list[str] = Field(
-        default_factory=list,
-    )
-
-    previously_proposed_content_ids: list[
-        str
-    ] = Field(
-        default_factory=list,
-    )
-
 
 # ============================================================
 # INTERPRETED RESEARCH QUERY
@@ -214,6 +160,65 @@ class TouchResearchInterpretation(
 
     response_message: str = ""
 
+
+# ============================================================
+# RESEARCH BRIEF
+# ============================================================
+
+class TouchResearchBrief(
+    StrictTouchSearchModel,
+):
+
+    query: str
+
+    output_language: str = "fr"
+
+    period_start: datetime | None = None
+
+    period_end: datetime | None = None
+
+    companies: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
+
+    solutions: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
+
+    topics: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
+
+    prepared_interpretation: (
+        TouchResearchInterpretation
+        | None
+    ) = None
+
+    conversation_history: list[
+        TouchConversationMessage
+    ] = Field(
+        default_factory=list,
+    )
+
+    selected_content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    dismissed_content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    previously_proposed_content_ids: list[
+        str
+    ] = Field(
+        default_factory=list,
+    )
 
 # ============================================================
 # CONTENT CANDIDATE
