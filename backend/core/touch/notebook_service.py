@@ -110,8 +110,8 @@ def _normalize_request(
 
             update={
 
-                "title":
-                    axis.title.strip(),
+                "label":
+                    axis.label.strip(),
 
                 "objective":
                     axis.objective.strip(),
@@ -128,6 +128,18 @@ def _normalize_request(
                         ]
                     ),
 
+                "related_angles":
+                    unique_ids(
+                        [
+                            angle.strip()
+
+                            for angle
+                            in axis.related_angles
+
+                            if angle.strip()
+                        ]
+                    ),
+
             },
 
         )
@@ -135,9 +147,10 @@ def _normalize_request(
         for axis in report_design.axes
 
         if (
-            axis.title.strip()
+            axis.label.strip()
             or axis.objective.strip()
             or axis.search_terms
+            or axis.related_angles
         )
 
     ]
