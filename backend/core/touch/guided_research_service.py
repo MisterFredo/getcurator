@@ -253,6 +253,8 @@ def _validate_resolved_entities(
         )
     )
 
+    # Les doublons indiquent toujours une réponse
+    # incohérente du moteur.
     if (
         len(
             plan.resolved_entities
@@ -267,6 +269,8 @@ def _validate_resolved_entities(
             "a dupliqué une entité résolue"
         )
 
+    # Le moteur ne doit jamais inventer ou modifier
+    # un identifiant structuré.
     invented_entities = (
         returned_signature
         - supplied_signature
@@ -279,19 +283,9 @@ def _validate_resolved_entities(
             "a inventé ou modifié une entité résolue"
         )
 
-    missing_entities = (
-        supplied_signature
-        - returned_signature
-    )
-
-    if missing_entities:
-
-        raise ValueError(
-            "Le moteur de recherche guidée "
-            "a omis une entité structurée fournie"
-        )
-
-
+    # Une entité fournie mais omise par le LLM ne provoque
+    # pas d’échec. _normalize_plan réinjecte ensuite toutes
+    # les entités fiables directement depuis la requête.
 # ============================================================
 # NORMALIZE ENTITY MENTIONS
 # ============================================================
