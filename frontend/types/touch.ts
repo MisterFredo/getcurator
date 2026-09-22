@@ -96,13 +96,47 @@ export type TouchResearchBrief = {
 
 export type TouchResearchInterpretation = {
   subject: string;
+
   objective: string;
 
-  companies: TouchEntityReference[];
-  solutions: TouchEntityReference[];
-  topics: TouchEntityReference[];
+  central_question: string;
+
+  research_type:
+    TouchGuidedResearchType;
+
+  scope_summary: string;
+
+  target_context:
+    string | null;
+
+  organization_mode:
+    TouchReportOrganization;
+
+  time_granularity:
+    TouchReportTimeGranularity;
+
+  geographies: string[];
+
+  axes:
+    TouchGuidedResearchAxis[];
+
+  assumptions: string[];
+
+  editorial_cautions: string[];
+
+  missing_information: string[];
+
+  companies:
+    TouchEntityReference[];
+
+  solutions:
+    TouchEntityReference[];
+
+  topics:
+    TouchEntityReference[];
 
   search_terms: string[];
+
   related_angles: string[];
 
   response_message: string;
