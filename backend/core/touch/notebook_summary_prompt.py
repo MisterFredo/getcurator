@@ -575,7 +575,3 @@ def build_touch_notebook_summary_prompt(
         "INPUT JSON:\n"
         f"{serialized_payload}"
     )
-
-        "INPUT JSON:\n"
-        f"{serialized_payload}"
-    )
