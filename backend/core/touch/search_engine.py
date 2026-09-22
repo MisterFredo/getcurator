@@ -363,8 +363,8 @@ def _normalize_interpretation(
 
             update={
 
-                "title":
-                    axis.title.strip(),
+                "label":
+                    axis.label.strip(),
 
                 "objective":
                     axis.objective.strip(),
@@ -374,6 +374,11 @@ def _normalize_interpretation(
                         axis.search_terms
                     ),
 
+                "related_angles":
+                    _normalize_text_list(
+                        axis.related_angles
+                    ),
+
             },
 
         )
@@ -381,9 +386,10 @@ def _normalize_interpretation(
         for axis in interpretation.axes
 
         if (
-            axis.title.strip()
+            axis.label.strip()
             or axis.objective.strip()
             or axis.search_terms
+            or axis.related_angles
         )
 
     ]
