@@ -120,6 +120,212 @@ knowledge.
 Use the conversation only to produce the next retrieval
 strategy.
 
+============================================================
+RESEARCH DESIGN
+============================================================
+
+Classify the administrator's request using exactly one
+research_type:
+
+- ENTITY:
+  documentary research focused on one company, product,
+  solution or identifiable actor;
+
+- COMPARATIVE:
+  explicit comparison between two or more actors, products,
+  solutions or approaches;
+
+- CROSS_SECTOR:
+  examination of whether documented practices, mechanisms or
+  developments from one context may be relevant to another
+  sector, market or category;
+
+- TOPIC:
+  research focused primarily on one concept, theme or
+  transversal subject;
+
+- EVOLUTION:
+  research whose primary purpose is to understand change over
+  time;
+
+- EVENT:
+  research focused on one identifiable announcement,
+  transaction, launch or partnership;
+
+- MARKET:
+  research focused on a market, ecosystem or competitive
+  landscape;
+
+- OTHER:
+  use only when none of the previous types applies clearly.
+
+A request concerning Sephora's digital innovations and their
+possible relevance to Wine & Spirits is CROSS_SECTOR.
+
+A request comparing Amazon and Walmart is COMPARATIVE.
+
+A request documenting Google Ads innovations is ENTITY.
+
+A request asking for Google Ads innovations quarter by quarter
+is EVOLUTION.
+
+
+============================================================
+CENTRAL QUESTION
+============================================================
+
+Reformulate the administrator's request as one explicit
+research question.
+
+The question must define what the future documentary report
+will attempt to establish from the selected corpus.
+
+Do not answer the question.
+
+
+============================================================
+TARGET CONTEXT
+============================================================
+
+Use target_context only when the research explicitly seeks to
+examine a subject in relation to another sector, market,
+category, geography or operating context.
+
+For CROSS_SECTOR research, target_context should identify the
+destination context.
+
+Example:
+
+"Wine & Spirits sector"
+
+Do not transform target_context into a structured company,
+solution or topic unless that entity was explicitly supplied
+with an entity_id.
+
+The target context must still appear in short search terms and
+in a dedicated research axis when documentary evidence about
+that context would help the future analysis.
+
+
+============================================================
+REPORT ORGANIZATION
+============================================================
+
+Choose exactly one organization_mode:
+
+- THEMATIC:
+  organise evidence by mechanisms, themes, actors or strategic
+  dimensions;
+
+- CHRONOLOGICAL:
+  organise evidence primarily by date, period or sequence;
+
+- HYBRID:
+  combine a chronological progression with thematic analysis.
+
+Use CHRONOLOGICAL when the administrator explicitly requests:
+
+- a timeline;
+- month-by-month analysis;
+- quarter-by-quarter analysis;
+- year-by-year analysis;
+- a sequence of developments.
+
+Use HYBRID only when both chronology and thematic structure
+are genuinely central.
+
+Otherwise use THEMATIC.
+
+
+============================================================
+TIME GRANULARITY
+============================================================
+
+Choose exactly one time_granularity:
+
+- AUTO;
+- MONTH;
+- QUARTER;
+- YEAR.
+
+Use MONTH, QUARTER or YEAR only when that grouping is explicit
+in the request or necessary to satisfy it.
+
+Use AUTO when no specific temporal grouping is requested.
+
+
+============================================================
+RESEARCH AXES
+============================================================
+
+Build the minimum set of documentary axes required to answer
+the central question.
+
+Each axis must use exactly one axis_type:
+
+- CORE_SUBJECT;
+- COMPARISON;
+- CONTEXT;
+- MECHANISM;
+- EVIDENCE;
+- LIMITATIONS;
+- EVOLUTION;
+- OTHER.
+
+Each axis must contain:
+
+- a stable axis_id;
+- one concise title;
+- one documentary objective;
+- short literal search_terms.
+
+For a CROSS_SECTOR request, normally create at least:
+
+1. CORE_SUBJECT:
+   document the source actor, practices or innovations;
+
+2. CONTEXT:
+   retrieve evidence about the target context;
+
+3. MECHANISM:
+   identify documented mechanisms that can be compared across
+   the two contexts;
+
+4. LIMITATIONS:
+   retrieve evidence about structural differences or
+   constraints when useful.
+
+The research axes prepare evidence collection. They must not
+contain recommendations or unsupported conclusions.
+
+
+============================================================
+ANALYTICAL BOUNDARY
+============================================================
+
+The future report may compare documented mechanisms,
+conditions, evidence, similarities, differences and limits.
+
+It must not promise definitive strategic recommendations.
+
+Use assumptions to identify propositions that the evidence
+will need to test.
+
+Use editorial_cautions to identify analytical risks such as:
+
+- insufficient evidence;
+- structural differences between sectors;
+- different regulation or distribution systems;
+- incompatible geographies or periods;
+- correlation being mistaken for causation.
+
+Use missing_information for evidence that would materially
+improve the report but is not yet specified or guaranteed to
+exist.
+
+Do not turn optional missing information into a reason to
+block retrieval.
+
 
 ============================================================
 SEARCH TERMS
@@ -178,7 +384,21 @@ Avoid generic standalone terms such as:
 - data;
 - media.
 
-Generate between 4 and 10 search terms.
+Generate between 4 and 16 search terms.
+
+For CROSS_SECTOR research, reserve some terms for the source
+subject and some terms for the target context.
+
+Prefer short literal expressions such as:
+
+- Sephora;
+- Sephora digital;
+- Wine & Spirits;
+- wine ecommerce;
+- spirits ecommerce.
+
+Do not rely only on long expressions combining the source
+subject and target context.
 
 The first four terms must provide the strongest chance of
 retrieving directly relevant content.
@@ -193,8 +413,10 @@ in output_language.
 Company, product and solution names must retain their official
 names.
 
-search_terms may contain French and English expressions when
-this improves retrieval.
+Write subject, objective, central_question, scope_summary,
+target_context, axis titles, axis objectives, assumptions,
+editorial_cautions, missing_information, related_angles and
+response_message in output_language.
 
 ============================================================
 RELATED ANGLES
@@ -297,6 +519,33 @@ Return only one valid JSON object with this exact structure:
 {
   "subject": "Canonical research subject",
   "objective": "Research objective",
+  "central_question": "Explicit research question",
+  "research_type": "ENTITY",
+  "scope_summary": "Concise description of the retained scope",
+  "target_context": null,
+  "organization_mode": "THEMATIC",
+  "time_granularity": "AUTO",
+  "geographies": [],
+  "axes": [
+    {
+      "axis_id": "axis_1",
+      "axis_type": "CORE_SUBJECT",
+      "title": "Concise research axis title",
+      "objective": "Documentary objective of this axis",
+      "search_terms": [
+        "Short literal search term"
+      ]
+    }
+  ],
+  "assumptions": [
+    "Proposition that the documentary evidence should test"
+  ],
+  "editorial_cautions": [
+    "Important analytical caution"
+  ],
+  "missing_information": [
+    "Potentially useful missing evidence"
+  ],
   "companies": [
     {
       "entity_type": "company",
@@ -327,6 +576,41 @@ Return only one valid JSON object with this exact structure:
   "response_message": "Short message for the administrator"
 }
 
+Allowed research_type values:
+
+- ENTITY
+- COMPARATIVE
+- CROSS_SECTOR
+- TOPIC
+- EVOLUTION
+- EVENT
+- MARKET
+- OTHER
+
+Allowed organization_mode values:
+
+- THEMATIC
+- CHRONOLOGICAL
+- HYBRID
+
+Allowed time_granularity values:
+
+- AUTO
+- MONTH
+- QUARTER
+- YEAR
+
+Allowed axis_type values:
+
+- CORE_SUBJECT
+- COMPARISON
+- CONTEXT
+- MECHANISM
+- EVIDENCE
+- LIMITATIONS
+- EVOLUTION
+- OTHER
+
 Return every supplied structured entity in its corresponding
 array.
 
@@ -335,8 +619,6 @@ Do not return a structured entity that was not supplied.
 Do not include Markdown fences.
 Do not include comments.
 Do not include text outside the JSON object.
-""".strip()
-
 
 # ============================================================
 # BUILD ENTITY PAYLOAD
@@ -501,6 +783,15 @@ def build_touch_fallback_interpretation(
             "n’a pas pu être générée."
         )
 
+        fallback_axis_title = (
+            "Sujet principal"
+        )
+
+        fallback_axis_objective = (
+            "Rechercher les contenus directement liés "
+            "à la demande formulée."
+        )
+
     else:
 
         response_message = (
@@ -509,11 +800,73 @@ def build_touch_fallback_interpretation(
             "could not be generated."
         )
 
+        fallback_axis_title = (
+            "Core subject"
+        )
+
+        fallback_axis_objective = (
+            "Retrieve content directly related to "
+            "the submitted request."
+        )
+
+    fallback_search_terms = (
+        [query]
+        if query
+        else []
+    )
+
     return TouchResearchInterpretation(
 
         subject=query,
 
         objective=query,
+
+        central_question=query,
+
+        research_type="OTHER",
+
+        scope_summary=query,
+
+        target_context=None,
+
+        organization_mode="THEMATIC",
+
+        time_granularity="AUTO",
+
+        geographies=[],
+
+        axes=[
+
+            {
+
+                "axis_id":
+                    "axis_1",
+
+                "axis_type":
+                    "CORE_SUBJECT",
+
+                "title":
+                    fallback_axis_title,
+
+                "objective":
+                    fallback_axis_objective,
+
+                "search_terms":
+                    fallback_search_terms,
+
+            }
+
+        ],
+
+        assumptions=[],
+
+        editorial_cautions=[],
+
+        missing_information=[
+
+            error
+
+        ] if error else [],
 
         companies=brief.companies,
 
@@ -522,9 +875,7 @@ def build_touch_fallback_interpretation(
         topics=brief.topics,
 
         search_terms=(
-            [query]
-            if query
-            else []
+            fallback_search_terms
         ),
 
         related_angles=[],
