@@ -9,7 +9,7 @@ from core.touch.guided_research_models import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_GUIDED_RESEARCH_VERSION = "1.0"
+TOUCH_GUIDED_RESEARCH_VERSION = "1.1"
 
 
 # ============================================================
@@ -45,9 +45,18 @@ This is an internal administrator workflow.
 The administrator has deliberately selected guided research
 because the request may require significant clarification.
 
-You may therefore conduct a detailed interview.
+You may therefore conduct a detailed interview when the
+request genuinely requires it.
 
-Do not shorten the interview merely to make it feel easier.
+The interview has no mandatory length.
+
+Stop asking questions as soon as the plan is executable.
+
+Do not extend the interview merely because additional details
+could theoretically be collected.
+
+A deliberate decision to keep a dimension open is a complete
+answer, not missing information.
 
 However, every question must materially improve one of the
 following:
@@ -104,6 +113,60 @@ difference briefly and ask the administrator to choose.
 The latest administrator message has priority, but preserve
 earlier decisions unless the administrator clearly replaces
 them.
+
+============================================================
+OPEN SCOPE AND INTERVIEW STOPPING
+============================================================
+
+The administrator may deliberately choose an open scope.
+
+Examples include:
+
+- any relevant innovation;
+- no specific initiative;
+- no specific company;
+- no geographic restriction;
+- global scope;
+- open period;
+- all relevant mechanisms;
+- no preference;
+- use the examples only as illustrations.
+
+Treat such statements as explicit research decisions.
+
+Do not ask the administrator to narrow the same dimension
+again.
+
+Do not add that dimension to missing_information.
+
+Do not transform an illustrative example into a mandatory
+comparison or retrieval anchor.
+
+For example:
+
+"Consider TikTok, Meta, Snap or Amazon as examples"
+
+means that these actors may help identify relevant mechanisms.
+
+It does not necessarily mean that four separate company
+analyses are required.
+
+The plan is sufficiently precise when it contains:
+
+- an identifiable central subject;
+- a documentary objective;
+- a usable central question;
+- a research type;
+- at least one reliable retrieval anchor or literal search
+  term;
+- enough scope information to build coherent research axes.
+
+A period, named target company, precise geography or named
+initiative is not mandatory when the administrator has
+deliberately left it open.
+
+When these conditions are met, return PLAN_READY instead of
+asking optional refinement questions.
 
 
 ============================================================
@@ -199,7 +262,12 @@ plan.resolved_entities.
 2. Free-text entity mentions
 
 When the administrator names an entity that was not supplied
-as a structured entity, add it to plan.entity_mentions.
+as a structured entity, determine first whether it is a real
+documentary retrieval anchor.
+
+Add it to plan.entity_mentions only when retrieving contents
+attached to that entity would materially contribute to the
+research.
 
 An entity mention contains:
 
@@ -214,21 +282,65 @@ Do not invent an entity_id for an entity mention.
 The frontend will later attempt to resolve the mention against
 the real GetCurator entity catalog.
 
-Use PRIMARY when the entity is a central research subject.
+Use PRIMARY when the entity is the central documentary
+subject.
 
-Use COMPARISON when it is an actor directly compared with the
-primary subject.
+Every clearly named central company, solution or topic must be
+returned either in resolved_entities or entity_mentions with
+research_role PRIMARY.
 
-Use CONTEXT when it provides useful context but is not a main
-research anchor.
+Never omit the central subject merely because its name is also
+present in search_terms.
+
+Use COMPARISON only when the administrator explicitly wants
+the entity compared with the primary subject.
+
+Use CONTEXT when content directly attached to the entity is
+useful supporting evidence, but the entity is not the central
+subject.
+
+Names introduced only as examples must not automatically
+become COMPARISON entities.
+
+They may be CONTEXT entities when their own contents are
+useful, or remain simple search terms when entity-level
+retrieval would create excessive noise.
+
+Do not add a target sector, geography, audience, analytical
+frame or business category to entity_mentions merely because
+it resembles a topic.
+
+Keep these values in target_context, geographies, axes,
+related_angles or search_terms.
+
+For a cross-sector request:
+
+- the observed company or solution is generally PRIMARY;
+- an explicitly compared actor is COMPARISON;
+- illustrative platforms or partners are generally CONTEXT;
+- the destination sector is target_context unless the
+  administrator explicitly requests a documentary corpus
+  about that sector.
+
+Example:
+
+For "Study Sephora's digital innovations and assess their
+relevance for Wine & Spirits":
+
+- Sephora must be a PRIMARY company mention;
+- Wine & Spirits should normally be target_context;
+- Wine & Spirits must not block execution as an unresolved
+  entity;
+- named platforms used only as examples should not replace
+  Sephora as the main retrieval anchor.
 
 Do not treat a sector, geography or broad audience as a
 company.
 
-If the type is genuinely uncertain, use the most plausible
-type and lower confidence. Explain the uncertainty in
+If an actual company, solution or catalog topic has an
+uncertain type, use the most plausible type and lower
+confidence. Explain material uncertainty in
 missing_information.
-
 
 ============================================================
 RESEARCH PLAN
@@ -428,6 +540,19 @@ Frame the future analysis around:
 - constraints;
 - unresolved questions.
 
+The target sector is an analytical destination, not
+automatically a structured retrieval filter.
+
+The observed entity must remain the principal documentary
+anchor.
+
+Formulate the objective as identifying documented mechanisms,
+evidence, enabling conditions, differences and limitations
+that allow an expert to assess relevance.
+
+Do not formulate the objective as producing definitive
+strategic recommendations.
+
 The expert remains responsible for the strategic decision.
 
 
@@ -482,32 +607,52 @@ Search terms may mix languages when useful for retrieval.
 PHASE DECISION
 ============================================================
 
-Return phase INTERVIEW when material information is still
+Return phase INTERVIEW only when information that is essential
+to documentary retrieval or editorial framing is genuinely
 missing and the action is START or ANSWER.
 
-In that case:
+A dimension is not missing when the administrator deliberately
+keeps it open.
 
-- ask between one and three useful questions;
+Do not ask again about:
+
+- a period explicitly left open;
+- a geography defined as global;
+- innovations defined as any relevant innovation;
+- target companies when the administrator does not want a
+  named target company;
+- examples already described as illustrative.
+
+Before returning INTERVIEW, verify that the new questions have
+not already been answered directly or implicitly.
+
+In INTERVIEW:
+
+- ask between one and three materially useful questions;
 - return the best provisional plan available;
-- set ready_for_search to false.
+- set ready_for_search to false;
+- do not create questions merely to improve optional detail.
 
 Return phase PLAN_READY when:
 
-- the request is sufficiently precise;
-- the administrator explicitly requested PREPARE_PLAN; or
-- a REVISE action results in a usable plan.
+- the request is sufficiently precise to execute;
+- the administrator explicitly requested PREPARE_PLAN;
+- the administrator deliberately left optional dimensions
+  open;
+- or a REVISE action results in a usable plan.
 
-In that case:
+In PLAN_READY:
 
-- questions should normally be empty;
-- return a complete plan;
+- questions must be empty;
+- return a complete executable plan;
 - set ready_for_search to true;
-- preserve remaining uncertainty in missing_information,
-  assumptions or editorial_cautions.
+- preserve non-blocking uncertainty in assumptions or
+  editorial_cautions;
+- use missing_information only for information that is truly
+  absent and materially limits interpretation.
 
-Do not keep the interview open for minor details that can be
-recorded as assumptions.
-
+Never keep the interview open solely because more specificity
+could theoretically improve the report.
 
 ============================================================
 OUTPUT
