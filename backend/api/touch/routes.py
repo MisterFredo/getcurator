@@ -14,6 +14,14 @@ from core.touch.search_service import (
     search_touch_contents,
 )
 
+from core.touch.guided_research_models import (
+    TouchGuidedResearchRequest,
+)
+
+from core.touch.guided_research_service import (
+    continue_touch_guided_research,
+)
+
 from core.touch.generation_models import (
     TouchGenerationRequest,
 )
@@ -170,6 +178,55 @@ def search_touch(
             detail=(
                 "Erreur lors de la recherche "
                 f"éditoriale Touch : {exc}"
+            ),
+        ) from exc
+
+# ============================================================
+# GUIDED RESEARCH
+# ============================================================
+
+@router.post("/research-guide")
+def guide_touch_research(
+    request: TouchGuidedResearchRequest,
+):
+
+    try:
+
+        outcome = (
+            continue_touch_guided_research(
+                request=request,
+            )
+        )
+
+        return {
+
+            "status":
+                "ok",
+
+            "guided_research":
+                outcome.model_dump(
+                    mode="json",
+                ),
+
+        }
+
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(
+                exc
+            ),
+        ) from exc
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur lors du cadrage "
+                "guidé Touch : "
+                f"{exc}"
             ),
         ) from exc
 
