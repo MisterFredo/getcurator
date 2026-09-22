@@ -70,6 +70,7 @@ def _normalize_request(
     )
 
     if not content_ids:
+
         raise ValueError(
             "Le corpus Touch est vide"
         )
@@ -80,6 +81,7 @@ def _normalize_request(
     ).strip()
 
     if not subject:
+
         raise ValueError(
             "Le sujet du notebook Touch "
             "est obligatoire"
@@ -94,13 +96,168 @@ def _normalize_request(
         request.output_language
     )
 
+    # ========================================================
+    # NORMALIZE REPORT DESIGN
+    # ========================================================
+
+    report_design = (
+        request.report_design
+    )
+
+    normalized_axes = [
+
+        axis.model_copy(
+
+            update={
+
+                "title":
+                    axis.title.strip(),
+
+                "objective":
+                    axis.objective.strip(),
+
+                "search_terms":
+                    unique_ids(
+                        [
+                            term.strip()
+
+                            for term
+                            in axis.search_terms
+
+                            if term.strip()
+                        ]
+                    ),
+
+            },
+
+        )
+
+        for axis in report_design.axes
+
+        if (
+            axis.title.strip()
+            or axis.objective.strip()
+            or axis.search_terms
+        )
+
+    ]
+
+    normalized_report_design = (
+        report_design.model_copy(
+
+            update={
+
+                "central_question":
+                    (
+                        report_design
+                        .central_question
+                        .strip()
+                    ),
+
+                "scope_summary":
+                    (
+                        report_design
+                        .scope_summary
+                        .strip()
+                    ),
+
+                "target_context":
+                    (
+                        report_design
+                        .target_context
+                        .strip()
+                        or None
+                    )
+                    if report_design.target_context
+                    else None,
+
+                "geographies":
+                    unique_ids(
+                        [
+                            geography.strip()
+
+                            for geography
+                            in report_design.geographies
+
+                            if geography.strip()
+                        ]
+                    ),
+
+                "axes":
+                    normalized_axes,
+
+                "assumptions":
+                    unique_ids(
+                        [
+                            assumption.strip()
+
+                            for assumption
+                            in report_design.assumptions
+
+                            if assumption.strip()
+                        ]
+                    ),
+
+                "editorial_cautions":
+                    unique_ids(
+                        [
+                            caution.strip()
+
+                            for caution
+                            in (
+                                report_design
+                                .editorial_cautions
+                            )
+
+                            if caution.strip()
+                        ]
+                    ),
+
+                "missing_information":
+                    unique_ids(
+                        [
+                            information.strip()
+
+                            for information
+                            in (
+                                report_design
+                                .missing_information
+                            )
+
+                            if information.strip()
+                        ]
+                    ),
+
+            },
+
+        )
+    )
+
+    # ========================================================
+    # NORMALIZED REQUEST
+    # ========================================================
+
     return request.model_copy(
+
         update={
-            "subject": subject,
-            "objective": objective,
-            "content_ids": content_ids,
-            "output_language": language,
+
+            "subject":
+                subject,
+
+            "objective":
+                objective,
+
+            "content_ids":
+                content_ids,
+
+            "output_language":
+                language,
+
+            "report_design":
+                normalized_report_design,
+
         },
+
     )
 
 
