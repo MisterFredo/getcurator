@@ -421,6 +421,21 @@ Do not convert the final axis into a recommendation.
 
 Prefer an axis about evidence, conditions or comparison.
 
+For a CROSS_SECTOR plan, the target-context axis must contain
+literal sector terms and not only analytical descriptions.
+
+The mechanism axes must contain short mechanism names that can
+retrieve documentary evidence.
+
+Do not use phrases such as:
+
+- "Opportunities for Wine & Spirits brands";
+- "Adaptation of Sephora innovations";
+- "Relevance for the destination sector";
+
+as the only retrieval terms because these phrases are unlikely
+to occur literally in stored content.
+
 
 ============================================================
 GETCURATOR RETRIEVAL CONSTRAINTS
@@ -483,8 +498,47 @@ increases the chance of literal retrieval.
 Each axis should generally contain between two and six search
 terms.
 
-The final plan should generally contain between four and ten
-deduplicated global search terms.
+The final plan should generally contain between six and
+sixteen deduplicated global search terms.
+
+For CROSS_SECTOR research, reserve search terms for both sides
+of the research:
+
+- the observed company or practice;
+- the destination sector;
+- the mechanisms being investigated.
+
+Include several short literal variants for the destination
+sector, especially when stored content may use different
+languages or category names.
+
+For a Wine & Spirits target context, useful literal variants
+may include:
+
+- "wine";
+- "spirits";
+- "wine and spirits";
+- "alcohol";
+- "beverage alcohol";
+- "vin";
+- "spiritueux".
+
+Do not rely only on the synthetic expression
+"Vins & Spiritueux".
+
+Include mechanism terms independently, such as:
+
+- "social commerce";
+- "TikTok Shop";
+- "live shopping";
+- "influencer marketing";
+- "direct-to-consumer";
+- "loyalty";
+- "personalization".
+
+Because each term is retrieved independently, prefer short
+expressions that are likely to occur literally in stored
+content.
 
 
 ============================================================
@@ -898,7 +952,7 @@ def build_touch_guided_research_prompt(
                 True,
 
             "maximum_global_search_terms":
-                10,
+                16,
 
             "maximum_related_angles":
                 8,
