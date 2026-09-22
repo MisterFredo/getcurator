@@ -1,3 +1,7 @@
+from datetime import (
+    datetime,
+)
+
 from typing import (
     Any,
     Literal,
@@ -44,6 +48,51 @@ TouchEvidenceStatus = Literal[
 TouchGenerationStatus = Literal[
     "GENERATED",
     "GENERATION_FAILED",
+]
+
+TouchReportArchetype = Literal[
+    "DOCUMENTARY_SYNTHESIS",
+    "COMPARATIVE_ANALYSIS",
+    "CROSS_CONTEXT_ANALYSIS",
+]
+
+
+TouchReportOrganization = Literal[
+    "THEMATIC",
+    "CHRONOLOGICAL",
+    "HYBRID",
+]
+
+
+TouchReportTimeGranularity = Literal[
+    "AUTO",
+    "MONTH",
+    "QUARTER",
+    "YEAR",
+]
+
+
+TouchNotebookResearchType = Literal[
+    "ENTITY",
+    "COMPARATIVE",
+    "CROSS_SECTOR",
+    "TOPIC",
+    "EVOLUTION",
+    "EVENT",
+    "MARKET",
+    "OTHER",
+]
+
+
+TouchNotebookAxisType = Literal[
+    "CORE_SUBJECT",
+    "COMPARISON",
+    "CONTEXT",
+    "MECHANISM",
+    "EVIDENCE",
+    "LIMITATIONS",
+    "EVOLUTION",
+    "OTHER",
 ]
 
 
@@ -451,6 +500,88 @@ class TouchNotebookContribution(
     )
 
 # ============================================================
+# NOTEBOOK RESEARCH AXIS
+# ============================================================
+
+class TouchNotebookResearchAxis(
+    StrictTouchNotebookModel,
+):
+
+    axis_id: str
+
+    axis_type: TouchNotebookAxisType
+
+    label: str
+
+    objective: str
+
+    search_terms: list[str] = Field(
+        default_factory=list,
+    )
+
+    related_angles: list[str] = Field(
+        default_factory=list,
+    )
+
+
+# ============================================================
+# NOTEBOOK REPORT DESIGN
+# ============================================================
+
+class TouchNotebookReportDesign(
+    StrictTouchNotebookModel,
+):
+
+    report_archetype: TouchReportArchetype = (
+        "DOCUMENTARY_SYNTHESIS"
+    )
+
+    organization_mode: TouchReportOrganization = (
+        "THEMATIC"
+    )
+
+    time_granularity: TouchReportTimeGranularity = (
+        "AUTO"
+    )
+
+    research_type: (
+        TouchNotebookResearchType
+        | None
+    ) = None
+
+    central_question: str = ""
+
+    scope_summary: str = ""
+
+    target_context: str | None = None
+
+    period_start: datetime | None = None
+
+    period_end: datetime | None = None
+
+    geographies: list[str] = Field(
+        default_factory=list,
+    )
+
+    axes: list[
+        TouchNotebookResearchAxis
+    ] = Field(
+        default_factory=list,
+    )
+
+    assumptions: list[str] = Field(
+        default_factory=list,
+    )
+
+    editorial_cautions: list[str] = Field(
+        default_factory=list,
+    )
+
+    missing_information: list[str] = Field(
+        default_factory=list,
+    )
+
+# ============================================================
 # REQUEST
 # ============================================================
 
@@ -477,6 +608,13 @@ class TouchNotebookRequest(
     )
 
     output_language: str = "fr"
+
+    report_design:
+        TouchNotebookReportDesign = Field(
+            default_factory=(
+                TouchNotebookReportDesign
+            ),
+        )
 
 # ============================================================
 # OUTCOME
