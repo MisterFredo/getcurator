@@ -10,6 +10,9 @@ import type {
   TouchGenerationOutcome,
   TouchGenerationRequest,
   TouchGenerationResponse,
+  TouchGuidedResearchOutcome,
+  TouchGuidedResearchRequest,
+  TouchGuidedResearchResponse,
   TouchNotebookOutcome,
   TouchNotebookRequest,
   TouchNotebookResponse,
@@ -56,6 +59,25 @@ export async function searchTouchContents(
       );
 
   return response.search;
+
+}
+
+/* =========================================================
+   GUIDED RESEARCH
+========================================================= */
+
+export async function continueTouchGuidedResearch(
+  request: TouchGuidedResearchRequest,
+): Promise<TouchGuidedResearchOutcome> {
+
+  const response:
+    TouchGuidedResearchResponse =
+      await api.post(
+        "/touch/research-guide",
+        request,
+      );
+
+  return response.guided_research;
 
 }
 
