@@ -1,10 +1,6 @@
-from datetime import (
-    datetime,
-)
+from datetime import datetime
 
-from typing import (
-    Literal,
-)
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -73,24 +69,17 @@ TouchGuidedAxisType = Literal[
 # ENTITY MENTION
 # ============================================================
 
-class TouchGuidedEntityMention(
-    BaseModel
-):
+class TouchGuidedEntityMention(BaseModel):
 
-    entity_type:
-        TouchGuidedEntityType
+    entity_type: TouchGuidedEntityType
 
-    entity_label:
-        str
+    entity_label: str
 
-    research_role:
-        TouchGuidedEntityRole
+    research_role: TouchGuidedEntityRole
 
-    reason:
-        str = ""
+    reason: str = ""
 
-    confidence:
-        float = 1.0
+    confidence: float = 1.0
 
     @field_validator(
         "entity_label",
@@ -122,6 +111,7 @@ class TouchGuidedEntityMention(
     ) -> float:
 
         try:
+
             confidence = float(
                 value
             )
@@ -130,6 +120,7 @@ class TouchGuidedEntityMention(
             TypeError,
             ValueError,
         ):
+
             confidence = 0.0
 
         return max(
@@ -145,31 +136,23 @@ class TouchGuidedEntityMention(
 # RESEARCH AXIS
 # ============================================================
 
-class TouchGuidedResearchAxis(
-    BaseModel
-):
+class TouchGuidedResearchAxis(BaseModel):
 
-    axis_id:
-        str
+    axis_id: str
 
-    axis_type:
-        TouchGuidedAxisType
+    axis_type: TouchGuidedAxisType
 
-    label:
-        str
+    label: str
 
-    objective:
-        str
+    objective: str
 
-    search_terms:
-        list[str] = Field(
-            default_factory=list,
-        )
+    search_terms: list[str] = Field(
+        default_factory=list,
+    )
 
-    related_angles:
-        list[str] = Field(
-            default_factory=list,
-        )
+    related_angles: list[str] = Field(
+        default_factory=list,
+    )
 
     @field_validator(
         "axis_id",
@@ -249,94 +232,73 @@ class TouchGuidedResearchAxis(
 # GUIDED RESEARCH PLAN
 # ============================================================
 
-class TouchGuidedResearchPlan(
-    BaseModel
-):
+class TouchGuidedResearchPlan(BaseModel):
 
-    subject:
-        str = ""
+    subject: str = ""
 
-    objective:
-        str = ""
+    objective: str = ""
 
-    central_question:
-        str = ""
+    central_question: str = ""
 
-    research_type:
-        TouchGuidedResearchType = (
-            "OTHER"
-        )
+    research_type: TouchGuidedResearchType = (
+        "OTHER"
+    )
 
-    scope_summary:
-        str = ""
+    scope_summary: str = ""
 
-    target_context:
-        str | None = None
+    target_context: str | None = None
 
-    period_start:
-        datetime | None = None
+    period_start: datetime | None = None
 
-    period_end:
-        datetime | None = None
+    period_end: datetime | None = None
 
-    geographies:
-        list[str] = Field(
-            default_factory=list,
-        )
+    geographies: list[str] = Field(
+        default_factory=list,
+    )
 
-    entity_mentions:
-        list[
-            TouchGuidedEntityMention
-        ] = Field(
-            default_factory=list,
-        )
+    entity_mentions: list[
+        TouchGuidedEntityMention
+    ] = Field(
+        default_factory=list,
+    )
 
-    resolved_entities:
-        list[
-            TouchEntityReference
-        ] = Field(
-            default_factory=list,
-        )
+    resolved_entities: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
 
-    axes:
-        list[
-            TouchGuidedResearchAxis
-        ] = Field(
-            default_factory=list,
-        )
+    axes: list[
+        TouchGuidedResearchAxis
+    ] = Field(
+        default_factory=list,
+    )
 
-    search_terms:
-        list[str] = Field(
-            default_factory=list,
-        )
+    search_terms: list[str] = Field(
+        default_factory=list,
+    )
 
-    related_angles:
-        list[str] = Field(
-            default_factory=list,
-        )
+    related_angles: list[str] = Field(
+        default_factory=list,
+    )
 
-    exclusions:
-        list[str] = Field(
-            default_factory=list,
-        )
+    exclusions: list[str] = Field(
+        default_factory=list,
+    )
 
-    assumptions:
-        list[str] = Field(
-            default_factory=list,
-        )
+    assumptions: list[str] = Field(
+        default_factory=list,
+    )
 
-    editorial_cautions:
-        list[str] = Field(
-            default_factory=list,
-        )
+    editorial_cautions: list[str] = Field(
+        default_factory=list,
+    )
 
-    missing_information:
-        list[str] = Field(
-            default_factory=list,
-        )
+    missing_information: list[str] = Field(
+        default_factory=list,
+    )
 
-    ready_for_search:
-        bool = False
+    ready_for_search: bool = False
 
     @field_validator(
         "subject",
@@ -447,59 +409,48 @@ class TouchGuidedResearchPlan(
 # GUIDED RESEARCH REQUEST
 # ============================================================
 
-class TouchGuidedResearchRequest(
-    BaseModel
-):
+class TouchGuidedResearchRequest(BaseModel):
 
-    action:
-        TouchGuidedResearchAction = (
-            "ANSWER"
-        )
+    action: TouchGuidedResearchAction = (
+        "ANSWER"
+    )
 
-    message:
-        str = ""
+    message: str = ""
 
-    output_language:
-        str = "fr"
+    output_language: str = "fr"
 
-    period_start:
-        datetime | None = None
+    period_start: datetime | None = None
 
-    period_end:
-        datetime | None = None
+    period_end: datetime | None = None
 
-    companies:
-        list[
-            TouchEntityReference
-        ] = Field(
-            default_factory=list,
-        )
+    companies: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
 
-    solutions:
-        list[
-            TouchEntityReference
-        ] = Field(
-            default_factory=list,
-        )
+    solutions: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
 
-    topics:
-        list[
-            TouchEntityReference
-        ] = Field(
-            default_factory=list,
-        )
+    topics: list[
+        TouchEntityReference
+    ] = Field(
+        default_factory=list,
+    )
 
-    conversation_history:
-        list[
-            TouchConversationMessage
-        ] = Field(
-            default_factory=list,
-        )
+    conversation_history: list[
+        TouchConversationMessage
+    ] = Field(
+        default_factory=list,
+    )
 
-    current_plan:
-        TouchGuidedResearchPlan | None = (
-            None
-        )
+    current_plan: (
+        TouchGuidedResearchPlan
+        | None
+    ) = None
 
     @field_validator(
         "message",
@@ -553,39 +504,30 @@ class TouchGuidedResearchRequest(
 # GUIDED RESEARCH OUTCOME
 # ============================================================
 
-class TouchGuidedResearchOutcome(
-    BaseModel
-):
+class TouchGuidedResearchOutcome(BaseModel):
 
-    phase:
-        TouchGuidedResearchPhase
+    phase: TouchGuidedResearchPhase
 
-    assistant_message:
-        str
+    assistant_message: str
 
-    questions:
-        list[str] = Field(
-            default_factory=list,
-        )
+    questions: list[str] = Field(
+        default_factory=list,
+    )
 
-    plan:
-        TouchGuidedResearchPlan | None = (
-            None
-        )
+    plan: (
+        TouchGuidedResearchPlan
+        | None
+    ) = None
 
-    missing_information:
-        list[str] = Field(
-            default_factory=list,
-        )
+    missing_information: list[str] = Field(
+        default_factory=list,
+    )
 
-    ready_for_search:
-        bool = False
+    ready_for_search: bool = False
 
-    used_fallback:
-        bool = False
+    used_fallback: bool = False
 
-    error:
-        str | None = None
+    error: str | None = None
 
     @field_validator(
         "assistant_message",
@@ -663,12 +605,10 @@ class TouchGuidedResearchOutcome(
 # API RESPONSE
 # ============================================================
 
-class TouchGuidedResearchResponse(
-    BaseModel
-):
+class TouchGuidedResearchResponse(BaseModel):
 
-    status:
-        str
+    status: str
 
-    guided_research:
+    guided_research: (
         TouchGuidedResearchOutcome
+    )
