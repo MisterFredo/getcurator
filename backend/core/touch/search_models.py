@@ -77,6 +77,44 @@ TouchConversationRole = Literal[
     "assistant",
 ]
 
+TouchResearchType = Literal[
+    "ENTITY",
+    "COMPARATIVE",
+    "CROSS_SECTOR",
+    "TOPIC",
+    "EVOLUTION",
+    "EVENT",
+    "MARKET",
+    "OTHER",
+]
+
+
+TouchResearchAxisType = Literal[
+    "CORE_SUBJECT",
+    "COMPARISON",
+    "CONTEXT",
+    "MECHANISM",
+    "EVIDENCE",
+    "LIMITATIONS",
+    "EVOLUTION",
+    "OTHER",
+]
+
+
+TouchReportOrganization = Literal[
+    "THEMATIC",
+    "CHRONOLOGICAL",
+    "HYBRID",
+]
+
+
+TouchReportTimeGranularity = Literal[
+    "AUTO",
+    "MONTH",
+    "QUARTER",
+    "YEAR",
+]
+
 
 # ============================================================
 # STRICT MODEL
@@ -118,6 +156,30 @@ class TouchConversationMessage(
 
     content: str
 
+# ============================================================
+# RESEARCH AXIS
+# ============================================================
+
+class TouchResearchAxis(
+    StrictTouchSearchModel,
+):
+
+    axis_id: str
+
+    axis_type: TouchResearchAxisType
+
+    label: str
+
+    objective: str
+
+    search_terms: list[str] = Field(
+        default_factory=list,
+    )
+
+    related_angles: list[str] = Field(
+        default_factory=list,
+    )
+
 
 
 # ============================================================
@@ -131,6 +193,48 @@ class TouchResearchInterpretation(
     subject: str
 
     objective: str
+
+    central_question: str = ""
+
+    research_type: TouchResearchType = (
+        "OTHER"
+    )
+
+    scope_summary: str = ""
+
+    target_context: str | None = None
+
+    organization_mode:
+        TouchReportOrganization = (
+            "THEMATIC"
+        )
+
+    time_granularity:
+        TouchReportTimeGranularity = (
+            "AUTO"
+        )
+
+    geographies: list[str] = Field(
+        default_factory=list,
+    )
+
+    axes: list[
+        TouchResearchAxis
+    ] = Field(
+        default_factory=list,
+    )
+
+    assumptions: list[str] = Field(
+        default_factory=list,
+    )
+
+    editorial_cautions: list[str] = Field(
+        default_factory=list,
+    )
+
+    missing_information: list[str] = Field(
+        default_factory=list,
+    )
 
     companies: list[
         TouchEntityReference
@@ -159,7 +263,6 @@ class TouchResearchInterpretation(
     )
 
     response_message: str = ""
-
 
 # ============================================================
 # RESEARCH BRIEF
