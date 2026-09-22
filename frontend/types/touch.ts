@@ -273,6 +273,253 @@ export type TouchSearchResponse = {
   search: TouchSearchResult;
 };
 
+
+/* =========================================================
+   GUIDED RESEARCH
+========================================================= */
+
+export type TouchResearchMode =
+  | "DIRECT"
+  | "GUIDED";
+
+
+export type TouchGuidedResearchAction =
+  | "START"
+  | "ANSWER"
+  | "PREPARE_PLAN"
+  | "REVISE";
+
+
+export type TouchGuidedResearchPhase =
+  | "INTERVIEW"
+  | "PLAN_READY";
+
+
+export type TouchGuidedResearchType =
+  | "ENTITY"
+  | "COMPARATIVE"
+  | "CROSS_SECTOR"
+  | "TOPIC"
+  | "EVOLUTION"
+  | "EVENT"
+  | "MARKET"
+  | "OTHER";
+
+
+export type TouchGuidedEntityType =
+  | "company"
+  | "solution"
+  | "topic";
+
+
+export type TouchGuidedEntityRole =
+  | "PRIMARY"
+  | "COMPARISON"
+  | "CONTEXT";
+
+
+export type TouchGuidedAxisType =
+  | "CORE_SUBJECT"
+  | "COMPARISON"
+  | "CONTEXT"
+  | "MECHANISM"
+  | "EVIDENCE"
+  | "LIMITATIONS"
+  | "EVOLUTION"
+  | "OTHER";
+
+
+/* =========================================================
+   GUIDED ENTITY MENTION
+========================================================= */
+
+export type TouchGuidedEntityMention = {
+  entity_type:
+    TouchGuidedEntityType;
+
+  entity_label:
+    string;
+
+  research_role:
+    TouchGuidedEntityRole;
+
+  reason:
+    string;
+
+  confidence:
+    number;
+};
+
+
+/* =========================================================
+   GUIDED RESEARCH AXIS
+========================================================= */
+
+export type TouchGuidedResearchAxis = {
+  axis_id:
+    string;
+
+  axis_type:
+    TouchGuidedAxisType;
+
+  label:
+    string;
+
+  objective:
+    string;
+
+  search_terms:
+    string[];
+
+  related_angles:
+    string[];
+};
+
+
+/* =========================================================
+   GUIDED RESEARCH PLAN
+========================================================= */
+
+export type TouchGuidedResearchPlan = {
+  subject:
+    string;
+
+  objective:
+    string;
+
+  central_question:
+    string;
+
+  research_type:
+    TouchGuidedResearchType;
+
+  scope_summary:
+    string;
+
+  target_context:
+    string | null;
+
+  period_start:
+    string | null;
+
+  period_end:
+    string | null;
+
+  geographies:
+    string[];
+
+  entity_mentions:
+    TouchGuidedEntityMention[];
+
+  resolved_entities:
+    TouchEntityReference[];
+
+  axes:
+    TouchGuidedResearchAxis[];
+
+  search_terms:
+    string[];
+
+  related_angles:
+    string[];
+
+  exclusions:
+    string[];
+
+  assumptions:
+    string[];
+
+  editorial_cautions:
+    string[];
+
+  missing_information:
+    string[];
+
+  ready_for_search:
+    boolean;
+};
+
+
+/* =========================================================
+   GUIDED RESEARCH REQUEST
+========================================================= */
+
+export type TouchGuidedResearchRequest = {
+  action:
+    TouchGuidedResearchAction;
+
+  message:
+    string;
+
+  output_language:
+    string;
+
+  period_start:
+    string | null;
+
+  period_end:
+    string | null;
+
+  companies:
+    TouchEntityReference[];
+
+  solutions:
+    TouchEntityReference[];
+
+  topics:
+    TouchEntityReference[];
+
+  conversation_history:
+    TouchConversationMessage[];
+
+  current_plan:
+    TouchGuidedResearchPlan | null;
+};
+
+
+/* =========================================================
+   GUIDED RESEARCH OUTCOME
+========================================================= */
+
+export type TouchGuidedResearchOutcome = {
+  phase:
+    TouchGuidedResearchPhase;
+
+  assistant_message:
+    string;
+
+  questions:
+    string[];
+
+  plan:
+    TouchGuidedResearchPlan | null;
+
+  missing_information:
+    string[];
+
+  ready_for_search:
+    boolean;
+
+  used_fallback:
+    boolean;
+
+  error:
+    string | null;
+};
+
+
+/* =========================================================
+   GUIDED RESEARCH RESPONSE
+========================================================= */
+
+export type TouchGuidedResearchResponse = {
+  status:
+    string;
+
+  guided_research:
+    TouchGuidedResearchOutcome;
+};
+
 /* =========================================================
    GENERATION
 ========================================================= */
