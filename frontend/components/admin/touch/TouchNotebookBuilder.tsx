@@ -15,6 +15,7 @@ import type {
   TouchContentDecision,
   TouchCorpusNotebook,
   TouchNotebookContribution,
+  TouchNotebookReportDesign,
   TouchNotebookRequest,
 } from "@/types/touch";
 
@@ -28,6 +29,8 @@ import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview"
 type Props = {
   subject: string;
   objective: string;
+  reportDesign:
+    TouchNotebookReportDesign;
 
   selectedContentIds: string[];
 
@@ -101,6 +104,45 @@ function uniqueStatements(
 
 }
 
+/* =========================================================
+   COPY REPORT DESIGN
+========================================================= */
+
+function copyReportDesign(
+  reportDesign: TouchNotebookReportDesign,
+): TouchNotebookReportDesign {
+
+  return {
+    ...reportDesign,
+
+    geographies:
+      [...reportDesign.geographies],
+
+    axes:
+      reportDesign.axes.map(
+        axis => ({
+          ...axis,
+
+          search_terms:
+            [...axis.search_terms],
+
+          related_angles:
+            [...axis.related_angles],
+        }),
+      ),
+
+    assumptions:
+      [...reportDesign.assumptions],
+
+    editorial_cautions:
+      [...reportDesign.editorial_cautions],
+
+    missing_information:
+      [...reportDesign.missing_information],
+  };
+
+}
+
 
 /* =========================================================
    COMPONENT
@@ -109,6 +151,7 @@ function uniqueStatements(
 export default function TouchNotebookBuilder({
   subject,
   objective,
+  reportDesign,
   selectedContentIds,
   decisionsByContentId,
   notebook,
@@ -305,6 +348,11 @@ export default function TouchNotebookBuilder({
 
         output_language:
           outputLanguage,
+
+        report_design:
+          copyReportDesign(
+            reportDesign,
+          ),
       };
 
     try {
@@ -575,6 +623,109 @@ export default function TouchNotebookBuilder({
               selected sources.
 
             </p>
+
+          <div>
+
+            <h2 className="text-lg font-semibold text-gray-900">
+              Editorial notebook
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+
+              Organise
+              {" "}
+              {contributionCount}
+              {" "}
+              editorial contributions from
+              {" "}
+              {selectedContentIds.length}
+              {" "}
+              selected sources.
+
+            </p>
+
+            <div
+              className="
+                mt-3
+                flex
+                flex-wrap
+                gap-2
+              "
+            >
+
+              <span
+                className="
+                  rounded-full
+                  bg-blue-50
+                  px-2.5
+                  py-1
+                  text-xs
+                  font-medium
+                  text-blue-700
+                "
+              >
+                {
+                  reportDesign
+                    .report_archetype
+                    .replaceAll(
+                      "_",
+                      " ",
+                    )
+                }
+              </span>
+
+              <span
+                className="
+                  rounded-full
+                  bg-gray-100
+                  px-2.5
+                  py-1
+                  text-xs
+                  font-medium
+                  text-gray-700
+                "
+              >
+                {
+                  reportDesign
+                    .organization_mode
+                    .replaceAll(
+                      "_",
+                      " ",
+                    )
+                }
+              </span>
+
+              {(
+                reportDesign.time_granularity
+                !== "AUTO"
+              ) && (
+
+                <span
+                  className="
+                    rounded-full
+                    bg-gray-100
+                    px-2.5
+                    py-1
+                    text-xs
+                    font-medium
+                    text-gray-700
+                  "
+                >
+                  {
+                    reportDesign
+                      .time_granularity
+                  }
+                </span>
+
+              )}
+
+            </div>
+
+          </div>
+
+          <button
+            type="button"
+            onClick={handleBuildNotebook}
 
           </div>
 
