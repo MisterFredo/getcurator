@@ -1011,11 +1011,11 @@ export default function TouchPage() {
             <select
               id="touch-report-language"
               value={reportLanguage}
-              onChange={event =>
+              onChange={event => {
                 setReportLanguage(
                   event.target.value as "fr" | "en",
-                )
-              }
+                );
+              }}
               disabled={
                 loading
                 || guidedResearch.loading
@@ -1035,8 +1035,13 @@ export default function TouchPage() {
                 disabled:opacity-50
               "
             >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              <option value="fr">
+                Français
+              </option>
+            
+              <option value="en">
+                English
+              </option>
             </select>
 
           </div>
