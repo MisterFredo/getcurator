@@ -530,21 +530,17 @@ def interpret_touch_research_brief(
                     parsed
                 )
             )
-
+            
             interpretation = (
-                _normalize_interpretation(
-                    interpretation
+                validate_touch_research_interpretation(
+            
+                    brief=brief,
+            
+                    interpretation=(
+                        interpretation
+                    ),
+            
                 )
-            )
-
-            _validate_interpretation(
-
-                brief=brief,
-
-                interpretation=(
-                    interpretation
-                ),
-
             )
 
             return (
