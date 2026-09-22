@@ -21,7 +21,6 @@ import type {
   TouchResearchInterpretation,
 } from "@/types/touch";
 
-
 /* =========================================================
    TYPES
 ========================================================= */
@@ -37,6 +36,9 @@ export type TouchResearchRequest = {
   companies?: TouchEntityReference[];
   solutions?: TouchEntityReference[];
   topics?: TouchEntityReference[];
+
+  preparedInterpretation?:
+    TouchResearchInterpretation | null;
 };
 
 
@@ -359,6 +361,10 @@ export function useTouchResearch():
             topics:
               request.topics
               ?? [],
+
+            prepared_interpretation:
+              request.preparedInterpretation
+              ?? null,
 
             conversation_history:
               conversationHistory,
