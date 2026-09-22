@@ -318,6 +318,20 @@ def _validate_interpretation(
             "d’objectif de recherche"
         )
 
+    if not interpretation.central_question.strip():
+
+        raise ValueError(
+            "Le moteur Touch n’a pas retourné "
+            "de question centrale"
+        )
+
+    if not interpretation.axes:
+
+        raise ValueError(
+            "Le moteur Touch n’a retourné aucun "
+            "axe de recherche"
+        )
+
     if not interpretation.search_terms:
 
         raise ValueError(
