@@ -76,6 +76,9 @@ export type TouchResearchBrief = {
   solutions: TouchEntityReference[];
   topics: TouchEntityReference[];
 
+  prepared_interpretation:
+    TouchResearchInterpretation | null;
+
   conversation_history:
     TouchConversationMessage[];
 
