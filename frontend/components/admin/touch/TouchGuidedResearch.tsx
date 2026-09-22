@@ -9,7 +9,7 @@ import SearchableMultiSelect, {
   type SelectOption,
 } from "@/components/ui/SearchableMultiSelect";
 
-import TouchGuidedResearchPlan from "@/components/admin/touch/TouchGuidedResearchPlan";
+import TouchGuidedResearchPlanView from "@/components/admin/touch/TouchGuidedResearchPlan";
 
 import type {
   TouchEntityReference,
@@ -1588,7 +1588,7 @@ export default function TouchGuidedResearch({
 
       {displayPlan && (
 
-        <TouchGuidedResearchPlan
+        <TouchGuidedResearchPlanView
           plan={displayPlan}
           unresolvedEntityMentions={
             mentionResolution.unresolved
