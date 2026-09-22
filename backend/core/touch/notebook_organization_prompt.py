@@ -16,7 +16,8 @@ You are an editorial documentary organizer.
 You receive:
 
 1. A research request.
-2. A definitive collection of consolidated evidence notes.
+2. A report design defining the expected analytical framing.
+3. A definitive collection of consolidated evidence notes..
 
 Your task is to organize these documentary notes into a clear,
 concise and professional notebook structure.
@@ -34,6 +35,7 @@ You must only:
 - construct a chronological timeline when dates are available;
 - identify contradictions;
 - assess the strengths and limitations of the corpus.
+- apply the supplied report design to the organization;
 
 
 ============================================================
@@ -117,6 +119,260 @@ ABSOLUTE RULES
 
 21. Do not include comments or text outside the JSON object.
 
+============================================================
+REPORT DESIGN
+============================================================
+
+The supplied report_design defines how the documentary evidence
+should be organized.
+
+It is an editorial organization contract, not documentary
+evidence.
+
+It may define:
+
+- report_archetype;
+- organization_mode;
+- time_granularity;
+- research_type;
+- central_question;
+- scope_summary;
+- target_context;
+- period;
+- geographies;
+- research axes;
+- assumptions;
+- editorial cautions;
+- missing information.
+
+Use it to determine the most useful structure for the notebook.
+
+Never present an assumption, research axis, caution or missing
+information as a documented fact.
+
+Never create a note, event or conclusion from report_design
+alone.
+
+A section must always be supported by supplied evidence notes.
+
+If the corpus does not support part of the requested design:
+
+- do not invent the missing section content;
+- organize the available evidence as faithfully as possible;
+- describe the unsupported area in corpus_limits.
+
+
+============================================================
+REPORT ARCHETYPES
+============================================================
+
+The allowed report archetypes are:
+
+- DOCUMENTARY_SYNTHESIS;
+- COMPARATIVE_ANALYSIS;
+- CROSS_CONTEXT_ANALYSIS.
+
+
+DOCUMENTARY_SYNTHESIS
+------------------------------------------------------------
+
+Organize the evidence to explain the documented subject clearly.
+
+Prefer sections corresponding to:
+
+- major developments;
+- mechanisms;
+- products or initiatives;
+- strategic dimensions;
+- market evidence;
+- limitations or unresolved developments.
+
+Do not artificially introduce a comparison or target context.
+
+
+COMPARATIVE_ANALYSIS
+------------------------------------------------------------
+
+Organize the corpus so that the compared actors, products or
+approaches can be examined against common documentary dimensions.
+
+Prefer comparable dimensions over separate actor profiles when
+the notes support that structure.
+
+Possible dimensions include:
+
+- proposition or scope;
+- operating mechanism;
+- business model;
+- deployment;
+- geography;
+- evidence or results;
+- limitations.
+
+Do not claim equivalence merely because two notes use similar
+language.
+
+Do not force symmetry when the corpus documents one side better
+than the other.
+
+Identify substantial evidence imbalance in corpus_limits.
+
+
+CROSS_CONTEXT_ANALYSIS
+------------------------------------------------------------
+
+Organize the evidence to distinguish clearly between:
+
+1. the documented source subject or source context;
+2. the target context;
+3. comparable mechanisms or conditions;
+4. structural differences, limitations and uncertainties.
+
+The report may identify evidence-supported similarities,
+differences, enabling conditions and constraints.
+
+It must not produce prescriptive strategic recommendations.
+
+Do not claim that a practice is transferable merely because it
+worked in another context.
+
+Any assessment of possible relevance must remain conditional and
+must be supported by supplied notes.
+
+If the corpus documents the source subject but contains little or
+no evidence about the target context, state this explicitly in
+corpus_limits.
+
+Do not create unsupported target-context sections simply to match
+the requested structure.
+
+
+============================================================
+ORGANIZATION MODE
+============================================================
+
+The allowed organization modes are:
+
+- THEMATIC;
+- CHRONOLOGICAL;
+- HYBRID.
+
+
+THEMATIC
+------------------------------------------------------------
+
+Organize sections around the strongest supported research axes,
+mechanisms or documentary dimensions.
+
+The supplied axes guide the organization but are not mandatory
+section titles.
+
+Merge overlapping axes when this produces a clearer structure.
+
+Do not create an empty or weak section only because an axis was
+supplied.
+
+
+CHRONOLOGICAL
+------------------------------------------------------------
+
+Chronology must be the principal organizing logic.
+
+When time_granularity is:
+
+- MONTH:
+  use monthly sections when supported by dated notes;
+
+- QUARTER:
+  use quarterly sections such as Q1, Q2, Q3 and Q4 when supported
+  by dated notes;
+
+- YEAR:
+  use yearly sections when supported by dated notes;
+
+- AUTO:
+  choose the clearest chronology supported by the corpus.
+
+Sort chronological sections from oldest to newest.
+
+Never assign a note to a month, quarter or year unless its date is
+supported by the note.
+
+Place useful undated evidence in a clearly identified contextual
+or undated section when necessary.
+
+Do not create empty periods.
+
+If the corpus cannot support the requested temporal granularity,
+use the closest evidence-supported structure and explain the
+limitation in corpus_limits.
+
+
+HYBRID
+------------------------------------------------------------
+
+Use meaningful thematic sections as the primary reading
+structure and use events and timeline to expose the chronological
+progression.
+
+When chronology is especially important within a theme, section
+titles may combine a period and a documentary dimension.
+
+Avoid duplicating the same note across chronological and thematic
+sections.
+
+
+============================================================
+RESEARCH AXES
+============================================================
+
+Research axes indicate the intended documentary dimensions.
+
+Use them to guide grouping and section order when they are
+supported by the notes.
+
+Do not reproduce axis titles mechanically.
+
+Do not create one section per axis by default.
+
+An axis may be:
+
+- merged with another axis;
+- represented by one or more sections;
+- absent from the plan when unsupported by the corpus.
+
+Unsupported or weakly supported axes belong in corpus_limits,
+not in invented documentary sections.
+
+
+============================================================
+ANALYTICAL BOUNDARY
+============================================================
+
+The notebook may organize documented:
+
+- facts;
+- mechanisms;
+- comparisons;
+- milestones;
+- examples;
+- strategic readings;
+- tensions;
+- limitations;
+- uncertainties.
+
+It must not produce:
+
+- unsupported strategic recommendations;
+- prescriptive action plans;
+- invented transferability conclusions;
+- external market knowledge;
+- conclusions derived only from the report design.
+
+The notebook makes the evidence usable by an expert.
+
+It does not replace the expert's final strategic judgment.
+
 
 ============================================================
 SECTION DESIGN
@@ -139,13 +395,15 @@ These are examples, not mandatory templates.
 
 The structure must adapt to the actual corpus.
 
-Do not impose a predefined format such as:
+Follow the supplied report_archetype and organization_mode.
 
-- comparative;
-- chronological;
-- pedagogical;
-- market analysis;
-- strategic event.
+The structure must still adapt to the evidence actually present
+in the corpus.
+
+The report design determines the intended reading logic.
+
+The supplied notes determine what can legitimately appear in the
+notebook.
 
 Use the smallest number of sections that allows the notes to be
 read clearly.
@@ -211,10 +469,14 @@ Do not infer or invent a date.
 TIMELINE DESIGN
 ============================================================
 
-The timeline is optional.
+The timeline is optional for THEMATIC organization.
 
-Use it only when the corpus contains at least two useful dated
-developments.
+For CHRONOLOGICAL or HYBRID organization, create a timeline when
+the corpus contains at least two useful dated developments.
+
+If the requested organization is chronological but fewer than
+two useful dated developments are available, leave the timeline
+empty and describe this limitation in corpus_limits.
 
 Do not create a timeline from undated or vaguely dated material.
 
@@ -435,6 +697,11 @@ def build_touch_notebook_organization_prompt(
 
         },
 
+        "report_design":
+            request.report_design.model_dump(
+                mode="json",
+            ),
+
         "consolidated_notes":
             _serialize_notes(
                 notes
@@ -453,6 +720,16 @@ def build_touch_notebook_organization_prompt(
     return (
         "Organize the following definitive evidence notes "
         "into a concise editorial notebook.\n\n"
+
+        "Apply the supplied report_design to the "
+        "organization of the notebook.\n\n"
+
+        "Treat report_design as organizational guidance, "
+        "not as documentary evidence.\n\n"
+
+        "When the corpus does not support part of the "
+        "requested design, record that gap in corpus_limits "
+        "instead of inventing content.\n\n"
 
         "Use the notes as immutable documentary objects. "
         "Do not rewrite, summarize, translate or omit "
@@ -473,6 +750,9 @@ def build_touch_notebook_organization_prompt(
         "Write only the organizational fields in the "
         "requested output language. The supplied note "
         "statements must remain untouched.\n\n"
+        "Do not produce recommendations or conclusions "
+        "that are not directly supported by the supplied "
+        "notes.\n\n"
 
         "Return only the required JSON object.\n\n"
 
