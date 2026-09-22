@@ -981,16 +981,6 @@ export default function TouchPage() {
               p-4
             "
           >
-
-          <div
-            className="
-              rounded-xl
-              border
-              border-gray-200
-              bg-white
-              p-4
-            "
-          >
             <label
               htmlFor="touch-report-language"
               className="
