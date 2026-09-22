@@ -528,6 +528,13 @@ entity_label.
 
 Return at least one precise search term.
 
+Return one explicit central_question.
+
+Return at least one research axis.
+
+Use only the allowed research_type, organization_mode and
+time_granularity values.
+
 Do not include Markdown fences.
 
 Do not include text outside the JSON object.
