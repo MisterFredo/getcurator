@@ -375,6 +375,35 @@ def _normalize_interpretation(
 
     )
 
+# ============================================================
+# VALIDATE PREPARED INTERPRETATION
+# ============================================================
+
+def validate_touch_research_interpretation(
+    brief: TouchResearchBrief,
+    interpretation: (
+        TouchResearchInterpretation
+    ),
+) -> TouchResearchInterpretation:
+
+    normalized_interpretation = (
+        _normalize_interpretation(
+            interpretation
+        )
+    )
+
+    _validate_interpretation(
+
+        brief=brief,
+
+        interpretation=(
+            normalized_interpretation
+        ),
+
+    )
+
+    return normalized_interpretation
+
 
 # ============================================================
 # BUILD RETRY PROMPT
