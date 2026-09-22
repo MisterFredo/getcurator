@@ -13,7 +13,7 @@ import Link from "next/link";
 
 import {
   useTouchResearch,
-} from "@/hooks/useTouchResearch";
+} from "@/hooks/useTouchResearch";ƒ
 
 import {
   useTouchGuidedResearch,
@@ -801,28 +801,69 @@ export default function TouchPage() {
   
     const preparedInterpretation:
       TouchResearchInterpretation = {
-  
+    
         subject:
           plan.subject,
-  
+    
         objective:
           plan.objective,
-  
+    
+        central_question:
+          plan.central_question,
+    
+        research_type:
+          plan.research_type,
+    
+        scope_summary:
+          plan.scope_summary,
+    
+        target_context:
+          plan.target_context,
+    
+        organization_mode:
+          plan.research_type === "EVOLUTION"
+            ? "CHRONOLOGICAL"
+            : "THEMATIC",
+    
+        time_granularity:
+          "AUTO",
+    
+        geographies:
+          [...plan.geographies],
+    
+        axes:
+          plan.axes.map(
+            axis => ({
+              ...axis,
+              search_terms:
+                [...axis.search_terms],
+            }),
+          ),
+    
+        assumptions:
+          [...plan.assumptions],
+    
+        editorial_cautions:
+          [...plan.editorial_cautions],
+    
+        missing_information:
+          [...plan.missing_information],
+    
         companies:
           entities.companies,
-  
+    
         solutions:
           entities.solutions,
-  
+    
         topics:
           entities.topics,
-  
+    
         search_terms:
           [...plan.search_terms],
-  
+    
         related_angles:
           [...plan.related_angles],
-  
+    
         response_message:
           reportLanguage === "fr"
             ? (
@@ -833,7 +874,7 @@ export default function TouchPage() {
                 "The validated guided research plan "
                 + "is being used to build the corpus."
               ),
-  
+    
       };
   
     setSelectedCompanies(
