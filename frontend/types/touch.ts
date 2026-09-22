@@ -881,6 +881,73 @@ export type TouchNotebookContribution = {
 };
 
 /* =========================================================
+   REPORT DESIGN
+========================================================= */
+
+export type TouchReportArchetype =
+  | "DOCUMENTARY_SYNTHESIS"
+  | "COMPARATIVE_ANALYSIS"
+  | "CROSS_CONTEXT_ANALYSIS";
+
+
+export type TouchReportOrganization =
+  | "THEMATIC"
+  | "CHRONOLOGICAL"
+  | "HYBRID";
+
+
+export type TouchReportTimeGranularity =
+  | "AUTO"
+  | "MONTH"
+  | "QUARTER"
+  | "YEAR";
+
+
+export type TouchNotebookReportDesign = {
+  report_archetype:
+    TouchReportArchetype;
+
+  organization_mode:
+    TouchReportOrganization;
+
+  time_granularity:
+    TouchReportTimeGranularity;
+
+  research_type:
+    TouchGuidedResearchType | null;
+
+  central_question:
+    string;
+
+  scope_summary:
+    string;
+
+  target_context:
+    string | null;
+
+  period_start:
+    string | null;
+
+  period_end:
+    string | null;
+
+  geographies:
+    string[];
+
+  axes:
+    TouchGuidedResearchAxis[];
+
+  assumptions:
+    string[];
+
+  editorial_cautions:
+    string[];
+
+  missing_information:
+    string[];
+};
+
+/* =========================================================
    NOTEBOOK REQUEST
 ========================================================= */
 
@@ -896,6 +963,9 @@ export type TouchNotebookRequest = {
     TouchNotebookContribution[];
 
   output_language: string;
+
+  report_design?:
+    TouchNotebookReportDesign;
 };
 
 /* =========================================================
