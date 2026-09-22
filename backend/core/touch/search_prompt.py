@@ -530,10 +530,13 @@ Return only one valid JSON object with this exact structure:
     {
       "axis_id": "axis_1",
       "axis_type": "CORE_SUBJECT",
-      "title": "Concise research axis title",
+      "label": "Concise research axis label",
       "objective": "Documentary objective of this axis",
       "search_terms": [
         "Short literal search term"
+      ],
+      "related_angles": [
+        "Specific adjacent angle for this axis"
       ]
     }
   ],
@@ -845,7 +848,7 @@ def build_touch_fallback_interpretation(
                 "axis_type":
                     "CORE_SUBJECT",
 
-                "title":
+                "label":
                     fallback_axis_title,
 
                 "objective":
@@ -853,6 +856,9 @@ def build_touch_fallback_interpretation(
 
                 "search_terms":
                     fallback_search_terms,
+
+                "related_angles":
+                    [],
 
             }
 
