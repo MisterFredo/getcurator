@@ -1122,7 +1122,21 @@ export default function TouchPage() {
                         outputLanguage={
                           reportLanguage
                         }
-          
+                      
+                        periodStart={
+                          periodStart
+                        }
+                        periodEnd={
+                          periodEnd
+                        }
+                      
+                        onPeriodStartChange={
+                          setPeriodStart
+                        }
+                        onPeriodEndChange={
+                          setPeriodEnd
+                        }
+                      
                         companyOptions={
                           companyOptions
                         }
@@ -1132,23 +1146,39 @@ export default function TouchPage() {
                         topicOptions={
                           topicOptions
                         }
-          
-                        loading={
-                          guidedResearch.loading
+                      
+                        selectedCompanies={
+                          selectedCompanies
                         }
-                        error={
-                          guidedResearch.error
+                        selectedSolutions={
+                          selectedSolutions
                         }
-                        outcome={
-                          guidedResearch.outcome
+                        selectedTopics={
+                          selectedTopics
                         }
-          
-                        onSubmit={
-                          guidedResearch.runGuidedResearch
+                      
+                        onCompaniesChange={
+                          setSelectedCompanies
                         }
-                        onValidate={
+                        onSolutionsChange={
+                          setSelectedSolutions
+                        }
+                        onTopicsChange={
+                          setSelectedTopics
+                        }
+                      
+                        guided={
+                          guidedResearch
+                        }
+                      
+                        onValidatePlan={
                           handleValidateGuidedPlan
                         }
+                      
+                        validating={
+                          loading
+                        }
+                      
                         onReset={
                           handleReset
                         }
