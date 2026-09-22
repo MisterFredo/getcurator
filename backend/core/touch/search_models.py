@@ -186,6 +186,10 @@ class TouchResearchAxis(
 # INTERPRETED RESEARCH QUERY
 # ============================================================
 
+# ============================================================
+# INTERPRETED RESEARCH QUERY
+# ============================================================
+
 class TouchResearchInterpretation(
     StrictTouchSearchModel,
 ):
@@ -204,15 +208,12 @@ class TouchResearchInterpretation(
 
     target_context: str | None = None
 
-    organization_mode:
-        TouchReportOrganization = (
-            "THEMATIC"
-        )
+    organization_mode: (
+        TouchReportOrganization
+    ) = "THEMATIC"
 
-    time_granularity:
-        TouchReportTimeGranularity = (
-            "AUTO"
-        )
+    time_granularity: (TouchReportTimeGranularity
+    ) = "AUTO"
 
     geographies: list[str] = Field(
         default_factory=list,
