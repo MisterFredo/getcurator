@@ -40,7 +40,7 @@ DEFAULT_TOUCH_TOTAL_CANDIDATE_LIMIT = 100
 
 DEFAULT_TOUCH_MAX_CORE_ENTITIES = 12
 
-DEFAULT_TOUCH_MAX_SEARCH_TERMS = 10
+DEFAULT_TOUCH_MAX_SEARCH_TERMS = 16
 
 DEFAULT_TOUCH_MAX_RELATED_ANGLES = 6
 
@@ -946,6 +946,28 @@ def build_touch_candidates(
     # ========================================================
 
     _add_search_term_pools(
+
+        brief=brief,
+
+        interpretation=interpretation,
+
+        language=language,
+
+        limit_per_pool=(
+            candidate_limit_per_pool
+        ),
+
+        pools=pools,
+
+        errors=errors,
+
+    )
+
+    # ========================================================
+    # RELATED ANGLE POOLS
+    # ========================================================
+
+    _add_related_angle_pools(
 
         brief=brief,
 
