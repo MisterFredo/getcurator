@@ -735,33 +735,41 @@ export default function TouchNotebookDocument({
   sources,
 }: Props) {
 
-  const usedSourceContentIds =
+  const citedSourceContentIds =
     new Set(
       notebook.notes.flatMap(
         note =>
           note.source_content_ids,
       ),
     );
-
-  const documentSources =
+  
+  const citedSources =
     sources.filter(
       source =>
-        usedSourceContentIds.has(
+        citedSourceContentIds.has(
           source.content_id,
         ),
     );
-
+  
+  const additionalReviewedSources =
+    sources.filter(
+      source =>
+        !citedSourceContentIds.has(
+          source.content_id,
+        ),
+    );
+  
   const sourceNumberById = (
     new Map(
-      documentSources.map(
+      citedSources.map(
         (
           source,
           index,
         ) => [
-
+  
           source.content_id,
           index + 1,
-
+  
         ],
       ),
     )
@@ -885,14 +893,17 @@ export default function TouchNotebookDocument({
             print:text-slate-500
           "
         >
-          {documentSources.length}
-          {" sources · "}
-
+          {sources.length}
+          {" documents reviewed · "}
+          
+          {citedSources.length}
+          {" sources cited · "}
+          
           {notebook.sections.length}
           {" sections · "}
-
+          
           {notebook.notes.length}
-          {" notes · "}
+          {" evidence notes · "}
 
           {
             new Intl.DateTimeFormat(
@@ -1584,7 +1595,7 @@ export default function TouchNotebookDocument({
         {/* ================================================= */}
 
         <DocumentSection
-          title="Sources"
+          title="Sources cited in the report"
           className="print:break-before-page"
         >
 
@@ -1598,7 +1609,7 @@ export default function TouchNotebookDocument({
             "
           >
 
-            {documentSources.map(
+            {citedSources.map(
               (
                 source,
                 index,
@@ -1719,6 +1730,128 @@ export default function TouchNotebookDocument({
           </ol>
 
         </DocumentSection>
+        {additionalReviewedSources.length > 0 && (
+
+          <DocumentSection
+            title="Additional documents reviewed"
+          >
+        
+            <p
+              className="
+                mb-4
+                max-w-3xl
+                text-xs
+                leading-5
+                text-slate-500
+              "
+            >
+              These documents were retained in the
+              validated research corpus but are not cited
+              individually after evidence consolidation and
+              editorial deduplication.
+            </p>
+        
+            <ul
+              className="
+                grid
+                gap-x-6
+                gap-y-2
+                md:grid-cols-2
+                print:grid-cols-2
+              "
+            >
+        
+              {additionalReviewedSources.map(
+                source => {
+        
+                  const publishedAt =
+                    formatDate(
+                      source.published_at,
+                    );
+        
+                  return (
+        
+                    <li
+                      key={
+                        source.content_id
+                      }
+                      className="
+                        break-inside-avoid
+                        border-b
+                        border-slate-200
+                        py-2
+                      "
+                    >
+        
+                      {source.source_url ? (
+        
+                        <a
+                          href={
+                            source.source_url
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="
+                            text-xs
+                            font-semibold
+                            leading-5
+                            text-slate-700
+                            no-underline
+                            hover:text-blue-700
+                          "
+                        >
+                          {source.title}
+                        </a>
+        
+                      ) : (
+        
+                        <p
+                          className="
+                            text-xs
+                            font-semibold
+                            leading-5
+                            text-slate-700
+                          "
+                        >
+                          {source.title}
+                        </p>
+        
+                      )}
+        
+                      <p
+                        className="
+                          mt-0.5
+                          text-[10px]
+                          leading-4
+                          text-slate-400
+                        "
+                      >
+                        {
+                          [
+                            source.source_title,
+                            publishedAt,
+                          ]
+                            .filter(
+                              Boolean,
+                            )
+                            .join(
+                              " · ",
+                            )
+                        }
+                      </p>
+        
+                    </li>
+        
+                  );
+        
+                },
+              )}
+        
+            </ul>
+        
+          </DocumentSection>
+        
+        )}
 
       </div>
 
