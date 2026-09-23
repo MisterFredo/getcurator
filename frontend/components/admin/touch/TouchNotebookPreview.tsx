@@ -989,37 +989,44 @@ export default function TouchNotebookPreview({
   sourceContentIds,
 }: Props) {
 
-  const usedSourceContentIds =
+const corpusSourceContentIds =
+  Array.from(
     new Set(
-      notebook.notes.flatMap(
-        note =>
-          note.source_content_ids,
-      ),
-    );
-
-  const displayedSourceContentIds =
-    sourceContentIds.filter(
-      contentId =>
-        usedSourceContentIds.has(
-          contentId,
-        ),
-    );
-
-  const sourceNumberById = (
-    new Map(
-      displayedSourceContentIds.map(
-        (
-          contentId,
-          index,
-        ) => [
-
-          contentId,
-          index + 1,
-
-        ],
-      ),
-    )
+      sourceContentIds,
+    ),
   );
+
+const citedSourceContentIds =
+  new Set(
+    notebook.notes.flatMap(
+      note =>
+        note.source_content_ids,
+    ),
+  );
+
+const displayedSourceContentIds =
+  corpusSourceContentIds.filter(
+    contentId =>
+      citedSourceContentIds.has(
+        contentId,
+      ),
+  );
+
+const sourceNumberById = (
+  new Map(
+    displayedSourceContentIds.map(
+      (
+        contentId,
+        index,
+      ) => [
+
+        contentId,
+        index + 1,
+
+      ],
+    ),
+  )
+);
 
   const noteById = (
     new Map(
@@ -1131,6 +1138,38 @@ return (
 
           <div className="flex flex-wrap gap-2">
 
+            <span
+              className="
+                rounded-full
+                bg-blue-50
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-blue-700
+              "
+            >
+              {corpusSourceContentIds.length}
+              {" "}
+              documents reviewed
+            </span>
+            
+            <span
+              className="
+                rounded-full
+                bg-blue-50
+                px-3
+                py-1.5
+                text-xs
+                font-medium
+                text-blue-700
+              "
+            >
+              {displayedSourceContentIds.length}
+              {" "}
+              sources cited
+            </span>
+            
             <span
               className="
                 rounded-full
