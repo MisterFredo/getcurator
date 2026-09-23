@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from typing import (
     Any,
     Optional,
@@ -575,6 +578,211 @@ def _normalize_organization_payload(
 
     }
 
+# ============================================================
+# NORMALIZE COMPARATIVE LABEL
+# ============================================================
+
+def _normalize_comparative_label(
+    value: str,
+) -> str:
+
+    normalized = unicodedata.normalize(
+        "NFKD",
+        value or "",
+    )
+
+    normalized = "".join(
+
+        character
+
+        for character in normalized
+
+        if not unicodedata.combining(
+            character
+        )
+
+    )
+
+    normalized = normalized.lower()
+
+    normalized = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        normalized,
+    )
+
+    return " ".join(
+        normalized.split()
+    )
+
+
+# ============================================================
+# GET COMPARATIVE SUBJECT MARKERS
+# ============================================================
+
+def _get_comparative_subject_markers(
+    request: TouchNotebookRequest,
+) -> list[str]:
+
+    markers: list[str] = []
+
+    for axis in request.report_design.axes:
+
+        if axis.axis_type != "CORE_SUBJECT":
+
+            continue
+
+        candidate = ""
+
+        if axis.search_terms:
+
+            candidate = (
+                axis.search_terms[0]
+            )
+
+        if not candidate:
+
+            candidate = axis.label
+
+        normalized_candidate = (
+            _normalize_comparative_label(
+                candidate
+            )
+        )
+
+        if (
+            normalized_candidate
+            and normalized_candidate
+            not in markers
+        ):
+
+            markers.append(
+                normalized_candidate
+            )
+
+    return markers
+
+
+# ============================================================
+# VALIDATE COMPARATIVE ORGANIZATION
+# ============================================================
+
+def _validate_comparative_organization(
+    request: TouchNotebookRequest,
+    organization:
+        TouchNotebookOrganizationResult,
+) -> None:
+
+    if (
+        request
+        .report_design
+        .report_archetype
+        != "COMPARATIVE_ANALYSIS"
+    ):
+
+        return
+
+    if len(
+        organization.sections
+    ) < 2:
+
+        raise ValueError(
+            "COMPARATIVE_STRUCTURE_INVALID: "
+            "A comparative report requires several "
+            "shared analytical dimensions."
+        )
+
+    subject_markers = (
+        _get_comparative_subject_markers(
+            request
+        )
+    )
+
+    if len(subject_markers) < 2:
+
+        return
+
+    actor_specific_sections: list[str] = []
+
+    generic_comparison_sections: list[str] = []
+
+    for section in organization.sections:
+
+        normalized_title = (
+            _normalize_comparative_label(
+                section.title
+            )
+        )
+
+        matched_markers = [
+
+            marker
+
+            for marker in subject_markers
+
+            if marker in normalized_title
+
+        ]
+
+        # A section naming only one compared subject is
+        # an actor profile, not a comparative dimension.
+        if len(matched_markers) == 1:
+
+            actor_specific_sections.append(
+                section.title
+            )
+
+        title_words = (
+            normalized_title.split()
+        )
+
+        if (
+            title_words
+            and title_words[0]
+            in {
+                "comparison",
+                "comparaison",
+                "comparative",
+                "comparatif",
+            }
+            and len(title_words) <= 5
+        ):
+
+            generic_comparison_sections.append(
+                section.title
+            )
+
+    if actor_specific_sections:
+
+        raise ValueError(
+            "COMPARATIVE_STRUCTURE_INVALID: "
+            "The documentary plan contains sections "
+            "organized around only one compared subject: "
+            + ", ".join(
+                actor_specific_sections
+            )
+            + ". Rebuild the entire plan around shared "
+            "analytical dimensions. Each section must "
+            "compare the supplied subjects on one common "
+            "dimension, or explicitly document an evidence "
+            "imbalance. Do not create separate subject "
+            "profiles."
+        )
+
+    if generic_comparison_sections:
+
+        raise ValueError(
+            "COMPARATIVE_STRUCTURE_INVALID: "
+            "The documentary plan contains a generic "
+            "comparison section: "
+            + ", ".join(
+                generic_comparison_sections
+            )
+            + ". Comparison must structure the whole "
+            "notebook through shared dimensions, not be "
+            "isolated in one final section."
+        )
+
 
 # ============================================================
 # BUILD NOTEBOOK
@@ -730,7 +938,12 @@ def organize_notebook(
                     normalized_payload
                 )
             )
-
+            
+            _validate_comparative_organization(
+                request=request,
+                organization=organization,
+            )
+            
             return _build_notebook(
 
                 request=request,
