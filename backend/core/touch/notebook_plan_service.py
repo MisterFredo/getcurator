@@ -852,85 +852,104 @@ def repair_documentary_plan(
     # TIMELINE
     # ========================================================
     
-    repaired_timeline = [
+    repaired_timeline = []
     
-        item.model_copy(
-            update={
+    for item in notebook.timeline:
     
-                "event_id":
-                    (
-                        item.event_id
+        if not item.date:
     
-                        if (
-                            item.event_id
-                            in final_event_ids
-                        )
+            continue
     
-                        else None
-                    ),
+        valid_item_event_id = (
     
-                "note_ids": [
+            item.event_id
     
-                    note_id
+            if (
+                item.event_id
+                and item.event_id
+                in final_event_ids
+            )
     
-                    for note_id
-                    in item.note_ids
+            else None
     
-                    if (
-                        note_id
-                        in final_note_ids
-                    )
-    
-                ],
-    
-                "source_content_ids":
-                    unique_ids([
-    
-                        content_id
-    
-                        for note_id
-                        in item.note_ids
-    
-                        if note_id in final_note_ids
-    
-                        for content_id
-                        in notes_by_id[
-                            note_id
-                        ].source_content_ids
-    
-                    ]),
-    
-            },
         )
     
-        for item in notebook.timeline
+        valid_item_note_ids = [
+    
+            note_id
+    
+            for note_id in item.note_ids
+    
+            if note_id in final_note_ids
+    
+        ]
     
         if (
-            item.date
+            valid_item_event_id is None
+            and not valid_item_note_ids
+        ):
     
-            and (
+            continue
     
-                (
-                    item.event_id
+        timeline_source_ids: set[str] = set()
     
-                    and item.event_id
-                    in final_event_ids
-                )
+        if valid_item_event_id:
     
-                or any(
+            timeline_event = (
+                final_events_by_id[
+                    valid_item_event_id
+                ]
+            )
     
-                    note_id
-                    in final_note_ids
+            timeline_source_ids.update(
     
-                    for note_id
-                    in item.note_ids
-    
+                _event_sources(
+                    timeline_event,
+                    notes_by_id,
                 )
     
             )
+    
+        for note_id in valid_item_note_ids:
+    
+            timeline_source_ids.update(
+    
+                notes_by_id[
+                    note_id
+                ].source_content_ids
+    
+            )
+    
+        repaired_timeline.append(
+    
+            item.model_copy(
+                update={
+    
+                    "event_id":
+                        valid_item_event_id,
+    
+                    "note_ids":
+                        valid_item_note_ids,
+    
+                    "source_content_ids":
+                        unique_ids(
+                            list(
+                                timeline_source_ids
+                            )
+                        ),
+    
+                },
+            )
+    
         )
     
-    ]
+    
+    repaired_timeline.sort(
+        key=lambda item:
+            _timeline_sort_key(
+                item.date
+            )
+    )
 
     # ========================================================
     # CONTRADICTIONS
@@ -984,6 +1003,33 @@ def repair_documentary_plan(
             )
     
         )
+
+    return notebook.model_copy(
+        update={
+
+            "sections":
+                repaired_sections,
+
+            "notes":
+                final_notes,
+
+            "events":
+                final_events,
+
+            "timeline":
+                repaired_timeline,
+
+            "dimensions":
+                [],
+
+            "quarantined_numbers":
+                [],
+
+            "contradictions":
+                repaired_contradictions,
+
+        },
+    )
 
 
 # ============================================================
