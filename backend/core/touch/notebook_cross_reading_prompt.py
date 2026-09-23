@@ -36,8 +36,27 @@ You must not prescribe actions.
 PURPOSE
 ============================================================
 
-A cross-reading connects several documentary observations to
-make the corpus easier to interpret.
+A cross-reading connects documentary observations that belong
+to different actors, markets, sectors, mechanisms or research
+contexts.
+
+Its purpose is to help the reader understand:
+
+- what is genuinely shared;
+- what is materially different;
+- which documented conditions may matter;
+- which documented constraints limit the comparison;
+- which connection required by the research question remains
+  unsupported.
+
+A cross-reading is not:
+
+- a summary of one note;
+- a reformulation of one notebook section;
+- a generic market observation;
+- a recommendation;
+- an opportunity claim;
+- proof of transferability.
 
 Allowed reading types are:
 
@@ -47,13 +66,77 @@ Allowed reading types are:
 - FRICTION;
 - EVIDENCE_GAP.
 
-A cross-reading may identify:
 
-- a documented mechanism appearing in several contexts;
-- a material difference between compared actors or contexts;
-- a documented condition that may facilitate a mechanism;
-- a documented constraint or incompatibility;
-- an important missing connection in the corpus.
+============================================================
+CENTRAL QUESTION
+============================================================
+
+Every reading must help answer the subject and objective of the
+research request.
+
+Do not generate a reading merely because two supplied notes can
+be compared.
+
+Prioritize the relationships explicitly requested by the
+research objective.
+
+For example, when the objective asks whether developments in
+one market, company or sector may be relevant to a target
+company or target context:
+
+- distinguish evidence about the observed market or source
+  context;
+- distinguish evidence about the target company or context;
+- distinguish direct target evidence from sector proxies;
+- assess only the documented relationship between them;
+- identify the missing relationship when it is not documented.
+
+A comparison between secondary dimensions must not replace the
+main relationship requested by the research objective.
+
+
+============================================================
+SOURCE, TARGET AND PROXY EVIDENCE
+============================================================
+
+Before producing the readings, identify internally:
+
+1. The SOURCE CONTEXT:
+   the company, market, mechanism or set of innovations being
+   examined.
+
+2. The TARGET CONTEXT:
+   the company, sector, geography or operating environment for
+   which relevance is being investigated.
+
+3. PROXY EVIDENCE:
+   evidence concerning another company, brand or sector actor
+   that may illuminate the target context without documenting
+   the target itself.
+
+Do not present proxy evidence as direct evidence about the
+target.
+
+Examples:
+
+- evidence about Brown-Forman is not evidence about Moet
+  Hennessy;
+- evidence about Mexican spirits demand is not evidence about
+  Moet Hennessy's capabilities;
+- evidence about a payment infrastructure in Brazil is not an
+  enabling condition for a target company unless the supplied
+  notes document the relevant connection;
+- evidence about a mechanism in another geography is not
+  evidence that the mechanism applies in the requested
+  geography.
+
+When proxy evidence is analytically useful:
+
+- identify it as sector, competitor or contextual evidence;
+- avoid attributing its capabilities, results or constraints to
+  the target;
+- normally use MEDIUM or LOW confidence;
+- state the remaining uncertainty when necessary.
 
 
 ============================================================
@@ -75,12 +158,27 @@ Do not invent:
 - a market condition;
 - a constraint;
 - transferability;
+- applicability;
+- an opportunity;
 - a recommendation.
 
 Do not claim that a practice is transferable merely because two
 contexts share a characteristic.
 
 Do not turn thematic similarity into documented equivalence.
+
+Do not infer that a target company possesses a capability merely
+because that capability would be useful.
+
+Do not infer that a market development represents an opportunity
+for the target unless the notes document both:
+
+- the market development;
+- a relevant target capability, activity, position or exposure.
+
+When only the first element is documented, use EVIDENCE_GAP or
+describe the evidence as a contextual signal rather than a
+target opportunity.
 
 
 ============================================================
@@ -89,46 +187,95 @@ READING TYPES
 
 CONVERGENCE
 
-Use when supplied notes document a meaningful common mechanism,
-practice, condition or development across the compared subjects
-or contexts.
+Use only when supplied notes document a meaningful common
+mechanism, practice, condition or development across at least
+two distinct actors or contexts.
 
 A convergence is not proof of transferability.
+
+A convergence should normally reference at least two notes from
+different actors, markets, sectors or documentary dimensions.
 
 
 DIFFERENCE
 
-Use when supplied notes document a meaningful difference in
-mechanism, channel, objective, geography, maturity or operating
-condition.
+Use when supplied notes document a meaningful difference in:
+
+- mechanism;
+- channel;
+- objective;
+- geography;
+- maturity;
+- customer behavior;
+- operating condition;
+- regulatory environment;
+- business model.
+
+A difference should normally reference at least two notes
+representing the compared sides.
 
 
 ENABLING_CONDITION
 
-Use when the supplied notes document an existing capability,
-asset, practice or condition that could be relevant to the
-research question.
+Use only when the supplied notes document an existing
+capability, asset, infrastructure, practice or operating
+condition that is directly relevant to the central research
+question.
+
+For a target-specific research question, the condition must be
+documented either:
+
+- in the target context;
+- or in the market in which the target would operate.
+
+Do not call a general innovation an enabling condition merely
+because it appears useful.
 
 The formulation must remain conditional.
 
-Do not convert an enabling condition into a recommendation.
+Do not convert an enabling condition into a recommendation or
+opportunity claim.
 
 
 FRICTION
 
 Use when supplied notes document a structural, operational,
-commercial, regulatory or strategic constraint affecting the
-comparison.
+commercial, regulatory, behavioral or strategic constraint
+affecting the relationship examined by the research question.
+
+A friction must explain what documented connection, mechanism
+or context it constrains.
+
+Do not describe an isolated market fact as a friction unless its
+constraining role is supported by the notes.
 
 
 EVIDENCE_GAP
 
-Use when the corpus documents one side or one mechanism but does
-not establish the corresponding evidence required by the central
-question.
+Use when the corpus documents one side of the research question
+but does not establish the corresponding evidence needed to
+support the requested relationship.
 
-State precisely what the corpus establishes and what it does not
-establish.
+An evidence gap may identify that:
+
+- the source mechanism is documented but the target capability
+  is not;
+- the target context is documented but the source mechanism is
+  not;
+- one geography is materially less documented;
+- sector proxy evidence exists but direct target evidence does
+  not;
+- a possible relationship is suggested but not established.
+
+State precisely:
+
+1. what the supplied notes establish;
+2. what the supplied corpus does not establish.
+
+Do not speculate about the missing answer.
+
+An EVIDENCE_GAP may reference one or more notes documenting the
+available side of the question.
 
 
 ============================================================
@@ -137,19 +284,39 @@ CROSS-CONTEXT REQUIREMENTS
 
 For CROSS_CONTEXT_ANALYSIS:
 
-- prefer readings that connect source-subject evidence with
+- prioritize readings that connect source-context evidence with
   target-context evidence;
-- distinguish platform or mechanism evidence from evidence about
-  the source and target actors;
-- preserve differences between sectors and operating contexts;
+- distinguish direct target evidence from sector or competitor
+  proxies;
+- preserve differences between sectors, countries and operating
+  contexts;
 - explicitly qualify uncertainty;
-- do not produce a recommendation.
+- do not produce recommendations;
+- do not use headings such as "Opportunity for [target]" unless
+  the supplied notes directly document that opportunity;
+- do not let a secondary country comparison replace the
+  requested source-to-target relationship.
 
-A CONVERGENCE, DIFFERENCE, ENABLING_CONDITION or FRICTION should
-normally reference at least two notes.
+A CONVERGENCE, DIFFERENCE, ENABLING_CONDITION or FRICTION must
+normally reference at least two notes representing distinct
+contexts.
 
-When possible, those notes should represent different actors,
-contexts or documentary dimensions.
+If the target context is named in the objective:
+
+- include at least one legitimate reading involving that target
+  context when direct supporting evidence exists;
+- otherwise include an EVIDENCE_GAP explaining that the source
+  or market evidence is documented but its relevance to the
+  target is not established.
+
+Do not manufacture a target-related reading merely to satisfy
+this requirement.
+
+If the corpus contains only proxy evidence for the target:
+
+- label the evidence as proxy or sector evidence;
+- do not attribute it to the target;
+- do not use HIGH confidence for the target relationship.
 
 
 ============================================================
@@ -158,11 +325,80 @@ COMPARATIVE REQUIREMENTS
 
 For COMPARATIVE_ANALYSIS:
 
-- compare the supplied actors or approaches against common
+- compare supplied actors, markets or approaches against common
   documentary dimensions;
 - do not force symmetry;
 - identify evidence imbalance when one side is less documented;
-- do not infer superiority without supported evidence.
+- do not infer superiority without supported evidence;
+- avoid comparing facts that do not address the central
+  objective.
+
+When one compared side is insufficiently documented, prefer an
+EVIDENCE_GAP over an artificial comparison.
+
+
+============================================================
+DOCUMENTARY SYNTHESIS
+============================================================
+
+For DOCUMENTARY_SYNTHESIS:
+
+- return readings only when the objective explicitly requires a
+  relationship between documented contexts;
+- do not create cross-readings merely to add an analytical
+  section;
+- return an empty list when the report is purely descriptive and
+  the supplied evidence does not support a legitimate
+  cross-reading.
+
+
+============================================================
+GEOGRAPHIC AND SCOPE DISCIPLINE
+============================================================
+
+Respect the geographies and contexts defined by the research
+request and report design.
+
+Do not use evidence from an unrelated geography to support a
+market-specific reading unless:
+
+- the research objective explicitly requests an external
+  comparison;
+- or the note is explicitly used as proxy evidence and its
+  limitation is stated.
+
+Do not elevate an out-of-scope example into a cross-reading.
+
+
+============================================================
+CONFIDENCE
+============================================================
+
+Use HIGH confidence only when:
+
+- every material element is directly documented;
+- the compared contexts are both represented;
+- the relationship does not depend on proxy evidence;
+- the statement contains no inferred target applicability.
+
+Use MEDIUM confidence when:
+
+- the notes support the comparison;
+- but part of the interpretation relies on sector or competitor
+  proxy evidence;
+- or the relationship is indirect but still documentary.
+
+Use LOW confidence when:
+
+- the available evidence is materially imbalanced;
+- the reading mainly identifies a weakly supported relationship;
+- or the corpus establishes only one side of the central
+  question.
+
+An EVIDENCE_GAP will normally use MEDIUM or LOW confidence.
+
+Confidence measures the strength of the cross-reading, not the
+individual quality of the underlying source.
 
 
 ============================================================
@@ -177,13 +413,30 @@ Each reading must:
 - use one or two concise sentences;
 - remain understandable without the full notebook;
 - distinguish evidence from uncertainty;
-- use the requested output language;
-- avoid repeating a single evidence note.
+- identify proxy evidence when applicable;
+- directly contribute to the central research objective;
+- use the requested output language.
 
-Return at most six readings.
+Do not:
 
-Return an empty list when the evidence does not support a
-legitimate cross-reading.
+- repeat one evidence note as an analytical reading;
+- summarize a notebook section;
+- create several readings from the same relationship;
+- produce a generic country comparison unrelated to the target;
+- call a market signal an opportunity for a named company;
+- reuse the same note combination across several readings.
+
+Return between two and six readings when legitimate
+cross-readings are supported.
+
+Return one reading when only one legitimate relationship is
+supported.
+
+Return an empty list when no legitimate relationship is
+supported.
+
+Do not create weak readings merely to fill the analytical
+section.
 
 
 ============================================================
@@ -246,6 +499,9 @@ def _serialize_note(
         "statement":
             note.statement,
 
+        "explanation":
+            note.explanation,
+
         "actors":
             note.actors,
 
@@ -307,6 +563,9 @@ def build_touch_notebook_cross_reading_prompt(
                     "title":
                         section.title,
 
+                    "description":
+                        section.description,
+
                     "event_ids":
                         section.event_ids,
 
@@ -326,6 +585,12 @@ def build_touch_notebook_cross_reading_prompt(
 
                     "title":
                         event.title,
+
+                    "description":
+                        event.description,
+
+                    "actors":
+                        event.actors,
 
                     "note_ids":
                         event.note_ids,
@@ -359,10 +624,20 @@ def build_touch_notebook_cross_reading_prompt(
         "Build a small set of evidence-grounded analytical "
         "cross-readings from the supplied notebook.\n\n"
 
+        "First identify the central relationship requested "
+        "between the source context and any target context.\n\n"
+
+        "Distinguish direct target evidence from sector or "
+        "competitor proxy evidence.\n\n"
+
         "Use only the supplied evidence notes.\n\n"
 
-        "Do not produce recommendations or prescribe "
-        "actions.\n\n"
+        "Do not produce recommendations, prescribe actions or "
+        "label an unsupported market signal as an opportunity "
+        "for the target.\n\n"
+
+        "If the target relationship is not documented, return "
+        "an EVIDENCE_GAP rather than inventing applicability.\n\n"
 
         "Every factual clause must be supported by the "
         "referenced note_ids.\n\n"
