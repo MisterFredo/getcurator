@@ -49,6 +49,10 @@ from core.touch.notebook_utils import (
     unique_ids,
 )
 
+from core.touch.notebook_cross_reading_service import (
+    build_notebook_cross_readings,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -425,7 +429,25 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 7. BUILD EVIDENCE-GROUNDED EXECUTIVE SUMMARY
+        # 7. BUILD EVIDENCE-GROUNDED CROSS READINGS
+        # ====================================================
+        
+        notebook = build_notebook_cross_readings(
+        
+            request=normalized_request,
+        
+            notebook=notebook,
+        
+            model=model,
+        
+            max_attempts=(
+                DEFAULT_TOUCH_NOTEBOOK_ATTEMPTS
+            ),
+        
+        )
+
+        # ====================================================
+        # 8. BUILD EVIDENCE-GROUNDED EXECUTIVE SUMMARY
         # ====================================================
 
         notebook = build_notebook_executive_summary(
@@ -438,7 +460,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 8. VALIDATE SUMMARY REFERENCES AND SOURCES
+        # 9. VALIDATE SUMMARY REFERENCES AND SOURCES
         # ====================================================
 
         validate_executive_summary(
@@ -449,7 +471,7 @@ def build_touch_notebook(
         )
 
         # ====================================================
-        # 9. CREATE OR REPLACE SAVED REPORT
+        # 10. CREATE OR REPLACE SAVED REPORT
         # ====================================================
 
         report_id = save_touch_report(
