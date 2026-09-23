@@ -735,9 +735,25 @@ export default function TouchNotebookDocument({
   sources,
 }: Props) {
 
+  const usedSourceContentIds =
+    new Set(
+      notebook.notes.flatMap(
+        note =>
+          note.source_content_ids,
+      ),
+    );
+
+  const documentSources =
+    sources.filter(
+      source =>
+        usedSourceContentIds.has(
+          source.content_id,
+        ),
+    );
+
   const sourceNumberById = (
     new Map(
-      sources.map(
+      documentSources.map(
         (
           source,
           index,
@@ -768,10 +784,10 @@ export default function TouchNotebookDocument({
     new Map(
       notebook.events.map(
         event => [
-  
+
           event.event_id,
           event,
-  
+
         ],
       ),
     )
@@ -780,7 +796,7 @@ export default function TouchNotebookDocument({
   const crossReadings =
     notebook.cross_readings
     ?? [];
-  
+
   return (
 
     <article
@@ -802,7 +818,6 @@ export default function TouchNotebookDocument({
         print:shadow-none
       "
     >
-
       {/* ================================================= */}
       {/* HEADER */}
       {/* ================================================= */}
@@ -870,7 +885,7 @@ export default function TouchNotebookDocument({
             print:text-slate-500
           "
         >
-          {sources.length}
+          {documentSources.length}
           {" sources · "}
 
           {notebook.sections.length}
@@ -1583,7 +1598,7 @@ export default function TouchNotebookDocument({
             "
           >
 
-            {sources.map(
+            {documentSources.map(
               (
                 source,
                 index,
