@@ -778,191 +778,212 @@ def repair_documentary_plan(
             )
 
     # ========================================================
-    # FALLBACK SECTION
+    # FINAL DOCUMENTARY REGISTRY
     # ========================================================
-
-    if (
-        unresolved_event_ids
-        or unresolved_note_ids
-    ):
-
-        existing_ids = {
-
-            section.section_id
-
-            for section
-            in repaired_sections
-
-        }
-
-        fallback_id = (
-            "section-documentary-references"
+    
+    # Items that could not be attached to a meaningful section
+    # are excluded from the final notebook instead of being
+    # placed in a generic catch-all section.
+    
+    placed_event_ids = {
+    
+        event_id
+    
+        for section in repaired_sections
+    
+        for event_id in section.event_ids
+    
+    }
+    
+    final_events = [
+    
+        event
+    
+        for event in repaired_events
+    
+        if event.event_id in placed_event_ids
+    
+    ]
+    
+    final_events_by_id = {
+    
+        event.event_id:
+            event
+    
+        for event in final_events
+    
+    }
+    
+    placed_note_ids = {
+    
+        note_id
+    
+        for section in repaired_sections
+    
+        for note_id in section.note_ids
+    
+    }
+    
+    for event in final_events:
+    
+        placed_note_ids.update(
+            event.note_ids
         )
-
-        suffix = 1
-
-        while fallback_id in existing_ids:
-
-            suffix += 1
-
-            fallback_id = (
-                "section-documentary-references-"
-                f"{suffix}"
-            )
-
-        repaired_sections.append(
-
-            TouchNotebookSection(
-
-                section_id=
-                    fallback_id,
-
-                title=(
-                    "Additional References"
-                ),
-
-                description="",
-
-                event_ids=
-                    unresolved_event_ids,
-
-                note_ids=
-                    unresolved_note_ids,
-
-                number_ids=[],
-
-            )
-
-        )
+    
+    final_notes = [
+    
+        note
+    
+        for note in notebook.notes
+    
+        if note.note_id in placed_note_ids
+    
+    ]
+    
+    final_note_ids = set(
+        placed_note_ids
+    )
+    
+    final_event_ids = set(
+        placed_event_ids
+    )
 
     # ========================================================
     # TIMELINE
     # ========================================================
-
+    
     repaired_timeline = [
-
+    
         item.model_copy(
             update={
-
+    
                 "event_id":
                     (
                         item.event_id
-
+    
                         if (
                             item.event_id
-                            in valid_event_ids
+                            in final_event_ids
                         )
-
+    
                         else None
                     ),
-
+    
                 "note_ids": [
-
+    
                     note_id
-
+    
                     for note_id
                     in item.note_ids
-
+    
                     if (
                         note_id
-                        in valid_note_ids
+                        in final_note_ids
                     )
-
+    
                 ],
-
+    
+                "source_content_ids":
+                    unique_ids([
+    
+                        content_id
+    
+                        for note_id
+                        in item.note_ids
+    
+                        if note_id in final_note_ids
+    
+                        for content_id
+                        in notes_by_id[
+                            note_id
+                        ].source_content_ids
+    
+                    ]),
+    
             },
         )
-
+    
         for item in notebook.timeline
-
+    
         if (
             item.date
-
+    
             and (
-
+    
                 (
                     item.event_id
-
+    
                     and item.event_id
-                    in valid_event_ids
+                    in final_event_ids
                 )
-
+    
                 or any(
-
+    
                     note_id
-                    in valid_note_ids
-
+                    in final_note_ids
+    
                     for note_id
                     in item.note_ids
-
+    
                 )
-
+    
             )
         )
-
+    
     ]
-
-    repaired_timeline.sort(
-        key=lambda item:
-            _timeline_sort_key(
-                item.date
-            )
-    )
 
     # ========================================================
     # CONTRADICTIONS
     # ========================================================
-
-    repaired_contradictions = [
-
-        contradiction.model_copy(
-            update={
-
-                "note_ids": [
-
-                    note_id
-
-                    for note_id
-                    in contradiction.note_ids
-
-                    if (
-                        note_id
-                        in valid_note_ids
-                    )
-
-                ],
-
-            },
+    
+    repaired_contradictions = []
+    
+    for contradiction in notebook.contradictions:
+    
+        contradiction_note_ids = [
+    
+            note_id
+    
+            for note_id
+            in contradiction.note_ids
+    
+            if note_id in final_note_ids
+    
+        ]
+    
+        if not contradiction_note_ids:
+    
+            continue
+    
+        contradiction_source_ids = unique_ids([
+    
+            content_id
+    
+            for note_id
+            in contradiction_note_ids
+    
+            for content_id
+            in notes_by_id[
+                note_id
+            ].source_content_ids
+    
+        ])
+    
+        repaired_contradictions.append(
+    
+            contradiction.model_copy(
+                update={
+    
+                    "note_ids":
+                        contradiction_note_ids,
+    
+                    "source_content_ids":
+                        contradiction_source_ids,
+    
+                },
+            )
+    
         )
-
-        for contradiction
-        in notebook.contradictions
-
-    ]
-
-    return notebook.model_copy(
-        update={
-
-            "sections":
-                repaired_sections,
-
-            "events":
-                repaired_events,
-
-            "timeline":
-                repaired_timeline,
-
-            "dimensions":
-                [],
-
-            "quarantined_numbers":
-                [],
-
-            "contradictions":
-                repaired_contradictions,
-
-        },
-    )
 
 
 # ============================================================
