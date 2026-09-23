@@ -95,6 +95,14 @@ TouchNotebookAxisType = Literal[
     "OTHER",
 ]
 
+TouchCrossReadingType = Literal[
+    "CONVERGENCE",
+    "DIFFERENCE",
+    "ENABLING_CONDITION",
+    "FRICTION",
+    "EVIDENCE_GAP",
+]
+
 
 # ============================================================
 # STRICT MODEL
@@ -410,6 +418,33 @@ class TouchNotebookExecutiveSummaryItem(
     )
 
 # ============================================================
+# CROSS READING
+# ============================================================
+
+class TouchNotebookCrossReading(
+    StrictTouchNotebookModel,
+):
+
+    reading_id: str
+
+    title: str
+
+    statement: str
+
+    reading_type: TouchCrossReadingType
+
+    note_ids: list[str] = Field(
+        ...,
+        min_length=1,
+    )
+
+    source_content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    confidence: TouchEvidenceConfidence
+
+# ============================================================
 # CORPUS NOTEBOOK
 # ============================================================
 class TouchCorpusNotebook(
@@ -424,6 +459,12 @@ class TouchCorpusNotebook(
 
     executive_summary: list[
         TouchNotebookExecutiveSummaryItem
+    ] = Field(
+        default_factory=list,
+    )
+
+    cross_readings: list[
+        TouchNotebookCrossReading
     ] = Field(
         default_factory=list,
     )
