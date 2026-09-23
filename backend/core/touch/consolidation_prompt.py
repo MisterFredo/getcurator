@@ -12,7 +12,7 @@ from core.touch.search_models import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_CONSOLIDATION_VERSION = "1.0"
+TOUCH_CONSOLIDATION_VERSION = "1.1"
 
 
 # ============================================================
@@ -195,6 +195,76 @@ inconsistency.
 When uncertainty remains, describe it as an unresolved
 difference rather than asserting that one source is wrong.
 
+============================================================
+RESEARCH AXIS COVERAGE
+============================================================
+
+The research brief may contain several distinct research axes.
+
+Assess every supplied research axis separately.
+
+For every research axis, return exactly one axis_coverage item.
+
+Use the supplied axis_id, axis_type and label exactly.
+
+For each axis:
+
+- identify the non-OUT_OF_SCOPE contents that materially
+  document it;
+- assess whether the axis is COVERED, PARTIAL or MISSING;
+- explain what the corpus establishes for that axis;
+- identify any remaining documentary gaps.
+
+Use COVERED when the corpus contains sufficient concrete
+information to document the axis meaningfully.
+
+Use PARTIAL when the corpus contains relevant information but
+important parts of the axis remain insufficiently documented.
+
+Use MISSING when no retained content materially documents the
+axis.
+
+MISSING axis coverage must have an empty content_ids list.
+
+COVERED and PARTIAL axis coverage must reference at least one
+non-OUT_OF_SCOPE content_id.
+
+One content may contribute to several research axes.
+
+Do not confuse retrieval clues with evidence.
+
+A selected company or matched search term does not establish
+that an axis is covered.
+
+
+============================================================
+CROSS-CONTEXT READINESS
+============================================================
+
+When research_type is CROSS_CONTEXT_ANALYSIS, the corpus must
+document both:
+
+- the source or core-subject side;
+- the target-context side.
+
+Set ready_for_notebook to false when:
+
+- the core-subject axis is MISSING;
+- the target-context axis is MISSING;
+- the corpus contains only broad thematic proximity for one
+  side;
+- the available evidence cannot support a meaningful
+  cross-context documentary reading.
+
+Set ready_for_notebook to true when both sides contain at least
+PARTIAL documentary coverage.
+
+ready_for_notebook is a corpus-quality signal for the
+administrator.
+
+It does not authorize unsupported recommendations or invented
+comparisons.
+
 
 ============================================================
 COVERAGE ANALYSIS
@@ -327,8 +397,24 @@ Return only one valid JSON object with this exact structure:
   ],
   "coverage_analysis": {
     "summary": "Concise assessment of the proposed corpus",
-    "covered_dimensions": [
-      "ANNOUNCEMENT"
+    "axis_coverage": [
+      {
+        "axis_id": "exact supplied axis_id",
+        "axis_type": "exact supplied axis_type",
+        "label": "exact supplied axis label",
+        "status": "COVERED | PARTIAL | MISSING",
+        "content_ids": [
+          "exact supplied content_id"
+        ],
+        "summary": "Concise assessment of this research axis",
+        "gaps": [
+          "Specific information missing for this axis"
+        ]
+      }
+    ],
+    "ready_for_notebook": true,
+        "covered_dimensions": [
+          "ANNOUNCEMENT"
     ],
     "missing_dimensions": [
       "BUSINESS_MODEL"
@@ -478,51 +564,104 @@ def build_touch_consolidation_prompt(
 
         "research": {
 
+            "original_query":
+                brief.query,
+        
             "subject":
                 interpretation.subject,
-
+        
+            "central_question":
+                interpretation.central_question,
+        
             "objective":
                 interpretation.objective,
-
+        
+            "research_type":
+                interpretation.research_type,
+        
+            "scope_summary":
+                interpretation.scope_summary,
+        
+            "target_context":
+                interpretation.target_context,
+        
+            "organization_mode":
+                interpretation.organization_mode,
+        
+            "time_granularity":
+                interpretation.time_granularity,
+        
+            "geographies":
+                interpretation.geographies,
+        
             "core_entities": {
-
+        
                 "companies": [
-
+        
                     entity.model_dump(
                         mode="json",
                     )
-
+        
                     for entity in (
                         interpretation.companies
                     )
-
+        
                 ],
-
+        
                 "solutions": [
-
+        
                     entity.model_dump(
                         mode="json",
                     )
-
+        
                     for entity in (
                         interpretation.solutions
                     )
-
+        
                 ],
-
+        
                 "topics": [
-
+        
                     entity.model_dump(
                         mode="json",
                     )
-
+        
                     for entity in (
                         interpretation.topics
                     )
-
+        
                 ],
-
+        
             },
+
+            "research_axes": [
+        
+                axis.model_dump(
+                    mode="json",
+                )
+        
+                for axis in (
+                    interpretation.axes
+                )
+        
+            ],
+        
+            "search_terms":
+                interpretation.search_terms,
+        
+            "related_angles":
+                interpretation.related_angles,
+        
+            "assumptions":
+                interpretation.assumptions,
+        
+            "editorial_cautions":
+                interpretation.editorial_cautions,
+        
+            "missing_information":
+                interpretation.missing_information,
+        
+        },
 
             "search_terms":
                 interpretation.search_terms,
@@ -552,6 +691,12 @@ def build_touch_consolidation_prompt(
     return (
         "Consolidate the supplied content evaluations "
         "against the editorial research objective.\n\n"
+        "Assess every supplied research axis separately "
+        "and return exactly one axis_coverage item for "
+        "each axis.\n\n"
+        "For cross-context research, verify that both "
+        "the core-subject side and the target-context "
+        "side are documented.\n\n"
         "Harmonise event groups across all evaluation "
         "batches.\n\n"
         "Do not eliminate sources that cover the same "
