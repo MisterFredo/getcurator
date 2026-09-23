@@ -1243,11 +1243,13 @@ def consolidate_touch_evaluation(
 
     fallback = (
         _build_fallback_consolidation(
-
+    
             brief=brief,
-
+    
+            interpretation=interpretation,
+    
             evaluation=evaluation,
-
+    
         )
     )
 
