@@ -80,12 +80,33 @@ ABSOLUTE RULES
 6. Never attach notes only because they mention the same company,
    actor or broad topic.
 
-7. Do not create generic or repetitive sections.
+7. Do not create generic, residual, miscellaneous or repetitive
+   sections.
 
-8. Do not create a section called:
-   "Additional documented elements".
+8. Never create a catch-all section, including titles such as:
 
-9. Prefer a small number of meaningful sections.
+   - Additional References;
+   - Additional documented elements;
+   - Additional evidence;
+   - Other references;
+   - Other information;
+   - Further reading;
+   - Complementary elements;
+   - Miscellaneous;
+   - General context;
+   - Background.
+
+9. Every section must express one precise documentary function
+   within the supplied report design.
+
+10. When several notes do not fit the initial section structure,
+    revise the entire structure around clearer supported
+    mechanisms or documentary dimensions.
+
+11. Never solve an organizational difficulty by placing unrelated
+    notes inside one residual section.
+
+12. Prefer a small number of meaningful sections.
 
 10. Every supplied note_id must appear exactly once in the
     documentary plan:
@@ -245,6 +266,45 @@ corpus_limits.
 
 Do not create unsupported target-context sections simply to match
 the requested structure.
+
+When both source-subject and target-context evidence are
+available, the section structure must make their documentary
+relationship visible.
+
+Prefer the following reading progression when supported:
+
+1. source-subject practices and developments;
+2. platform, channel or operating mechanisms;
+3. target-context practices and conditions;
+4. evidence-supported points of convergence or comparison;
+5. structural differences, limitations and evidence gaps.
+
+Do not place all platform, market or mechanism notes in one
+residual section.
+
+Distribute them according to their documentary role, such as:
+
+- social commerce and shoppable content;
+- exclusivity, drops and launch mechanics;
+- influence, community and livestreaming;
+- ecommerce distribution;
+- quick-commerce data and assortment;
+- advertising and consumer engagement;
+- regulatory or operational constraints.
+
+A section may contain evidence from both source and target
+contexts when the notes document one genuinely comparable
+mechanism.
+
+A mixed section must be organized around the common mechanism,
+not around a vague claim of relevance or transferability.
+
+Section order must allow the reader to distinguish:
+
+- what is documented about the source subject;
+- what is documented about the mechanism;
+- what is documented about the target context;
+- what remains insufficiently documented.
 
 
 ============================================================
@@ -723,6 +783,17 @@ def build_touch_notebook_organization_prompt(
 
         "Apply the supplied report_design to the "
         "organization of the notebook.\n\n"
+        "When report_archetype is CROSS_CONTEXT_ANALYSIS, "
+        "make the relationship between source-subject "
+        "evidence, platform or operating mechanisms and "
+        "target-context evidence visible in the section "
+        "structure.\n\n"
+        
+        "Never create a residual or catch-all section such "
+        "as Additional References, Other Information or "
+        "Complementary Elements. If notes do not fit, "
+        "redesign the complete section structure around "
+        "more precise supported mechanisms.\n\n"
 
         "Treat report_design as organizational guidance, "
         "not as documentary evidence.\n\n"
