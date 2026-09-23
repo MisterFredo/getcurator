@@ -12,6 +12,7 @@ from core.touch.consolidation_prompt import (
 
 from core.touch.search_models import (
     TouchCandidateEvaluationResult,
+    TouchAxisCoverage,
     TouchConsolidationResult,
     TouchContentCandidate,
     TouchContentDecision,
@@ -233,6 +234,46 @@ def _normalize_event_group(
 
     )
 
+# ============================================================
+# NORMALIZE AXIS COVERAGE
+# ============================================================
+
+def _normalize_axis_coverage(
+    axis_coverage: TouchAxisCoverage,
+) -> TouchAxisCoverage:
+
+    return axis_coverage.model_copy(
+
+        update={
+
+            "axis_id":
+                axis_coverage.axis_id.strip(),
+
+            "axis_type":
+                axis_coverage.axis_type.strip(),
+
+            "label":
+                axis_coverage.label.strip(),
+
+            "content_ids":
+                list(
+                    dict.fromkeys(
+                        axis_coverage.content_ids
+                    )
+                ),
+
+            "summary":
+                axis_coverage.summary.strip(),
+
+            "gaps":
+                _unique_text_values(
+                    axis_coverage.gaps
+                ),
+
+        },
+
+    )
+
 
 # ============================================================
 # NORMALIZE CONSOLIDATION
@@ -247,6 +288,17 @@ def _normalize_consolidation(
     normalized_coverage = coverage.model_copy(
 
         update={
+            "axis_coverage": [
+
+                _normalize_axis_coverage(
+                    axis_coverage
+                )
+            
+                for axis_coverage in (
+                    coverage.axis_coverage
+                )
+            
+            ],
 
             "summary":
                 coverage.summary.strip(),
@@ -308,6 +360,8 @@ def _normalize_consolidation(
         ),
 
     )
+
+
 
 
 # ============================================================
@@ -501,12 +555,227 @@ def _validate_coverage(
             )
         )
 
+# ============================================================
+# VALIDATE AXIS COVERAGE
+# ============================================================
+
+def _validate_axis_coverage(
+    interpretation: TouchResearchInterpretation,
+    evaluation: (
+        TouchCandidateEvaluationResult
+    ),
+    consolidation: TouchConsolidationResult,
+) -> None:
+
+    expected_axes = {
+
+        axis.axis_id:
+            axis
+
+        for axis in interpretation.axes
+
+    }
+
+    axis_coverage_items = (
+        consolidation
+        .coverage_analysis
+        .axis_coverage
+    )
+
+    returned_axis_ids = [
+
+        item.axis_id
+
+        for item in axis_coverage_items
+
+    ]
+
+    if len(
+        returned_axis_ids
+    ) != len(
+        set(
+            returned_axis_ids
+        )
+    ):
+
+        raise ValueError(
+            "La consolidation Touch a retourné "
+            "plusieurs couvertures pour le même axe"
+        )
+
+    returned_axis_id_set = set(
+        returned_axis_ids
+    )
+
+    expected_axis_id_set = set(
+        expected_axes
+    )
+
+    unknown_axis_ids = (
+
+        returned_axis_id_set
+        - expected_axis_id_set
+
+    )
+
+    if unknown_axis_ids:
+
+        raise ValueError(
+            "La consolidation Touch a inventé "
+            "des axis_id : "
+            + ", ".join(
+                sorted(
+                    unknown_axis_ids
+                )
+            )
+        )
+
+    missing_axis_ids = (
+
+        expected_axis_id_set
+        - returned_axis_id_set
+
+    )
+
+    if missing_axis_ids:
+
+        raise ValueError(
+            "La consolidation Touch a omis "
+            "des axes de recherche : "
+            + ", ".join(
+                sorted(
+                    missing_axis_ids
+                )
+            )
+        )
+
+    decisions_by_id = {
+
+        decision.content_id:
+            decision
+
+        for decision in evaluation.decisions
+
+    }
+
+    for item in axis_coverage_items:
+
+        expected_axis = expected_axes[
+            item.axis_id
+        ]
+
+        if (
+            item.axis_type
+            != expected_axis.axis_type
+        ):
+
+            raise ValueError(
+                "La consolidation Touch a modifié "
+                "le type de l’axe "
+                f"{item.axis_id}"
+            )
+
+        if (
+            item.label
+            != expected_axis.label
+        ):
+
+            raise ValueError(
+                "La consolidation Touch a modifié "
+                "le label de l’axe "
+                f"{item.axis_id}"
+            )
+
+        unknown_content_ids = {
+
+            content_id
+
+            for content_id in (
+                item.content_ids
+            )
+
+            if content_id not in (
+                decisions_by_id
+            )
+
+        }
+
+        if unknown_content_ids:
+
+            raise ValueError(
+                "La couverture de l’axe "
+                f"{item.axis_id} contient des "
+                "content_id inconnus : "
+                + ", ".join(
+                    sorted(
+                        unknown_content_ids
+                    )
+                )
+            )
+
+        out_of_scope_ids = {
+
+            content_id
+
+            for content_id in (
+                item.content_ids
+            )
+
+            if (
+                decisions_by_id[
+                    content_id
+                ].relevance
+                == "OUT_OF_SCOPE"
+            )
+
+        }
+
+        if out_of_scope_ids:
+
+            raise ValueError(
+                "La couverture de l’axe "
+                f"{item.axis_id} contient des "
+                "contenus OUT_OF_SCOPE : "
+                + ", ".join(
+                    sorted(
+                        out_of_scope_ids
+                    )
+                )
+            )
+
+        if (
+            item.status == "MISSING"
+            and item.content_ids
+        ):
+
+            raise ValueError(
+                "Un axe MISSING ne peut pas "
+                "contenir de content_id : "
+                f"{item.axis_id}"
+            )
+
+        if (
+            item.status
+            in (
+                "COVERED",
+                "PARTIAL",
+            )
+            and not item.content_ids
+        ):
+
+            raise ValueError(
+                "Un axe couvert ou partiel doit "
+                "contenir au moins un content_id : "
+                f"{item.axis_id}"
+            )
+
 
 # ============================================================
 # VALIDATE CONSOLIDATION
 # ============================================================
 
 def _validate_consolidation(
+    interpretation: TouchResearchInterpretation,
     evaluation: (
         TouchCandidateEvaluationResult
     ),
@@ -523,6 +792,16 @@ def _validate_consolidation(
 
     _validate_coverage(
         consolidation=consolidation,
+    )
+
+    _validate_axis_coverage(
+    
+        interpretation=interpretation,
+    
+        evaluation=evaluation,
+    
+        consolidation=consolidation,
+    
     )
 
 
@@ -677,6 +956,9 @@ def _build_fallback_groups(
 
 def _build_fallback_consolidation(
     brief: TouchResearchBrief,
+    interpretation: (
+        TouchResearchInterpretation
+    ),
     evaluation: (
         TouchCandidateEvaluationResult
     ),
@@ -697,15 +979,26 @@ def _build_fallback_consolidation(
             decision.coverage_dimensions
         )
 
-    if brief.output_language.lower().startswith(
-        "fr"
-    ):
+    is_french = (
+        brief.output_language
+        .lower()
+        .startswith(
+            "fr"
+        )
+    )
+
+    if is_french:
 
         summary = (
             "Les contenus évalués ont été regroupés "
             "à partir de leurs événements, mais "
             "l’analyse globale de complémentarité "
             "n’a pas pu être générée."
+        )
+
+        axis_summary = (
+            "La couverture de cet axe n’a pas "
+            "pu être consolidée automatiquement."
         )
 
     else:
@@ -717,18 +1010,60 @@ def _build_fallback_consolidation(
             "be generated."
         )
 
+        axis_summary = (
+            "Coverage for this axis could not "
+            "be consolidated automatically."
+        )
+
+    fallback_axis_coverage = [
+
+        TouchAxisCoverage(
+
+            axis_id=axis.axis_id,
+
+            axis_type=axis.axis_type,
+
+            label=axis.label,
+
+            status="MISSING",
+
+            content_ids=[],
+
+            summary=axis_summary,
+
+            gaps=[],
+
+        )
+
+        for axis in interpretation.axes
+
+    ]
+
     return TouchConsolidationResult(
 
         event_groups=(
+
             _build_fallback_groups(
                 evaluation=evaluation,
             )
+
         ),
 
         coverage_analysis=(
+
             TouchCoverageAnalysis(
 
                 summary=summary,
+
+                axis_coverage=(
+                    fallback_axis_coverage
+                ),
+
+                ready_for_notebook=(
+                    not bool(
+                        interpretation.axes
+                    )
+                ),
 
                 covered_dimensions=list(
                     dict.fromkeys(
@@ -747,10 +1082,10 @@ def _build_fallback_consolidation(
                 suggested_follow_ups=[],
 
             )
+
         ),
 
     )
-
 
 # ============================================================
 # CONSOLIDATE TOUCH EVALUATION
@@ -862,12 +1197,14 @@ def consolidate_touch_evaluation(
 
             _validate_consolidation(
 
+                interpretation=interpretation,
+            
                 evaluation=evaluation,
-
+            
                 consolidation=(
                     consolidation
                 ),
-
+            
             )
 
             return (
