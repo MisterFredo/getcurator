@@ -39,6 +39,11 @@ TouchContentRelevance = Literal[
     "OUT_OF_SCOPE",
 ]
 
+TouchAxisCoverageStatus = Literal[
+    "COVERED",
+    "PARTIAL",
+    "MISSING",
+]
 
 TouchCoverageDimension = Literal[
     "ANNOUNCEMENT",
@@ -493,6 +498,32 @@ class TouchEventGroup(
         default_factory=list,
     )
 
+# ============================================================
+# AXIS COVERAGE
+# ============================================================
+
+class TouchAxisCoverage(
+    StrictTouchSearchModel,
+):
+
+    axis_id: str
+
+    axis_type: str
+
+    label: str
+
+    status: TouchAxisCoverageStatus
+
+    content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    summary: str = ""
+
+    gaps: list[str] = Field(
+        default_factory=list,
+    )
+
 
 # ============================================================
 # COVERAGE ANALYSIS
@@ -503,6 +534,13 @@ class TouchCoverageAnalysis(
 ):
 
     summary: str = ""
+    axis_coverage: list[
+        TouchAxisCoverage
+    ] = Field(
+        default_factory=list,
+    )
+    
+    ready_for_notebook: bool = True
 
     covered_dimensions: list[
         TouchCoverageDimension
