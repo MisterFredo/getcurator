@@ -989,9 +989,25 @@ export default function TouchNotebookPreview({
   sourceContentIds,
 }: Props) {
 
+  const usedSourceContentIds =
+    new Set(
+      notebook.notes.flatMap(
+        note =>
+          note.source_content_ids,
+      ),
+    );
+
+  const displayedSourceContentIds =
+    sourceContentIds.filter(
+      contentId =>
+        usedSourceContentIds.has(
+          contentId,
+        ),
+    );
+
   const sourceNumberById = (
     new Map(
-      sourceContentIds.map(
+      displayedSourceContentIds.map(
         (
           contentId,
           index,
