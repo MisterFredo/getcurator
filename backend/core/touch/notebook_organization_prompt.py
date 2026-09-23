@@ -70,20 +70,29 @@ ABSOLUTE RULES
 
 2. Never rewrite, translate, shorten or expand a note.
 
-3. Never omit a supplied note.
+3. Select only notes that make a direct documentary
+   contribution to the research subject, objective or supported
+   report dimensions.
 
-4. Never invent or modify a note_id or content_id.
+4. A note may be excluded when it is merely adjacent to the
+   subject, belongs to an unrelated development, or does not
+   help answer the central research question.
 
-5. Do not handle, create, position or reference certified
+5. Do not exclude a relevant note merely to shorten the report
+   or simplify the organization.
+
+6. Never invent or modify a note_id or content_id.
+
+7. Do not handle, create, position or reference certified
    Numbers.
 
-6. Never attach notes only because they mention the same company,
-   actor or broad topic.
+8. Never attach notes only because they mention the same company,
+   actor, source or broad topic.
 
-7. Do not create generic, residual, miscellaneous or repetitive
+9. Do not create generic, residual, miscellaneous or repetitive
    sections.
 
-8. Never create a catch-all section, including titles such as:
+10. Never create a catch-all section, including titles such as:
 
    - Additional References;
    - Additional documented elements;
@@ -96,92 +105,51 @@ ABSOLUTE RULES
    - General context;
    - Background.
 
-9. Every section must express one precise documentary function
-   within the supplied report design.
+11. Every section must express one precise documentary function
+    within the supplied report design.
 
-10. When several notes do not fit the initial section structure,
-    revise the entire structure around clearer supported
-    mechanisms or documentary dimensions.
+12. When relevant notes do not fit the initial section structure,
+    revise the structure around clearer supported mechanisms or
+    documentary dimensions.
 
-11. Never solve an organizational difficulty by placing unrelated
+13. Never solve an organizational difficulty by placing unrelated
     notes inside one residual section.
 
-12. Prefer a small number of meaningful sections.
-
-10. Every supplied note_id must appear exactly once in the
-    documentary plan:
+14. Every note included in the documentary plan must appear
+    exactly once:
 
     - either inside one event;
     - or directly inside one section.
 
-11. A note assigned to an event must not also be assigned
+15. A note assigned to an event must not also be assigned
     directly to a section.
 
-12. Every event_id must appear exactly once in one section.
+16. A supplied note that is not included in any section or event
+    is considered excluded from the final notebook.
 
-13. Every event must reference at least one supplied note_id.
+17. Every included event_id must appear exactly once in one
+    section.
 
-14. An event must represent an actual documented development.
+18. Every event must reference at least one included note_id.
 
-15. A general observation, interpretation, limitation or market
+19. An event must represent an actual documented development.
+
+20. A general observation, interpretation, limitation or market
     context is not automatically an event.
 
-16. The timeline is a secondary navigation layer. It may reference
+21. The timeline is a secondary navigation layer. It may reference
     events or notes already used in the documentary plan.
 
-17. The timeline must contain only dated developments.
+22. The timeline must contain only dated developments.
 
-18. Keep source_content_ids strictly within the supplied research
+23. Keep source_content_ids strictly within the supplied research
     corpus.
 
-19. Return valid JSON only.
+24. Return valid JSON only.
 
-20. Do not return Markdown.
+25. Do not return Markdown.
 
-21. Do not include comments or text outside the JSON object.
-
-============================================================
-REPORT DESIGN
-============================================================
-
-The supplied report_design defines how the documentary evidence
-should be organized.
-
-It is an editorial organization contract, not documentary
-evidence.
-
-It may define:
-
-- report_archetype;
-- organization_mode;
-- time_granularity;
-- research_type;
-- central_question;
-- scope_summary;
-- target_context;
-- period;
-- geographies;
-- research axes;
-- assumptions;
-- editorial cautions;
-- missing information.
-
-Use it to determine the most useful structure for the notebook.
-
-Never present an assumption, research axis, caution or missing
-information as a documented fact.
-
-Never create a note, event or conclusion from report_design
-alone.
-
-A section must always be supported by supplied evidence notes.
-
-If the corpus does not support part of the requested design:
-
-- do not invent the missing section content;
-- organize the available evidence as faithfully as possible;
-- describe the unsupported area in corpus_limits.
-
+26. Do not include comments or text outside the JSON object.
 
 ============================================================
 REPORT ARCHETYPES
@@ -214,29 +182,60 @@ Do not artificially introduce a comparison or target context.
 COMPARATIVE_ANALYSIS
 ------------------------------------------------------------
 
-Organize the corpus so that the compared actors, products or
-approaches can be examined against common documentary dimensions.
+Organize the corpus around common documentary dimensions that
+allow the compared actors, products or approaches to be examined
+against the same questions.
 
-Prefer comparable dimensions over separate actor profiles when
-the notes support that structure.
+Common dimensions are the default organization.
 
-Possible dimensions include:
+Do not organize the notebook as one complete profile per actor
+followed by another complete profile when the evidence supports
+a dimension-based comparison.
 
-- proposition or scope;
-- operating mechanism;
-- business model;
-- deployment;
-- geography;
-- evidence or results;
-- limitations.
+For example, a comparison of advertising platforms may use
+dimensions such as:
 
-Do not claim equivalence merely because two notes use similar
-language.
+- artificial intelligence and automation;
+- targeting, audiences and first-party data;
+- bidding, budget and advertiser control;
+- formats, inventory and distribution;
+- measurement and attribution;
+- partnerships and ecosystem extensions;
+- documented client results;
+- limitations, risks and unresolved evidence.
 
-Do not force symmetry when the corpus documents one side better
-than the other.
+These are examples, not mandatory section titles.
 
-Identify substantial evidence imbalance in corpus_limits.
+Use the dimensions explicitly requested in the research subject,
+objective and report design when they are supported by the
+notes.
+
+Within each major section:
+
+- include evidence from each compared side when available;
+- preserve the identity of the actor documented by each note;
+- make evidence imbalance visible;
+- do not force a claim of equivalence;
+- do not manufacture symmetry.
+
+A section may contain evidence from only one side when the
+dimension is important and genuinely undocumented for the other
+side. Record substantial imbalance in corpus_limits.
+
+Separate actor sections are acceptable only when:
+
+- the research request explicitly asks for separate profiles;
+- the corpus is too asymmetric to support common dimensions;
+- or the supplied organization mode requires another structure.
+
+For a rich corpus containing many notes, prefer several precise
+documentary dimensions over two oversized actor sections.
+
+Do not compare facts that concern unrelated mechanisms merely
+because they belong to the two compared actors.
+
+Do not infer superiority, performance or strategic advantage
+without directly supported evidence.
 
 
 CROSS_CONTEXT_ANALYSIS
@@ -803,12 +802,20 @@ def build_touch_notebook_organization_prompt(
         "instead of inventing content.\n\n"
 
         "Use the notes as immutable documentary objects. "
-        "Do not rewrite, summarize, translate or omit "
-        "them.\n\n"
-
-        "Every supplied note_id must appear exactly once "
-        "in the documentary plan, either inside one event "
-        "or directly inside one section.\n\n"
+        "Do not rewrite, summarize or translate them.\n\n"
+        
+        "Exclude notes that do not make a direct "
+        "documentary contribution to the research subject, "
+        "objective or supported report dimensions.\n\n"
+        
+        "Every note included in the documentary plan must "
+        "appear exactly once, either inside one event or "
+        "directly inside one section.\n\n"
+        
+        "When report_archetype is COMPARATIVE_ANALYSIS, "
+        "organize the notebook around common documentary "
+        "dimensions rather than separate actor profiles "
+        "whenever the evidence supports that structure.\n\n"
 
         "Do not organize or reference certified Numbers. "
         "They are managed separately by the application.\n\n"
