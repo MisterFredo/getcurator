@@ -3,7 +3,9 @@
 import type {
   TouchContentCandidate,
   TouchCorpusNotebook,
+  TouchCrossReadingType,
   TouchEvidenceNote,
+  TouchNotebookCrossReading,
   TouchNotebookEvent,
 } from "@/types/touch";
 
@@ -72,6 +74,81 @@ function formatDate(
   ).format(
     date,
   );
+
+}
+
+/* =========================================================
+   CROSS-READING HELPERS
+========================================================= */
+
+const CROSS_READING_LABELS: Record<
+  TouchCrossReadingType,
+  string
+> = {
+  CONVERGENCE:
+    "Documented convergence",
+
+  DIFFERENCE:
+    "Documented difference",
+
+  ENABLING_CONDITION:
+    "Enabling condition",
+
+  FRICTION:
+    "Friction",
+
+  EVIDENCE_GAP:
+    "Evidence gap",
+};
+
+
+function getCrossReadingClasses(
+  readingType: TouchCrossReadingType,
+): string {
+
+  switch (readingType) {
+
+    case "CONVERGENCE":
+
+      return (
+        "border-emerald-200 "
+        + "bg-emerald-50 "
+        + "text-emerald-800"
+      );
+
+    case "DIFFERENCE":
+
+      return (
+        "border-violet-200 "
+        + "bg-violet-50 "
+        + "text-violet-800"
+      );
+
+    case "ENABLING_CONDITION":
+
+      return (
+        "border-blue-200 "
+        + "bg-blue-50 "
+        + "text-blue-800"
+      );
+
+    case "FRICTION":
+
+      return (
+        "border-amber-200 "
+        + "bg-amber-50 "
+        + "text-amber-800"
+      );
+
+    case "EVIDENCE_GAP":
+
+      return (
+        "border-red-200 "
+        + "bg-red-50 "
+        + "text-red-800"
+      );
+
+  }
 
 }
 
@@ -185,6 +262,121 @@ function SourceReferences({
       </span>
 
     </span>
+
+  );
+
+}
+
+/* =========================================================
+   CROSS READING
+========================================================= */
+
+function CrossReadingBlock({
+  reading,
+  sourceNumberById,
+}: {
+  reading:
+    TouchNotebookCrossReading;
+
+  sourceNumberById:
+    Map<string, number>;
+}) {
+
+  return (
+
+    <article
+      className="
+        break-inside-avoid
+        rounded-lg
+        border
+        border-slate-200
+        bg-white
+        p-4
+      "
+    >
+
+      <div
+        className="
+          flex
+          flex-wrap
+          items-center
+          justify-between
+          gap-2
+        "
+      >
+
+        <span
+          className={`
+            rounded-full
+            border
+            px-2
+            py-0.5
+            text-[10px]
+            font-semibold
+            uppercase
+            tracking-wide
+            ${getCrossReadingClasses(
+              reading.reading_type,
+            )}
+          `}
+        >
+          {
+            CROSS_READING_LABELS[
+              reading.reading_type
+            ]
+          }
+        </span>
+
+        <span
+          className="
+            text-[10px]
+            font-medium
+            uppercase
+            text-slate-400
+          "
+        >
+          {reading.confidence}
+        </span>
+
+      </div>
+
+      <h3
+        className="
+          mt-3
+          text-sm
+          font-semibold
+          leading-5
+          text-slate-900
+        "
+      >
+        {reading.title}
+      </h3>
+
+      <p
+        className="
+          mt-1.5
+          text-sm
+          leading-6
+          text-slate-700
+        "
+      >
+        {reading.statement}
+      </p>
+
+      <div className="mt-2">
+
+        <SourceReferences
+          sourceContentIds={
+            reading.source_content_ids
+          }
+          sourceNumberById={
+            sourceNumberById
+          }
+        />
+
+      </div>
+
+    </article>
 
   );
 
@@ -842,6 +1034,62 @@ export default function TouchNotebookDocument({
             </ol>
         
           </section>
+        
+        )}
+
+        {/* ================================================= */}
+        {/* ANALYTICAL CROSS-READINGS */}
+        {/* ================================================= */}
+        
+        {crossReadings.length > 0 && (
+        
+          <DocumentSection
+            title="Analytical cross-readings"
+          >
+        
+            <p
+              className="
+                max-w-3xl
+                text-xs
+                leading-5
+                text-slate-500
+              "
+            >
+              Evidence-grounded connections across the
+              documented research contexts.
+            </p>
+        
+            <div
+              className="
+                grid
+                grid-cols-1
+                gap-4
+                md:grid-cols-2
+                print:grid-cols-2
+              "
+            >
+        
+              {crossReadings.map(
+                reading => (
+        
+                  <CrossReadingBlock
+                    key={
+                      reading.reading_id
+                    }
+                    reading={
+                      reading
+                    }
+                    sourceNumberById={
+                      sourceNumberById
+                    }
+                  />
+        
+                ),
+              )}
+        
+            </div>
+        
+          </DocumentSection>
         
         )}
 
