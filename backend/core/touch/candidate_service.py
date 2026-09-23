@@ -44,6 +44,10 @@ DEFAULT_TOUCH_MAX_SEARCH_TERMS = 16
 
 DEFAULT_TOUCH_MAX_RELATED_ANGLES = 6
 
+DEFAULT_TOUCH_MAX_AXIS_TERMS = 16
+
+DEFAULT_TOUCH_MAX_AXIS_ANGLES = 8
+
 
 # ============================================================
 # INTERNAL MATCH
@@ -251,6 +255,113 @@ def _unique_text_values(
         )
 
     return unique_values
+
+# ============================================================
+# COLLECT AXIS RETRIEVAL VALUES
+# ============================================================
+
+def _collect_axis_retrieval_values(
+    interpretation: TouchResearchInterpretation,
+) -> tuple[
+    list[str],
+    list[str],
+]:
+
+    axis_terms: list[str] = []
+
+    axis_angles: list[str] = []
+
+    axes = getattr(
+        interpretation,
+        "axes",
+        [],
+    )
+
+    # Round-robin extraction:
+    # every axis receives a chance to contribute before
+    # one axis can consume the whole retrieval budget.
+    term_position = 0
+
+    while True:
+
+        found_term = False
+
+        for axis in axes:
+
+            search_terms = (
+                axis.search_terms
+                if isinstance(
+                    axis.search_terms,
+                    list,
+                )
+                else []
+            )
+
+            if term_position >= len(
+                search_terms
+            ):
+                continue
+
+            found_term = True
+
+            axis_terms.append(
+                search_terms[
+                    term_position
+                ]
+            )
+
+        if not found_term:
+            break
+
+        term_position += 1
+
+    angle_position = 0
+
+    while True:
+
+        found_angle = False
+
+        for axis in axes:
+
+            related_angles = (
+                axis.related_angles
+                if isinstance(
+                    axis.related_angles,
+                    list,
+                )
+                else []
+            )
+
+            if angle_position >= len(
+                related_angles
+            ):
+                continue
+
+            found_angle = True
+
+            axis_angles.append(
+                related_angles[
+                    angle_position
+                ]
+            )
+
+        if not found_angle:
+            break
+
+        angle_position += 1
+
+    return (
+        _unique_text_values(
+            axis_terms
+        )[
+            :DEFAULT_TOUCH_MAX_AXIS_TERMS
+        ],
+        _unique_text_values(
+            axis_angles
+        )[
+            :DEFAULT_TOUCH_MAX_AXIS_ANGLES
+        ],
+    )
 
 
 # ============================================================
@@ -758,9 +869,16 @@ def _add_search_term_pools(
     errors: list[str],
 ) -> None:
 
+    axis_terms, _ = (
+        _collect_axis_retrieval_values(
+            interpretation
+        )
+    )
+    
     search_terms = (
         _unique_text_values(
-            interpretation.search_terms
+            axis_terms
+            + interpretation.search_terms
         )
         [
             :DEFAULT_TOUCH_MAX_SEARCH_TERMS
@@ -827,9 +945,16 @@ def _add_related_angle_pools(
     errors: list[str],
 ) -> None:
 
+    _, axis_angles = (
+        _collect_axis_retrieval_values(
+            interpretation
+        )
+    )
+    
     related_angles = (
         _unique_text_values(
-            interpretation.related_angles
+            axis_angles
+            + interpretation.related_angles
         )
         [
             :DEFAULT_TOUCH_MAX_RELATED_ANGLES
