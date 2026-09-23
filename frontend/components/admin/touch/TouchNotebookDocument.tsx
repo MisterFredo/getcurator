@@ -768,15 +768,19 @@ export default function TouchNotebookDocument({
     new Map(
       notebook.events.map(
         event => [
-
+  
           event.event_id,
           event,
-
+  
         ],
       ),
     )
   );
 
+  const crossReadings =
+    notebook.cross_readings
+    ?? [];
+  
   return (
 
     <article
