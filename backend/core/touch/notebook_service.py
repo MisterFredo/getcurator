@@ -336,11 +336,6 @@ def _load_certified_numbers(
         numbers_by_content=numbers_by_content,
     )
 
-
-# ============================================================
-# BUILD TOUCH NOTEBOOK
-# ============================================================
-
 # ============================================================
 # BUILD TOUCH NOTEBOOK
 # ============================================================
@@ -356,6 +351,13 @@ def build_touch_notebook(
             _normalize_request(
                 request
             )
+        )
+
+        print(
+            "TOUCH_NOTEBOOK_REPORT_DESIGN",
+            normalized_request.report_design.model_dump(
+                mode="json",
+            ),
         )
 
         # ====================================================
