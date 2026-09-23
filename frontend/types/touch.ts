@@ -39,6 +39,13 @@ export type TouchCoverageDimension =
   | "LIMITATIONS"
   | "OUTLOOK";
 
+export type TouchCrossReadingType =
+  | "CONVERGENCE"
+  | "DIFFERENCE"
+  | "ENABLING_CONDITION"
+  | "FRICTION"
+  | "EVIDENCE_GAP";
+
 
 /* =========================================================
    ENTITY
@@ -867,6 +874,24 @@ export type TouchNotebookExecutiveSummaryItem = {
 };
 
 
+export type TouchNotebookCrossReading = {
+  reading_id: string;
+
+  title: string;
+
+  statement: string;
+
+  reading_type:
+    TouchCrossReadingType;
+
+  note_ids: string[];
+
+  source_content_ids: string[];
+
+  confidence:
+    TouchEvidenceConfidence;
+};
+
 /* =========================================================
    CORPUS NOTEBOOK
 ========================================================= */
@@ -877,6 +902,8 @@ export type TouchCorpusNotebook = {
 
   corpus_summary: string;
   executive_summary: TouchNotebookExecutiveSummaryItem[];
+  cross_readings:
+     TouchNotebookCrossReading[];
 
   sections:
     TouchNotebookSection[];
