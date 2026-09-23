@@ -566,147 +566,158 @@ def build_touch_consolidation_prompt(
 
             "original_query":
                 brief.query,
-        
+
             "subject":
                 interpretation.subject,
-        
+
             "central_question":
                 interpretation.central_question,
-        
+
             "objective":
                 interpretation.objective,
-        
+
             "research_type":
                 interpretation.research_type,
-        
+
             "scope_summary":
                 interpretation.scope_summary,
-        
+
             "target_context":
                 interpretation.target_context,
-        
+
             "organization_mode":
                 interpretation.organization_mode,
-        
+
             "time_granularity":
                 interpretation.time_granularity,
-        
+
             "geographies":
                 interpretation.geographies,
-        
+
             "core_entities": {
-        
+
                 "companies": [
-        
+
                     entity.model_dump(
                         mode="json",
                     )
-        
+
                     for entity in (
                         interpretation.companies
                     )
-        
+
                 ],
-        
+
                 "solutions": [
-        
+
                     entity.model_dump(
                         mode="json",
                     )
-        
+
                     for entity in (
                         interpretation.solutions
                     )
-        
+
                 ],
-        
+
                 "topics": [
-        
+
                     entity.model_dump(
                         mode="json",
                     )
-        
+
                     for entity in (
                         interpretation.topics
                     )
-        
+
                 ],
-        
+
             },
 
             "research_axes": [
-        
+
                 axis.model_dump(
                     mode="json",
                 )
-        
+
                 for axis in (
                     interpretation.axes
                 )
-        
+
             ],
-        
+
             "search_terms":
                 interpretation.search_terms,
-        
+
             "related_angles":
                 interpretation.related_angles,
-        
+
             "assumptions":
                 interpretation.assumptions,
-        
+
             "editorial_cautions":
                 interpretation.editorial_cautions,
-        
+
             "missing_information":
                 interpretation.missing_information,
-        
-        },
-
-            "search_terms":
-                interpretation.search_terms,
-
-            "related_angles":
-                interpretation.related_angles,
 
         },
 
-        "evaluated_contents":
+        "evaluated_contents": (
+
             _build_consolidation_items(
 
                 candidates=candidates,
 
                 evaluation=evaluation,
 
-            ),
+            )
+
+        ),
 
     }
 
     serialized_payload = json.dumps(
+
         payload,
+
         ensure_ascii=False,
+
         indent=2,
+
     )
 
     return (
+
         "Consolidate the supplied content evaluations "
         "against the editorial research objective.\n\n"
+
         "Assess every supplied research axis separately "
         "and return exactly one axis_coverage item for "
         "each axis.\n\n"
+
         "For cross-context research, verify that both "
         "the core-subject side and the target-context "
         "side are documented.\n\n"
+
         "Harmonise event groups across all evaluation "
         "batches.\n\n"
+
         "Do not eliminate sources that cover the same "
         "event.\n\n"
+
         "Explain how their analytical contributions "
         "overlap or complement one another.\n\n"
+
         "Identify what the proposed corpus covers and "
         "what still needs to be researched.\n\n"
+
         "Do not add external knowledge.\n\n"
+
         "Return only the required JSON object.\n\n"
+
         "INPUT:\n"
+
         f"{serialized_payload}"
+
     )
