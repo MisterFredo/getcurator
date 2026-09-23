@@ -855,6 +855,36 @@ export default function TouchNotebookBuilder({
 
               </p>
 
+              {(
+                notebook.cross_readings
+                ?? []
+              ).length > 0 && (
+              
+                <p className="mt-1 text-sm text-emerald-700">
+              
+                  {
+                    (
+                      notebook.cross_readings
+                      ?? []
+                    ).length
+                  }
+                  {" "}
+                  evidence-grounded cross-context
+                  {
+                    (
+                      notebook.cross_readings
+                      ?? []
+                    ).length === 1
+                      ? " reading"
+                      : " readings"
+                  }
+                  {" "}
+                  generated.
+              
+                </p>
+              
+              )}
+
               {reportId && (
 
                 <p className="mt-1 text-sm text-emerald-700">
