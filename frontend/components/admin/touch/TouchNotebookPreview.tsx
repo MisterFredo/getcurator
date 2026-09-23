@@ -1013,20 +1013,32 @@ export default function TouchNotebookPreview({
     )
   );
 
-  const eventById = (
-    new Map(
-      notebook.events.map(
-        event => [
+  const eventById =
+    useMemo(
+      () =>
+        new Map(
+          notebook.events.map(
+            event => [
+              event.event_id,
+              event,
+            ],
+          ),
+        ),
+      [
+        notebook.events,
+      ],
+    );
+  
+  const crossReadings =
+    notebook.cross_readings
+    ?? [];
 
-          event.event_id,
-          event,
 
-        ],
-      ),
-    )
-  );
+/* =======================================================
+   RENDER
+======================================================= */
 
-  return (
+return (
 
     <div className="space-y-8">
 
