@@ -64,6 +64,72 @@ is a retrieval clue.
 
 It is not by itself proof of editorial relevance.
 
+============================================================
+RESEARCH AXES
+============================================================
+
+The research brief may contain several distinct research axes.
+
+Evaluate every candidate against:
+
+1. the central subject;
+2. each supplied research axis;
+3. the target context, when one exists.
+
+A candidate does not need to mention the central subject when
+it materially documents another required research axis.
+
+For example, in a cross-context analysis comparing innovations
+from one company with their possible relevance to another
+company or sector:
+
+- contents about the source company document the source side;
+- contents about the target company or target sector document
+  the target-context side;
+- contents about a shared mechanism may connect both sides.
+
+Do not reject target-context evidence merely because it does
+not mention the source company.
+
+The relevance reason must identify the axis or target context
+to which the candidate contributes.
+
+Broad sector proximity remains insufficient. The candidate
+must provide concrete evidence concerning the supplied axis,
+mechanism, actor, constraint or target context.
+
+============================================================
+CROSS-CONTEXT RESEARCH
+============================================================
+
+When research_type is CROSS_CONTEXT_ANALYSIS, preserve the
+distinction between:
+
+- the source subject;
+- the target context;
+- shared or transferable mechanisms;
+- contextual limitations.
+
+A candidate directly documenting the source subject may be
+DIRECT.
+
+A candidate specifically documenting the target company,
+target sector or a required target-context mechanism may be
+CONTEXT even when it never mentions the source subject.
+
+A candidate documenting a concrete mechanism shared by the
+source and target contexts may also be CONTEXT.
+
+Do not require one individual content to establish the full
+cross-context comparison.
+
+The future corpus may combine complementary evidence from
+different contents.
+
+Do not claim that a practice is transferable merely because it
+exists in both contexts. Transferability will be assessed later
+from the assembled evidence.
+
 
 ============================================================
 DIRECT
@@ -96,6 +162,18 @@ CONTEXT
 
 Use CONTEXT when the content does not directly cover the
 central subject but materially helps explain it.
+
+For CROSS_CONTEXT_ANALYSIS, also use CONTEXT when the content
+materially documents:
+
+- the explicitly named target company;
+- the explicitly named target sector or universe;
+- one of the supplied target-context research axes;
+- a concrete mechanism required for the comparison;
+- a structural constraint affecting the target context.
+
+Such a content must not be downgraded merely because it does
+not mention the source subject.
 
 Useful context may include:
 
@@ -525,6 +603,10 @@ def _truncate_text(
 # BUILD RESEARCH PAYLOAD
 # ============================================================
 
+# ============================================================
+# BUILD RESEARCH PAYLOAD
+# ============================================================
+
 def _build_research_payload(
     brief: TouchResearchBrief,
     interpretation: (
@@ -534,14 +616,50 @@ def _build_research_payload(
 
     return {
 
+        "original_query":
+            brief.query,
+
         "output_language":
             brief.output_language,
+
+        "period_start": (
+            brief.period_start.isoformat()
+            if brief.period_start
+            else None
+        ),
+
+        "period_end": (
+            brief.period_end.isoformat()
+            if brief.period_end
+            else None
+        ),
 
         "subject":
             interpretation.subject,
 
+        "central_question":
+            interpretation.central_question,
+
         "objective":
             interpretation.objective,
+
+        "research_type":
+            interpretation.research_type,
+
+        "scope_summary":
+            interpretation.scope_summary,
+
+        "target_context":
+            interpretation.target_context,
+
+        "organization_mode":
+            interpretation.organization_mode,
+
+        "time_granularity":
+            interpretation.time_granularity,
+
+        "geographies":
+            interpretation.geographies,
 
         "core_entities": {
 
@@ -583,11 +701,32 @@ def _build_research_payload(
 
         },
 
+        "research_axes": [
+
+            axis.model_dump(
+                mode="json",
+            )
+
+            for axis in (
+                interpretation.axes
+            )
+
+        ],
+
         "search_terms":
             interpretation.search_terms,
 
         "related_angles":
             interpretation.related_angles,
+
+        "assumptions":
+            interpretation.assumptions,
+
+        "editorial_cautions":
+            interpretation.editorial_cautions,
+
+        "missing_information":
+            interpretation.missing_information,
 
     }
 
@@ -731,6 +870,14 @@ def build_touch_evaluation_prompt(
     return (
         "Evaluate every supplied candidate against "
         "the editorial research brief.\n\n"
+        "Evaluate relevance against the central subject, "
+        "every supplied research axis and the target "
+        "context.\n\n"
+        
+        "For cross-context research, preserve concrete "
+        "evidence about both the source subject and the "
+        "target context. A target-context candidate does "
+        "not need to mention the source subject.\n\n"
         "Every content directly covering the subject "
         "must remain DIRECT, including multiple "
         "coverages of the same event.\n\n"
