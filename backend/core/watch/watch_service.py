@@ -41,6 +41,7 @@ def latest(
     company_id: str | None = None,
     solution_id: str | None = None,
     topic_id: str | None = None,
+    apply_profile_selection: bool = False,
 ):
 
     t0 = perf_counter()
@@ -75,7 +76,7 @@ def latest(
         solution_id=solution_id,
 
         topic_id=topic_id,
-        apply_profile_selection=False,
+        apply_profile_selection=apply_profile_selection,
         allowed_universe_ids=allowed_universe_ids,
 
     )
