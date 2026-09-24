@@ -54,6 +54,10 @@ function formatNumber(
       },
     );
 
+  const formatValue = (
+    value: number,
+  ) => formatter.format(value);
+
   let value = "";
 
   if (
@@ -61,7 +65,7 @@ function formatNumber(
     && item.value !== undefined
   ) {
 
-    value = formatter.format(
+    value = formatValue(
       item.value,
     );
 
@@ -70,32 +74,54 @@ function formatNumber(
     && item.value_max !== null
   ) {
 
-    value = (
-      `${formatter.format(item.value_min)}`
+    value =
+      `${formatValue(item.value_min)}`
       + "–"
-      + `${formatter.format(item.value_max)}`
-    );
+      + `${formatValue(item.value_max)}`;
 
   } else if (
     item.value_min !== null
   ) {
 
     value =
-      `≥ ${formatter.format(item.value_min)}`;
+      `≥ ${formatValue(item.value_min)}`;
 
   } else if (
     item.value_max !== null
   ) {
 
     value =
-      `≤ ${formatter.format(item.value_max)}`;
+      `≤ ${formatValue(item.value_max)}`;
+
+  }
+
+  const scale = (
+    item.scale || ""
+  ).trim();
+
+  const unit = (
+    item.unit || ""
+  ).trim();
+
+  const visibleScale =
+    scale.toUpperCase() === "NONE"
+      ? ""
+      : scale;
+
+  if (
+    unit.toUpperCase() === "PERCENT"
+  ) {
+
+    return value
+      ? `${value}%`
+      : "";
 
   }
 
   return [
     value,
-    item.scale,
-    item.unit,
+    visibleScale,
+    unit,
   ]
     .filter(Boolean)
     .join(" ");
@@ -419,7 +445,9 @@ export default function HomeNumbers({
                     </span>
                   )}
 
-                  {item.period_label && (
+                  {item.period_label
+                    && item.period_label.toUpperCase() !== "UNKNOWN"
+                    && (
                     <span>
                       {item.period_label}
                     </span>
