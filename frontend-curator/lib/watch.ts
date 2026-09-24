@@ -226,6 +226,39 @@ export async function watchLatest(
 
 }
 
+/* =========================================================
+   HOME — LATEST FOR SELECTED PROFILE
+========================================================= */
+
+export async function watchHomeLatest(
+  params: WatchParams,
+): Promise<WatchResponse> {
+
+  const query =
+    new URLSearchParams();
+
+  appendWatchParams(
+    query,
+    params,
+  );
+
+  const res =
+    await api.get(
+      `/watch/home/latest?${query.toString()}`,
+    );
+
+  return {
+    items:
+      (res.items ?? []).map(
+        mapItem,
+      ),
+
+    count:
+      res.count ?? 0,
+  };
+
+}
+
 
 /* =========================================================
    SEARCH
