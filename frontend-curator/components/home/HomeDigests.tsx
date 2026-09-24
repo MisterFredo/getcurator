@@ -34,7 +34,7 @@ type Props = {
    CONSTANTS
 ========================================================= */
 
-const HOME_DIGEST_LIMIT = 3;
+const HOME_DIGEST_LIMIT = 5;
 
 /* =========================================================
    COMPONENT
