@@ -407,67 +407,46 @@ export default function HomePage() {
           grid
           grid-cols-1
           gap-8
-
           lg:grid-cols-[minmax(0,1.4fr)_minmax(360px,1fr)]
         "
       >
-
-        {/* ===================================================
-            LEFT
-        =================================================== */}
-
-        <div
-          className="
-            space-y-10
-          "
-        >
-
-          {/* =================================================
-              CONTENTS
-          ================================================= */}
-
+      
+        {/* LEFT — CONTENTS */}
+      
+        <div className="min-w-0">
+      
           <HomeContents
-
             interlocutorId={
               selectedInterlocutor.id
             }
-
           />
-
-          {/* =================================================
-              DIGESTS
-          ================================================= */}
-
-          <HomeDigests
-
-            interlocutorId={
-              selectedInterlocutor.id
-            }
-
-          />
-
+      
         </div>
-
-        {/* ===================================================
-            RIGHT
-        =================================================== */}
-
+      
+        {/* RIGHT — DIGESTS AND NUMBERS */}
+      
         <div
           className="
-            lg:sticky
-            lg:top-6
+            min-w-0
+            space-y-8
             lg:self-start
           "
         >
-
+      
+          <HomeDigests
+            interlocutorId={
+              selectedInterlocutor.id
+            }
+          />
+      
           <HomeNumbers
             interlocutorId={
               selectedInterlocutor.id
             }
           />
-
+      
         </div>
-
+      
       </div>
 
     </div>
