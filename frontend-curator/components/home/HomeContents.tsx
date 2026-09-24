@@ -8,7 +8,7 @@ import {
 import Link from "next/link";
 
 import {
-  watchLatest,
+  watchHomeLatest,
 } from "@/lib/watch";
 
 import {
@@ -101,7 +101,7 @@ export default function HomeContents({
       try {
 
         const res =
-          await watchLatest({
+          await watchHomeLatest({
 
             user_id:
               interlocutorId,
