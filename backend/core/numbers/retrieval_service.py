@@ -650,7 +650,6 @@ def _build_home_profile_condition(
         params,
     )
 
-
 # ============================================================
 # SEARCH VALIDATED NUMBERS
 # ============================================================
@@ -685,47 +684,46 @@ def search_validated_numbers(
         ),
     )
 
-        safe_offset = max(
-            0,
-            int(offset),
+    safe_offset = max(
+        0,
+        int(offset),
+    )
+
+    conditions, params = (
+        _build_scope_conditions(
+            user_id=user_id,
+            universe_id=universe_id,
+            query=query,
         )
-    
-        conditions, params = (
-            _build_scope_conditions(
+    )
+
+    params.update({
+        "limit": safe_limit,
+        "offset": safe_offset,
+    })
+
+    if apply_profile_selection:
+        if not user_id:
+            raise ValueError(
+                "user_id is required for profile selection"
+            )
+
+        profile_condition, profile_params = (
+            _build_home_profile_condition(
                 user_id=user_id,
-                universe_id=universe_id,
-                query=query,
             )
         )
-    
-        params.update({
-            "limit": safe_limit,
-            "offset": safe_offset,
-        })
-    
-        if apply_profile_selection:
-            if not user_id:
-                raise ValueError(
-                    "user_id is required for profile selection"
-                )
-    
-            profile_condition, profile_params = (
-                _build_home_profile_condition(
-                    user_id=user_id,
-                )
-            )
-    
-            conditions.append(
-                profile_condition
-            )
-    
-            params.update(
-                profile_params
-            )
-    
-        # ========================================================
-        # ENTITY TYPE
-        # ========================================================
+
+        conditions.append(
+            profile_condition
+        )
+
+        params.update(
+            profile_params
+        )
+    # ========================================================
+    # ENTITY TYPE
+    # ========================================================
 
     if entity_type:
 
