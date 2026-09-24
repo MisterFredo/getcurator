@@ -20,6 +20,10 @@ from core.user.user_service import (
     build_user_filter,
 )
 
+from core.expertise.profile_service import (
+    load_profile,
+)
+
 
 # ============================================================
 # TABLES / VIEWS
@@ -410,6 +414,242 @@ def _build_scope_conditions(
         params,
     )
 
+def _build_home_profile_condition(
+    user_id: str,
+) -> tuple[str, Dict[str, Any]]:
+    """
+    Select Numbers whose source content matches
+    the selected profile's favorites or keywords.
+    """
+    profile = load_profile(
+        user_id=user_id,
+    )
+
+    if profile is None:
+        raise ValueError(
+            "Profile not found"
+        )
+
+    company_ids = (
+        profile.preferences.companies
+        or []
+    )
+
+    solution_ids = (
+        profile.preferences.solutions
+        or []
+    )
+
+    topic_ids = (
+        profile.preferences.topics
+        or []
+    )
+
+    keywords = [
+        keyword.strip()
+        for keyword in (
+            profile.keywords
+            or []
+        )
+        if keyword
+        and keyword.strip()
+    ]
+
+    conditions: List[str] = []
+
+    params: Dict[str, Any] = {}
+
+    if company_ids:
+        conditions.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(
+                    content.COMPANIES
+                ) AS company
+                WHERE company.id_company
+                    IN UNNEST(
+                        @profile_company_ids
+                    )
+            )
+            """
+        )
+
+        params[
+            "profile_company_ids"
+        ] = company_ids
+
+    if solution_ids:
+        conditions.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(
+                    content.SOLUTIONS
+                ) AS solution
+                WHERE solution.id_solution
+                    IN UNNEST(
+                        @profile_solution_ids
+                    )
+            )
+            """
+        )
+
+        params[
+            "profile_solution_ids"
+        ] = solution_ids
+
+    if topic_ids:
+        conditions.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(
+                    content.TOPICS
+                ) AS topic
+                WHERE topic.id_topic
+                    IN UNNEST(
+                        @profile_topic_ids
+                    )
+            )
+            """
+        )
+
+        params[
+            "profile_topic_ids"
+        ] = topic_ids
+
+    if keywords:
+        conditions.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM UNNEST(
+                    @profile_keywords
+                ) AS keyword
+
+                WHERE
+                    LOWER(
+                        IFNULL(
+                            content.TITLE,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.TITLE_EN,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.EXCERPT,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.EXCERPT_EN,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.CONTENT_BODY,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.SIGNAL_ANALYTIQUE,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.MECANIQUE_EXPLIQUEE,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.ENJEU_STRATEGIQUE,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+
+                    OR LOWER(
+                        IFNULL(
+                            content.POINT_DE_FRICTION,
+                            ''
+                        )
+                    ) LIKE CONCAT(
+                        '%',
+                        LOWER(keyword),
+                        '%'
+                    )
+            )
+            """
+        )
+
+        params[
+            "profile_keywords"
+        ] = keywords
+
+    if not conditions:
+        return (
+            "FALSE",
+            {},
+        )
+
+    return (
+        "("
+        + " OR ".join(
+            conditions
+        )
+        + ")",
+        params,
+    )
+
 
 # ============================================================
 # SEARCH VALIDATED NUMBERS
@@ -431,6 +671,7 @@ def search_validated_numbers(
     value_status: Optional[str] = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
+    apply_profile_selection: bool = False,
 ) -> Dict[str, Any]:
     """
     Search effectively ACCEPTED Numbers.
@@ -461,6 +702,27 @@ def search_validated_numbers(
         "limit": safe_limit,
         "offset": safe_offset,
     })
+            if apply_profile_selection:
+
+                if not user_id:
+                    raise ValueError(
+                        "user_id is required for "
+                        "profile selection"
+                    )
+        
+                profile_condition, profile_params = (
+                    _build_home_profile_condition(
+                        user_id=user_id,
+                    )
+                )
+        
+                conditions.append(
+                    profile_condition
+                )
+        
+                params.update(
+                    profile_params
+                )
 
     # ========================================================
     # ENTITY TYPE
@@ -929,6 +1191,22 @@ def search_validated_numbers(
             ),
         },
     }
+
+# ============================================================
+# HOME NUMBERS
+# ============================================================
+
+def search_home_numbers(
+    user_id: str,
+    limit: int = 5,
+) -> Dict[str, Any]:
+
+    return search_validated_numbers(
+        user_id=user_id,
+        limit=limit,
+        offset=0,
+        apply_profile_selection=True,
+    )
 
 # ============================================================
 # GET PUBLIC NUMBER FILTERS
