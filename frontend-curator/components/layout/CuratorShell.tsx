@@ -14,7 +14,6 @@ import {
   PlayCircle,
   Users,
   Newspaper,
-  MessageSquare,
   BarChart3,
 } from "lucide-react";
 
@@ -111,13 +110,6 @@ export default function CuratorShell({
       label: "Digests",
       icon: Newspaper,
     },
-
-    {
-      href: "/conversation",
-      label: "Conversation",
-      icon: MessageSquare,
-    },
-
     {
       href: "/numbers",
       label: "Numbers",
