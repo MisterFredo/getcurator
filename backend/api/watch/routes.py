@@ -101,6 +101,23 @@ def latest_route(
 
     return result
 
+# ============================================================
+# HOME — CONTENTS SELECTED FOR A PROFILE
+# ============================================================
+
+@router.get("/home/latest")
+def home_latest_route(
+    user_id: str,
+    limit: int = 10,
+    offset: int = 0,
+):
+    return latest(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        apply_profile_selection=True,
+    )
+
 
 # ============================================================
 # SEARCH
