@@ -20,8 +20,8 @@ import HomeContents
 import HomeDigests
   from "@/components/home/HomeDigests";
 
-import HomeConversation
-  from "@/components/home/HomeConversation";
+import HomeNumbers
+  from "@/components/home/HomeNumbers";
 
 /* =========================================================
    TYPES
@@ -460,17 +460,10 @@ export default function HomePage() {
           "
         >
 
-          <HomeConversation
-
+          <HomeNumbers
             interlocutorId={
               selectedInterlocutor.id
             }
-
-            interlocutorName={
-              selectedInterlocutor
-                .displayName
-            }
-
           />
 
         </div>
