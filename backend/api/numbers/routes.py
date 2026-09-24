@@ -47,6 +47,7 @@ from core.numbers.moderation_service import (
 from core.numbers.retrieval_service import (
     get_validated_number_filters,
     search_validated_numbers,
+    search_home_numbers,
 )
 
 from core.numbers.content_service import (
@@ -303,6 +304,43 @@ def apply_number_decisions_route(
                 f"Numbers : {e}"
             ),
         )
+
+# ============================================================
+# HOME — NUMBERS FOR SELECTED PROFILE
+# ============================================================
+
+@router.get("/public/home")
+def home_numbers_route(
+    user_id: str,
+    limit: int = Query(
+        5,
+        ge=1,
+        le=20,
+    ),
+):
+    try:
+        result = search_home_numbers(
+            user_id=user_id,
+            limit=limit,
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erreur sélection Numbers : {e}",
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur interne Numbers home : {e}",
+        )
+
 
 # ============================================================
 # PUBLIC VALIDATED NUMBERS FILTERS
