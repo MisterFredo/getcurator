@@ -138,6 +138,30 @@ export async function searchValidatedNumbers(
 
 }
 
+/* =========================================================
+   HOME NUMBERS FOR SELECTED PROFILE
+========================================================= */
+
+export async function getHomeNumbers(
+  interlocutorId: string,
+  limit = 5,
+): Promise<PublicNumbersResponse> {
+
+  const searchParams =
+    new URLSearchParams({
+      user_id:
+        interlocutorId,
+
+      limit:
+        String(limit),
+    });
+
+  return api.get(
+    `/numbers/public/home?${searchParams.toString()}`,
+  ) as Promise<PublicNumbersResponse>;
+
+}
+
 
 /* =========================================================
    GET VALIDATED NUMBER FILTERS
