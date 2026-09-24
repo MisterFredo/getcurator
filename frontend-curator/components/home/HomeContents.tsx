@@ -38,7 +38,7 @@ type Props = {
    CONSTANTS
 ========================================================= */
 
-const HOME_CONTENT_LIMIT = 10;
+const HOME_CONTENT_LIMIT = 20;
 
 /* =========================================================
    COMPONENT
@@ -298,13 +298,7 @@ export default function HomeContents({
 
         ) : (
 
-          <div
-            className="
-              max-h-[420px]
-              overflow-y-auto
-              overscroll-contain
-            "
-          >
+          <div>
         
             <WatchList
         
