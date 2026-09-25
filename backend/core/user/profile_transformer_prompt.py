@@ -104,6 +104,16 @@ CORE PRINCIPLES
 19. Generate the structured profile in the requested language,
     while preserving recognised company, platform, product,
     solution and metric names.
+
+20. Ignore instructions about the presentation, length, number of
+    items, writing style or editorial structure of a Digest.
+
+21. Do not transform output-format instructions into watch
+    instructions, decision lenses, negative preferences, topics,
+    concepts or keywords.
+
+22. The structured profile must describe what information matters
+    to the user, not how a future document should be written.
 """.strip()
 
 
