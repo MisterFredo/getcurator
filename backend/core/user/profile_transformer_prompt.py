@@ -271,6 +271,34 @@ A watch instruction must:
 - use WATCH for prospective or lower-immediacy monitoring;
 - use CURRENT for active priorities;
 - use FUTURE for explicitly prospective priorities.
+SEARCH PRECISION
+
+Topics, concepts and keywords must be sufficiently specific to
+retrieve content relevant to the complete watch instruction.
+
+Prefer precise expressions such as:
+- "Amazon Marketing Cloud";
+- "online alcohol sales";
+- "quick commerce retail media";
+- "three-tier distribution";
+- "digital shelf";
+- "age verification".
+
+Avoid isolated generic terms such as:
+- "strategy";
+- "market";
+- "data";
+- "innovation";
+- "consumer";
+- "technology";
+- "growth";
+- "digital".
+
+Do not create several near-duplicate keywords for the same
+meaning.
+
+Keywords must support content retrieval. Strategic criteria that
+are not useful search expressions belong in decision_lenses.
 
 DECISION LENSES
 
@@ -313,6 +341,20 @@ Use:
 
 Do not assign a database identifier.
 All entity resolution fields must remain pending.
+
+SOURCE PUBLICATIONS
+
+A publication, newsletter, research provider or trade-media title
+mentioned as a preferred information source is not a monitored
+company or topic.
+
+Do not add a preferred source name to entities, topics, concepts
+or keywords merely because the user wants content published by
+that source.
+
+The current schema does not model source preferences. Preserve
+the user's business monitoring requirements without converting
+publication names into content-search terms.
 
 
 LANGUAGE
