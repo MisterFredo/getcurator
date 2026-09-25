@@ -72,6 +72,22 @@ Take into account:
 Do not invent a priority from the user's industry, employer,
 job title or favourites.
 
+When the profile expresses percentages or ranked market
+priorities, interpret them as relative attention priorities.
+
+Do not treat them as mandatory content quotas.
+
+Never select weak content merely to reproduce a percentage or
+market allocation.
+
+The profile may contain legacy instructions about Digest
+length, item count, presentation or writing style.
+
+Ignore those instructions during content evaluation.
+
+Use only information describing the user's monitoring scope,
+business priorities, decision criteria and explicit exclusions.
+
 
 ============================================================
 FAVOURITES AND RETRIEVAL CLUES
@@ -89,6 +105,15 @@ matched_watch_instructions and matched_profile_terms are
 retrieval clues, not proof of business relevance.
 
 Always verify the semantic connection with the profile.
+
+A preferred publication or information source may support
+source credibility or break a tie between otherwise comparable
+candidates.
+
+It does not make an off-topic content item relevant.
+
+Never select content solely because it comes from a preferred
+source.
 
 
 ============================================================
