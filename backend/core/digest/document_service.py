@@ -8,6 +8,10 @@ from typing import (
     Literal,
 )
 
+from api.expertise.models import (
+    ExpertiseContent,
+)
+
 from core.delivery.models import (
     KnowledgeResult,
 )
@@ -74,6 +78,7 @@ SECTION_TITLES = {
 
 }
 
+
 SECTION_SELECTED_CONTENTS = (
     "Selected for You"
 )
@@ -92,16 +97,29 @@ def build_digest_document(
         "user",
         "expert",
     ],
+    additional_contents: list[
+        ExpertiseContent
+    ] | None = None,
 ) -> DigestDocument:
     """
-    Build one DigestDocument from
-    a KnowledgeResult.
+    Build one DigestDocument from a KnowledgeResult.
+
+    Main sections and selected cards are built exclusively from
+    the contents included in the KnowledgeResult expertise.
+
+    Additional contents remain outside the analytical foundation
+    and are exposed separately for lightweight rendering.
     """
 
     sections: list[DigestSection] = []
 
     capability_results = (
         knowledge.capability_results
+    )
+
+    additional_contents = (
+        additional_contents
+        or []
     )
 
     # ========================================================
@@ -221,6 +239,49 @@ def build_digest_document(
         )
 
     # ========================================================
+    # ADDITIONAL CONTENTS
+    # ========================================================
+
+    additional_cards: list[
+        DigestCard
+    ] = []
+
+    for content in additional_contents:
+
+        decision = (
+            selection_decisions.get(
+                content.id
+            )
+        )
+
+        # Additional contents must originate from
+        # an ADJACENT selection decision.
+        if (
+            not isinstance(
+                decision,
+                dict,
+            )
+            or decision.get(
+                "relevance_class"
+            )
+            != "ADJACENT"
+        ):
+
+            continue
+
+        additional_cards.append(
+
+            _build_card(
+
+                content=content,
+
+                decision=decision,
+
+            )
+
+        )
+
+    # ========================================================
     # DOCUMENT
     # ========================================================
 
@@ -247,6 +308,10 @@ def build_digest_document(
         profile=profile,
 
         sections=sections,
+
+        additional_contents=(
+            additional_cards
+        ),
 
     )
 
@@ -316,11 +381,39 @@ def _get_selection_decisions(
 
 
 # ============================================================
+# NORMALIZE STRING LIST
+# ============================================================
+
+def _normalize_string_list(
+    value: Any,
+) -> list[str]:
+
+    if not isinstance(
+        value,
+        list,
+    ):
+
+        return []
+
+    return [
+
+        str(
+            item
+        )
+
+        for item in value
+
+        if item
+
+    ]
+
+
+# ============================================================
 # BUILD CARD
 # ============================================================
 
 def _build_card(
-    content,
+    content: ExpertiseContent,
     decision: dict[
         str,
         Any,
@@ -438,24 +531,6 @@ def _build_card(
         )
 
     # ========================================================
-    # MATCHED PRIORITIES
-    # ========================================================
-
-    matched_priorities = (
-        decision.get(
-            "matched_priorities"
-        )
-        or []
-    )
-
-    if not isinstance(
-        matched_priorities,
-        list,
-    ):
-
-        matched_priorities = []
-
-    # ========================================================
     # CARD
     # ========================================================
 
@@ -485,6 +560,12 @@ def _build_card(
             )
         ),
 
+        selection_relevance_class=(
+            decision.get(
+                "relevance_class"
+            )
+        ),
+
         selection_score=(
             decision.get(
                 "relevance_score"
@@ -497,17 +578,25 @@ def _build_card(
             )
         ),
 
-        matched_priorities=[
-            str(
-                priority
-            )
+        matched_priorities=(
+            _normalize_string_list(
 
-            for priority in (
-                matched_priorities
-            )
+                decision.get(
+                    "matched_priorities"
+                )
 
-            if priority
-        ],
+            )
+        ),
+
+        matched_negative_preferences=(
+            _normalize_string_list(
+
+                decision.get(
+                    "matched_negative_preferences"
+                )
+
+            )
+        ),
 
     )
 
