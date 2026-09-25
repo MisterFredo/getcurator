@@ -19,9 +19,18 @@ DigestCandidateSource = Literal[
     "PROFILE_TERM",
 ]
 
+
 DigestCandidatePriority = Literal[
     "SELECT",
     "IGNORE",
+]
+
+
+DigestRelevanceClass = Literal[
+    "CORE",
+    "ADJACENT",
+    "OUT_OF_SCOPE",
+    "EXCLUDED",
 ]
 
 
@@ -89,6 +98,8 @@ class DigestContentDecision(
 
     priority: DigestCandidatePriority
 
+    relevance_class: DigestRelevanceClass
+
     relevance_score: int = Field(
         ...,
         ge=0,
@@ -98,6 +109,12 @@ class DigestContentDecision(
     reason: str
 
     matched_priorities: list[str] = Field(
+        default_factory=list,
+    )
+
+    matched_negative_preferences: list[
+        str
+    ] = Field(
         default_factory=list,
     )
 
@@ -116,6 +133,7 @@ class DigestCandidateSelectionResult(
         default_factory=list,
     )
 
+
 # ============================================================
 # SELECTION OUTCOME
 # ============================================================
@@ -127,6 +145,10 @@ class DigestSelectionOutcome(
     selection: DigestCandidateSelectionResult
 
     selected_content_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    additional_content_ids: list[str] = Field(
         default_factory=list,
     )
 
