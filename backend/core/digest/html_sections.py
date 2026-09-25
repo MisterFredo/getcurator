@@ -19,6 +19,10 @@ from core.digest.html_articles import (
     render_articles_section,
 )
 
+from core.digest.html_additional import (
+    render_additional_contents,
+)
+
 
 # ============================================================
 # DISPLAY TITLES
@@ -178,6 +182,14 @@ def render_sections(
             html += render_default_section(
                 display_section,
             )
+
+    # ========================================================
+    # ADDITIONAL CONTENTS
+    # ========================================================
+
+    html += render_additional_contents(
+        document
+    )
 
     return html
 
