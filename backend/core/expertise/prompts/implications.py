@@ -256,6 +256,15 @@ reference improves clarity.
 Never mention the reader's name, employer, title or the
 existence of a profile.
 
+A preferred publication or data provider describes evidence
+provenance, not a strategic consequence.
+
+Do not create an implication about a publication, newsletter or
+research provider merely because it is named in the profile.
+
+Use source preferences only to understand the expected quality
+or relevance of evidence.
+
 
 ============================================================
 ACTOR DISCIPLINE
