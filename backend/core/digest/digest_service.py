@@ -67,6 +67,10 @@ from core.digest.selection_prompt import (
     DIGEST_SELECTION_VERSION,
 )
 
+from core.expertise.content_service import (
+    load_contents_by_ids,
+)
+
 
 # ============================================================
 # LOGGER
@@ -197,6 +201,13 @@ def generate_digest(
             "IGNORE": 0,
         }
 
+        relevance_class_counts = {
+            "CORE": 0,
+            "ADJACENT": 0,
+            "OUT_OF_SCOPE": 0,
+            "EXCLUDED": 0,
+        }
+
         for decision in (
             selection_outcome
             .selection
@@ -213,9 +224,24 @@ def generate_digest(
                 + 1
             )
 
+            relevance_class_counts[
+                decision.relevance_class
+            ] = (
+                relevance_class_counts.get(
+                    decision.relevance_class,
+                    0,
+                )
+                + 1
+            )
+
         selected_ids = set(
             selection_outcome
             .selected_content_ids
+        )
+
+        additional_ids = set(
+            selection_outcome
+            .additional_content_ids
         )
 
         selected_decisions = [
@@ -226,6 +252,9 @@ def generate_digest(
 
                 "priority":
                     decision.priority,
+
+                "relevance_class":
+                    decision.relevance_class,
 
                 "score":
                     decision.relevance_score,
@@ -244,6 +273,39 @@ def generate_digest(
             if (
                 decision.content_id
                 in selected_ids
+            )
+
+        ]
+
+        additional_decisions = [
+
+            {
+                "content_id":
+                    decision.content_id,
+
+                "priority":
+                    decision.priority,
+
+                "relevance_class":
+                    decision.relevance_class,
+
+                "score":
+                    decision.relevance_score,
+
+                "reason":
+                    decision.reason,
+
+            }
+
+            for decision in (
+                selection_outcome
+                .selection
+                .decisions
+            )
+
+            if (
+                decision.content_id
+                in additional_ids
             )
 
         ]
@@ -270,8 +332,17 @@ def generate_digest(
                         .selected_content_ids
                     ),
 
+                "additional_count":
+                    len(
+                        selection_outcome
+                        .additional_content_ids
+                    ),
+
                 "priority_counts":
                     priority_counts,
+
+                "relevance_class_counts":
+                    relevance_class_counts,
 
                 "used_fallback":
                     selection_outcome
@@ -283,6 +354,9 @@ def generate_digest(
 
                 "selected_decisions":
                     selected_decisions,
+
+                "additional_decisions":
+                    additional_decisions,
             },
 
         )
@@ -303,6 +377,62 @@ def generate_digest(
 
             )
         )
+
+        # ====================================================
+        # LOAD ADDITIONAL CONTENTS
+        # ====================================================
+
+        additional_contents = []
+
+        if (
+            selection_outcome
+            .additional_content_ids
+        ):
+
+            loaded_additional_contents = (
+                load_contents_by_ids(
+
+                    content_ids=(
+                        selection_outcome
+                        .additional_content_ids
+                    ),
+
+                    language=(
+                        candidate_profile.language
+                    ),
+
+                )
+            )
+
+            additional_contents_by_id = {
+
+                content.id:
+                    content
+
+                for content in (
+                    loaded_additional_contents
+                )
+
+            }
+
+            # Preserve the global selection order.
+            additional_contents = [
+
+                additional_contents_by_id[
+                    content_id
+                ]
+
+                for content_id in (
+                    selection_outcome
+                    .additional_content_ids
+                )
+
+                if (
+                    content_id
+                    in additional_contents_by_id
+                )
+
+            ]
 
         # ====================================================
         # DELIVERY
@@ -327,47 +457,81 @@ def generate_digest(
         # ====================================================
         # STORE SELECTION METADATA
         # ====================================================
-        
+
+        if not isinstance(
+            knowledge.metadata,
+            dict,
+        ):
+
+            knowledge.metadata = {}
+
         knowledge.metadata[
             "digest_selection"
         ] = {
-        
+
             "version":
                 DIGEST_SELECTION_VERSION,
-        
+
             "candidate_count":
                 len(
                     candidates
                 ),
-        
+
             "selected_count":
                 len(
                     selection_outcome
                     .selected_content_ids
                 ),
-        
+
+            "additional_count":
+                len(
+                    additional_contents
+                ),
+
+            "selected_content_ids":
+                list(
+                    selection_outcome
+                    .selected_content_ids
+                ),
+
+            "additional_content_ids": [
+
+                content.id
+
+                for content in (
+                    additional_contents
+                )
+
+            ],
+
+            "priority_counts":
+                priority_counts,
+
+            "relevance_class_counts":
+                relevance_class_counts,
+
             "used_fallback":
                 selection_outcome
                 .used_fallback,
-        
+
             "fallback_error":
                 selection_outcome
                 .error,
-        
+
             "decisions": [
-        
+
                 decision.model_dump(
                     mode="json",
                 )
-        
+
                 for decision in (
                     selection_outcome
                     .selection
                     .decisions
                 )
-        
+
             ],
-        
+
         }
 
         # ====================================================
@@ -378,6 +542,7 @@ def generate_digest(
             candidates
         )
 
+        # Only CORE contents are analyzed.
         digest.analyzed_contents = len(
             expertise.contents
         )
@@ -401,6 +566,10 @@ def generate_digest(
 
                 audience=(
                     campaign.audience
+                ),
+
+                additional_contents=(
+                    additional_contents
                 ),
 
             )
