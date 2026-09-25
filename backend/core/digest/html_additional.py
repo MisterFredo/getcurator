@@ -7,6 +7,7 @@ from core.digest.models import (
 
 from core.digest.html_articles import (
     build_card_meta,
+    render_card_badges,
 )
 
 
@@ -162,6 +163,9 @@ def render_additional_card(
 </a>
 
 </h3>
+{render_card_badges(
+    card.badges,
+)}
 
 {meta_html}
 
