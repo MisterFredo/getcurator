@@ -32,6 +32,10 @@ DEFAULT_DIGEST_SELECTION_LIMIT = 20
 
 DEFAULT_DIGEST_SELECTION_THRESHOLD = 60
 
+DEFAULT_DIGEST_ADDITIONAL_LIMIT = 5
+
+DEFAULT_DIGEST_ADDITIONAL_THRESHOLD = 40
+
 DEFAULT_DIGEST_SELECTION_BATCH_SIZE = 15
 
 DEFAULT_DIGEST_SELECTION_BATCH_ATTEMPTS = 2
@@ -118,21 +122,23 @@ def _extract_json_object(
 
 
 # ============================================================
-# PRIORITY ORDER
+# RELEVANCE CLASS ORDER
 # ============================================================
 
-def _priority_order(
-    priority: str,
+def _relevance_class_order(
+    relevance_class: str,
 ) -> int:
 
-    priorities = {
-        "SELECT": 0,
-        "IGNORE": 1,
+    relevance_classes = {
+        "CORE": 0,
+        "ADJACENT": 1,
+        "OUT_OF_SCOPE": 2,
+        "EXCLUDED": 3,
     }
 
-    return priorities.get(
-        priority,
-        2,
+    return relevance_classes.get(
+        relevance_class,
+        4,
     )
 
 
@@ -154,8 +160,8 @@ def _sort_decisions(
 
         key=lambda decision: (
 
-            _priority_order(
-                decision.priority
+            _relevance_class_order(
+                decision.relevance_class
             ),
 
             -decision.relevance_score,
@@ -260,6 +266,142 @@ def _validate_decision_ids(
 
 
 # ============================================================
+# VALIDATE DECISION CONSISTENCY
+# ============================================================
+
+def _validate_decision_consistency(
+    selection: DigestCandidateSelectionResult,
+) -> None:
+
+    for decision in selection.decisions:
+
+        relevance_class = (
+            decision.relevance_class
+        )
+
+        priority = decision.priority
+
+        score = decision.relevance_score
+
+        if relevance_class == "CORE":
+
+            if priority != "SELECT":
+
+                raise ValueError(
+                    "Une décision CORE doit avoir "
+                    "la priorité SELECT : "
+                    f"{decision.content_id}"
+                )
+
+            if score < (
+                DEFAULT_DIGEST_SELECTION_THRESHOLD
+            ):
+
+                raise ValueError(
+                    "Une décision CORE doit avoir "
+                    "un score supérieur ou égal à "
+                    f"{DEFAULT_DIGEST_SELECTION_THRESHOLD} : "
+                    f"{decision.content_id}"
+                )
+
+            if (
+                decision
+                .matched_negative_preferences
+            ):
+
+                raise ValueError(
+                    "Une décision CORE ne peut pas "
+                    "contenir de préférence négative : "
+                    f"{decision.content_id}"
+                )
+
+            continue
+
+        if priority != "IGNORE":
+
+            raise ValueError(
+                "Une décision non CORE doit avoir "
+                "la priorité IGNORE : "
+                f"{decision.content_id}"
+            )
+
+        if relevance_class == "ADJACENT":
+
+            if not (
+                DEFAULT_DIGEST_ADDITIONAL_THRESHOLD
+                <= score
+                < DEFAULT_DIGEST_SELECTION_THRESHOLD
+            ):
+
+                raise ValueError(
+                    "Une décision ADJACENT doit avoir "
+                    "un score compris entre "
+                    f"{DEFAULT_DIGEST_ADDITIONAL_THRESHOLD} "
+                    "et "
+                    f"{DEFAULT_DIGEST_SELECTION_THRESHOLD - 1} : "
+                    f"{decision.content_id}"
+                )
+
+            if (
+                decision
+                .matched_negative_preferences
+            ):
+
+                raise ValueError(
+                    "Une décision ADJACENT ne peut pas "
+                    "contenir de préférence négative : "
+                    f"{decision.content_id}"
+                )
+
+            continue
+
+        if relevance_class == "OUT_OF_SCOPE":
+
+            if score >= (
+                DEFAULT_DIGEST_ADDITIONAL_THRESHOLD
+            ):
+
+                raise ValueError(
+                    "Une décision OUT_OF_SCOPE doit "
+                    "avoir un score inférieur à "
+                    f"{DEFAULT_DIGEST_ADDITIONAL_THRESHOLD} : "
+                    f"{decision.content_id}"
+                )
+
+            continue
+
+        if relevance_class == "EXCLUDED":
+
+            if score > 19:
+
+                raise ValueError(
+                    "Une décision EXCLUDED doit avoir "
+                    "un score inférieur ou égal à 19 : "
+                    f"{decision.content_id}"
+                )
+
+            if not (
+                decision
+                .matched_negative_preferences
+            ):
+
+                raise ValueError(
+                    "Une décision EXCLUDED doit "
+                    "identifier au moins une préférence "
+                    "négative : "
+                    f"{decision.content_id}"
+                )
+
+            continue
+
+        raise ValueError(
+            "Classe de pertinence inconnue pour "
+            f"{decision.content_id} : "
+            f"{relevance_class}"
+        )
+
+
+# ============================================================
 # BUILD CANDIDATE BATCHES
 # ============================================================
 
@@ -329,6 +471,16 @@ Do not return the same content_id more than once.
 
 The number of decisions must exactly match the number of
 candidates.
+
+Respect these mandatory consistency rules:
+
+- CORE requires priority SELECT and a score from 60 to 100;
+- ADJACENT requires priority IGNORE and a score from 40 to 59;
+- OUT_OF_SCOPE requires priority IGNORE and a score from 0 to 39;
+- EXCLUDED requires priority IGNORE and a score from 0 to 19;
+- EXCLUDED must identify at least one explicit negative
+  preference;
+- CORE and ADJACENT must not identify a negative preference.
 
 Return only the corrected JSON object.
 """.strip()
@@ -415,6 +567,10 @@ def _select_candidate_batch(
 
             )
 
+            _validate_decision_consistency(
+                selection
+            )
+
             return selection
 
         except Exception as exc:
@@ -476,10 +632,10 @@ def _normalize_event_key(
 
 
 # ============================================================
-# DEDUPLICATE SELECTED EVENTS
+# DEDUPLICATE RETAINED EVENTS
 # ============================================================
 
-def _deduplicate_selected_events(
+def _deduplicate_retained_events(
     selection: DigestCandidateSelectionResult,
     language: str,
 ) -> DigestCandidateSelectionResult:
@@ -497,8 +653,16 @@ def _deduplicate_selected_events(
             decision.event_key
         )
 
+        retained_class = (
+            decision.relevance_class
+            in {
+                "CORE",
+                "ADJACENT",
+            }
+        )
+
         if (
-            decision.priority != "SELECT"
+            not retained_class
             or not event_key
         ):
 
@@ -551,16 +715,22 @@ def _deduplicate_selected_events(
                     "priority":
                         "IGNORE",
 
+                    "relevance_class":
+                        "OUT_OF_SCOPE",
+
                     "relevance_score":
                         min(
                             decision.relevance_score,
-                            24,
+                            19,
                         ),
 
                     "reason":
                         reason,
 
                     "matched_priorities":
+                        [],
+
+                    "matched_negative_preferences":
                         [],
 
                 },
@@ -583,12 +753,15 @@ def _deduplicate_selected_events(
 def _build_selected_content_ids(
     selection: DigestCandidateSelectionResult,
     selection_limit: int,
-    selection_threshold: int,
 ) -> list[str]:
 
     selected_ids = []
 
     for decision in selection.decisions:
+
+        if decision.relevance_class != "CORE":
+
+            continue
 
         if decision.priority != "SELECT":
 
@@ -596,7 +769,7 @@ def _build_selected_content_ids(
 
         if (
             decision.relevance_score
-            < selection_threshold
+            < DEFAULT_DIGEST_SELECTION_THRESHOLD
         ):
 
             continue
@@ -618,6 +791,185 @@ def _build_selected_content_ids(
 
 
 # ============================================================
+# BUILD ADDITIONAL IDS
+# ============================================================
+
+def _build_additional_content_ids(
+    selection: DigestCandidateSelectionResult,
+    selected_content_ids: list[str],
+    additional_limit: int,
+) -> list[str]:
+
+    selected_id_set = set(
+        selected_content_ids
+    )
+
+    additional_ids = []
+
+    retained_event_keys: set[str] = set()
+
+    for decision in selection.decisions:
+
+        if (
+            decision.relevance_class
+            != "ADJACENT"
+        ):
+
+            continue
+
+        if decision.priority != "IGNORE":
+
+            continue
+
+        if not (
+            DEFAULT_DIGEST_ADDITIONAL_THRESHOLD
+            <= decision.relevance_score
+            < DEFAULT_DIGEST_SELECTION_THRESHOLD
+        ):
+
+            continue
+
+        if (
+            decision
+            .matched_negative_preferences
+        ):
+
+            continue
+
+        if (
+            decision.content_id
+            in selected_id_set
+        ):
+
+            continue
+
+        event_key = _normalize_event_key(
+            decision.event_key
+        )
+
+        if (
+            event_key
+            and event_key
+            in retained_event_keys
+        ):
+
+            continue
+
+        if event_key:
+
+            retained_event_keys.add(
+                event_key
+            )
+
+        additional_ids.append(
+            decision.content_id
+        )
+
+        if (
+            len(
+                additional_ids
+            )
+            >= additional_limit
+        ):
+
+            break
+
+    return additional_ids
+
+
+# ============================================================
+# BUILD CLASS COUNTS
+# ============================================================
+
+def _build_class_counts(
+    selection: DigestCandidateSelectionResult,
+) -> dict[str, int]:
+
+    counts = {
+        "CORE": 0,
+        "ADJACENT": 0,
+        "OUT_OF_SCOPE": 0,
+        "EXCLUDED": 0,
+    }
+
+    for decision in selection.decisions:
+
+        relevance_class = (
+            decision.relevance_class
+        )
+
+        if relevance_class in counts:
+
+            counts[
+                relevance_class
+            ] += 1
+
+    return counts
+
+
+# ============================================================
+# LOG OUTCOME
+# ============================================================
+
+def _log_selection_outcome(
+    candidate_count: int,
+    selection: DigestCandidateSelectionResult,
+    selected_content_ids: list[str],
+    additional_content_ids: list[str],
+    used_fallback: bool,
+    error: str | None,
+) -> None:
+
+    class_counts = _build_class_counts(
+        selection
+    )
+
+    print(
+        "DIGEST_SELECTION",
+        {
+            "candidate_count":
+                candidate_count,
+
+            "core_count":
+                class_counts[
+                    "CORE"
+                ],
+
+            "adjacent_count":
+                class_counts[
+                    "ADJACENT"
+                ],
+
+            "out_of_scope_count":
+                class_counts[
+                    "OUT_OF_SCOPE"
+                ],
+
+            "excluded_count":
+                class_counts[
+                    "EXCLUDED"
+                ],
+
+            "selected_count":
+                len(
+                    selected_content_ids
+                ),
+
+            "additional_count":
+                len(
+                    additional_content_ids
+                ),
+
+            "used_fallback":
+                used_fallback,
+
+            "error":
+                error,
+        },
+    )
+
+
+# ============================================================
 # FALLBACK
 # ============================================================
 
@@ -625,80 +977,27 @@ def _build_fallback_outcome(
     candidates: list[
         DigestContentCandidate
     ],
-    selection_limit: int,
     language: str,
     error: str,
 ) -> DigestSelectionOutcome:
 
-    retained_candidates = candidates[
-        :selection_limit
-    ]
-
-    retained_ids = {
-
-        candidate.content_id
-
-        for candidate in retained_candidates
-
-    }
-
     decisions = []
 
-    for index, candidate in enumerate(
-        candidates
-    ):
-
-        retained = (
-            candidate.content_id
-            in retained_ids
-        )
+    for candidate in candidates:
 
         if language == "fr":
 
             reason = (
-
-                "Contenu conservé selon l’ordre "
-                "de présélection après une erreur "
-                "du moteur de classement."
-
-                if retained
-
-                else
-
-                "Contenu non conservé en raison "
-                "de la limite du Digest après une "
-                "erreur du moteur de classement."
+                "Contenu non classé à la suite "
+                "d’une erreur du moteur de sélection."
             )
 
         else:
 
             reason = (
-
-                "Content retained according to "
-                "the preselection order after a "
-                "ranking engine error."
-
-                if retained
-
-                else
-
-                "Content not retained because of "
-                "the Digest limit after a ranking "
-                "engine error."
+                "Content not classified following "
+                "a selection engine error."
             )
-
-        relevance_score = (
-
-            max(
-                DEFAULT_DIGEST_SELECTION_THRESHOLD,
-                69 - index,
-            )
-
-            if retained
-
-            else 0
-
-        )
 
         decisions.append(
 
@@ -710,19 +1009,19 @@ def _build_fallback_outcome(
 
                 event_key=None,
 
-                priority=(
-                    "SELECT"
-                    if retained
-                    else "IGNORE"
+                priority="IGNORE",
+
+                relevance_class=(
+                    "OUT_OF_SCOPE"
                 ),
 
-                relevance_score=(
-                    relevance_score
-                ),
+                relevance_score=0,
 
                 reason=reason,
 
                 matched_priorities=[],
+
+                matched_negative_preferences=[],
 
             )
 
@@ -736,17 +1035,13 @@ def _build_fallback_outcome(
         )
     )
 
-    return DigestSelectionOutcome(
+    outcome = DigestSelectionOutcome(
 
         selection=selection,
 
-        selected_content_ids=[
+        selected_content_ids=[],
 
-            candidate.content_id
-
-            for candidate in retained_candidates
-
-        ],
+        additional_content_ids=[],
 
         used_fallback=True,
 
@@ -755,6 +1050,26 @@ def _build_fallback_outcome(
         ],
 
     )
+
+    _log_selection_outcome(
+
+        candidate_count=len(
+            candidates
+        ),
+
+        selection=selection,
+
+        selected_content_ids=[],
+
+        additional_content_ids=[],
+
+        used_fallback=True,
+
+        error=outcome.error,
+
+    )
+
+    return outcome
 
 
 # ============================================================
@@ -779,21 +1094,43 @@ def select_digest_candidates(
 
     if not candidates:
 
-        return DigestSelectionOutcome(
+        selection = (
+            DigestCandidateSelectionResult(
+                decisions=[],
+            )
+        )
 
-            selection=(
-                DigestCandidateSelectionResult(
-                    decisions=[],
-                )
-            ),
+        outcome = DigestSelectionOutcome(
+
+            selection=selection,
 
             selected_content_ids=[],
+
+            additional_content_ids=[],
 
             used_fallback=False,
 
             error=None,
 
         )
+
+        _log_selection_outcome(
+
+            candidate_count=0,
+
+            selection=selection,
+
+            selected_content_ids=[],
+
+            additional_content_ids=[],
+
+            used_fallback=False,
+
+            error=None,
+
+        )
+
+        return outcome
 
     try:
 
@@ -861,6 +1198,10 @@ def select_digest_candidates(
 
         )
 
+        _validate_decision_consistency(
+            selection
+        )
+
         selection = (
             DigestCandidateSelectionResult(
 
@@ -872,7 +1213,7 @@ def select_digest_candidates(
         )
 
         selection = (
-            _deduplicate_selected_events(
+            _deduplicate_retained_events(
 
                 selection=selection,
 
@@ -891,6 +1232,10 @@ def select_digest_candidates(
             )
         )
 
+        _validate_decision_consistency(
+            selection
+        )
+
         selected_content_ids = (
             _build_selected_content_ids(
 
@@ -900,19 +1245,35 @@ def select_digest_candidates(
                     selection_limit
                 ),
 
-                selection_threshold=(
-                    DEFAULT_DIGEST_SELECTION_THRESHOLD
+            )
+        )
+
+        additional_content_ids = (
+            _build_additional_content_ids(
+
+                selection=selection,
+
+                selected_content_ids=(
+                    selected_content_ids
+                ),
+
+                additional_limit=(
+                    DEFAULT_DIGEST_ADDITIONAL_LIMIT
                 ),
 
             )
         )
 
-        return DigestSelectionOutcome(
+        outcome = DigestSelectionOutcome(
 
             selection=selection,
 
             selected_content_ids=(
                 selected_content_ids
+            ),
+
+            additional_content_ids=(
+                additional_content_ids
             ),
 
             used_fallback=False,
@@ -921,15 +1282,35 @@ def select_digest_candidates(
 
         )
 
+        _log_selection_outcome(
+
+            candidate_count=len(
+                candidates
+            ),
+
+            selection=selection,
+
+            selected_content_ids=(
+                selected_content_ids
+            ),
+
+            additional_content_ids=(
+                additional_content_ids
+            ),
+
+            used_fallback=False,
+
+            error=None,
+
+        )
+
+        return outcome
+
     except Exception as exc:
 
         return _build_fallback_outcome(
 
             candidates=candidates,
-
-            selection_limit=(
-                selection_limit
-            ),
 
             language=profile.language,
 
