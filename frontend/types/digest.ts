@@ -38,6 +38,16 @@ export type DigestStatus =
   | "sent"
   | "failed";
 
+/* =========================================================
+   SELECTION RELEVANCE
+========================================================= */
+
+export type DigestSelectionRelevanceClass =
+  | "CORE"
+  | "ADJACENT"
+  | "OUT_OF_SCOPE"
+  | "EXCLUDED";
+
 
 /* =========================================================
    CAMPAIGN
@@ -162,6 +172,12 @@ export type DigestCard = {
   selection_priority?:
     | "SELECT"
     | "IGNORE"
+    | "MUST_HAVE"
+    | "NICE_TO_HAVE"
+    | null;
+
+  selection_relevance_class?:
+    | DigestSelectionRelevanceClass
     | null;
 
   selection_score?: number | null;
@@ -169,6 +185,8 @@ export type DigestCard = {
   selection_reason?: string | null;
 
   matched_priorities: string[];
+
+  matched_negative_preferences: string[];
 
 };
 
@@ -208,8 +226,9 @@ export type DigestDocument = {
 
   sections: DigestSection[];
 
-};
+  additional_contents: DigestCard[];
 
+};
 
 /* =========================================================
    DIGEST
