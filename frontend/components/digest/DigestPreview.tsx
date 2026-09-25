@@ -76,7 +76,14 @@ export default function DigestPreview({
       {/* HEADER */}
       {/* ================================================= */}
 
-      <div className="rounded-lg border bg-white p-6">
+      <div
+        className="
+          rounded-lg
+          border
+          bg-white
+          p-6
+        "
+      >
 
         <h1 className="text-3xl font-bold">
 
@@ -187,12 +194,24 @@ export default function DigestPreview({
                   .filter(Boolean)
                   .join(" • ");
 
+                const badges =
+                  card.badges
+                  ?? [];
+
                 return (
 
                   <article
                     key={card.id}
-                    className="py-4 first:pt-0 last:pb-0"
+                    className="
+                      py-4
+                      first:pt-0
+                      last:pb-0
+                    "
                   >
+
+                    {/* =================================== */}
+                    {/* TITLE */}
+                    {/* =================================== */}
 
                     <h3
                       className="
@@ -202,28 +221,71 @@ export default function DigestPreview({
                       "
                     >
 
-                      <a
-                        href={card.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      {card.title}
+
+                    </h3>
+
+                    {/* =================================== */}
+                    {/* BADGES */}
+                    {/* =================================== */}
+
+                    {badges.length > 0 && (
+
+                      <div
                         className="
-                          transition-colors
-                          hover:text-ratecard-blue
-                          hover:underline
+                          mt-2
+                          flex
+                          flex-wrap
+                          gap-2
                         "
                       >
 
-                        {card.title}
+                        {badges.map(
+                          (
+                            badge,
+                            index,
+                          ) => (
 
-                      </a>
+                            <span
+                              key={
+                                [
+                                  badge.type,
+                                  badge.label,
+                                  index,
+                                ].join("-")
+                              }
+                              className="
+                                rounded-full
+                                bg-gray-100
+                                px-2.5
+                                py-1
+                                text-xs
+                                font-medium
+                                uppercase
+                                text-gray-600
+                              "
+                            >
 
-                    </h3>
+                              {badge.label}
+
+                            </span>
+
+                          ),
+                        )}
+
+                      </div>
+
+                    )}
+
+                    {/* =================================== */}
+                    {/* SOURCE AND DATE */}
+                    {/* =================================== */}
 
                     {metadata && (
 
                       <p
                         className="
-                          mt-1
+                          mt-2
                           text-xs
                           text-gray-500
                         "
@@ -234,6 +296,10 @@ export default function DigestPreview({
                       </p>
 
                     )}
+
+                    {/* =================================== */}
+                    {/* SELECTION REASON */}
+                    {/* =================================== */}
 
                     {card.selection_reason && (
 
@@ -251,6 +317,10 @@ export default function DigestPreview({
                       </p>
 
                     )}
+
+                    {/* =================================== */}
+                    {/* LINK */}
+                    {/* =================================== */}
 
                     <a
                       href={card.url}
