@@ -26,6 +26,14 @@ DigestAudience = Literal[
 ]
 
 
+DigestSelectionRelevanceClass = Literal[
+    "CORE",
+    "ADJACENT",
+    "OUT_OF_SCOPE",
+    "EXCLUDED",
+]
+
+
 # ============================================================
 # DIGEST BADGE
 # ============================================================
@@ -118,11 +126,22 @@ class DigestCard(
         "NICE_TO_HAVE",
     ] | None = None
 
+    selection_relevance_class: (
+        DigestSelectionRelevanceClass
+        | None
+    ) = None
+
     selection_score: int | None = None
 
     selection_reason: str | None = None
 
     matched_priorities: list[str] = Field(
+        default_factory=list,
+    )
+
+    matched_negative_preferences: list[
+        str
+    ] = Field(
         default_factory=list,
     )
 
@@ -163,6 +182,12 @@ class DigestDocument(
     profile: DigestProfile
 
     sections: list[DigestSection] = Field(
+        default_factory=list,
+    )
+
+    additional_contents: list[
+        DigestCard
+    ] = Field(
         default_factory=list,
     )
 
