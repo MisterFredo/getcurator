@@ -19,6 +19,10 @@ from core.digest.selection_prompt import (
     build_digest_selection_user_prompt,
 )
 
+from core.feedback.models import (
+    UserFeedbackContext,
+)
+
 from utils.llm import (
     run_llm_json,
 )
@@ -1084,12 +1088,21 @@ def select_digest_candidates(
     selection_limit: int = (
         DEFAULT_DIGEST_SELECTION_LIMIT
     ),
+    feedback_context: (
+        UserFeedbackContext
+        | None
+    ) = None,
     model: Optional[str] = None,
 ) -> DigestSelectionOutcome:
 
     selection_limit = max(
         1,
         selection_limit,
+    )
+
+    feedback_context = (
+        feedback_context
+        or UserFeedbackContext()
     )
 
     if not candidates:
@@ -1165,6 +1178,10 @@ def select_digest_candidates(
 
                     selection_limit=(
                         selection_limit
+                    ),
+
+                    feedback_context=(
+                        feedback_context
                     ),
 
                     model=model,
