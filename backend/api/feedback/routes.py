@@ -391,6 +391,7 @@ def preview_digest_feedback(
         ),
 
         content_title=content_title,
+        language=language,
 
         feedback_type="NOT_RELEVANT",
 
