@@ -11,6 +11,8 @@ from api.user.models import (
     UserPreferencesPayload,
     UserProfileAssistantPayload,
     UserProfileRegeneratePayload,
+    UserProfileResponse,
+    UserProfileAdminResponse,
 )
 
 from core.user.user_service import (
@@ -71,6 +73,134 @@ from core.user.profile_assistant_service import (
 from utils.auth import get_user_id_from_request
 
 router = APIRouter()
+
+# ============================================================
+# PROFILE RESPONSE PROJECTIONS
+# ============================================================
+
+def _build_public_profile(
+    user_id: str,
+    profile: Optional[dict],
+) -> Optional[dict]:
+    """
+    Return only the profile information allowed on the
+    public front.
+    """
+
+    if not profile:
+
+        return None
+
+    return UserProfileResponse(
+
+        user_id=user_id,
+
+        geography_1=profile.get(
+            "geography_1"
+        ),
+
+        geography_2=profile.get(
+            "geography_2"
+        ),
+
+        geography_3=profile.get(
+            "geography_3"
+        ),
+
+        profile_text=profile.get(
+            "profile_text"
+        ),
+
+    ).model_dump()
+
+
+def _build_admin_profile(
+    user_id: str,
+    profile: Optional[dict],
+) -> Optional[dict]:
+    """
+    Return the complete three-layer profile for admin use.
+    """
+
+    if not profile:
+
+        return None
+
+    return UserProfileAdminResponse(
+
+        user_id=user_id,
+
+        geography_1=profile.get(
+            "geography_1"
+        ),
+
+        geography_2=profile.get(
+            "geography_2"
+        ),
+
+        geography_3=profile.get(
+            "geography_3"
+        ),
+
+        profile_text=profile.get(
+            "profile_text"
+        ),
+
+        profile_editorial_text=profile.get(
+            "profile_editorial_text"
+        ),
+
+        profile_editorial_source_hash=profile.get(
+            "profile_editorial_source_hash"
+        ),
+
+        profile_editorial_transformer_version=(
+            profile.get(
+                "profile_editorial_transformer_version"
+            )
+        ),
+
+        profile_editorial_at=profile.get(
+            "profile_editorial_at"
+        ),
+
+        profile_editorial_status=profile.get(
+            "profile_editorial_status"
+        ),
+
+        profile_editorial_error=profile.get(
+            "profile_editorial_error"
+        ),
+
+        structured_profile=profile.get(
+            "structured_profile"
+        ),
+
+        profile_source_hash=profile.get(
+            "profile_source_hash"
+        ),
+
+        profile_schema_version=profile.get(
+            "profile_schema_version"
+        ),
+
+        profile_transformer_version=profile.get(
+            "profile_transformer_version"
+        ),
+
+        profile_structured_at=profile.get(
+            "profile_structured_at"
+        ),
+
+        profile_structured_status=profile.get(
+            "profile_structured_status"
+        ),
+
+        profile_structured_error=profile.get(
+            "profile_structured_error"
+        ),
+
+    ).model_dump()
 
 
 # =========================================================
@@ -289,34 +419,85 @@ def remove_keyword(
     }
 
 # =========================================================
-# USER PROFILE
+# USER PROFILE BY ID — PUBLIC REPRESENTATION
 # =========================================================
 
 @router.get("/profile/{user_id}")
-def get_profile(user_id: str):
+def get_profile(
+    user_id: str,
+):
 
-    profile = get_user_profile(user_id)
+    profile = get_user_profile(
+        user_id
+    )
 
     return {
-        "profile": profile
+        "profile":
+            _build_public_profile(
+                user_id=user_id,
+                profile=profile,
+            )
     }
 
+
 # =========================================================
-# USER PROFILE (CURRENT USER)
+# USER PROFILE — CURRENT USER
 # =========================================================
 
 @router.get("/profile")
-def get_my_profile(request: Request):
+def get_my_profile(
+    request: Request,
+):
 
-    user_id = get_user_id_from_request(request)
+    user_id = get_user_id_from_request(
+        request
+    )
 
     if not user_id:
+
         return {
             "profile": None
         }
 
+    profile = get_user_profile(
+        user_id
+    )
+
     return {
-        "profile": get_user_profile(user_id)
+        "profile":
+            _build_public_profile(
+                user_id=user_id,
+                profile=profile,
+            )
+    }
+
+
+# =========================================================
+# USER PROFILE — ADMIN REPRESENTATION
+# =========================================================
+
+@router.get("/profile/admin/{user_id}")
+def get_admin_profile(
+    user_id: str,
+):
+
+    profile = get_user_profile(
+        user_id
+    )
+
+    if not profile:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Profil utilisateur introuvable",
+        )
+
+    return {
+        "profile":
+            _build_admin_profile(
+                user_id=user_id,
+                profile=profile,
+            )
     }
 
 
@@ -423,14 +604,27 @@ def update_profile(
                 detail=error,
             )
 
-        return {
-            "status": (
-                result.get("status")
-                if result
-                else "generated"
-            ),
-            "profile": result,
-        }
+                saved_profile = get_user_profile(
+                    user_id
+                )
+        
+                return {
+        
+                    "status": (
+                        result.get(
+                            "status"
+                        )
+                        if result
+                        else "generated"
+                    ),
+        
+                    "profile":
+                        _build_public_profile(
+                            user_id=user_id,
+                            profile=saved_profile,
+                        ),
+        
+                }
 
     except HTTPException:
         raise
@@ -547,6 +741,10 @@ def profile_assistant(
 # REGENERATE STRUCTURED USER PROFILE
 # =========================================================
 
+# =========================================================
+# REGENERATE CURRENT USER PROFILE
+# =========================================================
+
 @router.post("/profile/regenerate")
 def regenerate_profile(
     request: Request,
@@ -579,7 +777,9 @@ def regenerate_profile(
         )
 
     language = (
-        user.get("LANGUAGE")
+        user.get(
+            "LANGUAGE"
+        )
         or "fr"
     )
 
@@ -600,9 +800,21 @@ def regenerate_profile(
                 detail=error,
             )
 
+        saved_profile = get_user_profile(
+            user_id
+        )
+
         return {
-            "status": "regenerated",
-            "profile": result,
+
+            "status":
+                "regenerated",
+
+            "profile":
+                _build_public_profile(
+                    user_id=user_id,
+                    profile=saved_profile,
+                ),
+
         }
 
     except HTTPException:
@@ -614,8 +826,96 @@ def regenerate_profile(
         raise HTTPException(
             status_code=500,
             detail=(
-                "Erreur régénération du profil "
-                f"structuré : {error}"
+                "Erreur régénération du profil : "
+                f"{error}"
+            ),
+        )
+
+
+# =========================================================
+# REGENERATE USER PROFILE — ADMIN
+# =========================================================
+
+@router.post("/profile/admin/regenerate")
+def regenerate_admin_profile(
+    payload: UserProfileRegeneratePayload,
+):
+
+    user_id = payload.user_id
+
+    if not user_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="user_id manquant",
+        )
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    language = (
+        user.get(
+            "LANGUAGE"
+        )
+        or "fr"
+    )
+
+    try:
+
+        (
+            result,
+            error,
+        ) = regenerate_current_user_profile(
+            user_id=user_id,
+            language=language,
+        )
+
+        if error:
+
+            raise HTTPException(
+                status_code=400,
+                detail=error,
+            )
+
+        saved_profile = get_user_profile(
+            user_id
+        )
+
+        return {
+
+            "status":
+                "regenerated",
+
+            "profile":
+                _build_admin_profile(
+                    user_id=user_id,
+                    profile=saved_profile,
+                ),
+
+            "generation":
+                result,
+
+        }
+
+    except HTTPException:
+
+        raise
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur régénération du profil : "
+                f"{error}"
             ),
         )
 
