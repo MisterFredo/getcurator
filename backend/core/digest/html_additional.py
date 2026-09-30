@@ -1,4 +1,6 @@
-from html import escape
+from html import (
+    escape,
+)
 
 from core.digest.models import (
     DigestCard,
@@ -8,6 +10,7 @@ from core.digest.models import (
 from core.digest.html_articles import (
     build_card_meta,
     render_card_badges,
+    render_not_relevant_link,
 )
 
 
@@ -33,7 +36,7 @@ def render_additional_contents(
     document: DigestDocument,
 ) -> str:
     """
-    Render lightweight additional content links.
+    Render lightweight additional content signals.
 
     These contents are not part of the analytical foundation
     used for the Executive Brief or Strategic Implications.
@@ -90,7 +93,10 @@ def render_additional_card(
     """
     Render one lightweight additional signal.
 
-    No full excerpt, badges or generated implication are shown.
+    The title remains plain text, consistently with the main
+    selected article cards.
+
+    Badges, metadata and the selection reason remain visible.
     """
 
     title = escape(
@@ -152,17 +158,10 @@ def render_additional_card(
 
 <h3>
 
-<a
-    href="{url}"
-    target="_blank"
-    rel="noopener noreferrer"
->
-
 {title}
 
-</a>
-
 </h3>
+
 {render_card_badges(
     card.badges,
 )}
@@ -183,6 +182,10 @@ def render_additional_card(
 Read on GetCurator →
 
 </a>
+
+{render_not_relevant_link(
+    card
+)}
 
 </p>
 
