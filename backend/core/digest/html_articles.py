@@ -8,6 +8,7 @@ from core.digest.html_badges import (
     render_badge,
 )
 
+
 # ============================================================
 # CONFIG
 # ============================================================
@@ -28,7 +29,9 @@ def render_articles_section(
 
     cards = "".join(
 
-        render_card(card)
+        render_card(
+            card
+        )
 
         for card in section.cards
 
@@ -65,7 +68,7 @@ def render_card(
     """
 
     meta = build_card_meta(
-        card,
+        card
     )
 
     return f"""
@@ -108,9 +111,63 @@ Read on GetCurator →
 
 </a>
 
+{render_not_relevant_link(
+    card
+)}
+
 </p>
 
 </div>
+"""
+
+
+# ============================================================
+# NOT RELEVANT LINK
+# ============================================================
+
+def render_not_relevant_link(
+    card: DigestCard,
+) -> str:
+    """
+    Render the explicit negative-feedback link.
+
+    The link only opens the confirmation page.
+    No feedback is recorded until the user confirms
+    the action on GetCurator.
+    """
+
+    if not card.not_relevant_url:
+
+        return ""
+
+    return f"""
+<span
+    style="
+        color:#cbd5e1;
+        padding:0 8px;
+    "
+>
+
+·
+
+</span>
+
+<a
+    href="{card.not_relevant_url}"
+    class="feedback-link"
+    target="_blank"
+    rel="noopener noreferrer"
+    style="
+        color:#64748b;
+        font-size:12px;
+        font-weight:400;
+        text-decoration:underline;
+    "
+>
+
+Not relevant for me
+
+</a>
 """
 
 
@@ -125,7 +182,10 @@ def truncate_excerpt(
     Truncate the article excerpt for email rendering.
     """
 
-    text = text.strip()
+    text = (
+        text
+        or ""
+    ).strip()
 
     if len(text) <= MAX_EXCERPT_LENGTH:
 
@@ -194,7 +254,7 @@ def render_card_badges(
     for badge in badges:
 
         html += render_badge(
-            badge,
+            badge
         )
 
     html += """
