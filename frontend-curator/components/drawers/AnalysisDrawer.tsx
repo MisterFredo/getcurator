@@ -1330,8 +1330,6 @@ export default function AnalysisDrawer({
           {/* CONTENT FEEDBACK */}
           {/* ============================================= */}
 
-          {feedbackAvailable && (
-
             <div
               className="
                 border-t
@@ -1393,6 +1391,7 @@ export default function AnalysisDrawer({
                     disabled={
                       feedbackSaving
                       || feedbackLoading
+                      || !feedbackAvailable
                     }
                     onClick={() =>
                       handleFeedback(
@@ -1444,6 +1443,7 @@ export default function AnalysisDrawer({
                     disabled={
                       feedbackSaving
                       || feedbackLoading
+                      || !feedbackAvailable
                     }
                     onClick={() =>
                       handleFeedback(
@@ -1507,8 +1507,6 @@ export default function AnalysisDrawer({
                   {feedbackError}
 
                 </p>
-
-              )}
 
               {feedback && (
 
