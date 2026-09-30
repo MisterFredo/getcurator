@@ -264,24 +264,41 @@ def _render_interlocutor_profile(
 
     parts = []
 
-    if profile.profile_text:
+    editorial_profile_text = getattr(
+        profile,
+        "editorial_profile_text",
+        None,
+    )
+
+    effective_profile_text = (
+        editorial_profile_text
+        or profile.profile_text
+    )
+
+    if effective_profile_text:
 
         parts.append(
             f"""
 PROFILE
 
-{profile.profile_text}
+{effective_profile_text}
 """.strip()
         )
 
     geography = [
+
         value
+
         for value in [
+
             profile.geography_1,
             profile.geography_2,
             profile.geography_3,
+
         ]
+
         if value
+
     ]
 
     if geography:
@@ -304,6 +321,7 @@ GEOGRAPHIC CONTEXT
     return "\n\n".join(
         parts,
     )
+
 
 # ============================================================
 # RENDER RECENT DIGEST CONTEXT
