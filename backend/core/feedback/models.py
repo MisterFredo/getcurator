@@ -123,11 +123,6 @@ class DigestFeedbackTokenPayload(
 class DigestFeedbackPreview(
     BaseModel,
 ):
-    """
-    Information displayed before the user confirms feedback.
-
-    Loading this preview must never persist feedback.
-    """
 
     token: str
 
@@ -136,6 +131,11 @@ class DigestFeedbackPreview(
     content_id: str
 
     content_title: str
+
+    language: Literal[
+        "fr",
+        "en",
+    ] = "en"
 
     feedback_type: Literal[
         "NOT_RELEVANT",
