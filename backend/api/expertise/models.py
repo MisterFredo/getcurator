@@ -55,7 +55,16 @@ class ExpertiseProfile(BaseModel):
         default_factory=list,
     )
 
+    # Public human-readable profile.
     profile_text: str = ""
+
+    # Internal editorial profile.
+    # Available to backend engines but excluded from
+    # serialized Expertise and Knowledge responses.
+    editorial_profile_text: str | None = Field(
+        default=None,
+        exclude=True,
+    )
 
     structured_profile: dict | None = None
 
