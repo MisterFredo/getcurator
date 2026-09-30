@@ -1,9 +1,13 @@
 from typing import (
     Any,
     Dict,
-    List,
     Optional,
     Tuple,
+)
+
+from core.user.profile_editorial_service import (
+    build_profile_editorial_source_hash,
+    generate_and_save_profile_editorial,
 )
 
 from core.user.profile_transformer_service import (
@@ -13,6 +17,8 @@ from core.user.profile_transformer_service import (
 
 from core.user.user_profile_service import (
     get_user_profile,
+    mark_profile_structured_building,
+    record_profile_transformation_error,
     save_validated_user_profile,
 )
 
@@ -28,7 +34,61 @@ OrchestratorResult = Tuple[
 
 
 # ============================================================
-# GET CURRENT READY PROFILE
+# GET CURRENT READY EDITORIAL PROFILE
+# ============================================================
+
+def get_current_ready_editorial_profile(
+    user_id: str,
+    source_hash: str,
+) -> Optional[Dict[str, Any]]:
+
+    current_profile = get_user_profile(
+        user_id=user_id,
+    )
+
+    if not current_profile:
+
+        return None
+
+    if (
+        current_profile.get(
+            "profile_editorial_source_hash"
+        )
+        != source_hash
+    ):
+
+        return None
+
+    if (
+        current_profile.get(
+            "profile_editorial_status"
+        )
+        != "READY"
+    ):
+
+        return None
+
+    editorial_text = (
+        current_profile.get(
+            "profile_editorial_text"
+        )
+    )
+
+    if not (
+        isinstance(
+            editorial_text,
+            str,
+        )
+        and editorial_text.strip()
+    ):
+
+        return None
+
+    return current_profile
+
+
+# ============================================================
+# GET CURRENT READY STRUCTURED PROFILE
 # ============================================================
 
 def get_current_ready_profile(
@@ -76,6 +136,142 @@ def get_current_ready_profile(
 
 
 # ============================================================
+# CLEAN PROFILE TEXT
+# ============================================================
+
+def _clean_profile_text(
+    profile_text: Optional[str],
+) -> str:
+
+    if not isinstance(
+        profile_text,
+        str,
+    ):
+
+        return ""
+
+    return profile_text.strip()
+
+
+# ============================================================
+# BUILD EDITORIAL PROFILE
+# ============================================================
+
+def _get_or_generate_editorial_profile(
+    user_id: str,
+    profile_text: str,
+    geography_1: Optional[str],
+    geography_2: Optional[str],
+    geography_3: Optional[str],
+    language: str,
+    force: bool,
+) -> Tuple[
+    Optional[str],
+    Optional[str],
+    bool,
+]:
+    """
+    Return:
+
+    - editorial profile text;
+    - error;
+    - whether a new editorial profile was generated.
+    """
+
+    editorial_source_hash = (
+        build_profile_editorial_source_hash(
+            profile_text=profile_text,
+            geography_1=geography_1,
+            geography_2=geography_2,
+            geography_3=geography_3,
+            language=language,
+        )
+    )
+
+    # ========================================================
+    # REUSE CURRENT EDITORIAL PROFILE
+    # ========================================================
+
+    if not force:
+
+        current_profile = (
+            get_current_ready_editorial_profile(
+                user_id=user_id,
+                source_hash=(
+                    editorial_source_hash
+                ),
+            )
+        )
+
+        if current_profile:
+
+            editorial_text = (
+                current_profile.get(
+                    "profile_editorial_text"
+                )
+                or ""
+            ).strip()
+
+            return (
+                editorial_text,
+                None,
+                False,
+            )
+
+    # ========================================================
+    # GENERATE EDITORIAL PROFILE
+    # ========================================================
+
+    try:
+
+        editorial_result = (
+            generate_and_save_profile_editorial(
+                user_id=user_id,
+                profile_text=profile_text,
+                geography_1=geography_1,
+                geography_2=geography_2,
+                geography_3=geography_3,
+                language=language,
+            )
+        )
+
+    except Exception as exc:
+
+        return (
+            None,
+            (
+                "Impossible de générer "
+                f"le profil éditorial : {exc}"
+            ),
+            False,
+        )
+
+    editorial_text = (
+        editorial_result.get(
+            "editorial_text"
+        )
+        or ""
+    ).strip()
+
+    if not editorial_text:
+
+        return (
+            None,
+            (
+                "Le profil éditorial généré "
+                "est vide"
+            ),
+            False,
+        )
+
+    return (
+        editorial_text,
+        None,
+        True,
+    )
+
+
+# ============================================================
 # GENERATE AND SAVE PROFILE
 # ============================================================
 
@@ -98,24 +294,71 @@ def generate_and_save_user_profile(
         )
 
     cleaned_profile_text = (
-        profile_text.strip()
-        if isinstance(
-            profile_text,
-            str,
+        _clean_profile_text(
+            profile_text
         )
-        else ""
     )
 
-    source_hash = build_profile_source_hash(
+    if not cleaned_profile_text:
+
+        return (
+            None,
+            "Impossible de structurer un profil vide",
+        )
+
+    # ========================================================
+    # EDITORIAL PROFILE
+    # ========================================================
+
+    (
+        editorial_profile_text,
+        editorial_error,
+        editorial_generated,
+    ) = _get_or_generate_editorial_profile(
+        user_id=user_id,
         profile_text=cleaned_profile_text,
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
         language=language,
+        force=force,
+    )
+
+    if (
+        editorial_error
+        or not editorial_profile_text
+    ):
+
+        return (
+            None,
+            (
+                editorial_error
+                or (
+                    "La génération du profil "
+                    "éditorial a échoué"
+                )
+            ),
+        )
+
+    # ========================================================
+    # STRUCTURED SOURCE HASH
+    # ========================================================
+
+    structured_source_hash = (
+        build_profile_source_hash(
+            profile_text=cleaned_profile_text,
+            geography_1=geography_1,
+            geography_2=geography_2,
+            geography_3=geography_3,
+            language=language,
+            editorial_profile_text=(
+                editorial_profile_text
+            ),
+        )
     )
 
     # ========================================================
-    # IDEMPOTENCY
+    # STRUCTURED IDEMPOTENCY
     # ========================================================
 
     if not force:
@@ -123,7 +366,9 @@ def generate_and_save_user_profile(
         current_profile = (
             get_current_ready_profile(
                 user_id=user_id,
-                source_hash=source_hash,
+                source_hash=(
+                    structured_source_hash
+                ),
             )
         )
 
@@ -131,26 +376,48 @@ def generate_and_save_user_profile(
 
             return (
                 {
-                    "status": "unchanged",
-                    "profile_text": (
+                    "status":
+                        "unchanged",
+
+                    "profile_text":
                         current_profile.get(
                             "profile_text"
-                        )
-                    ),
-                    "structured_profile": (
+                        ),
+
+                    "editorial_profile_text":
+                        current_profile.get(
+                            "profile_editorial_text"
+                        ),
+
+                    "editorial_generated":
+                        editorial_generated,
+
+                    "structured_profile":
                         current_profile.get(
                             "structured_profile"
-                        )
-                    ),
-                    "source_hash": source_hash,
-                    "warnings": [],
+                        ),
+
+                    "editorial_source_hash":
+                        current_profile.get(
+                            "profile_editorial_source_hash"
+                        ),
+
+                    "source_hash":
+                        structured_source_hash,
+
+                    "warnings":
+                        [],
                 },
                 None,
             )
 
     # ========================================================
-    # TRANSFORMATION
+    # STRUCTURED TRANSFORMATION
     # ========================================================
+
+    mark_profile_structured_building(
+        user_id=user_id,
+    )
 
     (
         transformer_result,
@@ -162,6 +429,9 @@ def generate_and_save_user_profile(
         geography_3=geography_3,
         language=language,
         model=model,
+        editorial_profile_text=(
+            editorial_profile_text
+        ),
     )
 
     if (
@@ -169,15 +439,22 @@ def generate_and_save_user_profile(
         or not transformer_result
     ):
 
+        error = (
+            transformation_error
+            or (
+                "La transformation du profil "
+                "a échoué"
+            )
+        )
+
+        record_profile_transformation_error(
+            user_id=user_id,
+            error=error,
+        )
+
         return (
             None,
-            (
-                transformation_error
-                or (
-                    "La transformation du profil "
-                    "a échoué"
-                )
-            ),
+            error,
         )
 
     # ========================================================
@@ -199,41 +476,78 @@ def generate_and_save_user_profile(
 
     except Exception as exc:
 
+        error = (
+            "Impossible d'enregistrer "
+            f"le profil structuré : {exc}"
+        )
+
+        record_profile_transformation_error(
+            user_id=user_id,
+            error=error,
+        )
+
         return (
             None,
-            (
-                "Impossible d'enregistrer "
-                f"le profil structuré : {exc}"
-            ),
+            error,
         )
 
     return (
         {
-            "status": "generated",
-            "profile_text": (
-                cleaned_profile_text
-            ),
-            "structured_profile": (
-                transformer_result
-                .structured_profile
-                .model_dump()
-            ),
-            "source_hash": (
-                transformer_result
-                .source_hash
-            ),
-            "schema_version": (
-                transformer_result
-                .schema_version
-            ),
-            "transformer_version": (
-                transformer_result
-                .transformer_version
-            ),
-            "warnings": (
-                transformer_result
-                .warnings
-            ),
+            "status":
+                "generated",
+
+            "profile_text":
+                cleaned_profile_text,
+
+            "editorial_profile_text":
+                editorial_profile_text,
+
+            "editorial_generated":
+                editorial_generated,
+
+            "structured_profile":
+                (
+                    transformer_result
+                    .structured_profile
+                    .model_dump()
+                ),
+
+            "editorial_source_hash":
+                (
+                    build_profile_editorial_source_hash(
+                        profile_text=(
+                            cleaned_profile_text
+                        ),
+                        geography_1=geography_1,
+                        geography_2=geography_2,
+                        geography_3=geography_3,
+                        language=language,
+                    )
+                ),
+
+            "source_hash":
+                (
+                    transformer_result
+                    .source_hash
+                ),
+
+            "schema_version":
+                (
+                    transformer_result
+                    .schema_version
+                ),
+
+            "transformer_version":
+                (
+                    transformer_result
+                    .transformer_version
+                ),
+
+            "warnings":
+                (
+                    transformer_result
+                    .warnings
+                ),
         },
         None,
     )
