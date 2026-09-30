@@ -898,15 +898,7 @@ def record_profile_editorial_transformation_error(
         SET
 
             PROFILE_EDITORIAL_STATUS =
-                CASE
-
-                    WHEN PROFILE_EDITORIAL_TEXT IS NULL
-
-                    THEN 'ERROR'
-
-                    ELSE PROFILE_EDITORIAL_STATUS
-
-                END,
+                'ERROR',
 
             PROFILE_EDITORIAL_ERROR =
                 @error,
@@ -944,15 +936,7 @@ def record_profile_transformation_error(
         SET
 
             PROFILE_STRUCTURED_STATUS =
-                CASE
-
-                    WHEN PROFILE_STRUCTURED_JSON IS NULL
-
-                    THEN 'ERROR'
-
-                    ELSE PROFILE_STRUCTURED_STATUS
-
-                END,
+                'ERROR',
 
             PROFILE_STRUCTURED_ERROR =
                 @error,
