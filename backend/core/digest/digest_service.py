@@ -71,6 +71,10 @@ from core.expertise.content_service import (
     load_contents_by_ids,
 )
 
+from core.feedback.context_service import (
+    build_user_feedback_context,
+)
+
 
 # ============================================================
 # LOGGER
@@ -175,6 +179,35 @@ def generate_digest(
         )
 
         # ====================================================
+        # BUILD USER FEEDBACK CONTEXT
+        # ====================================================
+
+        feedback_context = None
+
+        try:
+
+            feedback_context = (
+                build_user_feedback_context(
+
+                    user_id=digest.user_id,
+
+                    language=(
+                        candidate_profile.language
+                    ),
+
+                )
+            )
+
+        except Exception:
+
+            logger.exception(
+                "DIGEST_FEEDBACK_CONTEXT_FAILED "
+                "digest_id=%s user_id=%s",
+                digest.id,
+                digest.user_id,
+            )
+
+        # ====================================================
         # SELECT CONTENTS
         # ====================================================
 
@@ -187,6 +220,10 @@ def generate_digest(
 
                 selection_limit=(
                     DEFAULT_DIGEST_LIMIT
+                ),
+
+                feedback_context=(
+                    feedback_context
                 ),
 
             )
@@ -343,6 +380,61 @@ def generate_digest(
 
                 "relevance_class_counts":
                     relevance_class_counts,
+
+                "feedback_context": {
+
+                    "available":
+                        bool(
+                            feedback_context
+                            and feedback_context
+                            .has_feedback
+                        ),
+
+                    "relevant_count":
+                        (
+                            feedback_context
+                            .relevant_count
+
+                            if feedback_context
+
+                            else 0
+                        ),
+
+                    "not_relevant_count":
+                        (
+                            feedback_context
+                            .not_relevant_count
+
+                            if feedback_context
+
+                            else 0
+                        ),
+
+                    "relevant_examples_count":
+                        (
+                            len(
+                                feedback_context
+                                .relevant_examples
+                            )
+
+                            if feedback_context
+
+                            else 0
+                        ),
+
+                    "not_relevant_examples_count":
+                        (
+                            len(
+                                feedback_context
+                                .not_relevant_examples
+                            )
+
+                            if feedback_context
+
+                            else 0
+                        ),
+
+                },
 
                 "used_fallback":
                     selection_outcome
@@ -513,6 +605,40 @@ def generate_digest(
             "used_fallback":
                 selection_outcome
                 .used_fallback,
+
+            "feedback_context": {
+
+                "available":
+                    bool(
+                        feedback_context
+                        and feedback_context
+                        .has_feedback
+                    ),
+
+                "relevant_count":
+                    (
+                        feedback_context
+                        .relevant_count
+
+                        if feedback_context
+
+                        else 0
+                    ),
+
+                "not_relevant_count":
+                    (
+                        feedback_context
+                        .not_relevant_count
+
+                        if feedback_context
+
+                        else 0
+                    ),
+
+                "lookback_days":
+                    90,
+
+            },
 
             "fallback_error":
                 selection_outcome
