@@ -1,5 +1,3 @@
-# backend/core/expertise/profile_service.py
-
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -117,7 +115,12 @@ def load_profile(
             p.GEOGRAPHY_1,
             p.GEOGRAPHY_2,
             p.GEOGRAPHY_3,
+
             p.PROFILE_TEXT,
+
+            p.PROFILE_EDITORIAL_TEXT,
+            p.PROFILE_EDITORIAL_STATUS,
+
             p.PROFILE_STRUCTURED_JSON,
             p.PROFILE_STRUCTURED_STATUS,
 
@@ -162,7 +165,8 @@ def load_profile(
         LIMIT 1
         """,
         {
-            "user_id": user_id,
+            "user_id":
+                user_id,
         },
     )
 
@@ -185,6 +189,9 @@ def load_profile(
             geographies=[],
 
             profile_text="",
+
+            editorial_profile_text=None,
+
             structured_profile=None,
         )
 
@@ -219,18 +226,47 @@ def load_profile(
     ]
 
     # ========================================================
+    # EDITORIAL PROFILE
+    # ========================================================
+
+    editorial_profile_text = None
+
+    if (
+        row.get(
+            "PROFILE_EDITORIAL_STATUS"
+        )
+        == "READY"
+    ):
+
+        editorial_value = row.get(
+            "PROFILE_EDITORIAL_TEXT"
+        )
+
+        if (
+            isinstance(
+                editorial_value,
+                str,
+            )
+            and editorial_value.strip()
+        ):
+
+            editorial_profile_text = (
+                editorial_value.strip()
+            )
+
+    # ========================================================
     # STRUCTURED PROFILE
     # ========================================================
-    
+
     structured_profile = None
-    
+
     if (
         row.get(
             "PROFILE_STRUCTURED_STATUS"
         )
         == "READY"
     ):
-    
+
         structured_profile = (
             parse_structured_profile(
                 row.get(
@@ -288,12 +324,19 @@ def load_profile(
 
         geographies=geographies,
 
+        # Public display profile.
         profile_text=(
             row.get(
                 "PROFILE_TEXT",
             )
             or ""
         ),
+
+        # Internal editorial profile.
+        editorial_profile_text=(
+            editorial_profile_text
+        ),
+
         structured_profile=(
             structured_profile
         ),
