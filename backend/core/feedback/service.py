@@ -122,6 +122,14 @@ def _build_feedback_from_row(
             )
         ),
 
+        created_at=row.get(
+            "CREATED_AT"
+        ),
+
+        updated_at=row.get(
+            "UPDATED_AT"
+        ),
+
     )
 
 
