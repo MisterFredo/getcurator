@@ -1,0 +1,221 @@
+from typing import (
+    Literal,
+    Optional,
+)
+
+from pydantic import (
+    BaseModel,
+    Field,
+)
+
+
+# ============================================================
+# TYPES
+# ============================================================
+
+ContentFeedbackType = Literal[
+    "RELEVANT",
+    "NOT_RELEVANT",
+]
+
+ContentFeedbackSource = Literal[
+    "DIGEST",
+    "CONTENT_DRAWER",
+]
+
+ContentFeedbackReason = Literal[
+    "WRONG_TOPIC",
+    "WRONG_MARKET",
+    "WRONG_COMPANY",
+    "TOO_GENERAL",
+    "ALREADY_KNOWN",
+    "OTHER",
+]
+
+
+# ============================================================
+# EXPLICIT CONTENT FEEDBACK
+# ============================================================
+
+class ContentFeedback(
+    BaseModel,
+):
+
+    id: str
+
+    user_id: str
+
+    content_id: str
+
+    digest_id: Optional[str] = None
+
+    feedback_type: ContentFeedbackType
+
+    feedback_reason: Optional[
+        ContentFeedbackReason
+    ] = None
+
+    source: ContentFeedbackSource
+
+    is_active: bool = True
+
+
+# ============================================================
+# AUTHENTICATED FEEDBACK REQUEST
+# ============================================================
+
+class ContentFeedbackRequest(
+    BaseModel,
+):
+    """
+    Explicit feedback submitted by an authenticated user.
+
+    Used primarily from the content drawer.
+    """
+
+    content_id: str = Field(
+        ...,
+        min_length=1,
+    )
+
+    digest_id: Optional[str] = None
+
+    feedback_type: ContentFeedbackType
+
+    feedback_reason: Optional[
+        ContentFeedbackReason
+    ] = None
+
+    source: ContentFeedbackSource = (
+        "CONTENT_DRAWER"
+    )
+
+
+# ============================================================
+# DIGEST FEEDBACK TOKEN PAYLOAD
+# ============================================================
+
+class DigestFeedbackTokenPayload(
+    BaseModel,
+):
+    """
+    Internal payload carried by the signed Digest feedback token.
+
+    The token is verified by the backend before this payload
+    may be used.
+    """
+
+    user_id: str
+
+    digest_id: str
+
+    content_id: str
+
+    feedback_type: Literal[
+        "NOT_RELEVANT",
+    ] = "NOT_RELEVANT"
+
+
+# ============================================================
+# DIGEST FEEDBACK PREVIEW
+# ============================================================
+
+class DigestFeedbackPreview(
+    BaseModel,
+):
+    """
+    Information displayed before the user confirms feedback.
+
+    Loading this preview must never persist feedback.
+    """
+
+    token: str
+
+    digest_id: str
+
+    content_id: str
+
+    content_title: str
+
+    feedback_type: Literal[
+        "NOT_RELEVANT",
+    ] = "NOT_RELEVANT"
+
+    already_recorded: bool = False
+
+
+# ============================================================
+# DIGEST FEEDBACK CONFIRMATION
+# ============================================================
+
+class DigestFeedbackConfirmationRequest(
+    BaseModel,
+):
+    """
+    Confirmation submitted from the public Digest feedback page.
+
+    The user and content identifiers are recovered from the
+    verified token and are not accepted directly from the client.
+    """
+
+    token: str = Field(
+        ...,
+        min_length=1,
+    )
+
+    feedback_reason: Optional[
+        ContentFeedbackReason
+    ] = None
+
+
+# ============================================================
+# FEEDBACK RESET REQUEST
+# ============================================================
+
+class ContentFeedbackResetRequest(
+    BaseModel,
+):
+    """
+    Remove the current explicit feedback state.
+
+    A reset creates an inactive historical event rather than
+    deleting previous feedback.
+    """
+
+    content_id: Optional[str] = None
+
+    token: Optional[str] = None
+
+
+# ============================================================
+# FEEDBACK RESPONSE
+# ============================================================
+
+class ContentFeedbackResponse(
+    BaseModel,
+):
+
+    status: Literal[
+        "recorded",
+        "updated",
+        "removed",
+        "unchanged",
+    ]
+
+    content_id: str
+
+    feedback_type: Optional[
+        ContentFeedbackType
+    ] = None
+
+    feedback_reason: Optional[
+        ContentFeedbackReason
+    ] = None
+
+    source: Optional[
+        ContentFeedbackSource
+    ] = None
+
+    is_active: bool
+
+    message: str
