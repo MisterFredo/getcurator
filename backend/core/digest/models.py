@@ -106,6 +106,7 @@ class DigestCard(
     excerpt: str
 
     url: str
+    not_relevant_url: str | None = None
 
     source_title: str | None = None
 
