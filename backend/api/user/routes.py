@@ -509,32 +509,42 @@ def update_profile(
 
     user_id = (
         payload.user_id
-        or get_user_id_from_request(request)
+        or get_user_id_from_request(
+            request
+        )
     )
 
     if not user_id:
+
         raise HTTPException(
             status_code=401,
             detail="Utilisateur non authentifié",
         )
 
-    user = get_user_by_id(user_id)
+    user = get_user_by_id(
+        user_id
+    )
 
     if not user:
+
         raise HTTPException(
             status_code=404,
             detail="Utilisateur introuvable",
         )
 
     language = (
-        user.get("LANGUAGE")
+        user.get(
+            "LANGUAGE"
+        )
         or "fr"
     )
 
     try:
 
         current_profile = (
-            get_user_profile(user_id)
+            get_user_profile(
+                user_id
+            )
             or {}
         )
 
@@ -542,43 +552,67 @@ def update_profile(
             payload.model_fields_set
         )
 
-        geography_1 = current_profile.get(
-            "geography_1"
+        geography_1 = (
+            current_profile.get(
+                "geography_1"
+            )
         )
 
-        geography_2 = current_profile.get(
-            "geography_2"
+        geography_2 = (
+            current_profile.get(
+                "geography_2"
+            )
         )
 
-        geography_3 = current_profile.get(
-            "geography_3"
+        geography_3 = (
+            current_profile.get(
+                "geography_3"
+            )
         )
 
-        profile_text = current_profile.get(
-            "profile_text"
+        profile_text = (
+            current_profile.get(
+                "profile_text"
+            )
         )
 
         if "geography_1" in payload_fields:
-            geography_1 = payload.geography_1
+
+            geography_1 = (
+                payload.geography_1
+            )
 
         if "geography_2" in payload_fields:
-            geography_2 = payload.geography_2
+
+            geography_2 = (
+                payload.geography_2
+            )
 
         if "geography_3" in payload_fields:
-            geography_3 = payload.geography_3
+
+            geography_3 = (
+                payload.geography_3
+            )
 
         if "profile_text" in payload_fields:
-            profile_text = payload.profile_text
 
-        if not isinstance (
+            profile_text = (
+                payload.profile_text
+            )
+
+        if not isinstance(
             profile_text,
             str,
         ):
+
             profile_text = ""
 
-        profile_text = profile_text.strip()
+        profile_text = (
+            profile_text.strip()
+        )
 
         if not profile_text:
+
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -587,58 +621,63 @@ def update_profile(
                 ),
             )
 
-        result, error = (
-            generate_and_save_user_profile(
-                user_id=user_id,
-                geography_1=geography_1,
-                geography_2=geography_2,
-                geography_3=geography_3,
-                profile_text=profile_text,
-                language=language,
-            )
+        (
+            result,
+            error,
+        ) = generate_and_save_user_profile(
+            user_id=user_id,
+            geography_1=geography_1,
+            geography_2=geography_2,
+            geography_3=geography_3,
+            profile_text=profile_text,
+            language=language,
         )
 
         if error:
+
             raise HTTPException(
                 status_code=400,
                 detail=error,
             )
 
-                saved_profile = get_user_profile(
-                    user_id
-                )
-        
-                return {
-        
-                    "status": (
-                        result.get(
-                            "status"
-                        )
-                        if result
-                        else "generated"
-                    ),
-        
-                    "profile":
-                        _build_public_profile(
-                            user_id=user_id,
-                            profile=saved_profile,
-                        ),
-        
-                }
+        saved_profile = (
+            get_user_profile(
+                user_id
+            )
+        )
+
+        return {
+
+            "status":
+                (
+                    result.get(
+                        "status"
+                    )
+                    if result
+                    else "generated"
+                ),
+
+            "profile":
+                _build_public_profile(
+                    user_id=user_id,
+                    profile=saved_profile,
+                ),
+
+        }
 
     except HTTPException:
+
         raise
 
     except Exception as error:
+
         raise HTTPException(
             status_code=500,
             detail=(
                 "Erreur lors de la génération "
-                f"du profil structuré : {error}"
+                f"du profil : {error}"
             ),
         )
-
-
 
 # =========================================================
 # PROFILE ASSISTANT
