@@ -182,7 +182,7 @@ def _load_content_title(
 # ============================================================
 
 @router.post(
-    "",
+    "/",
     response_model=ContentFeedbackResponse,
 )
 def create_content_feedback(
