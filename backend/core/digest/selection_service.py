@@ -500,9 +500,18 @@ def _select_candidate_batch(
         DigestContentCandidate
     ],
     selection_limit: int,
+    feedback_context: (
+        UserFeedbackContext
+        | None
+    ),
     model: Optional[str],
     max_attempts: int,
 ) -> DigestCandidateSelectionResult:
+
+    feedback_context = (
+        feedback_context
+        or UserFeedbackContext()
+    )
 
     original_prompt = (
         build_digest_selection_user_prompt(
@@ -518,6 +527,10 @@ def _select_candidate_batch(
                         candidates
                     ),
                 )
+            ),
+
+            feedback_context=(
+                feedback_context
             ),
 
         )
@@ -607,7 +620,6 @@ def _select_candidate_batch(
         f"après {max_attempts} tentative(s) : "
         f"{last_error}"
     )
-
 
 # ============================================================
 # NORMALIZE EVENT KEY
