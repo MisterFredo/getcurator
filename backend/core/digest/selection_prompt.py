@@ -708,8 +708,10 @@ def build_digest_selection_profile_payload(
             profile.language,
 
         "profile_text":
-            profile.profile_text,
-
+            (
+                profile.editorial_profile_text
+                or profile.profile_text
+            ),
         "geographies":
             profile.geographies,
 
