@@ -1330,206 +1330,228 @@ export default function AnalysisDrawer({
           {/* CONTENT FEEDBACK */}
           {/* ============================================= */}
 
-          {feedbackAvailable && (
+          <div
+            className="
+              border-t
+              border-gray-200
+              pt-6
+            "
+          >
 
             <div
               className="
-                border-t
-                border-gray-200
-                pt-6
+                flex
+                flex-col
+                gap-4
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
               "
             >
+
+              <div>
+
+                <h3
+                  className="
+                    text-sm
+                    font-semibold
+                    text-gray-900
+                  "
+                >
+
+                  Was this useful?
+
+                </h3>
+
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    text-gray-500
+                  "
+                >
+
+                  Your feedback helps improve
+                  your future Digests.
+
+                </p>
+
+              </div>
 
               <div
                 className="
                   flex
-                  flex-col
-                  gap-4
-                  sm:flex-row
-                  sm:items-center
-                  sm:justify-between
+                  flex-wrap
+                  gap-2
                 "
               >
 
-                <div>
-
-                  <h3
-                    className="
-                      text-sm
-                      font-semibold
-                      text-gray-900
-                    "
-                  >
-
-                    Was this useful?
-
-                  </h3>
-
-                  <p
-                    className="
-                      mt-1
-                      text-xs
-                      text-gray-500
-                    "
-                  >
-
-                    Your feedback helps improve
-                    your future Digests.
-
-                  </p>
-
-                </div>
-
-                <div
-                  className="
-                    flex
-                    flex-wrap
+                <button
+                  type="button"
+                  disabled={
+                    feedbackSaving
+                    || feedbackLoading
+                    || !feedbackAvailable
+                  }
+                  onClick={() =>
+                    handleFeedback(
+                      "RELEVANT",
+                    )
+                  }
+                  className={`
+                    inline-flex
+                    items-center
                     gap-2
-                  "
+                    rounded-lg
+                    border
+                    px-3
+                    py-2
+                    text-sm
+                    font-medium
+                    transition
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                    ${
+                      feedback
+                      === "RELEVANT"
+                        ? `
+                          border-emerald-600
+                          bg-emerald-600
+                          text-white
+                        `
+                        : `
+                          border-gray-200
+                          bg-white
+                          text-gray-700
+                          hover:border-emerald-300
+                          hover:text-emerald-700
+                        `
+                    }
+                  `}
                 >
 
-                  <button
-                    type="button"
-                    disabled={
-                      feedbackSaving
-                      || feedbackLoading
+                  <ThumbsUp
+                    size={15}
+                  />
+
+                  Relevant
+
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    feedbackSaving
+                    || feedbackLoading
+                    || !feedbackAvailable
+                  }
+                  onClick={() =>
+                    handleFeedback(
+                      "NOT_RELEVANT",
+                    )
+                  }
+                  className={`
+                    inline-flex
+                    items-center
+                    gap-2
+                    rounded-lg
+                    border
+                    px-3
+                    py-2
+                    text-sm
+                    font-medium
+                    transition
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                    ${
+                      feedback
+                      === "NOT_RELEVANT"
+                        ? `
+                          border-slate-700
+                          bg-slate-700
+                          text-white
+                        `
+                        : `
+                          border-gray-200
+                          bg-white
+                          text-gray-700
+                          hover:border-slate-400
+                          hover:text-slate-900
+                        `
                     }
-                    onClick={() =>
-                      handleFeedback(
-                        "RELEVANT",
-                      )
-                    }
-                    className={`
-                      inline-flex
-                      items-center
-                      gap-2
-                      rounded-lg
-                      border
-                      px-3
-                      py-2
-                      text-sm
-                      font-medium
-                      transition
-                      disabled:cursor-not-allowed
-                      disabled:opacity-50
-                      ${
-                        feedback
-                        === "RELEVANT"
-                          ? `
-                            border-emerald-600
-                            bg-emerald-600
-                            text-white
-                          `
-                          : `
-                            border-gray-200
-                            bg-white
-                            text-gray-700
-                            hover:border-emerald-300
-                            hover:text-emerald-700
-                          `
-                      }
-                    `}
-                  >
+                  `}
+                >
 
-                    <ThumbsUp
-                      size={15}
-                    />
+                  <ThumbsDown
+                    size={15}
+                  />
 
-                    Relevant
+                  Not relevant
 
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={
-                      feedbackSaving
-                      || feedbackLoading
-                    }
-                    onClick={() =>
-                      handleFeedback(
-                        "NOT_RELEVANT",
-                      )
-                    }
-                    className={`
-                      inline-flex
-                      items-center
-                      gap-2
-                      rounded-lg
-                      border
-                      px-3
-                      py-2
-                      text-sm
-                      font-medium
-                      transition
-                      disabled:cursor-not-allowed
-                      disabled:opacity-50
-                      ${
-                        feedback
-                        === "NOT_RELEVANT"
-                          ? `
-                            border-slate-700
-                            bg-slate-700
-                            text-white
-                          `
-                          : `
-                            border-gray-200
-                            bg-white
-                            text-gray-700
-                            hover:border-slate-400
-                            hover:text-slate-900
-                          `
-                      }
-                    `}
-                  >
-
-                    <ThumbsDown
-                      size={15}
-                    />
-
-                    Not relevant
-
-                  </button>
-
-                </div>
+                </button>
 
               </div>
 
-              {feedbackError && (
-
-                <p
-                  className="
-                    mt-3
-                    text-xs
-                    text-red-600
-                  "
-                >
-
-                  {feedbackError}
-
-                </p>
-
-              )}
-
-              {feedback && (
-
-                <p
-                  className="
-                    mt-3
-                    text-xs
-                    text-gray-400
-                  "
-                >
-
-                  Click the selected option again
-                  to undo your feedback.
-
-                </p>
-
-              )}
-
             </div>
 
-          )}
+            {feedbackLoading && (
+
+              <p
+                className="
+                  mt-3
+                  text-xs
+                  text-gray-400
+                "
+              >
+
+                Loading your feedback…
+
+              </p>
+
+            )}
+
+            {feedbackError && (
+
+              <p
+                className="
+                  mt-3
+                  text-xs
+                  text-red-600
+                "
+              >
+
+                {feedbackError}
+
+              </p>
+
+            )}
+
+            {(
+              feedback
+              && !feedbackLoading
+              && !feedbackError
+            ) && (
+
+              <p
+                className="
+                  mt-3
+                  text-xs
+                  text-gray-400
+                "
+              >
+
+                Click the selected option again
+                to undo your feedback.
+
+              </p>
+
+            )}
+
+          </div>
+
+          {/* ============================================= */}
+          {/* PUBLICATION DATE */}
+          {/* ============================================= */}
 
           {data.published_at && (
 
