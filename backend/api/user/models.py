@@ -1,3 +1,7 @@
+from datetime import (
+    datetime,
+)
+
 from pydantic import (
     BaseModel,
     EmailStr,
@@ -6,9 +10,11 @@ from pydantic import (
 )
 
 from typing import (
-    Optional,
+    Any,
+    Dict,
     List,
     Literal,
+    Optional,
 )
 
 
@@ -27,9 +33,21 @@ SUPPORTED_PROFILE_TYPES = [
 ]
 
 
-# =========================================================
+# ============================================================
+# TYPES
+# ============================================================
+
+ProfileGenerationStatus = Literal[
+    "BUILDING",
+    "READY",
+    "STALE",
+    "ERROR",
+]
+
+
+# ============================================================
 # CREATE USER
-# =========================================================
+# ============================================================
 
 class CreateUserPayload(
     BaseModel,
@@ -92,9 +110,9 @@ class CreateUserPayload(
         return value
 
 
-# =========================================================
+# ============================================================
 # USER PREFERENCES
-# =========================================================
+# ============================================================
 
 class UserPreferencesPayload(
     BaseModel,
@@ -115,9 +133,9 @@ class UserPreferencesPayload(
     )
 
 
-# =========================================================
+# ============================================================
 # LOGIN
-# =========================================================
+# ============================================================
 
 class LoginPayload(
     BaseModel,
@@ -128,9 +146,9 @@ class LoginPayload(
     password: str
 
 
-# =========================================================
+# ============================================================
 # UPDATE USER
-# =========================================================
+# ============================================================
 
 class UpdateUserPayload(
     BaseModel,
@@ -199,9 +217,9 @@ class UpdateUserPayload(
         return value
 
 
-# =========================================================
+# ============================================================
 # ASSIGN UNIVERSES
-# =========================================================
+# ============================================================
 
 class AssignUniversePayload(
     BaseModel,
@@ -214,9 +232,9 @@ class AssignUniversePayload(
     )
 
 
-# =========================================================
+# ============================================================
 # USER KEYWORD
-# =========================================================
+# ============================================================
 
 class UserKeywordPayload(
     BaseModel,
@@ -227,13 +245,19 @@ class UserKeywordPayload(
     keyword: str
 
 
-# =========================================================
-# USER PROFILE
-# =========================================================
+# ============================================================
+# USER PROFILE PAYLOAD
+# ============================================================
 
 class UserProfilePayload(
     BaseModel,
 ):
+    """
+    Public human-readable profile payload.
+
+    This payload must never expose or accept the internal
+    editorial profile.
+    """
 
     user_id: Optional[str] = None
 
@@ -245,9 +269,111 @@ class UserProfilePayload(
 
     profile_text: Optional[str] = None
 
-# =========================================================
+
+# ============================================================
+# PUBLIC USER PROFILE RESPONSE
+# ============================================================
+
+class UserProfileResponse(
+    BaseModel,
+):
+    """
+    Profile representation allowed on the public front.
+    """
+
+    user_id: Optional[str] = None
+
+    geography_1: Optional[str] = None
+
+    geography_2: Optional[str] = None
+
+    geography_3: Optional[str] = None
+
+    profile_text: Optional[str] = None
+
+
+# ============================================================
+# ADMIN USER PROFILE RESPONSE
+# ============================================================
+
+class UserProfileAdminResponse(
+    BaseModel,
+):
+    """
+    Complete profile representation reserved for admin use.
+    """
+
+    user_id: str
+
+    geography_1: Optional[str] = None
+
+    geography_2: Optional[str] = None
+
+    geography_3: Optional[str] = None
+
+    # Public human-readable profile.
+    profile_text: Optional[str] = None
+
+    # Internal editorial profile.
+    profile_editorial_text: Optional[str] = None
+
+    profile_editorial_source_hash: Optional[str] = None
+
+    profile_editorial_transformer_version: Optional[str] = None
+
+    profile_editorial_at: Optional[datetime] = None
+
+    profile_editorial_status: Optional[
+        ProfileGenerationStatus
+    ] = None
+
+    profile_editorial_error: Optional[str] = None
+
+    # Structured machine profile.
+    structured_profile: Optional[
+        Dict[str, Any]
+    ] = None
+
+    profile_source_hash: Optional[str] = None
+
+    profile_schema_version: Optional[str] = None
+
+    profile_transformer_version: Optional[str] = None
+
+    profile_structured_at: Optional[datetime] = None
+
+    profile_structured_status: Optional[
+        ProfileGenerationStatus
+    ] = None
+
+    profile_structured_error: Optional[str] = None
+
+
+# ============================================================
+# ADMIN EDITORIAL PROFILE PAYLOAD
+# ============================================================
+
+class UserEditorialProfilePayload(
+    BaseModel,
+):
+    """
+    Manual editorial-profile update from the admin.
+
+    This payload must not be exposed through public profile
+    update routes.
+    """
+
+    user_id: str
+
+    profile_editorial_text: str = Field(
+        ...,
+        min_length=1,
+    )
+
+
+# ============================================================
 # PROFILE ASSISTANT MESSAGE
-# =========================================================
+# ============================================================
 
 class ProfileAssistantMessage(
     BaseModel,
@@ -265,9 +391,9 @@ class ProfileAssistantMessage(
     )
 
 
-# =========================================================
+# ============================================================
 # PROFILE ASSISTANT PAYLOAD
-# =========================================================
+# ============================================================
 
 class UserProfileAssistantPayload(
     BaseModel,
@@ -283,9 +409,9 @@ class UserProfileAssistantPayload(
     )
 
 
-# =========================================================
+# ============================================================
 # PROFILE REGENERATE
-# =========================================================
+# ============================================================
 
 class UserProfileRegeneratePayload(
     BaseModel,
@@ -293,3 +419,4 @@ class UserProfileRegeneratePayload(
 
     user_id: Optional[str] = None
 
+    force: bool = True
