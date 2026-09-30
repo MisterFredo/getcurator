@@ -1,382 +1,1567 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { api } from "@/lib/api";
-import { X, ExternalLink } from "lucide-react";
-import { useDrawer } from "@/contexts/DrawerContext";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-/* ========================================================= */
+import {
+  useRouter,
+  usePathname,
+} from "next/navigation";
+
+import {
+  X,
+  ExternalLink,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
+
+import {
+  api,
+} from "@/lib/api";
+
+import {
+  useDrawer,
+} from "@/contexts/DrawerContext";
+
+
+/* =========================================================
+   CONTENT TYPES
+========================================================= */
 
 type Topic = {
+
   id_topic: string;
+
   label: string;
+
 };
+
 
 type Company = {
+
   id_company: string;
+
   name: string;
+
 };
+
 
 type Solution = {
+
   id_solution: string;
+
   name: string;
+
 };
+
 
 type Concept = {
+
   id_concept: string;
+
   label: string;
+
 };
 
+
 type AnalysisData = {
+
   id_content: string;
+
   title: string;
 
   source_url?: string;
+
   source_title?: string;
 
   excerpt?: string;
+
   content_body?: string;
 
   mecanique_expliquee?: string;
+
   enjeu_strategique?: string;
+
   point_de_friction?: string;
+
   signal_analytique?: string;
 
   chiffres?: string[];
+
   citations?: string[];
+
   acteurs_cites?: string[];
 
   topics?: Topic[];
+
   companies?: Company[];
+
   solutions?: Solution[];
+
   concepts?: Concept[];
 
   published_at?: string;
+
 };
 
-/* ========================================================= */
+
+/* =========================================================
+   FEEDBACK TYPES
+========================================================= */
+
+type FeedbackType =
+  | "RELEVANT"
+  | "NOT_RELEVANT";
+
+
+type ContentFeedback = {
+
+  id: string;
+
+  user_id: string;
+
+  content_id: string;
+
+  digest_id?: string | null;
+
+  feedback_type: FeedbackType;
+
+  feedback_reason?: string | null;
+
+  source:
+    | "DIGEST"
+    | "CONTENT_DRAWER";
+
+  is_active: boolean;
+
+};
+
+
+type CurrentFeedbackResponse = {
+
+  feedback:
+    | ContentFeedback
+    | null;
+
+};
+
+
+/* =========================================================
+   PROPS
+========================================================= */
 
 type Props = {
+
   id: string;
+
   onClose: () => void;
+
 };
 
-/* ========================================================= */
 
-export default function AnalysisDrawer({ id, onClose }: Props) {
-  const router = useRouter();
-  const pathname = usePathname();
+/* =========================================================
+   DRAWER
+========================================================= */
 
-  const { rightDrawer, closeRightDrawer } = useDrawer();
+export default function AnalysisDrawer({
+  id,
+  onClose,
+}: Props) {
 
-  const [data, setData] = useState<AnalysisData | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const router =
+    useRouter();
+
+  const pathname =
+    usePathname();
+
+  const {
+    rightDrawer,
+    closeRightDrawer,
+  } = useDrawer();
+
+  const [
+    data,
+    setData,
+  ] = useState<
+    AnalysisData | null
+  >(
+    null,
+  );
+
+  const [
+    isOpen,
+    setIsOpen,
+  ] = useState(
+    false,
+  );
+
+  const [
+    feedback,
+    setFeedback,
+  ] = useState<
+    FeedbackType | null
+  >(
+    null,
+  );
+
+  const [
+    feedbackAvailable,
+    setFeedbackAvailable,
+  ] = useState(
+    false,
+  );
+
+  const [
+    feedbackLoading,
+    setFeedbackLoading,
+  ] = useState(
+    true,
+  );
+
+  const [
+    feedbackSaving,
+    setFeedbackSaving,
+  ] = useState(
+    false,
+  );
+
+  const [
+    feedbackError,
+    setFeedbackError,
+  ] = useState(
+    "",
+  );
+
+
+  /* =======================================================
+     CLOSE
+  ======================================================= */
 
   function close() {
-    setIsOpen(false);
+
+    setIsOpen(
+      false,
+    );
+
     onClose?.();
+
     closeRightDrawer();
 
     if (
-      rightDrawer.mode === "route" &&
-      pathname.startsWith("/")
+      rightDrawer.mode
+      === "route"
+      && pathname.startsWith(
+        "/"
+      )
     ) {
-      router.replace(pathname, { scroll: false });
+
+      router.replace(
+        pathname,
+        {
+          scroll: false,
+        },
+      );
+
     }
+
   }
 
+
+  /* =======================================================
+     LOAD CONTENT
+  ======================================================= */
+
   useEffect(() => {
+
+    let cancelled = false;
+
     async function load() {
+
       try {
-        const res = await api.get(
-          `/curator/item/${id}/detail?type=analysis`
+
+        setData(
+          null,
         );
 
-        const payload = res?.data ?? res;
+        setIsOpen(
+          false,
+        );
 
-        setData(payload);
+        const response =
+          await api.get(
+            `/curator/item/${id}/detail?type=analysis`,
+          );
 
-        requestAnimationFrame(() => setIsOpen(true));
-      } catch (e) {
-        console.error("❌ AnalysisDrawer load error", e);
+        if (cancelled) {
+          return;
+        }
+
+        const payload =
+          response?.data
+          ?? response;
+
+        setData(
+          payload,
+        );
+
+        requestAnimationFrame(
+          () => {
+
+            if (!cancelled) {
+
+              setIsOpen(
+                true,
+              );
+
+            }
+
+          },
+        );
+
+      } catch (error) {
+
+        console.error(
+          "❌ AnalysisDrawer load error",
+          error,
+        );
+
       }
+
     }
 
     load();
+
+    return () => {
+
+      cancelled = true;
+
+    };
+
   }, [id]);
 
-  if (!data) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
-        <div className="bg-white px-4 py-2 rounded text-sm">
-          Loading…
-        </div>
-      </div>
-    );
+
+  /* =======================================================
+     LOAD CURRENT FEEDBACK
+  ======================================================= */
+
+  useEffect(() => {
+
+    let cancelled = false;
+
+    async function loadFeedback() {
+
+      try {
+
+        setFeedbackLoading(
+          true,
+        );
+
+        setFeedbackAvailable(
+          false,
+        );
+
+        setFeedback(
+          null,
+        );
+
+        setFeedbackError(
+          "",
+        );
+
+        const response =
+          await api.get(
+            `/feedback/current/${encodeURIComponent(
+              id,
+            )}`,
+          ) as CurrentFeedbackResponse;
+
+        if (cancelled) {
+          return;
+        }
+
+        setFeedbackAvailable(
+          true,
+        );
+
+        setFeedback(
+          response.feedback
+            ?.feedback_type
+          ?? null,
+        );
+
+      } catch {
+
+        /*
+         * The drawer remains usable when:
+         * - the visitor is not authenticated;
+         * - the feedback service is unavailable.
+         */
+
+        if (!cancelled) {
+
+          setFeedbackAvailable(
+            false,
+          );
+
+          setFeedback(
+            null,
+          );
+
+        }
+
+      } finally {
+
+        if (!cancelled) {
+
+          setFeedbackLoading(
+            false,
+          );
+
+        }
+
+      }
+
+    }
+
+    loadFeedback();
+
+    return () => {
+
+      cancelled = true;
+
+    };
+
+  }, [id]);
+
+
+  /* =======================================================
+     UPDATE FEEDBACK
+  ======================================================= */
+
+  async function handleFeedback(
+    nextFeedback: FeedbackType,
+  ) {
+
+    if (
+      feedbackSaving
+      || !feedbackAvailable
+    ) {
+      return;
+    }
+
+    try {
+
+      setFeedbackSaving(
+        true,
+      );
+
+      setFeedbackError(
+        "",
+      );
+
+      /*
+       * Clicking the current choice again
+       * removes the active feedback.
+       */
+
+      if (
+        feedback
+        === nextFeedback
+      ) {
+
+        await api.delete(
+          `/feedback/current/${encodeURIComponent(
+            id,
+          )}`,
+        );
+
+        setFeedback(
+          null,
+        );
+
+        return;
+
+      }
+
+      await api.post(
+        "/feedback/",
+        {
+          content_id:
+            id,
+
+          feedback_type:
+            nextFeedback,
+
+          feedback_reason:
+            null,
+
+          source:
+            "CONTENT_DRAWER",
+        },
+      );
+
+      setFeedback(
+        nextFeedback,
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to save content feedback",
+        error,
+      );
+
+      setFeedbackError(
+        "Unable to save your feedback.",
+      );
+
+    } finally {
+
+      setFeedbackSaving(
+        false,
+      );
+
+    }
+
   }
+
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
+  if (!data) {
+
+    return (
+
+      <div
+        className="
+          fixed
+          inset-0
+          z-[100]
+          flex
+          items-center
+          justify-center
+          bg-black/40
+        "
+      >
+
+        <div
+          className="
+            rounded
+            bg-white
+            px-4
+            py-2
+            text-sm
+          "
+        >
+
+          Loading…
+
+        </div>
+
+      </div>
+
+    );
+
+  }
+
+
+  /* =======================================================
+     BADGES
+  ======================================================= */
 
   const badges = [
-    ...(data.companies ?? []).map((c) => ({
-      label: c.name,
-      type: "company",
-    })),
 
-    ...(data.topics ?? []).map((t) => ({
-      label: t.label,
-      type: "topic",
-    })),
+    ...(
+      data.companies
+      ?? []
+    ).map(
+      company => ({
+        label:
+          company.name,
 
-    ...(data.solutions ?? []).map((s) => ({
-      label: s.name,
-      type: "solution",
-    })),
+        type:
+          "company",
+      }),
+    ),
+
+    ...(
+      data.topics
+      ?? []
+    ).map(
+      topic => ({
+        label:
+          topic.label,
+
+        type:
+          "topic",
+      }),
+    ),
+
+    ...(
+      data.solutions
+      ?? []
+    ).map(
+      solution => ({
+        label:
+          solution.name,
+
+        type:
+          "solution",
+      }),
+    ),
+
   ];
 
-  function getBadgeClass(type?: string) {
+
+  function getBadgeClass(
+    type?: string,
+  ) {
+
     switch (type) {
+
       case "company":
-        return "bg-blue-50 text-blue-600 border border-blue-100";
+
+        return (
+          "bg-blue-50 text-blue-600 "
+          + "border border-blue-100"
+        );
 
       case "solution":
-        return "bg-purple-50 text-purple-600 border border-purple-100";
+
+        return (
+          "bg-purple-50 text-purple-600 "
+          + "border border-purple-100"
+        );
 
       case "topic":
-        return "bg-gray-100 text-gray-700 border border-gray-200";
+
+        return (
+          "bg-gray-100 text-gray-700 "
+          + "border border-gray-200"
+        );
 
       default:
-        return "bg-gray-100 text-gray-600";
+
+        return (
+          "bg-gray-100 text-gray-600"
+        );
+
     }
+
   }
 
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
-    <div className="fixed inset-0 z-[100] flex">
+
+    <div
+      className="
+        fixed
+        inset-0
+        z-[100]
+        flex
+      "
+    >
+
       <div
-        className="absolute inset-0 bg-black/40"
-        onClick={close}
+        className="
+          absolute
+          inset-0
+          bg-black/40
+        "
+        onClick={
+          close
+        }
       />
 
       <aside
         className={`
-          relative ml-auto w-full md:w-[780px]
-          bg-white shadow-xl overflow-y-auto
-          transform transition-transform duration-300 ease-out
-          ${isOpen ? "translate-x-0" : "translate-x-full"}
+          relative
+          ml-auto
+          w-full
+          transform
+          overflow-y-auto
+          bg-white
+          shadow-xl
+          transition-transform
+          duration-300
+          ease-out
+          md:w-[780px]
+          ${
+            isOpen
+              ? "translate-x-0"
+              : "translate-x-full"
+          }
         `}
       >
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 space-y-3">
-          <div className="flex justify-between items-start">
-            <h1 className="text-xl font-semibold text-gray-900 max-w-xl">
+
+        {/* =============================================== */}
+        {/* HEADER */}
+        {/* =============================================== */}
+
+        <div
+          className="
+            sticky
+            top-0
+            z-10
+            space-y-3
+            border-b
+            border-gray-200
+            bg-white
+            px-5
+            py-4
+          "
+        >
+
+          <div
+            className="
+              flex
+              items-start
+              justify-between
+            "
+          >
+
+            <h1
+              className="
+                max-w-xl
+                text-xl
+                font-semibold
+                text-gray-900
+              "
+            >
+
               {data.title}
+
             </h1>
 
-            <button onClick={close}>
-              <X size={18} />
+            <button
+              type="button"
+              onClick={
+                close
+              }
+              aria-label="Close"
+              className="
+                rounded
+                p-1
+                text-gray-500
+                hover:bg-gray-100
+                hover:text-gray-900
+              "
+            >
+
+              <X
+                size={18}
+              />
+
             </button>
+
           </div>
 
           {badges.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {badges.map((b, i) => (
-                <span
-                  key={`${b.label}-${i}`}
-                  className={`
-                    px-2 py-0.5 text-[10px]
-                    rounded-full uppercase tracking-wide
-                    ${getBadgeClass(b.type)}
-                  `}
-                >
-                  {b.label}
-                </span>
-              ))}
+
+            <div
+              className="
+                flex
+                flex-wrap
+                gap-2
+              "
+            >
+
+              {badges.map(
+                (
+                  badge,
+                  index,
+                ) => (
+
+                  <span
+                    key={`${badge.label}-${index}`}
+                    className={`
+                      rounded-full
+                      px-2
+                      py-0.5
+                      text-[10px]
+                      uppercase
+                      tracking-wide
+                      ${getBadgeClass(
+                        badge.type,
+                      )}
+                    `}
+                  >
+
+                    {badge.label}
+
+                  </span>
+
+                ),
+              )}
+
             </div>
+
           )}
 
           {data.source_url && (
-            <div className="flex items-center">
+
+            <div
+              className="
+                flex
+                items-center
+              "
+            >
+
               <a
-                href={data.source_url}
+                href={
+                  data.source_url
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
-                  inline-flex items-center gap-1
-                  text-xs text-blue-600
+                  inline-flex
+                  items-center
+                  gap-1
+                  text-xs
+                  text-blue-600
                   hover:text-blue-800
                   hover:underline
                 "
               >
-                <ExternalLink size={12} />
 
-                {data.source_title || "Read source article"}
+                <ExternalLink
+                  size={12}
+                />
+
+                {
+                  data.source_title
+                  || "Read source article"
+                }
+
               </a>
+
             </div>
+
           )}
+
         </div>
 
-        <div className="px-5 py-6 space-y-8">
+        {/* =============================================== */}
+        {/* CONTENT */}
+        {/* =============================================== */}
+
+        <div
+          className="
+            space-y-8
+            px-5
+            py-6
+          "
+        >
 
           {data.excerpt && (
-            <p className="text-base font-medium text-gray-800 max-w-2xl">
+
+            <p
+              className="
+                max-w-2xl
+                text-base
+                font-medium
+                text-gray-800
+              "
+            >
+
               {data.excerpt}
+
             </p>
+
           )}
 
           {data.content_body && (
+
             <div
-              className="prose prose-sm max-w-none"
+              className="
+                prose
+                prose-sm
+                max-w-none
+              "
               dangerouslySetInnerHTML={{
-                __html: data.content_body,
+                __html:
+                  data.content_body,
               }}
             />
+
           )}
 
           {data.signal_analytique && (
-            <div className="bg-teal-50 border border-teal-100 p-4 rounded">
-              <h3 className="text-xs uppercase text-teal-600 mb-1">
+
+            <div
+              className="
+                rounded
+                border
+                border-teal-100
+                bg-teal-50
+                p-4
+              "
+            >
+
+              <h3
+                className="
+                  mb-1
+                  text-xs
+                  uppercase
+                  text-teal-600
+                "
+              >
+
                 Insight
+
               </h3>
 
-              <p className="text-sm text-teal-800">
-                {data.signal_analytique}
+              <p
+                className="
+                  text-sm
+                  text-teal-800
+                "
+              >
+
+                {
+                  data.signal_analytique
+                }
+
               </p>
+
             </div>
+
           )}
 
-          {/* 🔥 CONCEPTS STRUCTURÉS UNIQUEMENT */}
-          {data.concepts?.length > 0 && (
+          {/* ============================================= */}
+          {/* STRUCTURED CONCEPTS */}
+          {/* ============================================= */}
+
+          {(
+            data.concepts
+            ?.length
+            ?? 0
+          ) > 0 && (
+
             <div>
-              <h3 className="text-xs uppercase text-gray-500 mb-2">
+
+              <h3
+                className="
+                  mb-2
+                  text-xs
+                  uppercase
+                  text-gray-500
+                "
+              >
+
                 Key Concepts
+
               </h3>
 
-              <div className="flex flex-wrap gap-2">
-                {data.concepts.map((c) => (
-                  <span
-                    key={c.id_concept}
-                    className="
-                      px-2 py-1 text-xs rounded
-                      bg-gray-200 text-gray-800
-                    "
-                  >
-                    {c.label}
-                  </span>
-                ))}
+              <div
+                className="
+                  flex
+                  flex-wrap
+                  gap-2
+                "
+              >
+
+                {data.concepts?.map(
+                  concept => (
+
+                    <span
+                      key={
+                        concept.id_concept
+                      }
+                      className="
+                        rounded
+                        bg-gray-200
+                        px-2
+                        py-1
+                        text-xs
+                        text-gray-800
+                      "
+                    >
+
+                      {concept.label}
+
+                    </span>
+
+                  ),
+                )}
+
               </div>
+
             </div>
+
           )}
 
           {data.mecanique_expliquee && (
+
             <div>
-              <h3 className="text-xs uppercase text-gray-500 mb-2">
+
+              <h3
+                className="
+                  mb-2
+                  text-xs
+                  uppercase
+                  text-gray-500
+                "
+              >
+
                 Mechanism Explained
+
               </h3>
 
-              <p className="text-sm text-gray-700">
-                {data.mecanique_expliquee}
+              <p
+                className="
+                  text-sm
+                  text-gray-700
+                "
+              >
+
+                {
+                  data.mecanique_expliquee
+                }
+
               </p>
+
             </div>
+
           )}
 
           {data.enjeu_strategique && (
+
             <div>
-              <h3 className="text-xs uppercase text-gray-500 mb-2">
+
+              <h3
+                className="
+                  mb-2
+                  text-xs
+                  uppercase
+                  text-gray-500
+                "
+              >
+
                 Strategic Implication
+
               </h3>
 
-              <p className="text-sm text-gray-700">
-                {data.enjeu_strategique}
+              <p
+                className="
+                  text-sm
+                  text-gray-700
+                "
+              >
+
+                {
+                  data.enjeu_strategique
+                }
+
               </p>
+
             </div>
+
           )}
 
           {data.point_de_friction && (
+
             <div>
-              <h3 className="text-xs uppercase text-gray-500 mb-2">
+
+              <h3
+                className="
+                  mb-2
+                  text-xs
+                  uppercase
+                  text-gray-500
+                "
+              >
+
                 Friction Point
+
               </h3>
 
-              <p className="text-sm text-gray-700">
-                {data.point_de_friction}
+              <p
+                className="
+                  text-sm
+                  text-gray-700
+                "
+              >
+
+                {
+                  data.point_de_friction
+                }
+
               </p>
+
             </div>
+
           )}
 
-          {data.chiffres?.length > 0 && (
+          {/* ============================================= */}
+          {/* KEY FIGURES */}
+          {/* ============================================= */}
+
+          {(
+            data.chiffres
+            ?.length
+            ?? 0
+          ) > 0 && (
+
             <div>
-              {/* HEADER + LEGEND */}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs uppercase text-gray-500">
+
+              <div
+                className="
+                  mb-2
+                  flex
+                  items-center
+                  justify-between
+                "
+              >
+
+                <h2
+                  className="
+                    text-xs
+                    uppercase
+                    text-gray-500
+                  "
+                >
+
                   Key Figures
+
                 </h2>
 
-                <div className="text-[10px] text-gray-400 hidden md:flex gap-2">
-                  <span>Label</span>
-                  <span>•</span>
-                  <span>Value</span>
-                  <span>•</span>
-                  <span>Unit</span>
-                  <span>•</span>
-                  <span>Actor</span>
-                  <span>•</span>
-                  <span>Market</span>
-                  <span>•</span>
-                  <span>Period</span>
+                <div
+                  className="
+                    hidden
+                    gap-2
+                    text-[10px]
+                    text-gray-400
+                    md:flex
+                  "
+                >
+
+                  <span>
+                    Label
+                  </span>
+
+                  <span>
+                    •
+                  </span>
+
+                  <span>
+                    Value
+                  </span>
+
+                  <span>
+                    •
+                  </span>
+
+                  <span>
+                    Unit
+                  </span>
+
+                  <span>
+                    •
+                  </span>
+
+                  <span>
+                    Actor
+                  </span>
+
+                  <span>
+                    •
+                  </span>
+
+                  <span>
+                    Market
+                  </span>
+
+                  <span>
+                    •
+                  </span>
+
+                  <span>
+                    Period
+                  </span>
+
                 </div>
+
               </div>
 
-              {/* LIST */}
-              <ul className="space-y-2">
-                {data.chiffres.map((c, i) => {
-                  const parts = c
-                    .split("|")
-                    .map((p) => p.trim());
+              <ul
+                className="
+                  space-y-2
+                "
+              >
 
-                  return (
-                    <li
-                      key={i}
-                      className="
-                        border rounded p-3
-                        text-sm bg-gray-50
-                      "
-                    >
-                      {/* LABEL */}
-                      <div className="font-medium text-gray-900">
-                        {parts[0]}
-                      </div>
+                {data.chiffres?.map(
+                  (
+                    figure,
+                    index,
+                  ) => {
 
-                      {/* META */}
-                      {parts.length > 1 && (
-                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
-                          {parts.slice(1).map((p, idx) => (
-                            <span key={idx}>
-                              {p}
-                              {idx < parts.length - 2 && " •"}
-                            </span>
-                          ))}
+                    const parts =
+                      figure
+                        .split(
+                          "|",
+                        )
+                        .map(
+                          part =>
+                            part.trim(),
+                        );
+
+                    return (
+
+                      <li
+                        key={index}
+                        className="
+                          rounded
+                          border
+                          bg-gray-50
+                          p-3
+                          text-sm
+                        "
+                      >
+
+                        <div
+                          className="
+                            font-medium
+                            text-gray-900
+                          "
+                        >
+
+                          {parts[0]}
+
                         </div>
-                      )}
-                    </li>
-                  );
-                })}
+
+                        {parts.length > 1 && (
+
+                          <div
+                            className="
+                              mt-1
+                              flex
+                              flex-wrap
+                              gap-2
+                              text-xs
+                              text-gray-500
+                            "
+                          >
+
+                            {parts
+                              .slice(
+                                1,
+                              )
+                              .map(
+                                (
+                                  part,
+                                  partIndex,
+                                ) => (
+
+                                  <span
+                                    key={
+                                      partIndex
+                                    }
+                                  >
+
+                                    {part}
+
+                                    {
+                                      partIndex
+                                      < parts.length
+                                        - 2
+                                      && " •"
+                                    }
+
+                                  </span>
+
+                                ),
+                              )}
+
+                          </div>
+
+                        )}
+
+                      </li>
+
+                    );
+
+                  },
+                )}
+
               </ul>
+
             </div>
+
           )}
 
-          {data.acteurs_cites?.length > 0 && (
-            <div className="text-sm text-gray-600">
-              <strong>Actors:</strong>{" "}
-              {data.acteurs_cites.join(", ")}
+          {(
+            data.acteurs_cites
+            ?.length
+            ?? 0
+          ) > 0 && (
+
+            <div
+              className="
+                text-sm
+                text-gray-600
+              "
+            >
+
+              <strong>
+                Actors:
+              </strong>{" "}
+
+              {
+                data.acteurs_cites
+                  ?.join(
+                    ", ",
+                  )
+              }
+
             </div>
+
+          )}
+
+          {/* ============================================= */}
+          {/* CONTENT FEEDBACK */}
+          {/* ============================================= */}
+
+          {feedbackAvailable && (
+
+            <div
+              className="
+                border-t
+                border-gray-200
+                pt-6
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  flex-col
+                  gap-4
+                  sm:flex-row
+                  sm:items-center
+                  sm:justify-between
+                "
+              >
+
+                <div>
+
+                  <h3
+                    className="
+                      text-sm
+                      font-semibold
+                      text-gray-900
+                    "
+                  >
+
+                    Was this useful?
+
+                  </h3>
+
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      text-gray-500
+                    "
+                  >
+
+                    Your feedback helps improve
+                    your future Digests.
+
+                  </p>
+
+                </div>
+
+                <div
+                  className="
+                    flex
+                    flex-wrap
+                    gap-2
+                  "
+                >
+
+                  <button
+                    type="button"
+                    disabled={
+                      feedbackSaving
+                      || feedbackLoading
+                    }
+                    onClick={() =>
+                      handleFeedback(
+                        "RELEVANT",
+                      )
+                    }
+                    className={`
+                      inline-flex
+                      items-center
+                      gap-2
+                      rounded-lg
+                      border
+                      px-3
+                      py-2
+                      text-sm
+                      font-medium
+                      transition
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                      ${
+                        feedback
+                        === "RELEVANT"
+                          ? `
+                            border-emerald-600
+                            bg-emerald-600
+                            text-white
+                          `
+                          : `
+                            border-gray-200
+                            bg-white
+                            text-gray-700
+                            hover:border-emerald-300
+                            hover:text-emerald-700
+                          `
+                      }
+                    `}
+                  >
+
+                    <ThumbsUp
+                      size={15}
+                    />
+
+                    Relevant
+
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      feedbackSaving
+                      || feedbackLoading
+                    }
+                    onClick={() =>
+                      handleFeedback(
+                        "NOT_RELEVANT",
+                      )
+                    }
+                    className={`
+                      inline-flex
+                      items-center
+                      gap-2
+                      rounded-lg
+                      border
+                      px-3
+                      py-2
+                      text-sm
+                      font-medium
+                      transition
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                      ${
+                        feedback
+                        === "NOT_RELEVANT"
+                          ? `
+                            border-slate-700
+                            bg-slate-700
+                            text-white
+                          `
+                          : `
+                            border-gray-200
+                            bg-white
+                            text-gray-700
+                            hover:border-slate-400
+                            hover:text-slate-900
+                          `
+                      }
+                    `}
+                  >
+
+                    <ThumbsDown
+                      size={15}
+                    />
+
+                    Not relevant
+
+                  </button>
+
+                </div>
+
+              </div>
+
+              {feedbackError && (
+
+                <p
+                  className="
+                    mt-3
+                    text-xs
+                    text-red-600
+                  "
+                >
+
+                  {feedbackError}
+
+                </p>
+
+              )}
+
+              {feedback && (
+
+                <p
+                  className="
+                    mt-3
+                    text-xs
+                    text-gray-400
+                  "
+                >
+
+                  Click the selected option again
+                  to undo your feedback.
+
+                </p>
+
+              )}
+
+            </div>
+
           )}
 
           {data.published_at && (
-            <div className="pt-4 border-t text-xs text-gray-400">
+
+            <div
+              className="
+                border-t
+                pt-4
+                text-xs
+                text-gray-400
+              "
+            >
+
               Published on{" "}
-              {new Date(data.published_at).toLocaleDateString("en-GB")}
+
+              {
+                new Date(
+                  data.published_at,
+                ).toLocaleDateString(
+                  "en-GB",
+                )
+              }
+
             </div>
+
           )}
+
         </div>
+
       </aside>
+
     </div>
+
   );
+
 }
