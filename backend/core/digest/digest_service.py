@@ -572,9 +572,16 @@ def generate_digest(
                     additional_contents
                 ),
 
+                user_id=(
+                    digest.user_id
+                ),
+
+                digest_id=(
+                    digest.id
+                ),
+
             )
         )
-
         digest.status = "generated"
 
         digest.generated_at = datetime.now(
