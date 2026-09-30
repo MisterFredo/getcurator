@@ -159,6 +159,8 @@ export type DigestCard = {
 
   url: string;
 
+  not_relevant_url?: string | null;
+
   source_title?: string | null;
 
   published_at?: string | null;
@@ -189,7 +191,6 @@ export type DigestCard = {
   matched_negative_preferences: string[];
 
 };
-
 
 /* =========================================================
    SECTION
