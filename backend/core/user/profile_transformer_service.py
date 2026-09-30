@@ -44,6 +44,46 @@ TransformResult = Tuple[
 
 
 # ============================================================
+# SELECT STRUCTURED SOURCE
+# ============================================================
+
+def select_profile_structured_source(
+    profile_text: Optional[str],
+    editorial_profile_text: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Select the natural-language source used to generate
+    the structured machine profile.
+
+    The extended editorial profile has priority.
+
+    PROFILE_TEXT remains the fallback while existing profiles
+    are progressively migrated.
+    """
+
+    if (
+        editorial_profile_text
+        and editorial_profile_text.strip()
+    ):
+
+        return (
+            editorial_profile_text
+            .strip()
+        )
+
+    if (
+        profile_text
+        and profile_text.strip()
+    ):
+
+        return (
+            profile_text.strip()
+        )
+
+    return None
+
+
+# ============================================================
 # SOURCE HASH
 # ============================================================
 
@@ -53,10 +93,28 @@ def build_profile_source_hash(
     geography_2: Optional[str] = None,
     geography_3: Optional[str] = None,
     language: str = "fr",
+    editorial_profile_text: Optional[str] = None,
 ) -> str:
+    """
+    Build a stable hash from the effective source used
+    to generate PROFILE_STRUCTURED_JSON.
+
+    When PROFILE_EDITORIAL_TEXT exists, the hash therefore
+    represents that editorial profile and its explicit
+    geographical context.
+    """
+
+    structured_source = (
+        select_profile_structured_source(
+            profile_text=profile_text,
+            editorial_profile_text=(
+                editorial_profile_text
+            ),
+        )
+    )
 
     source_payload = build_profile_source_payload(
-        profile_text=profile_text,
+        profile_text=structured_source,
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
@@ -159,12 +217,19 @@ def extract_json_object(
 
 def validate_profile_source(
     profile_text: Optional[str],
+    editorial_profile_text: Optional[str] = None,
 ) -> Optional[str]:
 
-    if not (
-        profile_text
-        and profile_text.strip()
-    ):
+    structured_source = (
+        select_profile_structured_source(
+            profile_text=profile_text,
+            editorial_profile_text=(
+                editorial_profile_text
+            ),
+        )
+    )
+
+    if not structured_source:
 
         return (
             "Impossible de structurer "
@@ -185,10 +250,22 @@ def transform_user_profile(
     geography_3: Optional[str] = None,
     language: str = "fr",
     model: Optional[str] = None,
+    editorial_profile_text: Optional[str] = None,
 ) -> TransformResult:
+    """
+    Generate the structured machine profile.
+
+    Source priority:
+
+    1. PROFILE_EDITORIAL_TEXT;
+    2. PROFILE_TEXT as migration fallback.
+    """
 
     source_error = validate_profile_source(
         profile_text=profile_text,
+        editorial_profile_text=(
+            editorial_profile_text
+        ),
     )
 
     if source_error:
@@ -198,16 +275,28 @@ def transform_user_profile(
             source_error,
         )
 
+    structured_source = (
+        select_profile_structured_source(
+            profile_text=profile_text,
+            editorial_profile_text=(
+                editorial_profile_text
+            ),
+        )
+    )
+
     source_hash = build_profile_source_hash(
         profile_text=profile_text,
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
         language=language,
+        editorial_profile_text=(
+            editorial_profile_text
+        ),
     )
 
     prompt = build_profile_transformer_user_prompt(
-        profile_text=profile_text,
+        profile_text=structured_source,
         geography_1=geography_1,
         geography_2=geography_2,
         geography_3=geography_3,
