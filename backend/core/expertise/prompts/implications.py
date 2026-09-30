@@ -33,9 +33,11 @@ def _build_profile_context(
     )
 
     profile_context = {
-
         "professional_profile":
-            profile.profile_text,
+            (
+                profile.editorial_profile_text
+                or profile.profile_text
+            ),
 
         "geographies":
             profile.geographies,
