@@ -1,3 +1,9 @@
+import os
+
+from urllib.parse import (
+    urlencode,
+)
+
 from datetime import (
     datetime,
     timezone,
@@ -31,6 +37,10 @@ from core.expertise.capabilities import (
     CAPABILITY_STRUCTURE,
 )
 
+from core.feedback.token_service import (
+    generate_digest_feedback_token,
+)
+
 
 # ============================================================
 # CONFIGURATION
@@ -38,6 +48,15 @@ from core.expertise.capabilities import (
 
 DIGEST_TITLE = (
     "Weekly Curator Digest"
+)
+
+GETCURATOR_PUBLIC_URL = (
+    os.getenv(
+        "GETCURATOR_PUBLIC_URL"
+    )
+    or "https://www.getcurator.ai"
+).rstrip(
+    "/"
 )
 
 
@@ -100,6 +119,8 @@ def build_digest_document(
     additional_contents: list[
         ExpertiseContent
     ] | None = None,
+    user_id: str | None = None,
+    digest_id: str | None = None,
 ) -> DigestDocument:
     """
     Build one DigestDocument from a KnowledgeResult.
@@ -218,6 +239,10 @@ def build_digest_document(
 
                 decision=decision,
 
+                user_id=user_id,
+
+                digest_id=digest_id,
+
             )
 
         )
@@ -277,10 +302,13 @@ def build_digest_document(
 
                 decision=decision,
 
+                user_id=user_id,
+
+                digest_id=digest_id,
+
             )
 
         )
-
     # ========================================================
     # DOCUMENT
     # ========================================================
@@ -407,6 +435,49 @@ def _normalize_string_list(
 
     ]
 
+# ============================================================
+# BUILD NOT RELEVANT URL
+# ============================================================
+
+def _build_not_relevant_url(
+    user_id: str | None,
+    digest_id: str | None,
+    content_id: str,
+) -> str | None:
+
+    if (
+        not user_id
+        or not digest_id
+        or not content_id
+    ):
+
+        return None
+
+    token = (
+        generate_digest_feedback_token(
+
+            user_id=user_id,
+
+            digest_id=digest_id,
+
+            content_id=content_id,
+
+        )
+    )
+
+    query_string = urlencode(
+        {
+            "token":
+                token,
+        }
+    )
+
+    return (
+        f"{GETCURATOR_PUBLIC_URL}"
+        f"/feedback/digest"
+        f"?{query_string}"
+    )
+
 
 # ============================================================
 # BUILD CARD
@@ -418,6 +489,8 @@ def _build_card(
         str,
         Any,
     ] | None = None,
+    user_id: str | None = None,
+    digest_id: str | None = None,
 ) -> DigestCard:
 
     badges: list[DigestBadge] = []
@@ -543,6 +616,18 @@ def _build_card(
         excerpt=content.excerpt,
 
         url=content.url,
+
+        not_relevant_url=(
+            _build_not_relevant_url(
+
+                user_id=user_id,
+
+                digest_id=digest_id,
+
+                content_id=content.id,
+
+            )
+        ),
 
         source_title=(
             content.source_title
