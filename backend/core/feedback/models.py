@@ -1,3 +1,7 @@
+from datetime import (
+    datetime,
+)
+
 from typing import (
     Literal,
     Optional,
@@ -46,6 +50,13 @@ class ContentFeedback(
     user_id: str
 
     content_id: str
+    created_at: Optional[
+        datetime
+    ] = None
+
+    updated_at: Optional[
+        datetime
+    ] = None
 
     digest_id: Optional[str] = None
 
@@ -219,3 +230,72 @@ class ContentFeedbackResponse(
     is_active: bool
 
     message: str
+
+# ============================================================
+# FEEDBACK CONTENT EXAMPLE
+# ============================================================
+
+class FeedbackContentExample(
+    BaseModel,
+):
+
+    content_id: str
+
+    title: str
+
+    excerpt: str = ""
+
+    feedback_type: ContentFeedbackType
+
+    feedback_reason: Optional[
+        ContentFeedbackReason
+    ] = None
+
+    source: ContentFeedbackSource
+
+    feedback_at: Optional[
+        datetime
+    ] = None
+
+    companies: list[str] = Field(
+        default_factory=list,
+    )
+
+    solutions: list[str] = Field(
+        default_factory=list,
+    )
+
+    topics: list[str] = Field(
+        default_factory=list,
+    )
+
+    concepts: list[str] = Field(
+        default_factory=list,
+    )
+
+
+# ============================================================
+# USER FEEDBACK CONTEXT
+# ============================================================
+
+class UserFeedbackContext(
+    BaseModel,
+):
+
+    relevant_examples: list[
+        FeedbackContentExample
+    ] = Field(
+        default_factory=list,
+    )
+
+    not_relevant_examples: list[
+        FeedbackContentExample
+    ] = Field(
+        default_factory=list,
+    )
+
+    relevant_count: int = 0
+
+    not_relevant_count: int = 0
+
+    has_feedback: bool = False
