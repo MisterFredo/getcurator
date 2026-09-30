@@ -9,6 +9,7 @@ import {
 import CardSection from "@/components/ui/CardSection";
 import { api } from "@/lib/api";
 
+
 /* =========================================================
    TYPES
 ========================================================= */
@@ -23,10 +24,34 @@ type StructuredProfile = Record<
 >;
 
 type UserProfile = {
+
   geography_1?: string | null;
+
   geography_2?: string | null;
+
   geography_3?: string | null;
+
   profile_text?: string | null;
+
+  profile_editorial_text?:
+    | string
+    | null;
+
+  profile_editorial_status?:
+    | string
+    | null;
+
+  profile_editorial_error?:
+    | string
+    | null;
+
+  profile_editorial_at?:
+    | string
+    | null;
+
+  profile_editorial_transformer_version?:
+    | string
+    | null;
 
   structured_profile?:
     | StructuredProfile
@@ -51,17 +76,29 @@ type UserProfile = {
   profile_transformer_version?:
     | string
     | null;
+
 };
 
 type AssistantMessage = {
-  role: "user" | "assistant";
+
+  role:
+    | "user"
+    | "assistant";
+
   content: string;
+
 };
 
 type AssistantResponse = {
+
   status: string;
+
   assistant_version: string;
-  action: "ASK" | "PROPOSE";
+
+  action:
+    | "ASK"
+    | "PROPOSE";
+
   message: string;
 
   proposed_profile_text?:
@@ -69,7 +106,91 @@ type AssistantResponse = {
     | null;
 
   profile_complete: boolean;
+
 };
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function getStatusClasses(
+  status?: string | null,
+): string {
+
+  if (status === "READY") {
+
+    return (
+      "bg-emerald-50 text-emerald-700"
+    );
+
+  }
+
+  if (status === "ERROR") {
+
+    return (
+      "bg-red-50 text-red-700"
+    );
+
+  }
+
+  if (status === "STALE") {
+
+    return (
+      "bg-amber-50 text-amber-700"
+    );
+
+  }
+
+  if (status === "BUILDING") {
+
+    return (
+      "bg-blue-50 text-blue-700"
+    );
+
+  }
+
+  return (
+    "bg-gray-100 text-gray-600"
+  );
+
+}
+
+
+function formatGeneratedAt(
+  value?: string | null,
+): string {
+
+  if (!value) {
+
+    return (
+      "Not generated yet."
+    );
+
+  }
+
+  const date = new Date(
+    value,
+  );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+
+    return (
+      "Generation date unavailable."
+    );
+
+  }
+
+  return (
+    `Generated on ${date.toLocaleString()}`
+  );
+
+}
+
 
 /* =========================================================
    COMPONENT
@@ -79,16 +200,24 @@ export default function ProfileAIEditor({
   userId,
 }: Props) {
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
   const [
     regenerating,
     setRegenerating,
   ] = useState(false);
+
+  /* =====================================================
+     PUBLIC PROFILE
+  ===================================================== */
 
   const [
     profileText,
@@ -99,6 +228,47 @@ export default function ProfileAIEditor({
     savedProfileText,
     setSavedProfileText,
   ] = useState("");
+
+  /* =====================================================
+     EDITORIAL PROFILE
+  ===================================================== */
+
+  const [
+    editorialProfileText,
+    setEditorialProfileText,
+  ] = useState("");
+
+  const [
+    editorialStatus,
+    setEditorialStatus,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    editorialError,
+    setEditorialError,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    editorialAt,
+    setEditorialAt,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    editorialTransformerVersion,
+    setEditorialTransformerVersion,
+  ] = useState<
+    string | null
+  >(null);
+
+  /* =====================================================
+     STRUCTURED PROFILE
+  ===================================================== */
 
   const [
     structuredProfile,
@@ -142,6 +312,10 @@ export default function ProfileAIEditor({
     string | null
   >(null);
 
+  /* =====================================================
+     ASSISTANT
+  ===================================================== */
+
   const [
     assistantOpen,
     setAssistantOpen,
@@ -180,6 +354,7 @@ export default function ProfileAIEditor({
     profileText !== savedProfileText
   );
 
+
   /* =====================================================
      LOAD PROFILE
   ===================================================== */
@@ -187,14 +362,18 @@ export default function ProfileAIEditor({
   const loadProfile = useCallback(
     async () => {
 
-      if (!userId) return;
+      if (!userId) {
+
+        return;
+
+      }
 
       try {
 
         setLoading(true);
 
         const response = await api.get(
-          `/user/profile/${userId}`,
+          `/user/profile/admin/${userId}`,
         );
 
         const profile: UserProfile = (
@@ -213,6 +392,32 @@ export default function ProfileAIEditor({
 
         setSavedProfileText(
           nextProfileText
+        );
+
+        setEditorialProfileText(
+          profile.profile_editorial_text
+          ?? ""
+        );
+
+        setEditorialStatus(
+          profile.profile_editorial_status
+          ?? null
+        );
+
+        setEditorialError(
+          profile.profile_editorial_error
+          ?? null
+        );
+
+        setEditorialAt(
+          profile.profile_editorial_at
+          ?? null
+        );
+
+        setEditorialTransformerVersion(
+          profile
+            .profile_editorial_transformer_version
+          ?? null
         );
 
         setStructuredProfile(
@@ -264,12 +469,17 @@ export default function ProfileAIEditor({
     ],
   );
 
+
   useEffect(() => {
 
     setAssistantOpen(false);
+
     setAssistantMessages([]);
+
     setAssistantInput("");
+
     setAssistantError(null);
+
     setProposalReady(false);
 
     loadProfile();
@@ -278,8 +488,9 @@ export default function ProfileAIEditor({
     loadProfile,
   ]);
 
+
   /* =====================================================
-     SAVE PROFILE
+     SAVE PUBLIC PROFILE
   ===================================================== */
 
   async function saveProfile() {
@@ -305,8 +516,11 @@ export default function ProfileAIEditor({
       await api.post(
         "/user/profile/update",
         {
-          user_id: userId,
-          profile_text: cleanedProfile,
+          user_id:
+            userId,
+
+          profile_text:
+            cleanedProfile,
         },
       );
 
@@ -315,7 +529,7 @@ export default function ProfileAIEditor({
       setProposalReady(false);
 
       alert(
-        "Profile and structured profile updated.",
+        "The public, editorial and structured profiles were updated.",
       );
 
     } catch (error) {
@@ -337,8 +551,9 @@ export default function ProfileAIEditor({
 
   }
 
+
   /* =====================================================
-     REGENERATE STRUCTURED PROFILE
+     REGENERATE INTERNAL PROFILES
   ===================================================== */
 
   async function regenerateProfile() {
@@ -346,7 +561,7 @@ export default function ProfileAIEditor({
     if (!savedProfileText.trim()) {
 
       alert(
-        "Save a profile before regenerating it.",
+        "Save a public profile before regenerating.",
       );
 
       return;
@@ -356,7 +571,7 @@ export default function ProfileAIEditor({
     if (hasUnsavedChanges) {
 
       alert(
-        "Save the current changes before regenerating.",
+        "Save or discard the current changes before regenerating.",
       );
 
       return;
@@ -368,16 +583,20 @@ export default function ProfileAIEditor({
       setRegenerating(true);
 
       await api.post(
-        "/user/profile/regenerate",
+        "/user/profile/admin/regenerate",
         {
-          user_id: userId,
+          user_id:
+            userId,
+
+          force:
+            true,
         },
       );
 
       await loadProfile();
 
       alert(
-        "Structured profile regenerated.",
+        "The editorial and structured profiles were regenerated.",
       );
 
     } catch (error) {
@@ -388,7 +607,7 @@ export default function ProfileAIEditor({
       );
 
       alert(
-        "Unable to regenerate the structured profile.",
+        "Unable to regenerate the internal profiles.",
       );
 
     } finally {
@@ -398,6 +617,7 @@ export default function ProfileAIEditor({
     }
 
   }
+
 
   /* =====================================================
      CALL PROFILE ASSISTANT
@@ -410,28 +630,37 @@ export default function ProfileAIEditor({
     try {
 
       setAssistantLoading(true);
+
       setAssistantError(null);
 
       const response: AssistantResponse = (
         await api.post(
           "/user/profile/assistant",
           {
-            user_id: userId,
+            user_id:
+              userId,
+
             messages,
           },
         )
       );
 
-      const assistantMessage: AssistantMessage = {
-        role: "assistant",
-        content: response.message,
-      };
+      const assistantMessage:
+        AssistantMessage = {
+
+          role:
+            "assistant",
+
+          content:
+            response.message,
+
+        };
 
       setAssistantMessages(
         [
           ...messages,
           assistantMessage,
-        ]
+        ],
       );
 
       if (
@@ -466,6 +695,7 @@ export default function ProfileAIEditor({
 
   }
 
+
   /* =====================================================
      START ASSISTANT
   ===================================================== */
@@ -483,16 +713,21 @@ export default function ProfileAIEditor({
     }
 
     setAssistantOpen(true);
+
     setAssistantMessages([]);
+
     setAssistantInput("");
+
     setAssistantError(null);
+
     setProposalReady(false);
 
     await callProfileAssistant(
-      []
+      [],
     );
 
   }
+
 
   /* =====================================================
      SEND ASSISTANT ANSWER
@@ -514,12 +749,18 @@ export default function ProfileAIEditor({
 
     }
 
-    const nextMessages: AssistantMessage[] = [
+    const nextMessages:
+        AssistantMessage[] = [
+
       ...assistantMessages,
+
       {
-        role: "user",
+        role:
+          "user",
+
         content,
       },
+
     ];
 
     setAssistantMessages(
@@ -534,6 +775,7 @@ export default function ProfileAIEditor({
 
   }
 
+
   /* =====================================================
      CLOSE ASSISTANT
   ===================================================== */
@@ -541,67 +783,30 @@ export default function ProfileAIEditor({
   function closeAssistant() {
 
     setAssistantOpen(false);
+
     setAssistantMessages([]);
+
     setAssistantInput("");
+
     setAssistantError(null);
+
     setProposalReady(false);
 
   }
 
+
   /* =====================================================
-     STATUS
+     LOADING
   ===================================================== */
 
-  function getStatusClasses() {
-
-    if (
-      structuredStatus === "READY"
-    ) {
-
-      return (
-        "bg-emerald-50 text-emerald-700"
-      );
-
-    }
-
-    if (
-      structuredStatus === "ERROR"
-    ) {
-
-      return (
-        "bg-red-50 text-red-700"
-      );
-
-    }
-
-    if (
-      structuredStatus === "STALE"
-    ) {
-
-      return (
-        "bg-amber-50 text-amber-700"
-      );
-
-    }
+  if (loading) {
 
     return (
-      "bg-gray-100 text-gray-600"
-    );
 
-  }
-
-  /* =====================================================
-     UI
-  ===================================================== */
-
-  return (
-
-    <CardSection
-      title="Profile"
-      description="Build a precise profile to personalize content selection, analyses and Digests."
-    >
-
-      {loading ? (
+      <CardSection
+        title="Profile"
+        description="Build a precise profile to personalize content selection, analyses and Digests."
+      >
 
         <div
           className="
@@ -612,29 +817,170 @@ export default function ProfileAIEditor({
           Loading...
         </div>
 
-      ) : (
+      </CardSection>
 
-        <div
-          className="
-            space-y-6
-          "
-        >
+    );
 
-          {/* ===============================================
-              STRUCTURED PROFILE STATUS
-          =============================================== */}
+  }
+
+
+  /* =====================================================
+     UI
+  ===================================================== */
+
+  return (
+
+    <CardSection
+      title="Profile"
+      description="Build a precise public profile and generate the internal editorial instructions used by GetCurator."
+    >
+
+      <div className="space-y-8">
+
+        {/* =================================================
+            PUBLIC PROFILE
+        ================================================= */}
+
+        <section className="space-y-4">
 
           <div
             className="
               flex
               flex-wrap
-              items-center
+              items-start
               justify-between
               gap-3
+            "
+          >
+
+            <div>
+
+              <div
+                className="
+                  text-sm
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                Public professional profile
+              </div>
+
+              <div
+                className="
+                  mt-1
+                  max-w-3xl
+                  text-xs
+                  leading-5
+                  text-gray-500
+                "
+              >
+                This is the human-readable version displayed
+                in the public interface. It is also the source
+                used to generate the internal editorial profile.
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                assistantOpen
+                  ? closeAssistant
+                  : startAssistant
+              }
+              disabled={
+                assistantLoading
+                || saving
+                || regenerating
+              }
+              className="
+                rounded-lg
+                border
+                border-ratecard-blue
+                bg-white
+                px-4
+                py-2
+                text-sm
+                font-medium
+                text-ratecard-blue
+                transition
+                hover:bg-blue-50
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+              "
+            >
+              {assistantOpen
+                ? "Close assistant"
+                : "Improve with GetCurator"}
+            </button>
+
+          </div>
+
+          <textarea
+            value={
+              profileText
+            }
+            onChange={event =>
+              setProfileText(
+                event.target.value
+              )
+            }
+            rows={14}
+            className="
+              w-full
               rounded-lg
               border
               border-gray-200
-              bg-gray-50
+              p-4
+              text-sm
+              leading-6
+              outline-none
+              transition
+              focus:border-ratecard-blue
+            "
+            placeholder={`Example:
+
+Head of Global eKey Accounts
+
+Focus
+- Wine and spirits eCommerce
+- Amazon and quick commerce
+- Retail media and measurement
+
+Priority markets
+- Europe
+- United States`}
+          />
+
+          {hasUnsavedChanges && (
+
+            <div
+              className="
+                text-xs
+                text-amber-600
+              "
+            >
+              Unsaved changes
+            </div>
+
+          )}
+
+        </section>
+
+
+        {/* =================================================
+            PROFILE ASSISTANT
+        ================================================= */}
+
+        {assistantOpen && (
+
+          <section
+            className="
+              space-y-4
+              rounded-xl
+              border
+              border-blue-100
+              bg-blue-50/40
               p-4
             "
           >
@@ -643,37 +989,12 @@ export default function ProfileAIEditor({
 
               <div
                 className="
-                  flex
-                  flex-wrap
-                  items-center
-                  gap-2
+                  text-sm
+                  font-semibold
+                  text-gray-900
                 "
               >
-
-                <span
-                  className="
-                    text-sm
-                    font-medium
-                    text-gray-900
-                  "
-                >
-                  Structured profile
-                </span>
-
-                <span
-                  className={`
-                    rounded-full
-                    px-2.5
-                    py-1
-                    text-xs
-                    font-medium
-                    ${getStatusClasses()}
-                  `}
-                >
-                  {structuredStatus
-                    || "Not generated"}
-                </span>
-
+                GetCurator Profile Assistant
               </div>
 
               <div
@@ -683,31 +1004,357 @@ export default function ProfileAIEditor({
                   text-gray-500
                 "
               >
-                {structuredAt
-                  ? `Generated on ${new Date(
-                      structuredAt,
-                    ).toLocaleString()}`
-                  : "No structured profile generated yet."}
+                Answer the questions to build a more precise
+                public profile. Nothing is saved before
+                validation.
               </div>
 
-              {(
-                schemaVersion
-                || transformerVersion
-              ) && (
+            </div>
+
+            <div
+              className="
+                max-h-96
+                space-y-3
+                overflow-y-auto
+                pr-1
+              "
+            >
+
+              {assistantMessages.map(
+                (
+                  message,
+                  index,
+                ) => (
+
+                  <div
+                    key={
+                      `${message.role}-${index}`
+                    }
+                    className={`
+                      flex
+                      ${
+                        message.role === "user"
+                          ? "justify-end"
+                          : "justify-start"
+                      }
+                    `}
+                  >
+
+                    <div
+                      className={`
+                        max-w-[85%]
+                        whitespace-pre-wrap
+                        rounded-xl
+                        px-4
+                        py-3
+                        text-sm
+                        leading-6
+
+                        ${
+                          message.role === "user"
+                            ? `
+                              bg-ratecard-blue
+                              text-white
+                            `
+                            : `
+                              border
+                              border-gray-200
+                              bg-white
+                              text-gray-700
+                            `
+                        }
+                      `}
+                    >
+                      {message.content}
+                    </div>
+
+                  </div>
+
+                ),
+              )}
+
+              {assistantLoading && (
+
+                <div
+                  className="
+                    text-sm
+                    text-gray-500
+                  "
+                >
+                  GetCurator is thinking...
+                </div>
+
+              )}
+
+            </div>
+
+            {assistantError && (
+
+              <div
+                className="
+                  rounded-lg
+                  border
+                  border-red-200
+                  bg-red-50
+                  p-3
+                  text-sm
+                  text-red-700
+                "
+              >
+                {assistantError}
+              </div>
+
+            )}
+
+            {!proposalReady ? (
+
+              <div className="flex gap-2">
+
+                <textarea
+                  value={
+                    assistantInput
+                  }
+                  onChange={event =>
+                    setAssistantInput(
+                      event.target.value
+                    )
+                  }
+                  onKeyDown={event => {
+
+                    if (
+                      event.key === "Enter"
+                      && !event.shiftKey
+                    ) {
+
+                      event.preventDefault();
+
+                      sendAssistantAnswer();
+
+                    }
+
+                  }}
+                  rows={3}
+                  placeholder="Write your answer..."
+                  disabled={
+                    assistantLoading
+                  }
+                  className="
+                    min-w-0
+                    flex-1
+                    resize-none
+                    rounded-lg
+                    border
+                    border-gray-200
+                    bg-white
+                    px-3
+                    py-2
+                    text-sm
+                    outline-none
+                    focus:border-ratecard-blue
+                    disabled:opacity-50
+                  "
+                />
+
+                <button
+                  type="button"
+                  onClick={
+                    sendAssistantAnswer
+                  }
+                  disabled={
+                    assistantLoading
+                    || !assistantInput.trim()
+                  }
+                  className="
+                    self-end
+                    rounded-lg
+                    bg-ratecard-blue
+                    px-4
+                    py-2
+                    text-sm
+                    font-medium
+                    text-white
+                    transition
+                    hover:opacity-90
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
+                >
+                  Send
+                </button>
+
+              </div>
+
+            ) : (
+
+              <div
+                className="
+                  rounded-lg
+                  border
+                  border-emerald-200
+                  bg-emerald-50
+                  p-4
+                "
+              >
+
+                <div
+                  className="
+                    text-sm
+                    font-medium
+                    text-emerald-800
+                  "
+                >
+                  Proposal ready
+                </div>
 
                 <div
                   className="
                     mt-1
-                    text-xs
-                    text-gray-400
+                    text-sm
+                    text-emerald-700
                   "
                 >
-                  Schema {schemaVersion || "—"}
-                  {" · "}
-                  Transformer {transformerVersion || "—"}
+                  The proposal has been copied into the public
+                  profile field. You can edit it before saving.
                 </div>
 
-              )}
+              </div>
+
+            )}
+
+          </section>
+
+        )}
+
+
+        {/* =================================================
+            PUBLIC PROFILE ACTIONS
+        ================================================= */}
+
+        <div
+          className="
+            flex
+            flex-wrap
+            items-center
+            justify-end
+            gap-3
+          "
+        >
+
+          {hasUnsavedChanges && (
+
+            <button
+              type="button"
+              onClick={() =>
+                setProfileText(
+                  savedProfileText
+                )
+              }
+              disabled={
+                saving
+                || regenerating
+              }
+              className="
+                rounded-lg
+                border
+                border-gray-300
+                px-4
+                py-2
+                text-sm
+                font-medium
+                text-gray-700
+                transition
+                hover:bg-gray-50
+                disabled:opacity-50
+              "
+            >
+              Discard changes
+            </button>
+
+          )}
+
+          <button
+            type="button"
+            onClick={
+              saveProfile
+            }
+            disabled={
+              saving
+              || regenerating
+              || !profileText.trim()
+              || !hasUnsavedChanges
+            }
+            className="
+              rounded-lg
+              bg-ratecard-blue
+              px-5
+              py-2
+              text-sm
+              font-medium
+              text-white
+              transition
+              hover:opacity-90
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+          >
+            {saving
+              ? "Generating and saving..."
+              : proposalReady
+                ? "Validate and save"
+                : "Save public profile"}
+          </button>
+
+        </div>
+
+
+        {/* =================================================
+            INTERNAL PROFILE HEADER
+        ================================================= */}
+
+        <div
+          className="
+            border-t
+            border-gray-200
+            pt-7
+          "
+        >
+
+          <div
+            className="
+              flex
+              flex-wrap
+              items-start
+              justify-between
+              gap-4
+            "
+          >
+
+            <div>
+
+              <div
+                className="
+                  text-base
+                  font-semibold
+                  text-gray-900
+                "
+              >
+                Internal GetCurator profile
+              </div>
+
+              <div
+                className="
+                  mt-1
+                  max-w-3xl
+                  text-xs
+                  leading-5
+                  text-gray-500
+                "
+              >
+                These editorial instructions and structured data
+                are used internally for content discovery,
+                selection, ranking and personalised analysis.
+                They are not displayed in the public interface.
+              </div>
 
             </div>
 
@@ -719,6 +1366,7 @@ export default function ProfileAIEditor({
               disabled={
                 regenerating
                 || saving
+                || hasUnsavedChanges
                 || !savedProfileText.trim()
               }
               className="
@@ -726,9 +1374,9 @@ export default function ProfileAIEditor({
                 border
                 border-gray-300
                 bg-white
-                px-3
+                px-4
                 py-2
-                text-xs
+                text-sm
                 font-medium
                 text-gray-700
                 transition
@@ -739,8 +1387,240 @@ export default function ProfileAIEditor({
             >
               {regenerating
                 ? "Regenerating..."
-                : "Regenerate"}
+                : "Regenerate internal profile"}
             </button>
+
+          </div>
+
+        </div>
+
+
+        {/* =================================================
+            EDITORIAL PROFILE
+        ================================================= */}
+
+        <section className="space-y-3">
+
+          <div
+            className="
+              rounded-lg
+              border
+              border-gray-200
+              bg-gray-50
+              p-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                flex-wrap
+                items-center
+                gap-2
+              "
+            >
+
+              <span
+                className="
+                  text-sm
+                  font-medium
+                  text-gray-900
+                "
+              >
+                Editorial profile
+              </span>
+
+              <span
+                className={`
+                  rounded-full
+                  px-2.5
+                  py-1
+                  text-xs
+                  font-medium
+                  ${getStatusClasses(
+                    editorialStatus,
+                  )}
+                `}
+              >
+                {editorialStatus
+                  || "Not generated"}
+              </span>
+
+            </div>
+
+            <div
+              className="
+                mt-2
+                text-xs
+                text-gray-500
+              "
+            >
+              {formatGeneratedAt(
+                editorialAt,
+              )}
+            </div>
+
+            {editorialTransformerVersion && (
+
+              <div
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-400
+                "
+              >
+                Transformer{" "}
+                {editorialTransformerVersion}
+              </div>
+
+            )}
+
+          </div>
+
+          {editorialError && (
+
+            <div
+              className="
+                rounded-lg
+                border
+                border-red-200
+                bg-red-50
+                p-3
+                text-sm
+                text-red-700
+              "
+            >
+              {editorialError}
+            </div>
+
+          )}
+
+          {editorialProfileText ? (
+
+            <div
+              className="
+                max-h-[700px]
+                overflow-y-auto
+                whitespace-pre-wrap
+                rounded-lg
+                border
+                border-gray-200
+                bg-white
+                p-4
+                text-sm
+                leading-6
+                text-gray-700
+              "
+            >
+              {editorialProfileText}
+            </div>
+
+          ) : (
+
+            <div
+              className="
+                rounded-lg
+                border
+                border-dashed
+                border-gray-300
+                p-4
+                text-sm
+                text-gray-500
+              "
+            >
+              No editorial profile has been generated yet.
+            </div>
+
+          )}
+
+        </section>
+
+
+        {/* =================================================
+            STRUCTURED PROFILE
+        ================================================= */}
+
+        <section className="space-y-3">
+
+          <div
+            className="
+              rounded-lg
+              border
+              border-gray-200
+              bg-gray-50
+              p-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                flex-wrap
+                items-center
+                gap-2
+              "
+            >
+
+              <span
+                className="
+                  text-sm
+                  font-medium
+                  text-gray-900
+                "
+              >
+                Structured profile
+              </span>
+
+              <span
+                className={`
+                  rounded-full
+                  px-2.5
+                  py-1
+                  text-xs
+                  font-medium
+                  ${getStatusClasses(
+                    structuredStatus,
+                  )}
+                `}
+              >
+                {structuredStatus
+                  || "Not generated"}
+              </span>
+
+            </div>
+
+            <div
+              className="
+                mt-2
+                text-xs
+                text-gray-500
+              "
+            >
+              {formatGeneratedAt(
+                structuredAt,
+              )}
+            </div>
+
+            {(
+              schemaVersion
+              || transformerVersion
+            ) && (
+
+              <div
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-400
+                "
+              >
+                Schema{" "}
+                {schemaVersion || "—"}
+                {" · "}
+                Transformer{" "}
+                {transformerVersion || "—"}
+              </div>
+
+            )}
 
           </div>
 
@@ -762,483 +1642,7 @@ export default function ProfileAIEditor({
 
           )}
 
-          {/* ===============================================
-              PROFILE TEXT
-          =============================================== */}
-
-          <div>
-
-            <div
-              className="
-                mb-3
-                flex
-                flex-wrap
-                items-center
-                justify-between
-                gap-3
-              "
-            >
-
-              <div>
-
-                <div
-                  className="
-                    text-sm
-                    font-medium
-                    text-gray-900
-                  "
-                >
-                  Professional profile
-                </div>
-
-                <div
-                  className="
-                    mt-1
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  This text remains editable before validation.
-                </div>
-
-              </div>
-
-              <button
-                type="button"
-                onClick={
-                  assistantOpen
-                    ? closeAssistant
-                    : startAssistant
-                }
-                disabled={
-                  assistantLoading
-                  || saving
-                }
-                className="
-                  rounded-lg
-                  border
-                  border-ratecard-blue
-                  bg-white
-                  px-4
-                  py-2
-                  text-sm
-                  font-medium
-                  text-ratecard-blue
-                  transition
-                  hover:bg-blue-50
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                "
-              >
-                {assistantOpen
-                  ? "Close assistant"
-                  : "Improve with GetCurator"}
-              </button>
-
-            </div>
-
-            <textarea
-              value={
-                profileText
-              }
-              onChange={event =>
-                setProfileText(
-                  event.target.value
-                )
-              }
-              rows={14}
-              className="
-                w-full
-                rounded-lg
-                border
-                border-gray-200
-                p-4
-                text-sm
-                leading-6
-                outline-none
-                transition
-                focus:border-ratecard-blue
-              "
-              placeholder={`Example:
-
-Global Digital Director
-
-Priorities
-- eB2B
-- Retail Media
-- Quick Commerce
-
-Markets
-- United States
-- Europe
-
-Strategic questions
-- Premiumization
-- Distribution evolution
-- AI in commerce`}
-            />
-
-            {hasUnsavedChanges && (
-
-              <div
-                className="
-                  mt-2
-                  text-xs
-                  text-amber-600
-                "
-              >
-                Unsaved changes
-              </div>
-
-            )}
-
-          </div>
-
-          {/* ===============================================
-              PROFILE ASSISTANT
-          =============================================== */}
-
-          {assistantOpen && (
-
-            <div
-              className="
-                space-y-4
-                rounded-xl
-                border
-                border-blue-100
-                bg-blue-50/40
-                p-4
-              "
-            >
-
-              <div>
-
-                <div
-                  className="
-                    text-sm
-                    font-semibold
-                    text-gray-900
-                  "
-                >
-                  GetCurator Profile Assistant
-                </div>
-
-                <div
-                  className="
-                    mt-1
-                    text-xs
-                    text-gray-500
-                  "
-                >
-                  Answer the questions to build a more precise profile.
-                  Nothing is saved before validation.
-                </div>
-
-              </div>
-
-              <div
-                className="
-                  max-h-96
-                  space-y-3
-                  overflow-y-auto
-                  pr-1
-                "
-              >
-
-                {assistantMessages.map(
-                  (
-                    message,
-                    index,
-                  ) => (
-
-                    <div
-                      key={`${message.role}-${index}`}
-                      className={`
-                        flex
-                        ${
-                          message.role === "user"
-                            ? "justify-end"
-                            : "justify-start"
-                        }
-                      `}
-                    >
-
-                      <div
-                        className={`
-                          max-w-[85%]
-                          whitespace-pre-wrap
-                          rounded-xl
-                          px-4
-                          py-3
-                          text-sm
-                          leading-6
-
-                          ${
-                            message.role === "user"
-
-                              ? `
-                                bg-ratecard-blue
-                                text-white
-                              `
-
-                              : `
-                                border
-                                border-gray-200
-                                bg-white
-                                text-gray-700
-                              `
-                          }
-                        `}
-                      >
-                        {message.content}
-                      </div>
-
-                    </div>
-
-                  ),
-                )}
-
-                {assistantLoading && (
-
-                  <div
-                    className="
-                      text-sm
-                      text-gray-500
-                    "
-                  >
-                    GetCurator is thinking...
-                  </div>
-
-                )}
-
-              </div>
-
-              {assistantError && (
-
-                <div
-                  className="
-                    rounded-lg
-                    border
-                    border-red-200
-                    bg-red-50
-                    p-3
-                    text-sm
-                    text-red-700
-                  "
-                >
-                  {assistantError}
-                </div>
-
-              )}
-
-              {!proposalReady ? (
-
-                <div
-                  className="
-                    flex
-                    gap-2
-                  "
-                >
-
-                  <textarea
-                    value={
-                      assistantInput
-                    }
-                    onChange={event =>
-                      setAssistantInput(
-                        event.target.value
-                      )
-                    }
-                    onKeyDown={event => {
-
-                      if (
-                        event.key === "Enter"
-                        && !event.shiftKey
-                      ) {
-
-                        event.preventDefault();
-
-                        sendAssistantAnswer();
-
-                      }
-
-                    }}
-                    rows={3}
-                    placeholder="Write your answer..."
-                    disabled={
-                      assistantLoading
-                    }
-                    className="
-                      min-w-0
-                      flex-1
-                      resize-none
-                      rounded-lg
-                      border
-                      border-gray-200
-                      bg-white
-                      px-3
-                      py-2
-                      text-sm
-                      outline-none
-                      focus:border-ratecard-blue
-                      disabled:opacity-50
-                    "
-                  />
-
-                  <button
-                    type="button"
-                    onClick={
-                      sendAssistantAnswer
-                    }
-                    disabled={
-                      assistantLoading
-                      || !assistantInput.trim()
-                    }
-                    className="
-                      self-end
-                      rounded-lg
-                      bg-ratecard-blue
-                      px-4
-                      py-2
-                      text-sm
-                      font-medium
-                      text-white
-                      transition
-                      hover:opacity-90
-                      disabled:cursor-not-allowed
-                      disabled:opacity-50
-                    "
-                  >
-                    Send
-                  </button>
-
-                </div>
-
-              ) : (
-
-                <div
-                  className="
-                    rounded-lg
-                    border
-                    border-emerald-200
-                    bg-emerald-50
-                    p-4
-                  "
-                >
-
-                  <div
-                    className="
-                      text-sm
-                      font-medium
-                      text-emerald-800
-                    "
-                  >
-                    Proposal ready
-                  </div>
-
-                  <div
-                    className="
-                      mt-1
-                      text-sm
-                      text-emerald-700
-                    "
-                  >
-                    The proposal has been copied into the profile field.
-                    You can edit it before validating and saving it.
-                  </div>
-
-                </div>
-
-              )}
-
-            </div>
-
-          )}
-
-          {/* ===============================================
-              ACTIONS
-          =============================================== */}
-
-          <div
-            className="
-              flex
-              flex-wrap
-              items-center
-              justify-end
-              gap-3
-            "
-          >
-
-            {hasUnsavedChanges && (
-
-              <button
-                type="button"
-                onClick={() =>
-                  setProfileText(
-                    savedProfileText
-                  )
-                }
-                disabled={
-                  saving
-                }
-                className="
-                  rounded-lg
-                  border
-                  border-gray-300
-                  px-4
-                  py-2
-                  text-sm
-                  font-medium
-                  text-gray-700
-                  transition
-                  hover:bg-gray-50
-                  disabled:opacity-50
-                "
-              >
-                Discard changes
-              </button>
-
-            )}
-
-            <button
-              type="button"
-              onClick={
-                saveProfile
-              }
-              disabled={
-                saving
-                || regenerating
-                || !profileText.trim()
-                || !hasUnsavedChanges
-              }
-              className="
-                rounded-lg
-                bg-ratecard-blue
-                px-5
-                py-2
-                text-sm
-                font-medium
-                text-white
-                transition
-                hover:opacity-90
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-              "
-            >
-              {saving
-                ? "Generating and saving..."
-                : proposalReady
-                  ? "Validate and save"
-                  : "Save profile"}
-            </button>
-
-          </div>
-
-          {/* ===============================================
-              STRUCTURED JSON
-          =============================================== */}
-
-          {structuredProfile && (
+          {structuredProfile ? (
 
             <details
               className="
@@ -1264,7 +1668,7 @@ Strategic questions
 
               <pre
                 className="
-                  max-h-[500px]
+                  max-h-[600px]
                   overflow-auto
                   border-t
                   border-gray-200
@@ -1283,11 +1687,27 @@ Strategic questions
 
             </details>
 
+          ) : (
+
+            <div
+              className="
+                rounded-lg
+                border
+                border-dashed
+                border-gray-300
+                p-4
+                text-sm
+                text-gray-500
+              "
+            >
+              No structured profile has been generated yet.
+            </div>
+
           )}
 
-        </div>
+        </section>
 
-      )}
+      </div>
 
     </CardSection>
 
