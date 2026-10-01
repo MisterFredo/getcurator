@@ -17,6 +17,7 @@ from api.discovery.models import (
     IgnoreResponse,
     ManualDiscoveryListOut,
     LinkedInStudioTestRequest,
+    LinkedInStudioAnalyzeRequest,
 )
 
 from core.discovery.service import (
@@ -32,44 +33,48 @@ from core.discovery.service import (
 
 from core.discovery.linkedin_studio import (
     parse_linkedin_activity,
+    analyze_linkedin_activity,
 )
+
 
 router = APIRouter()
 
+
 # ============================================================
-# TEST LINKEDIN STUDIO
+# LINKEDIN STUDIO — ANALYZE
 # ============================================================
 
 @router.post(
-    "/test-linkedin-studio",
+    "/linkedin-studio/analyze",
 )
-def test_linkedin_studio(
-    text: str = Body(
-        ...,
-        media_type="text/plain",
-    ),
+def analyze_linkedin_studio(
+    data: LinkedInStudioAnalyzeRequest,
 ):
 
     try:
 
-        posts = parse_linkedin_activity(
-            text
+        result = (
+            analyze_linkedin_activity(
+                source_id=data.source_id,
+                text=data.text,
+            )
         )
 
         return {
             "status": "ok",
-            "posts_detected": len(
-                posts
-            ),
-            "posts": posts,
+            **result,
         }
 
     except Exception as e:
 
+        logger.exception(
+            "Erreur analyse LinkedIn Studio"
+        )
+
         raise HTTPException(
-            400,
+            500,
             (
-                "Erreur test "
+                "Erreur analyse "
                 f"LinkedIn Studio : {e}"
             ),
         )
