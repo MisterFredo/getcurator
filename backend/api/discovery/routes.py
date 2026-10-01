@@ -1,3 +1,6 @@
+import os
+import requests
+
 from fastapi import APIRouter, HTTPException
 
 from api.discovery.models import (
@@ -27,6 +30,96 @@ from core.discovery.strategies.linkedin_profile import (
 )
 
 router = APIRouter()
+
+# ============================================================
+# TEST LINKEDIN BRIGHT DATA
+# ============================================================
+
+@router.get("/test-linkedin-brightdata")
+def test_linkedin_brightdata():
+
+    api_token = os.getenv(
+        "BRIGHTDATA_API_TOKEN"
+    )
+
+    if not api_token:
+
+        raise HTTPException(
+            500,
+            "BRIGHTDATA_API_TOKEN absente",
+        )
+
+    url = (
+        "https://api.brightdata.com/"
+        "datasets/v3/scrape"
+    )
+
+    params = {
+        "dataset_id": "gd_lyy3tktm25m4avu764",
+        "notify": "false",
+        "include_errors": "true",
+        "type": "discover_new",
+        "discover_by": "profile_url",
+        "limit_per_input": 10,
+    }
+
+    payload = {
+        "input": [
+            {
+                "url": (
+                    "https://www.linkedin.com/"
+                    "in/latayl"
+                ),
+                "start_date": (
+                    "2026-09-01T00:00:00.000Z"
+                ),
+                "end_date": (
+                    "2026-10-01T00:00:00.000Z"
+                ),
+                "only_authored_posts": True,
+            }
+        ],
+        "limit_per_input": 10,
+    }
+
+    try:
+
+        response = requests.post(
+            url,
+            params=params,
+            headers={
+                "Authorization": (
+                    f"Bearer {api_token}"
+                ),
+                "Content-Type": (
+                    "application/json"
+                ),
+            },
+            json=payload,
+            timeout=120,
+        )
+
+        try:
+
+            body = response.json()
+
+        except Exception:
+
+            body = response.text
+
+        return {
+            "status_code": (
+                response.status_code
+            ),
+            "body": body,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            500,
+            f"Erreur Bright Data : {e}",
+        )
 
 # ============================================================
 # TEST LINKEDIN PROFILE
