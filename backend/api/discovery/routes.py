@@ -17,7 +17,6 @@ from api.discovery.models import (
     IgnoreResponse,
     ManualDiscoveryListOut,
     LinkedInStudioTestRequest,
-    LinkedInStudioAnalyzeRequest,
 )
 
 from core.discovery.service import (
@@ -45,18 +44,22 @@ router = APIRouter()
 # ============================================================
 
 @router.post(
-    "/linkedin-studio/analyze",
+    "/linkedin-studio/analyze/{source_id}",
 )
 def analyze_linkedin_studio(
-    data: LinkedInStudioAnalyzeRequest,
+    source_id: str,
+    text: str = Body(
+        ...,
+        media_type="text/plain",
+    ),
 ):
 
     try:
 
         result = (
             analyze_linkedin_activity(
-                source_id=data.source_id,
-                text=data.text,
+                source_id=source_id,
+                text=text,
             )
         )
 
@@ -78,6 +81,7 @@ def analyze_linkedin_studio(
                 f"LinkedIn Studio : {e}"
             ),
         )
+
 
 # ============================================================
 # TEST RSS PAGINATION
