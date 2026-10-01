@@ -918,26 +918,25 @@ def parse_linkedin_activity(
         # ====================================================
         # CLEAN CONTENT
         # ====================================================
-
+        
         content = clean_content(
             content
         )
-
+        
         (
             raw_text,
-            -,
-            -,
+            _,
+            _,
         ) = extract_metrics(
             content
         )
-
+        
         raw_text = clean_content(
             raw_text
         )
-
+        
         if not raw_text:
             continue
-
         # ====================================================
         # DATE
         # ====================================================
