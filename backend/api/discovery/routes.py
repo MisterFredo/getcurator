@@ -1,7 +1,11 @@
 import os
 import requests
 
-from fastapi import APIRouter, HTTPException
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Body,
+)
 
 from api.discovery.models import (
     DiscoveryListOut,
@@ -40,13 +44,16 @@ router = APIRouter()
     "/test-linkedin-studio",
 )
 def test_linkedin_studio(
-    data: LinkedInStudioTestRequest,
+    text: str = Body(
+        ...,
+        media_type="text/plain",
+    ),
 ):
 
     try:
 
         posts = parse_linkedin_activity(
-            data.text
+            text
         )
 
         return {
@@ -66,8 +73,6 @@ def test_linkedin_studio(
                 f"LinkedIn Studio : {e}"
             ),
         )
-
-
 
 # ============================================================
 # TEST RSS PAGINATION
