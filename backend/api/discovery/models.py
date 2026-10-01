@@ -166,3 +166,17 @@ class LinkedInStudioTestRequest(BaseModel):
 
     class Config:
         extra = "forbid"
+
+# ============================================================
+# LINKEDIN STUDIO
+# ============================================================
+
+class LinkedInStudioAnalyzeRequest(
+    BaseModel
+):
+
+    source_id: str
+    text: str
+
+    class Config:
+        extra = "forbid"
