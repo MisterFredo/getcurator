@@ -22,7 +22,33 @@ from core.discovery.service import (
     dismiss_discovery,
 )
 
+from core.discovery.strategies.linkedin_profile import (
+    test_linkedin_profile,
+)
+
 router = APIRouter()
+
+# ============================================================
+# TEST LINKEDIN PROFILE
+# ============================================================
+
+@router.get("/test-linkedin")
+def test_linkedin():
+
+    try:
+
+        result = test_linkedin_profile(
+            "https://www.linkedin.com/in/latayl"
+        )
+
+        return result
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Erreur test LinkedIn : {e}"
+        )
 
 # ============================================================
 # TEST RSS PAGINATION
