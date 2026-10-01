@@ -914,8 +914,8 @@ def parse_linkedin_activity(
 
         (
             raw_text,
-            reactions,
-            comments,
+            -,
+            -,
         ) = extract_metrics(
             content
         )
@@ -958,8 +958,6 @@ def parse_linkedin_activity(
                     raw_text
                 ),
                 "raw_text": raw_text,
-                "reactions": reactions,
-                "comments": comments,
             }
         )
 
