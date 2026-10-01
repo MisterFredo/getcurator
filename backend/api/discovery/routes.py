@@ -12,6 +12,7 @@ from api.discovery.models import (
     IgnoreRequest,
     IgnoreResponse,
     ManualDiscoveryListOut,
+    LinkedInStudioTestRequest,
 )
 
 from core.discovery.service import (
@@ -25,11 +26,46 @@ from core.discovery.service import (
     dismiss_discovery,
 )
 
-from core.discovery.strategies.linkedin_profile import (
-    test_linkedin_profile,
+from core.discovery.linkedin_studio import (
+    parse_linkedin_activity,
 )
 
 router = APIRouter()
+
+# ============================================================
+# TEST LINKEDIN STUDIO
+# ============================================================
+
+@router.post(
+    "/test-linkedin-studio",
+)
+def test_linkedin_studio(
+    data: LinkedInStudioTestRequest,
+):
+
+    try:
+
+        posts = parse_linkedin_activity(
+            data.text
+        )
+
+        return {
+            "status": "ok",
+            "posts_detected": len(
+                posts
+            ),
+            "posts": posts,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            (
+                "Erreur test "
+                f"LinkedIn Studio : {e}"
+            ),
+        )
 
 
 
