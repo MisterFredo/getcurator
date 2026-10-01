@@ -1,5 +1,16 @@
 import re
 
+import hashlib
+
+from config import (
+    BQ_PROJECT,
+    BQ_DATASET,
+)
+
+from utils.bigquery_utils import (
+    query_bq,
+)
+
 from datetime import (
     date,
     timedelta,
@@ -970,3 +981,235 @@ def parse_linkedin_activity(
     )
 
     return posts
+
+
+# ============================================================
+# NORMALIZE RAW TEXT FOR HASH
+# ============================================================
+
+def normalize_raw_text_for_hash(
+    raw_text: str,
+) -> str:
+
+    if not raw_text:
+        return ""
+
+    normalized = (
+        raw_text
+        .strip()
+        .lower()
+        .replace("\u00a0", " ")
+        .replace("’", "'")
+        .replace("“", '"')
+        .replace("”", '"')
+    )
+
+    normalized = re.sub(
+        r"\s+",
+        " ",
+        normalized,
+    )
+
+    return normalized.strip()
+
+
+# ============================================================
+# BUILD CONTENT HASH
+# ============================================================
+
+def build_content_hash(
+    raw_text: str,
+) -> str:
+
+    normalized = (
+        normalize_raw_text_for_hash(
+            raw_text
+        )
+    )
+
+    return hashlib.sha256(
+        normalized.encode(
+            "utf-8"
+        )
+    ).hexdigest()
+
+
+# ============================================================
+# GET EXISTING LINKEDIN RAW HASHES
+# ============================================================
+
+def get_existing_linkedin_raw_hashes(
+    source_id: str,
+) -> set[str]:
+
+    if not source_id:
+        return set()
+
+    table = (
+        f"`{BQ_PROJECT}."
+        f"{BQ_DATASET}."
+        "RATECARD_CONTENT_RAW`"
+    )
+
+    sql = f"""
+        SELECT
+            RAW_TEXT
+        FROM {table}
+        WHERE SOURCE_ID = @source_id
+          AND IMPORT_TYPE = 'LINKEDIN'
+          AND RAW_TEXT IS NOT NULL
+          AND TRIM(RAW_TEXT) != ''
+    """
+
+    rows = query_bq(
+        sql,
+        params={
+            "source_id": source_id,
+        },
+    )
+
+    hashes = set()
+
+    for row in rows:
+
+        raw_text = (
+            row.get(
+                "RAW_TEXT"
+            )
+            or ""
+        )
+
+        if not raw_text:
+            continue
+
+        hashes.add(
+            build_content_hash(
+                raw_text
+            )
+        )
+
+    return hashes
+
+
+# ============================================================
+# ANALYZE LINKEDIN ACTIVITY
+# ============================================================
+
+def analyze_linkedin_activity(
+    source_id: str,
+    text: str,
+) -> Dict:
+
+    # ========================================================
+    # PARSE
+    # ========================================================
+
+    posts = parse_linkedin_activity(
+        text
+    )
+
+    # ========================================================
+    # EXISTING RAW
+    # ========================================================
+
+    existing_hashes = (
+        get_existing_linkedin_raw_hashes(
+            source_id
+        )
+    )
+
+    # ========================================================
+    # CLASSIFY
+    # ========================================================
+
+    analyzed_posts = []
+
+    existing_count = 0
+    new_count = 0
+
+    seen_hashes = set()
+
+    for post in posts:
+
+        raw_text = (
+            post.get(
+                "raw_text"
+            )
+            or ""
+        )
+
+        content_hash = (
+            build_content_hash(
+                raw_text
+            )
+        )
+
+        # Duplicate inside the current paste.
+        #
+        # Normally the parser has already removed
+        # Sales Navigator duplicates, but this is
+        # an additional safety net.
+
+        duplicate_in_paste = (
+            content_hash
+            in seen_hashes
+        )
+
+        seen_hashes.add(
+            content_hash
+        )
+
+        exists_in_raw = (
+            content_hash
+            in existing_hashes
+        )
+
+        is_existing = (
+            exists_in_raw
+            or duplicate_in_paste
+        )
+
+        if is_existing:
+
+            existing_count += 1
+
+        else:
+
+            new_count += 1
+
+        analyzed_posts.append(
+            {
+                **post,
+                "content_hash": (
+                    content_hash
+                ),
+                "is_existing": (
+                    is_existing
+                ),
+                "exists_in_raw": (
+                    exists_in_raw
+                ),
+                "duplicate_in_paste": (
+                    duplicate_in_paste
+                ),
+            }
+        )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
+    return {
+        "detected": len(
+            posts
+        ),
+        "existing": (
+            existing_count
+        ),
+        "new": (
+            new_count
+        ),
+        "posts": (
+            analyzed_posts
+        ),
+    }
