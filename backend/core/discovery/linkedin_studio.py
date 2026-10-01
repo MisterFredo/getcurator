@@ -26,7 +26,13 @@ ACTIVITY_PATTERN = re.compile(
     r"\s+"
     r"(?P<relative_date>"
     r"\d+\s*"
-    r"(?:h|d|w|mo|mos)"
+    r"(?:"
+    r"hours?|hrs?|"
+    r"days?|"
+    r"weeks?|wks?|"
+    r"months?|mos?|"
+    r"h|d|w|mo"
+    r")"
     r"(?:\s+ago)?"
     r")",
     re.IGNORECASE,
@@ -149,30 +155,79 @@ def normalize_relative_date(
     )
 
     normalized = re.sub(
-        r"\s+",
+        r"\s+ago$",
         "",
         normalized,
-    )
-
-    normalized = normalized.replace(
-        "ago",
-        "",
-    )
+    ).strip()
 
     match = re.match(
-        r"^(?P<value>\d+)"
-        r"(?P<unit>h|d|w|mo|mos)$",
+        r"^(?P<value>\d+)\s*"
+        r"(?P<unit>"
+        r"hours?|hrs?|"
+        r"days?|"
+        r"weeks?|wks?|"
+        r"months?|mos?|"
+        r"h|d|w|mo"
+        r")$",
         normalized,
+        re.IGNORECASE,
     )
 
     if not match:
         return value.strip()
 
-    return (
-        f"{match.group('value')}"
-        f"{match.group('unit')} ago"
+    amount = match.group(
+        "value"
     )
 
+    unit = (
+        match
+        .group(
+            "unit"
+        )
+        .lower()
+    )
+
+    if unit in {
+        "hour",
+        "hours",
+        "hr",
+        "hrs",
+        "h",
+    }:
+        short_unit = "h"
+
+    elif unit in {
+        "day",
+        "days",
+        "d",
+    }:
+        short_unit = "d"
+
+    elif unit in {
+        "week",
+        "weeks",
+        "wk",
+        "wks",
+        "w",
+    }:
+        short_unit = "w"
+
+    elif unit in {
+        "month",
+        "months",
+        "mo",
+        "mos",
+    }:
+        short_unit = "mo"
+
+    else:
+        return value.strip()
+
+    return (
+        f"{amount}"
+        f"{short_unit} ago"
+    )
 
 # ============================================================
 # PARSE COUNT
