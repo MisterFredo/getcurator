@@ -155,3 +155,14 @@ class ManualDiscoveryListOut(BaseModel):
 
     class Config:
         extra = "forbid"
+
+# ============================================================
+# LINKEDIN STUDIO TEST
+# ============================================================
+
+class LinkedInStudioTestRequest(BaseModel):
+
+    text: str
+
+    class Config:
+        extra = "forbid"
