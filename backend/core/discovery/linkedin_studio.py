@@ -73,9 +73,6 @@ def normalize_text(
         .replace("\u00a0", " ")
     )
 
-    # LinkedIn / Sales Navigator peut produire
-    # plusieurs lignes vides consécutives.
-
     text = re.sub(
         r"\n[ \t]*\n+",
         "\n",
@@ -102,17 +99,6 @@ def clean_author(
         author,
     ).strip()
 
-    # Le copier-coller Sales Navigator peut
-    # concaténer la fin de l'activité précédente
-    # avec le nom de l'activité suivante.
-    #
-    # Exemple :
-    #
-    # Malte Karstan shared a postMalte Karstan
-    #
-    # On conserve alors la dernière occurrence
-    # correspondant au véritable auteur.
-
     previous_activity = re.search(
         r"(?:shared|reshared) a post"
         r"\s*(.+)$",
@@ -132,7 +118,60 @@ def clean_author(
 
             author = candidate
 
+    # Artefact possible du body Swagger
+    # ou du copier-coller.
+
+    author = re.sub(
+        r"^string",
+        "",
+        author,
+        flags=re.IGNORECASE,
+    ).strip()
+
     return author
+
+
+# ============================================================
+# NORMALIZE RELATIVE DATE
+# ============================================================
+
+def normalize_relative_date(
+    value: str,
+) -> str:
+
+    if not value:
+        return ""
+
+    normalized = (
+        value
+        .strip()
+        .lower()
+    )
+
+    normalized = re.sub(
+        r"\s+",
+        "",
+        normalized,
+    )
+
+    normalized = normalized.replace(
+        "ago",
+        "",
+    )
+
+    match = re.match(
+        r"^(?P<value>\d+)"
+        r"(?P<unit>h|d|w|mo|mos)$",
+        normalized,
+    )
+
+    if not match:
+        return value.strip()
+
+    return (
+        f"{match.group('value')}"
+        f"{match.group('unit')} ago"
+    )
 
 
 # ============================================================
@@ -237,12 +276,6 @@ def parse_relative_date(
         "mos",
     }:
 
-        # LinkedIn ne fournit plus ici
-        # de date exacte.
-        #
-        # On conserve une approximation
-        # suffisante pour le test V2.
-
         return (
             reference_date
             - timedelta(
@@ -272,6 +305,35 @@ def clean_content(
 
     content = re.sub(
         r"^\s*Thumbnail image\s*",
+        "",
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    # ========================================================
+    # BROKEN "DAY AGO" FRAGMENT
+    # ========================================================
+
+    # La représentation accessibilité de Sales Navigator
+    # peut être découpée ainsi :
+    #
+    # relative_date = "1 d"
+    # content       = "ay ago ..."
+    #
+    # Le "d" appartient en réalité à "day ago".
+    # On retire donc le fragment résiduel.
+
+    content = re.sub(
+        r"^\s*ay\s+ago\s+",
+        "",
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    # Même protection pour d'autres fragments éventuels.
+
+    content = re.sub(
+        r"^\s*ago\s+",
         "",
         content,
         flags=re.IGNORECASE,
@@ -416,7 +478,7 @@ def extract_metrics(
 
     content = content.strip()
 
-    # Le copier-coller peut laisser le compteur
+    # LinkedIn peut laisser le compteur
     # de réactions seul sur la dernière ligne.
 
     content = re.sub(
@@ -445,11 +507,6 @@ def build_title(
 
         return "LinkedIn post"
 
-    # Les copier-coller Sales Navigator
-    # aplatisent souvent le post sur une seule ligne.
-    #
-    # On utilise donc le début du contenu comme titre.
-
     normalized = re.sub(
         r"\s+",
         " ",
@@ -465,9 +522,6 @@ def build_title(
     cut = normalized[
         :max_length
     ]
-
-    # Évite autant que possible
-    # de couper au milieu d'un mot.
 
     last_space = cut.rfind(
         " "
@@ -486,6 +540,204 @@ def build_title(
 
 
 # ============================================================
+# NORMALIZE CONTENT FOR DEDUP
+# ============================================================
+
+def normalize_content_for_dedup(
+    raw_text: str,
+) -> str:
+
+    if not raw_text:
+        return ""
+
+    normalized = (
+        raw_text
+        .lower()
+        .strip()
+    )
+
+    normalized = re.sub(
+        r"\s+",
+        " ",
+        normalized,
+    )
+
+    # On neutralise quelques différences
+    # purement typographiques.
+
+    normalized = (
+        normalized
+        .replace("’", "'")
+        .replace("“", '"')
+        .replace("”", '"')
+    )
+
+    return normalized
+
+
+# ============================================================
+# POST QUALITY SCORE
+# ============================================================
+
+def post_quality_score(
+    post: Dict,
+) -> int:
+
+    score = 0
+
+    author = (
+        post.get("author")
+        or ""
+    )
+
+    relative_date = (
+        post.get("relative_date")
+        or ""
+    )
+
+    raw_text = (
+        post.get("raw_text")
+        or ""
+    )
+
+    # Auteur propre.
+
+    if author:
+        score += 10
+
+    if "shared a post" not in author.lower():
+        score += 10
+
+    if not author.lower().startswith(
+        "string"
+    ):
+        score += 5
+
+    # Préférence explicite pour la représentation
+    # standard LinkedIn : "1d ago", "2w ago", etc.
+
+    if re.match(
+        r"^\d+(?:h|d|w|mo|mos) ago$",
+        relative_date,
+        re.IGNORECASE,
+    ):
+        score += 20
+
+    # Contenu non pollué.
+
+    if not raw_text.lower().startswith(
+        "ay ago"
+    ):
+        score += 10
+
+    if not raw_text.lower().startswith(
+        "thumbnail image"
+    ):
+        score += 10
+
+    # Les métriques disponibles sont utiles.
+
+    if post.get(
+        "reactions"
+    ) is not None:
+        score += 2
+
+    if post.get(
+        "comments"
+    ) is not None:
+        score += 2
+
+    return score
+
+
+# ============================================================
+# DEDUP POSTS
+# ============================================================
+
+def deduplicate_posts(
+    posts: List[Dict],
+) -> List[Dict]:
+
+    if not posts:
+        return []
+
+    unique_posts = {}
+
+    order = []
+
+    for post in posts:
+
+        raw_text = (
+            post.get(
+                "raw_text"
+            )
+            or ""
+        )
+
+        content_key = (
+            normalize_content_for_dedup(
+                raw_text
+            )
+        )
+
+        if not content_key:
+            continue
+
+        # On combine le contenu avec le type
+        # d'activité pour ne pas fusionner
+        # artificiellement deux activités
+        # réellement différentes.
+
+        key = (
+            post.get(
+                "activity_type"
+            ),
+            content_key,
+        )
+
+        if key not in unique_posts:
+
+            unique_posts[
+                key
+            ] = post
+
+            order.append(
+                key
+            )
+
+            continue
+
+        current = (
+            unique_posts[
+                key
+            ]
+        )
+
+        current_score = (
+            post_quality_score(
+                current
+            )
+        )
+
+        candidate_score = (
+            post_quality_score(
+                post
+            )
+        )
+
+        if candidate_score > current_score:
+
+            unique_posts[
+                key
+            ] = post
+
+    return [
+        unique_posts[key]
+        for key in order
+    ]
+
+
+# ============================================================
 # FIND ACTIVITY MATCHES
 # ============================================================
 
@@ -493,13 +745,11 @@ def find_activity_matches(
     text: str,
 ):
 
-    matches = list(
+    return list(
         ACTIVITY_PATTERN.finditer(
             text
         )
     )
-
-    return matches
 
 
 # ============================================================
@@ -556,12 +806,18 @@ def parse_linkedin_activity(
             else "SHARED"
         )
 
-        relative_date = (
+        original_relative_date = (
             match
             .group(
                 "relative_date"
             )
             .strip()
+        )
+
+        relative_date = (
+            normalize_relative_date(
+                original_relative_date
+            )
         )
 
         # ====================================================
@@ -651,5 +907,13 @@ def parse_linkedin_activity(
                 "comments": comments,
             }
         )
+
+    # ========================================================
+    # SALES NAVIGATOR DUPLICATES
+    # ========================================================
+
+    posts = deduplicate_posts(
+        posts
+    )
 
     return posts
