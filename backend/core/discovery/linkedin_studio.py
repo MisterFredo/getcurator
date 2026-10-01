@@ -17,69 +17,126 @@ from typing import (
 # ============================================================
 
 ACTIVITY_PATTERN = re.compile(
-    r"^(?P<author>.+?) "
+    r"(?P<author>.+?)"
+    r"\s+"
     r"(?P<activity>"
     r"shared a post|"
     r"reshared a post"
-    r")$",
-    re.IGNORECASE,
-)
-
-
-RELATIVE_DATE_PATTERN = re.compile(
-    r"^(?P<value>\d+)"
-    r"(?P<unit>[hdwmo]+)"
-    r"(?: ago)?$",
+    r")"
+    r"\s+"
+    r"(?P<relative_date>"
+    r"\d+\s*"
+    r"(?:h|d|w|mo|mos)"
+    r"(?:\s+ago)?"
+    r")",
     re.IGNORECASE,
 )
 
 
 REACTIONS_PATTERN = re.compile(
-    r"^(?P<count>[\d,.\s]+)"
-    r"\s+reactions?$",
+    r"(?P<count>[\d,.\s]+)"
+    r"\s+reactions?"
+    r"\b",
     re.IGNORECASE,
 )
 
 
 COMMENTS_PATTERN = re.compile(
-    r"^(?P<count>[\d,.\s]+)"
-    r"\s+comments?$",
+    r"(?P<count>[\d,.\s]+)"
+    r"\s+comments?"
+    r"\b",
+    re.IGNORECASE,
+)
+
+
+NO_COMMENTS_PATTERN = re.compile(
+    r"\bno comments?\b",
     re.IGNORECASE,
 )
 
 
 # ============================================================
-# NORMALIZE LINES
+# NORMALIZE TEXT
 # ============================================================
 
-def normalize_lines(
+def normalize_text(
     text: str,
-) -> List[str]:
+) -> str:
 
-    lines = []
+    if not text:
+        return ""
 
-    for raw_line in text.splitlines():
+    text = (
+        text
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\u00a0", " ")
+    )
 
-        line = raw_line.strip()
+    # LinkedIn / Sales Navigator peut produire
+    # plusieurs lignes vides consécutives.
 
-        if not line:
-            continue
+    text = re.sub(
+        r"\n[ \t]*\n+",
+        "\n",
+        text,
+    )
 
-        line = re.sub(
-            r"\s+",
-            " ",
-            line,
-        )
-
-        lines.append(
-            line
-        )
-
-    return lines
+    return text.strip()
 
 
 # ============================================================
-# PARSE NUMBER
+# CLEAN AUTHOR
+# ============================================================
+
+def clean_author(
+    author: str,
+) -> str:
+
+    if not author:
+        return ""
+
+    author = re.sub(
+        r"\s+",
+        " ",
+        author,
+    ).strip()
+
+    # Le copier-coller Sales Navigator peut
+    # concaténer la fin de l'activité précédente
+    # avec le nom de l'activité suivante.
+    #
+    # Exemple :
+    #
+    # Malte Karstan shared a postMalte Karstan
+    #
+    # On conserve alors la dernière occurrence
+    # correspondant au véritable auteur.
+
+    previous_activity = re.search(
+        r"(?:shared|reshared) a post"
+        r"\s*(.+)$",
+        author,
+        re.IGNORECASE,
+    )
+
+    if previous_activity:
+
+        candidate = (
+            previous_activity
+            .group(1)
+            .strip()
+        )
+
+        if candidate:
+
+            author = candidate
+
+    return author
+
+
+# ============================================================
+# PARSE COUNT
 # ============================================================
 
 def parse_count(
@@ -89,12 +146,14 @@ def parse_count(
     if not value:
         return None
 
-    normalized = (
-        value
-        .replace(" ", "")
-        .replace(",", "")
-        .replace(".", "")
+    normalized = re.sub(
+        r"[^\d]",
+        "",
+        value,
     )
+
+    if not normalized:
+        return None
 
     try:
 
@@ -129,22 +188,27 @@ def parse_relative_date(
         .strip()
         .lower()
         .replace(" ago", "")
+        .replace(" ", "")
     )
 
-    match = RELATIVE_DATE_PATTERN.match(
-        normalized
+    match = re.match(
+        r"^(?P<value>\d+)"
+        r"(?P<unit>h|d|w|mo|mos)$",
+        normalized,
     )
 
     if not match:
         return None
 
     amount = int(
-        match.group("value")
+        match.group(
+            "value"
+        )
     )
 
     unit = match.group(
         "unit"
-    ).lower()
+    )
 
     if unit == "h":
 
@@ -173,6 +237,12 @@ def parse_relative_date(
         "mos",
     }:
 
+        # LinkedIn ne fournit plus ici
+        # de date exacte.
+        #
+        # On conserve une approximation
+        # suffisante pour le test V2.
+
         return (
             reference_date
             - timedelta(
@@ -184,39 +254,46 @@ def parse_relative_date(
 
 
 # ============================================================
-# FIND RELATIVE DATE
+# CLEAN CONTENT
 # ============================================================
 
-def find_relative_date(
-    lines: List[str],
-) -> tuple[
-    Optional[str],
-    Optional[int],
-]:
+def clean_content(
+    content: str,
+) -> str:
 
-    for index, line in enumerate(
-        lines
-    ):
+    if not content:
+        return ""
 
-        normalized = (
-            line
-            .lower()
-            .replace(" ago", "")
-        )
+    content = content.strip()
 
-        if RELATIVE_DATE_PATTERN.match(
-            normalized
-        ):
+    # ========================================================
+    # THUMBNAIL IMAGE
+    # ========================================================
 
-            return (
-                line,
-                index,
-            )
-
-    return (
-        None,
-        None,
+    content = re.sub(
+        r"^\s*Thumbnail image\s*",
+        "",
+        content,
+        flags=re.IGNORECASE,
     )
+
+    # ========================================================
+    # NORMALIZE WHITESPACE
+    # ========================================================
+
+    content = re.sub(
+        r"[ \t]+",
+        " ",
+        content,
+    )
+
+    content = re.sub(
+        r"\n+",
+        "\n",
+        content,
+    )
+
+    return content.strip()
 
 
 # ============================================================
@@ -224,89 +301,135 @@ def find_relative_date(
 # ============================================================
 
 def extract_metrics(
-    lines: List[str],
+    content: str,
 ) -> tuple[
+    str,
     Optional[int],
     Optional[int],
 ]:
 
+    if not content:
+
+        return (
+            "",
+            None,
+            None,
+        )
+
     reactions = None
     comments = None
 
-    for line in lines:
+    # ========================================================
+    # COMMENTS
+    # ========================================================
 
-        reaction_match = (
-            REACTIONS_PATTERN.match(
-                line
+    comment_matches = list(
+        COMMENTS_PATTERN.finditer(
+            content
+        )
+    )
+
+    no_comment_matches = list(
+        NO_COMMENTS_PATTERN.finditer(
+            content
+        )
+    )
+
+    last_comment_match = (
+        comment_matches[-1]
+        if comment_matches
+        else None
+    )
+
+    last_no_comment_match = (
+        no_comment_matches[-1]
+        if no_comment_matches
+        else None
+    )
+
+    metric_start = len(
+        content
+    )
+
+    if last_comment_match:
+
+        comments = parse_count(
+            last_comment_match.group(
+                "count"
             )
         )
 
-        if reaction_match:
+        metric_start = min(
+            metric_start,
+            last_comment_match.start(),
+        )
 
-            reactions = parse_count(
-                reaction_match.group(
-                    "count"
-                )
-            )
+    elif last_no_comment_match:
 
-            continue
+        comments = 0
 
-        comment_match = (
-            COMMENTS_PATTERN.match(
-                line
+        metric_start = min(
+            metric_start,
+            last_no_comment_match.start(),
+        )
+
+    # ========================================================
+    # REACTIONS
+    # ========================================================
+
+    reaction_matches = list(
+        REACTIONS_PATTERN.finditer(
+            content
+        )
+    )
+
+    last_reaction_match = (
+        reaction_matches[-1]
+        if reaction_matches
+        else None
+    )
+
+    if last_reaction_match:
+
+        reactions = parse_count(
+            last_reaction_match.group(
+                "count"
             )
         )
 
-        if comment_match:
+        metric_start = min(
+            metric_start,
+            last_reaction_match.start(),
+        )
 
-            comments = parse_count(
-                comment_match.group(
-                    "count"
-                )
-            )
+    # ========================================================
+    # REMOVE TRAILING METRICS
+    # ========================================================
+
+    if metric_start < len(
+        content
+    ):
+
+        content = content[
+            :metric_start
+        ]
+
+    content = content.strip()
+
+    # Le copier-coller peut laisser le compteur
+    # de réactions seul sur la dernière ligne.
+
+    content = re.sub(
+        r"\n\s*\d+\s*$",
+        "",
+        content,
+    ).strip()
 
     return (
+        content,
         reactions,
         comments,
     )
-
-
-# ============================================================
-# IS METADATA LINE
-# ============================================================
-
-def is_metadata_line(
-    line: str,
-) -> bool:
-
-    normalized = (
-        line
-        .lower()
-        .strip()
-    )
-
-    if REACTIONS_PATTERN.match(
-        line
-    ):
-
-        return True
-
-    if COMMENTS_PATTERN.match(
-        line
-    ):
-
-        return True
-
-    if normalized in {
-        "like",
-        "comment",
-        "share",
-        "send",
-    }:
-
-        return True
-
-    return False
 
 
 # ============================================================
@@ -322,184 +445,61 @@ def build_title(
 
         return "LinkedIn post"
 
-    first_line = (
-        raw_text
-        .splitlines()[0]
-        .strip()
+    # Les copier-coller Sales Navigator
+    # aplatisent souvent le post sur une seule ligne.
+    #
+    # On utilise donc le début du contenu comme titre.
+
+    normalized = re.sub(
+        r"\s+",
+        " ",
+        raw_text,
+    ).strip()
+
+    if len(
+        normalized
+    ) <= max_length:
+
+        return normalized
+
+    cut = normalized[
+        :max_length
+    ]
+
+    # Évite autant que possible
+    # de couper au milieu d'un mot.
+
+    last_space = cut.rfind(
+        " "
     )
 
-    if not first_line:
+    if last_space > 80:
 
-        return "LinkedIn post"
-
-    if len(first_line) <= max_length:
-
-        return first_line
+        cut = cut[
+            :last_space
+        ]
 
     return (
-        first_line[
-            :max_length - 1
-        ].rstrip()
+        cut.rstrip()
         + "…"
     )
 
 
 # ============================================================
-# PARSE ACTIVITY BLOCK
+# FIND ACTIVITY MATCHES
 # ============================================================
 
-def parse_activity_block(
-    lines: List[str],
-    reference_date: Optional[date] = None,
-) -> Optional[Dict]:
+def find_activity_matches(
+    text: str,
+):
 
-    if not lines:
-        return None
-
-    activity_match = (
-        ACTIVITY_PATTERN.match(
-            lines[0]
+    matches = list(
+        ACTIVITY_PATTERN.finditer(
+            text
         )
     )
 
-    if not activity_match:
-
-        return None
-
-    author = (
-        activity_match
-        .group("author")
-        .strip()
-    )
-
-    activity_label = (
-        activity_match
-        .group("activity")
-        .lower()
-    )
-
-    activity_type = (
-        "RESHARED"
-        if activity_label
-        == "reshared a post"
-        else "SHARED"
-    )
-
-    (
-        relative_date,
-        date_index,
-    ) = find_relative_date(
-        lines[1:]
-    )
-
-    if date_index is not None:
-
-        # find_relative_date()
-        # travaille sur lines[1:].
-
-        date_index += 1
-
-    reactions, comments = (
-        extract_metrics(
-            lines
-        )
-    )
-
-    content_lines = []
-
-    start_index = (
-        date_index + 1
-        if date_index is not None
-        else 1
-    )
-
-    for line in lines[
-        start_index:
-    ]:
-
-        if is_metadata_line(
-            line
-        ):
-            continue
-
-        content_lines.append(
-            line
-        )
-
-    raw_text = "\n".join(
-        content_lines
-    ).strip()
-
-    if not raw_text:
-
-        return None
-
-    date_source = (
-        parse_relative_date(
-            relative_date,
-            reference_date=reference_date,
-        )
-        if relative_date
-        else None
-    )
-
-    return {
-        "author": author,
-        "activity_type": activity_type,
-        "relative_date": relative_date,
-        "date_source": date_source,
-        "title": build_title(
-            raw_text
-        ),
-        "raw_text": raw_text,
-        "reactions": reactions,
-        "comments": comments,
-    }
-
-
-# ============================================================
-# SPLIT ACTIVITY BLOCKS
-# ============================================================
-
-def split_activity_blocks(
-    lines: List[str],
-) -> List[List[str]]:
-
-    blocks = []
-
-    current_block = []
-
-    for line in lines:
-
-        if ACTIVITY_PATTERN.match(
-            line
-        ):
-
-            if current_block:
-
-                blocks.append(
-                    current_block
-                )
-
-            current_block = [
-                line
-            ]
-
-            continue
-
-        if current_block:
-
-            current_block.append(
-                line
-            )
-
-    if current_block:
-
-        blocks.append(
-            current_block
-        )
-
-    return blocks
+    return matches
 
 
 # ============================================================
@@ -514,28 +514,142 @@ def parse_linkedin_activity(
     if not text:
         return []
 
-    lines = normalize_lines(
+    text = normalize_text(
         text
     )
 
-    blocks = split_activity_blocks(
-        lines
+    matches = find_activity_matches(
+        text
     )
+
+    if not matches:
+        return []
 
     posts = []
 
-    for block in blocks:
+    for index, match in enumerate(
+        matches
+    ):
 
-        post = parse_activity_block(
-            block,
-            reference_date=reference_date,
+        # ====================================================
+        # ACTIVITY METADATA
+        # ====================================================
+
+        author = clean_author(
+            match.group(
+                "author"
+            )
         )
 
-        if not post:
+        activity_label = (
+            match
+            .group(
+                "activity"
+            )
+            .lower()
+        )
+
+        activity_type = (
+            "RESHARED"
+            if activity_label
+            == "reshared a post"
+            else "SHARED"
+        )
+
+        relative_date = (
+            match
+            .group(
+                "relative_date"
+            )
+            .strip()
+        )
+
+        # ====================================================
+        # CONTENT BOUNDARIES
+        # ====================================================
+
+        content_start = (
+            match.end()
+        )
+
+        if index + 1 < len(
+            matches
+        ):
+
+            content_end = (
+                matches[
+                    index + 1
+                ].start()
+            )
+
+        else:
+
+            content_end = len(
+                text
+            )
+
+        content = text[
+            content_start:
+            content_end
+        ]
+
+        # ====================================================
+        # CLEAN CONTENT
+        # ====================================================
+
+        content = clean_content(
+            content
+        )
+
+        (
+            raw_text,
+            reactions,
+            comments,
+        ) = extract_metrics(
+            content
+        )
+
+        raw_text = clean_content(
+            raw_text
+        )
+
+        if not raw_text:
             continue
 
+        # ====================================================
+        # DATE
+        # ====================================================
+
+        date_source = (
+            parse_relative_date(
+                relative_date,
+                reference_date=reference_date,
+            )
+        )
+
+        # ====================================================
+        # RESULT
+        # ====================================================
+
         posts.append(
-            post
+            {
+                "author": author,
+                "activity_type": (
+                    activity_type
+                ),
+                "relative_date": (
+                    relative_date
+                ),
+                "date_source": (
+                    date_source
+                ),
+                "title": build_title(
+                    raw_text
+                ),
+                "raw_text": raw_text,
+                "reactions": reactions,
+                "comments": comments,
+            }
         )
 
     return posts
