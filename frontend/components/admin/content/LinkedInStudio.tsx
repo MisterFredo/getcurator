@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -8,6 +9,10 @@ import {
 import {
   api,
 } from "@/lib/api";
+
+import type {
+  SourceOption,
+} from "@/types/source";
 
 
 /* ============================================================
@@ -58,6 +63,19 @@ type AnalyzeResponse = {
 };
 
 
+type StoreResponse = {
+
+  status: string;
+
+  requested: number;
+
+  stored: number;
+
+  skipped: number;
+
+};
+
+
 /* ============================================================
    COMPONENT
 ============================================================ */
@@ -65,13 +83,28 @@ type AnalyzeResponse = {
 export default function LinkedInStudio() {
 
   /* =========================================================
-     SOURCE
+     SOURCES
   ========================================================= */
+
+  const [
+    sources,
+    setSources,
+  ] = useState<SourceOption[]>([]);
+
+  const [
+    sourcesLoading,
+    setSourcesLoading,
+  ] = useState(true);
 
   const [
     sourceId,
     setSourceId,
   ] = useState("");
+
+
+  /* =========================================================
+     INPUT
+  ========================================================= */
 
   const [
     sourceText,
@@ -92,7 +125,7 @@ export default function LinkedInStudio() {
     selectedHashes,
     setSelectedHashes,
   ] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const [
@@ -117,42 +150,229 @@ export default function LinkedInStudio() {
 
 
   /* =========================================================
-     DERIVED
+     LOAD LINKEDIN SOURCES
   ========================================================= */
 
-  const newPosts = useMemo(
-    () =>
-      posts.filter(
-        (post) =>
-          !post.is_existing
-      ),
-    [posts]
-  );
+  useEffect(() => {
+
+    let cancelled = false;
+
+    async function loadSources() {
+
+      try {
+
+        setSourcesLoading(true);
+
+        const res =
+          await api.get(
+            "/source/list",
+          );
+
+        const allSources:
+          SourceOption[] =
+            res.sources || [];
+
+        const linkedinSources =
+          allSources.filter(
+            (source) =>
+              source.acquisition_mode ===
+              "LINKEDIN_PROFILE",
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        setSources(
+          linkedinSources,
+        );
+
+      } catch (e) {
+
+        console.error(
+          "Unable to load LinkedIn sources",
+          e,
+        );
+
+        if (!cancelled) {
+
+          setError(
+            "Impossible de charger les sources LinkedIn.",
+          );
+
+        }
+
+      } finally {
+
+        if (!cancelled) {
+
+          setSourcesLoading(
+            false,
+          );
+
+        }
+
+      }
+
+    }
+
+    loadSources();
+
+    return () => {
+
+      cancelled = true;
+
+    };
+
+  }, []);
 
 
-  const existingPosts = useMemo(
-    () =>
-      posts.filter(
-        (post) =>
-          post.is_existing
-      ),
-    [posts]
-  );
+  /* =========================================================
+     SELECTED SOURCE
+  ========================================================= */
+
+  const selectedSource =
+    useMemo(
+      () =>
+        sources.find(
+          (source) =>
+            source.source_id ===
+            sourceId,
+        ) || null,
+      [
+        sources,
+        sourceId,
+      ],
+    );
 
 
-  const selectedPosts = useMemo(
-    () =>
-      newPosts.filter(
-        (post) =>
-          selectedHashes.has(
-            post.content_hash
-          )
-      ),
-    [
-      newPosts,
-      selectedHashes,
-    ]
-  );
+  /* =========================================================
+     NEW POSTS
+  ========================================================= */
+
+  const newPosts =
+    useMemo(
+      () =>
+        posts.filter(
+          (post) =>
+            !post.is_existing &&
+            !post.duplicate_in_paste,
+        ),
+      [posts],
+    );
+
+
+  /* =========================================================
+     EXISTING POSTS
+  ========================================================= */
+
+  const existingPosts =
+    useMemo(
+      () =>
+        posts.filter(
+          (post) =>
+            post.is_existing,
+        ),
+      [posts],
+    );
+
+
+  /* =========================================================
+     DUPLICATES IN PASTE
+  ========================================================= */
+
+  const duplicatePosts =
+    useMemo(
+      () =>
+        posts.filter(
+          (post) =>
+            post.duplicate_in_paste,
+        ),
+      [posts],
+    );
+
+
+  /* =========================================================
+     SELECTED POSTS
+  ========================================================= */
+
+  const selectedPosts =
+    useMemo(
+      () =>
+        newPosts.filter(
+          (post) =>
+            selectedHashes.has(
+              post.content_hash,
+            ),
+        ),
+      [
+        newPosts,
+        selectedHashes,
+      ],
+    );
+
+
+  /* =========================================================
+     RESET ANALYSIS
+  ========================================================= */
+
+  function resetAnalysis() {
+
+    setPosts([]);
+
+    setSelectedHashes(
+      new Set(),
+    );
+
+    setAnalyzed(false);
+
+    setError("");
+
+  }
+
+
+  /* =========================================================
+     SOURCE CHANGE
+  ========================================================= */
+
+  function handleSourceChange(
+    nextSourceId: string,
+  ) {
+
+    setSourceId(
+      nextSourceId,
+    );
+
+    resetAnalysis();
+
+  }
+
+
+  /* =========================================================
+     TEXT CHANGE
+  ========================================================= */
+
+  function handleTextChange(
+    value: string,
+  ) {
+
+    setSourceText(
+      value,
+    );
+
+    /*
+     * If the pasted activity changes after an
+     * analysis, the old results are no longer
+     * valid.
+     */
+
+    if (analyzed) {
+
+      resetAnalysis();
+
+    }
+
+  }
 
 
   /* =========================================================
@@ -161,10 +381,10 @@ export default function LinkedInStudio() {
 
   async function analyze() {
 
-    if (!sourceId.trim()) {
+    if (!sourceId) {
 
       alert(
-        "Sélectionne une source LinkedIn."
+        "Sélectionne une source LinkedIn.",
       );
 
       return;
@@ -173,17 +393,24 @@ export default function LinkedInStudio() {
     if (!sourceText.trim()) {
 
       alert(
-        "Colle l'activité Sales Navigator."
+        "Colle l'activité Sales Navigator.",
       );
 
       return;
     }
 
     setLoading(true);
+
     setError("");
-    setAnalyzed(false);
 
     try {
+
+      /*
+       * IMPORTANT:
+       *
+       * The backend endpoint expects text/plain,
+       * not JSON.
+       */
 
       const res =
         await api.post(
@@ -194,19 +421,21 @@ export default function LinkedInStudio() {
               "Content-Type":
                 "text/plain",
             },
-          }
+          },
         ) as AnalyzeResponse;
 
       const nextPosts =
         res.posts || [];
 
       setPosts(
-        nextPosts
+        nextPosts,
       );
 
       /*
-       * All genuinely new posts are selected
-       * by default.
+       * New posts are selected by default.
+       *
+       * Existing RAW contents and duplicates
+       * inside the pasted block are excluded.
        */
 
       setSelectedHashes(
@@ -214,23 +443,27 @@ export default function LinkedInStudio() {
           nextPosts
             .filter(
               (post) =>
-                !post.is_existing
+                !post.is_existing &&
+                !post.duplicate_in_paste,
             )
             .map(
               (post) =>
-                post.content_hash
-            )
-        )
+                post.content_hash,
+            ),
+        ),
       );
 
       setAnalyzed(true);
 
     } catch (e) {
 
-      console.error(e);
+      console.error(
+        "LinkedIn analyze error",
+        e,
+      );
 
       setError(
-        "Erreur pendant l'analyse LinkedIn."
+        "Erreur pendant l'analyse de l'activité LinkedIn.",
       );
 
     } finally {
@@ -238,15 +471,16 @@ export default function LinkedInStudio() {
       setLoading(false);
 
     }
+
   }
 
 
   /* =========================================================
-     TOGGLE
+     TOGGLE POST
   ========================================================= */
 
   function togglePost(
-    contentHash: string
+    contentHash: string,
   ) {
 
     setSelectedHashes(
@@ -257,25 +491,27 @@ export default function LinkedInStudio() {
 
         if (
           next.has(
-            contentHash
+            contentHash,
           )
         ) {
 
           next.delete(
-            contentHash
+            contentHash,
           );
 
         } else {
 
           next.add(
-            contentHash
+            contentHash,
           );
 
         }
 
         return next;
-      }
+
+      },
     );
+
   }
 
 
@@ -289,10 +525,11 @@ export default function LinkedInStudio() {
       new Set(
         newPosts.map(
           (post) =>
-            post.content_hash
-        )
-      )
+            post.content_hash,
+        ),
+      ),
     );
+
   }
 
 
@@ -303,8 +540,9 @@ export default function LinkedInStudio() {
   function unselectAll() {
 
     setSelectedHashes(
-      new Set()
+      new Set(),
     );
+
   }
 
 
@@ -314,14 +552,23 @@ export default function LinkedInStudio() {
 
   async function storeSelected() {
 
+    if (!sourceId) {
+      return;
+    }
+
     if (
-      !sourceId ||
-      !selectedPosts.length
+      selectedPosts.length === 0
     ) {
+
+      alert(
+        "Aucune publication sélectionnée.",
+      );
+
       return;
     }
 
     setStoring(true);
+
     setError("");
 
     try {
@@ -339,31 +586,38 @@ export default function LinkedInStudio() {
                     post.raw_text,
                   date_source:
                     post.date_source,
-                })
+                }),
               ),
-          }
-        );
-
-      alert(
-        `${res.stored} publication(s) importée(s).`
-      );
+          },
+        ) as StoreResponse;
 
       /*
-       * Re-analyze the exact same pasted
-       * activity after storage.
+       * Re-run analysis against RAW.
        *
-       * This immediately verifies RAW
-       * deduplication and refreshes the UI.
+       * This is both useful UX and the final
+       * validation of our deduplication loop.
        */
 
       await analyze();
 
+      alert(
+        `${res.stored} publication(s) importée(s).` +
+        (
+          res.skipped > 0
+            ? ` ${res.skipped} ignorée(s).`
+            : ""
+        ),
+      );
+
     } catch (e) {
 
-      console.error(e);
+      console.error(
+        "LinkedIn store error",
+        e,
+      );
 
       setError(
-        "Erreur pendant l'import LinkedIn."
+        "Erreur pendant l'import des publications LinkedIn.",
       );
 
     } finally {
@@ -371,6 +625,7 @@ export default function LinkedInStudio() {
       setStoring(false);
 
     }
+
   }
 
 
@@ -396,6 +651,8 @@ export default function LinkedInStudio() {
         "
       >
 
+        {/* SOURCE */}
+
         <div>
 
           <label
@@ -406,18 +663,19 @@ export default function LinkedInStudio() {
               mb-2
             "
           >
-            Source ID
+            LinkedIn source
           </label>
 
-          <input
-            type="text"
+          <select
             value={sourceId}
             onChange={(e) =>
-              setSourceId(
-                e.target.value
+              handleSourceChange(
+                e.target.value,
               )
             }
-            placeholder="SOURCE_ID LinkedIn"
+            disabled={
+              sourcesLoading
+            }
             className="
               border
               rounded
@@ -425,34 +683,130 @@ export default function LinkedInStudio() {
               py-2
               w-full
               text-sm
+              bg-white
+              disabled:opacity-50
             "
-          />
+          >
+
+            <option value="">
+
+              {sourcesLoading
+                ? "Loading sources..."
+                : "Select a LinkedIn source"}
+
+            </option>
+
+            {sources.map(
+              (source) => (
+
+                <option
+                  key={
+                    source.source_id
+                  }
+                  value={
+                    source.source_id
+                  }
+                >
+                  {source.name}
+                </option>
+
+              ),
+            )}
+
+          </select>
+
+
+          {selectedSource?.domain && (
+
+            <div
+              className="
+                mt-2
+                text-xs
+                text-gray-400
+              "
+            >
+              {selectedSource.domain}
+            </div>
+
+          )}
+
+
+          {!sourcesLoading &&
+            sources.length === 0 && (
+
+            <div
+              className="
+                mt-2
+                text-sm
+                text-amber-600
+              "
+            >
+              No source with acquisition mode
+              {" "}
+              LINKEDIN_PROFILE found.
+            </div>
+
+          )}
 
         </div>
 
 
+        {/* PASTE */}
+
         <div>
 
-          <label
+          <div
             className="
-              block
-              text-sm
-              font-medium
+              flex
+              items-center
+              justify-between
               mb-2
             "
           >
-            Sales Navigator activity
-          </label>
+
+            <label
+              className="
+                block
+                text-sm
+                font-medium
+              "
+            >
+              Sales Navigator activity
+            </label>
+
+            {sourceText && (
+
+              <button
+                type="button"
+                onClick={() => {
+
+                  setSourceText("");
+
+                  resetAnalysis();
+
+                }}
+                className="
+                  text-xs
+                  text-gray-500
+                  underline
+                "
+              >
+                Clear
+              </button>
+
+            )}
+
+          </div>
 
           <textarea
             value={sourceText}
             onChange={(e) =>
-              setSourceText(
-                e.target.value
+              handleTextChange(
+                e.target.value,
               )
             }
             placeholder={
-              "Copier toute l'activité du profil Sales Navigator puis la coller ici."
+              "Copy the full activity from Sales Navigator and paste it here."
             }
             rows={14}
             className="
@@ -469,6 +823,8 @@ export default function LinkedInStudio() {
         </div>
 
 
+        {/* ANALYZE */}
+
         <div
           className="
             flex
@@ -479,7 +835,11 @@ export default function LinkedInStudio() {
           <button
             type="button"
             onClick={analyze}
-            disabled={loading}
+            disabled={
+              loading ||
+              !sourceId ||
+              !sourceText.trim()
+            }
             className="
               px-5
               py-2
@@ -492,8 +852,8 @@ export default function LinkedInStudio() {
           >
 
             {loading
-              ? "Analyse..."
-              : "Analyser"}
+              ? "Analyzing..."
+              : "Analyze"}
 
           </button>
 
@@ -556,7 +916,7 @@ export default function LinkedInStudio() {
                   font-semibold
                 "
               >
-                {posts.length} publications détectées
+                {posts.length} publications detected
               </div>
 
               <div
@@ -566,68 +926,94 @@ export default function LinkedInStudio() {
                   mt-1
                 "
               >
-                {newPosts.length} nouvelles
+
+                {newPosts.length} new
+
                 {" · "}
-                {existingPosts.length} déjà importées
+
+                {existingPosts.length} already imported
+
+                {duplicatePosts.length > 0 && (
+                  <>
+                    {" · "}
+                    {duplicatePosts.length} duplicate
+                    {duplicatePosts.length > 1
+                      ? "s"
+                      : ""}
+                    {" in paste"}
+                  </>
+                )}
+
               </div>
 
             </div>
 
 
-            <div
-              className="
-                flex
-                gap-3
-              "
-            >
+            {newPosts.length > 0 && (
 
-              <button
-                type="button"
-                onClick={selectAll}
+              <div
                 className="
-                  text-sm
-                  underline
+                  flex
+                  items-center
+                  gap-4
                 "
               >
-                Tout sélectionner
-              </button>
 
-              <button
-                type="button"
-                onClick={unselectAll}
-                className="
-                  text-sm
-                  underline
-                "
-              >
-                Tout désélectionner
-              </button>
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="
+                    text-sm
+                    underline
+                  "
+                >
+                  Select all
+                </button>
 
-            </div>
+                <button
+                  type="button"
+                  onClick={unselectAll}
+                  className="
+                    text-sm
+                    underline
+                  "
+                >
+                  Unselect all
+                </button>
+
+              </div>
+
+            )}
 
           </div>
 
 
-          {/* POSTS */}
+          {/* =================================================
+              POSTS
+          ================================================== */}
 
           <div className="space-y-3">
 
             {posts.map(
-              (post) => {
+              (
+                post,
+                index,
+              ) => {
 
                 const disabled =
-                  post.is_existing;
+                  post.is_existing ||
+                  post.duplicate_in_paste;
 
                 const selected =
                   selectedHashes.has(
-                    post.content_hash
+                    post.content_hash,
                   );
 
                 return (
 
                   <div
                     key={
-                      post.content_hash
+                      `${post.content_hash}-${index}`
                     }
                     className={`
                       border
@@ -650,6 +1036,8 @@ export default function LinkedInStudio() {
                       "
                     >
 
+                      {/* CHECKBOX */}
+
                       <input
                         type="checkbox"
                         checked={
@@ -661,12 +1049,14 @@ export default function LinkedInStudio() {
                         }
                         onChange={() =>
                           togglePost(
-                            post.content_hash
+                            post.content_hash,
                           )
                         }
                         className="mt-1"
                       />
 
+
+                      {/* CONTENT */}
 
                       <div
                         className="
@@ -675,9 +1065,12 @@ export default function LinkedInStudio() {
                         "
                       >
 
+                        {/* META */}
+
                         <div
                           className="
                             flex
+                            flex-wrap
                             items-center
                             gap-3
                             mb-2
@@ -696,6 +1089,7 @@ export default function LinkedInStudio() {
                             }
                           </span>
 
+
                           <span
                             className="
                               text-xs
@@ -708,7 +1102,8 @@ export default function LinkedInStudio() {
                             }
                           </span>
 
-                          {disabled ? (
+
+                          {post.is_existing && (
 
                             <span
                               className="
@@ -717,13 +1112,36 @@ export default function LinkedInStudio() {
                                 py-1
                                 rounded
                                 bg-gray-100
-                                text-gray-500
+                                text-gray-600
                               "
                             >
-                              Déjà importé
+                              Already imported
                             </span>
 
-                          ) : (
+                          )}
+
+
+                          {!post.is_existing &&
+                            post.duplicate_in_paste && (
+
+                            <span
+                              className="
+                                text-xs
+                                px-2
+                                py-1
+                                rounded
+                                bg-amber-50
+                                text-amber-700
+                              "
+                            >
+                              Duplicate
+                            </span>
+
+                          )}
+
+
+                          {!post.is_existing &&
+                            !post.duplicate_in_paste && (
 
                             <span
                               className="
@@ -735,7 +1153,7 @@ export default function LinkedInStudio() {
                                 text-green-700
                               "
                             >
-                              Nouveau
+                              New
                             </span>
 
                           )}
@@ -743,15 +1161,19 @@ export default function LinkedInStudio() {
                         </div>
 
 
+                        {/* TITLE */}
+
                         <div
                           className="
-                            font-medium
                             text-sm
+                            font-medium
                           "
                         >
                           {post.title}
                         </div>
 
+
+                        {/* BODY */}
 
                         <div
                           className="
@@ -759,7 +1181,7 @@ export default function LinkedInStudio() {
                             text-sm
                             text-gray-600
                             whitespace-pre-wrap
-                            line-clamp-4
+                            line-clamp-5
                           "
                         >
                           {post.raw_text}
@@ -772,67 +1194,89 @@ export default function LinkedInStudio() {
                   </div>
 
                 );
-              }
+
+              },
             )}
 
           </div>
 
 
-          {/* STORE */}
+          {/* =================================================
+              STORE BAR
+          ================================================== */}
 
-          <div
-            className="
-              sticky
-              bottom-4
-              bg-white
-              border
-              rounded
-              shadow-lg
-              p-4
-              flex
-              items-center
-              justify-between
-            "
-          >
+          {newPosts.length > 0 && (
 
-            <div className="text-sm">
-
-              <strong>
-                {selectedPosts.length}
-              </strong>
-              {" "}
-              publication(s) sélectionnée(s)
-
-            </div>
-
-
-            <button
-              type="button"
-              onClick={
-                storeSelected
-              }
-              disabled={
-                storing ||
-                !selectedPosts.length
-              }
+            <div
               className="
-                px-5
-                py-2
-                bg-ratecard-blue
-                text-white
+                sticky
+                bottom-4
+                z-10
+                bg-white
+                border
                 rounded
-                text-sm
-                disabled:opacity-50
+                shadow-lg
+                p-4
+                flex
+                items-center
+                justify-between
+                gap-6
               "
             >
 
-              {storing
-                ? "Import..."
-                : `Importer ${selectedPosts.length}`}
+              <div
+                className="
+                  text-sm
+                "
+              >
 
-            </button>
+                <strong>
+                  {selectedPosts.length}
+                </strong>
 
-          </div>
+                {" "}
+
+                publication
+                {selectedPosts.length !== 1
+                  ? "s"
+                  : ""}
+                {" "}
+                selected
+
+              </div>
+
+
+              <button
+                type="button"
+                onClick={
+                  storeSelected
+                }
+                disabled={
+                  storing ||
+                  selectedPosts.length === 0
+                }
+                className="
+                  px-5
+                  py-2
+                  bg-ratecard-blue
+                  text-white
+                  rounded
+                  text-sm
+                  disabled:opacity-50
+                "
+              >
+
+                {storing
+                  ? "Importing..."
+                  : (
+                    `Import ${selectedPosts.length}`
+                  )}
+
+              </button>
+
+            </div>
+
+          )}
 
         </div>
 
@@ -841,4 +1285,5 @@ export default function LinkedInStudio() {
     </div>
 
   );
+
 }
