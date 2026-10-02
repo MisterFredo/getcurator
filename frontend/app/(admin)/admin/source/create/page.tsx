@@ -157,7 +157,7 @@ export default function CreateSource() {
         <label className="block text-sm font-medium">
           Mode d'acquisition
         </label>
-
+      
         <select
           className="border p-2 w-full rounded"
           value={acquisitionMode}
@@ -166,23 +166,27 @@ export default function CreateSource() {
           <option value="MANUAL">
             MANUAL - Copie / colle
           </option>
-        
+      
+          <option value="LINKEDIN_PROFILE">
+            LINKEDIN PROFILE - Profil LinkedIn
+          </option>
+      
           <option value="HTML">
             HTML - Découverte via page HTML
           </option>
-        
+      
           <option value="RSS">
             RSS - Découverte via flux RSS
           </option>
-        
+      
           <option value="SITEMAP">
             SITEMAP - Découverte via sitemap
           </option>
-        
+      
           <option value="WORDPRESS_API">
             WORDPRESS API - Découverte via API WordPress
           </option>
-        
+      
           <option value="API">
             API - Découverte via API
           </option>
