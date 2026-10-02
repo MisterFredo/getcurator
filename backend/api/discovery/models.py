@@ -180,3 +180,30 @@ class LinkedInStudioAnalyzeRequest(
 
     class Config:
         extra = "forbid"
+
+# ============================================================
+# LINKEDIN STUDIO — STORE
+# ============================================================
+
+class LinkedInStudioPostIn(
+    BaseModel
+):
+
+    title: str
+    raw_text: str
+    date_source: Optional[str] = None
+
+    class Config:
+        extra = "forbid"
+
+
+class LinkedInStudioStoreRequest(
+    BaseModel
+):
+
+    posts: List[
+        LinkedInStudioPostIn
+    ]
+
+    class Config:
+        extra = "forbid"
