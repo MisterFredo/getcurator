@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 
@@ -16,7 +17,7 @@ from api.discovery.models import (
     IgnoreRequest,
     IgnoreResponse,
     ManualDiscoveryListOut,
-    LinkedInStudioTestRequest,
+    LinkedInStudioStoreRequest,
 )
 
 from core.discovery.service import (
@@ -33,8 +34,11 @@ from core.discovery.service import (
 from core.discovery.linkedin_studio import (
     parse_linkedin_activity,
     analyze_linkedin_activity,
+    store_linkedin_posts,
 )
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -78,6 +82,51 @@ def analyze_linkedin_studio(
             500,
             (
                 "Erreur analyse "
+                f"LinkedIn Studio : {e}"
+            ),
+        )
+
+# ============================================================
+# LINKEDIN STUDIO — STORE
+# ============================================================
+
+@router.post(
+    "/linkedin-studio/store/{source_id}",
+)
+def store_linkedin_studio(
+    source_id: str,
+    data: LinkedInStudioStoreRequest,
+):
+
+    try:
+
+        posts = [
+            post.model_dump()
+            for post in data.posts
+        ]
+
+        result = (
+            store_linkedin_posts(
+                source_id=source_id,
+                posts=posts,
+            )
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur stockage LinkedIn Studio"
+        )
+
+        raise HTTPException(
+            500,
+            (
+                "Erreur stockage "
                 f"LinkedIn Studio : {e}"
             ),
         )
