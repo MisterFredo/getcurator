@@ -12,7 +12,7 @@ from utils.bigquery_utils import (
 )
 
 from datetime import (
-    date,
+    datetime,
     timedelta,
 )
 
@@ -20,6 +20,10 @@ from typing import (
     Dict,
     List,
     Optional,
+)
+
+from core.acquisition.storage_service import (
+    insert_raw_rows,
 )
 
 
@@ -1210,5 +1214,178 @@ def analyze_linkedin_activity(
         ),
         "posts": (
             analyzed_posts
+        ),
+    }
+
+# ============================================================
+# STORE LINKEDIN POSTS
+# ============================================================
+
+def store_linkedin_posts(
+    source_id: str,
+    posts: List[Dict],
+) -> Dict:
+
+    if not source_id:
+        raise ValueError(
+            "source_id manquant"
+        )
+
+    if not posts:
+        return {
+            "requested": 0,
+            "stored": 0,
+            "skipped": 0,
+        }
+
+    # ========================================================
+    # EXISTING RAW
+    # ========================================================
+
+    existing_hashes = (
+        get_existing_linkedin_raw_hashes(
+            source_id
+        )
+    )
+
+    # ========================================================
+    # FILTER
+    # ========================================================
+
+    rows_to_store = []
+
+    seen_hashes = set()
+
+    skipped = 0
+
+    for post in posts:
+
+        raw_text = (
+            post.get(
+                "raw_text"
+            )
+            or ""
+        ).strip()
+
+        if not raw_text:
+            skipped += 1
+            continue
+
+        content_hash = (
+            build_content_hash(
+                raw_text
+            )
+        )
+
+        # Already stored for this source.
+
+        if (
+            content_hash
+            in existing_hashes
+        ):
+            skipped += 1
+            continue
+
+        # Duplicate inside this store request.
+
+        if (
+            content_hash
+            in seen_hashes
+        ):
+            skipped += 1
+            continue
+
+        seen_hashes.add(
+            content_hash
+        )
+
+        # ====================================================
+        # DATE
+        # ====================================================
+
+        date_source = (
+            post.get(
+                "date_source"
+            )
+        )
+
+        if date_source:
+
+            try:
+
+                date_source = (
+                    datetime.strptime(
+                        date_source,
+                        "%Y-%m-%d",
+                    )
+                )
+
+            except ValueError:
+
+                date_source = None
+
+        # ====================================================
+        # RAW ROW
+        # ====================================================
+
+        rows_to_store.append(
+            {
+                "TITLE": (
+                    post.get(
+                        "title"
+                    )
+                    or build_title(
+                        raw_text
+                    )
+                ),
+                "DATE_SOURCE": (
+                    date_source
+                ),
+                "RAW_TEXT": (
+                    raw_text
+                ),
+                "SOURCE_URL": None,
+            }
+        )
+
+    # ========================================================
+    # NOTHING TO STORE
+    # ========================================================
+
+    if not rows_to_store:
+
+        return {
+            "requested": len(
+                posts
+            ),
+            "stored": 0,
+            "skipped": (
+                skipped
+            ),
+        }
+
+    # ========================================================
+    # INSERT RAW
+    # ========================================================
+
+    insert_raw_rows(
+        rows=rows_to_store,
+        id_source=source_id,
+        import_type="LINKEDIN",
+    )
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
+    return {
+        "requested": len(
+            posts
+        ),
+        "stored": len(
+            rows_to_store
+        ),
+        "skipped": (
+            skipped
         ),
     }
