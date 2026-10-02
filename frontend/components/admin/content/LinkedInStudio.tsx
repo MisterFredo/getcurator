@@ -412,36 +412,11 @@ export default function LinkedInStudio() {
        * not JSON.
        */
 
-      const response =
-        await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/discovery/linkedin-studio/analyze/${sourceId}`,
-          {
-            method: "POST",
-      
-            headers: {
-              "Content-Type":
-                "text/plain",
-            },
-      
-            body: sourceText,
-          },
-        );
-      
-      if (!response.ok) {
-      
-        const message =
-          await response.text();
-      
-        throw new Error(
-          message ||
-          `HTTP ${response.status}`,
-        );
-      
-      }
-      
       const res =
-        await response.json()
-          as AnalyzeResponse;
+        await api.postText(
+          `/discovery/linkedin-studio/analyze/${sourceId}`,
+          sourceText,
+        ) as AnalyzeResponse;
 
       const nextPosts =
         res.posts || [];
