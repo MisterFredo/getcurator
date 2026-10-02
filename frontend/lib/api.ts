@@ -91,6 +91,85 @@ async function request(
 }
 
 /* ========================================================= */
+/* TEXT REQUEST */
+/* ========================================================= */
+
+async function requestText(
+  method: string,
+  path: string,
+  body: string,
+) {
+
+  const cleanPath =
+    path.startsWith("/")
+      ? path
+      : `/${path}`;
+
+  const res = await fetch(
+
+    `${BASE_URL}${cleanPath}`,
+
+    {
+      method,
+
+      headers: {
+        "Content-Type": "text/plain",
+      },
+
+      body,
+
+      cache: "no-store",
+
+      credentials: "include",
+    }
+
+  );
+
+  let json: any = null;
+
+  try {
+
+    json = await res.json();
+
+  } catch {
+
+    throw new Error(
+      `Backend returned a non-JSON response (${res.status}).`
+    );
+
+  }
+
+  if (!res.ok) {
+
+    console.error(
+      "❌ API TEXT ERROR",
+      {
+        status: res.status,
+        path: cleanPath,
+        response: json,
+      }
+    );
+
+    const message =
+      typeof json?.detail === "string"
+
+        ? json.detail
+
+        : JSON.stringify(
+            json,
+            null,
+            2
+          );
+
+    throw new Error(message);
+
+  }
+
+  return json;
+
+}
+
+/* ========================================================= */
 
 export const api = {
 
@@ -102,6 +181,16 @@ export const api = {
     body: any,
   ) =>
     request("POST", path, body),
+
+  postText: (
+    path: string,
+    body: string,
+  ) =>
+    requestText(
+      "POST",
+      path,
+      body,
+    ),
 
   put: (
     path: string,
