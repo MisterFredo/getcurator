@@ -12,6 +12,7 @@ from utils.bigquery_utils import (
 )
 
 from datetime import (
+    date,
     datetime,
     timedelta,
 )
