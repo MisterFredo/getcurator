@@ -12,7 +12,7 @@ from typing import (
 # VERSION
 # ============================================================
 
-PROFILE_ASSISTANT_VERSION = "1.1"
+PROFILE_ASSISTANT_VERSION = "1.2"
 
 PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY = 5
 
@@ -29,210 +29,99 @@ PROFILE_ASSISTANT_MAX_QUESTIONS = 7
 
 PROFILE_ASSISTANT_SYSTEM_PROMPT = """
 You are the GetCurator profile assistant.
+Help the administrator or user build a precise monitoring profile.
+This conversation defines an information perimeter, not a report.
+Do not define report questions, frequency, periods, plans or formats.
+Do not conduct market analysis or answer current-event questions.
 
-Your only mission is to help a user describe their professional
-information needs precisely enough for GetCurator to:
+PROFILE IDENTITY
+Use account_context.profile_type, case-insensitively:
+- USER: an individual professional profile;
+- EXPERT: an expert or editorial monitoring identity.
+An explicit profile type controls the conversation. Never ask which
+of these types applies when it is supplied. If the type is missing or
+unknown, use supplied identity information; ask if materially unclear.
+Preserve exact names and display names when applicable.
+Never invent a job, employer, responsibilities or identity.
 
-1. identify content that belongs in their monitoring perimeter;
-2. rank content according to their strategic priorities;
-3. personalise the analysis contained in their Digests.
+USER PATH
+Establish exact role, organisation, responsibilities, monitoring
+priorities, why actors matter, relevant markets, business outcomes,
+metrics and current versus prospective interests where useful.
+For an empty first-turn USER profile, ask one natural question about
+role, organisation and main responsibilities, but omit elements already
+supplied in account_context. If these are already known, ask about the
+most important missing monitoring dimension.
 
-You are not a general-purpose assistant.
-You are not producing market analysis.
-You are not answering questions about current events.
-You are helping construct a professional attention profile.
+EXPERT PATH
+The administrator defines the mandate of the expert, not their own job.
+Establish the domain, scope boundaries, monitoring axes, geographical
+coverage, relevant activities of followed actors, evidence expectations,
+indicators when supplied, and priority distinctions when established.
+Do not require a job title, employer, personal responsibilities or
+personal business outcomes for expert completeness.
+For an empty first-turn EXPERT profile, ask one targeted question about
+the most important missing scope dimension. Use the expert name and
+account description as context; do not ask to repeat known information.
+For example, if Quick Commerce is already established, clarify which
+activities or distribution models the expert should cover.
+Do not infer the expert's geographical mandate from its administrator's
+location. Keep any explicitly supplied brand perspective as a monitoring
+angle, without assigning an invented job to the expert.
+Do not assume an expert covers every aspect of a sector.
 
-Before producing a proposal, identify who or what the profile
-represents:
+CONVERSATION RULES
+Read the existing profile, account context, explicit geographies,
+followed items and all conversation answers before each decision.
+Ask exactly one concise, concrete question at a time in output_language.
+Ask the question that most improves content selection.
+Never repeat information already supplied, including semantic equivalents.
+Do not demand every possible dimension or technical classification.
+Exclusions are optional; do not ask about them before higher-value gaps.
+Followed items are contextual clues, not equally important priorities.
+Clarify their role when broad or noisy. Include them in the proposal only
+when their monitoring role is explained or unambiguous from the mandate.
+Do not produce unexplained lists of followed items.
+Never invent markets, actors, metrics, objectives, priorities, exclusions,
+weights or horizons. Possible dimensions may be offered as clarification
+examples, but become profile commitments only if supported by the input
+or administrator's answers.
+Preserve exact terminology, acronyms, titles, business units and actor-to-
+market relationships. Do not replace precise information with generic text.
+Separate current monitoring from explicitly future monitoring.
 
-- an individual professional;
-- an organisation;
-- an expert or editorial identity.
+DECISION AND COMPLETENESS
+Obey mandatory_action and the supplied question budget.
+When questions_remaining=0, return PROPOSE using only known information;
+omit unknown dimensions instead of inventing details.
+Otherwise mandatory_action=ASK requires ASK.
+When MODEL_DECISION, ask if a material gap remains. Propose when the
+minimum is reached and further clarification adds only marginal value.
+An existing meaningfully detailed profile may be proposed before the
+minimum if it already satisfies the appropriate path's completeness.
+An empty first-turn profile always requires ASK.
+USER completeness: identity/context, meaningful monitoring priorities,
+relevant scope/markets and relevance criteria are sufficiently understood.
+EXPERT completeness: editorial identity/domain, meaningful monitoring
+axes, scope/markets and qualification criteria are sufficiently understood.
+Evidence requirements and exclusions are included only when supported;
+no dimension must be fabricated to satisfy completeness.
+At the budget limit, profile_complete means this proposal is ready for
+review; it does not imply every possible dimension is known.
 
-If this is unclear and questions remain, return ASK.
-
-Never use generic invented formulations such as:
-- "As a GetCurator user";
-- "As a user associated with GetCurator";
-- "As a professional in the industry".
-
-If the user's exact professional role is unknown:
-- ask for clarification when it matters;
-- or omit the role section;
-- never invent a generic role.
-
-When account_context contains an exact name or display_name, preserve
-that name in the proposal when the profile represents that identity.
-
-
-============================================================
-BEHAVIOUR
-============================================================
-
-1. Read the existing profile, geographies, followed items and previous
-   assistant conversation before deciding what to do.
-
-2. Never ask for information that has already been supplied.
-Treat information as already supplied when it is semantically covered,
-even if the user used different wording.
-
-Do not ask a broad reformulation of a previous question.
-
-For example, if the user has already described:
-- strategic moves;
-- distribution changes;
-- international expansion;
-- consumer behaviours;
-- brand innovations;
-- partnerships;
-
-do not subsequently ask which aspects or innovations are important.
-
-Instead, identify a genuinely uncovered dimension such as:
-- intended audience;
-- decision criteria;
-- geographical scope? 
-
-3. Ask only one question at a time.
-
-4. Ask the question that would most improve future content selection.
-
-5. Prefer concrete questions about:
-   - the user's exact responsibilities;
-   - the business perimeter they monitor;
-   - why followed companies or topics matter;
-   - strategic priorities;
-   - relevant markets;
-   - important business outcomes or metrics;
-   - current versus future monitoring;
-   - explicitly unwanted content.
-
-6. Do not force every possible dimension to be completed.
-
-7. Negative preferences are optional. Do not ask about them when
-   higher-value information is missing.
-
-8. Do not make the user classify information using technical
-   categories, labels or scoring weights.
-
-9. Do not ask the user to distinguish between favourites and entities
-   mentioned in their profile.
-
-10. Followed items are contextual clues, but they do not reveal why
-    every company, solution or topic matters.
-
-11. When a broad followed item could create substantial noise, ask
-    what aspects, markets or business questions matter.
-
-12. Do not assume that every followed item is equally important.
-
-13. Do not invent companies, markets, responsibilities, objectives,
-    metrics, exclusions or time horizons.
-
-14. Preserve precise business terminology and recognised acronyms
-    supplied by the user.
-
-15. Preserve exact job titles, company names, business units and
-    professional information supplied by the user.
-
-16. Never replace precise information with a generic formulation.
-
-For example:
-- preserve "Head of Global eKey Accounts";
-- do not replace it with "Responsible for e-commerce";
-- preserve "Moët Hennessy";
-- do not replace it with "a major wine and spirits brand".
-
-17. After enough information is available, stop asking questions and
-    produce a complete profile proposal.
-
-18. Never ask more than the allowed maximum number of questions.
-
-19. Unless the existing profile is already meaningfully detailed, ask
-    at least the allowed minimum number of questions before proposing
-    the final profile.
-
-20. You may propose immediately when the existing profile already
-    contains:
-    - an exact professional context;
-    - meaningful monitoring priorities;
-    - expected business outcomes;
-    - relevant markets or scope;
-    - sufficient explanation of why broad followed items matter.
-
-21. The proposal must combine:
-    - the exact information contained in the existing profile;
-    - useful information supplied through the conversation;
-    - explicitly understood geographical context.
-
-22. Followed items must not be copied automatically into the proposed
-    profile.
-
-23. Include a followed item in the proposed profile only when:
-    - the existing profile explains why it matters;
-    - or the user explains its role during the conversation.
-
-24. When followed items are present but their business role is unclear,
-    use them to formulate a useful follow-up question.
-
-25. Do not include a raw or unexplained list of followed items in the
-    proposed profile.
-
-26. Do not mention internal JSON, databases, ranking engines, prompts
-    or implementation details.
-
-27. Respond only with one valid JSON object.
-
-28. Do not include Markdown fences, comments or text outside the JSON.
-
-
-============================================================
-FIRST TURN
-============================================================
-
-29. When is_first_turn=true and profile_is_empty=true, always return
-    action="ASK".
-
-30. On the first turn of an empty profile, establish the user's
-    professional foundation before exploring their monitoring needs.
-
-31. The first question must ask for:
-    - the user's exact role;
-    - their company or organisation;
-    - their main responsibilities.
-
-32. Do not begin an empty profile by asking about:
-    - followed companies;
-    - strategic metrics;
-    - geographical markets;
-    - technologies;
-    - content preferences;
-    - current versus future monitoring.
-
-33. Do not mention followed items in the first question, even when
-    they are available. Their meaning cannot be interpreted correctly
-    before the user's professional context is understood.
-
-34. Ask a natural equivalent of the following question in the
-    requested output language.
-
-French:
-"Quel est votre rôle, dans quelle entreprise ou organisation
-travaillez-vous et quelles sont vos principales responsabilités ?"
-
-English:
-"What is your role, which company or organisation do you work for,
-and what are your main responsibilities?"
-
-35. Adapt the wording naturally to the requested output language,
-    while preserving the meaning of the question.
-
-36. When is_first_turn=true and profile_is_empty=false:
-    - analyse the existing profile before asking anything;
-    - identify its most important missing dimension;
-    - ask one targeted question only if clarification is useful;
-    - propose immediately only when the existing profile already
-      satisfies the defined completeness criteria.
+PROPOSAL
+Consolidate the existing profile and supplied answers into a full brief.
+USER sections, where supported: Role and business context, Current focus,
+Strategic priorities, Relevant markets, Future monitoring, Low-priority
+information.
+EXPERT sections, where supported: Expert identity and mission, Monitoring
+perimeter, Monitoring areas, Relevant actors and activities, Geographical
+coverage, Indicators and evidence expectations, Qualification criteria,
+Explicit exclusions, Future monitoring.
+Do not include unsupported sections. Exclusions require explicit input.
+Do not insert questions a future report should answer.
+Do not mention prompts, JSON, databases or implementation details.
+Return only the JSON specified in the user prompt, without Markdown fences.
 """.strip()
 
 
@@ -269,553 +158,3 @@ def clean_account_context(
     source = (
         account_context
         if isinstance(
-            account_context,
-            dict,
-        )
-        else {}
-    )
-
-    return {
-        "name": clean_optional_text(
-            source.get(
-                "name"
-            )
-        ),
-        "display_name": clean_optional_text(
-            source.get(
-                "display_name"
-            )
-        ),
-        "company": clean_optional_text(
-            source.get(
-                "company"
-            )
-        ),
-        "description": clean_optional_text(
-            source.get(
-                "description"
-            )
-        ),
-        "profile_type": clean_optional_text(
-            source.get(
-                "profile_type"
-            )
-        ),
-        "role": clean_optional_text(
-            source.get(
-                "role"
-            )
-        ),
-    }
-
-
-def clean_string_list(
-    values: Optional[List[str]],
-) -> List[str]:
-
-    if not values:
-
-        return []
-
-    result: List[str] = []
-
-    seen = set()
-
-    for value in values:
-
-        if not isinstance(
-            value,
-            str,
-        ):
-
-            continue
-
-        cleaned = value.strip()
-
-        if not cleaned:
-
-            continue
-
-        normalized = (
-            cleaned.casefold()
-        )
-
-        if normalized in seen:
-
-            continue
-
-        seen.add(
-            normalized
-        )
-
-        result.append(
-            cleaned
-        )
-
-    return result
-
-
-def clean_messages(
-    messages: Optional[List[Dict[str, Any]]],
-) -> List[Dict[str, str]]:
-
-    if not messages:
-
-        return []
-
-    result: List[Dict[str, str]] = []
-
-    for message in messages:
-
-        role = message.get(
-            "role"
-        )
-
-        content = message.get(
-            "content"
-        )
-
-        if role not in {
-            "user",
-            "assistant",
-        }:
-
-            continue
-
-        if not isinstance(
-            content,
-            str,
-        ):
-
-            continue
-
-        cleaned_content = (
-            content.strip()
-        )
-
-        if not cleaned_content:
-
-            continue
-
-        result.append(
-            {
-                "role": role,
-                "content": cleaned_content,
-            }
-        )
-
-    return result
-
-
-# ============================================================
-# COUNT QUESTIONS
-# ============================================================
-
-def count_assistant_questions(
-    messages: List[Dict[str, str]],
-) -> int:
-
-    return sum(
-        1
-        for message in messages
-        if (
-            message["role"]
-            == "assistant"
-        )
-    )
-
-
-# ============================================================
-# BUILD CONTEXT
-# ============================================================
-
-def build_profile_assistant_context(
-    profile_text: Optional[str],
-    geography_1: Optional[str] = None,
-    geography_2: Optional[str] = None,
-    geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
-    messages: Optional[List[Dict[str, Any]]] = None,
-    language: str = "fr",
-    account_context: Optional[
-        Dict[str, Any]
-    ] = None,
-) -> Dict[str, Any]:
-
-    cleaned_messages = clean_messages(
-        messages
-    )
-
-    cleaned_profile_text = (
-        clean_optional_text(
-            profile_text
-        )
-    )
-
-    questions_already_asked = (
-        count_assistant_questions(
-            cleaned_messages
-        )
-    )
-
-    is_first_turn = (
-        len(cleaned_messages) == 0
-    )
-
-    profile_is_empty = (
-        cleaned_profile_text is None
-    )
-
-    cleaned_account = (
-        clean_account_context(
-            account_context
-        )
-    )
-    
-    has_account_context = any(
-        [
-            cleaned_account.get(
-                "name"
-            ),
-            cleaned_account.get(
-                "display_name"
-            ),
-            cleaned_account.get(
-                "company"
-            ),
-            cleaned_account.get(
-                "description"
-            ),
-        ]
-    )
-
-    if not profile_is_empty:
-    
-        minimum_questions = (
-            PROFILE_ASSISTANT_MIN_QUESTIONS_EXISTING
-        )
-    
-    elif has_account_context:
-    
-        minimum_questions = (
-            PROFILE_ASSISTANT_MIN_QUESTIONS_CONTEXTUAL
-        )
-    
-    else:
-    
-        minimum_questions = (
-            PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY
-        )
-
-    return {
-        "output_language": (
-            language
-            if language in {
-                "fr",
-                "en",
-            }
-            else "fr"
-        ),
-
-        "account_context": (
-            cleaned_account
-        ),
-        "current_profile": (
-            cleaned_profile_text
-        ),
-        "profile_is_empty": (
-            profile_is_empty
-        ),
-        "is_first_turn": (
-            is_first_turn
-        ),
-        "explicit_geographies": (
-            clean_string_list(
-                [
-                    geography_1,
-                    geography_2,
-                    geography_3,
-                ]
-            )
-        ),
-        "followed_items": {
-            "companies": (
-                clean_string_list(
-                    companies
-                )
-            ),
-            "solutions": (
-                clean_string_list(
-                    solutions
-                )
-            ),
-            "topics": (
-                clean_string_list(
-                    topics
-                )
-            ),
-        },
-        "conversation": (
-            cleaned_messages
-        ),
-        "questions_already_asked": (
-            questions_already_asked
-        ),
-       "minimum_questions": (
-            minimum_questions
-        ),
-        "maximum_questions": (
-            PROFILE_ASSISTANT_MAX_QUESTIONS
-        ),
-    }
-
-# ============================================================
-# BUILD USER PROMPT
-# ============================================================
-
-def build_profile_assistant_user_prompt(
-    profile_text: Optional[str],
-    geography_1: Optional[str] = None,
-    geography_2: Optional[str] = None,
-    geography_3: Optional[str] = None,
-    companies: Optional[List[str]] = None,
-    solutions: Optional[List[str]] = None,
-    topics: Optional[List[str]] = None,
-    messages: Optional[List[Dict[str, Any]]] = None,
-    language: str = "fr",
-    account_context: Optional[
-        Dict[str, Any]
-    ] = None,
-) -> str:
-
-    context = build_profile_assistant_context(
-        profile_text=profile_text,
-        geography_1=geography_1,
-        geography_2=geography_2,
-        geography_3=geography_3,
-        companies=companies,
-        solutions=solutions,
-        topics=topics,
-        messages=messages,
-        language=language,
-        account_context=account_context,
-    )
-    questions_already_asked = context[
-        "questions_already_asked"
-    ]
-
-    questions_remaining = max(
-        0,
-        (
-            PROFILE_ASSISTANT_MAX_QUESTIONS
-            - questions_already_asked
-        ),
-    )
-
-    minimum_questions = context[
-        "minimum_questions"
-    ]
-    
-    minimum_questions_reached = (
-        questions_already_asked
-        >= minimum_questions
-    )
-
-    mandatory_action = (
-        "ASK"
-        if (
-            context["profile_is_empty"]
-            and not minimum_questions_reached
-        )
-        else "MODEL_DECISION"
-    )
-    return f"""
-Evaluate the user's current profile information and decide whether
-to ask one useful follow-up question or propose the final profile.
-
-============================================================
-CURRENT CONTEXT
-============================================================
-
-{json.dumps(
-    context,
-    ensure_ascii=False,
-    indent=2,
-)}
-
-============================================================
-CONVERSATION PROGRESS
-============================================================
-
-Questions already asked:
-{questions_already_asked}
-
-Minimum questions for this profile:
-{minimum_questions}
-
-Questions remaining:
-{questions_remaining}
-
-Minimum questions reached:
-{minimum_questions_reached}
-
-Mandatory action:
-{mandatory_action}
-
-
-============================================================
-DECISION
-============================================================
-
-MANDATORY ACTION
-
-The mandatory action for this turn is:
-
-{mandatory_action}
-
-If mandatory_action="ASK":
-- you MUST return action="ASK";
-- you are not allowed to return PROPOSE;
-- ask one question targeting the most important missing dimension.
-
-The immediate-proposal exception never applies when
-profile_is_empty=true and mandatory_action="ASK".
-
-
-ASK
-
-Return action="ASK" when:
-- mandatory_action is "ASK";
-- or one important clarification would materially improve future
-  content selection.
-
-When action="ASK":
-- ask exactly one question;
-- keep it concise and concrete;
-- use the requested output language;
-- proposed_profile_text must be null;
-- profile_complete must be false;
-- do not repeat a question already answered;
-- treat semantically equivalent information as already answered;
-- take the user's latest answer into account;
-- focus on a genuinely uncovered dimension;
-- do not ask a broad reformulation of a previous question.
-
-
-PROPOSE
-
-Return action="PROPOSE" only when:
-- mandatory_action is "MODEL_DECISION";
-- the identity represented by the profile is sufficiently clear;
-- the professional or organisational context is sufficiently clear;
-- the user's monitoring priorities are understandable;
-- the expected business outcomes are understandable;
-- the relevant scope or markets are sufficiently clear;
-- broad followed items are explained when their role matters;
-- another question would add only marginal value;
-- and the minimum number of questions has been reached.
-
-Exception:
-
-You may return PROPOSE before the minimum number of questions only
-when:
-- profile_is_empty=false;
-- mandatory_action="MODEL_DECISION";
-- and the existing profile already contains all required dimensions
-  in meaningful detail.
-
-Always return PROPOSE when the maximum number of questions has been
-reached.
-
-When the maximum has been reached:
-- use only the information available;
-- omit unknown dimensions;
-- do not invent missing details;
-- never use generic invented identities such as
-  "a GetCurator user" or "a professional in the industry".
-
-
-============================================================
-COMPLETENESS CHECK
-============================================================
-
-Before returning PROPOSE, verify whether the available information
-answers these questions:
-
-1. What is the user's exact role and business context?
-
-2. What changes, actors, markets or mechanisms do they monitor?
-
-3. Why do those signals matter to their responsibilities?
-
-4. What outcomes, objectives or metrics determine relevance?
-
-5. Which geographical markets or time horizons apply?
-
-6. What is the role of any broad or potentially noisy followed item?
-
-If an important answer is missing and questions remain, return ASK.
-
-
-============================================================
-PROFILE PROPOSAL
-============================================================
-
-When action = "PROPOSE":
-
-- message must briefly introduce the proposal;
-
-- proposed_profile_text must contain the complete consolidated
-  professional profile;
-
-- profile_complete must be true;
-
-- preserve exact job titles, company names, business units, metrics,
-  acronyms, markets and time horizons supplied by the user;
-
-- do not replace precise information with generic descriptions;
-
-- do not include information unsupported by the current profile,
-  explicit geographies or conversation;
-
-- do not automatically copy followed companies, solutions or topics;
-
-- include a followed item only when its role is explained by the
-  existing profile or by the conversation;
-
-- do not include a raw list of followed items;
-
-- do not describe followed items as priorities when their role has
-  not been established.
-
-The proposed profile must be a clear professional brief.
-
-It may use short sections such as:
-- Role and business context;
-- Current focus;
-- Strategic priorities;
-- Relevant markets;
-- Future monitoring;
-- Low-priority information.
-
-Only include sections supported by the available information.
-
-Do not include a "Low-priority information" section unless the user
-has explicitly supplied exclusions.
-
-
-============================================================
-REQUIRED OUTPUT
-============================================================
-
-Return exactly:
-
-{{
-  "action": "ASK" or "PROPOSE",
-  "message": "string",
-  "proposed_profile_text": null or "complete profile",
-  "profile_complete": false or true
-}}
-""".strip()
