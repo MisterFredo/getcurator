@@ -1998,6 +1998,7 @@ export default function TouchPage() {
       {currentStep === "NOTEBOOK" && (
 
         <TouchNotebookBuilder
+          expertId={selectedExpertId || null}
           subject={
             interpretation?.subject
             ?? ""
