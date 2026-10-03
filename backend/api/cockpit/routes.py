@@ -206,26 +206,20 @@ def restart():
 @router.post(
     "/operations/backfill-topics-concepts"
 )
-def run_topics_concepts_backfill():
+def run_topics_concepts_backfill(
+    background_tasks: BackgroundTasks,
+):
 
-    try:
+    background_tasks.add_task(
+        backfill_topics_concepts,
+        5000,
+    )
 
-        result = backfill_topics_concepts(
-            limit=5000,
-        )
-
-        return {
-            "status": result["status"],
-            "message": result["message"],
-            "result": result,
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            400,
-            f"Topics / Concepts backfill error: {e}",
-        )
+    return {
+        "status": "started",
+        "message":
+            "Topics / Concepts backfill started.",
+    }
 
 @router.post(
     "/operations/generate-company-descriptions"
