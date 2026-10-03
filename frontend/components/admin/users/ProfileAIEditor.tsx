@@ -238,6 +238,11 @@ export default function ProfileAIEditor({
     setEditorialProfileText,
   ] = useState("");
 
+  const [savedEditorialProfileText, setSavedEditorialProfileText] = useState("");
+  const [savingEditorial, setSavingEditorial] = useState(false);
+  const [editorialSaveError, setEditorialSaveError] = useState<string | null>(null);
+  const hasEditorialChanges = editorialProfileText !== savedEditorialProfileText;
+
   const [
     editorialStatus,
     setEditorialStatus,
@@ -399,6 +404,9 @@ export default function ProfileAIEditor({
           ?? ""
         );
 
+        setSavedEditorialProfileText(profile.profile_editorial_text ?? "");
+        setEditorialSaveError(null);
+
         setEditorialStatus(
           profile.profile_editorial_status
           ?? null
@@ -495,6 +503,11 @@ export default function ProfileAIEditor({
 
   async function saveProfile() {
 
+    if (hasEditorialChanges) {
+      alert("Save or discard the editorial changes before saving the public profile.");
+      return;
+    }
+
     const cleanedProfile = (
       profileText.trim()
     );
@@ -529,7 +542,7 @@ export default function ProfileAIEditor({
       setProposalReady(false);
 
       alert(
-        "The public, editorial and structured profiles were updated.",
+        "The public profile and internal profiles were updated. A manually validated editorial mandate is preserved.",
       );
 
     } catch (error) {
@@ -568,7 +581,7 @@ export default function ProfileAIEditor({
 
     }
 
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || hasEditorialChanges) {
 
       alert(
         "Save or discard the current changes before regenerating.",
@@ -582,8 +595,8 @@ export default function ProfileAIEditor({
 
       setRegenerating(true);
 
-      await api.post(
-        "/user/profile/admin/regenerate",
+      const proposal = await api.post(
+        "/user/profile/admin/editorial/propose",
         {
           user_id:
             userId,
@@ -593,11 +606,12 @@ export default function ProfileAIEditor({
         },
       );
 
-      await loadProfile();
-
-      alert(
-        "The editorial and structured profiles were regenerated.",
-      );
+      if (!proposal?.profile_editorial_text?.trim()) {
+        throw new Error("Empty editorial proposal");
+      }
+      setEditorialProfileText(proposal.profile_editorial_text);
+      setEditorialSaveError(null);
+      alert("Proposal ready. Review the editorial text, then save it to rebuild the JSON.");
 
     } catch (error) {
 
@@ -618,6 +632,38 @@ export default function ProfileAIEditor({
 
   }
 
+
+  /* =====================================================
+     SAVE EDITORIAL PROFILE AND REBUILD JSON
+  ===================================================== */
+
+  async function saveEditorialProfile() {
+    if (hasUnsavedChanges) {
+      alert("Save or discard the public profile changes first.");
+      return;
+    }
+    const text = editorialProfileText.trim();
+    if (!text || savingEditorial || saving || regenerating || assistantLoading) return;
+    try {
+      setSavingEditorial(true);
+      setEditorialSaveError(null);
+      const response = await api.post("/user/profile/admin/editorial/update", {
+        user_id: userId,
+        profile_editorial_text: text,
+      });
+      await loadProfile();
+      if (response.status === "editorial_saved_structured_error") {
+        setEditorialSaveError("Editorial text saved, but JSON generation failed. Save again to retry. " + (response.structured_error || ""));
+      } else {
+        alert("Editorial profile saved and JSON rebuilt.");
+      }
+    } catch (error) {
+      console.error("Failed to save editorial profile", error);
+      setEditorialSaveError("Unable to complete the save. Your draft remains in this field; retry the save.");
+    } finally {
+      setSavingEditorial(false);
+    }
+  }
 
   /* =====================================================
      CALL PROFILE ASSISTANT
@@ -702,7 +748,7 @@ export default function ProfileAIEditor({
 
   async function startAssistant() {
 
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || hasEditorialChanges) {
 
       alert(
         "Save or discard the current changes before starting the assistant.",
@@ -892,6 +938,8 @@ export default function ProfileAIEditor({
                 assistantLoading
                 || saving
                 || regenerating
+                || savingEditorial
+                || hasEditorialChanges
               }
               className="
                 rounded-lg
@@ -925,6 +973,7 @@ export default function ProfileAIEditor({
                 event.target.value
               )
             }
+            disabled={saving || savingEditorial || regenerating || assistantLoading}
             rows={14}
             className="
               w-full
@@ -1252,6 +1301,8 @@ Priority markets
               disabled={
                 saving
                 || regenerating
+                || savingEditorial
+                || hasEditorialChanges
               }
               className="
                 rounded-lg
@@ -1280,6 +1331,8 @@ Priority markets
             disabled={
               saving
               || regenerating
+                || savingEditorial
+                || hasEditorialChanges
               || !profileText.trim()
               || !hasUnsavedChanges
             }
@@ -1366,6 +1419,9 @@ Priority markets
               disabled={
                 regenerating
                 || saving
+                || savingEditorial
+                || assistantLoading
+                || hasEditorialChanges
                 || hasUnsavedChanges
                 || !savedProfileText.trim()
               }
@@ -1387,7 +1443,7 @@ Priority markets
             >
               {regenerating
                 ? "Regenerating..."
-                : "Regenerate internal profile"}
+                : "Generate editorial proposal"}
             </button>
 
           </div>
@@ -1495,43 +1551,36 @@ Priority markets
 
           )}
 
-          {editorialProfileText ? (
-
-            <div
-              className="
-                max-h-[700px]
-                overflow-y-auto
-                whitespace-pre-wrap
-                rounded-lg
-                border
-                border-gray-200
-                bg-white
-                p-4
-                text-sm
-                leading-6
-                text-gray-700
-              "
-            >
-              {editorialProfileText}
-            </div>
-
-          ) : (
-
-            <div
-              className="
-                rounded-lg
-                border
-                border-dashed
-                border-gray-300
-                p-4
-                text-sm
-                text-gray-500
-              "
-            >
-              No editorial profile has been generated yet.
-            </div>
-
-          )}
+          <textarea
+            value={editorialProfileText}
+            onChange={event => setEditorialProfileText(event.target.value)}
+            disabled={saving || savingEditorial || regenerating || assistantLoading}
+            rows={24}
+            aria-label="Editorial monitoring profile"
+            placeholder="Write or paste the detailed editorial mandate here."
+            className="w-full rounded-lg border border-gray-200 bg-white p-4 text-sm leading-6 text-gray-700 outline-none focus:border-ratecard-blue disabled:opacity-50"
+          />
+          <p className="text-xs text-gray-500">
+            Edit this mandate directly. Saving rebuilds the JSON from this text.
+            AI generation creates a proposal for review.
+          </p>
+          {hasEditorialChanges && <p className="text-xs text-amber-600">Unsaved editorial changes</p>}
+          {editorialSaveError && <p className="text-sm text-red-700">{editorialSaveError}</p>}
+          <div className="flex flex-wrap justify-end gap-3">
+            {hasEditorialChanges && (
+              <button type="button"
+                onClick={() => { setEditorialProfileText(savedEditorialProfileText); setEditorialSaveError(null); }}
+                disabled={saving || savingEditorial || regenerating || assistantLoading}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50">
+                Discard editorial changes
+              </button>
+            )}
+            <button type="button" onClick={saveEditorialProfile}
+              disabled={saving || savingEditorial || regenerating || assistantLoading || hasUnsavedChanges || !editorialProfileText.trim()}
+              className="rounded-lg bg-ratecard-blue px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {savingEditorial ? "Saving and rebuilding JSON..." : "Save editorial profile and rebuild JSON"}
+            </button>
+          </div>
 
         </section>
 
