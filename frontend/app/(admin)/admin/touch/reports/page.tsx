@@ -13,6 +13,8 @@ import {
   listTouchReports,
 } from "@/lib/touch";
 
+import TouchMonthlyEditionList from "@/components/admin/touch/TouchMonthlyEditionList";
+
 import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
 
 import type {
@@ -403,12 +405,12 @@ export default function TouchReportsPage() {
             text-gray-900
           "
         >
-          Saved Touch reports
+          Touch reports and monthly editions
         </h1>
 
         <p className="mt-1 text-sm text-gray-500">
-          Open or delete an existing report without
-          rebuilding its notebook.
+          Review monthly expert corpora or open saved reports
+          without rebuilding their notebooks.
         </p>
 
       </header>
@@ -491,6 +493,15 @@ export default function TouchReportsPage() {
             </p>
 
           )}
+
+          <TouchMonthlyEditionList
+            onOpenReport={handleOpen}
+            disabled={openingId !== null || deletingId !== null}
+          />
+
+          <h2 className="pt-4 text-lg font-semibold text-gray-900">
+            Saved reports — expert and ad hoc
+          </h2>
 
           {!loading && reports.length === 0 && (
 
@@ -606,6 +617,10 @@ export default function TouchReportsPage() {
                         text-gray-500
                       "
                     >
+                      {report.expert_id ? "Expert report · " : "Ad hoc · "}
+                      {report.period_start
+                        ? `${report.period_start.slice(0, 10)} → ${report.period_end?.slice(0, 10) ?? "—"} · `
+                        : ""}
                       {report.source_count}
                       {" sources · "}
                       {new Date(
