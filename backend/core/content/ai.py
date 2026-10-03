@@ -369,26 +369,20 @@ def generate_summary(
 
 
 # ============================================================
-# GENERATE TOPICS + CONCEPTS
+# GENERATE TOPICS
 # BACKFILL ONLY
 # ============================================================
 
-def generate_topics_concepts(
+def generate_topics(
     source_id: Optional[str],
     source_text: str,
-) -> Dict[str, Any]:
-
-    # ========================================================
-    # CHECKS
-    # ========================================================
+) -> list[str]:
 
     if (
         not isinstance(source_text, str)
         or not source_text.strip()
     ):
-        raise ValueError(
-            "Source vide"
-        )
+        raise ValueError("Source vide")
 
     if not source_id:
         raise ValueError(
@@ -396,15 +390,11 @@ def generate_topics_concepts(
         )
 
     # ========================================================
-    # REFERENTIALS
+    # ALLOWED TOPICS
     # ========================================================
 
     topics_list_text = _load_topics_text(
         source_id,
-    )
-
-    concepts_list_text = (
-        _load_concepts_text()
     )
 
     # ========================================================
@@ -414,26 +404,20 @@ def generate_topics_concepts(
     prompt = f"""
 Tu dois classifier le contenu ci-dessous.
 
-Tu dois uniquement sélectionner les TOPICS et les CONCEPTS
-réellement pertinents pour le contenu.
+Sélectionne uniquement les TOPICS réellement pertinents.
 
 RÈGLES IMPORTANTES :
 
-- Utilise exclusivement les valeurs présentes dans les listes autorisées.
+- Utilise exclusivement les valeurs présentes dans la liste autorisée.
 - N'invente aucun topic.
-- N'invente aucun concept.
 - Ne reformule jamais les labels.
-- Ne sélectionne que les éléments clairement pertinents.
-- Si aucun élément n'est pertinent, réponds "None" dans la section concernée.
-- Ne produis aucune autre section ni aucun commentaire.
+- Ne sélectionne que les topics clairement pertinents.
+- Si aucun topic n'est pertinent, réponds "None".
+- Ne produis aucun commentaire.
 
 TOPICS AUTORISÉS :
 
 {topics_list_text}
-
-CONCEPTS AUTORISÉS :
-
-{concepts_list_text}
 
 CONTENU :
 
@@ -442,10 +426,6 @@ CONTENU :
 FORMAT DE RÉPONSE OBLIGATOIRE :
 
 TOPICS
-- label exact
-- label exact
-
-CONCEPTS
 - label exact
 - label exact
 """
@@ -464,27 +444,13 @@ CONCEPTS
         )
 
     # ========================================================
-    # PARSING
+    # PARSE
     # ========================================================
 
     sections = _parse_llm_sections(
         raw,
     )
 
-    topics = _parse_list(
+    return _parse_list(
         sections["TOPICS"],
     )
-
-    concepts = _parse_list(
-        sections["CONCEPTS"],
-    )
-
-    # ========================================================
-    # RETURN
-    # ========================================================
-
-    return {
-        "topics_llm": topics,
-        "concepts_llm": concepts,
-    }
-
