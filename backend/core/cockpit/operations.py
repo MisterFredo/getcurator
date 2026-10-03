@@ -1,7 +1,3 @@
-from concurrent.futures import (
-    ThreadPoolExecutor,
-    as_completed,
-)
 
 from config import (
     BQ_PROJECT,
@@ -795,8 +791,7 @@ def matching_full_dismiss():
 # ============================================================
 
 def backfill_topics_concepts(
-    limit: int = 50,
-    max_workers: int = 5,
+    limit: int = 5000,
 ):
 
     # ========================================================
@@ -851,146 +846,51 @@ def backfill_topics_concepts(
         }
 
     # ========================================================
-    # GENERATE ONE CLASSIFICATION
-    # LLM ONLY — SAFE TO PARALLELIZE
+    # SEQUENTIAL PROCESSING
     # ========================================================
 
-    def generate_classification(
-        row,
-    ):
+    processed = 0
+    failed = 0
+    errors = []
+
+    for row in rows:
 
         id_content = row[
             "ID_CONTENT"
         ]
 
-        print(
-            "[TOPICS CONCEPTS LLM]",
-            id_content,
-        )
-
-        result = generate_topics_concepts(
-            source_id=row.get(
-                "SOURCE_ID"
-            ),
-            source_text=row.get(
-                "RAW_TEXT"
-            ) or "",
-        )
-
-        topics = (
-            result.get(
-                "topics_llm"
-            )
-            or []
-        )
-
-        concepts = (
-            result.get(
-                "concepts_llm"
-            )
-            or []
-        )
-
-        print(
-            "[TOPICS CONCEPTS LLM OK]",
-            id_content,
-        )
-
-        return {
-            "id_content":
-                id_content,
-
-            "topics":
-                topics,
-
-            "concepts":
-                concepts,
-        }
-
-    # ========================================================
-    # PARALLEL LLM GENERATION
-    # ========================================================
-
-    generated = []
-
-    failed = 0
-
-    errors = []
-
-    with ThreadPoolExecutor(
-        max_workers=max_workers,
-    ) as executor:
-
-        futures = {
-            executor.submit(
-                generate_classification,
-                row,
-            ): row["ID_CONTENT"]
-            for row in rows
-        }
-
-        for future in as_completed(
-            futures
-        ):
-
-            id_content = futures[
-                future
-            ]
-
-            try:
-
-                generated.append(
-                    future.result()
-                )
-
-            except Exception as e:
-
-                failed += 1
-
-                errors.append(
-                    {
-                        "id_content":
-                            id_content,
-
-                        "stage":
-                            "llm",
-
-                        "error":
-                            str(e),
-                    }
-                )
-
-                print(
-                    "[TOPICS CONCEPTS LLM ERROR]",
-                    id_content,
-                    str(e),
-                )
-
-    # ========================================================
-    # SEQUENTIAL BIGQUERY WRITES
-    # ========================================================
-
-    processed = 0
-
-    for item in generated:
-
-        id_content = item[
-            "id_content"
-        ]
-
-        topics = item[
-            "topics"
-        ]
-
-        concepts = item[
-            "concepts"
-        ]
-
         try:
 
             print(
-                "[TOPICS CONCEPTS WRITE]",
+                "[TOPICS CONCEPTS BACKFILL]",
                 id_content,
+            )
+
+            # ------------------------------------------------
+            # LLM
+            # ------------------------------------------------
+
+            result = generate_topics_concepts(
+                source_id=row.get(
+                    "SOURCE_ID"
+                ),
+                source_text=row.get(
+                    "RAW_TEXT"
+                ) or "",
+            )
+
+            topics = (
+                result.get(
+                    "topics_llm"
+                )
+                or []
+            )
+
+            concepts = (
+                result.get(
+                    "concepts_llm"
+                )
+                or []
             )
 
             # ------------------------------------------------
@@ -1013,7 +913,7 @@ def backfill_topics_concepts(
             )
 
             # ------------------------------------------------
-            # MATERIALIZE RELATIONS
+            # RELATIONS
             # ------------------------------------------------
 
             resolve_topics(
@@ -1031,6 +931,7 @@ def backfill_topics_concepts(
             print(
                 "[TOPICS CONCEPTS BACKFILL OK]",
                 id_content,
+                f"processed={processed}",
             )
 
         except Exception as e:
@@ -1042,16 +943,13 @@ def backfill_topics_concepts(
                     "id_content":
                         id_content,
 
-                    "stage":
-                        "write",
-
                     "error":
                         str(e),
                 }
             )
 
             print(
-                "[TOPICS CONCEPTS WRITE ERROR]",
+                "[TOPICS CONCEPTS BACKFILL ERROR]",
                 id_content,
                 str(e),
             )
@@ -1088,10 +986,6 @@ def backfill_topics_concepts(
         else 0
     )
 
-    # ========================================================
-    # RESULT
-    # ========================================================
-
     return {
         "status":
             "ok"
@@ -1117,7 +1011,6 @@ def backfill_topics_concepts(
                 f" · {remaining} remaining"
             ),
     }
-
 # ============================================================
 # DATASET COPY
 # ============================================================
