@@ -10,6 +10,7 @@ from typing import (
 from pydantic import (
     BaseModel,
     Field,
+    field_validator,
 )
 
 
@@ -632,6 +633,32 @@ class TouchNotebookRequest(
 
     report_id: str | None = None
 
+    # Optional expert associated with this report.
+    # The period remains defined in report_design.
+    expert_id: str | None = None
+
+    @field_validator(
+        "expert_id",
+        mode="before",
+    )
+    @classmethod
+    def normalize_expert_id(
+        cls,
+        value,
+    ):
+
+        if isinstance(
+            value,
+            str,
+        ):
+
+            return (
+                value.strip()
+                or None
+            )
+
+        return value
+
     subject: str
 
     objective: str = ""
@@ -672,5 +699,3 @@ class TouchNotebookOutcome(
     source_count: int = 0
 
     error: str | None = None
-
-
