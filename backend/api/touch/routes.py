@@ -6,6 +6,10 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from core.touch.edition_routes import (
+    router as edition_router,
+)
+
 from core.touch.search_models import (
     TouchResearchBrief,
 )
@@ -64,6 +68,9 @@ from core.touch.notebook_report_service import (
 
 
 router = APIRouter()
+router.include_router(
+    edition_router,
+)
 
 # ============================================================
 # SEARCH
@@ -279,6 +286,7 @@ def save_editorial_report(
         report_id = save_touch_report(
             request=payload.request,
             notebook=payload.notebook,
+            report_id=payload.request.report_id,
         )
 
     except ValueError as exc:
