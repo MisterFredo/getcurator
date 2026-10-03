@@ -69,6 +69,10 @@ def _insert_relation(
             @id_content,
             @entity_id
 
+        FROM (
+            SELECT 1
+        )
+
         WHERE NOT EXISTS (
 
             SELECT 1
@@ -87,7 +91,6 @@ def _insert_relation(
             "entity_id": entity_id,
         },
     )
-
 
 def _lookup_topic_id(
     label: str,
