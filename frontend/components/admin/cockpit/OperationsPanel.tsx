@@ -189,6 +189,36 @@ const GROUPS: Group[] = [
   },
 
   {
+    title: "Touch",
+
+    operations: [
+
+      {
+        id: "initialize-touch-histories",
+
+        label: "Initialize Touch Histories",
+
+        description:
+          "Prepare the three most recent complete months for every active expert. Corpora require manual review.",
+
+        icon: BookOpen,
+      },
+
+      {
+        id: "prepare-latest-touch-editions",
+
+        label: "Prepare Latest Touch Editions",
+
+        description:
+          "Prepare the previous complete month for every active expert. Existing editions are preserved.",
+
+        icon: Play,
+      },
+
+    ],
+  },
+
+  {
     title: "Environment",
 
     operations: [
@@ -347,11 +377,13 @@ export default function OperationsPanel() {
                       <button
                         type="button"
                         disabled={loading}
-                        onClick={() =>
-                          run(
+                        onClick={() => {
+                          void run(
                             operation.id,
-                          )
-                        }
+                          ).catch(() => {
+                            // The hook already displays the error.
+                          });
+                        }}
                         className="inline-flex items-center gap-2 rounded-lg bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50"
                       >
 
