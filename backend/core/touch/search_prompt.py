@@ -6,11 +6,17 @@ from core.touch.search_models import (
 )
 
 
+from core.touch.expert_context_service import (
+    build_touch_expert_context_payload,
+    get_touch_expert_entities,
+)
+
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-TOUCH_SEARCH_INTERPRETATION_VERSION = "1.0"
+TOUCH_SEARCH_INTERPRETATION_VERSION = "1.1"
 
 
 # ============================================================
@@ -80,7 +86,8 @@ Never invent an entity_id.
 
 Never modify an entity_id.
 
-Return only the structured entities supplied in the input.
+Return every core entity exactly. You may additionally select relevant
+references from available_expert_entities, reproducing them exactly.
 
 When an entity is mentioned in the free-text request but is not
 provided as a structured entity, preserve its name in the
@@ -88,6 +95,35 @@ subject, objective, search_terms or related_angles.
 
 Do not create a structured entity reference without a supplied
 entity_id.
+
+
+============================================================
+OPTIONAL EXPERT MANDATE
+============================================================
+
+expert_context is a server-loaded expertise profile, not factual
+evidence and not the report definition. The current request,
+conversation and supplied period define this report.
+
+Use the profile watch instructions to identify relevant documentary
+axes and its decision lenses to identify evidence needs. For a broad
+panorama of the expert mandate, cover the relevant monitoring areas.
+For a focused request, retain only the useful subset. Do not force
+all expert axes, actors or markets into every report.
+
+Use the profile's explicit negative preferences within the report
+scope. Never infer new exclusions or unsupported conclusions.
+Profile horizons do not replace the report period.
+
+available_expert_entities are optional reliable retrieval anchors.
+Select useful references and copy them exactly. Never invent IDs.
+Unresolved actors remain useful as short literal search terms.
+Concepts may guide axes or searches; do not invent resolved topic IDs.
+The expert display name is not automatically a company anchor.
+
+Preserve expert instructions as monitoring intent; do not answer
+questions or turn them into report conclusions or recommendations.
+When no expert is supplied, retain the existing ad hoc workflow.
 
 
 ============================================================
@@ -614,8 +650,8 @@ Allowed axis_type values:
 - EVOLUTION
 - OTHER
 
-Return every supplied structured entity in its corresponding
-array.
+Return every core entity in its corresponding array. Expert references
+are optional and must be selected only when relevant to this report.
 
 Do not return a structured entity that was not supplied.
 
@@ -718,6 +754,14 @@ def build_touch_search_interpretation_prompt(
             ),
 
         },
+
+        "expert_context":
+            build_touch_expert_context_payload(brief),
+
+        "available_expert_entities": [
+            entity.model_dump(mode="json")
+            for entity in get_touch_expert_entities(brief)
+        ],
 
         "core_entities":
             _build_entity_payload(
