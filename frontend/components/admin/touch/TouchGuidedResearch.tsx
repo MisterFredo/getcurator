@@ -45,6 +45,8 @@ export type TouchGuidedResolvedEntityGroups = {
 ========================================================= */
 
 type Props = {
+  expertId?: string | null;
+
   outputLanguage:
     string;
 
@@ -348,6 +350,7 @@ function findExactOption(
 ========================================================= */
 
 export default function TouchGuidedResearch({
+  expertId = null,
   outputLanguage,
 
   periodStart,
@@ -490,13 +493,14 @@ export default function TouchGuidedResearch({
           .unresolved
           .filter(
             mention =>
-              mention.research_role
-                === "PRIMARY"
-              || mention.research_role
-                === "COMPARISON",
+              !expertId && (
+                mention.research_role === "PRIMARY"
+                || mention.research_role === "COMPARISON"
+              ),
           ),
       [
         mentionResolution.unresolved,
+        expertId,
       ],
     );
 
@@ -649,6 +653,7 @@ export default function TouchGuidedResearch({
     >(
       () => ({
 
+        expertId,
         outputLanguage,
 
         periodStart:
@@ -676,6 +681,7 @@ export default function TouchGuidedResearch({
       }),
       [
         effectiveEntities,
+        expertId,
         outputLanguage,
         periodEnd,
         periodStart,
@@ -822,9 +828,43 @@ export default function TouchGuidedResearch({
       return;
     }
 
+    // Preserve the resolved anchors selected by the expert-backed plan.
+    const retainedEntities = uniqueEntityReferences([
+      ...displayPlan.resolved_entities,
+      ...effectiveEntities.companies,
+      ...effectiveEntities.solutions,
+      ...effectiveEntities.topics,
+    ]);
+
+    // Unknown catalog actors remain executable as literal searches.
+    const unresolvedTerms = expertId
+      ? mentionResolution.unresolved
+          .filter(mention =>
+            mention.research_role === "PRIMARY"
+            || mention.research_role === "COMPARISON",
+          )
+          .map(mention => mention.entity_label)
+      : [];
+
     onValidatePlan(
-      displayPlan,
-      effectiveEntities,
+      {
+        ...displayPlan,
+        search_terms: Array.from(new Set([
+          ...displayPlan.search_terms,
+          ...unresolvedTerms,
+        ])),
+      },
+      {
+        companies: retainedEntities.filter(
+          entity => entity.entity_type === "company",
+        ),
+        solutions: retainedEntities.filter(
+          entity => entity.entity_type === "solution",
+        ),
+        topics: retainedEntities.filter(
+          entity => entity.entity_type === "topic",
+        ),
+      },
     );
 
   }
