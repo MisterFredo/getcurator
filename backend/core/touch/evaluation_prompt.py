@@ -7,11 +7,16 @@ from core.touch.search_models import (
 )
 
 
+from core.touch.expert_context_service import (
+    build_touch_expert_context_payload,
+)
+
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-TOUCH_EVALUATION_VERSION = "1.0"
+TOUCH_EVALUATION_VERSION = "1.1"
 
 MAX_TOUCH_CONTENT_BODY_LENGTH = 6000
 
@@ -65,6 +70,30 @@ is a retrieval clue.
 It is not by itself proof of editorial relevance.
 
 ============================================================
+OPTIONAL EXPERT CRITERIA
+============================================================
+
+expert_context describes the selected expert's expertise mandate.
+It is not documentary evidence. Evaluate content against the report
+subject, central question, retained axes, target context and period.
+
+Use relevant decision lenses and explicit negative preferences from
+the expert profile to assess documentary usefulness and evidence.
+Do not classify an item as relevant merely because it concerns an
+expert actor, concept or monitoring area outside this report scope.
+Do not require every item to cover every expert criterion or axis.
+
+A profile preference for quantified evidence does not invalidate a
+relevant announcement or qualitative mechanism. Assess what the
+content actually contributes and state material evidence limits.
+Do not invent missing figures, implications or recommendations.
+
+Retain concrete target-context evidence for CROSS_SECTOR research.
+The expert profile must not erase axes validated for the report.
+When no expert is supplied, use the existing ad hoc evaluation.
+
+
+============================================================
 RESEARCH AXES
 ============================================================
 
@@ -102,7 +131,7 @@ mechanism, actor, constraint or target context.
 CROSS-CONTEXT RESEARCH
 ============================================================
 
-When research_type is CROSS_CONTEXT_ANALYSIS, preserve the
+When research_type is CROSS_SECTOR, preserve the
 distinction between:
 
 - the source subject;
@@ -163,7 +192,7 @@ CONTEXT
 Use CONTEXT when the content does not directly cover the
 central subject but materially helps explain it.
 
-For CROSS_CONTEXT_ANALYSIS, also use CONTEXT when the content
+For CROSS_SECTOR, also use CONTEXT when the content
 materially documents:
 
 - the explicitly named target company;
@@ -615,6 +644,9 @@ def _build_research_payload(
 ) -> dict:
 
     return {
+
+        "expert_context":
+            build_touch_expert_context_payload(brief),
 
         "original_query":
             brief.query,
