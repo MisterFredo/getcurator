@@ -211,7 +211,7 @@ def run_topics_concepts_backfill():
     try:
 
         result = backfill_topics_concepts(
-            limit=5,
+            limit=5000,
         )
 
         return {
