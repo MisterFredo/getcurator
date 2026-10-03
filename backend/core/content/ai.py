@@ -437,20 +437,29 @@ TOPICS
     raw = run_llm(
         prompt,
     )
-
+    
     if not raw:
         raise ValueError(
             "Réponse LLM vide"
         )
-
-    # ========================================================
-    # PARSE
-    # ========================================================
-
+    
     sections = _parse_llm_sections(
         raw,
     )
-
-    return _parse_list(
+    
+    print("\n==============================")
+    print("[TOPICS LLM RAW]")
+    print(raw)
+    print("------------------------------")
+    print("[TOPICS SECTIONS]")
+    print(sections)
+    print("------------------------------")
+    
+    topics = _parse_list(
         sections["TOPICS"],
     )
+    
+    print("[TOPICS PARSED]", topics)
+    print("==============================\n")
+    
+    return topics
