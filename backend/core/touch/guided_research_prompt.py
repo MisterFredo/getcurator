@@ -5,11 +5,17 @@ from core.touch.guided_research_models import (
 )
 
 
+from core.touch.expert_context_service import (
+    build_touch_expert_context_payload,
+    get_touch_expert_entities,
+)
+
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-TOUCH_GUIDED_RESEARCH_VERSION = "1.1"
+TOUCH_GUIDED_RESEARCH_VERSION = "1.2"
 
 
 # ============================================================
@@ -77,6 +83,46 @@ answered.
 
 Never ask for information that is not useful for documentary
 retrieval or editorial framing.
+
+
+============================================================
+OPTIONAL EXPERT CONTEXT
+============================================================
+
+expert_context, when present, is the existing expertise mandate
+of the selected GetCurator expert. It is not evidence about the
+world and is not the definition of this report.
+
+Use its watch instructions, decision lenses and explicit negative
+preferences to understand the established expertise perimeter.
+Do not ask the administrator to redefine that perimeter.
+
+The latest administrator request defines the report objective.
+Clarify only material report choices not already answered:
+objective, period, angle, target context and evidence requirements.
+Do not require a narrower scope when a broad panorama is intended.
+
+For a panorama covering the expert mandate, use its relevant
+monitoring areas to prepare coherent documentary axes. For a
+focused report, retain only the areas contributing to that request.
+Do not mechanically copy every watch instruction into the plan.
+The report period comes from the request, not the profile horizon.
+
+available_expert_entities contains optional reliable references
+loaded by the server. Select only those useful to this report.
+Copy every selected reference exactly into plan.resolved_entities.
+Do not treat every expert actor as mandatory or as a comparison.
+
+Unresolved expert actors may be used as entity_mentions or short
+literal search terms when relevant. Their missing database identifier
+must not block the plan. Never invent an identifier for them.
+Concepts remain analytical concepts or search terms; do not convert
+them into resolved company, solution or topic references.
+
+The expert name identifies an expertise profile. It is not a
+company or a retrieval anchor merely because it has a name.
+
+When expert_context is null, use the existing ad hoc workflow.
 
 
 ============================================================
@@ -254,7 +300,8 @@ Preserve them exactly.
 Never modify their identifiers.
 Never rename them.
 Never remove them silently.
-Never invent another resolved entity.
+Only add a resolved entity from available_expert_entities when
+it contributes to this report. Never invent another resolved entity.
 
 Return every supplied structured entity in
 plan.resolved_entities.
@@ -924,6 +971,14 @@ def build_touch_guided_research_prompt(
             ),
 
         },
+
+        "expert_context":
+            build_touch_expert_context_payload(request),
+
+        "available_expert_entities": [
+            entity.model_dump(mode="json")
+            for entity in get_touch_expert_entities(request)
+        ],
 
         "supplied_structured_entities":
             _build_structured_entity_payload(
