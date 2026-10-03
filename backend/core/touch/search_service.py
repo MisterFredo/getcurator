@@ -31,6 +31,10 @@ from core.touch.search_models import (
     TouchResearchBrief,
 )
 
+from core.touch.expert_context_service import (
+    prepare_touch_expert_request,
+)
+
 
 # ============================================================
 # SEARCH TOUCH CONTENTS
@@ -57,65 +61,73 @@ def search_touch_contents(
     used_fallback = False
 
     # ========================================================
+    # LOAD OPTIONAL EXPERT CONTEXT
+    # ========================================================
+
+    brief = prepare_touch_expert_request(
+        request=brief,
+    )
+
+    # ========================================================
     # INTERPRET RESEARCH BRIEF
     # ========================================================
-    
+
     interpretation_started_at = (
         perf_counter()
     )
-    
+
     used_prepared_interpretation = (
         brief.prepared_interpretation
         is not None
     )
-    
+
     if used_prepared_interpretation:
-    
+
         interpretation = (
             validate_touch_research_interpretation(
-    
+
                 brief=brief,
-    
+
                 interpretation=(
                     brief.prepared_interpretation
                 ),
-    
+
             )
         )
-    
+
         interpretation_used_fallback = (
             False
         )
-    
+
         interpretation_error = None
-    
+
     else:
-    
+
         (
             interpretation,
             interpretation_used_fallback,
             interpretation_error,
         ) = interpret_touch_research_brief(
-    
+
             brief=brief,
-    
+
             model=model,
-    
+
         )
-    
+
     if interpretation_used_fallback:
-    
+
         used_fallback = True
-    
+
     if interpretation_error:
-    
+
         errors.append(
-    
+
             "Interprétation Touch : "
             f"{interpretation_error}"
-    
+
         )
-    
+
     interpretation_finished_at = (
         perf_counter()
     )
@@ -249,8 +261,12 @@ def search_touch_contents(
 
             "subject":
                 interpretation.subject,
+
             "used_prepared_interpretation":
                 used_prepared_interpretation,
+
+            "expert_id":
+                brief.expert_id,
 
             "search_terms":
                 interpretation.search_terms,
