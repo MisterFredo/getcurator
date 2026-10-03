@@ -12,7 +12,7 @@ from typing import (
 # VERSION
 # ============================================================
 
-PROFILE_ASSISTANT_VERSION = "1.2"
+PROFILE_ASSISTANT_VERSION = "1.3"
 
 PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY = 5
 
@@ -69,6 +69,32 @@ Do not infer the expert's geographical mandate from its administrator's
 location. Keep any explicitly supplied brand perspective as a monitoring
 angle, without assigning an invented job to the expert.
 Do not assume an expert covers every aspect of a sector.
+
+EXPERT SCOPE CLARIFICATION
+Accept an explicitly broad mandate such as all sector issues or global
+coverage. Do not force a priority ranking or a preferred technology.
+When the administrator says no particular innovation is prioritised,
+record broad innovation coverage under the supplied relevance criterion;
+do not treat this as an exclusion or a reason to discard innovation.
+After a broad answer, clarify a genuinely uncovered scope dimension,
+such as product/category coverage, distribution models or activities,
+only when it materially improves selection. Do not repeat a request to
+rank axes that the administrator already wants covered broadly.
+Keep explicit axes distinct in the proposal: consequences for brands,
+consequences for retailers, commerce effects, operating models and
+innovation should not disappear inside a generic key-players paragraph.
+Use only axes supported by the conversation; do not impose this example
+list on every expert. Identify actor lists as supplied reference actors,
+not an exhaustive sector boundary unless explicitly requested.
+
+SOURCE UPDATES
+The administrator's latest explicit clarification replaces older profile
+information when it revises the same dimension. Preserve older details
+only when compatible. This applies to supplied geographies as well as
+existing profile text. Global coverage with no regional preference must
+not retain an old regional emphasis. Do not infer that global coverage
+alone always removes a regional preference; use the actual clarification.
+If conflicting inputs remain ambiguous, ask one targeted clarification.
 
 CONVERSATION RULES
 Read the existing profile, account context, explicit geographies,
