@@ -12,7 +12,7 @@ from typing import (
 # VERSION
 # ============================================================
 
-PROFILE_EDITORIAL_TRANSFORMER_VERSION = "1.0"
+PROFILE_EDITORIAL_TRANSFORMER_VERSION = "1.1"
 
 
 # ============================================================
@@ -44,6 +44,63 @@ You are not producing a public profile.
 You are not producing JSON.
 
 You are producing an internal editorial operating brief.
+
+
+============================================================
+PROFILE TYPE AND EXPERT EXPANSION
+============================================================
+
+Use account_context.profile_type case-insensitively.
+USER keeps the professional interpretation described below.
+EXPERT represents an editorial monitoring identity, not its administrator.
+For an EXPERT, interpret references below to professional relevance,
+responsibilities and decision lenses in terms of the expert's validated
+monitoring mandate and documentary relevance.
+Do not invent a job or employer for an expert. Preserve a supplied brand
+perspective as an angle of coverage, not an invented professional identity.
+If explicit type and validated identity conflict, identify that source
+inconsistency briefly; do not silently rewrite the validated mandate.
+If type is absent or unknown, use only the supplied identity information.
+
+For EXPERT, expand each established monitoring axis into concrete
+subdimensions, mechanisms, developments, qualification criteria and
+useful evidence. Develop supplied axes rather than restating broad labels
+or grouping every actor into a single generic key-players section.
+Do not split areas artificially or require a fixed number of areas.
+
+Operational subdimensions must follow directly from supplied priorities.
+For example, profitability monitoring may qualify evidence about cost
+structures and distinguish reported margins by business perimeter.
+Revenue monitoring may require the source to distinguish revenue from
+transaction volume. These are evidence criteria, not newly invented
+numerical targets or priority metrics.
+Do not introduce unsupported named actors, markets, technologies,
+objectives, metrics, weights or priority rankings.
+Never assert current market facts or company capabilities to fill a profile.
+Preserve global coverage when supplied; keep explicitly prioritised regions
+as priorities without promoting unmentioned countries to priority status.
+Keep supplied actor-to-market relationships; do not infer them from memory.
+
+For EXPERT, use these sections where supported:
+- EXPERT IDENTITY AND MONITORING MANDATE;
+- EDITORIAL MISSION;
+- PRIORITY AREAS;
+- ANALYTICAL AND DOCUMENTARY LENSES;
+- QUALIFICATION RULES;
+- QUALITY PREFERENCES;
+- EXCLUSIONS AND DEPRIORITISATION;
+- FUTURE MONITORING.
+
+For every established area, specify what developments qualify, the
+mechanisms to document, applicable actors and markets where supplied,
+and useful evidence. Preserve distinctions between platform performance,
+operating economics and brand outcomes when supported by the source.
+
+For every profile type, define only enduring monitoring requirements.
+Do not define report questions, schedules, reporting periods, document
+plans, document lengths or editorial output formats. Ignore such output
+instructions rather than converting them into monitoring priorities.
+Do not add prospective interests without an explicit future requirement.
 
 
 ============================================================
@@ -223,8 +280,8 @@ EDITORIAL MISSION
 
 Explain what the monitoring must help the profile understand.
 
-State the principal business questions without turning them into
-recommendations.
+Describe the established domains of understanding and monitoring.
+Do not formulate questions for a future report or recommendations.
 
 PRIORITY AREAS
 
@@ -314,8 +371,8 @@ editorial brief containing:
 - evidence expectations;
 - future monitoring when applicable.
 
-The Marion profile is the structural reference for depth and
-operational clarity.
+Use the explicit depth criteria above as the structural reference.
+Do not assume access to an external example profile such as Marion.
 
 However, never copy Marion's:
 
@@ -644,7 +701,9 @@ Preserve every useful relationship between:
 - current and future horizons;
 - explicit exclusions.
 
+Apply the USER or EXPERT path according to account_context.profile_type.
 Expand the profile only through operational clarification.
+Do not define questions, cadence or structure for a future report.
 
 Do not invent missing business information.
 
