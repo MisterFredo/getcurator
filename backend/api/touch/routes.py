@@ -22,6 +22,7 @@ from core.touch.edition_service import (
 
 from core.touch.edition_repository import (
     get_touch_edition,
+    link_touch_edition_report,
     list_touch_editions,
     update_touch_edition_corpus,
 )
@@ -566,6 +567,33 @@ def save_monthly_touch_corpus(
             edition_id=edition_id,
             selected_content_ids=payload.selected_content_ids,
             dismissed_content_ids=payload.dismissed_content_ids,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if edition is None:
+        raise HTTPException(status_code=404, detail="Édition Touch introuvable.")
+    return {"status": "ok", "edition": _public_admin_edition(edition)}
+
+
+# ============================================================
+# LINK MONTHLY EDITION TO SAVED REPORT
+# ============================================================
+
+class TouchEditionReportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    report_id: str = Field(min_length=1)
+
+
+@router.post("/editions/{edition_id}/report")
+def link_monthly_touch_report(
+    edition_id: str,
+    payload: TouchEditionReportRequest,
+):
+    try:
+        edition = link_touch_edition_report(
+            edition_id=edition_id,
+            report_id=payload.report_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
