@@ -10,6 +10,7 @@ from core.touch.expert_context_models import (
 
 from core.touch.search_models import (
     TouchResearchBrief,
+    TouchEntityReference,
 )
 
 from core.touch.guided_research_models import (
@@ -166,3 +167,54 @@ def build_touch_expert_context_payload(
     return request._expert_context.model_dump(
         mode="json",
     )
+
+
+# ============================================================
+# EXPERT ENTITY REFERENCES
+# ============================================================
+
+def get_touch_expert_entities(
+    request: TouchResearchBrief | TouchGuidedResearchRequest,
+) -> list[TouchEntityReference]:
+    """Available anchors; the research plan selects the relevant ones."""
+
+    context = request._expert_context
+
+    if context is None:
+        return []
+
+    references = []
+
+    for instruction in context.structured_profile.watch_instructions:
+        references.extend(instruction.entities)
+
+    for lens in context.structured_profile.decision_lenses:
+        references.extend(lens.related_entities)
+
+    entities = []
+    seen = set()
+
+    for reference in references:
+        if (
+            reference.resolution_status != "RESOLVED"
+            or not reference.entity_id
+            or reference.entity_type not in {"company", "solution", "topic"}
+        ):
+            continue
+
+        key = (reference.entity_type, reference.entity_id)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        entities.append(
+            TouchEntityReference(
+                entity_type=reference.entity_type,
+                entity_id=reference.entity_id,
+                entity_label=(reference.canonical_label or reference.label),
+            )
+        )
+
+    return entities
