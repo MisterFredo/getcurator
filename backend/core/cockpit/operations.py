@@ -792,10 +792,11 @@ def matching_full_dismiss():
 
 def backfill_topics_concepts(
     limit: int = 5000,
+    batch_size: int = 50,
 ):
 
     # ========================================================
-    # LOAD CONTENTS TO PROCESS
+    # LOAD CONTENTS
     # ========================================================
 
     rows = query_bq(
@@ -830,10 +831,6 @@ def backfill_topics_concepts(
         """
     )
 
-    # ========================================================
-    # NOTHING LEFT
-    # ========================================================
-
     if not rows:
 
         return {
@@ -846,8 +843,268 @@ def backfill_topics_concepts(
         }
 
     # ========================================================
-    # SEQUENTIAL PROCESSING
+    # LOAD REFERENCE MAPS ONCE
     # ========================================================
+
+    topic_rows = query_bq(
+        f"""
+        SELECT
+            ID_TOPIC,
+            LABEL
+
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC`
+
+        WHERE IS_ACTIVE = TRUE
+        """
+    )
+
+    concept_rows = query_bq(
+        f"""
+        SELECT
+            ID_CONCEPT,
+            LABEL
+
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT`
+
+        WHERE IS_ACTIVE = TRUE
+        """
+    )
+
+    topic_map = {
+        row["LABEL"]: row["ID_TOPIC"]
+        for row in topic_rows
+    }
+
+    concept_map = {
+        row["LABEL"]: row["ID_CONCEPT"]
+        for row in concept_rows
+    }
+
+    # ========================================================
+    # FLUSH BATCH
+    # ========================================================
+
+    def flush_batch(
+        batch,
+    ):
+
+        if not batch:
+            return
+
+        # ----------------------------------------------------
+        # CONTENT ARRAYS
+        # ----------------------------------------------------
+
+        values = []
+
+        for item in batch:
+
+            topics_sql = (
+                "["
+                + ",".join(
+                    "'" + topic.replace(
+                        "'",
+                        "\\'",
+                    ) + "'"
+                    for topic in item["topics"]
+                )
+                + "]"
+            )
+
+            concepts_sql = (
+                "["
+                + ",".join(
+                    "'" + concept.replace(
+                        "'",
+                        "\\'",
+                    ) + "'"
+                    for concept in item["concepts"]
+                )
+                + "]"
+            )
+
+            values.append(
+                f"""
+                STRUCT(
+                    '{item["id_content"]}'
+                        AS ID_CONTENT,
+                    {topics_sql}
+                        AS TOPICS_LLM,
+                    {concepts_sql}
+                        AS CONCEPTS_LLM
+                )
+                """
+            )
+
+        query_bq(
+            f"""
+            MERGE `{TABLE_CONTENT}` target
+
+            USING (
+                SELECT *
+                FROM UNNEST([
+                    {",".join(values)}
+                ])
+            ) source
+
+            ON
+                target.ID_CONTENT =
+                source.ID_CONTENT
+
+            WHEN MATCHED THEN
+                UPDATE SET
+                    TOPICS_LLM =
+                        source.TOPICS_LLM,
+                    CONCEPTS_LLM =
+                        source.CONCEPTS_LLM
+            """
+        )
+
+        # ----------------------------------------------------
+        # TOPIC RELATIONS
+        # ----------------------------------------------------
+
+        topic_relations = []
+
+        for item in batch:
+
+            for label in item["topics"]:
+
+                id_topic = topic_map.get(
+                    label
+                )
+
+                if not id_topic:
+                    continue
+
+                topic_relations.append(
+                    f"""
+                    STRUCT(
+                        '{item["id_content"]}'
+                            AS ID_CONTENT,
+                        '{id_topic}'
+                            AS ID_TOPIC
+                    )
+                    """
+                )
+
+        if topic_relations:
+
+            query_bq(
+                f"""
+                INSERT INTO
+                    `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC`
+                    (
+                        ID_CONTENT,
+                        ID_TOPIC
+                    )
+
+                SELECT
+                    source.ID_CONTENT,
+                    source.ID_TOPIC
+
+                FROM UNNEST([
+                    {",".join(topic_relations)}
+                ]) source
+
+                WHERE NOT EXISTS (
+
+                    SELECT 1
+
+                    FROM
+                        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC`
+                        existing
+
+                    WHERE
+                        existing.ID_CONTENT =
+                        source.ID_CONTENT
+
+                    AND
+                        existing.ID_TOPIC =
+                        source.ID_TOPIC
+                )
+                """
+            )
+
+        # ----------------------------------------------------
+        # CONCEPT RELATIONS
+        # ----------------------------------------------------
+
+        concept_relations = []
+
+        for item in batch:
+
+            for label in item[
+                "concepts"
+            ]:
+
+                id_concept = concept_map.get(
+                    label
+                )
+
+                if not id_concept:
+                    continue
+
+                concept_relations.append(
+                    f"""
+                    STRUCT(
+                        '{item["id_content"]}'
+                            AS ID_CONTENT,
+                        '{id_concept}'
+                            AS ID_CONCEPT
+                    )
+                    """
+                )
+
+        if concept_relations:
+
+            query_bq(
+                f"""
+                INSERT INTO
+                    `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT`
+                    (
+                        ID_CONTENT,
+                        ID_CONCEPT
+                    )
+
+                SELECT
+                    source.ID_CONTENT,
+                    source.ID_CONCEPT
+
+                FROM UNNEST([
+                    {",".join(concept_relations)}
+                ]) source
+
+                WHERE NOT EXISTS (
+
+                    SELECT 1
+
+                    FROM
+                        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT`
+                        existing
+
+                    WHERE
+                        existing.ID_CONTENT =
+                        source.ID_CONTENT
+
+                    AND
+                        existing.ID_CONCEPT =
+                        source.ID_CONCEPT
+                )
+                """
+            )
+
+        print(
+            "[TOPICS CONCEPTS FLUSH]",
+            len(batch),
+            "contents",
+        )
+
+    # ========================================================
+    # GENERATE
+    # ========================================================
+
+    batch = []
 
     processed = 0
     failed = 0
@@ -861,15 +1118,6 @@ def backfill_topics_concepts(
 
         try:
 
-            print(
-                "[TOPICS CONCEPTS BACKFILL]",
-                id_content,
-            )
-
-            # ------------------------------------------------
-            # LLM
-            # ------------------------------------------------
-
             result = generate_topics_concepts(
                 source_id=row.get(
                     "SOURCE_ID"
@@ -879,60 +1127,52 @@ def backfill_topics_concepts(
                 ) or "",
             )
 
-            topics = (
-                result.get(
-                    "topics_llm"
-                )
-                or []
-            )
-
-            concepts = (
-                result.get(
-                    "concepts_llm"
-                )
-                or []
-            )
-
-            # ------------------------------------------------
-            # UPDATE CONTENT
-            # ------------------------------------------------
-
-            update_bq(
-                TABLE_CONTENT,
+            batch.append(
                 {
-                    "TOPICS_LLM":
-                        topics,
-
-                    "CONCEPTS_LLM":
-                        concepts,
-                },
-                where={
-                    "ID_CONTENT":
+                    "id_content":
                         id_content,
-                },
+
+                    "topics":
+                        result.get(
+                            "topics_llm"
+                        )
+                        or [],
+
+                    "concepts":
+                        result.get(
+                            "concepts_llm"
+                        )
+                        or [],
+                }
             )
-
-            # ------------------------------------------------
-            # RELATIONS
-            # ------------------------------------------------
-
-            resolve_topics(
-                id_content,
-                topics,
-            )
-
-            resolve_concepts(
-                id_content,
-                concepts,
-            )
-
-            processed += 1
 
             print(
-                "[TOPICS CONCEPTS BACKFILL OK]",
+                "[TOPICS CONCEPTS GENERATED]",
                 id_content,
-                f"processed={processed}",
             )
+
+            # ------------------------------------------------
+            # FLUSH EVERY N CONTENTS
+            # ------------------------------------------------
+
+            if len(batch) >= batch_size:
+
+                flush_batch(
+                    batch,
+                )
+
+                processed += len(
+                    batch
+                )
+
+                batch = []
+
+                print(
+                    "[TOPICS CONCEPTS PROGRESS]",
+                    processed,
+                    "/",
+                    len(rows),
+                )
 
         except Exception as e:
 
@@ -949,10 +1189,24 @@ def backfill_topics_concepts(
             )
 
             print(
-                "[TOPICS CONCEPTS BACKFILL ERROR]",
+                "[TOPICS CONCEPTS ERROR]",
                 id_content,
                 str(e),
             )
+
+    # ========================================================
+    # FINAL BATCH
+    # ========================================================
+
+    if batch:
+
+        flush_batch(
+            batch,
+        )
+
+        processed += len(
+            batch
+        )
 
     # ========================================================
     # REMAINING
@@ -1011,6 +1265,8 @@ def backfill_topics_concepts(
                 f" · {remaining} remaining"
             ),
     }
+
+
 # ============================================================
 # DATASET COPY
 # ============================================================
