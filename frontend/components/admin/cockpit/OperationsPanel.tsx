@@ -249,21 +249,32 @@ const GROUPS: Group[] = [
   },
 
   {
-    title: "Processing",
+  title: "Processing",
 
     operations: [
-
+  
       {
         id: "restart-destock",
-
+  
         label: "Restart Destock",
-
+  
         description:
           "Restart stopped contents.",
-
+  
         icon: RotateCcw,
       },
-
+  
+      {
+        id: "backfill-topics-concepts",
+  
+        label: "Backfill Topics & Concepts",
+  
+        description:
+          "Repair missing Topics and Concepts since August 23, 2026.",
+  
+        icon: RefreshCw,
+      },
+  
     ],
   },
 
