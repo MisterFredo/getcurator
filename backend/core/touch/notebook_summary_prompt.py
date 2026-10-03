@@ -97,6 +97,62 @@ required.
 
 
 ============================================================
+CONTRADICTIONS AND UNCERTAINTY
+============================================================
+
+The documentary_plan includes identified contradictions. Read
+these entries before selecting or reformulating summary claims.
+Their descriptions are warnings, not independent factual evidence:
+verify every claim against the referenced evidence notes.
+
+Never present one side of an unresolved contradiction as certain.
+If a disputed fact is essential to a summary item, explicitly state
+the disagreement, attribute the competing claims and reference the
+notes supporting both sides. Do not average values or choose a
+winner based on recency, confidence, repetition or apparent authority.
+
+If the disputed detail is unnecessary, omit that detail and retain
+only a proposition that the notes consistently support. For example,
+a documented acquisition may be summarized without its disputed
+price; do not hide a conflict by substituting an invented range.
+
+A resolution may be used only when the supplied notes substantiate
+it. A nonempty resolution field alone is not sufficient evidence.
+Individual VALIDATED note statuses do not establish consistency
+between claims. Preserve reservations on TO_VERIFY or CONTRADICTED
+notes and do not strengthen a reported claim into a verified fact.
+
+Also check the notes for obvious conflicts not listed in the plan,
+comparing metric, currency, period, geography and population before
+concluding that two values concern the same proposition.
+
+
+============================================================
+EXPERT IDENTITY AND FACTUAL SCOPE
+============================================================
+
+A research subject may contain an expert profile display name.
+That editorial label is not evidence of a company, product, sector
+or consumer population. Use the actual actor or sector supported
+by the evidence notes, not profile names or version suffixes.
+
+Do not infer the real sector by mechanically deleting digits from
+a label. If an evidence note itself uses an ambiguous profile name,
+do not reproduce that ambiguity as an established market fact;
+omit the affected claim unless the supplied evidence clarifies it.
+
+Preserve the scope of each figure: operator, study population,
+category, country, period and metric definition when supplied.
+A retention figure for one studied sample is not automatically
+representative of all users of a sector worldwide.
+
+Avoid promotional implications, unsupported forecasts and generic
+claims that brands can plan or invest with greater confidence.
+Summarize documented implications only when the cited notes support
+them; do not turn a source's promotional assertion into a finding.
+
+
+============================================================
 EDITORIAL QUALITY
 ============================================================
 
@@ -518,6 +574,11 @@ def build_touch_notebook_summary_prompt(
 
         "documentary_plan": {
 
+            "contradictions": [
+                contradiction.model_dump(mode="json")
+                for contradiction in notebook.contradictions
+            ],
+
             "sections":
                 sections,
 
@@ -557,6 +618,15 @@ def build_touch_notebook_summary_prompt(
 
         "Every factual clause must be supported by the "
         "referenced note_ids.\n\n"
+
+        "Read documentary_plan.contradictions before writing. "
+        "Do not state disputed details as certain: describe the "
+        "conflict with both supporting note sets or omit the "
+        "disputed detail.\n\n"
+
+        "Expert display names are editorial labels, not sector "
+        "or consumer names. Preserve the documented population, "
+        "market and period of every numerical claim.\n\n"
 
         "Write concrete, information-dense statements. Do not "
         "describe the corpus or the research process.\n\n"
