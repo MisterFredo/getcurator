@@ -5,12 +5,18 @@ from typing import Literal
 from pydantic import (
     BaseModel,
     Field,
+    PrivateAttr,
     field_validator,
 )
 
 from core.touch.search_models import (
     TouchConversationMessage,
     TouchEntityReference,
+)
+
+
+from core.touch.expert_context_models import (
+    TouchExpertContext,
 )
 
 
@@ -410,6 +416,15 @@ class TouchGuidedResearchPlan(BaseModel):
 # ============================================================
 
 class TouchGuidedResearchRequest(BaseModel):
+
+    # Optional expert selected by the administrator.
+    expert_id: str | None = None
+
+    # Server-loaded context; never accepted from an API payload
+    # or included automatically in public model serialization.
+    _expert_context: TouchExpertContext | None = PrivateAttr(
+        default=None,
+    )
 
     action: TouchGuidedResearchAction = (
         "ANSWER"
