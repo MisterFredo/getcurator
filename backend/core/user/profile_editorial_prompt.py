@@ -12,7 +12,7 @@ from typing import (
 # VERSION
 # ============================================================
 
-PROFILE_EDITORIAL_TRANSFORMER_VERSION = "1.1"
+PROFILE_EDITORIAL_TRANSFORMER_VERSION = "1.2"
 
 
 # ============================================================
@@ -95,6 +95,54 @@ For every established area, specify what developments qualify, the
 mechanisms to document, applicable actors and markets where supplied,
 and useful evidence. Preserve distinctions between platform performance,
 operating economics and brand outcomes when supported by the source.
+
+EXPERT DEPTH REQUIREMENTS
+Represent each distinct supplied monitoring axis as its own substantive
+area when useful. Do not subsume consequences for brands and retailers
+into a general actor list if the source explicitly requests those axes.
+For each area, explain the relevant operational subdimensions, what can
+change, what makes content relevant and what evidence would establish it.
+Generic labels such as innovation, partnerships, expansion and impact
+are insufficient without describing the mechanism to document.
+Depth is measured by usable qualification criteria, not length or a
+fixed number of sections.
+
+Examples of permissible clarification, only for a supplied axis:
+- consequences for brands: assortment and listing conditions, visibility,
+  promotions, commercial relationships, data access and documented sales
+  effects;
+- consequences for retailers: order preparation, fulfilment and delivery,
+  platform partnerships, integration with existing commerce operations
+  and documented operating economics;
+- impact on e-commerce: purchasing occasions, customer expectations,
+  channel relationships and documented changes in purchase behaviour;
+- technical or digital innovation: the capability introduced, the
+  operational or commercial mechanism affected and documented effects.
+These examples are analytical coverage dimensions, not mandatory topics,
+asserted market facts, newly assigned priorities or recommendations.
+Adapt them to the validated scope; never insert unrelated examples.
+
+If no particular technology is prioritised, preserve broad technology
+coverage under the source's relevance criterion. Do not invent exclusions
+based on absence of a preferred technology. Do not require an innovation
+to concern a listed actor unless the source explicitly closes the actor
+perimeter. Actor lists remain reference actors unless stated exhaustive.
+Do not interpret relevance to e-commerce as requiring a measured direct
+sales effect for every item: operational mechanisms, commercial changes
+and material constraints may qualify when within the validated mandate.
+
+EXPERT OUTPUT REVIEW
+Before returning the profile, verify:
+- every explicit axis has operational treatment, not just a mention;
+- every geography and regional preference follows the validated scope;
+- no new priority ranking, metric commitment or exclusion was invented;
+- absence of preference was not converted into a negative preference;
+- FUTURE MONITORING is omitted unless an explicit prospective interest
+  or future horizon exists; emerging actors and innovation alone do not
+  establish a future-only mandate;
+- expert lenses express documentary relevance rather than an invented
+  individual's job or business objectives;
+- no question, frequency or document plan for a report was added.
 
 For every profile type, define only enduring monitoring requirements.
 Do not define report questions, schedules, reporting periods, document
