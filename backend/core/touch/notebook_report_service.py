@@ -1,5 +1,9 @@
 import json
 
+from datetime import (
+    timezone,
+)
+
 from uuid import (
     uuid4,
 )
@@ -16,6 +20,10 @@ from core.expertise.content_service import (
 from core.touch.notebook_models import (
     TouchCorpusNotebook,
     TouchNotebookRequest,
+)
+
+from core.user.user_service import (
+    get_user_by_id,
 )
 
 from utils.bigquery_utils import (
@@ -206,6 +214,57 @@ def save_touch_report(
     Only one database row is kept for one Touch report.
     """
 
+    # Persist the existing report-design period without
+    # introducing a second period definition in the request.
+    design = request.report_design
+
+    period_start = (
+        design.period_start.replace(
+            tzinfo=timezone.utc,
+        )
+        if design.period_start
+        and design.period_start.tzinfo is None
+        else design.period_start
+    )
+
+    period_end = (
+        design.period_end.replace(
+            tzinfo=timezone.utc,
+        )
+        if design.period_end
+        and design.period_end.tzinfo is None
+        else design.period_end
+    )
+
+    if (
+        period_start is not None
+        and period_end is not None
+        and period_start > period_end
+    ):
+
+        raise ValueError(
+            "Le début de la période ne peut pas "
+            "être postérieur à sa fin."
+        )
+
+    if request.expert_id:
+
+        expert = get_user_by_id(
+            request.expert_id,
+        )
+
+        if (
+            not expert
+            or expert.get(
+                "PROFILE_TYPE"
+            ) != "EXPERT"
+        ):
+
+            raise ValueError(
+                "L'expert associé au rapport "
+                "est introuvable ou invalide."
+            )
+
     sources = (
         _build_sources_snapshot(
             request
@@ -231,6 +290,32 @@ def save_touch_report(
     params = {
         "report_id":
             effective_report_id,
+
+        "expert_id":
+            request.expert_id,
+
+        "period_start":
+            (
+                period_start.isoformat()
+                if period_start is not None
+                else None
+            ),
+
+        "period_end":
+            (
+                period_end.isoformat()
+                if period_end is not None
+                else None
+            ),
+
+        "update_expert":
+            "expert_id" in request.model_fields_set,
+
+        "update_period_start":
+            "period_start" in design.model_fields_set,
+
+        "update_period_end":
+            "period_end" in design.model_fields_set,
 
         "subject":
             request.subject,
@@ -283,6 +368,16 @@ def save_touch_report(
 
             @report_id AS REPORT_ID,
 
+            @expert_id AS EXPERT_ID,
+
+            CAST(
+              @period_start AS TIMESTAMP
+            ) AS PERIOD_START,
+
+            CAST(
+              @period_end AS TIMESTAMP
+            ) AS PERIOD_END,
+
             @subject AS SUBJECT,
 
             @objective AS OBJECTIVE,
@@ -316,6 +411,27 @@ def save_touch_report(
 
             target.CREATED_AT =
               CURRENT_TIMESTAMP(),
+
+            target.EXPERT_ID =
+              IF(
+                @update_expert,
+                source.EXPERT_ID,
+                target.EXPERT_ID
+              ),
+
+            target.PERIOD_START =
+              IF(
+                @update_period_start,
+                source.PERIOD_START,
+                target.PERIOD_START
+              ),
+
+            target.PERIOD_END =
+              IF(
+                @update_period_end,
+                source.PERIOD_END,
+                target.PERIOD_END
+              ),
 
             target.SUBJECT =
               source.SUBJECT,
@@ -351,6 +467,9 @@ def save_touch_report(
             PARENT_REPORT_ID,
             VERSION_NUMBER,
             CREATED_AT,
+            EXPERT_ID,
+            PERIOD_START,
+            PERIOD_END,
             SUBJECT,
             OBJECTIVE,
             OUTPUT_LANGUAGE,
@@ -365,6 +484,9 @@ def save_touch_report(
             NULL,
             1,
             CURRENT_TIMESTAMP(),
+            source.EXPERT_ID,
+            source.PERIOD_START,
+            source.PERIOD_END,
             source.SUBJECT,
             source.OBJECTIVE,
             source.OUTPUT_LANGUAGE,
@@ -408,8 +530,13 @@ def list_touch_reports(
 
           CREATED_AT,
 
-          SUBJECT,
+          EXPERT_ID,
 
+          PERIOD_START,
+
+          PERIOD_END,
+
+          SUBJECT,
           OBJECTIVE,
 
           OUTPUT_LANGUAGE,
@@ -451,6 +578,23 @@ def list_touch_reports(
             "created_at":
                 str(
                     row["CREATED_AT"]
+                ),
+
+            "expert_id":
+                row.get("EXPERT_ID"),
+
+            "period_start":
+                (
+                    row["PERIOD_START"].isoformat()
+                    if row.get("PERIOD_START") is not None
+                    else None
+                ),
+
+            "period_end":
+                (
+                    row["PERIOD_END"].isoformat()
+                    if row.get("PERIOD_END") is not None
+                    else None
                 ),
 
             "subject":
@@ -503,8 +647,13 @@ def get_touch_report(
 
           CREATED_AT,
 
-          SUBJECT,
+          EXPERT_ID,
 
+          PERIOD_START,
+
+          PERIOD_END,
+
+          SUBJECT,
           OBJECTIVE,
 
           OUTPUT_LANGUAGE,
@@ -564,6 +713,23 @@ def get_touch_report(
         "created_at":
             str(
                 row["CREATED_AT"]
+            ),
+
+        "expert_id":
+            row.get("EXPERT_ID"),
+
+        "period_start":
+            (
+                row["PERIOD_START"].isoformat()
+                if row.get("PERIOD_START") is not None
+                else None
+            ),
+
+        "period_end":
+            (
+                row["PERIOD_END"].isoformat()
+                if row.get("PERIOD_END") is not None
+                else None
             ),
 
         "subject":
