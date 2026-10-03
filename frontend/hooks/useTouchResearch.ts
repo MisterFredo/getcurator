@@ -19,6 +19,7 @@ import type {
   TouchEntityReference,
   TouchResearchBrief,
   TouchResearchInterpretation,
+  TouchSearchResult,
 } from "@/types/touch";
 
 /* =========================================================
@@ -73,6 +74,12 @@ export type UseTouchResearchResult = {
     TouchContentCandidate[];
 
   dismissedContentIds: string[];
+
+  restoreResearch: (
+    search: TouchSearchResult,
+    selectedIds: string[],
+    dismissedIds: string[],
+  ) => void;
 
   runSearch: (
     request: TouchResearchRequest
@@ -252,6 +259,22 @@ export function useTouchResearch():
     dismissedContentIds,
     setDismissedContentIds,
   ] = useState<string[]>([]);
+
+  const restoreResearch = useCallback((
+    search: TouchSearchResult,
+    selectedIds: string[],
+    dismissedIds: string[],
+  ) => {
+    setInterpretation(search.interpretation);
+    setCandidates(search.candidates);
+    setEvaluation(search.evaluation);
+    setConsolidation(search.consolidation);
+    setBackendErrors(search.errors ?? []);
+    setConversationHistory([]);
+    setSelectedContentIds([...selectedIds]);
+    setDismissedContentIds([...dismissedIds]);
+    setError(null);
+  }, []);
 
   /* =======================================================
      DERIVED DECISIONS
@@ -700,6 +723,8 @@ export function useTouchResearch():
     selectedCandidates,
 
     dismissedContentIds,
+
+    restoreResearch,
 
     runSearch,
 
