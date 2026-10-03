@@ -8,7 +8,13 @@ from typing import (
 from pydantic import (
     BaseModel,
     Field,
+    PrivateAttr,
     field_validator,
+)
+
+
+from core.touch.expert_context_models import (
+    TouchExpertContext,
 )
 
 
@@ -277,6 +283,15 @@ class TouchResearchInterpretation(
 class TouchResearchBrief(
     StrictTouchSearchModel,
 ):
+
+    # Optional expert selected by the administrator.
+    expert_id: str | None = None
+
+    # Server-loaded context; never accepted from an API payload
+    # or included automatically in public model serialization.
+    _expert_context: TouchExpertContext | None = PrivateAttr(
+        default=None,
+    )
 
     query: str
 
