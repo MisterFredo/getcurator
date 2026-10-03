@@ -222,21 +222,21 @@ def _build_content_payload(
 
         concepts_llm=normalize_llm_list(
             summary.get(
-                "concepts",
+                "concepts_llm",
                 [],
             )
         ),
 
         solutions_llm=normalize_llm_list(
             summary.get(
-                "solutions",
+                "solutions_llm",
                 [],
             )
         ),
 
         topics_llm=normalize_llm_list(
             summary.get(
-                "topics",
+                "topics_llm",
                 [],
             )
         ),
@@ -258,7 +258,6 @@ def _build_content_payload(
         ),
 
     )
-
 # ============================================================
 # RAW STATUS
 # ============================================================
