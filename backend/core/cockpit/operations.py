@@ -19,12 +19,11 @@ from core.knowledge.service import (
 )
 
 from core.content.ai import (
-    generate_topics_concepts,
+    generate_topics,
 )
 
 from core.content.relation_service import (
     resolve_topics,
-    resolve_concepts,
 )
 
 
@@ -786,13 +785,12 @@ def matching_full_dismiss():
     )
 
 # ============================================================
-# BACKFILL TOPICS + CONCEPTS
+# BACKFILL TOPICS
 # TEMPORARY — CONTENTS SINCE 2026-08-23
 # ============================================================
 
-def backfill_topics_concepts(
+def backfill_topics(
     limit: int = 5000,
-    batch_size: int = 50,
 ):
 
     # ========================================================
@@ -820,16 +818,15 @@ def backfill_topics_concepts(
                 OR ARRAY_LENGTH(c.TOPICS_LLM) = 0
             )
 
-            AND (
-                c.CONCEPTS_LLM IS NULL
-                OR ARRAY_LENGTH(c.CONCEPTS_LLM) = 0
-            )
-
         ORDER BY c.CREATED_AT ASC
 
         LIMIT {int(limit)}
         """
     )
+
+    # ========================================================
+    # NOTHING LEFT
+    # ========================================================
 
     if not rows:
 
@@ -839,272 +836,12 @@ def backfill_topics_concepts(
             "failed": 0,
             "remaining": 0,
             "message":
-                "Topics / Concepts backfill complete.",
+                "Topics backfill complete.",
         }
 
     # ========================================================
-    # LOAD REFERENCE MAPS ONCE
+    # PROCESS SEQUENTIALLY
     # ========================================================
-
-    topic_rows = query_bq(
-        f"""
-        SELECT
-            ID_TOPIC,
-            LABEL
-
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOPIC`
-
-        WHERE IS_ACTIVE = TRUE
-        """
-    )
-
-    concept_rows = query_bq(
-        f"""
-        SELECT
-            ID_CONCEPT,
-            LABEL
-
-        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONCEPT`
-
-        WHERE IS_ACTIVE = TRUE
-        """
-    )
-
-    topic_map = {
-        row["LABEL"]: row["ID_TOPIC"]
-        for row in topic_rows
-    }
-
-    concept_map = {
-        row["LABEL"]: row["ID_CONCEPT"]
-        for row in concept_rows
-    }
-
-    # ========================================================
-    # FLUSH BATCH
-    # ========================================================
-
-    def flush_batch(
-        batch,
-    ):
-
-        if not batch:
-            return
-
-        # ----------------------------------------------------
-        # CONTENT ARRAYS
-        # ----------------------------------------------------
-
-        values = []
-
-        for item in batch:
-
-            topics_sql = (
-                "["
-                + ",".join(
-                    "'" + topic.replace(
-                        "'",
-                        "\\'",
-                    ) + "'"
-                    for topic in item["topics"]
-                )
-                + "]"
-            )
-
-            concepts_sql = (
-                "["
-                + ",".join(
-                    "'" + concept.replace(
-                        "'",
-                        "\\'",
-                    ) + "'"
-                    for concept in item["concepts"]
-                )
-                + "]"
-            )
-
-            values.append(
-                f"""
-                STRUCT(
-                    '{item["id_content"]}'
-                        AS ID_CONTENT,
-                    {topics_sql}
-                        AS TOPICS_LLM,
-                    {concepts_sql}
-                        AS CONCEPTS_LLM
-                )
-                """
-            )
-
-        query_bq(
-            f"""
-            MERGE `{TABLE_CONTENT}` target
-
-            USING (
-                SELECT *
-                FROM UNNEST([
-                    {",".join(values)}
-                ])
-            ) source
-
-            ON
-                target.ID_CONTENT =
-                source.ID_CONTENT
-
-            WHEN MATCHED THEN
-                UPDATE SET
-                    TOPICS_LLM =
-                        source.TOPICS_LLM,
-                    CONCEPTS_LLM =
-                        source.CONCEPTS_LLM
-            """
-        )
-
-        # ----------------------------------------------------
-        # TOPIC RELATIONS
-        # ----------------------------------------------------
-
-        topic_relations = []
-
-        for item in batch:
-
-            for label in item["topics"]:
-
-                id_topic = topic_map.get(
-                    label
-                )
-
-                if not id_topic:
-                    continue
-
-                topic_relations.append(
-                    f"""
-                    STRUCT(
-                        '{item["id_content"]}'
-                            AS ID_CONTENT,
-                        '{id_topic}'
-                            AS ID_TOPIC
-                    )
-                    """
-                )
-
-        if topic_relations:
-
-            query_bq(
-                f"""
-                INSERT INTO
-                    `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC`
-                    (
-                        ID_CONTENT,
-                        ID_TOPIC
-                    )
-
-                SELECT
-                    source.ID_CONTENT,
-                    source.ID_TOPIC
-
-                FROM UNNEST([
-                    {",".join(topic_relations)}
-                ]) source
-
-                WHERE NOT EXISTS (
-
-                    SELECT 1
-
-                    FROM
-                        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_TOPIC`
-                        existing
-
-                    WHERE
-                        existing.ID_CONTENT =
-                        source.ID_CONTENT
-
-                    AND
-                        existing.ID_TOPIC =
-                        source.ID_TOPIC
-                )
-                """
-            )
-
-        # ----------------------------------------------------
-        # CONCEPT RELATIONS
-        # ----------------------------------------------------
-
-        concept_relations = []
-
-        for item in batch:
-
-            for label in item[
-                "concepts"
-            ]:
-
-                id_concept = concept_map.get(
-                    label
-                )
-
-                if not id_concept:
-                    continue
-
-                concept_relations.append(
-                    f"""
-                    STRUCT(
-                        '{item["id_content"]}'
-                            AS ID_CONTENT,
-                        '{id_concept}'
-                            AS ID_CONCEPT
-                    )
-                    """
-                )
-
-        if concept_relations:
-
-            query_bq(
-                f"""
-                INSERT INTO
-                    `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT`
-                    (
-                        ID_CONTENT,
-                        ID_CONCEPT
-                    )
-
-                SELECT
-                    source.ID_CONTENT,
-                    source.ID_CONCEPT
-
-                FROM UNNEST([
-                    {",".join(concept_relations)}
-                ]) source
-
-                WHERE NOT EXISTS (
-
-                    SELECT 1
-
-                    FROM
-                        `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_CONCEPT`
-                        existing
-
-                    WHERE
-                        existing.ID_CONTENT =
-                        source.ID_CONTENT
-
-                    AND
-                        existing.ID_CONCEPT =
-                        source.ID_CONCEPT
-                )
-                """
-            )
-
-        print(
-            "[TOPICS CONCEPTS FLUSH]",
-            len(batch),
-            "contents",
-        )
-
-    # ========================================================
-    # GENERATE
-    # ========================================================
-
-    batch = []
 
     processed = 0
     failed = 0
@@ -1118,7 +855,16 @@ def backfill_topics_concepts(
 
         try:
 
-            result = generate_topics_concepts(
+            print(
+                "[TOPICS BACKFILL]",
+                id_content,
+            )
+
+            # =================================================
+            # LLM — TOPICS ONLY
+            # =================================================
+
+            topics = generate_topics(
                 source_id=row.get(
                     "SOURCE_ID"
                 ),
@@ -1127,52 +873,38 @@ def backfill_topics_concepts(
                 ) or "",
             )
 
-            batch.append(
+            # =================================================
+            # UPDATE CONTENT
+            # =================================================
+
+            update_bq(
+                TABLE_CONTENT,
                 {
-                    "id_content":
+                    "TOPICS_LLM":
+                        topics,
+                },
+                where={
+                    "ID_CONTENT":
                         id_content,
-
-                    "topics":
-                        result.get(
-                            "topics_llm"
-                        )
-                        or [],
-
-                    "concepts":
-                        result.get(
-                            "concepts_llm"
-                        )
-                        or [],
-                }
+                },
             )
+
+            # =================================================
+            # MATERIALIZE TOPIC RELATIONS
+            # =================================================
+
+            resolve_topics(
+                id_content,
+                topics,
+            )
+
+            processed += 1
 
             print(
-                "[TOPICS CONCEPTS GENERATED]",
+                "[TOPICS BACKFILL OK]",
                 id_content,
+                f"processed={processed}",
             )
-
-            # ------------------------------------------------
-            # FLUSH EVERY N CONTENTS
-            # ------------------------------------------------
-
-            if len(batch) >= batch_size:
-
-                flush_batch(
-                    batch,
-                )
-
-                processed += len(
-                    batch
-                )
-
-                batch = []
-
-                print(
-                    "[TOPICS CONCEPTS PROGRESS]",
-                    processed,
-                    "/",
-                    len(rows),
-                )
 
         except Exception as e:
 
@@ -1189,24 +921,10 @@ def backfill_topics_concepts(
             )
 
             print(
-                "[TOPICS CONCEPTS ERROR]",
+                "[TOPICS BACKFILL ERROR]",
                 id_content,
                 str(e),
             )
-
-    # ========================================================
-    # FINAL BATCH
-    # ========================================================
-
-    if batch:
-
-        flush_batch(
-            batch,
-        )
-
-        processed += len(
-            batch
-        )
 
     # ========================================================
     # REMAINING
@@ -1226,11 +944,6 @@ def backfill_topics_concepts(
                 TOPICS_LLM IS NULL
                 OR ARRAY_LENGTH(TOPICS_LLM) = 0
             )
-
-            AND (
-                CONCEPTS_LLM IS NULL
-                OR ARRAY_LENGTH(CONCEPTS_LLM) = 0
-            )
         """
     )
 
@@ -1239,6 +952,10 @@ def backfill_topics_concepts(
         if remaining_rows
         else 0
     )
+
+    # ========================================================
+    # RESULT
+    # ========================================================
 
     return {
         "status":
@@ -1262,7 +979,7 @@ def backfill_topics_concepts(
             (
                 f"{processed} contents backfilled"
                 f" · {failed} failed"
-                f" · {remaining} remaining"
+                f" · {remaining} Topics remaining"
             ),
     }
 
