@@ -25,6 +25,22 @@ const DIGEST_OPERATION_ROUTES:
   };
 
 
+/* =========================================================
+   TOUCH OPERATIONS
+========================================================= */
+
+const TOUCH_OPERATION_MONTHS:
+  Record<string, number> = {
+
+    "initialize-touch-histories":
+      3,
+
+    "prepare-latest-touch-editions":
+      1,
+
+  };
+
+
 /* ========================================================= */
 
 export function useCockpitOperations() {
@@ -65,20 +81,34 @@ export function useCockpitOperations() {
 
       setError(null);
 
+      const touchMonths =
+        TOUCH_OPERATION_MONTHS[
+          operation
+        ];
+
       const endpoint = (
 
-        DIGEST_OPERATION_ROUTES[
-          operation
-        ]
+        touchMonths
+          ? "/touch/editions/prepare"
+          : (
+              DIGEST_OPERATION_ROUTES[
+                operation
+              ]
 
-        || `/cockpit/operations/${operation}`
+              || `/cockpit/operations/${operation}`
+            )
 
       );
 
       const res =
         await api.post(
           endpoint,
-          {},
+          touchMonths
+            ? {
+                months_count:
+                  touchMonths,
+              }
+            : {},
         );
 
       setSuccess(
@@ -155,6 +185,39 @@ function buildSuccessMessage(
   operation: string,
   result: any,
 ): string {
+
+  if (
+    TOUCH_OPERATION_MONTHS[
+      operation
+    ]
+  ) {
+
+    const preparation =
+      result.preparation ?? {};
+
+    const summary = [
+
+      `${preparation.processed_count ?? 0} experts processed`,
+
+      `${preparation.prepared_count ?? 0} editions ready for review`,
+
+      `${preparation.skipped_count ?? 0} existing editions preserved`,
+
+      `${preparation.failed_count ?? 0} failed`,
+
+    ].join(" · ");
+
+    return (
+
+      preparation.status === "failed"
+        ? "Preparation failed — "
+        : preparation.status === "partial"
+          ? "Preparation partially completed — "
+          : ""
+
+    ) + summary;
+
+  }
 
   if (
     operation
