@@ -872,6 +872,21 @@ def backfill_topics(
                     "RAW_TEXT"
                 ) or "",
             )
+            
+            if not topics:
+                raise ValueError(
+                    "Aucun Topic retourné par le LLM"
+                )
+            
+            update_bq(
+                TABLE_CONTENT,
+                {
+                    "TOPICS_LLM": topics,
+                },
+                where={
+                    "ID_CONTENT": id_content,
+                },
+            )
 
             # =================================================
             # UPDATE CONTENT
