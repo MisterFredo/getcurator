@@ -73,6 +73,8 @@ export type TouchConversationMessage = {
 ========================================================= */
 
 export type TouchResearchBrief = {
+  expert_id?: string | null;
+
   query: string;
   output_language: string;
 
@@ -489,6 +491,8 @@ export type TouchGuidedResearchPlan = {
 ========================================================= */
 
 export type TouchGuidedResearchRequest = {
+  expert_id?: string | null;
+
   action:
     TouchGuidedResearchAction;
 
@@ -1231,5 +1235,3 @@ export type TouchBriefResponse = {
   brief_generation:
     TouchBriefOutcome;
 };
-
-
