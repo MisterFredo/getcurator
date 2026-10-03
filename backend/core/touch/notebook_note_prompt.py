@@ -112,6 +112,56 @@ understand separately.
 
 
 ============================================================
+LOSSLESS REPRESENTATIVE AND SOURCE SUPPORT
+============================================================
+
+The backend keeps only the representative's original statement.
+It does not concatenate or summarize the other statements.
+It attaches every member's source_content_ids to that statement.
+
+A group is therefore valid only when:
+
+- the representative preserves every material claim in every member;
+- every member expresses the same proposition as the representative;
+- each member's sources support the representative's material claims.
+
+Do not group a broad announcement with a more detailed statement
+merely because the detailed statement could summarize both.
+For example, a partnership announcement and a statement naming
+its price, delivery time, geography or number of stores must remain
+separate unless both notes support those same material details.
+
+Never combine complementary statements into one group. There is
+no rewritten combined statement downstream to preserve their facts.
+
+Metadata unions do not preserve a fact absent from the retained
+statement. A shared actor or event is insufficient for grouping.
+
+If equivalence or source support is uncertain, keep separate groups.
+Do not select or discard notes based on their relevance to the
+research subject, desired report length or editorial prominence.
+This operation only removes genuine duplicates.
+
+
+============================================================
+CONFLICTING CLAIMS
+============================================================
+
+Contradictory claims are not duplicates, even when they describe
+the same event. Keep each claim and its own sources in a separate
+group. Never choose the apparently more credible or recent claim,
+reconcile values, average them, or silently discard one here.
+
+For example, claims that the same acquisition cost 125 million
+and 300 million must remain separate. They may need verification
+in later stages; deduplication must preserve both claims.
+
+Claims about different retailers, platforms, countries, categories,
+periods or delivery promises remain separate when those distinctions
+are material, even if the same parent company is involved.
+
+
+============================================================
 STRICT PRESERVATION
 ============================================================
 
@@ -218,7 +268,8 @@ Conversely, do not keep notes separate merely because they:
 When uncertain, ask whether retaining both notes preserves two
 independently useful documentary facts.
 
-If not, group them.
+If not, group them only after verifying full proposition equivalence
+and source support for the retained representative.
 
 
 ============================================================
@@ -422,7 +473,15 @@ def build_touch_notebook_note_deduplication_prompt(
         "Merge cross-source paraphrases when retaining both "
         "would preserve no additional material fact.\n\n"
 
-        "Keep complementary propositions separate.\n\n"
+        "Keep complementary and contradictory propositions separate.\n\n"
+
+        "Only the representative statement survives: every grouped "
+        "note must support that full statement without losing a "
+        "material fact or broadening source attribution.\n\n"
+
+        "Do not perform relevance selection or discard distinct facts "
+        "to shorten the report. When equivalence is uncertain, keep "
+        "separate groups.\n\n"
 
         "Distinguish participation from eligibility, an "
         "announcement from its mechanism, and a result from "
