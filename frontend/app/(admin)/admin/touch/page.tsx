@@ -52,6 +52,7 @@ import type {
   TouchNotebookReportDesign,
   TouchResearchInterpretation,
   TouchResearchMode,
+  TouchSearchResult,
 } from "@/types/touch";
 
 
@@ -549,6 +550,12 @@ export default function TouchPage() {
      FORM
   ======================================================= */
 
+  const [editionId, setEditionId] = useState<string | null>(null);
+  const [editionLoading, setEditionLoading] = useState(false);
+  const [editionError, setEditionError] = useState<string | null>(null);
+  const [corpusSaving, setCorpusSaving] = useState(false);
+  const [corpusSaved, setCorpusSaved] = useState(false);
+
   const [
     selectedExpertId,
     setSelectedExpertId,
@@ -659,6 +666,8 @@ export default function TouchPage() {
 
     dismissedContentIds,
 
+    restoreResearch,
+
     runSearch,
 
     toggleContent,
@@ -687,6 +696,90 @@ export default function TouchPage() {
 
   const notebookReady =
     notebook !== null;
+
+  /* =======================================================
+     RESTORE A MONTHLY EDITION
+  ======================================================= */
+
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get("edition_id");
+    if (!requestedId) return;
+    let active = true;
+    setEditionLoading(true);
+    async function loadEdition() {
+      try {
+        const response = await api.get(
+          `/touch/editions/${encodeURIComponent(requestedId!)}`,
+        );
+        const edition: {
+          edition_id: string;
+          expert_id: string;
+          subject: string;
+          period_start: string;
+          period_end: string;
+          output_language: string;
+          status: string;
+          search: TouchSearchResult | null;
+          selected_content_ids: string[];
+          dismissed_content_ids: string[];
+          report_id: string | null;
+        } = response.edition;
+        if (!active) return;
+        if (!edition.search || edition.status !== "TO_REVIEW") {
+          throw new Error("This edition does not have a corpus ready for review.");
+        }
+        setEditionId(edition.edition_id);
+        setSelectedExpertId(edition.expert_id);
+        setQuery(edition.subject);
+        setReportLanguage(edition.output_language === "en" ? "en" : "fr");
+        setPeriodStart(edition.period_start.slice(0, 10));
+        setPeriodEnd(edition.period_end.slice(0, 10));
+        setResearchMode("DIRECT");
+        setReportId(edition.report_id);
+        restoreResearch(
+          edition.search,
+          edition.selected_content_ids,
+          edition.dismissed_content_ids,
+        );
+        setCurrentStep("CORPUS");
+      } catch (exception) {
+        if (active) setEditionError(
+          exception instanceof Error ? exception.message : "Unable to open edition.",
+        );
+      } finally {
+        if (active) setEditionLoading(false);
+      }
+    }
+    void loadEdition();
+    return () => { active = false; };
+  }, [restoreResearch]);
+
+  async function saveEditionCorpus() {
+    if (!editionId || corpusSaving) return;
+    setCorpusSaving(true);
+    setCorpusSaved(false);
+    setEditionError(null);
+    try {
+      await api.put(
+        `/touch/editions/${encodeURIComponent(editionId)}/corpus`,
+        {
+          selected_content_ids: selectedContentIds,
+          dismissed_content_ids: dismissedContentIds,
+        },
+      );
+      setCorpusSaved(true);
+    } catch (exception) {
+      setEditionError(
+        exception instanceof Error ? exception.message : "Unable to save corpus.",
+      );
+    } finally {
+      setCorpusSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    setCorpusSaved(false);
+  }, [selectedContentIds, dismissedContentIds]);
 
   /* =======================================================
      LOAD LOOKUPS
@@ -1267,6 +1360,11 @@ export default function TouchPage() {
   ======================================================= */
 
   function handleReset() {
+    setEditionId(null);
+    setEditionError(null);
+    setCorpusSaved(false);
+    window.history.replaceState(null, "", window.location.pathname);
+
 
     resetResearch();
   
@@ -1360,6 +1458,34 @@ export default function TouchPage() {
       </div>
 
       {/* ================================================= */}
+      {editionLoading && (
+        <p className="text-sm text-blue-700">Opening the saved corpus…</p>
+      )}
+      {editionError && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {editionError}
+        </p>
+      )}
+      {editionId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div>
+            <p className="text-sm font-medium text-blue-900">Monthly edition — corpus review</p>
+            <p className="mt-1 text-xs text-blue-700">
+              Adjust the selection, save your choices, then continue to the plan and notebook.
+            </p>
+            {corpusSaved && <p className="mt-1 text-xs text-green-700">Corpus choices saved.</p>}
+          </div>
+          <button
+            type="button"
+            disabled={corpusSaving || loading}
+            onClick={() => void saveEditionCorpus()}
+            className="rounded-lg bg-ratecard-blue px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {corpusSaving ? "Saving…" : "Save corpus choices"}
+          </button>
+        </div>
+      )}
+
       {/* WORKFLOW */}
       {/* ================================================= */}
 
@@ -2011,6 +2137,8 @@ export default function TouchPage() {
       {currentStep === "NOTEBOOK" && (
 
         <TouchNotebookBuilder
+          editionId={editionId}
+          dismissedContentIds={dismissedContentIds}
           expertId={selectedExpertId || null}
           subject={
             interpretation?.subject
