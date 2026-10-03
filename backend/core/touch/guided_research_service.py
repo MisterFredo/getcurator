@@ -21,6 +21,11 @@ from core.touch.search_models import (
     TouchEntityReference,
 )
 
+from core.touch.expert_context_service import (
+    prepare_touch_expert_request,
+    get_touch_expert_entities,
+)
+
 from utils.llm import (
     run_llm_json,
 )
@@ -243,7 +248,10 @@ def _validate_resolved_entities(
 
     supplied_signature = (
         _build_entity_signature(
-            supplied_entities
+            [
+                *supplied_entities,
+                *get_touch_expert_entities(request),
+            ]
         )
     )
 
@@ -509,6 +517,22 @@ def _normalize_plan(
         )
     )
 
+    # Keep every administrator anchor and only the expert anchors
+    # actually selected by the validated plan.
+    retained_entities = list(supplied_entities)
+
+    retained_keys = {
+        (entity.entity_type, entity.entity_id)
+        for entity in retained_entities
+    }
+
+    for entity in plan.resolved_entities:
+        key = (entity.entity_type, entity.entity_id)
+
+        if key not in retained_keys:
+            retained_keys.add(key)
+            retained_entities.append(entity)
+
     normalized_mentions = (
         _normalize_entity_mentions(
 
@@ -517,7 +541,7 @@ def _normalize_plan(
             ),
 
             supplied_entities=(
-                supplied_entities
+                retained_entities
             ),
 
         )
@@ -544,10 +568,10 @@ def _normalize_plan(
                     else plan.period_end
                 ),
 
-                # Les identifiants fiables proviennent
-                # exclusivement de la requête.
+                # Administrator anchors plus selected, validated
+                # anchors from the server-loaded expert profile.
                 "resolved_entities":
-                    supplied_entities,
+                    retained_entities,
 
                 "entity_mentions":
                     normalized_mentions,
@@ -786,8 +810,10 @@ Return a provisional plan even when phase is INTERVIEW.
 Return every supplied structured entity exactly as supplied in
 plan.resolved_entities.
 
-Never invent, remove, rename or modify an entity_id or an
-entity_label.
+Preserve every administrator-supplied structured entity.
+You may also select relevant entities from available_expert_entities.
+Reproduce those expert references exactly; they are optional anchors.
+Never invent, rename or modify an entity_id or an entity_label.
 
 When phase is INTERVIEW, return between one and three useful
 questions and set ready_for_search to false.
@@ -994,6 +1020,13 @@ def continue_touch_guided_research(
             "Un message est requis pour "
             "poursuivre la recherche guidée"
         )
+
+    # Load authoritative context before the LLM retry loop.
+    # Invalid expert selection must be reported, not silently
+    # converted into an interview fallback.
+    request = prepare_touch_expert_request(
+        request=request,
+    )
 
     original_prompt = (
         build_touch_guided_research_prompt(
