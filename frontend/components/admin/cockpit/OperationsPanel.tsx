@@ -272,17 +272,6 @@ const GROUPS: Group[] = [
         icon: RotateCcw,
       },
   
-      {
-        id: "backfill-topics-concepts",
-  
-        label: "Backfill Topics & Concepts",
-  
-        description:
-          "Repair missing Topics and Concepts since August 23, 2026.",
-  
-        icon: RefreshCw,
-      },
-  
     ],
   },
 
@@ -472,6 +461,81 @@ export default function OperationsPanel() {
           </div>
 
         ))}
+
+        {/* =====================================================
+            TEMPORARY — TOPICS / CONCEPTS BACKFILL
+        ===================================================== */}
+        
+        <div className="border-t pt-6">
+        
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-4">
+        
+            <div className="flex items-start gap-3">
+        
+              <RefreshCw
+                size={18}
+                className="mt-1 text-amber-600"
+              />
+        
+              <div>
+        
+                <div className="font-medium">
+        
+                  Backfill Topics & Concepts
+        
+                </div>
+        
+                <div className="text-sm text-gray-500">
+        
+                  Temporary repair for contents since August 23, 2026.
+        
+                </div>
+        
+                {backfillMessage && (
+        
+                  <div className="mt-2 text-sm font-medium">
+        
+                    {backfillMessage}
+        
+                  </div>
+        
+                )}
+        
+              </div>
+        
+            </div>
+        
+            <button
+              type="button"
+              disabled={backfillLoading}
+              onClick={() => {
+                void runTopicsConceptsBackfill();
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-white disabled:opacity-50"
+            >
+        
+              {backfillLoading ? (
+        
+                <RefreshCw
+                  size={16}
+                  className="animate-spin"
+                />
+        
+              ) : (
+        
+                <Play size={16} />
+        
+              )}
+        
+              {backfillLoading
+                ? "Running..."
+                : "Run Backfill"}
+        
+            </button>
+
+          </div>
+        
+        </div>
 
       </div>
 
