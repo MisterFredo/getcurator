@@ -1427,21 +1427,11 @@ def list_expert_users(
         expert_id
     )
 
-def _require_profile_admin(request: Request):
-    actor_id = get_user_id_from_request(request)
-    actor = get_user_by_id(actor_id) if actor_id else None
-    if not actor:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    if str(actor.get("ROLE") or "").lower() != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-
 @router.post("/profile/admin/editorial/update")
 def update_admin_editorial_profile(
     request: Request,
     payload: UserEditorialProfilePayload,
 ):
-    _require_profile_admin(request)
     user = get_user_by_id(payload.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1473,7 +1463,6 @@ def propose_admin_editorial_profile(
     request: Request,
     payload: UserProfileRegeneratePayload,
 ):
-    _require_profile_admin(request)
     if not payload.user_id:
         raise HTTPException(status_code=400, detail="user_id manquant")
     user = get_user_by_id(payload.user_id)
