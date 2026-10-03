@@ -1,7 +1,13 @@
 import json
 
+from typing import (
+    get_args,
+)
+
 from core.touch.search_models import (
     TouchCandidateEvaluationResult,
+    TouchConsolidationResult,
+    TouchCoverageDimension,
     TouchContentCandidate,
     TouchResearchBrief,
     TouchResearchInterpretation,
@@ -12,7 +18,11 @@ from core.touch.search_models import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_CONSOLIDATION_VERSION = "1.1"
+TOUCH_CONSOLIDATION_VERSION = "1.2"
+
+TOUCH_CONSOLIDATION_ALLOWED_DIMENSIONS = tuple(
+    get_args(TouchCoverageDimension)
+)
 
 
 # ============================================================
@@ -241,7 +251,7 @@ that an axis is covered.
 CROSS-CONTEXT READINESS
 ============================================================
 
-When research_type is CROSS_CONTEXT_ANALYSIS, the corpus must
+When research_type is CROSS_SECTOR, the corpus must
 document both:
 
 - the source or core-subject side;
@@ -299,8 +309,23 @@ mentions it superficially.
 MISSING DIMENSIONS
 ============================================================
 
-missing_dimensions must contain only dimensions that would be
-materially useful for this specific research objective.
+Both covered_dimensions and missing_dimensions must use only
+the exact values in allowed_coverage_dimensions supplied in INPUT.
+
+missing_dimensions uses the same closed enumeration as
+covered_dimensions. Never invent, translate or rename enum values.
+
+For example, USAGES, INNOVATIONS and RETAIL_MEDIA are not valid
+coverage dimensions. Describe such thematic gaps in gaps and in
+the relevant axis_coverage item. Do not force an unsupported mapping
+to another dimension merely to satisfy the schema.
+
+Research axes describe the subject-specific perimeter.
+Coverage dimensions describe the types of evidence available.
+These are different concepts.
+
+missing_dimensions must contain only allowed dimensions that would
+be materially useful for this specific research objective.
 
 Do not automatically list every dimension that is not covered.
 
@@ -663,6 +688,15 @@ def build_touch_consolidation_prompt(
 
         },
 
+        "allowed_coverage_dimensions":
+            list(
+                TOUCH_CONSOLIDATION_ALLOWED_DIMENSIONS
+            ),
+
+        "required_json_schema": (
+            TouchConsolidationResult.model_json_schema()
+        ),
+
         "evaluated_contents": (
 
             _build_consolidation_items(
@@ -713,6 +747,12 @@ def build_touch_consolidation_prompt(
         "what still needs to be researched.\n\n"
 
         "Do not add external knowledge.\n\n"
+
+        "Use only allowed_coverage_dimensions in both "
+        "covered_dimensions and missing_dimensions. "
+        "Describe thematic gaps in gaps and axis_coverage.\n\n"
+
+        "Match required_json_schema exactly.\n\n"
 
         "Return only the required JSON object.\n\n"
 
