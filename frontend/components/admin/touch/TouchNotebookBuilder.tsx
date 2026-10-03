@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import { api } from "@/lib/api";
+
 import {
   buildTouchNotebook,
   saveTouchReport,
@@ -30,6 +32,8 @@ type Props = {
   subject: string;
   objective: string;
   expertId?: string | null;
+  editionId?: string | null;
+  dismissedContentIds?: string[];
   reportDesign:
     TouchNotebookReportDesign;
 
@@ -153,6 +157,8 @@ export default function TouchNotebookBuilder({
   subject,
   objective,
   expertId = null,
+  editionId = null,
+  dismissedContentIds = [],
   reportDesign,
   selectedContentIds,
   decisionsByContentId,
@@ -377,6 +383,16 @@ export default function TouchNotebookBuilder({
       lastRequestRef.current =
         notebookRequest;
 
+      if (editionId) {
+        await api.put(
+          `/touch/editions/${encodeURIComponent(editionId)}/corpus`,
+          {
+            selected_content_ids: notebookRequest.content_ids,
+            dismissed_content_ids: [...dismissedContentIds],
+          },
+        );
+      }
+
       const outcome =
         await buildTouchNotebook(
           notebookRequest,
@@ -415,6 +431,22 @@ export default function TouchNotebookBuilder({
             outcome.report_id,
         };
 
+      }
+
+      if (editionId && outcome.report_id) {
+        try {
+          await api.post(
+            `/touch/editions/${encodeURIComponent(editionId)}/report`,
+            { report_id: outcome.report_id },
+          );
+        } catch (exception) {
+          setPersistenceError(
+            exception instanceof Error
+              ? exception.message
+              : "Report saved, but edition linkage failed.",
+          );
+          return;
+        }
       }
 
       setPersistenceError(
@@ -523,6 +555,13 @@ export default function TouchNotebookBuilder({
         report_id:
           savedReportId,
       };
+
+      if (editionId) {
+        await api.post(
+          `/touch/editions/${encodeURIComponent(editionId)}/report`,
+          { report_id: savedReportId },
+        );
+      }
 
     } catch (exception) {
 
