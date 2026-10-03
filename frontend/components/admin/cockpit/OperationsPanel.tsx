@@ -1,6 +1,14 @@
 "use client";
 
 import {
+  api,
+} from "@/lib/api";
+
+import {
+  useState,
+} from "react";
+
+import {
   Play,
   RefreshCw,
   Database,
@@ -291,6 +299,48 @@ export default function OperationsPanel() {
     error,
     run,
   } = useCockpitOperations();
+
+  const [
+    backfillLoading,
+    setBackfillLoading,
+  ] = useState(false);
+  
+  const [
+    backfillMessage,
+    setBackfillMessage,
+  ] = useState<string | null>(null);
+  
+  async function runTopicsConceptsBackfill() {
+  
+    try {
+  
+      setBackfillLoading(true);
+      setBackfillMessage(null);
+  
+      const res = await api.post(
+        "/cockpit/operations/backfill-topics-concepts",
+        {},
+      );
+  
+      setBackfillMessage(
+        res?.message
+        || "Backfill completed.",
+      );
+  
+    } catch (e: any) {
+  
+      setBackfillMessage(
+        e?.message
+        || "Backfill failed.",
+      );
+  
+    } finally {
+  
+      setBackfillLoading(false);
+  
+    }
+  
+  }
 
 
   return (
