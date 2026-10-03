@@ -166,3 +166,94 @@ def record_touch_edition_error(
         """,
         {"edition_id": edition_id, "error": error[:4000]},
     )
+
+
+# ============================================================
+# LIST EDITIONS AND SAVE MANUAL CORPUS
+# ============================================================
+
+def list_touch_editions(
+    expert_id: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    where = "WHERE EXPERT_ID = @expert_id" if expert_id else ""
+    params = {"limit": min(max(limit, 1), 200)}
+    if expert_id:
+        params["expert_id"] = expert_id
+
+    rows = query_bq(
+        f"""
+        SELECT
+          EDITION_ID, EXPERT_ID, PERIOD_START, PERIOD_END,
+          STATUS, SUBJECT, OUTPUT_LANGUAGE,
+          REPORT_ID, ERROR, CREATED_AT, UPDATED_AT,
+          ARRAY_LENGTH(SELECTED_CONTENT_IDS) AS SELECTED_COUNT
+        FROM `{TABLE_TOUCH_EDITION}`
+        {where}
+        ORDER BY PERIOD_START DESC, CREATED_AT DESC
+        LIMIT @limit
+        """,
+        params,
+    ) or []
+
+    return [
+        {
+            "edition_id": row["EDITION_ID"],
+            "expert_id": row["EXPERT_ID"],
+            "period_start": row["PERIOD_START"].isoformat(),
+            "period_end": row["PERIOD_END"].isoformat(),
+            "status": row["STATUS"],
+            "subject": row["SUBJECT"],
+            "output_language": row["OUTPUT_LANGUAGE"],
+            "report_id": row.get("REPORT_ID"),
+            "error": row.get("ERROR"),
+            "created_at": row["CREATED_AT"].isoformat(),
+            "updated_at": row["UPDATED_AT"].isoformat(),
+            "selected_count": row["SELECTED_COUNT"],
+        }
+        for row in rows
+    ]
+
+
+def update_touch_edition_corpus(
+    edition_id: str,
+    selected_content_ids: list[str],
+    dismissed_content_ids: list[str],
+) -> dict | None:
+    edition = get_touch_edition(edition_id)
+    if edition is None:
+        return None
+    if edition["status"] != "TO_REVIEW":
+        raise ValueError(
+            "Seule une édition à réviser peut modifier son corpus."
+        )
+
+    selected = list(dict.fromkeys(selected_content_ids))
+    dismissed = list(dict.fromkeys(dismissed_content_ids))
+    if set(selected) & set(dismissed):
+        raise ValueError("Un contenu ne peut pas être sélectionné et écarté.")
+
+    known_ids = {
+        candidate["content_id"]
+        for candidate in (edition.get("search") or {}).get("candidates", [])
+    }
+    if (set(selected) | set(dismissed)) - known_ids:
+        raise ValueError("Le corpus contient des identifiants inconnus.")
+
+    query_bq(
+        f"""
+        UPDATE `{TABLE_TOUCH_EDITION}`
+        SET
+          SELECTED_CONTENT_IDS = JSON_VALUE_ARRAY(@selected_json),
+          DISMISSED_CONTENT_IDS = JSON_VALUE_ARRAY(@dismissed_json),
+          UPDATED_AT = CURRENT_TIMESTAMP()
+        WHERE EDITION_ID = @edition_id
+          AND STATUS = 'TO_REVIEW'
+        """,
+        {
+            "edition_id": edition_id,
+            "selected_json": json.dumps(selected),
+            "dismissed_json": json.dumps(dismissed),
+        },
+    )
+    return get_touch_edition(edition_id)
