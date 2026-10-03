@@ -17,7 +17,7 @@ You receive:
 
 1. A research request.
 2. A report design defining the expected analytical framing.
-3. A definitive collection of consolidated evidence notes..
+3. A definitive collection of consolidated evidence notes.
 
 Your task is to organize these documentary notes into a clear,
 concise and professional notebook structure.
@@ -150,6 +150,69 @@ ABSOLUTE RULES
 25. Do not return Markdown.
 
 26. Do not include comments or text outside the JSON object.
+
+============================================================
+COVERAGE OF THE ADMIN-SELECTED CORPUS
+============================================================
+
+The administrator has selected the source corpus. Organization
+must preserve its distinct, relevant documentary contributions.
+It is not a second ranking stage based on editorial prominence.
+
+Before excluding a note, assess its contribution to the complete
+subject, objective and supported dimensions, not only to the
+most prominent actors or the initial section titles.
+
+A relevant launch, partnership, category extension, local example,
+operating mechanism or contradictory claim must remain accessible
+through a section or through an event referenced by a section.
+Being present only in the input notes, timeline or contradiction
+list is not a substitute for placement in the documentary plan.
+
+Do not exclude a relevant note because:
+
+- its actor appears only once;
+- its market or category is less prominent;
+- it documents an emerging practice rather than a large player;
+- the initial plan has no suitable section;
+- another event has more sources;
+- a shorter report would be easier to organize.
+
+Adapt section boundaries to preserve these contributions. Truly
+unrelated notes may still be excluded under the absolute rules.
+Do not force every selected source into a citation when it adds
+no distinct relevant contribution.
+
+Each included note must have one primary placement. Related
+notes may share an event, but distinct partnerships involving
+different platforms must not be presented as one announcement.
+Deduplication has already run: do not suppress complementary facts
+or contradictory claims as though they were duplicates.
+
+Before returning, check each supplied note_id for either a valid
+primary placement or a genuinely unrelated documentary scope.
+Check that every event used for placement belongs to one section.
+Do not output this internal check or add fields to the schema.
+
+
+============================================================
+EXPERT LABELS AND DOCUMENTED ACTORS
+============================================================
+
+A research subject may contain an expert profile's display name.
+That name is an editorial label, not evidence of a company,
+product, market, consumer population or sector name.
+
+Do not introduce profile labels or their version suffixes into
+organizational fields as names of consumers or market actors.
+Use sector and actor names supported by the notes. Do not guess
+a sector by mechanically stripping digits from the subject.
+
+The note statements remain immutable. If a supplied statement
+itself confuses a profile label with a documented actor or market,
+flag the identification uncertainty in corpus_limits; do not
+silently rewrite it or propagate it into organizational claims.
+
 
 ============================================================
 REPORT ARCHETYPES
@@ -565,6 +628,21 @@ on the same factual proposition.
 Different perspectives, scopes, dates or levels of confidence are
 not automatically contradictions.
 
+Compare notes about the same event for conflicting numerical or
+factual claims, including amounts, currencies, store counts,
+delivery promises and acquisition scope. Verify metric, period,
+geography and population before declaring a contradiction.
+
+When two claims genuinely conflict, a contradiction entry is
+required. Its description must attribute the conflicting values
+to the relevant notes without choosing a winner or averaging them.
+Preserve both notes in the documentary plan and link their actual
+source_content_ids in the contradiction entry.
+
+A status of VALIDATED on individual notes does not establish that
+the claims are mutually consistent. A differing confidence level
+alone does not resolve a factual conflict.
+
 Every contradiction must reference the relevant supplied note_ids.
 
 Do not invent a resolution.
@@ -606,6 +684,19 @@ Do not confuse:
 A business limitation belongs in the documentary notes.
 
 A corpus limitation describes missing or insufficient evidence.
+
+Check corpus_limits against all supplied notes before claiming
+that evidence is absent. Distinguish complete absence from partial
+coverage, narrow market coverage and a lack of comparable data.
+
+For example, when order volumes are documented for one operator,
+do not say that order-volume data are missing altogether. State
+that comparable volume data across operators or markets are
+insufficient if that is what the notes establish.
+
+Do not claim a globally representative conclusion from a locally
+concentrated corpus. Describe the actual geographic evidence gap.
+Keep unresolved contradictions visible as evidence limitations.
 
 Keep each strength and limit concise.
 
@@ -804,9 +895,16 @@ def build_touch_notebook_organization_prompt(
         "Use the notes as immutable documentary objects. "
         "Do not rewrite, summarize or translate them.\n\n"
         
-        "Exclude notes that do not make a direct "
-        "documentary contribution to the research subject, "
-        "objective or supported report dimensions.\n\n"
+        "Preserve every distinct relevant contribution from the "
+        "admin-selected corpus. Exclude only genuinely unrelated "
+        "notes, never useful facts that do not fit the initial plan.\n\n"
+
+        "Check conflicting claims about the same event and record "
+        "genuine conflicts in contradictions, preserving both notes "
+        "in the documentary plan. Do not invent a resolution.\n\n"
+
+        "Check corpus_limits against the notes: partial evidence "
+        "must not be described as completely absent.\n\n"
         
         "Every note included in the documentary plan must "
         "appear exactly once, either inside one event or "
