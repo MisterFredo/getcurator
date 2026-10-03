@@ -3,7 +3,10 @@ from config import (
     BQ_DATASET,
 )
 
-from utils.bigquery_utils import query_bq
+from utils.bigquery_utils import (
+    query_bq,
+    update_bq,
+)
 from datetime import datetime
 
 from core.knowledge.cockpit_repository import (
@@ -13,6 +16,17 @@ from core.knowledge.cockpit_repository import (
 from core.knowledge.service import (
     update_knowledge,
 )
+
+from core.content.ai import (
+    generate_topics_concepts,
+)
+
+from core.content.relation_service import (
+    resolve_topics,
+    resolve_concepts,
+)
+
+
 
 
 # ============================================================
@@ -769,6 +783,220 @@ def matching_full_dismiss():
         sql,
         "Unknown aliases dismissed.",
     )
+
+# ============================================================
+# BACKFILL TOPICS + CONCEPTS
+# TEMPORARY — CONTENTS SINCE 2026-08-23
+# ============================================================
+
+def backfill_topics_concepts(
+    limit: int = 25,
+):
+
+    # ========================================================
+    # LOAD CONTENTS TO PROCESS
+    # ========================================================
+
+    rows = query_bq(
+        f"""
+        SELECT
+            c.ID_CONTENT,
+            c.ID_RAW,
+            c.SOURCE_ID,
+            r.RAW_TEXT
+
+        FROM `{TABLE_CONTENT}` c
+
+        JOIN `{TABLE_CONTENT_RAW}` r
+          ON r.ID_RAW = c.ID_RAW
+
+        WHERE
+            c.CREATED_AT >= TIMESTAMP('2026-08-23')
+
+            AND (
+                c.TOPICS_LLM IS NULL
+                OR ARRAY_LENGTH(c.TOPICS_LLM) = 0
+            )
+
+            AND (
+                c.CONCEPTS_LLM IS NULL
+                OR ARRAY_LENGTH(c.CONCEPTS_LLM) = 0
+            )
+
+        ORDER BY c.CREATED_AT ASC
+
+        LIMIT {int(limit)}
+        """
+    )
+
+    # ========================================================
+    # NOTHING LEFT
+    # ========================================================
+
+    if not rows:
+
+        return {
+            "status": "ok",
+            "processed": 0,
+            "failed": 0,
+            "remaining": 0,
+            "message": "Topics / Concepts backfill complete.",
+        }
+
+    # ========================================================
+    # PROCESS
+    # ========================================================
+
+    processed = 0
+    failed = 0
+    errors = []
+
+    for row in rows:
+
+        id_content = row["ID_CONTENT"]
+
+        try:
+
+            print(
+                "[TOPICS CONCEPTS BACKFILL]",
+                id_content,
+            )
+
+            result = generate_topics_concepts(
+                source_id=row.get(
+                    "SOURCE_ID"
+                ),
+                source_text=row.get(
+                    "RAW_TEXT"
+                ) or "",
+            )
+
+            topics = (
+                result.get(
+                    "topics_llm"
+                )
+                or []
+            )
+
+            concepts = (
+                result.get(
+                    "concepts_llm"
+                )
+                or []
+            )
+
+            # =================================================
+            # UPDATE CONTENT ONLY
+            # =================================================
+
+            update_bq(
+                TABLE_CONTENT,
+                {
+                    "TOPICS_LLM": topics,
+                    "CONCEPTS_LLM": concepts,
+                },
+                where={
+                    "ID_CONTENT": id_content,
+                },
+            )
+
+            # =================================================
+            # MATERIALIZE RELATIONS
+            # =================================================
+
+            resolve_topics(
+                id_content,
+                topics,
+            )
+
+            resolve_concepts(
+                id_content,
+                concepts,
+            )
+
+            processed += 1
+
+        except Exception as e:
+
+            failed += 1
+
+            errors.append(
+                {
+                    "id_content":
+                        id_content,
+
+                    "error":
+                        str(e),
+                }
+            )
+
+            print(
+                "[TOPICS CONCEPTS BACKFILL ERROR]",
+                id_content,
+                str(e),
+            )
+
+    # ========================================================
+    # REMAINING
+    # ========================================================
+
+    remaining_rows = query_bq(
+        f"""
+        SELECT
+            COUNT(*) AS total
+
+        FROM `{TABLE_CONTENT}`
+
+        WHERE
+            CREATED_AT >= TIMESTAMP('2026-08-23')
+
+            AND (
+                TOPICS_LLM IS NULL
+                OR ARRAY_LENGTH(TOPICS_LLM) = 0
+            )
+
+            AND (
+                CONCEPTS_LLM IS NULL
+                OR ARRAY_LENGTH(CONCEPTS_LLM) = 0
+            )
+        """
+    )
+
+    remaining = (
+        remaining_rows[0]["total"]
+        if remaining_rows
+        else 0
+    )
+
+    # ========================================================
+    # RESULT
+    # ========================================================
+
+    return {
+        "status":
+            "ok"
+            if failed == 0
+            else "partial",
+
+        "processed":
+            processed,
+
+        "failed":
+            failed,
+
+        "remaining":
+            remaining,
+
+        "errors":
+            errors,
+
+        "message":
+            (
+                f"{processed} contents backfilled"
+                f" · {failed} failed"
+                f" · {remaining} remaining"
+            ),
+    }
 
 # ============================================================
 # DATASET COPY
