@@ -257,3 +257,58 @@ def update_touch_edition_corpus(
         },
     )
     return get_touch_edition(edition_id)
+
+
+# ============================================================
+# LINK A SAVED REPORT TO ITS MONTHLY EDITION
+# ============================================================
+
+def link_touch_edition_report(
+    edition_id: str,
+    report_id: str,
+) -> dict | None:
+    from core.touch.notebook_report_service import get_touch_report
+
+    edition = get_touch_edition(edition_id)
+    if edition is None:
+        return None
+    if edition["status"] not in ("TO_REVIEW", "GENERATED"):
+        raise ValueError("Le corpus de cette édition n'est pas prêt.")
+
+    report = get_touch_report(report_id)
+    if report is None:
+        raise ValueError("Rapport Touch introuvable.")
+    if report.get("expert_id") != edition["expert_id"]:
+        raise ValueError("Le rapport appartient à un autre expert.")
+
+    for field in ("period_start", "period_end"):
+        expected = datetime.fromisoformat(edition[field].replace("Z", "+00:00"))
+        actual_text = report.get(field)
+        if not actual_text:
+            raise ValueError("La période du rapport est manquante.")
+        actual = datetime.fromisoformat(actual_text.replace("Z", "+00:00"))
+        # Browser dates have millisecond precision; BQ has microseconds.
+        if abs((actual - expected).total_seconds()) > 0.001:
+            raise ValueError("La période du rapport diffère de celle de l'édition.")
+
+    selected = edition["selected_content_ids"]
+    if not selected or set(selected) != set(report["content_ids"]):
+        raise ValueError("Le rapport ne correspond pas au corpus enregistré.")
+
+    if edition.get("report_id") not in (None, report_id):
+        raise ValueError("Cette édition est déjà liée à un autre rapport.")
+
+    query_bq(
+        f"""
+        UPDATE `{TABLE_TOUCH_EDITION}`
+        SET STATUS = 'GENERATED',
+            REPORT_ID = @report_id,
+            ERROR = NULL,
+            UPDATED_AT = CURRENT_TIMESTAMP()
+        WHERE EDITION_ID = @edition_id
+          AND STATUS IN ('TO_REVIEW', 'GENERATED')
+          AND (REPORT_ID IS NULL OR REPORT_ID = @report_id)
+        """,
+        {"edition_id": edition_id, "report_id": report_id},
+    )
+    return get_touch_edition(edition_id)
