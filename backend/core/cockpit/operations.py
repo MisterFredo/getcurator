@@ -1,3 +1,8 @@
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+)
+
 from config import (
     BQ_PROJECT,
     BQ_DATASET,
@@ -790,7 +795,8 @@ def matching_full_dismiss():
 # ============================================================
 
 def backfill_topics_concepts(
-    limit: int = 25,
+    limit: int = 50,
+    max_workers: int = 5,
 ):
 
     # ========================================================
@@ -844,97 +850,142 @@ def backfill_topics_concepts(
         }
 
     # ========================================================
-    # PROCESS
+    # PROCESS ONE CONTENT
+    # ========================================================
+
+    def process_content(
+        row,
+    ):
+
+        id_content = row[
+            "ID_CONTENT"
+        ]
+
+        print(
+            "[TOPICS CONCEPTS BACKFILL]",
+            id_content,
+        )
+
+        # ----------------------------------------------------
+        # LLM
+        # ----------------------------------------------------
+
+        result = generate_topics_concepts(
+            source_id=row.get(
+                "SOURCE_ID"
+            ),
+            source_text=row.get(
+                "RAW_TEXT"
+            ) or "",
+        )
+
+        topics = (
+            result.get(
+                "topics_llm"
+            )
+            or []
+        )
+
+        concepts = (
+            result.get(
+                "concepts_llm"
+            )
+            or []
+        )
+
+        # ----------------------------------------------------
+        # UPDATE CONTENT
+        # ----------------------------------------------------
+
+        update_bq(
+            TABLE_CONTENT,
+            {
+                "TOPICS_LLM":
+                    topics,
+
+                "CONCEPTS_LLM":
+                    concepts,
+            },
+            where={
+                "ID_CONTENT":
+                    id_content,
+            },
+        )
+
+        # ----------------------------------------------------
+        # MATERIALIZE RELATIONS
+        # ----------------------------------------------------
+
+        resolve_topics(
+            id_content,
+            topics,
+        )
+
+        resolve_concepts(
+            id_content,
+            concepts,
+        )
+
+        print(
+            "[TOPICS CONCEPTS BACKFILL OK]",
+            id_content,
+        )
+
+        return id_content
+
+    # ========================================================
+    # PARALLEL PROCESSING
     # ========================================================
 
     processed = 0
     failed = 0
     errors = []
 
-    for row in rows:
+    with ThreadPoolExecutor(
+        max_workers=max_workers,
+    ) as executor:
 
-        id_content = row["ID_CONTENT"]
+        futures = {
+            executor.submit(
+                process_content,
+                row,
+            ): row["ID_CONTENT"]
+            for row in rows
+        }
 
-        try:
+        for future in as_completed(
+            futures
+        ):
 
-            print(
-                "[TOPICS CONCEPTS BACKFILL]",
-                id_content,
-            )
+            id_content = futures[
+                future
+            ]
 
-            result = generate_topics_concepts(
-                source_id=row.get(
-                    "SOURCE_ID"
-                ),
-                source_text=row.get(
-                    "RAW_TEXT"
-                ) or "",
-            )
+            try:
 
-            topics = (
-                result.get(
-                    "topics_llm"
+                future.result()
+
+                processed += 1
+
+            except Exception as e:
+
+                failed += 1
+
+                errors.append(
+                    {
+                        "id_content":
+                            id_content,
+
+                        "error":
+                            str(e),
+                    }
                 )
-                or []
-            )
 
-            concepts = (
-                result.get(
-                    "concepts_llm"
+                print(
+                    "[TOPICS CONCEPTS BACKFILL ERROR]",
+                    id_content,
+                    str(e),
                 )
-                or []
-            )
-
-            # =================================================
-            # UPDATE CONTENT ONLY
-            # =================================================
-
-            update_bq(
-                TABLE_CONTENT,
-                {
-                    "TOPICS_LLM": topics,
-                    "CONCEPTS_LLM": concepts,
-                },
-                where={
-                    "ID_CONTENT": id_content,
-                },
-            )
-
-            # =================================================
-            # MATERIALIZE RELATIONS
-            # =================================================
-
-            resolve_topics(
-                id_content,
-                topics,
-            )
-
-            resolve_concepts(
-                id_content,
-                concepts,
-            )
-
-            processed += 1
-
-        except Exception as e:
-
-            failed += 1
-
-            errors.append(
-                {
-                    "id_content":
-                        id_content,
-
-                    "error":
-                        str(e),
-                }
-            )
-
-            print(
-                "[TOPICS CONCEPTS BACKFILL ERROR]",
-                id_content,
-                str(e),
-            )
 
     # ========================================================
     # REMAINING
