@@ -26,6 +26,8 @@ import type {
 ========================================================= */
 
 export type TouchResearchRequest = {
+  expertId?: string | null;
+
   query: string;
 
   outputLanguage?: string;
@@ -337,6 +339,9 @@ export function useTouchResearch():
           TouchResearchBrief = {
 
             query,
+
+            expert_id:
+              request.expertId ?? null,
 
             output_language:
               request.outputLanguage
