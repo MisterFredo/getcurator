@@ -13,6 +13,7 @@ from api.user.models import (
     UserProfileRegeneratePayload,
     UserProfileResponse,
     UserProfileAdminResponse,
+    UserEditorialProfilePayload,
 )
 
 from core.user.user_service import (
@@ -49,6 +50,7 @@ from core.user.user_profile_service import (
 from core.user.profile_orchestrator_service import (
     generate_and_save_user_profile,
     regenerate_current_user_profile,
+    save_and_structure_editorial_profile,
 )
 
 from core.user.user_expert_service import (
@@ -68,9 +70,13 @@ from core.user.user_access_service import (
 
 from core.user.profile_assistant_service import (
     run_profile_assistant,
+    extract_labels,
 )
 
 from utils.auth import get_user_id_from_request
+
+from core.user.profile_editorial_service import generate_profile_editorial_text
+
 
 router = APIRouter()
 
@@ -1420,6 +1426,87 @@ def list_expert_users(
     return get_expert_users(
         expert_id
     )
+
+def _require_profile_admin(request: Request):
+    actor_id = get_user_id_from_request(request)
+    actor = get_user_by_id(actor_id) if actor_id else None
+    if not actor:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if str(actor.get("ROLE") or "").lower() != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@router.post("/profile/admin/editorial/update")
+def update_admin_editorial_profile(
+    request: Request,
+    payload: UserEditorialProfilePayload,
+):
+    _require_profile_admin(request)
+    user = get_user_by_id(payload.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not payload.profile_editorial_text.strip():
+        raise HTTPException(status_code=400, detail="Le profil éditorial ne peut pas être vide")
+    try:
+        result, error = save_and_structure_editorial_profile(
+            user_id=payload.user_id,
+            editorial_profile_text=payload.profile_editorial_text,
+            language=user.get("LANGUAGE") or "fr",
+        )
+        if error:
+            raise HTTPException(status_code=400, detail=error)
+        return {
+            **(result or {}),
+            "profile": _build_admin_profile(
+                user_id=payload.user_id,
+                profile=get_user_profile(payload.user_id),
+            ),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur sauvegarde éditoriale : {exc}")
+
+
+@router.post("/profile/admin/editorial/propose")
+def propose_admin_editorial_profile(
+    request: Request,
+    payload: UserProfileRegeneratePayload,
+):
+    _require_profile_admin(request)
+    if not payload.user_id:
+        raise HTTPException(status_code=400, detail="user_id manquant")
+    user = get_user_by_id(payload.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    current = get_user_profile(payload.user_id) or {}
+    text = current.get("profile_text") or ""
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Enregistrez un profil de base avant la génération")
+    preferences = get_user_preferences_detailed(payload.user_id) or {}
+    try:
+        proposal = generate_profile_editorial_text(
+            profile_text=text,
+            geography_1=current.get("geography_1"),
+            geography_2=current.get("geography_2"),
+            geography_3=current.get("geography_3"),
+            companies=extract_labels(preferences.get("companies")),
+            solutions=extract_labels(preferences.get("solutions")),
+            topics=extract_labels(preferences.get("topics")),
+            language=user.get("LANGUAGE") or "fr",
+            account_context={
+                "name": user.get("NAME"),
+                "display_name": user.get("DISPLAY_NAME"),
+                "company": user.get("COMPANY"),
+                "description": user.get("DESCRIPTION"),
+                "profile_type": user.get("PROFILE_TYPE") or "USER",
+                "role": user.get("ROLE"),
+            },
+        )
+        return {"status": "proposed", "profile_editorial_text": proposal}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur proposition éditoriale : {exc}")
+
 
 # =========================================================
 # GET USER (BY ID)
