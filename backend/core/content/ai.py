@@ -368,11 +368,6 @@ def generate_summary(
     }
 
 
-# ============================================================
-# GENERATE TOPICS
-# BACKFILL ONLY
-# ============================================================
-
 def generate_topics(
     source_id: Optional[str],
     source_text: str,
@@ -404,16 +399,16 @@ def generate_topics(
     prompt = f"""
 Tu dois classifier le contenu ci-dessous.
 
-Sélectionne uniquement les TOPICS réellement pertinents.
+Sélectionne les TOPICS réellement pertinents pour ce contenu.
 
 RÈGLES IMPORTANTES :
 
 - Utilise exclusivement les valeurs présentes dans la liste autorisée.
 - N'invente aucun topic.
 - Ne reformule jamais les labels.
-- Ne sélectionne que les topics clairement pertinents.
-- Si aucun topic n'est pertinent, réponds "None".
-- Ne produis aucun commentaire.
+- Sélectionne uniquement les topics clairement pertinents.
+- Réponds obligatoirement avec la section TOPICS.
+- Ne produis aucun commentaire ni aucune autre section.
 
 TOPICS AUTORISÉS :
 
@@ -430,36 +425,35 @@ TOPICS
 - label exact
 """
 
-    # ========================================================
-    # LLM
-    # ========================================================
-
     raw = run_llm(
         prompt,
     )
-    
+
     if not raw:
         raise ValueError(
             "Réponse LLM vide"
         )
-    
+
+    # ========================================================
+    # PARSE
+    # ========================================================
+
     sections = _parse_llm_sections(
         raw,
     )
-    
-    print("\n==============================")
-    print("[TOPICS LLM RAW]")
-    print(raw)
-    print("------------------------------")
-    print("[TOPICS SECTIONS]")
-    print(sections)
-    print("------------------------------")
-    
+
     topics = _parse_list(
         sections["TOPICS"],
     )
-    
-    print("[TOPICS PARSED]", topics)
-    print("==============================\n")
-    
+
+    print(
+        "[TOPICS LLM]",
+        raw,
+    )
+
+    print(
+        "[TOPICS PARSED]",
+        topics,
+    )
+
     return topics
