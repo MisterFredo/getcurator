@@ -158,3 +158,400 @@ def clean_account_context(
     source = (
         account_context
         if isinstance(
+            account_context,
+            dict,
+        )
+        else {}
+    )
+
+    return {
+        "name": clean_optional_text(
+            source.get(
+                "name"
+            )
+        ),
+        "display_name": clean_optional_text(
+            source.get(
+                "display_name"
+            )
+        ),
+        "company": clean_optional_text(
+            source.get(
+                "company"
+            )
+        ),
+        "description": clean_optional_text(
+            source.get(
+                "description"
+            )
+        ),
+        "profile_type": clean_optional_text(
+            source.get(
+                "profile_type"
+            )
+        ),
+        "role": clean_optional_text(
+            source.get(
+                "role"
+            )
+        ),
+    }
+
+
+def clean_string_list(
+    values: Optional[List[str]],
+) -> List[str]:
+
+    if not values:
+
+        return []
+
+    result: List[str] = []
+
+    seen = set()
+
+    for value in values:
+
+        if not isinstance(
+            value,
+            str,
+        ):
+
+            continue
+
+        cleaned = value.strip()
+
+        if not cleaned:
+
+            continue
+
+        normalized = (
+            cleaned.casefold()
+        )
+
+        if normalized in seen:
+
+            continue
+
+        seen.add(
+            normalized
+        )
+
+        result.append(
+            cleaned
+        )
+
+    return result
+
+
+def clean_messages(
+    messages: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, str]]:
+
+    if not messages:
+
+        return []
+
+    result: List[Dict[str, str]] = []
+
+    for message in messages:
+
+        role = message.get(
+            "role"
+        )
+
+        content = message.get(
+            "content"
+        )
+
+        if role not in {
+            "user",
+            "assistant",
+        }:
+
+            continue
+
+        if not isinstance(
+            content,
+            str,
+        ):
+
+            continue
+
+        cleaned_content = (
+            content.strip()
+        )
+
+        if not cleaned_content:
+
+            continue
+
+        result.append(
+            {
+                "role": role,
+                "content": cleaned_content,
+            }
+        )
+
+    return result
+
+
+# ============================================================
+# COUNT QUESTIONS
+# ============================================================
+
+def count_assistant_questions(
+    messages: List[Dict[str, str]],
+) -> int:
+
+    return sum(
+        1
+        for message in messages
+        if (
+            message["role"]
+            == "assistant"
+        )
+    )
+
+
+# ============================================================
+# BUILD CONTEXT
+# ============================================================
+
+def build_profile_assistant_context(
+    profile_text: Optional[str],
+    geography_1: Optional[str] = None,
+    geography_2: Optional[str] = None,
+    geography_3: Optional[str] = None,
+    companies: Optional[List[str]] = None,
+    solutions: Optional[List[str]] = None,
+    topics: Optional[List[str]] = None,
+    messages: Optional[List[Dict[str, Any]]] = None,
+    language: str = "fr",
+    account_context: Optional[
+        Dict[str, Any]
+    ] = None,
+) -> Dict[str, Any]:
+
+    cleaned_messages = clean_messages(
+        messages
+    )
+
+    cleaned_profile_text = (
+        clean_optional_text(
+            profile_text
+        )
+    )
+
+    questions_already_asked = (
+        count_assistant_questions(
+            cleaned_messages
+        )
+    )
+
+    is_first_turn = (
+        len(cleaned_messages) == 0
+    )
+
+    profile_is_empty = (
+        cleaned_profile_text is None
+    )
+
+    cleaned_account = (
+        clean_account_context(
+            account_context
+        )
+    )
+    
+    has_account_context = any(
+        [
+            cleaned_account.get(
+                "name"
+            ),
+            cleaned_account.get(
+                "display_name"
+            ),
+            cleaned_account.get(
+                "company"
+            ),
+            cleaned_account.get(
+                "description"
+            ),
+        ]
+    )
+
+    if not profile_is_empty:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_EXISTING
+        )
+    
+    elif has_account_context:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_CONTEXTUAL
+        )
+    
+    else:
+    
+        minimum_questions = (
+            PROFILE_ASSISTANT_MIN_QUESTIONS_EMPTY
+        )
+
+    return {
+        "output_language": (
+            language
+            if language in {
+                "fr",
+                "en",
+            }
+            else "fr"
+        ),
+
+        "account_context": (
+            cleaned_account
+        ),
+        "current_profile": (
+            cleaned_profile_text
+        ),
+        "profile_is_empty": (
+            profile_is_empty
+        ),
+        "is_first_turn": (
+            is_first_turn
+        ),
+        "explicit_geographies": (
+            clean_string_list(
+                [
+                    geography_1,
+                    geography_2,
+                    geography_3,
+                ]
+            )
+        ),
+        "followed_items": {
+            "companies": (
+                clean_string_list(
+                    companies
+                )
+            ),
+            "solutions": (
+                clean_string_list(
+                    solutions
+                )
+            ),
+            "topics": (
+                clean_string_list(
+                    topics
+                )
+            ),
+        },
+        "conversation": (
+            cleaned_messages
+        ),
+        "questions_already_asked": (
+            questions_already_asked
+        ),
+       "minimum_questions": (
+            minimum_questions
+        ),
+        "maximum_questions": (
+            PROFILE_ASSISTANT_MAX_QUESTIONS
+        ),
+    }
+
+# ============================================================
+# BUILD USER PROMPT
+# ============================================================
+
+def build_profile_assistant_user_prompt(
+    profile_text: Optional[str],
+    geography_1: Optional[str] = None,
+    geography_2: Optional[str] = None,
+    geography_3: Optional[str] = None,
+    companies: Optional[List[str]] = None,
+    solutions: Optional[List[str]] = None,
+    topics: Optional[List[str]] = None,
+    messages: Optional[List[Dict[str, Any]]] = None,
+    language: str = "fr",
+    account_context: Optional[
+        Dict[str, Any]
+    ] = None,
+) -> str:
+
+    context = build_profile_assistant_context(
+        profile_text=profile_text,
+        geography_1=geography_1,
+        geography_2=geography_2,
+        geography_3=geography_3,
+        companies=companies,
+        solutions=solutions,
+        topics=topics,
+        messages=messages,
+        language=language,
+        account_context=account_context,
+    )
+    questions_already_asked = context[
+        "questions_already_asked"
+    ]
+
+    questions_remaining = max(
+        0,
+        (
+            PROFILE_ASSISTANT_MAX_QUESTIONS
+            - questions_already_asked
+        ),
+    )
+
+    minimum_questions = context[
+        "minimum_questions"
+    ]
+    
+    minimum_questions_reached = (
+        questions_already_asked
+        >= minimum_questions
+    )
+
+    mandatory_action = (
+        "ASK"
+        if (
+            context["profile_is_empty"]
+            and not minimum_questions_reached
+        )
+        else "MODEL_DECISION"
+    )
+    return f"""
+Build or refine the monitoring profile using the appropriate USER or
+EXPERT path defined in the system prompt.
+
+CURRENT CONTEXT
+{json.dumps(context, ensure_ascii=False, indent=2)}
+
+CONVERSATION PROGRESS
+Questions already asked: {questions_already_asked}
+Minimum questions: {minimum_questions}
+Questions remaining: {questions_remaining}
+Minimum questions reached: {minimum_questions_reached}
+Mandatory action: {mandatory_action}
+
+DECISION ORDER
+1. If questions_remaining=0, return PROPOSE with available information.
+2. Otherwise, if mandatory_action=ASK, return ASK.
+3. Otherwise apply the path-specific completeness rules.
+Never exceed the maximum number of questions.
+
+ASK: exactly one useful question; proposed_profile_text=null;
+profile_complete=false.
+PROPOSE: message briefly introduces the proposal; proposed_profile_text
+contains the entire consolidated profile; profile_complete=true.
+Use the requested output language for both message and profile.
+
+REQUIRED OUTPUT
+Return exactly one JSON object with these fields:
+{{
+  "action": "ASK" or "PROPOSE",
+  "message": "string",
+  "proposed_profile_text": null or "complete profile",
+  "profile_complete": false or true
+}}
+""".strip()
