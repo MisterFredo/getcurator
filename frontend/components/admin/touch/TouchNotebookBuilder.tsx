@@ -29,6 +29,7 @@ import TouchNotebookPreview from "@/components/admin/touch/TouchNotebookPreview"
 type Props = {
   subject: string;
   objective: string;
+  expertId?: string | null;
   reportDesign:
     TouchNotebookReportDesign;
 
@@ -151,6 +152,7 @@ function copyReportDesign(
 export default function TouchNotebookBuilder({
   subject,
   objective,
+  expertId = null,
   reportDesign,
   selectedContentIds,
   decisionsByContentId,
@@ -325,6 +327,9 @@ export default function TouchNotebookBuilder({
 
         report_id:
           reportId,
+
+        expert_id:
+          expertId?.trim() || null,
 
         subject:
           normalizedSubject,
