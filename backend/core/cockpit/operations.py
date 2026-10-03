@@ -846,14 +846,16 @@ def backfill_topics_concepts(
             "processed": 0,
             "failed": 0,
             "remaining": 0,
-            "message": "Topics / Concepts backfill complete.",
+            "message":
+                "Topics / Concepts backfill complete.",
         }
 
     # ========================================================
-    # PROCESS ONE CONTENT
+    # GENERATE ONE CLASSIFICATION
+    # LLM ONLY — SAFE TO PARALLELIZE
     # ========================================================
 
-    def process_content(
+    def generate_classification(
         row,
     ):
 
@@ -862,13 +864,9 @@ def backfill_topics_concepts(
         ]
 
         print(
-            "[TOPICS CONCEPTS BACKFILL]",
+            "[TOPICS CONCEPTS LLM]",
             id_content,
         )
-
-        # ----------------------------------------------------
-        # LLM
-        # ----------------------------------------------------
 
         result = generate_topics_concepts(
             source_id=row.get(
@@ -893,52 +891,30 @@ def backfill_topics_concepts(
             or []
         )
 
-        # ----------------------------------------------------
-        # UPDATE CONTENT
-        # ----------------------------------------------------
-
-        update_bq(
-            TABLE_CONTENT,
-            {
-                "TOPICS_LLM":
-                    topics,
-
-                "CONCEPTS_LLM":
-                    concepts,
-            },
-            where={
-                "ID_CONTENT":
-                    id_content,
-            },
-        )
-
-        # ----------------------------------------------------
-        # MATERIALIZE RELATIONS
-        # ----------------------------------------------------
-
-        resolve_topics(
-            id_content,
-            topics,
-        )
-
-        resolve_concepts(
-            id_content,
-            concepts,
-        )
-
         print(
-            "[TOPICS CONCEPTS BACKFILL OK]",
+            "[TOPICS CONCEPTS LLM OK]",
             id_content,
         )
 
-        return id_content
+        return {
+            "id_content":
+                id_content,
+
+            "topics":
+                topics,
+
+            "concepts":
+                concepts,
+        }
 
     # ========================================================
-    # PARALLEL PROCESSING
+    # PARALLEL LLM GENERATION
     # ========================================================
 
-    processed = 0
+    generated = []
+
     failed = 0
+
     errors = []
 
     with ThreadPoolExecutor(
@@ -947,7 +923,7 @@ def backfill_topics_concepts(
 
         futures = {
             executor.submit(
-                process_content,
+                generate_classification,
                 row,
             ): row["ID_CONTENT"]
             for row in rows
@@ -963,9 +939,9 @@ def backfill_topics_concepts(
 
             try:
 
-                future.result()
-
-                processed += 1
+                generated.append(
+                    future.result()
+                )
 
             except Exception as e:
 
@@ -976,16 +952,109 @@ def backfill_topics_concepts(
                         "id_content":
                             id_content,
 
+                        "stage":
+                            "llm",
+
                         "error":
                             str(e),
                     }
                 )
 
                 print(
-                    "[TOPICS CONCEPTS BACKFILL ERROR]",
+                    "[TOPICS CONCEPTS LLM ERROR]",
                     id_content,
                     str(e),
                 )
+
+    # ========================================================
+    # SEQUENTIAL BIGQUERY WRITES
+    # ========================================================
+
+    processed = 0
+
+    for item in generated:
+
+        id_content = item[
+            "id_content"
+        ]
+
+        topics = item[
+            "topics"
+        ]
+
+        concepts = item[
+            "concepts"
+        ]
+
+        try:
+
+            print(
+                "[TOPICS CONCEPTS WRITE]",
+                id_content,
+            )
+
+            # ------------------------------------------------
+            # UPDATE CONTENT
+            # ------------------------------------------------
+
+            update_bq(
+                TABLE_CONTENT,
+                {
+                    "TOPICS_LLM":
+                        topics,
+
+                    "CONCEPTS_LLM":
+                        concepts,
+                },
+                where={
+                    "ID_CONTENT":
+                        id_content,
+                },
+            )
+
+            # ------------------------------------------------
+            # MATERIALIZE RELATIONS
+            # ------------------------------------------------
+
+            resolve_topics(
+                id_content,
+                topics,
+            )
+
+            resolve_concepts(
+                id_content,
+                concepts,
+            )
+
+            processed += 1
+
+            print(
+                "[TOPICS CONCEPTS BACKFILL OK]",
+                id_content,
+            )
+
+        except Exception as e:
+
+            failed += 1
+
+            errors.append(
+                {
+                    "id_content":
+                        id_content,
+
+                    "stage":
+                        "write",
+
+                    "error":
+                        str(e),
+                }
+            )
+
+            print(
+                "[TOPICS CONCEPTS WRITE ERROR]",
+                id_content,
+                str(e),
+            )
 
     # ========================================================
     # REMAINING
