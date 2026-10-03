@@ -549,6 +549,26 @@ export default function TouchPage() {
   ======================================================= */
 
   const [
+    selectedExpertId,
+    setSelectedExpertId,
+  ] = useState("");
+
+  const [
+    expertOptions,
+    setExpertOptions,
+  ] = useState<SelectOption[]>([]);
+
+  const [
+    expertsLoading,
+    setExpertsLoading,
+  ] = useState(true);
+
+  const [
+    expertsError,
+    setExpertsError,
+  ] = useState<string | null>(null);
+
+  const [
     query,
     setQuery,
   ] = useState("");
@@ -786,6 +806,48 @@ export default function TouchPage() {
 
   }, []);
 
+  /* =======================================================
+     LOAD EXPERTS
+  ======================================================= */
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadExperts() {
+      try {
+        const response = await api.get(
+          "/user/admin/experts",
+        );
+
+        if (!active) return;
+
+        setExpertOptions(
+          normalizeOptions(
+            response.experts ?? [],
+            ["ID_USER", "id_user", "user_id", "id"],
+            ["DISPLAY_NAME", "display_name", "NAME", "name", "EMAIL", "email"],
+          ),
+        );
+      } catch (caughtError) {
+        if (!active) return;
+
+        setExpertsError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to load experts.",
+        );
+      } finally {
+        if (active) setExpertsLoading(false);
+      }
+    }
+
+    loadExperts();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   /* =========================================================
      DIRECT RESEARCH REPORT DESIGN
   ========================================================= */
@@ -868,6 +930,9 @@ export default function TouchPage() {
     }
   
     await runSearch({
+
+      expertId:
+        selectedExpertId || null,
 
       query:
         cleanedQuery,
@@ -1058,6 +1123,9 @@ export default function TouchPage() {
     );
   
     await runSearch({
+
+      expertId:
+        selectedExpertId || null,
   
       query:
         plan.central_question
@@ -1202,6 +1270,8 @@ export default function TouchPage() {
     setResearchMode(
       null,
     );
+
+    setSelectedExpertId("");
   
     setQuery("");
   
@@ -1303,6 +1373,57 @@ export default function TouchPage() {
 
         <div className="space-y-6">
       
+          <section className="rounded-xl border border-gray-200 bg-white p-4">
+            <label
+              htmlFor="touch-expert"
+              className="block text-sm font-medium text-gray-900"
+            >
+              Expert profile (optional)
+            </label>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Use an expert’s expertise profile to guide the research,
+              or choose an ad hoc request. Reset the research to change
+              the expert after starting.
+            </p>
+
+            <select
+              id="touch-expert"
+              value={selectedExpertId}
+              onChange={event => {
+                if (loading || guidedResearch.loading || researchStarted || corpusReady) {
+                  return;
+                }
+                setSelectedExpertId(event.target.value);
+              }}
+              disabled={
+                expertsLoading
+                || loading
+                || guidedResearch.loading
+                || researchStarted
+                || corpusReady
+              }
+              className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 disabled:opacity-50"
+            >
+              <option value="">Ad hoc request — no expert</option>
+              {expertOptions.map(expert => (
+                <option key={expert.id} value={expert.id}>
+                  {expert.label}
+                </option>
+              ))}
+            </select>
+
+            {expertsLoading && (
+              <p className="mt-2 text-xs text-gray-500">Loading experts…</p>
+            )}
+
+            {expertsError && (
+              <p className="mt-2 text-sm text-red-700">
+                Unable to load experts: {expertsError}
+              </p>
+            )}
+          </section>
+
           <TouchResearchModeChoice
             value={researchMode}
             disabled={
@@ -1463,6 +1584,8 @@ export default function TouchPage() {
                     ) && (
           
                       <TouchGuidedResearch
+                        key={selectedExpertId || "ad-hoc"}
+                        expertId={selectedExpertId || null}
                         outputLanguage={
                           reportLanguage
                         }
