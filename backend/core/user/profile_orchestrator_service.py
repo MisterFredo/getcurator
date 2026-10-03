@@ -682,9 +682,12 @@ def save_and_structure_editorial_profile(
     if not user_id or not text:
         return None, "Le profil éditorial ne peut pas être vide"
 
-    current = get_user_profile(user_id=user_id)
-    if not current:
-        return None, "Profil utilisateur introuvable"
+    current = (
+        get_user_profile(
+            user_id=user_id,
+        )
+        or {}
+    )
 
     # The existing version column also distinguishes a manually validated
     # mandate. No database schema change is needed.
