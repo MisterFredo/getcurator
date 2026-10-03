@@ -307,7 +307,7 @@ export default function OperationsPanel() {
       setBackfillMessage(null);
   
       const res = await api.post(
-        "/cockpit/operations/backfill-topics-concepts",
+        "/cockpit/operations/backfill-topics",
         {},
       );
   
