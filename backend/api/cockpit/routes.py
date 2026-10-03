@@ -18,7 +18,7 @@ from core.cockpit.operations import (
     sync_prod_to_dev,
     continue_all_knowledge,
     restart_destock,
-    backfill_topics_concepts,
+    backfill_topics,
 )
 
 from core.cockpit.quality import (
@@ -199,26 +199,26 @@ def restart():
     return restart_destock()
 
 # ============================================================
-# TOPICS + CONCEPTS BACKFILL
+# TOPICS BACKFILL
 # TEMPORARY
 # ============================================================
 
 @router.post(
-    "/operations/backfill-topics-concepts"
+    "/operations/backfill-topics"
 )
-def run_topics_concepts_backfill(
+def run_topics_backfill(
     background_tasks: BackgroundTasks,
 ):
 
     background_tasks.add_task(
-        backfill_topics_concepts,
+        backfill_topics,
         5000,
     )
 
     return {
         "status": "started",
         "message":
-            "Topics / Concepts backfill started.",
+            "Topics backfill started.",
     }
 
 @router.post(
