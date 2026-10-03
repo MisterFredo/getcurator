@@ -21,6 +21,7 @@ from core.user.profile_transformer_service import (
 
 from core.user.user_profile_service import (
     get_user_profile,
+    save_editorial_user_profile,
     mark_profile_structured_building,
     record_profile_transformation_error,
     save_validated_user_profile,
@@ -202,6 +203,14 @@ def _get_or_generate_editorial_profile(
     - error;
     - whether a new editorial profile was generated.
     """
+
+    # A manually validated mandate is authoritative, including when
+    # rebuilding JSON with force=True. AI proposals use a separate route.
+    current = get_user_profile(user_id=user_id) or {}
+    if current.get("profile_editorial_transformer_version") == "MANUAL":
+        manual_text = (current.get("profile_editorial_text") or "").strip()
+        if manual_text:
+            return manual_text, None, False
 
     editorial_source_hash = (
         build_profile_editorial_source_hash(
@@ -657,3 +666,63 @@ def regenerate_current_user_profile(
         model=model,
         force=True,
     )
+
+# ============================================================
+# SAVE ADMIN EDITORIAL PROFILE AND REBUILD JSON
+# ============================================================
+
+def save_and_structure_editorial_profile(
+    user_id: str,
+    editorial_profile_text: str,
+    language: str = "fr",
+    model: Optional[str] = None,
+) -> OrchestratorResult:
+
+    text = _clean_profile_text(editorial_profile_text)
+    if not user_id or not text:
+        return None, "Le profil éditorial ne peut pas être vide"
+
+    current = get_user_profile(user_id=user_id)
+    if not current:
+        return None, "Profil utilisateur introuvable"
+
+    # The existing version column also distinguishes a manually validated
+    # mandate. No database schema change is needed.
+    import hashlib
+    save_editorial_user_profile(
+        user_id=user_id,
+        editorial_text=text,
+        source_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        transformer_version="MANUAL",
+    )
+    mark_profile_structured_building(user_id=user_id)
+
+    try:
+        result, error = transform_user_profile(
+            profile_text=current.get("profile_text") or "",
+            editorial_profile_text=text,
+            geography_1=current.get("geography_1"),
+            geography_2=current.get("geography_2"),
+            geography_3=current.get("geography_3"),
+            language=language,
+            model=model,
+        )
+        if error or not result:
+            raise ValueError(error or "La transformation du profil a échoué")
+
+        save_validated_user_profile(
+            user_id=user_id,
+            geography_1=current.get("geography_1"),
+            geography_2=current.get("geography_2"),
+            geography_3=current.get("geography_3"),
+            profile_text=current.get("profile_text") or "",
+            transformer_result=result,
+        )
+    except Exception as exc:
+        record_profile_transformation_error(user_id=user_id, error=str(exc))
+        return {
+            "status": "editorial_saved_structured_error",
+            "structured_error": str(exc),
+        }, None
+
+    return {"status": "saved", "warnings": result.warnings}, None
