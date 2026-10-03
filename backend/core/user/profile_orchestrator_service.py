@@ -2,8 +2,12 @@ from typing import (
     Any,
     Dict,
     Optional,
+    List,
     Tuple,
 )
+
+from core.user.user_service import get_user_by_id
+from core.user.user_preferences_service import get_user_preferences_detailed
 
 from core.user.profile_editorial_service import (
     build_profile_editorial_source_hash,
@@ -21,6 +25,23 @@ from core.user.user_profile_service import (
     record_profile_transformation_error,
     save_validated_user_profile,
 )
+
+
+def _extract_preference_labels(items: Optional[List[Dict[str, Any]]]) -> List[str]:
+    labels: List[str] = []
+    seen = set()
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        label = item.get("label")
+        if not isinstance(label, str) or not label.strip():
+            continue
+        cleaned = label.strip()
+        key = cleaned.casefold()
+        if key not in seen:
+            seen.add(key)
+            labels.append(cleaned)
+    return labels
 
 
 # ============================================================
@@ -165,6 +186,10 @@ def _get_or_generate_editorial_profile(
     geography_3: Optional[str],
     language: str,
     force: bool,
+    companies: Optional[List[str]] = None,
+    solutions: Optional[List[str]] = None,
+    topics: Optional[List[str]] = None,
+    account_context: Optional[Dict[str, Any]] = None,
 ) -> Tuple[
     Optional[str],
     Optional[str],
@@ -185,6 +210,10 @@ def _get_or_generate_editorial_profile(
             geography_2=geography_2,
             geography_3=geography_3,
             language=language,
+            companies=companies,
+            solutions=solutions,
+            topics=topics,
+            account_context=account_context,
         )
     )
 
@@ -232,6 +261,10 @@ def _get_or_generate_editorial_profile(
                 geography_2=geography_2,
                 geography_3=geography_3,
                 language=language,
+                companies=companies,
+                solutions=solutions,
+                topics=topics,
+                account_context=account_context,
             )
         )
 
@@ -306,6 +339,27 @@ def generate_and_save_user_profile(
             "Impossible de structurer un profil vide",
         )
 
+    # Resolve the target account once and reuse exactly the same inputs
+    # for editorial cache lookup, generation and returned hash.
+    try:
+        user = get_user_by_id(user_id)
+        if not user:
+            return None, "Utilisateur introuvable"
+        preferences = get_user_preferences_detailed(user_id=user_id) or {}
+        companies = _extract_preference_labels(preferences.get("companies"))
+        solutions = _extract_preference_labels(preferences.get("solutions"))
+        topics = _extract_preference_labels(preferences.get("topics"))
+        account_context = {
+            "name": user.get("NAME"),
+            "display_name": user.get("DISPLAY_NAME"),
+            "company": user.get("COMPANY"),
+            "description": user.get("DESCRIPTION"),
+            "profile_type": user.get("PROFILE_TYPE") or "USER",
+            "role": user.get("ROLE"),
+        }
+    except Exception as exc:
+        return None, f"Impossible de récupérer le contexte du profil : {exc}"
+
     # ========================================================
     # EDITORIAL PROFILE
     # ========================================================
@@ -322,6 +376,10 @@ def generate_and_save_user_profile(
         geography_3=geography_3,
         language=language,
         force=force,
+        companies=companies,
+        solutions=solutions,
+        topics=topics,
+        account_context=account_context,
     )
 
     if (
@@ -522,6 +580,10 @@ def generate_and_save_user_profile(
                         geography_2=geography_2,
                         geography_3=geography_3,
                         language=language,
+                        companies=companies,
+                        solutions=solutions,
+                        topics=topics,
+                        account_context=account_context,
                     )
                 ),
 
