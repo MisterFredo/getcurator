@@ -367,3 +367,124 @@ def generate_summary(
 
     }
 
+
+# ============================================================
+# GENERATE TOPICS + CONCEPTS
+# BACKFILL ONLY
+# ============================================================
+
+def generate_topics_concepts(
+    source_id: Optional[str],
+    source_text: str,
+) -> Dict[str, Any]:
+
+    # ========================================================
+    # CHECKS
+    # ========================================================
+
+    if (
+        not isinstance(source_text, str)
+        or not source_text.strip()
+    ):
+        raise ValueError(
+            "Source vide"
+        )
+
+    if not source_id:
+        raise ValueError(
+            "source_id obligatoire"
+        )
+
+    # ========================================================
+    # REFERENTIALS
+    # ========================================================
+
+    topics_list_text = _load_topics_text(
+        source_id,
+    )
+
+    concepts_list_text = (
+        _load_concepts_text()
+    )
+
+    # ========================================================
+    # PROMPT
+    # ========================================================
+
+    prompt = f"""
+Tu dois classifier le contenu ci-dessous.
+
+Tu dois uniquement sélectionner les TOPICS et les CONCEPTS
+réellement pertinents pour le contenu.
+
+RÈGLES IMPORTANTES :
+
+- Utilise exclusivement les valeurs présentes dans les listes autorisées.
+- N'invente aucun topic.
+- N'invente aucun concept.
+- Ne reformule jamais les labels.
+- Ne sélectionne que les éléments clairement pertinents.
+- Si aucun élément n'est pertinent, réponds "None" dans la section concernée.
+- Ne produis aucune autre section ni aucun commentaire.
+
+TOPICS AUTORISÉS :
+
+{topics_list_text}
+
+CONCEPTS AUTORISÉS :
+
+{concepts_list_text}
+
+CONTENU :
+
+{source_text}
+
+FORMAT DE RÉPONSE OBLIGATOIRE :
+
+TOPICS
+- label exact
+- label exact
+
+CONCEPTS
+- label exact
+- label exact
+"""
+
+    # ========================================================
+    # LLM
+    # ========================================================
+
+    raw = run_llm(
+        prompt,
+    )
+
+    if not raw:
+        raise ValueError(
+            "Réponse LLM vide"
+        )
+
+    # ========================================================
+    # PARSING
+    # ========================================================
+
+    sections = _parse_llm_sections(
+        raw,
+    )
+
+    topics = _parse_list(
+        sections["TOPICS"],
+    )
+
+    concepts = _parse_list(
+        sections["CONCEPTS"],
+    )
+
+    # ========================================================
+    # RETURN
+    # ========================================================
+
+    return {
+        "topics_llm": topics,
+        "concepts_llm": concepts,
+    }
+
