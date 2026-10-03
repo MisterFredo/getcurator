@@ -23,6 +23,7 @@ import {
 import TouchGuidedResearch from "@/components/admin/touch/TouchGuidedResearch";
 import TouchResearchModeChoice from "@/components/admin/touch/TouchResearchModeChoice";
 import TouchCandidateList from "@/components/admin/touch/TouchCandidateList";
+import TouchExpertMonthlyActions from "@/components/admin/touch/TouchExpertMonthlyActions";
 import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder";
 import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
 import TouchResearchCoverage from "@/components/admin/touch/TouchResearchCoverage";
@@ -552,6 +553,11 @@ export default function TouchPage() {
     selectedExpertId,
     setSelectedExpertId,
   ] = useState("");
+
+  const [
+    monthlyPreparationBusy,
+    setMonthlyPreparationBusy,
+  ] = useState(false);
 
   const [
     expertOptions,
@@ -1391,13 +1397,14 @@ export default function TouchPage() {
               id="touch-expert"
               value={selectedExpertId}
               onChange={event => {
-                if (loading || guidedResearch.loading || researchStarted || corpusReady) {
+                if (monthlyPreparationBusy || loading || guidedResearch.loading || researchStarted || corpusReady) {
                   return;
                 }
                 setSelectedExpertId(event.target.value);
               }}
               disabled={
                 expertsLoading
+                || monthlyPreparationBusy
                 || loading
                 || guidedResearch.loading
                 || researchStarted
@@ -1422,6 +1429,12 @@ export default function TouchPage() {
                 Unable to load experts: {expertsError}
               </p>
             )}
+
+            <TouchExpertMonthlyActions
+              expertId={selectedExpertId || null}
+              disabled={loading || guidedResearch.loading || expertsLoading}
+              onBusyChange={setMonthlyPreparationBusy}
+            />
           </section>
 
           <TouchResearchModeChoice
