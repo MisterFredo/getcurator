@@ -1018,6 +1018,7 @@ export type TouchNotebookReportDesign = {
 
 export type TouchNotebookRequest = {
   report_id?: string | null;
+  expert_id?: string | null;
 
   subject: string;
   objective: string;
@@ -1071,6 +1072,9 @@ export type TouchNotebookResponse = {
 
 export type TouchSavedReportSummary = {
   report_id: string;
+  expert_id?: string | null;
+  period_start?: string | null;
+  period_end?: string | null;
   parent_report_id: string | null;
   version_number: number;
   created_at: string;
@@ -1082,6 +1086,9 @@ export type TouchSavedReportSummary = {
 
 export type TouchSavedReport = {
   report_id: string;
+  expert_id?: string | null;
+  period_start?: string | null;
+  period_end?: string | null;
   parent_report_id: string | null;
   version_number: number;
   created_at: string;
