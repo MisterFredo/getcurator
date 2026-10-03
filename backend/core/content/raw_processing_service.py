@@ -28,6 +28,10 @@ from core.content.service import (
     create_content,
 )
 
+from core.content.relation_service import (
+    resolve_all_relations,
+)
+
 from core.numbers.service import (
     get_numbers_from_content,
 )
@@ -432,6 +436,14 @@ def destock_raw_contents(
 
             content_id = create_content(
                 payload,
+            )
+
+            # ====================================================
+            # RELATIONS
+            # ====================================================
+            
+            resolve_all_relations(
+                content_id,
             )
 
             # ====================================================
