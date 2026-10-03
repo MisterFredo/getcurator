@@ -18,6 +18,7 @@ from core.cockpit.operations import (
     sync_prod_to_dev,
     continue_all_knowledge,
     restart_destock,
+    backfill_topics_concepts,
 )
 
 from core.cockpit.quality import (
@@ -196,6 +197,35 @@ def matching_dismiss():
 def restart():
 
     return restart_destock()
+
+# ============================================================
+# TOPICS + CONCEPTS BACKFILL
+# TEMPORARY
+# ============================================================
+
+@router.post(
+    "/operations/backfill-topics-concepts"
+)
+def run_topics_concepts_backfill():
+
+    try:
+
+        result = backfill_topics_concepts(
+            limit=5,
+        )
+
+        return {
+            "status": result["status"],
+            "message": result["message"],
+            "result": result,
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            400,
+            f"Topics / Concepts backfill error: {e}",
+        )
 
 @router.post(
     "/operations/generate-company-descriptions"
