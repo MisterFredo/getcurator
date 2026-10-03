@@ -16,6 +16,10 @@ from core.touch.search_prompt import (
     build_touch_search_interpretation_prompt,
 )
 
+from core.touch.expert_context_service import (
+    get_touch_expert_entities,
+)
+
 from utils.llm import (
     run_llm_json,
 )
@@ -192,6 +196,7 @@ def _validate_entity_group(
         TouchEntityReference
     ],
     entity_group: str,
+    expert_entities: list[TouchEntityReference] | None = None,
 ) -> None:
 
     supplied_signature = (
@@ -220,9 +225,13 @@ def _validate_entity_group(
             f"entités dupliquées dans {entity_group}"
         )
 
+    allowed_signature = supplied_signature | _build_entity_signature(
+        expert_entities or []
+    )
+
     invented_entities = (
         returned_signature
-        - supplied_signature
+        - allowed_signature
     )
 
     if invented_entities:
@@ -266,6 +275,12 @@ def _validate_interpretation_entities(
 
         entity_group="companies",
 
+        expert_entities=[
+            entity
+            for entity in get_touch_expert_entities(brief)
+            if entity.entity_type == "company"
+        ],
+
     )
 
     _validate_entity_group(
@@ -278,6 +293,12 @@ def _validate_interpretation_entities(
 
         entity_group="solutions",
 
+        expert_entities=[
+            entity
+            for entity in get_touch_expert_entities(brief)
+            if entity.entity_type == "solution"
+        ],
+
     )
 
     _validate_entity_group(
@@ -289,6 +310,12 @@ def _validate_interpretation_entities(
         ),
 
         entity_group="topics",
+
+        expert_entities=[
+            entity
+            for entity in get_touch_expert_entities(brief)
+            if entity.entity_type == "topic"
+        ],
 
     )
 
@@ -527,7 +554,8 @@ Validation error:
 
 Return one valid JSON object matching the required structure.
 
-Return every supplied structured entity exactly as supplied.
+Return every core entity exactly as supplied. You may also select
+relevant references from available_expert_entities, copying them exactly.
 
 Do not invent, remove, rename or modify any entity_id or
 entity_label.
