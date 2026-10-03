@@ -25,6 +25,8 @@ import type {
 ========================================================= */
 
 export type TouchGuidedResearchContext = {
+  expertId?: string | null;
+
   outputLanguage:
     string;
 
@@ -231,6 +233,9 @@ export function useTouchGuidedResearch():
           TouchGuidedResearchRequest = {
 
             action,
+
+            expert_id:
+              context.expertId ?? null,
 
             message:
               cleanedMessage,
