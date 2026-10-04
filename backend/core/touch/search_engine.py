@@ -1,4 +1,5 @@
 import json
+import re
 
 from typing import (
     Optional,
@@ -503,6 +504,101 @@ def _normalize_interpretation(
 # VALIDATE PREPARED INTERPRETATION
 # ============================================================
 
+def _normalize_literal_retrieval(
+    brief: TouchResearchBrief,
+    interpretation: TouchResearchInterpretation,
+) -> TouchResearchInterpretation:
+    """Remove appended scope qualifiers, never the analytical scope.
+
+    This is a deterministic guard for the literal-substring backend.
+    Official supplied entity labels are preserved, including geography
+    or digits in their names. No actors or translations are invented.
+    """
+    protected = {
+        entity.entity_label.strip().casefold()
+        for entity in (
+            list(brief.companies) + list(brief.solutions)
+            + list(brief.topics) + get_touch_expert_entities(brief)
+            + list(interpretation.companies)
+            + list(interpretation.solutions) + list(interpretation.topics)
+        )
+    }
+    geographies = _normalize_text_list(interpretation.geographies)
+    years = {
+        str(value.year)
+        for value in (brief.period_start, brief.period_end)
+        if value is not None
+    }
+    months = (
+        "janvier|février|mars|avril|mai|juin|juillet|août|septembre|"
+        "octobre|novembre|décembre|january|february|march|april|may|"
+        "june|july|august|september|october|november|december"
+    )
+    year_pattern = "|".join(sorted(years))
+    date_suffix = (
+        re.compile(
+            rf"\s+(?:(?:en|in|during|durant|pour|for)\s+)?"
+            rf"(?:(?:{months})\s+)?(?:{year_pattern})(?:-\d{{2}})?$",
+            re.IGNORECASE,
+        ) if years else None
+    )
+
+    def clean(values: list[str]) -> list[str]:
+        cleaned = []
+        for original in _normalize_text_list(values):
+            if original.casefold() in protected:
+                cleaned.append(original)
+                continue
+            term = original
+            while True:
+                previous = term
+                if date_suffix:
+                    term = date_suffix.sub("", term).strip()
+                for geography in sorted(geographies, key=len, reverse=True):
+                    term = re.sub(
+                        rf"\s+(?:(?:en|in|au|aux|pour|for)\s+)?"
+                        rf"{re.escape(geography)}$",
+                        "", term, flags=re.IGNORECASE,
+                    ).strip()
+                if term == previous:
+                    break
+            if term and term.casefold() not in {
+                geography.casefold() for geography in geographies
+            }:
+                cleaned.append(term)
+        return _normalize_text_list(cleaned)
+
+    global_terms = clean(interpretation.search_terms)
+    axes = [
+        axis.model_copy(update={"search_terms": clean(axis.search_terms)})
+        for axis in interpretation.axes
+    ]
+    # Axis pools precede global terms and can exhaust the retrieval budget.
+    # Give existing short subject anchors a place in the first axis so
+    # e.g. CTV survives even when twelve axes consume all sixteen slots.
+    anchors = [
+        term for term in global_terms
+        if len(term.split()) <= 3
+    ][:3]
+    if axes and anchors:
+        axes[0] = axes[0].model_copy(update={
+            "search_terms": _normalize_text_list(
+                anchors + axes[0].search_terms
+            ),
+        })
+    normalized = interpretation.model_copy(update={
+        "search_terms": global_terms,
+        "axes": axes,
+    })
+    if normalized.model_dump() != interpretation.model_dump():
+        print("TOUCH_LITERAL_RETRIEVAL_NORMALIZED", {
+            "subject": interpretation.subject,
+            "original_terms": interpretation.search_terms,
+            "search_terms": global_terms,
+            "axis_terms": [axis.search_terms for axis in axes],
+        })
+    return normalized
+
 def validate_touch_research_interpretation(
     brief: TouchResearchBrief,
     interpretation: (
@@ -514,6 +610,11 @@ def validate_touch_research_interpretation(
         _normalize_interpretation(
             interpretation
         )
+    )
+
+    normalized_interpretation = _normalize_literal_retrieval(
+        brief=brief,
+        interpretation=normalized_interpretation,
     )
 
     _validate_interpretation(
