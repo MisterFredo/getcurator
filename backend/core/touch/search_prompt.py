@@ -16,7 +16,7 @@ from core.touch.expert_context_service import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_SEARCH_INTERPRETATION_VERSION = "1.1"
+TOUCH_SEARCH_INTERPRETATION_VERSION = "1.2"
 
 
 # ============================================================
@@ -110,6 +110,12 @@ axes and its decision lenses to identify evidence needs. For a broad
 panorama of the expert mandate, cover the relevant monitoring areas.
 For a focused request, retain only the useful subset. Do not force
 all expert axes, actors or markets into every report.
+
+For a complete monthly overview of an expert, represent every relevant
+CURRENT monitoring area. Merge related areas only when their full scope
+is preserved in the resulting axes. Do not retain only the first four
+or five watch instructions. The global search-term budget does not
+limit the number of documentary areas to represent.
 
 Use the profile's explicit negative preferences within the report
 scope. Never infer new exclusions or unsupported conclusions.
@@ -359,6 +365,11 @@ Use missing_information for evidence that would materially
 improve the report but is not yet specified or guaranteed to
 exist.
 
+Before retrieval, you do not know what the corpus contains. Never
+assume that developments, active actors, results or campaign evidence
+exist for the supplied period. Missing information describes evidence
+to look for, not an observed gap in a corpus you have not examined.
+
 Do not turn optional missing information into a reason to
 block retrieval.
 
@@ -438,6 +449,66 @@ subject and target context.
 
 The first four terms must provide the strongest chance of
 retrieving directly relevant content.
+
+MANDATORY LITERAL RETRIEVAL RULES
+
+These rules apply to BOTH global search_terms and every axis.search_terms.
+Axis terms are retrieved first, in round-robin order, and can consume
+the entire 16-term retrieval budget. Every axis must therefore start
+with a strong, independently usable literal anchor, not a sentence.
+
+The database does not interpret a search expression as a web query.
+It does not split its words, translate them or require them separately.
+For example, "SSP France" matches only that contiguous substring;
+an article mentioning an SSP and France in separate sentences does
+not match. The same applies to related_angles, which are also used
+as literal retrieval expressions: use short adjacent-topic labels,
+not analytical sentences or research questions.
+
+Use established names, acronyms and short domain expressions, usually
+one to three words. Longer official product names are permitted.
+Do not manufacture combinations of otherwise useful anchors.
+Do not return SQL, Boolean operators or wildcard syntax as terms.
+
+Keep the requested geography in geographies, scope_summary and axis
+objectives. Geographic relevance is evaluated after candidate retrieval.
+Do not append "France", a country or region to every search term.
+Use a geographical expression only when it is itself a useful established
+literal phrase; it must not replace standalone subject anchors.
+This retrieval strategy does not broaden the report's geographic scope.
+
+Keep report dates in the supplied period and documentary objectives.
+Do not append "September 2026", "septembre 2026" or another requested
+month/year to retrieval terms: publication dates are filtered separately.
+
+Retrieval vocabulary is independent of output_language. For French
+reports, retain useful English industry expressions and include concise
+French equivalents where useful. Do not translate official names.
+Do not mechanically duplicate every term in two languages; distribute
+useful equivalents across axes within the finite retrieval budget.
+
+Examples of literal retrieval anchors, ONLY when relevant to the scope:
+- CTV; connected TV; télévision connectée; BVOD; FAST; SSAI;
+- ad server; ad serving; SSP; header bidding; ciblage contextuel;
+- retail media; média retail; sponsored products; in-store retail media;
+- régie publicitaire; revenus publicitaires; ad spend.
+
+Reject synthetic phrases such as:
+- "offres publicitaires CTV France";
+- "architectures de diffusion France";
+- "offres retail media France";
+- "marché publicitaire France septembre 2026";
+- "Impact des choix technologiques sur le marché CTV".
+
+When supplied profile actors or solutions are relevant, use their
+standalone names. Copy resolved references from available_expert_entities
+exactly. For unresolved profile entities, use their labels as textual
+terms; database resolution is not required to search their names.
+Do not invent local actors or assume their local availability.
+
+Before returning JSON, check each axis's FIRST term against these rules.
+It must work independently as a literal substring, even if all other
+terms are dropped by the retrieval budget.
 
 ============================================================
 OUTPUT LANGUAGE
@@ -805,6 +876,11 @@ def build_touch_search_interpretation_prompt(
         "Do not claim that content has already been "
         "found.\n\n"
         "Return a retrieval strategy only.\n\n"
+        "Apply the literal retrieval rules to every axis.search_terms "
+        "as well as global search_terms and related_angles. Keep "
+        "geography and report dates separate from literal anchors. "
+        "Retrieval terms may be French or English regardless of "
+        "output_language.\n\n"
         "Never invent or modify an entity_id.\n\n"
         "Write response_message in the requested "
         "output language.\n\n"
