@@ -190,7 +190,32 @@ def list_touch_editions(
           ARRAY_LENGTH(SELECTED_CONTENT_IDS) AS SELECTED_COUNT,
           ARRAY_LENGTH(
             JSON_QUERY_ARRAY(SEARCH_JSON, '$.candidates')
-          ) AS CANDIDATE_COUNT
+          ) AS CANDIDATE_COUNT,
+          CASE
+            WHEN JSON_QUERY_ARRAY(SEARCH_JSON, '$.candidates') IS NULL
+              THEN NULL
+            ELSE (
+              SELECT COUNT(*)
+              FROM UNNEST(
+                JSON_QUERY_ARRAY(SEARCH_JSON, '$.candidates')
+              ) AS candidate
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM UNNEST(DISMISSED_CONTENT_IDS) AS dismissed_id
+                WHERE dismissed_id = JSON_VALUE(candidate, '$.content_id')
+              )
+              AND COALESCE((
+                SELECT JSON_VALUE(decision, '$.relevance')
+                FROM UNNEST(
+                  JSON_QUERY_ARRAY(SEARCH_JSON, '$.evaluation.decisions')
+                ) AS decision WITH OFFSET AS decision_position
+                WHERE JSON_VALUE(decision, '$.content_id')
+                  = JSON_VALUE(candidate, '$.content_id')
+                ORDER BY decision_position DESC
+                LIMIT 1
+              ), '') != 'OUT_OF_SCOPE'
+            )
+          END AS PROPOSED_COUNT
         FROM `{TABLE_TOUCH_EDITION}`
         {where}
         ORDER BY PERIOD_START DESC, CREATED_AT DESC
@@ -214,6 +239,7 @@ def list_touch_editions(
             "updated_at": row["UPDATED_AT"].isoformat(),
             "selected_count": row["SELECTED_COUNT"],
             "candidate_count": row.get("CANDIDATE_COUNT"),
+            "proposed_count": row.get("PROPOSED_COUNT"),
         }
         for row in rows
     ]
