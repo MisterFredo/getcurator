@@ -16,6 +16,7 @@ type Edition = {
   report_id: string | null;
   error: string | null;
   selected_count: number;
+  candidate_count?: number | null;
 };
 
 type Props = {
@@ -96,7 +97,7 @@ export default function TouchMonthlyEditionList({
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Monthly expert editions</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Review the proposed corpus before generating each monthly report.
+            Check the initial corpus size, then review sources before generating each monthly report.
           </p>
         </div>
         <button
@@ -154,6 +155,19 @@ export default function TouchMonthlyEditionList({
               <h3 className="mt-1 font-semibold text-gray-900">{edition.subject}</h3>
               <p className="mt-2 text-xs text-gray-600">
                 {STATUS_LABELS[edition.status] ?? edition.status}
+                {" · "}
+                <span
+                  className={edition.candidate_count === 0
+                    ? "font-semibold text-amber-700"
+                    : "font-semibold text-gray-900"}
+                  title="All candidates returned by the search before manual selection, including sources later dismissed."
+                >
+                  {edition.candidate_count == null
+                    ? edition.status === "BUILDING"
+                      ? "Initial corpus pending"
+                      : "Initial corpus unavailable"
+                    : `${edition.candidate_count} contents retrieved`}
+                </span>
                 {" · "}
                 {edition.selected_count ?? 0} sources selected
                 {" · "}
