@@ -17,6 +17,7 @@ type Edition = {
   error: string | null;
   selected_count: number;
   candidate_count?: number | null;
+  proposed_count?: number | null;
 };
 
 type Props = {
@@ -97,7 +98,7 @@ export default function TouchMonthlyEditionList({
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Monthly expert editions</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Check the initial corpus size, then review sources before generating each monthly report.
+            Review the proposed contents before selecting sources for each monthly report.
           </p>
         </div>
         <button
@@ -157,22 +158,27 @@ export default function TouchMonthlyEditionList({
                 {STATUS_LABELS[edition.status] ?? edition.status}
                 {" · "}
                 <span
-                  className={edition.candidate_count === 0
+                  className={edition.proposed_count === 0
                     ? "font-semibold text-amber-700"
                     : "font-semibold text-gray-900"}
-                  title="All candidates returned by the search before manual selection, including sources later dismissed."
+                  title="Contents visible in Proposed contents: excludes dismissed sources and OUT_OF_SCOPE evaluations."
                 >
-                  {edition.candidate_count == null
+                  {edition.proposed_count == null
                     ? edition.status === "BUILDING"
-                      ? "Initial corpus pending"
-                      : "Initial corpus unavailable"
-                    : `${edition.candidate_count} contents retrieved`}
+                      ? "Proposed corpus pending"
+                      : "Proposed corpus unavailable"
+                    : `${edition.proposed_count} contents proposed`}
                 </span>
                 {" · "}
                 {edition.selected_count ?? 0} sources selected
                 {" · "}
                 {edition.output_language.toUpperCase()}
               </p>
+              {edition.candidate_count != null && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {edition.candidate_count} candidates retrieved before evaluation
+                </p>
+              )}
               {edition.error && (
                 <p className="mt-2 text-sm text-red-700">{edition.error}</p>
               )}
