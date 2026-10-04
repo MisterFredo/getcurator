@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import type {
   TouchContentCandidate,
   TouchCorpusNotebook,
@@ -17,6 +19,10 @@ import type {
 type Props = {
   notebook: TouchCorpusNotebook;
   sources: TouchContentCandidate[];
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  outputLanguage?: string;
+  expertName?: string | null;
 };
 
 
@@ -76,6 +82,61 @@ function formatDate(
   );
 
 }
+
+/* =========================================================
+   REPORT PERIOD
+========================================================= */
+
+function formatReportPeriod(
+  periodStart: string | null | undefined,
+  periodEnd: string | null | undefined,
+  locale: string,
+): { label: string; monthly: boolean } | null {
+  if (!periodStart || !periodEnd) return null;
+
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+  if (
+    Number.isNaN(start.getTime())
+    || Number.isNaN(end.getTime())
+    || end < start
+  ) return null;
+
+  // Calendar boundaries are UTC, including exclusive next-month ends.
+  const exclusiveEnd = end.getUTCHours() === 0
+    && end.getUTCMinutes() === 0
+    && end.getUTCSeconds() === 0
+    && end.getUTCMilliseconds() === 0;
+  const lastDay = exclusiveEnd
+    ? new Date(end.getTime() - 1)
+    : end;
+  const monthly = start.getUTCDate() === 1
+    && start.getUTCHours() === 0
+    && start.getUTCMinutes() === 0
+    && start.getUTCSeconds() === 0
+    && start.getUTCMilliseconds() === 0
+    && start.getUTCFullYear() === lastDay.getUTCFullYear()
+    && start.getUTCMonth() === lastDay.getUTCMonth()
+    && lastDay.getUTCDate() === new Date(Date.UTC(
+      start.getUTCFullYear(), start.getUTCMonth() + 1, 0,
+    )).getUTCDate();
+
+  const formatter = new Intl.DateTimeFormat(locale, {
+    ...(monthly ? {} : { day: "numeric" as const }),
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const label = monthly
+    ? formatter.format(start)
+    : `${formatter.format(start)} – ${formatter.format(lastDay)}`;
+
+  return {
+    label: label.charAt(0).toUpperCase() + label.slice(1),
+    monthly,
+  };
+}
+
 
 /* =========================================================
    CROSS-READING HELPERS
@@ -733,7 +794,31 @@ function EventBlock({
 export default function TouchNotebookDocument({
   notebook,
   sources,
+  periodStart,
+  periodEnd,
+  outputLanguage = "en",
+  expertName,
 }: Props) {
+  const isFrench = outputLanguage === "fr";
+  const locale = isFrench ? "fr-FR" : "en-GB";
+  const period = formatReportPeriod(periodStart, periodEnd, locale);
+  const subject = expertName?.trim() || notebook.subject;
+  const reportTitle = period
+    ? `${subject} — ${period.label}`
+    : subject;
+  const documentTitle = `GetCurator Touch — ${reportTitle}`;
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = documentTitle;
+    // Restore the page title when the document is closed.
+    return () => {
+      if (document.title === documentTitle) {
+        document.title = previousTitle;
+      }
+    };
+  }, [documentTitle]);
+
 
   const citedSourceContentIds =
     new Set(
@@ -836,6 +921,9 @@ export default function TouchNotebookDocument({
           px-8
           py-8
           text-white
+          border-b-4
+          border-blue-600
+          break-inside-avoid
           print:bg-white
           print:px-0
           print:py-0
@@ -856,6 +944,12 @@ export default function TouchNotebookDocument({
           GetCurator Touch
         </p>
 
+        <p className="mt-2 text-xs font-medium tracking-wide text-slate-300 print:text-slate-600">
+          {period?.monthly
+            ? (isFrench ? "Rapport mensuel" : "Monthly Report")
+            : (isFrench ? "Rapport d’expertise" : "Expert Report")}
+        </p>
+
         <h1
           className="
             mt-3
@@ -865,7 +959,7 @@ export default function TouchNotebookDocument({
             leading-tight
           "
         >
-          {notebook.subject}
+          {reportTitle}
         </h1>
 
         {notebook.objective && (
@@ -903,11 +997,13 @@ export default function TouchNotebookDocument({
           {" sections · "}
           
           {notebook.notes.length}
-          {" evidence notes · "}
+          {" evidence notes"}
+          <span className="mt-2 block">
+          {isFrench ? "Exporté le " : "Exported on "}
 
           {
             new Intl.DateTimeFormat(
-              "fr-FR",
+              locale,
               {
                 day: "2-digit",
                 month: "long",
@@ -917,6 +1013,7 @@ export default function TouchNotebookDocument({
               new Date(),
             )
           }
+          </span>
         </p>
 
       </header>
