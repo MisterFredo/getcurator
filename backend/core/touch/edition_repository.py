@@ -187,7 +187,10 @@ def list_touch_editions(
           EDITION_ID, EXPERT_ID, PERIOD_START, PERIOD_END,
           STATUS, SUBJECT, OUTPUT_LANGUAGE,
           REPORT_ID, ERROR, CREATED_AT, UPDATED_AT,
-          ARRAY_LENGTH(SELECTED_CONTENT_IDS) AS SELECTED_COUNT
+          ARRAY_LENGTH(SELECTED_CONTENT_IDS) AS SELECTED_COUNT,
+          ARRAY_LENGTH(
+            JSON_QUERY_ARRAY(SEARCH_JSON, '$.candidates')
+          ) AS CANDIDATE_COUNT
         FROM `{TABLE_TOUCH_EDITION}`
         {where}
         ORDER BY PERIOD_START DESC, CREATED_AT DESC
@@ -210,6 +213,7 @@ def list_touch_editions(
             "created_at": row["CREATED_AT"].isoformat(),
             "updated_at": row["UPDATED_AT"].isoformat(),
             "selected_count": row["SELECTED_COUNT"],
+            "candidate_count": row.get("CANDIDATE_COUNT"),
         }
         for row in rows
     ]
