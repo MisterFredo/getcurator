@@ -863,6 +863,144 @@ def _review_concentrated_plan(
         )
 
 
+def _generate_staged_organization(
+    request: TouchNotebookRequest,
+    notes: list[TouchEvidenceNote],
+    model: Optional[str],
+    feedback: str = "",
+) -> dict[str, Any]:
+    """Plan globally, assign in bounded batches, then group local events."""
+    context = {
+        "subject": request.subject,
+        "objective": request.objective,
+        "report_design": request.report_design.model_dump(mode="json"),
+    }
+    payload = dict(context)
+    payload["notes"] = [note.model_dump(mode="json") for note in notes]
+    payload["previous_validation_error"] = feedback
+    plan = extract_json_object(run_llm_json(
+        prompt=(
+            "Design only the documentary navigation for this supplied corpus. "
+            "Separate distinct documented mechanisms; avoid a catch-all title. "
+            "Respect the requested organization mode and language. A homogeneous "
+            "corpus can have one section. Do not impose a fixed section count. "
+            "Do not assign individual notes or create events yet. "
+            "Return JSON: corpus_summary (string), sections (array of objects "
+            "with section_id, title, description), corpus_strengths (string array), "
+            "corpus_limits (string array). Descriptions must define inclusion "
+            "boundaries clearly enough to assign every supplied note.\n"
+            + json.dumps(payload, ensure_ascii=False)
+        ), model=model, temperature=0.0,
+        system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
+    ))
+    sections = plan.get("sections")
+    if not isinstance(sections, list) or not sections:
+        raise ValueError("DOCUMENTARY_PLAN_INVALID: missing sections.")
+    ids: set[str] = set()
+    for section in sections:
+        if not isinstance(section, dict):
+            raise ValueError("DOCUMENTARY_PLAN_INVALID: invalid section.")
+        sid = section.get("section_id")
+        if not isinstance(sid, str) or not sid.strip() or sid in ids:
+            raise ValueError("DOCUMENTARY_PLAN_INVALID: invalid or duplicate section_id.")
+        if not isinstance(section.get("title"), str) or not section["title"].strip():
+            raise ValueError("DOCUMENTARY_PLAN_INVALID: missing section title.")
+        ids.add(sid)
+    assigned: dict[str, list[TouchEvidenceNote]] = {sid: [] for sid in ids}
+    for offset in range(0, len(notes), 30):
+        batch = notes[offset:offset + 30]
+        assignments = extract_json_object(run_llm_json(
+            prompt=(
+                "Assign each supplied evidence note to exactly one best fitting "
+                "section of this plan. Use its meaning, not its numeric id or "
+                "position. Preserve every note_id exactly. Do not summarize, "
+                "exclude notes, or invent sections. Return JSON with assignments: "
+                "array of objects containing note_id and section_id.\n"
+                + json.dumps({"context": context, "sections": sections,
+                              "notes": [note.model_dump(mode="json") for note in batch]},
+                             ensure_ascii=False)
+            ), model=model, temperature=0.0,
+            system_prompt="Assign documentary evidence. Return JSON only.",
+        )).get("assignments")
+        if not isinstance(assignments, list):
+            raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: missing assignments.")
+        note_by_id = {note.note_id: note for note in batch}
+        seen: set[str] = set()
+        for assignment in assignments:
+            if not isinstance(assignment, dict):
+                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: invalid item.")
+            nid, sid = assignment.get("note_id"), assignment.get("section_id")
+            if not isinstance(nid, str) or not isinstance(sid, str) or nid not in note_by_id or nid in seen or sid not in ids:
+                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: unknown or repeated identifier.")
+            seen.add(nid)
+            assigned[sid].append(note_by_id[nid])
+        if seen != set(note_by_id):
+            raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: omitted notes "
+                             + json.dumps(sorted(set(note_by_id) - seen)))
+
+    combined: dict[str, Any] = {
+        "corpus_summary": plan.get("corpus_summary", ""),
+        "corpus_strengths": plan.get("corpus_strengths", []),
+        "corpus_limits": plan.get("corpus_limits", []),
+        "sections": [], "events": [], "timeline": [], "contradictions": [],
+    }
+    # Local grouping retains the existing event/timeline/contradiction schema.
+    # Chunk large sections so no organization call must place the whole corpus.
+    for section in sections:
+        local_notes = assigned[section["section_id"]]
+        if not local_notes:
+            continue
+        final_section = {"section_id": section["section_id"],
+                         "title": section["title"],
+                         "description": section.get("description", ""),
+                         "event_ids": [], "note_ids": []}
+        for offset in range(0, len(local_notes), 30):
+            chunk = local_notes[offset:offset + 30]
+            prompt = build_touch_notebook_organization_prompt(request=request, notes=chunk)
+            prompt += (
+                "\nLOCAL ORGANIZATION TASK\nThese notes are already assigned to "
+                "this global section: " + json.dumps(section, ensure_ascii=False)
+                + ". Group complementary notes into documented events where "
+                "appropriate. Preserve every supplied note_id in a section or "
+                "a section-referenced event. Do not invent or omit note_ids. "
+                "Do not reconstruct the global plan."
+            )
+            raw = extract_json_object(run_llm_json(
+                prompt=prompt, model=model, temperature=0.0,
+                system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
+            ))
+            local = TouchNotebookOrganizationResult.model_validate(
+                _normalize_organization_payload(raw))
+            notebook = _build_notebook(request, local, chunk, [])
+            _validate_documentary_note_coverage(chunk, notebook)
+            prefix = f"{section['section_id']}-batch-{offset // 30 + 1}-"
+            event_ids = {event.event_id: prefix + event.event_id for event in local.events}
+            for event in local.events:
+                data = event.model_dump(mode="json")
+                data["event_id"] = event_ids[event.event_id]
+                combined["events"].append(data)
+            for local_section in local.sections:
+                final_section["note_ids"].extend(local_section.note_ids)
+                final_section["event_ids"].extend(event_ids[eid] for eid in local_section.event_ids)
+            for timeline in local.timeline:
+                data = timeline.model_dump(mode="json")
+                if "event_ids" in data:
+                    data["event_ids"] = [event_ids[eid] for eid in data["event_ids"]]
+                if data.get("event_id"):
+                    data["event_id"] = event_ids[data["event_id"]]
+                combined["timeline"].append(data)
+            combined["contradictions"].extend(
+                item.model_dump(mode="json") for item in local.contradictions)
+        final_section["note_ids"] = list(dict.fromkeys(final_section["note_ids"]))
+        final_section["event_ids"] = list(dict.fromkeys(final_section["event_ids"]))
+        combined["sections"].append(final_section)
+    print("TOUCH_NOTEBOOK_STAGED_ORGANIZATION", {
+        "notes_count": len(notes), "sections_count": len(combined["sections"]),
+        "assignment_batch_size": 30,
+    })
+    return combined
+
+
 def _validate_documentary_note_coverage(
     notes: list[TouchEvidenceNote],
     notebook: TouchCorpusNotebook,
@@ -1076,23 +1214,17 @@ def organize_notebook(
 
         try:
 
-            raw_content = run_llm_json(
-
-                prompt=prompt,
-
-                model=model,
-
-                temperature=0.0,
-
-                system_prompt=(
-                    TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT
-                ),
-
-            )
-
-            parsed = extract_json_object(
-                raw_content
-            )
+            if len(notes) >= 60:
+                parsed = _generate_staged_organization(
+                    request=request, notes=notes, model=model,
+                    feedback=last_error if attempt else "",
+                )
+            else:
+                raw_content = run_llm_json(
+                    prompt=prompt, model=model, temperature=0.0,
+                    system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
+                )
+                parsed = extract_json_object(raw_content)
 
             normalized_payload = (
                 _normalize_organization_payload(
