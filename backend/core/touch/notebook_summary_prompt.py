@@ -88,6 +88,18 @@ Preserve distinctions between:
 - uncertainties;
 - interpretations.
 
+For every numerical claim retain its material market, observation period,
+population and comparison basis. The report month is not automatically the
+measurement period. A US retail traffic result must not become a worldwide
+result or a result specific to the monitored platform without evidence.
+Distinguish announcement date from rollout date and target completion date.
+An announced expansion is not an already completed expansion. Testing, beta,
+limited availability and full deployment must remain distinct.
+If apparently conflicting rollout claims concern different markets, partners
+or dates, preserve those distinctions rather than making a universal claim.
+Keep study or company attribution when needed to distinguish reported findings
+from established facts. Shorten the selection before removing essential scope.
+
 A projection must remain a projection.
 
 A target must remain a target.
