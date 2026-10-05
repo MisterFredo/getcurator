@@ -124,8 +124,9 @@ ABSOLUTE RULES
 15. A note assigned to an event must not also be assigned
     directly to a section.
 
-16. A supplied note that is not included in any section or event
-    is considered excluded from the final notebook.
+16. Every supplied note must be placed or explicitly listed in
+    excluded_notes with a specific out-of-scope reason. Absence
+    from sections or events is an omission, not an exclusion.
 
 17. Every included event_id must appear exactly once in one
     section.
@@ -189,10 +190,21 @@ different platforms must not be presented as one announcement.
 Deduplication has already run: do not suppress complementary facts
 or contradictory claims as though they were duplicates.
 
-Before returning, check each supplied note_id for either a valid
-primary placement or a genuinely unrelated documentary scope.
-Check that every event used for placement belongs to one section.
-Do not output this internal check or add fields to the schema.
+Before returning, account for every supplied note_id exactly once:
+either a primary placement or one entry in excluded_notes. Use an
+empty excluded_notes array when nothing is excluded. Exclusion is
+allowed only for genuinely out-of-scope evidence, not for shortening,
+low prominence, chapter imbalance or difficulty finding a chapter.
+State the specific mismatch with the subject or objective; generic
+reasons such as "not relevant" are insufficient. Do not discard useful
+facts because a recap article mixes topics. Never exclude a note that
+is referenced by a section, event, timeline or contradiction.
+Check that every event belongs to exactly one section.
+If asked to repair coverage, preserve correct chapter boundaries and
+placements. Add omitted relevant notes to suitable chapters, adjusting
+the plan only where necessary. Return the complete corrected JSON.
+Do not copy report_design.missing_information into corpus_limits as
+an established gap: reassess each potential gap against the notes.
 
 
 ============================================================
@@ -786,6 +798,9 @@ Return exactly one JSON object with this structure:
 
 {
   "corpus_summary": "Short documentary summary",
+  "excluded_notes": [
+    {"note_id": "exact supplied note_id", "reason": "Specific reason this note is outside the research scope"}
+  ],
   "sections": [
     {
       "section_id": "section-001",
@@ -996,6 +1011,11 @@ def build_touch_notebook_organization_prompt(
         "Check corpus_limits against the notes: partial evidence "
         "must not be described as completely absent.\n\n"
         
+        "Account for every supplied note: one primary placement or an "
+        "explicit excluded_notes entry with a specific out-of-scope reason. "
+        "Unplaced notes are omissions, not implicit exclusions. Preserve "
+        "useful evidence even when the initial plan needs adjustment.\n\n"
+
         "Every note included in the documentary plan must "
         "appear exactly once, either inside one event or "
         "directly inside one section.\n\n"
