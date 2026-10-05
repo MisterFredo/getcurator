@@ -1044,13 +1044,18 @@ def _prepare_chapter_outline(request, notes, model=None):
             system_prompt=TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
         )
         outline = _validate_chapter_outline(extract_json_object(raw))
-        logger.info("TOUCH_NOTEBOOK_OUTLINE subject=%s chapters=%s",
-                    request.subject, [c["title"] for c in outline["chapters"]])
+        print("TOUCH_NOTEBOOK_OUTLINE", {
+            "subject": request.subject,
+            "note_count": len(notes),
+            "chapters": outline["chapters"],
+        }, flush=True)
         return outline
     except Exception as exc:
         # An unavailable outline must not block an otherwise valid report.
-        logger.warning("TOUCH_NOTEBOOK_OUTLINE_FALLBACK subject=%s error=%s",
-                       request.subject, str(exc))
+        print("TOUCH_NOTEBOOK_OUTLINE_FALLBACK", {
+            "subject": request.subject,
+            "error": str(exc),
+        }, flush=True)
         return None
 
 
@@ -1363,6 +1368,19 @@ def organize_notebook(
                         error=navigation_feedback,
                     )
                     continue
+
+            print("TOUCH_NOTEBOOK_ASSIGNMENT", {
+                "subject": request.subject,
+                "attempt": attempt + 1,
+                "used_outline": chapter_outline is not None,
+                "input_note_count": len(notes),
+                "retained_note_count": len(retained_notes),
+                "excluded_notes": exclusions,
+                "sections": [section.model_dump(mode="json")
+                             for section in organization.sections],
+                "events": [event.model_dump(mode="json")
+                           for event in organization.events],
+            }, flush=True)
 
             return _build_notebook(
 
