@@ -675,9 +675,8 @@ def repair_documentary_plan(
     # FINAL DOCUMENTARY REGISTRY
     # ========================================================
     
-    # Items that could not be attached to a meaningful section
-    # are excluded from the final notebook instead of being
-    # placed in a generic catch-all section.
+    # Preserve the registry of all retained notes. Unplaced notes
+    # must trigger an error before the final registry is filtered.
     
     placed_event_ids = {
     
@@ -724,6 +723,16 @@ def repair_documentary_plan(
             event.note_ids
         )
     
+    # Explicit exclusions have already been removed by the organizer.
+    # Any remaining unplaced note is an assignment error, not a deletion.
+    missing_note_ids = valid_note_ids - placed_note_ids
+    if missing_note_ids:
+        raise ValueError(
+            "DOCUMENTARY_COVERAGE_INVALID: la réparation du plan "
+            "supprimerait des notes non placées : "
+            + ", ".join(sorted(missing_note_ids))
+        )
+
     final_notes = [
     
         note
