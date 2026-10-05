@@ -527,11 +527,34 @@ The report design determines the intended reading logic.
 The supplied notes determine what can legitimately appear in the
 notebook.
 
-Use the smallest number of sections that allows the notes to be
-read clearly.
+Choose a balanced chapter structure around the distinct subjects
+actually documented by the notes. Optimize navigation and coherence,
+not the minimum or maximum number of sections.
+
+Group related products, capabilities and developments into a common
+chapter when they answer the same professional question. Do not
+create a separate section for every product, mechanism, event or
+research axis. Separate subjects when readers need to consult them
+independently and the evidence supports meaningful chapters.
+
+A single section is appropriate for a narrow corpus documenting one
+coherent subject or development. It is not appropriate merely because
+all notes concern the same company, sector or reporting month.
+A title that restates the entire report subject does not justify
+combining distinct documented subjects into one section.
+
+Avoid both one oversized umbrella section and a fragmented series
+of tiny sections. Do not impose a fixed section count or a note quota.
+Keep a coherent chapter together even when it contains several
+complementary operating mechanisms.
 
 Avoid sections containing only one note when that note can
-logically belong to an existing section.
+logically belong to an existing section. Do not invent a broader
+chapter or move unrelated evidence merely to avoid a small section.
+
+This navigation guidance does not change evidence selection:
+do not include more notes, exclude useful notes, or rewrite notes
+solely to achieve a particular chapter count or report length.
 
 Do not create vague section titles such as:
 
@@ -917,6 +940,14 @@ def build_touch_notebook_organization_prompt(
 
         "Do not organize or reference certified Numbers. "
         "They are managed separately by the application.\n\n"
+
+        "Build balanced chapters around distinct documented subjects. "
+        "Group closely related developments, without one section per "
+        "product or mechanism. Do not collapse distinct subjects under "
+        "a title that merely repeats the report subject. A single section "
+        "is appropriate only for a genuinely narrow, coherent corpus. "
+        "Do not target a fixed section count or change evidence selection "
+        "to satisfy this navigation guidance.\n\n"
 
         "Use section and event titles to make the notebook "
         "readable without adding repetitive prose.\n\n"
