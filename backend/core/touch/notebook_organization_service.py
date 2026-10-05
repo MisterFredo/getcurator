@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import re
 import unicodedata
 
@@ -26,6 +28,11 @@ from core.touch.notebook_models import (
 from core.touch.notebook_organization_prompt import (
     TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
     build_touch_notebook_organization_prompt,
+)
+
+from core.touch.notebook_outline_prompt import (
+    TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
+    build_touch_notebook_outline_prompt,
 )
 
 from core.touch.notebook_utils import (
@@ -789,6 +796,63 @@ def _validate_comparative_organization(
 # REVIEW SINGLE-SECTION NAVIGATION
 # ============================================================
 
+logger = logging.getLogger(__name__)
+
+
+def _validate_chapter_outline(payload: dict) -> dict:
+    if set(payload) != {"chapters"}:
+        raise ValueError("Le plan doit contenir uniquement chapters")
+    chapters = payload.get("chapters")
+    if not isinstance(chapters, list) or not chapters:
+        raise ValueError("Le plan documentaire est vide")
+    cleaned = []
+    seen_ids = set()
+    seen_titles = set()
+    for chapter in chapters:
+        if not isinstance(chapter, dict) or set(chapter) != {
+            "section_id", "title", "scope"
+        }:
+            raise ValueError("Chapitre de plan invalide")
+        if any(not isinstance(chapter[key], str) or not chapter[key].strip()
+               for key in ("section_id", "title", "scope")):
+            raise ValueError("Identifiant, titre ou périmètre vide")
+        chapter = {key: value.strip() for key, value in chapter.items()}
+        title_key = chapter["title"].casefold()
+        if chapter["section_id"] in seen_ids or title_key in seen_titles:
+            raise ValueError("Chapitre de plan dupliqué")
+        seen_ids.add(chapter["section_id"])
+        seen_titles.add(title_key)
+        cleaned.append(chapter)
+    return {"chapters": cleaned}
+
+
+def _prepare_chapter_outline(request, notes, model=None):
+    # Keep comparison, cross-context and chronological behavior unchanged.
+    enabled = os.getenv("TOUCH_NOTEBOOK_TWO_STAGE", "true").lower() in {
+        "true", "1", "yes"
+    }
+    design = request.report_design
+    if not enabled or design.report_archetype != "DOCUMENTARY_SYNTHESIS" \
+            or design.organization_mode not in {"THEMATIC", "HYBRID"}:
+        return None
+    try:
+        raw = run_llm_json(
+            prompt=build_touch_notebook_outline_prompt(request, notes),
+            model=model,
+            temperature=0.0,
+            system_prompt=TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
+        )
+        outline = _validate_chapter_outline(extract_json_object(raw))
+        logger.info("TOUCH_NOTEBOOK_OUTLINE subject=%s chapters=%s",
+                    request.subject, [c["title"] for c in outline["chapters"]])
+        return outline
+    except Exception as exc:
+        # An unavailable outline must not block an otherwise valid report.
+        logger.warning("TOUCH_NOTEBOOK_OUTLINE_FALLBACK subject=%s error=%s",
+                       request.subject, str(exc))
+        return None
+
+
 def _review_single_section_navigation(
     request: TouchNotebookRequest,
     organization: TouchNotebookOrganizationResult,
@@ -995,12 +1059,15 @@ def organize_notebook(
             "à organiser"
         )
 
+    chapter_outline = _prepare_chapter_outline(request, notes, model)
+
     original_prompt = (
         build_touch_notebook_organization_prompt(
 
             request=request,
 
             notes=notes,
+            chapter_outline=chapter_outline,
 
         )
     )
@@ -1061,7 +1128,7 @@ def organize_notebook(
             
             # Review only the first attempt, and only when a retry is
             # available. Avoid repeated reviews and new blocking failures.
-            if attempt == 0 and attempts > 1:
+            if chapter_outline is None and attempt == 0 and attempts > 1:
                 navigation_feedback = _review_single_section_navigation(
                     request=request,
                     organization=organization,
