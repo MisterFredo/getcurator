@@ -863,6 +863,45 @@ def _review_concentrated_plan(
         )
 
 
+def _build_organization_repair_prompt(
+    original_prompt: str,
+    error: str,
+    rejected_payload: Optional[dict[str, Any]],
+) -> str:
+    """Give the retry the actual rejected plan, not only its diagnosis."""
+    if rejected_payload is None:
+        return build_retry_prompt(original_prompt=original_prompt, error=error)
+
+    structural = error.startswith("DOCUMENTARY_STRUCTURE_INVALID:")
+    instruction = (
+        "Reconstruct the documentary sections around the distinct functions "
+        "identified in the diagnosis, where supported by the supplied notes. "
+        "Do not return the same grouping with cosmetic title changes. "
+        "Redistribute the relevant note_ids and event_ids into navigable sections. "
+        "Keep complementary evidence about the same event together. "
+        "If an event incorrectly combines distinct mechanisms, rebuild its "
+        "grouping from the original notes. Do not invent evidence or new note_ids. "
+        "Do not discard notes to avoid the structural review. "
+        "No fixed section count is required."
+        if structural else
+        "Correct the rejected organization using the diagnosis and the original "
+        "schema. Preserve evidence and immutable note identifiers."
+    )
+    return (
+        "REPAIR A REJECTED DOCUMENTARY ORGANIZATION\n"
+        "The previous organization was rejected. Produce a corrected complete "
+        "JSON object, not an explanation or a patch.\n\n"
+        "VALIDATION DIAGNOSIS\n" + error + "\n\n"
+        "REPAIR REQUIREMENTS\n" + instruction + "\n\n"
+        "REJECTED ORGANIZATION (reference only; it is not a valid template)\n"
+        + json.dumps(rejected_payload, ensure_ascii=False, indent=2)
+        + "\n\nORIGINAL TASK, EVIDENCE AND REQUIRED SCHEMA\n"
+        + original_prompt
+        + "\n\nFINAL CHECK\nResolve the diagnosis above before returning the "
+        "complete JSON organization. Use only the original supplied evidence."
+    )
+
+
 # ============================================================
 # BUILD NOTEBOOK
 # ============================================================
@@ -985,6 +1024,8 @@ def organize_notebook(
         attempts
     ):
 
+        rejected_payload: Optional[dict[str, Any]] = None
+
         try:
 
             raw_content = run_llm_json(
@@ -1010,6 +1051,8 @@ def organize_notebook(
                     parsed
                 )
             )
+
+            rejected_payload = normalized_payload
 
             organization = (
                 TouchNotebookOrganizationResult
@@ -1060,6 +1103,15 @@ def organize_notebook(
                     sections=notebook.sections,
                 ),
             )
+            # Send the effective rejected plan back to the organizer, including
+            # any repairs already performed by prepare_notebook.
+            rejected_payload = dict(normalized_payload)
+            rejected_payload["sections"] = [
+                section.model_dump(mode="json") for section in notebook.sections
+            ]
+            rejected_payload["events"] = [
+                event.model_dump(mode="json") for event in notebook.events
+            ]
             _review_concentrated_plan(request, notebook, model)
             print("TOUCH_NOTEBOOK_ORGANIZATION_ACCEPTED", {
                 "attempt": attempt + 1,
@@ -1087,14 +1139,10 @@ def organize_notebook(
 
                 break
 
-            prompt = build_retry_prompt(
-
-                original_prompt=(
-                    original_prompt
-                ),
-
+            prompt = _build_organization_repair_prompt(
+                original_prompt=original_prompt,
                 error=last_error,
-
+                rejected_payload=rejected_payload,
             )
 
     raise ValueError(
