@@ -1,3 +1,4 @@
+import json
 import re
 import unicodedata
 
@@ -785,6 +786,120 @@ def _validate_comparative_organization(
 
 
 # ============================================================
+# REVIEW SINGLE-SECTION NAVIGATION
+# ============================================================
+
+def _review_single_section_navigation(
+    request: TouchNotebookRequest,
+    organization: TouchNotebookOrganizationResult,
+    notes: list[TouchEvidenceNote],
+    model: Optional[str] = None,
+) -> Optional[str]:
+    """Review only umbrella plans; never change evidence selection."""
+
+    if len(organization.sections) != 1:
+        return None
+
+    placed_ids = set(organization.sections[0].note_ids)
+    event_ids = set(organization.sections[0].event_ids)
+    for event in organization.events:
+        if event.event_id in event_ids:
+            placed_ids.update(event.note_ids)
+
+    placed_notes = [
+        note.model_dump(mode="json")
+        for note in notes
+        if note.note_id in placed_ids
+    ]
+
+    if len(placed_notes) < 2:
+        return None
+
+    payload = {
+        "subject": request.subject,
+        "objective": request.objective,
+        "report_design": request.report_design.model_dump(mode="json"),
+        "organization": organization.model_dump(mode="json"),
+        "placed_notes": placed_notes,
+    }
+
+    raw = run_llm_json(
+        prompt=(
+            "Review this single-section documentary plan. "
+            "Return JSON with needs_reorganization (boolean), "
+            "reason (string), and suggested_chapters (array of objects "
+            "with title and example_note_ids).\n\n"
+            + json.dumps(payload, ensure_ascii=False)
+        ),
+        model=model,
+        temperature=0.0,
+        system_prompt=(
+            "You review chapter navigation, not evidence quality or coverage. "
+            "Accept one section for a coherent narrow subject, even when it "
+            "contains many notes or several complementary mechanisms. "
+            "Request reorganization only when the placed notes document "
+            "multiple substantial subjects readers would consult independently. "
+            "A common company name alone does not make those subjects coherent. "
+            "Do not demand one chapter per product, function, event or axis. "
+            "Group closely related developments into broad useful chapters. "
+            "Do not target a chapter count, note quota or report length. "
+            "Do not add, remove, rewrite or reassess notes. "
+            "Support each suggested chapter with exact placed note identifiers. "
+            "If the split is uncertain or would create tiny fragments, accept "
+            "the existing structure. Return only the requested JSON."
+        ),
+    )
+
+    # This is an advisory review. An unavailable or malformed review
+    # must not turn an otherwise valid notebook into a generation failure.
+    try:
+        review = extract_json_object(raw)
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+    if review.get("needs_reorganization") is not True:
+        return None
+
+    chapters = review.get("suggested_chapters")
+    if not isinstance(chapters, list):
+        return None
+
+    valid_chapters = []
+    for chapter in chapters:
+        if not isinstance(chapter, dict):
+            continue
+        title = chapter.get("title")
+        example_ids = chapter.get("example_note_ids")
+        if (
+            isinstance(title, str)
+            and title.strip()
+            and isinstance(example_ids, list)
+            and example_ids
+            and all(isinstance(value, str) and value in placed_ids
+                    for value in example_ids)
+        ):
+            valid_chapters.append({
+                "title": title.strip(),
+                "example_note_ids": example_ids,
+            })
+
+    if len(valid_chapters) < 2:
+        return None
+
+    return (
+        "SINGLE_SECTION_NAVIGATION: The placed evidence supports distinct "
+        "chapters. Suggested groupings (guidance, not mandatory titles): "
+        + json.dumps(valid_chapters, ensure_ascii=False)
+        + ". Reorganize the same included notes into coherent chapters. "
+        "Preserve exactly these primary-placement note_ids: "
+        + json.dumps(sorted(placed_ids))
+        + ". Example identifiers are examples, not a selected subset. "
+        "Do not add or exclude notes, rewrite statements, or create one "
+        "section per mechanism. Keep related developments together."
+    )
+
+
+# ============================================================
 # BUILD NOTEBOOK
 # ============================================================
 
@@ -944,6 +1059,22 @@ def organize_notebook(
                 organization=organization,
             )
             
+            # Review only the first attempt, and only when a retry is
+            # available. Avoid repeated reviews and new blocking failures.
+            if attempt == 0 and attempts > 1:
+                navigation_feedback = _review_single_section_navigation(
+                    request=request,
+                    organization=organization,
+                    notes=notes,
+                    model=model,
+                )
+                if navigation_feedback:
+                    prompt = build_retry_prompt(
+                        original_prompt=original_prompt,
+                        error=navigation_feedback,
+                    )
+                    continue
+
             return _build_notebook(
 
                 request=request,
