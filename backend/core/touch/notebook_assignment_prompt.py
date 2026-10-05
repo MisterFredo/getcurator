@@ -11,6 +11,11 @@ data, performance or the company name. Measurement tools and conversion data
 belong to the suitable measurement chapter; campaign configuration belongs to
 campaign operation. Use the chapter scopes and the research mandate together.
 When scopes overlap, choose the most specific chapter for the actual contribution.
+Keep complementary notes about the SAME documented development together:
+feature, operation, results and limitations normally share one destination.
+A reported conversion uplift from a campaign feature belongs with that feature,
+not with measurement merely because it contains a percentage. A measurement
+methodology is different. Do not group every note from one source together.
 Do not force a relevant note into an unsuitable chapter. If none fits, propose a
 precise additional chapter with title and scope. Do not propose miscellaneous or
 other-news chapters. Use the same title for the same missing subject.
@@ -45,5 +50,33 @@ Describe only the supplied retained evidence. A question initially marked as
 missing is not a proven corpus limitation: reassess it against the actual notes.
 Do not claim that examples of new capabilities are absent if the notes describe
 such capabilities. Distinguish missing client case studies from documented
-product announcements. Do not invent limitations or claim completeness.
+product announcements. corpus_strengths describes what the DOCUMENTATION supports, not benefits of the
+platform. corpus_limits describes gaps or constraints in the DOCUMENTATION,
+not commercial weaknesses, product restrictions, regulatory setbacks or poor
+performance of the monitored company. Those are evidence for the chapters.
+For example, a US-only product rollout is not a corpus limitation. Missing
+reported outcomes for a documented rollout can be a limitation if the supplied
+notes actually lack those outcomes. Return an empty array when no useful
+supported documentary limitation can be established.
+Do not invent limitations or claim completeness.
+""".strip()
+
+
+TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT = """
+Review the complete note-to-chapter mapping for documentary coherence.
+Return JSON only: {"moves": [{"note_id": "existing retained note identifier",
+"section_id": "existing destination identifier", "reason": "concrete reason"}]}.
+Return moves: [] if no correction is needed. Change only misclassified notes.
+Do not add, exclude, rewrite or duplicate evidence, create chapters or redesign
+this report. Preserve correct placements and the existing chapter identifiers.
+Read actual note statements and chapter scopes, not identifier ordering.
+Keep complementary evidence about the SAME documented development together:
+its announcement, operation, outcomes and limitations normally belong to one
+chapter. Related subjects or a common source alone do not establish sameness.
+Do not merge distinct developments solely because they involve AI or data.
+A measured result for a feature normally stays with that feature. Measurement
+methodologies and tracking tools belong with measurement. A billing change is
+not regulation unless the evidence documents that link. A platform name alone
+does not justify placement in a chapter about integrations.
+Do not change exclusions. No extra fields. Use the requested output language.
 """.strip()
