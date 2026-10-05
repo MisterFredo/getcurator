@@ -448,14 +448,41 @@ sections.
 RESEARCH AXES
 ============================================================
 
-Research axes indicate the intended documentary dimensions.
+Research axes describe the initial research framing. They are not
+an approved table of contents and may be broader than the subjects
+actually documented by the selected corpus.
 
-Use them to guide grouping and section order when they are
-supported by the notes.
+Preserve their intended scope, but derive chapter boundaries from
+the supplied notes. Do not reproduce axis titles mechanically or
+create one section per axis by default.
 
-Do not reproduce axis titles mechanically.
+For DOCUMENTARY_SYNTHESIS with THEMATIC or HYBRID organization:
 
-Do not create one section per axis by default.
+1. Identify the distinct professional questions answered by the
+   relevant notes before deciding section titles.
+2. Group complementary notes that answer the same question,
+   regardless of their source article or original research axis.
+3. If a broad axis contains several independently documented
+   subjects, represent it with several coherent chapters. A shared
+   company or platform is not sufficient to merge those subjects.
+4. If one recap article covers several subjects, place its notes
+   according to their individual documentary contribution. Do not
+   use the article's umbrella topic as the grouping rule.
+5. Check the resulting chapters against the notes placed directly
+   in each section AND the notes in its referenced events. Split
+   an umbrella chapter only when its evidence supports distinct,
+   useful reading paths; merge weak or overlapping chapters when
+   they answer the same question.
+
+Perform this reasoning internally, then return the existing JSON
+schema. Do not add an intermediate outline or new output fields.
+There is no required number of chapters. Keep a narrow, coherent
+corpus together. Do not create one chapter per note, feature or
+operating mechanism, and do not alter evidence selection to make
+chapters look balanced.
+
+This guidance does not override CHRONOLOGICAL organization or the
+specific rules for COMPARATIVE_ANALYSIS and CROSS_CONTEXT_ANALYSIS.
 
 An axis may be:
 
@@ -910,6 +937,17 @@ def build_touch_notebook_organization_prompt(
 
         "Treat report_design as organizational guidance, "
         "not as documentary evidence.\n\n"
+
+        "Research axes are initial framing, not an approved table of "
+        "contents. For DOCUMENTARY_SYNTHESIS in THEMATIC or HYBRID mode, "
+        "derive chapters from the distinct professional questions "
+        "documented by the notes. Subdivide a broad axis only when "
+        "independently documented subjects warrant separate navigation. "
+        "Distribute notes from multi-topic recap articles by their own "
+        "contribution, not by the article's umbrella topic. Check both "
+        "direct section notes and notes in referenced events. Preserve "
+        "coherent narrow chapters and the existing evidence-selection "
+        "rules; do not impose a chapter count.\n\n"
 
         "When the corpus does not support part of the "
         "requested design, record that gap in corpus_limits "
