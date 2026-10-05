@@ -30,6 +30,12 @@ from core.touch.notebook_organization_prompt import (
     build_touch_notebook_organization_prompt,
 )
 
+from core.touch.notebook_assignment_prompt import (
+    TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT,
+    TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT,
+    build_touch_notebook_assignment_prompt,
+)
+
 from core.touch.notebook_outline_prompt import (
     TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
     build_touch_notebook_outline_prompt,
@@ -1268,6 +1274,123 @@ def _build_notebook(
     )
 
 
+def _validate_note_assignment_batch(payload, notes, chapters):
+    expected = {note.note_id for note in notes}
+    if not isinstance(payload, dict) or set(payload) != {"assignments"}:
+        raise ValueError("Assignment response must contain only assignments")
+    items = payload["assignments"]
+    if not isinstance(items, list):
+        raise ValueError("assignments must be an array")
+    known = {chapter["section_id"] for chapter in chapters}
+    seen = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid assignment entry")
+        note_id = item.get("note_id")
+        if not isinstance(note_id, str) or note_id not in expected or note_id in seen:
+            raise ValueError("Unknown or duplicate assigned note_id: " + str(note_id))
+        seen.add(note_id)
+        keys = set(item)
+        if keys == {"note_id", "section_id", "reason"}:
+            if not isinstance(item["section_id"], str) or item["section_id"] not in known:
+                raise ValueError("Unknown destination for " + note_id)
+        elif keys == {"note_id", "new_chapter_title", "new_chapter_scope", "reason"}:
+            pass
+        elif keys != {"note_id", "exclusion_reason"}:
+            raise ValueError("Ambiguous assignment for " + note_id)
+        if any(not isinstance(value, str) or not value.strip() for value in item.values()):
+            raise ValueError("Empty assignment field for " + note_id)
+    if expected != seen:
+        raise ValueError("Missing assigned note_ids: " + json.dumps(sorted(expected - seen)))
+    return items
+
+
+def _organize_from_note_assignments(request, notes, certified_numbers,
+                                   chapter_outline, model, max_attempts):
+    chapters = [dict(chapter) for chapter in chapter_outline["chapters"]]
+    assignments = []
+    # Small independent classification outputs; never re-extract or rewrite notes.
+    for offset in range(0, len(notes), 24):
+        batch = notes[offset:offset + 24]
+        original = build_touch_notebook_assignment_prompt(request, chapters, batch)
+        prompt = original
+        last_error = ""
+        for attempt in range(max(1, max_attempts)):
+            try:
+                raw = run_llm_json(prompt=prompt, model=model, temperature=0.0,
+                                  system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT)
+                items = _validate_note_assignment_batch(extract_json_object(raw), batch, chapters)
+                break
+            except (ValueError, TypeError) as exc:
+                last_error = str(exc)
+                print("TOUCH_NOTEBOOK_ASSIGNMENT_BATCH_ERROR", {
+                    "subject": request.subject, "offset": offset,
+                    "attempt": attempt + 1, "error": last_error,
+                }, flush=True)
+                prompt = build_retry_prompt(original_prompt=original, error=last_error)
+        else:
+            raise ValueError("Échec de l’affectation des notes : " + last_error)
+        for item in items:
+            if "new_chapter_title" in item:
+                title = item["new_chapter_title"].strip()
+                chapter = next((c for c in chapters if c["title"].casefold() == title.casefold()), None)
+                if chapter is None:
+                    chapter_id = "section-added-" + str(len(chapters) + 1)
+                    while any(c["section_id"] == chapter_id for c in chapters):
+                        chapter_id += "-new"
+                    chapter = {"section_id": chapter_id, "title": title,
+                               "scope": item["new_chapter_scope"].strip()}
+                    chapters.append(chapter)
+                item = {"note_id": item["note_id"], "section_id": chapter["section_id"],
+                        "reason": item["reason"]}
+            assignments.append(item)
+    destinations = {c["section_id"]: [] for c in chapters}
+    exclusions = []
+    for item in assignments:
+        if "exclusion_reason" in item:
+            exclusions.append({"note_id": item["note_id"], "reason": item["exclusion_reason"]})
+        else:
+            destinations[item["section_id"]].append(item["note_id"])
+    sections = [TouchNotebookSection(section_id=c["section_id"], title=c["title"],
+                                    description="", note_ids=destinations[c["section_id"]],
+                                    event_ids=[], number_ids=[])
+                for c in chapters if destinations[c["section_id"]]]
+    organization = TouchNotebookOrganizationResult(sections=sections)
+    retained = _validate_organization_coverage(organization, notes, exclusions)
+    if not retained:
+        raise ValueError("Aucune note pertinente après affectation documentaire")
+    # Assessment is a separate task with no permission to modify the plan.
+    assessment_prompt = json.dumps({
+        "subject": request.subject, "objective": request.objective,
+        "output_language": request.output_language,
+        "retained_notes": [n.model_dump(mode="json") for n in retained],
+    }, ensure_ascii=False)
+    assessment = {}
+    for attempt in range(max(1, max_attempts)):
+        try:
+            raw = run_llm_json(prompt=assessment_prompt, model=model, temperature=0.0,
+                              system_prompt=TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT)
+            payload = extract_json_object(raw)
+            if set(payload) != {"corpus_summary", "corpus_strengths", "corpus_limits"}:
+                raise ValueError("Invalid corpus assessment fields")
+            validated = TouchNotebookOrganizationResult.model_validate(payload)
+            assessment = {key: getattr(validated, key) for key in payload}
+            break
+        except (ValueError, TypeError) as exc:
+            print("TOUCH_NOTEBOOK_ASSESSMENT_ERROR", {
+                "subject": request.subject, "attempt": attempt + 1, "error": str(exc),
+            }, flush=True)
+    # A failed assessment cannot destroy a valid classified corpus.
+    organization = organization.model_copy(update=assessment)
+    print("TOUCH_NOTEBOOK_ASSIGNMENT", {
+        "subject": request.subject, "mode": "NOTE_MAPPING", "used_outline": True,
+        "input_note_count": len(notes), "retained_note_count": len(retained),
+        "excluded_notes": exclusions, "assignments": assignments,
+        "sections": [s.model_dump(mode="json") for s in sections], "events": [],
+    }, flush=True)
+    return _build_notebook(request, organization, retained, certified_numbers)
+
+
 # ============================================================
 # ORGANIZE NOTEBOOK
 # ============================================================
@@ -1294,6 +1417,10 @@ def organize_notebook(
         )
 
     chapter_outline = _prepare_chapter_outline(request, notes, model)
+    if chapter_outline is not None:
+        return _organize_from_note_assignments(
+            request, notes, certified_numbers, chapter_outline, model, max_attempts,
+        )
 
     original_prompt = (
         build_touch_notebook_organization_prompt(
