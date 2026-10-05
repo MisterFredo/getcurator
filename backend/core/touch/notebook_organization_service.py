@@ -33,6 +33,7 @@ from core.touch.notebook_organization_prompt import (
 from core.touch.notebook_assignment_prompt import (
     TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT,
     TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT,
+    TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT,
     build_touch_notebook_assignment_prompt,
 )
 
@@ -1305,6 +1306,45 @@ def _validate_note_assignment_batch(payload, notes, chapters):
     return items
 
 
+def _review_note_assignment_coherence(request, notes, chapters, assignments, model):
+    retained = {item["note_id"]: item for item in assignments if "section_id" in item}
+    known_sections = {chapter["section_id"] for chapter in chapters}
+    payload = {"subject": request.subject, "objective": request.objective,
+               "output_language": request.output_language, "chapters": chapters,
+               "assignments": list(retained.values()),
+               "retained_notes": [n.model_dump(mode="json") for n in notes if n.note_id in retained]}
+    try:
+        raw = run_llm_json(prompt=json.dumps(payload, ensure_ascii=False), model=model,
+                          temperature=0.0,
+                          system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT)
+        result = extract_json_object(raw)
+        if set(result) != {"moves"} or not isinstance(result["moves"], list):
+            raise ValueError("Invalid coherence review response")
+        seen = set()
+        moves = {}
+        for item in result["moves"]:
+            if not isinstance(item, dict) or set(item) != {"note_id", "section_id", "reason"}:
+                raise ValueError("Invalid coherence move")
+            if any(not isinstance(v, str) or not v.strip() for v in item.values()):
+                raise ValueError("Empty coherence move field")
+            note_id = item["note_id"]
+            if note_id not in retained or note_id in seen or item["section_id"] not in known_sections:
+                raise ValueError("Unknown or duplicated coherence destination")
+            seen.add(note_id)
+            moves[note_id] = item
+        revised = [dict(moves.get(item["note_id"], item)) for item in assignments]
+        print("TOUCH_NOTEBOOK_ASSIGNMENT_COHERENCE", {
+            "subject": request.subject, "moves": result["moves"],
+        }, flush=True)
+        return revised
+    except (ValueError, TypeError) as exc:
+        # Invalid optional review cannot invalidate an already complete mapping.
+        print("TOUCH_NOTEBOOK_ASSIGNMENT_COHERENCE_FALLBACK", {
+            "subject": request.subject, "error": str(exc),
+        }, flush=True)
+        return assignments
+
+
 def _organize_from_note_assignments(request, notes, certified_numbers,
                                    chapter_outline, model, max_attempts):
     chapters = [dict(chapter) for chapter in chapter_outline["chapters"]]
@@ -1344,6 +1384,9 @@ def _organize_from_note_assignments(request, notes, certified_numbers,
                 item = {"note_id": item["note_id"], "section_id": chapter["section_id"],
                         "reason": item["reason"]}
             assignments.append(item)
+    assignments = _review_note_assignment_coherence(
+        request, notes, chapters, assignments, model,
+    )
     destinations = {c["section_id"]: [] for c in chapters}
     exclusions = []
     for item in assignments:
