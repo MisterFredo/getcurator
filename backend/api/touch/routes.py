@@ -22,6 +22,7 @@ from core.touch.edition_service import (
 
 from core.touch.edition_repository import (
     get_touch_edition,
+    reopen_touch_edition,
     link_touch_edition_report,
     list_touch_editions,
     update_touch_edition_corpus,
@@ -72,6 +73,7 @@ from core.touch.notebook_report_service import (
     get_touch_report,
     list_touch_reports,
     delete_touch_report,
+    set_touch_report_archived,
 )
 
 from core.touch.notebook_plan_service import (
@@ -317,10 +319,12 @@ def save_editorial_report(
 
 
 @router.get("/reports")
-def list_editorial_reports():
+def list_editorial_reports(
+    archive: Literal["active", "archived", "all"] = "active",
+):
     return {
         "status": "ok",
-        "reports": list_touch_reports(),
+        "reports": list_touch_reports(archive=archive),
     }
 
 
@@ -598,6 +602,30 @@ def link_monthly_touch_report(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    if edition is None:
+        raise HTTPException(status_code=404, detail="Édition Touch introuvable.")
+    return {"status": "ok", "edition": _public_admin_edition(edition)}
+
+@router.post("/reports/{report_id}/archive")
+def archive_editorial_report(report_id: str):
+    if not set_touch_report_archived(report_id, True):
+        raise HTTPException(status_code=404, detail="Rapport Touch introuvable.")
+    return {"status": "ok", "report_id": report_id}
+
+
+@router.post("/reports/{report_id}/restore")
+def restore_editorial_report(report_id: str):
+    if not set_touch_report_archived(report_id, False):
+        raise HTTPException(status_code=404, detail="Rapport Touch introuvable.")
+    return {"status": "ok", "report_id": report_id}
+
+
+@router.post("/editions/{edition_id}/reopen")
+def reopen_monthly_touch_edition(edition_id: str):
+    try:
+        edition = reopen_touch_edition(edition_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if edition is None:
         raise HTTPException(status_code=404, detail="Édition Touch introuvable.")
     return {"status": "ok", "edition": _public_admin_edition(edition)}
