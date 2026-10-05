@@ -187,6 +187,9 @@ def list_touch_editions(
           EDITION_ID, EXPERT_ID, PERIOD_START, PERIOD_END,
           STATUS, SUBJECT, OUTPUT_LANGUAGE,
           REPORT_ID, ERROR, CREATED_AT, UPDATED_AT,
+          (SELECT MAX(r.ARCHIVED_AT)
+           FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_REPORT` r
+           WHERE r.REPORT_ID = edition.REPORT_ID) AS ARCHIVED_AT,
           ARRAY_LENGTH(SELECTED_CONTENT_IDS) AS SELECTED_COUNT,
           ARRAY_LENGTH(
             JSON_QUERY_ARRAY(SEARCH_JSON, '$.candidates')
@@ -216,7 +219,7 @@ def list_touch_editions(
               ), '') != 'OUT_OF_SCOPE'
             )
           END AS PROPOSED_COUNT
-        FROM `{TABLE_TOUCH_EDITION}`
+        FROM `{TABLE_TOUCH_EDITION}` AS edition
         {where}
         ORDER BY PERIOD_START DESC, CREATED_AT DESC
         LIMIT @limit
@@ -240,6 +243,7 @@ def list_touch_editions(
             "selected_count": row["SELECTED_COUNT"],
             "candidate_count": row.get("CANDIDATE_COUNT"),
             "proposed_count": row.get("PROPOSED_COUNT"),
+            "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
         }
         for row in rows
     ]
@@ -340,5 +344,33 @@ def link_touch_edition_report(
           AND (REPORT_ID IS NULL OR REPORT_ID = @report_id)
         """,
         {"edition_id": edition_id, "report_id": report_id},
+    )
+    return get_touch_edition(edition_id)
+
+def reopen_touch_edition(edition_id: str) -> dict | None:
+    """Archive the linked document and preserve all corpus choices."""
+    edition = get_touch_edition(edition_id)
+    if edition is None:
+        return None
+    if edition["status"] == "TO_REVIEW":
+        return edition
+    if edition["status"] != "GENERATED":
+        raise ValueError("Seule une édition générée peut être reprise.")
+    query_bq(
+        f"""
+        BEGIN TRANSACTION;
+        UPDATE `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_REPORT`
+        SET ARCHIVED_AT = COALESCE(ARCHIVED_AT, CURRENT_TIMESTAMP())
+        WHERE REPORT_ID IN (
+            SELECT REPORT_ID FROM `{TABLE_TOUCH_EDITION}`
+            WHERE EDITION_ID = @edition_id AND STATUS = 'GENERATED'
+        );
+        UPDATE `{TABLE_TOUCH_EDITION}`
+        SET REPORT_ID = NULL, STATUS = 'TO_REVIEW', ERROR = NULL,
+            UPDATED_AT = CURRENT_TIMESTAMP()
+        WHERE EDITION_ID = @edition_id AND STATUS = 'GENERATED';
+        COMMIT TRANSACTION;
+        """,
+        {"edition_id": edition_id},
     )
     return get_touch_edition(edition_id)
