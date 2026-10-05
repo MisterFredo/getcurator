@@ -1,4 +1,3 @@
-import json
 import re
 import unicodedata
 
@@ -27,8 +26,6 @@ from core.touch.notebook_organization_prompt import (
     TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
     build_touch_notebook_organization_prompt,
 )
-
-from core.touch.notebook_plan_service import prepare_notebook
 
 from core.touch.notebook_utils import (
     build_retry_prompt,
@@ -788,323 +785,6 @@ def _validate_comparative_organization(
 
 
 # ============================================================
-# REVIEW CONCENTRATED DOCUMENTARY PLANS
-# ============================================================
-
-def _review_concentrated_plan(
-    request: TouchNotebookRequest,
-    notebook: TouchCorpusNotebook,
-    model: Optional[str],
-) -> None:
-    """Volume triggers a semantic review, never a compulsory split."""
-    if request.report_design.organization_mode == "CHRONOLOGICAL":
-        return
-
-    note_by_id = {note.note_id: note for note in notebook.notes}
-    event_by_id = {event.event_id: event for event in notebook.events}
-    placements = []
-    for section in notebook.sections:
-        ids = set(section.note_ids)
-        for event_id in section.event_ids:
-            ids.update(event_by_id[event_id].note_ids)
-        placements.append({
-            "title": section.title,
-            "note_ids": sorted(ids),
-            "events": [event_by_id[event_id].model_dump(mode="json")
-                       for event_id in section.event_ids],
-        })
-
-    source_ids = {source_id for note in notebook.notes
-                  for source_id in note.source_content_ids}
-    largest = max((len(item["note_ids"]) for item in placements), default=0)
-    # Conservative diagnostic thresholds; they do not measure semantic diversity.
-    suspicious = (len(note_by_id) >= 30 and len(source_ids) >= 6
-                  and largest / max(len(note_by_id), 1) >= 0.85)
-    if not suspicious:
-        return
-
-    payload = {
-        "subject": request.subject,
-        "objective": request.objective,
-        "report_design": request.report_design.model_dump(mode="json"),
-        "sections": placements,
-        "notes": [note.model_dump(mode="json") for note in notebook.notes],
-    }
-    review = extract_json_object(run_llm_json(
-        prompt=(
-            "Review this documentary plan using only the supplied evidence. "
-            "Decide whether the large section combines distinct, sufficiently "
-            "documented functions that need separate navigation. A homogeneous "
-            "corpus may legitimately have one section regardless of volume. "
-            "Do not impose a section count, invent themes or force unsupported "
-            "research axes. For chronological organization, preserve chronology. "
-            "Return JSON with exactly: acceptable (boolean), reason (string). "
-            "If unacceptable, identify the distinct mechanisms and cite supplied "
-            "note_ids demonstrating the problem. Do not rewrite notes.\n"
-            + json.dumps(payload, ensure_ascii=False)
-        ),
-        model=model,
-        temperature=0.0,
-        system_prompt="You review evidence-based documentary organization. Return JSON only.",
-    ))
-    if (type(review.get("acceptable")) is not bool
-            or not isinstance(review.get("reason"), str)
-            or not review["reason"].strip()):
-        raise ValueError("DOCUMENTARY_REVIEW_INVALID: missing boolean verdict or reason.")
-    print("TOUCH_NOTEBOOK_STRUCTURE_REVIEW", {
-        "acceptable": review["acceptable"], "reason": review["reason"],
-        "sections_count": len(notebook.sections), "notes_count": len(note_by_id),
-    })
-    if not review["acceptable"]:
-        raise ValueError(
-            "DOCUMENTARY_STRUCTURE_INVALID: " + review["reason"]
-            + " Rebuild the plan around the distinct documented functions. "
-            "Preserve relevant evidence and immutable note identifiers."
-        )
-
-
-def _generate_staged_organization(
-    request: TouchNotebookRequest,
-    notes: list[TouchEvidenceNote],
-    model: Optional[str],
-    feedback: str = "",
-) -> dict[str, Any]:
-    """Plan globally, assign in bounded batches, then group local events."""
-    context = {
-        "subject": request.subject,
-        "objective": request.objective,
-        "report_design": request.report_design.model_dump(mode="json"),
-    }
-    payload = dict(context)
-    payload["notes"] = [note.model_dump(mode="json") for note in notes]
-    payload["previous_validation_error"] = feedback
-    plan = extract_json_object(run_llm_json(
-        prompt=(
-            "Design only the documentary navigation for this supplied corpus. "
-            "Separate distinct documented mechanisms; avoid a catch-all title. "
-            "Respect the requested organization mode and language. A homogeneous "
-            "corpus can have one section. Do not impose a fixed section count. "
-            "Do not assign individual notes or create events yet. "
-            "Return JSON: corpus_summary (string), sections (array of objects "
-            "with section_id, title, description), corpus_strengths (string array), "
-            "corpus_limits (string array). Descriptions must define inclusion "
-            "boundaries clearly enough to assign every supplied note.\n"
-            + json.dumps(payload, ensure_ascii=False)
-        ), model=model, temperature=0.0,
-        system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
-    ))
-    sections = plan.get("sections")
-    if not isinstance(sections, list) or not sections:
-        raise ValueError("DOCUMENTARY_PLAN_INVALID: missing sections.")
-    ids: set[str] = set()
-    for section in sections:
-        if not isinstance(section, dict):
-            raise ValueError("DOCUMENTARY_PLAN_INVALID: invalid section.")
-        sid = section.get("section_id")
-        if not isinstance(sid, str) or not sid.strip() or sid in ids:
-            raise ValueError("DOCUMENTARY_PLAN_INVALID: invalid or duplicate section_id.")
-        if not isinstance(section.get("title"), str) or not section["title"].strip():
-            raise ValueError("DOCUMENTARY_PLAN_INVALID: missing section title.")
-        ids.add(sid)
-    assigned: dict[str, list[TouchEvidenceNote]] = {sid: [] for sid in ids}
-    for offset in range(0, len(notes), 30):
-        batch = notes[offset:offset + 30]
-        assignments = extract_json_object(run_llm_json(
-            prompt=(
-                "Assign each supplied evidence note to exactly one best fitting "
-                "section of this plan. Use its meaning, not its numeric id or "
-                "position. Preserve every note_id exactly. Do not summarize, "
-                "exclude notes, or invent sections. Return JSON with assignments: "
-                "array of objects containing note_id and section_id.\n"
-                + json.dumps({"context": context, "sections": sections,
-                              "notes": [note.model_dump(mode="json") for note in batch]},
-                             ensure_ascii=False)
-            ), model=model, temperature=0.0,
-            system_prompt="Assign documentary evidence. Return JSON only.",
-        )).get("assignments")
-        if not isinstance(assignments, list):
-            raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: missing assignments.")
-        note_by_id = {note.note_id: note for note in batch}
-        seen: set[str] = set()
-        for assignment in assignments:
-            if not isinstance(assignment, dict):
-                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: invalid item.")
-            nid, sid = assignment.get("note_id"), assignment.get("section_id")
-            if not isinstance(nid, str) or not isinstance(sid, str) or nid not in note_by_id or nid in seen or sid not in ids:
-                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: unknown or repeated identifier.")
-            seen.add(nid)
-            assigned[sid].append(note_by_id[nid])
-        if seen != set(note_by_id):
-            raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: omitted notes "
-                             + json.dumps(sorted(set(note_by_id) - seen)))
-
-    combined: dict[str, Any] = {
-        "corpus_summary": plan.get("corpus_summary", ""),
-        "corpus_strengths": plan.get("corpus_strengths", []),
-        "corpus_limits": plan.get("corpus_limits", []),
-        "sections": [], "events": [], "timeline": [], "contradictions": [],
-    }
-    # Local grouping retains the existing event/timeline/contradiction schema.
-    # Chunk large sections so no organization call must place the whole corpus.
-    for section in sections:
-        local_notes = assigned[section["section_id"]]
-        if not local_notes:
-            continue
-        final_section = {"section_id": section["section_id"],
-                         "title": section["title"],
-                         "description": section.get("description", ""),
-                         "event_ids": [], "note_ids": []}
-        for offset in range(0, len(local_notes), 30):
-            chunk = local_notes[offset:offset + 30]
-            prompt = build_touch_notebook_organization_prompt(request=request, notes=chunk)
-            prompt += (
-                "\nLOCAL ORGANIZATION TASK\nThese notes are already assigned to "
-                "this global section: " + json.dumps(section, ensure_ascii=False)
-                + ". Group complementary notes into documented events where "
-                "appropriate. Preserve every supplied note_id in a section or "
-                "a section-referenced event. Do not invent or omit note_ids. "
-                "Do not reconstruct the global plan."
-            )
-            raw = extract_json_object(run_llm_json(
-                prompt=prompt, model=model, temperature=0.0,
-                system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
-            ))
-            local = TouchNotebookOrganizationResult.model_validate(
-                _normalize_organization_payload(raw))
-            # The global assignment has already determined the section for
-            # every note in this chunk. Local grouping may leave some notes
-            # outside events; retain them directly in that same section.
-            event_by_id = {event.event_id: event for event in local.events}
-            placed_ids: set[str] = set()
-            for local_section in local.sections:
-                placed_ids.update(local_section.note_ids)
-                for event_id in local_section.event_ids:
-                    event = event_by_id.get(event_id)
-                    if event is not None:
-                        placed_ids.update(event.note_ids)
-            expected_ids = {note.note_id for note in chunk}
-            if placed_ids - expected_ids:
-                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: local grouping "
-                                 "references notes outside its assigned batch.")
-            missing_ids = [note.note_id for note in chunk
-                           if note.note_id not in placed_ids]
-            if missing_ids:
-                if not local.sections:
-                    local.sections.append(TouchNotebookSection(
-                        section_id=section["section_id"],
-                        title=section["title"],
-                        description=section.get("description", ""),
-                        note_ids=[], event_ids=[],
-                    ))
-                local.sections[0].note_ids.extend(missing_ids)
-                print("TOUCH_NOTEBOOK_LOCAL_NOTES_RETAINED", {
-                    "section_id": section["section_id"],
-                    "note_ids": missing_ids,
-                })
-            notebook = _build_notebook(request, local, chunk, [])
-            _validate_documentary_note_coverage(chunk, notebook)
-            prefix = f"{section['section_id']}-batch-{offset // 30 + 1}-"
-            event_ids = {event.event_id: prefix + event.event_id for event in local.events}
-            for event in local.events:
-                data = event.model_dump(mode="json")
-                data["event_id"] = event_ids[event.event_id]
-                combined["events"].append(data)
-            for local_section in local.sections:
-                final_section["note_ids"].extend(local_section.note_ids)
-                final_section["event_ids"].extend(event_ids[eid] for eid in local_section.event_ids)
-            for timeline in local.timeline:
-                data = timeline.model_dump(mode="json")
-                if "event_ids" in data:
-                    data["event_ids"] = [event_ids[eid] for eid in data["event_ids"]]
-                if data.get("event_id"):
-                    data["event_id"] = event_ids[data["event_id"]]
-                combined["timeline"].append(data)
-            combined["contradictions"].extend(
-                item.model_dump(mode="json") for item in local.contradictions)
-        final_section["note_ids"] = list(dict.fromkeys(final_section["note_ids"]))
-        final_section["event_ids"] = list(dict.fromkeys(final_section["event_ids"]))
-        combined["sections"].append(final_section)
-    print("TOUCH_NOTEBOOK_STAGED_ORGANIZATION", {
-        "notes_count": len(notes), "sections_count": len(combined["sections"]),
-        "assignment_batch_size": 30,
-    })
-    return combined
-
-
-def _validate_documentary_note_coverage(
-    notes: list[TouchEvidenceNote],
-    notebook: TouchCorpusNotebook,
-) -> None:
-    """Organization must place extracted evidence, not silently reselect it."""
-    expected_ids = {note.note_id for note in notes}
-    event_by_id = {event.event_id: event for event in notebook.events}
-    placed_ids: set[str] = set()
-    for section in notebook.sections:
-        placed_ids.update(section.note_ids)
-        for event_id in section.event_ids:
-            event = event_by_id.get(event_id)
-            if event is not None:
-                placed_ids.update(event.note_ids)
-    missing_ids = sorted(expected_ids - placed_ids)
-    retained_ids = {note.note_id for note in notebook.notes}
-    removed_ids = sorted(expected_ids - retained_ids)
-    if missing_ids or removed_ids:
-        raise ValueError(
-            "DOCUMENTARY_COVERAGE_INVALID: "
-            f"{len(expected_ids & placed_ids)}/{len(expected_ids)} supplied notes "
-            "are placed in sections or their referenced events. "
-            "All supplied evidence notes must remain available and navigable. "
-            "Missing placements: " + json.dumps(missing_ids)
-            + ". Removed notes: " + json.dumps(removed_ids)
-            + ". Restore these exact note_ids from the original evidence and "
-            "distribute them across the appropriate documented mechanisms. "
-            "Diagnostic example note_ids are examples, not a selected subset. "
-            "Group complementary or repeated evidence into events without "
-            "discarding its note references. Do not add a catch-all section "
-            "merely to satisfy coverage."
-        )
-
-
-def _build_organization_repair_prompt(
-    original_prompt: str,
-    error: str,
-    rejected_payload: Optional[dict[str, Any]],
-) -> str:
-    """Give the retry the actual rejected plan, not only its diagnosis."""
-    if rejected_payload is None:
-        return build_retry_prompt(original_prompt=original_prompt, error=error)
-
-    structural = error.startswith("DOCUMENTARY_STRUCTURE_INVALID:")
-    instruction = (
-        "Reconstruct the documentary sections around the distinct functions "
-        "identified in the diagnosis, where supported by the supplied notes. "
-        "Do not return the same grouping with cosmetic title changes. "
-        "Redistribute the relevant note_ids and event_ids into navigable sections. "
-        "Keep complementary evidence about the same event together. "
-        "If an event incorrectly combines distinct mechanisms, rebuild its "
-        "grouping from the original notes. Do not invent evidence or new note_ids. "
-        "Do not discard notes to avoid the structural review. "
-        "No fixed section count is required."
-        if structural else
-        "Correct the rejected organization using the diagnosis and the original "
-        "schema. Preserve evidence and immutable note identifiers."
-    )
-    return (
-        "REPAIR A REJECTED DOCUMENTARY ORGANIZATION\n"
-        "The previous organization was rejected. Produce a corrected complete "
-        "JSON object, not an explanation or a patch.\n\n"
-        "VALIDATION DIAGNOSIS\n" + error + "\n\n"
-        "REPAIR REQUIREMENTS\n" + instruction + "\n\n"
-        "REJECTED ORGANIZATION (reference only; it is not a valid template)\n"
-        + json.dumps(rejected_payload, ensure_ascii=False, indent=2)
-        + "\n\nORIGINAL TASK, EVIDENCE AND REQUIRED SCHEMA\n"
-        + original_prompt
-        + "\n\nFINAL CHECK\nResolve the diagnosis above before returning the "
-        "complete JSON organization. Use only the original supplied evidence."
-    )
-
-
-# ============================================================
 # BUILD NOTEBOOK
 # ============================================================
 
@@ -1210,20 +890,6 @@ def organize_notebook(
         )
     )
 
-    original_prompt += (
-        "\n\nEVIDENCE PRESERVATION REQUIREMENT\n"
-        "This stage organizes the supplied evidence; it does not select a small "
-        "summary subset. Every supplied note_id must be reachable from a "
-        "section.note_ids or from the note_ids of an event referenced by a "
-        "section.event_ids. Standalone unreferenced events do not count. "
-        "Group complementary or repeated evidence without losing note references. "
-        "Do not invent a generic remainder section. "
-        "When repairing a plan, diagnostic note_ids are illustrative examples, "
-        "not an exhaustive list of the notes to retain.\n"
-        "REQUIRED NOTE IDS\n"
-        + json.dumps([note.note_id for note in notes], ensure_ascii=False)
-    )
-
     prompt = original_prompt
 
     attempts = max(
@@ -1240,29 +906,31 @@ def organize_notebook(
         attempts
     ):
 
-        rejected_payload: Optional[dict[str, Any]] = None
-
         try:
 
-            if len(notes) >= 60:
-                parsed = _generate_staged_organization(
-                    request=request, notes=notes, model=model,
-                    feedback=last_error if attempt else "",
-                )
-            else:
-                raw_content = run_llm_json(
-                    prompt=prompt, model=model, temperature=0.0,
-                    system_prompt=TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
-                )
-                parsed = extract_json_object(raw_content)
+            raw_content = run_llm_json(
+
+                prompt=prompt,
+
+                model=model,
+
+                temperature=0.0,
+
+                system_prompt=(
+                    TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT
+                ),
+
+            )
+
+            parsed = extract_json_object(
+                raw_content
+            )
 
             normalized_payload = (
                 _normalize_organization_payload(
                     parsed
                 )
             )
-
-            rejected_payload = normalized_payload
 
             organization = (
                 TouchNotebookOrganizationResult
@@ -1276,7 +944,7 @@ def organize_notebook(
                 organization=organization,
             )
             
-            notebook = _build_notebook(
+            return _build_notebook(
 
                 request=request,
 
@@ -1292,57 +960,11 @@ def organize_notebook(
 
             )
 
-            print("TOUCH_NOTEBOOK_ORGANIZATION_RAW", {
-                "attempt": attempt + 1,
-                "sections": [{"title": section.title,
-                              "direct_notes": len(section.note_ids),
-                              "events": len(section.event_ids)}
-                             for section in notebook.sections],
-                "events_count": len(notebook.events),
-                "notes_count": len(notebook.notes),
-            })
-            _validate_documentary_note_coverage(notes, notebook)
-            notebook = prepare_notebook(
-                notebook=notebook,
-                allowed_content_ids=set(request.content_ids),
-            )
-            _validate_documentary_note_coverage(notes, notebook)
-            # Review the effective plan, after empty sections and invalid
-            # references have been repaired. Structural errors also retry here.
-            _validate_comparative_organization(
-                request=request,
-                organization=TouchNotebookOrganizationResult(
-                    sections=notebook.sections,
-                ),
-            )
-            # Send the effective rejected plan back to the organizer, including
-            # any repairs already performed by prepare_notebook.
-            rejected_payload = dict(normalized_payload)
-            rejected_payload["sections"] = [
-                section.model_dump(mode="json") for section in notebook.sections
-            ]
-            rejected_payload["events"] = [
-                event.model_dump(mode="json") for event in notebook.events
-            ]
-            _review_concentrated_plan(request, notebook, model)
-            print("TOUCH_NOTEBOOK_ORGANIZATION_ACCEPTED", {
-                "attempt": attempt + 1,
-                "sections_count": len(notebook.sections),
-                "events_count": len(notebook.events),
-                "notes_count": len(notebook.notes),
-            })
-            return notebook
-
         except Exception as exc:
 
             last_error = str(
                 exc
             )
-
-            print("TOUCH_NOTEBOOK_ORGANIZATION_RETRY", {
-                "attempt": attempt + 1, "error": last_error,
-                "will_retry": attempt + 1 < attempts,
-            })
 
             if (
                 attempt + 1
@@ -1351,10 +973,14 @@ def organize_notebook(
 
                 break
 
-            prompt = _build_organization_repair_prompt(
-                original_prompt=original_prompt,
+            prompt = build_retry_prompt(
+
+                original_prompt=(
+                    original_prompt
+                ),
+
                 error=last_error,
-                rejected_payload=rejected_payload,
+
             )
 
     raise ValueError(
