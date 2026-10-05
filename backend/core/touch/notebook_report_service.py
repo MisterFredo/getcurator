@@ -508,7 +508,11 @@ def save_touch_report(
 
 def list_touch_reports(
     limit: int = 50,
+    archive: str = "active",
 ) -> list[dict]:
+
+    if archive not in {"active", "archived", "all"}:
+        raise ValueError("Invalid archive filter.")
 
     safe_limit = min(
         max(
@@ -529,6 +533,7 @@ def list_touch_reports(
           VERSION_NUMBER,
 
           CREATED_AT,
+          ARCHIVED_AT,
 
           EXPERT_ID,
 
@@ -547,6 +552,9 @@ def list_touch_reports(
 
         FROM `{TABLE_TOUCH_REPORT}`
 
+        WHERE (@archive = 'all'
+          OR (@archive = 'active' AND ARCHIVED_AT IS NULL)
+          OR (@archive = 'archived' AND ARCHIVED_AT IS NOT NULL))
         ORDER BY
 
           CREATED_AT DESC
@@ -556,6 +564,7 @@ def list_touch_reports(
         {
             "limit":
                 safe_limit,
+            "archive": archive,
         },
     ) or []
 
@@ -579,6 +588,8 @@ def list_touch_reports(
                 str(
                     row["CREATED_AT"]
                 ),
+
+            "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
 
             "expert_id":
                 row.get("EXPERT_ID"),
@@ -646,6 +657,7 @@ def get_touch_report(
           VERSION_NUMBER,
 
           CREATED_AT,
+          ARCHIVED_AT,
 
           EXPERT_ID,
 
@@ -715,7 +727,9 @@ def get_touch_report(
                 row["CREATED_AT"]
             ),
 
-        "expert_id":
+        "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
+
+            "expert_id":
             row.get("EXPERT_ID"),
 
         "period_start":
@@ -814,10 +828,13 @@ def delete_touch_report(
 
     query_bq(
         f"""
-        DELETE FROM `{TABLE_TOUCH_REPORT}`
-
-        WHERE
-          REPORT_ID = @report_id
+        BEGIN TRANSACTION;
+        UPDATE `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_EDITION`
+        SET REPORT_ID = NULL, STATUS = 'TO_REVIEW', ERROR = NULL,
+            UPDATED_AT = CURRENT_TIMESTAMP()
+        WHERE REPORT_ID = @report_id;
+        DELETE FROM `{TABLE_TOUCH_REPORT}` WHERE REPORT_ID = @report_id;
+        COMMIT TRANSACTION;
         """,
         {
             "report_id":
@@ -825,4 +842,22 @@ def delete_touch_report(
         },
     )
 
+    return True
+
+def set_touch_report_archived(report_id: str, archived: bool = True) -> bool:
+    report_id = _normalize_report_id(report_id)
+    if not report_id:
+        return False
+    rows = query_bq(
+        f"SELECT REPORT_ID FROM `{TABLE_TOUCH_REPORT}` WHERE REPORT_ID = @report_id LIMIT 1",
+        {"report_id": report_id},
+    ) or []
+    if not rows:
+        return False
+    query_bq(
+        f"""UPDATE `{TABLE_TOUCH_REPORT}`
+        SET ARCHIVED_AT = IF(@archived, COALESCE(ARCHIVED_AT, CURRENT_TIMESTAMP()), NULL)
+        WHERE REPORT_ID = @report_id""",
+        {"report_id": report_id, "archived": archived},
+    )
     return True
