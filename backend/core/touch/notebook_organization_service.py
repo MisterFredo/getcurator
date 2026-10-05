@@ -954,14 +954,28 @@ def _validate_organization_coverage(organization, notes, exclusions):
     if len(section_ids) != len(set(section_ids)):
         raise ValueError("DOCUMENTARY_COVERAGE_INVALID: duplicated section_id")
     placements = []
+    placement_locations = {}
     referenced_events = []
     for section in organization.sections:
         placements.extend(section.note_ids)
+        for note_id in section.note_ids:
+            placement_locations.setdefault(note_id, []).append({
+                "section_id": section.section_id,
+                "section_title": section.title,
+                "placement": "direct",
+            })
         for event_id in section.event_ids:
             if event_id not in events:
                 raise ValueError("DOCUMENTARY_COVERAGE_INVALID: unknown event " + event_id)
             referenced_events.append(event_id)
             placements.extend(events[event_id].note_ids)
+            for note_id in events[event_id].note_ids:
+                placement_locations.setdefault(note_id, []).append({
+                    "section_id": section.section_id,
+                    "section_title": section.title,
+                    "event_id": event_id,
+                    "placement": "event",
+                })
     if len(referenced_events) != len(set(referenced_events)):
         raise ValueError("DOCUMENTARY_COVERAGE_INVALID: event placed multiple times")
     if set(events) != set(referenced_events):
@@ -971,7 +985,21 @@ def _validate_organization_coverage(organization, notes, exclusions):
             + ". Attach these events to appropriate existing sections."
         )
     if len(placements) != len(set(placements)):
-        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: note placed multiple times")
+        duplicates = {
+            note_id: locations
+            for note_id, locations in placement_locations.items()
+            if len(locations) > 1
+        }
+        raise ValueError(
+            "DOCUMENTARY_COVERAGE_INVALID: note placed multiple times: "
+            + json.dumps(duplicates, ensure_ascii=False)
+            + ". For each listed note_id, retain exactly one primary placement "
+            "according to its actual contribution and the chapter scopes. "
+            "Remove only redundant references, never the evidence note. "
+            "A note inside a referenced event must not also be listed directly "
+            "in a section. Preserve all other correct placements and chapters; "
+            "return the complete organization JSON."
+        )
     placed = set(placements)
     unknown = placed - expected
     if unknown:
@@ -1403,6 +1431,11 @@ def organize_notebook(
             last_error = str(
                 exc
             )
+            print("TOUCH_NOTEBOOK_ORGANIZATION_ERROR", {
+                "subject": request.subject,
+                "attempt": attempt + 1,
+                "error": last_error,
+            }, flush=True)
 
             if (
                 attempt + 1
