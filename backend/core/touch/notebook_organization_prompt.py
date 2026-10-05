@@ -598,6 +598,31 @@ The description of every section must be an empty string.
 
 
 ============================================================
+SUPPLIED CHAPTER OUTLINE
+============================================================
+
+When chapter_outline is present, chapter conception has already run.
+Use its chapter identifiers, titles and scope definitions as the starting
+plan. Your primary task is now to assign the immutable evidence to the
+appropriate chapters and to reconstruct events where justified.
+The scope text is internal assignment guidance, not a section description.
+Section descriptions must remain empty strings.
+
+Classify each note by its actual contribution, not its source article,
+company name or original research axis. An event must not bundle unrelated
+subjects just to retain all notes from one source together.
+
+Check chapter membership against its scope, including notes placed inside
+referenced events. Do not put measurement evidence in a generic mechanisms
+chapter when a suitable measurement chapter exists.
+
+The outline is guidance, not evidence. If relevant contributions cannot fit
+its boundaries, make the smallest evidence-supported adjustment to chapter
+scopes or chapters. Do not discard relevant notes to comply with the outline,
+and do not create a residual chapter. Omit empty unsupported chapters.
+Do not write new evidence or change the final output schema.
+
+============================================================
 EVENT DESIGN
 ============================================================
 
@@ -873,6 +898,7 @@ def build_touch_notebook_organization_prompt(
     notes: list[
         TouchEvidenceNote
     ],
+    chapter_outline: dict | None = None,
 ) -> str:
 
     payload = {
@@ -908,6 +934,9 @@ def build_touch_notebook_organization_prompt(
             ),
 
     }
+
+    if chapter_outline is not None:
+        payload["chapter_outline"] = chapter_outline
 
     serialized_payload = (
         json.dumps(
