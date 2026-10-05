@@ -527,8 +527,29 @@ The report design determines the intended reading logic.
 The supplied notes determine what can legitimately appear in the
 notebook.
 
-Use the smallest number of sections that allows the notes to be
-read clearly.
+Use enough precise sections to distinguish the documented mechanisms.
+Do not minimize the section count at the expense of readability.
+
+Before assigning notes, identify the distinct documentary functions
+supported by the corpus. For THEMATIC or HYBRID organization, use
+these functions to establish section boundaries. Shared actors or a
+shared broad subject do not make different mechanisms one chapter.
+
+A single section is appropriate only when the relevant evidence
+actually documents one coherent mechanism or development. A broad
+title restating the research subject is not a sufficient justification.
+Do not impose a fixed number of sections or reproduce a standard plan.
+Do not split a homogeneous corpus solely because it contains many notes.
+
+For a rich corpus, check whether buying workflows, selling workflows,
+interoperability, deployments and operational limits document distinct
+functions. These are examples, not mandatory headings. Apply the same
+reasoning to the actual subject, without inventing unsupported sections.
+
+Group complementary notes describing the same documented announcement
+or deployment into an event, including when several sources cover it.
+Do not merge distinct developments merely because they concern the same
+actor or were announced at the same conference.
 
 Avoid sections containing only one note when that note can
 logically belong to an existing section.
