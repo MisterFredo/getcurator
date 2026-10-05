@@ -796,6 +796,69 @@ def _validate_comparative_organization(
 # REVIEW SINGLE-SECTION NAVIGATION
 # ============================================================
 
+def _validate_organization_coverage(organization, notes, exclusions):
+    """Account for all input evidence before any downstream repair."""
+    expected = {note.note_id for note in notes}
+    if not isinstance(exclusions, list):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: excluded_notes must be an array")
+    excluded = {}
+    for item in exclusions:
+        if not isinstance(item, dict) or set(item) != {"note_id", "reason"}:
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: invalid exclusion entry")
+        note_id, reason = item["note_id"], item["reason"]
+        if not isinstance(note_id, str) or note_id not in expected:
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: unknown excluded note_id")
+        if note_id in excluded:
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: duplicated exclusion " + note_id)
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: exclusion reason missing " + note_id)
+        excluded[note_id] = reason.strip()
+    events = {event.event_id: event for event in organization.events}
+    if len(events) != len(organization.events):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: duplicated event_id")
+    section_ids = [section.section_id for section in organization.sections]
+    if len(section_ids) != len(set(section_ids)):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: duplicated section_id")
+    placements = []
+    referenced_events = []
+    for section in organization.sections:
+        placements.extend(section.note_ids)
+        for event_id in section.event_ids:
+            if event_id not in events:
+                raise ValueError("DOCUMENTARY_COVERAGE_INVALID: unknown event " + event_id)
+            referenced_events.append(event_id)
+            placements.extend(events[event_id].note_ids)
+    if len(referenced_events) != len(set(referenced_events)):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: event placed multiple times")
+    if set(events) != set(referenced_events):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: event without a section")
+    if len(placements) != len(set(placements)):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: note placed multiple times")
+    placed = set(placements)
+    unknown = placed - expected
+    if unknown:
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: unknown notes " + json.dumps(sorted(unknown)))
+    secondary = set()
+    for item in organization.timeline:
+        secondary.update(item.note_ids)
+    for item in organization.contradictions:
+        secondary.update(item.note_ids)
+    overlap = set(excluded) & (placed | secondary)
+    if overlap:
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: excluded notes still referenced " + json.dumps(sorted(overlap)))
+    missing = expected - placed - set(excluded)
+    if missing:
+        raise ValueError(
+            "DOCUMENTARY_COVERAGE_INVALID: omitted note_ids " + json.dumps(sorted(missing))
+            + ". Place each omitted relevant note or explicitly justify its out-of-scope "
+            "exclusion. Keep existing correct placements and chapters. Do not shorten "
+            "the report, invent a catch-all section or treat these identifiers as examples."
+        )
+    for note_id, reason in excluded.items():
+        logger.info("TOUCH_NOTEBOOK_EXCLUSION note_id=%s reason=%s", note_id, reason)
+    return [note for note in notes if note.note_id not in excluded]
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -1088,6 +1151,7 @@ def organize_notebook(
         attempts
     ):
 
+        parsed = None
         try:
 
             raw_content = run_llm_json(
@@ -1121,6 +1185,10 @@ def organize_notebook(
                 )
             )
             
+            retained_notes = _validate_organization_coverage(
+                organization, notes, parsed.get("excluded_notes", []),
+            )
+
             _validate_comparative_organization(
                 request=request,
                 organization=organization,
@@ -1132,7 +1200,7 @@ def organize_notebook(
                 navigation_feedback = _review_single_section_navigation(
                     request=request,
                     organization=organization,
-                    notes=notes,
+                    notes=retained_notes,
                     model=model,
                 )
                 if navigation_feedback:
@@ -1150,7 +1218,7 @@ def organize_notebook(
                     organization
                 ),
 
-                notes=notes,
+                notes=retained_notes,
 
                 certified_numbers=(
                     certified_numbers
@@ -1171,13 +1239,19 @@ def organize_notebook(
 
                 break
 
+            repair_context = last_error
+            if isinstance(parsed, dict):
+                repair_context += (
+                    "\nPrevious organization to repair (return complete JSON):\n"
+                    + json.dumps(parsed, ensure_ascii=False)
+                )
             prompt = build_retry_prompt(
 
                 original_prompt=(
                     original_prompt
                 ),
 
-                error=last_error,
+                error=repair_context,
 
             )
 
