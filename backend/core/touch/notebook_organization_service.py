@@ -863,6 +863,40 @@ def _review_concentrated_plan(
         )
 
 
+def _validate_documentary_note_coverage(
+    notes: list[TouchEvidenceNote],
+    notebook: TouchCorpusNotebook,
+) -> None:
+    """Organization must place extracted evidence, not silently reselect it."""
+    expected_ids = {note.note_id for note in notes}
+    event_by_id = {event.event_id: event for event in notebook.events}
+    placed_ids: set[str] = set()
+    for section in notebook.sections:
+        placed_ids.update(section.note_ids)
+        for event_id in section.event_ids:
+            event = event_by_id.get(event_id)
+            if event is not None:
+                placed_ids.update(event.note_ids)
+    missing_ids = sorted(expected_ids - placed_ids)
+    retained_ids = {note.note_id for note in notebook.notes}
+    removed_ids = sorted(expected_ids - retained_ids)
+    if missing_ids or removed_ids:
+        raise ValueError(
+            "DOCUMENTARY_COVERAGE_INVALID: "
+            f"{len(expected_ids & placed_ids)}/{len(expected_ids)} supplied notes "
+            "are placed in sections or their referenced events. "
+            "All supplied evidence notes must remain available and navigable. "
+            "Missing placements: " + json.dumps(missing_ids)
+            + ". Removed notes: " + json.dumps(removed_ids)
+            + ". Restore these exact note_ids from the original evidence and "
+            "distribute them across the appropriate documented mechanisms. "
+            "Diagnostic example note_ids are examples, not a selected subset. "
+            "Group complementary or repeated evidence into events without "
+            "discarding its note references. Do not add a catch-all section "
+            "merely to satisfy coverage."
+        )
+
+
 def _build_organization_repair_prompt(
     original_prompt: str,
     error: str,
@@ -1008,6 +1042,20 @@ def organize_notebook(
         )
     )
 
+    original_prompt += (
+        "\n\nEVIDENCE PRESERVATION REQUIREMENT\n"
+        "This stage organizes the supplied evidence; it does not select a small "
+        "summary subset. Every supplied note_id must be reachable from a "
+        "section.note_ids or from the note_ids of an event referenced by a "
+        "section.event_ids. Standalone unreferenced events do not count. "
+        "Group complementary or repeated evidence without losing note references. "
+        "Do not invent a generic remainder section. "
+        "When repairing a plan, diagnostic note_ids are illustrative examples, "
+        "not an exhaustive list of the notes to retain.\n"
+        "REQUIRED NOTE IDS\n"
+        + json.dumps([note.note_id for note in notes], ensure_ascii=False)
+    )
+
     prompt = original_prompt
 
     attempts = max(
@@ -1091,10 +1139,12 @@ def organize_notebook(
                 "events_count": len(notebook.events),
                 "notes_count": len(notebook.notes),
             })
+            _validate_documentary_note_coverage(notes, notebook)
             notebook = prepare_notebook(
                 notebook=notebook,
                 allowed_content_ids=set(request.content_ids),
             )
+            _validate_documentary_note_coverage(notes, notebook)
             # Review the effective plan, after empty sections and invalid
             # references have been repaired. Structural errors also retry here.
             _validate_comparative_organization(
