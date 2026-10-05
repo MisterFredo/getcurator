@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 
 
 type Edition = {
+  archived_at?: string | null;
   edition_id: string;
   expert_id: string;
   period_start: string;
@@ -23,6 +24,8 @@ type Edition = {
 type Props = {
   onOpenReport: (reportId: string) => Promise<void>;
   disabled?: boolean;
+  refreshKey?: number;
+  onChanged?: () => void;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,6 +39,8 @@ const STATUS_LABELS: Record<string, string> = {
 export default function TouchMonthlyEditionList({
   onOpenReport,
   disabled = false,
+  refreshKey = 0,
+  onChanged,
 }: Props) {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [expertNames, setExpertNames] = useState<Record<string, string>>({});
@@ -43,6 +48,8 @@ export default function TouchMonthlyEditionList({
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [archiveFilter, setArchiveFilter] = useState("active");
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -77,7 +84,7 @@ export default function TouchMonthlyEditionList({
     }
     void load();
     return () => { active = false; };
-  }, [reload]);
+  }, [reload, refreshKey]);
 
   const expertIds = useMemo(
     () => Array.from(new Set(editions.map(edition => edition.expert_id))),
@@ -87,10 +94,33 @@ export default function TouchMonthlyEditionList({
   const visible = useMemo(
     () => editions.filter(edition =>
       (!expertFilter || edition.expert_id === expertFilter)
-      && (!statusFilter || edition.status === statusFilter),
+      && (!statusFilter || edition.status === statusFilter)
+      && (archiveFilter === "all" || (archiveFilter === "archived" ? !!edition.archived_at : !edition.archived_at)),
     ),
-    [editions, expertFilter, statusFilter],
+    [editions, expertFilter, statusFilter, archiveFilter],
   );
+
+  async function manage(edition: Edition, action: "archive" | "restore" | "delete" | "reopen") {
+    if (busy || disabled) return;
+    if (action === "delete" && !window.confirm("Delete this document? The selected corpus will be preserved for regeneration.")) return;
+    if (action === "reopen" && !window.confirm("Reopen the selected corpus? The current report will be kept in archives.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === "reopen") {
+        await api.post(`/touch/editions/${encodeURIComponent(edition.edition_id)}/reopen`, {});
+        window.location.assign(`/admin/touch?edition_id=${encodeURIComponent(edition.edition_id)}`);
+      } else if (edition.report_id) {
+        const path = `/touch/reports/${encodeURIComponent(edition.report_id)}`;
+        if (action === "delete") await api.delete(path);
+        else await api.post(`${path}/${action}`, {});
+        setReload(value => value + 1);
+        onChanged?.();
+      }
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Unable to update report.");
+    } finally { setBusy(false); }
+  }
 
   return (
     <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
@@ -103,7 +133,7 @@ export default function TouchMonthlyEditionList({
         </div>
         <button
           type="button"
-          disabled={loading || disabled}
+          disabled={loading || disabled || busy}
           onClick={() => setReload(value => value + 1)}
           className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
         >
@@ -112,6 +142,9 @@ export default function TouchMonthlyEditionList({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        <select aria-label="Filter archives" value={archiveFilter} onChange={event => setArchiveFilter(event.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+          <option value="active">Active editions</option><option value="archived">Archived reports</option><option value="all">All editions</option>
+        </select>
         <select
           aria-label="Filter editions by expert"
           value={expertFilter}
@@ -155,7 +188,7 @@ export default function TouchMonthlyEditionList({
               </p>
               <h3 className="mt-1 font-semibold text-gray-900">{edition.subject}</h3>
               <p className="mt-2 text-xs text-gray-600">
-                {STATUS_LABELS[edition.status] ?? edition.status}
+                {edition.archived_at ? "Archived" : STATUS_LABELS[edition.status] ?? edition.status}
                 {" · "}
                 <span
                   className={edition.proposed_count === 0
@@ -192,10 +225,19 @@ export default function TouchMonthlyEditionList({
                 Review corpus
               </Link>
             )}
+            {edition.status === "GENERATED" && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={disabled || busy} onClick={() => void manage(edition, "reopen")} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">Reopen corpus</button>
+                {edition.report_id && <>
+                  <button type="button" disabled={disabled || busy} onClick={() => void manage(edition, edition.archived_at ? "restore" : "archive")} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">{edition.archived_at ? "Restore" : "Archive"}</button>
+                  <button type="button" disabled={disabled || busy} onClick={() => void manage(edition, "delete")} className="rounded-lg border border-red-200 px-3 py-2 text-sm text-red-700 disabled:opacity-50">Delete</button>
+                </>}
+              </div>
+            )}
             {edition.status === "GENERATED" && edition.report_id && (
               <button
                 type="button"
-                disabled={disabled}
+                disabled={disabled || busy}
                 onClick={() => void onOpenReport(edition.report_id!)}
                 className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
               >
