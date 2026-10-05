@@ -18,7 +18,7 @@ from core.user.profile_models import (
 
 PROFILE_SCHEMA_VERSION = "1.0"
 
-PROFILE_TRANSFORMER_VERSION = "1.1"
+PROFILE_TRANSFORMER_VERSION = "1.2"
 
 
 # ============================================================
@@ -144,6 +144,31 @@ monitoring unless a prospective horizon is explicitly supplied.
 
 
 ============================================================
+SELF-CONTAINED SCOPE AND QUALIFICATION
+============================================================
+
+Each watch instruction may be consumed independently. Its instruction and
+retrieval expressions must retain the source domain, monitored environment
+and relevant restrictions. A domain present only in a heading or another
+instruction is insufficient. Do not broaden a specialised mandate into
+unrestricted advertising, technology, commerce or corporate monitoring.
+
+Preserve mandatory eligibility conditions as explicit decision lenses.
+State that they are prerequisites, not merely positive ranking signals.
+When the source explicitly excludes content lacking a documented application,
+preserve that exclusion and its exceptions in negative_preferences as well.
+Apply the qualification boundary in relevant thematic and actor instructions.
+Do not infer a specialised application from an actor's identity, ownership,
+multichannel product or general capability. Preserve source distinctions
+between specialised results and aggregate platform results.
+
+Named actor-specific boundaries supplied by the source must remain explicit.
+A generic rule is not a substitute for a supplied distinction between an
+actor's relevant services and its unrelated businesses or general tools.
+Keep the relevant named services and the stated conditions; never turn a
+conditional exclusion into a blanket ban on that actor.
+
+============================================================
 FINAL COVERAGE REVIEW
 ============================================================
 
@@ -154,6 +179,12 @@ Before returning JSON, compare it with the complete source:
   survives in complete watch instructions;
 - global scope and any actual regional priorities remain explicit;
 - retrieval expressions retain the source domain and avoid generic noise;
+- substantive thematic monitoring areas have useful supported retrieval
+  expressions; do not leave every topics, concepts and keywords array empty
+  when the source explicitly supplies searchable mechanisms or subjects;
+- each watch instruction preserves its specialised environment independently;
+- mandatory eligibility conditions and named actor-specific exceptions remain
+  explicit rather than being replaced by generic relevance language;
 - supplied analytical criteria and relevance metrics are preserved;
 - exclusions retain their conditions and exceptions;
 - no employer, priority, market, entity or future horizon was invented;
@@ -361,6 +392,21 @@ SEARCH PRECISION
 Topics, concepts and keywords must be sufficiently specific to
 retrieve content relevant to the complete watch instruction.
 
+Populate the appropriate retrieval fields from the source's explicit topics,
+mechanisms and unambiguous equivalents. These fields are operational inputs,
+not optional decorations to be omitted because instruction contains prose.
+For each substantive thematic instruction, include a small nonredundant set
+of useful supported search expressions in topics, concepts or keywords.
+Do not impose a fixed quota or fill all three fields with duplicate terms.
+An actor-only instruction may rely on its entities. A criterion-only lens
+may have empty retrieval fields. Do not invent adjacent subjects to fill arrays.
+
+Qualify otherwise ambiguous terms by the monitored domain or environment.
+Use recognised terminology rather than mechanically prefixing every term.
+An unambiguous named product or standard can remain unchanged. A general
+mechanism must retain the source's specialised application in its retrieval
+expression and in the complete instruction.
+
 Prefer precise expressions such as:
 - "Amazon Marketing Cloud";
 - "online alcohol sales";
@@ -422,6 +468,22 @@ when it defines monitored content. Do not create a numerical target or
 assume a financial result. Preserve distinctions between transaction value
 and revenue, different profit measures, and platform versus brand outcomes
 when the source establishes them.
+
+MANDATORY QUALIFICATION AND NAMED BOUNDARIES
+
+Extract all explicit prerequisites for content relevance, including conditions
+requiring a documented application, inventory, sector, service or use case.
+Represent these as decision_lenses with their mandatory status stated in
+instruction. Preserve the difference between positive relevance evidence
+and insufficient signals such as a company name or a generic capability.
+For multisupport announcements, preserve any requirement to qualify only the
+supported elements and not attribute aggregate results to a specialised use.
+
+Keep supplied named exceptions and restrictions explicit. If a diversified
+actor is relevant for specified services but its general announcements are
+excluded without a documented link, preserve the actor, service names,
+exclusion condition and exception. Do not rely on a vague sector-level rule.
+Do not add these conditions when the source does not express them.
 
 NEGATIVE PREFERENCES
 
