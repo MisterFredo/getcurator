@@ -830,6 +830,106 @@ def _normalize_unattached_events(organization):
     })
 
 
+def _repair_remaining_note_assignments(request, organization, notes, exclusions, model):
+    """One bounded repair call for missing assignments, without rebuilding the plan."""
+    placed = {note_id for section in organization.sections for note_id in section.note_ids}
+    for event in organization.events:
+        placed.update(event.note_ids)
+    excluded_ids = {item.get("note_id") for item in exclusions if isinstance(item, dict)}
+    missing = [note for note in notes if note.note_id not in placed | excluded_ids]
+    if not missing:
+        return organization, exclusions
+    section_ids = {section.section_id for section in organization.sections}
+    payload = {
+        "subject": request.subject,
+        "objective": request.objective,
+        "output_language": request.output_language,
+        "report_design": request.report_design.model_dump(mode="json"),
+        "current_plan": organization.model_dump(mode="json"),
+        "existing_notes": [note.model_dump(mode="json") for note in notes
+                           if note.note_id in placed],
+        "unassigned_notes": [note.model_dump(mode="json") for note in missing],
+    }
+    raw = run_llm_json(
+        prompt="Assign only the unassigned notes. Return the required JSON.\n"
+               + json.dumps(payload, ensure_ascii=False),
+        model=model,
+        temperature=0.0,
+        system_prompt=(
+            "You repair missing assignments in a documentary notebook. "
+            "Do not regenerate the existing plan, notes or events. For each "
+            "unassigned note, choose the appropriate existing section by its "
+            "documentary contribution, not by shared source or actor alone. "
+            "If no existing section fits a relevant subject, propose a precise "
+            "new chapter using new_section_title. Do not invent catch-all chapters. "
+            "Exclude only evidence genuinely outside the subject and objective; "
+            "never exclude because placement is difficult or to shorten the report. "
+            'Return JSON only: {"assignments": [{"note_id": "exact id", '
+            '"section_id": "existing id or null", "new_section_title": '
+            '"specific title or null", "exclusion_reason": "reason or null"}]}. '
+            "Exactly one of section_id, new_section_title or exclusion_reason "
+            "must be a nonempty string. Account for each unassigned note once. "
+            "Use the requested output language for titles and reasons."
+        ),
+    )
+    result = extract_json_object(raw)
+    assignments = result.get("assignments")
+    if not isinstance(assignments, list):
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: targeted repair returned no assignments")
+    expected = {note.note_id for note in missing}
+    seen = set()
+    sections = list(organization.sections)
+    repaired_exclusions = list(exclusions)
+    new_titles = {}
+    for item in assignments:
+        if not isinstance(item, dict):
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: invalid targeted assignment")
+        note_id = item.get("note_id")
+        if not isinstance(note_id, str) or note_id not in expected or note_id in seen:
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: invalid targeted note_id")
+        values = [item.get(key) for key in
+                  ("section_id", "new_section_title", "exclusion_reason")]
+        if any(value is not None and (not isinstance(value, str) or not value.strip())
+               for value in values) or sum(value is not None for value in values) != 1:
+            raise ValueError("DOCUMENTARY_COVERAGE_INVALID: ambiguous targeted assignment")
+        target, title, reason = values
+        if target is not None:
+            if target not in section_ids:
+                raise ValueError("DOCUMENTARY_COVERAGE_INVALID: unknown targeted section")
+        elif title is not None:
+            title = title.strip()
+            target = new_titles.get(title.casefold())
+            if target is None:
+                index = len(sections) + 1
+                target = f"section-repair-{index:03d}"
+                while target in section_ids:
+                    index += 1
+                    target = f"section-repair-{index:03d}"
+                sections.append(TouchNotebookSection(
+                    section_id=target, title=title, description="",
+                    event_ids=[], note_ids=[],
+                ))
+                section_ids.add(target)
+                new_titles[title.casefold()] = target
+        else:
+            repaired_exclusions.append({"note_id": note_id, "reason": reason.strip()})
+        if target is not None:
+            for index, section in enumerate(sections):
+                if section.section_id == target:
+                    sections[index] = section.model_copy(update={
+                        "note_ids": list(section.note_ids) + [note_id],
+                    })
+                    break
+        seen.add(note_id)
+    if seen != expected:
+        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: incomplete targeted repair "
+                         + json.dumps(sorted(expected - seen)))
+    repaired = organization.model_copy(update={"sections": sections})
+    _validate_organization_coverage(repaired, notes, repaired_exclusions)
+    logger.info("TOUCH_NOTEBOOK_TARGETED_REPAIR note_ids=%s", sorted(seen))
+    return repaired, repaired_exclusions
+
+
 def _validate_organization_coverage(organization, notes, exclusions):
     """Account for all input evidence before any downstream repair."""
     expected = {note.note_id for note in notes}
@@ -1226,9 +1326,22 @@ def organize_notebook(
             
             organization = _normalize_unattached_events(organization)
 
-            retained_notes = _validate_organization_coverage(
-                organization, notes, parsed.get("excluded_notes", []),
-            )
+            exclusions = parsed.get("excluded_notes", [])
+            try:
+                retained_notes = _validate_organization_coverage(
+                    organization, notes, exclusions,
+                )
+            except ValueError as coverage_error:
+                # After the normal retry, repair only missing assignments.
+                # Other validation errors remain blocking.
+                if attempt + 1 < attempts or "omitted note_ids" not in str(coverage_error):
+                    raise
+                organization, exclusions = _repair_remaining_note_assignments(
+                    request, organization, notes, exclusions, model,
+                )
+                retained_notes = _validate_organization_coverage(
+                    organization, notes, exclusions,
+                )
 
             _validate_comparative_organization(
                 request=request,
