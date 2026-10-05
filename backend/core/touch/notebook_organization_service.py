@@ -796,6 +796,40 @@ def _validate_comparative_organization(
 # REVIEW SINGLE-SECTION NAVIGATION
 # ============================================================
 
+def _normalize_unattached_events(organization):
+    """Remove orphan event wrappers, never the evidence they reference.
+
+    Already placed notes keep their primary section. Unplaced notes remain
+    in the input registry and trigger the normal coverage repair with exact IDs.
+    Timeline references to an orphan event become references to its notes.
+    """
+    attached = {event_id for section in organization.sections
+                for event_id in section.event_ids}
+    orphan_events = {event.event_id: event for event in organization.events
+                     if event.event_id not in attached}
+    if not orphan_events:
+        return organization
+    timeline = []
+    for item in organization.timeline:
+        orphan = orphan_events.get(item.event_id)
+        if orphan is None:
+            timeline.append(item)
+        else:
+            timeline.append(item.model_copy(update={
+                "event_id": None,
+                "note_ids": unique_ids(list(item.note_ids) + list(orphan.note_ids)),
+            }))
+    logger.warning(
+        "TOUCH_NOTEBOOK_ORPHAN_EVENTS event_notes=%s",
+        {event_id: list(event.note_ids) for event_id, event in orphan_events.items()},
+    )
+    return organization.model_copy(update={
+        "events": [event for event in organization.events
+                   if event.event_id not in orphan_events],
+        "timeline": timeline,
+    })
+
+
 def _validate_organization_coverage(organization, notes, exclusions):
     """Account for all input evidence before any downstream repair."""
     expected = {note.note_id for note in notes}
@@ -831,7 +865,11 @@ def _validate_organization_coverage(organization, notes, exclusions):
     if len(referenced_events) != len(set(referenced_events)):
         raise ValueError("DOCUMENTARY_COVERAGE_INVALID: event placed multiple times")
     if set(events) != set(referenced_events):
-        raise ValueError("DOCUMENTARY_COVERAGE_INVALID: event without a section")
+        raise ValueError(
+            "DOCUMENTARY_COVERAGE_INVALID: unattached event_ids "
+            + json.dumps(sorted(set(events) - set(referenced_events)))
+            + ". Attach these events to appropriate existing sections."
+        )
     if len(placements) != len(set(placements)):
         raise ValueError("DOCUMENTARY_COVERAGE_INVALID: note placed multiple times")
     placed = set(placements)
@@ -1152,6 +1190,7 @@ def organize_notebook(
     ):
 
         parsed = None
+        organization = None
         try:
 
             raw_content = run_llm_json(
@@ -1185,6 +1224,8 @@ def organize_notebook(
                 )
             )
             
+            organization = _normalize_unattached_events(organization)
+
             retained_notes = _validate_organization_coverage(
                 organization, notes, parsed.get("excluded_notes", []),
             )
@@ -1241,9 +1282,12 @@ def organize_notebook(
 
             repair_context = last_error
             if isinstance(parsed, dict):
+                previous_plan = dict(parsed)
+                if organization is not None:
+                    previous_plan.update(organization.model_dump(mode="json"))
                 repair_context += (
                     "\nPrevious organization to repair (return complete JSON):\n"
-                    + json.dumps(parsed, ensure_ascii=False)
+                    + json.dumps(previous_plan, ensure_ascii=False)
                 )
             prompt = build_retry_prompt(
 
