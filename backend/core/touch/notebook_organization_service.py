@@ -971,6 +971,36 @@ def _generate_staged_organization(
             ))
             local = TouchNotebookOrganizationResult.model_validate(
                 _normalize_organization_payload(raw))
+            # The global assignment has already determined the section for
+            # every note in this chunk. Local grouping may leave some notes
+            # outside events; retain them directly in that same section.
+            event_by_id = {event.event_id: event for event in local.events}
+            placed_ids: set[str] = set()
+            for local_section in local.sections:
+                placed_ids.update(local_section.note_ids)
+                for event_id in local_section.event_ids:
+                    event = event_by_id.get(event_id)
+                    if event is not None:
+                        placed_ids.update(event.note_ids)
+            expected_ids = {note.note_id for note in chunk}
+            if placed_ids - expected_ids:
+                raise ValueError("DOCUMENTARY_ASSIGNMENT_INVALID: local grouping "
+                                 "references notes outside its assigned batch.")
+            missing_ids = [note.note_id for note in chunk
+                           if note.note_id not in placed_ids]
+            if missing_ids:
+                if not local.sections:
+                    local.sections.append(TouchNotebookSection(
+                        section_id=section["section_id"],
+                        title=section["title"],
+                        description=section.get("description", ""),
+                        note_ids=[], event_ids=[],
+                    ))
+                local.sections[0].note_ids.extend(missing_ids)
+                print("TOUCH_NOTEBOOK_LOCAL_NOTES_RETAINED", {
+                    "section_id": section["section_id"],
+                    "note_ids": missing_ids,
+                })
             notebook = _build_notebook(request, local, chunk, [])
             _validate_documentary_note_coverage(chunk, notebook)
             prefix = f"{section['section_id']}-batch-{offset // 30 + 1}-"
