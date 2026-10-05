@@ -1,3 +1,4 @@
+import json
 import re
 import unicodedata
 
@@ -26,6 +27,8 @@ from core.touch.notebook_organization_prompt import (
     TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT,
     build_touch_notebook_organization_prompt,
 )
+
+from core.touch.notebook_plan_service import prepare_notebook
 
 from core.touch.notebook_utils import (
     build_retry_prompt,
@@ -785,6 +788,82 @@ def _validate_comparative_organization(
 
 
 # ============================================================
+# REVIEW CONCENTRATED DOCUMENTARY PLANS
+# ============================================================
+
+def _review_concentrated_plan(
+    request: TouchNotebookRequest,
+    notebook: TouchCorpusNotebook,
+    model: Optional[str],
+) -> None:
+    """Volume triggers a semantic review, never a compulsory split."""
+    if request.report_design.organization_mode == "CHRONOLOGICAL":
+        return
+
+    note_by_id = {note.note_id: note for note in notebook.notes}
+    event_by_id = {event.event_id: event for event in notebook.events}
+    placements = []
+    for section in notebook.sections:
+        ids = set(section.note_ids)
+        for event_id in section.event_ids:
+            ids.update(event_by_id[event_id].note_ids)
+        placements.append({
+            "title": section.title,
+            "note_ids": sorted(ids),
+            "events": [event_by_id[event_id].model_dump(mode="json")
+                       for event_id in section.event_ids],
+        })
+
+    source_ids = {source_id for note in notebook.notes
+                  for source_id in note.source_content_ids}
+    largest = max((len(item["note_ids"]) for item in placements), default=0)
+    # Conservative diagnostic thresholds; they do not measure semantic diversity.
+    suspicious = (len(note_by_id) >= 30 and len(source_ids) >= 6
+                  and largest / max(len(note_by_id), 1) >= 0.85)
+    if not suspicious:
+        return
+
+    payload = {
+        "subject": request.subject,
+        "objective": request.objective,
+        "report_design": request.report_design.model_dump(mode="json"),
+        "sections": placements,
+        "notes": [note.model_dump(mode="json") for note in notebook.notes],
+    }
+    review = extract_json_object(run_llm_json(
+        prompt=(
+            "Review this documentary plan using only the supplied evidence. "
+            "Decide whether the large section combines distinct, sufficiently "
+            "documented functions that need separate navigation. A homogeneous "
+            "corpus may legitimately have one section regardless of volume. "
+            "Do not impose a section count, invent themes or force unsupported "
+            "research axes. For chronological organization, preserve chronology. "
+            "Return JSON with exactly: acceptable (boolean), reason (string). "
+            "If unacceptable, identify the distinct mechanisms and cite supplied "
+            "note_ids demonstrating the problem. Do not rewrite notes.\n"
+            + json.dumps(payload, ensure_ascii=False)
+        ),
+        model=model,
+        temperature=0.0,
+        system_prompt="You review evidence-based documentary organization. Return JSON only.",
+    ))
+    if (type(review.get("acceptable")) is not bool
+            or not isinstance(review.get("reason"), str)
+            or not review["reason"].strip()):
+        raise ValueError("DOCUMENTARY_REVIEW_INVALID: missing boolean verdict or reason.")
+    print("TOUCH_NOTEBOOK_STRUCTURE_REVIEW", {
+        "acceptable": review["acceptable"], "reason": review["reason"],
+        "sections_count": len(notebook.sections), "notes_count": len(note_by_id),
+    })
+    if not review["acceptable"]:
+        raise ValueError(
+            "DOCUMENTARY_STRUCTURE_INVALID: " + review["reason"]
+            + " Rebuild the plan around the distinct documented functions. "
+            "Preserve relevant evidence and immutable note identifiers."
+        )
+
+
+# ============================================================
 # BUILD NOTEBOOK
 # ============================================================
 
@@ -944,7 +1023,7 @@ def organize_notebook(
                 organization=organization,
             )
             
-            return _build_notebook(
+            notebook = _build_notebook(
 
                 request=request,
 
@@ -960,11 +1039,46 @@ def organize_notebook(
 
             )
 
+            print("TOUCH_NOTEBOOK_ORGANIZATION_RAW", {
+                "attempt": attempt + 1,
+                "sections": [{"title": section.title,
+                              "direct_notes": len(section.note_ids),
+                              "events": len(section.event_ids)}
+                             for section in notebook.sections],
+                "events_count": len(notebook.events),
+                "notes_count": len(notebook.notes),
+            })
+            notebook = prepare_notebook(
+                notebook=notebook,
+                allowed_content_ids=set(request.content_ids),
+            )
+            # Review the effective plan, after empty sections and invalid
+            # references have been repaired. Structural errors also retry here.
+            _validate_comparative_organization(
+                request=request,
+                organization=TouchNotebookOrganizationResult(
+                    sections=notebook.sections,
+                ),
+            )
+            _review_concentrated_plan(request, notebook, model)
+            print("TOUCH_NOTEBOOK_ORGANIZATION_ACCEPTED", {
+                "attempt": attempt + 1,
+                "sections_count": len(notebook.sections),
+                "events_count": len(notebook.events),
+                "notes_count": len(notebook.notes),
+            })
+            return notebook
+
         except Exception as exc:
 
             last_error = str(
                 exc
             )
+
+            print("TOUCH_NOTEBOOK_ORGANIZATION_RETRY", {
+                "attempt": attempt + 1, "error": last_error,
+                "will_retry": attempt + 1 < attempts,
+            })
 
             if (
                 attempt + 1
