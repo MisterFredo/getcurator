@@ -6,11 +6,11 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 import {
   deleteTouchReport,
   getTouchReport,
-  listTouchReports,
 } from "@/lib/touch";
 
 import TouchMonthlyEditionList from "@/components/admin/touch/TouchMonthlyEditionList";
@@ -120,7 +120,7 @@ export default function TouchReportsPage() {
     reports,
     setReports,
   ] = useState<
-    TouchSavedReportSummary[]
+    (TouchSavedReportSummary & { archived_at?: string | null })[]
   >([]);
 
   const [
@@ -166,6 +166,9 @@ export default function TouchReportsPage() {
   >(null);
 
 
+  const [archiveFilter, setArchiveFilter] = useState("active");
+  const [refreshKey, setRefreshKey] = useState(0);
+
   /* =======================================================
      LOAD REPORTS
   ======================================================= */
@@ -173,6 +176,7 @@ export default function TouchReportsPage() {
   useEffect(() => {
 
     let active = true;
+    setLoading(true);
 
     async function loadReports() {
 
@@ -183,12 +187,12 @@ export default function TouchReportsPage() {
         );
 
         const result =
-          await listTouchReports();
+          await api.get(`/touch/reports?archive=${archiveFilter}`);
 
         if (active) {
 
           setReports(
-            result,
+            result.reports ?? [],
           );
 
         }
@@ -227,7 +231,7 @@ export default function TouchReportsPage() {
 
     };
 
-  }, []);
+  }, [archiveFilter, refreshKey]);
 
 
   /* =======================================================
@@ -309,7 +313,7 @@ export default function TouchReportsPage() {
     const confirmed =
       window.confirm(
         `Delete “${report.subject}”? `
-        + "This action cannot be undone.",
+        + "This action cannot be undone. The monthly corpus will be preserved for regeneration.",
       );
 
     if (!confirmed) {
@@ -332,6 +336,7 @@ export default function TouchReportsPage() {
         report.report_id,
       );
 
+      setRefreshKey(value => value + 1);
       setReports(
         currentReports =>
           currentReports.filter(
@@ -374,6 +379,18 @@ export default function TouchReportsPage() {
 
   }
 
+
+  async function handleArchive(report: TouchSavedReportSummary, archived: boolean) {
+    if (openingId || deletingId) return;
+    setDeletingId(report.report_id);
+    setError(null);
+    try {
+      await api.post(`/touch/reports/${encodeURIComponent(report.report_id)}/${archived ? "archive" : "restore"}`, {});
+      setRefreshKey(value => value + 1);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Unable to update report.");
+    } finally { setDeletingId(null); }
+  }
 
   /* =======================================================
      RENDER
@@ -496,6 +513,8 @@ export default function TouchReportsPage() {
 
           <TouchMonthlyEditionList
             onOpenReport={handleOpen}
+            refreshKey={refreshKey}
+            onChanged={() => setRefreshKey(value => value + 1)}
             disabled={openingId !== null || deletingId !== null}
           />
 
@@ -503,6 +522,9 @@ export default function TouchReportsPage() {
             Saved reports — expert and ad hoc
           </h2>
 
+          <select aria-label="Filter saved reports" value={archiveFilter} onChange={event => setArchiveFilter(event.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+            <option value="active">Active reports</option><option value="archived">Archived reports</option><option value="all">All reports</option>
+          </select>
           {!loading && reports.length === 0 && (
 
             <div
@@ -650,6 +672,9 @@ export default function TouchReportsPage() {
 
                   </button>
 
+                  <button type="button" disabled={interactionsDisabled} onClick={() => void handleArchive(report, !report.archived_at)} className="shrink-0 rounded-lg border px-3 py-2 text-xs disabled:opacity-50">
+                    {report.archived_at ? "Restore" : "Archive"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
