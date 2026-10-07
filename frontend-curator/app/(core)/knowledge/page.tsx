@@ -94,10 +94,10 @@ export default function KnowledgePage() {
         source_url: /^https?:\/\//i.test(source.url ?? "") ? source.url! : "", published_at: source.published_at}))} />
   </div>;
   const items = matches ?? catalogue.items;
-  return <div className="space-y-6">
+  return <div className="space-y-4">
     <header><h1 className="text-2xl font-semibold text-gray-900">Knowledge</h1>
       <p className="mt-1 text-sm text-gray-500">Find and explore GetCurator’s published research reports.</p></header>
-    <section className="space-y-4 rounded-xl border bg-white p-5">
+    <section className="space-y-3 rounded-xl border bg-white p-4">
       <form onSubmit={event => {event.preventDefault(); setMatches(null); setConversation([]); setOffset(0); setSubmittedQuery(query.trim());}} className="flex flex-wrap gap-2">
         <input className={`${inputClass} min-w-0 flex-1`} value={query} onChange={event => setQuery(event.target.value)} aria-label="Search reports" placeholder="Search report titles and content…" disabled={searching} />
         <button type="submit" className={buttonClass} disabled={searching}>Search</button>
@@ -116,44 +116,44 @@ export default function KnowledgePage() {
       </div>
     </section>
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="min-w-0 space-y-4" aria-live="polite">
+      <section className="min-w-0 space-y-3" aria-live="polite">
         <div className="flex items-center justify-between gap-2"><h2 className="font-semibold">{matches ? "Reports connected to your request" : "Reports"}</h2>
           {!matches && !loading && <span className="text-sm text-gray-500">{catalogue.pagination.total} reports</span>}</div>
         {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {(loading && matches === null || searching || opening) && <p role="status" className="text-sm text-gray-500">{searching ? "Finding relevant reports…" : opening ? "Opening report…" : "Loading reports…"}</p>}
         {!(loading && matches === null) && !searching && items.length === 0 && <p className="rounded-xl border bg-white p-6 text-sm text-gray-500">No matching reports. Try another subject or adjust the filters.</p>}
         {!(loading && matches === null) && !searching && items.map(item => <article key={item.report_id} className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-md">
-          <div className="space-y-3 border-b border-emerald-100 bg-emerald-50 p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              <span>Expert research</span><span>{item.output_language.toUpperCase()}</span>
+          <div className="grid gap-3 border-b border-emerald-100 bg-emerald-50 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Expert research · {item.output_language.toUpperCase()}</p>
+              <h3 className="text-base font-bold leading-snug text-gray-900">{item.expert_name || item.subject}</h3>
+              <p className="text-xs font-medium text-emerald-800">{reportPeriod(item.period_start) || `Published ${new Date(item.published_at).toLocaleDateString("en-GB")}`}</p>
             </div>
-            <h3 className="text-xl font-bold leading-snug text-gray-900">{item.expert_name || item.subject}</h3>
-            <p className="text-sm font-medium text-emerald-800">{reportPeriod(item.period_start) || `Published ${new Date(item.published_at).toLocaleDateString("en-GB")}`}</p>
-          </div>
-          <div className="space-y-4 p-6">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">The research, done for you</p>
-              <dl className="flex flex-wrap gap-x-8 gap-y-3">
-                {item.candidate_count != null && <div><dd className="text-2xl font-bold text-gray-900">{item.candidate_count}</dd><dt className="text-xs text-gray-500">Candidates reviewed</dt></div>}
-                <div><dd className="text-2xl font-bold text-emerald-700">{item.source_count}</dd><dt className="text-xs text-gray-500">Sources selected</dt></div>
-                {item.note_count != null && <div><dd className="text-2xl font-bold text-gray-900">{item.note_count}</dd><dt className="text-xs text-gray-500">Insights extracted</dt></div>}
+            <div className="border-t border-emerald-100 pt-2 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">The research, done for you</p>
+              <dl className="flex flex-wrap gap-x-5 gap-y-2">
+                {item.candidate_count != null && <div><dt className="text-[11px] text-gray-600">Candidates reviewed</dt><dd className="text-lg font-bold leading-6 text-gray-900">{item.candidate_count}</dd></div>}
+                <div><dt className="text-[11px] text-gray-600">Sources selected</dt><dd className="text-lg font-bold leading-6 text-emerald-700">{item.source_count}</dd></div>
+                {item.note_count != null && <div><dt className="text-[11px] text-gray-600">Insights extracted</dt><dd className="text-lg font-bold leading-6 text-gray-900">{item.note_count}</dd></div>}
               </dl>
             </div>
-          {item.match_reason && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+          </div>
+          <div className="space-y-2 px-4 py-3">
+          {item.match_reason && <div className="rounded-lg bg-emerald-50 p-2.5 text-xs leading-5 text-emerald-900">
             <p className="mb-1 text-xs font-semibold">{item.match_type === "PARTIAL" ? "Partial match" : "Direct match"}</p><p>{item.match_reason}</p>
-            {item.match_evidence && <blockquote className="mt-2 border-l-2 border-emerald-200 pl-3 text-xs">{item.match_evidence.text}</blockquote>}
+            {item.match_evidence && <blockquote className="mt-1 border-l-2 border-emerald-200 pl-3 text-xs">{item.match_evidence.text}</blockquote>}
           </div>}
           {(item.summary || item.objective || item.key_points.length > 0) && <details className="group">
-            <summary className="cursor-pointer text-sm font-medium text-emerald-700 hover:text-emerald-900">
+            <summary className="cursor-pointer text-xs font-medium text-emerald-700 hover:text-emerald-900">
               <span className="group-open:hidden">Show more</span>
               <span className="hidden group-open:inline">Show less</span>
             </summary>
-            <div className="mt-3 space-y-3">
-              {(item.summary || item.objective) && <p className="text-sm leading-6 text-gray-600">{item.summary || item.objective}</p>}
-              {item.key_points.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">{item.key_points.map((point,index) => <li key={index}>{point}</li>)}</ul>}
+            <div className="mt-2 space-y-2">
+              {(item.summary || item.objective) && <p className="text-xs leading-5 text-gray-600">{item.summary || item.objective}</p>}
+              {item.key_points.length > 0 && <ul className="list-disc space-y-1 pl-5 text-xs text-gray-600">{item.key_points.map((point,index) => <li key={index}>{point}</li>)}</ul>}
             </div>
           </details>}
-          <button type="button" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50" disabled={opening || searching} onClick={() => void openReport(item.report_id)}>Explore this report →</button>
+          <button type="button" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs text-white disabled:opacity-50" disabled={opening || searching} onClick={() => void openReport(item.report_id)}>Explore this report →</button>
           </div>
         </article>)}
         {matches && moreMatches && <p className="text-xs text-gray-500">Additional reports matched the search terms. Refine your request to explore them.</p>}
@@ -162,14 +162,14 @@ export default function KnowledgePage() {
           <button type="button" className={buttonClass} disabled={!catalogue.pagination.has_more || searching} onClick={() => setOffset(offset+20)}>Next</button>
         </div>}
       </section>
-      <aside className="space-y-4 rounded-xl border bg-white p-5 xl:sticky xl:top-0">
+      <aside className="space-y-3 rounded-xl border bg-white p-4 xl:sticky xl:top-0">
         <div><h2 className="font-semibold">Which reports are you looking for?</h2><p className="mt-1 text-sm text-gray-500">Describe a subject, actor or market to find related reports.</p></div>
         <div className="max-h-[40vh] space-y-3 overflow-y-auto" aria-live="polite">
           {conversation.map((entry,index) => <p key={index} className={`rounded-lg p-3 text-sm ${entry.role === "user" ? "bg-gray-100 text-gray-900" : "bg-emerald-50 text-emerald-900"}`}>{entry.content}</p>)}
         </div>
         <form onSubmit={event => {event.preventDefault(); void discover();}} className="space-y-3">
           <textarea aria-label="Describe the reports you need" maxLength={2000} rows={4} className={`${inputClass} w-full`} value={message} onChange={event => setMessage(event.target.value)} placeholder="Reports on retail media measurement for brands…" disabled={searching} />
-          <button type="submit" className="w-full rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50" disabled={searching || !message.trim()}>{searching ? "Searching…" : "Find reports"}</button>
+          <button type="submit" className="w-full rounded-lg bg-emerald-700 px-3 py-1.5 text-xs text-white disabled:opacity-50" disabled={searching || !message.trim()}>{searching ? "Searching…" : "Find reports"}</button>
         </form>
         {matches !== null && <button type="button" disabled={searching} className="text-sm text-emerald-700 underline" onClick={() => {setMatches(null); setConversation([]); setMessage(""); setMoreMatches(false);}}>Back to catalogue</button>}
       </aside>
