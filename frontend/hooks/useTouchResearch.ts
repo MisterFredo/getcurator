@@ -3,6 +3,7 @@
 import {
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -260,11 +261,14 @@ export function useTouchResearch():
     setDismissedContentIds,
   ] = useState<string[]>([]);
 
+  const selectionInitialized = useRef(false);
+
   const restoreResearch = useCallback((
     search: TouchSearchResult,
     selectedIds: string[],
     dismissedIds: string[],
   ) => {
+    selectionInitialized.current = true;
     setInterpretation(search.interpretation);
     setCandidates(search.candidates);
     setEvaluation(search.evaluation);
@@ -418,6 +422,27 @@ export function useTouchResearch():
               brief,
               "full",
             );
+
+          if (!selectionInitialized.current) {
+            const decisions = new Map(
+              result.evaluation.decisions.map(decision => [
+                decision.content_id,
+                decision,
+              ]),
+            );
+            const dismissed = new Set(dismissedContentIds);
+            const defaultIds = result.candidates
+              .filter(candidate => {
+                const decision = decisions.get(candidate.content_id);
+                return decision !== undefined
+                  && decision.relevance !== "OUT_OF_SCOPE"
+                  && decision.relevance_score >= 80
+                  && !dismissed.has(candidate.content_id);
+              })
+              .map(candidate => candidate.content_id);
+            selectionInitialized.current = true;
+            setSelectedContentIds(Array.from(new Set(defaultIds)));
+          }
 
           setInterpretation(
             result.interpretation,
@@ -673,6 +698,7 @@ export function useTouchResearch():
     useCallback(
       () => {
 
+        selectionInitialized.current = false;
         setLoading(false);
 
         setError(null);
