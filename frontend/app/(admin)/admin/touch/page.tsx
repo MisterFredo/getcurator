@@ -28,6 +28,7 @@ import TouchNotebookBuilder from "@/components/admin/touch/TouchNotebookBuilder"
 import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
 import TouchResearchCoverage from "@/components/admin/touch/TouchResearchCoverage";
 import TouchResearchForm from "@/components/admin/touch/TouchResearchForm";
+import TouchExpertProfileReminder from "@/components/admin/touch/TouchExpertProfileReminder";
 import TouchSelectedCorpus from "@/components/admin/touch/TouchSelectedCorpus";
 import TouchWorkflowSteps from "@/components/admin/touch/TouchWorkflowSteps";
 
@@ -2042,8 +2043,8 @@ export default function TouchPage() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Review the proposed contents and retain all
-                sources that contribute useful evidence.
+                New corpora preselect contents scoring 80 or above,
+                excluding OUT_OF_SCOPE. Adjust the selection before saving.
               </p>
 
             </div>
@@ -2106,6 +2107,14 @@ export default function TouchPage() {
               }
             />
 
+            <aside className="min-w-0 flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start xl:h-[calc(100dvh-3rem)]">
+              {selectedExpertId && (
+                <TouchExpertProfileReminder
+                  expertId={selectedExpertId}
+                  expertName={expertOptions.find(expert => expert.id === selectedExpertId)?.label}
+                />
+              )}
+              <div className="min-h-0 flex-1">
             <TouchSelectedCorpus
               candidates={
                 selectedCandidates
@@ -2123,6 +2132,8 @@ export default function TouchPage() {
               }
               validating={false}
             />
+              </div>
+            </aside>
 
           </div>
 
