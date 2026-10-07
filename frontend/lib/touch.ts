@@ -201,3 +201,17 @@ export async function deleteTouchReport(
   );
 
 }
+
+/* =========================================================
+   DELETE MONTHLY EDITION AND LINKED REPORT
+========================================================= */
+
+export async function deleteTouchEdition(
+  editionId: string,
+): Promise<void> {
+
+  await api.delete(
+    `/touch/editions/${encodeURIComponent(editionId)}`,
+  );
+
+}
