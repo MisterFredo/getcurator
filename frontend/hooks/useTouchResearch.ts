@@ -106,6 +106,8 @@ export type UseTouchResearchResult = {
     contentId: string
   ) => void;
 
+  applyScoreSelection: () => void;
+
   resetResearch: () => void;
 };
 
@@ -691,6 +693,26 @@ export function useTouchResearch():
     );
 
   /* =======================================================
+     APPLY SCORE SELECTION TO ANY CORPUS
+  ======================================================= */
+
+  const applyScoreSelection = useCallback(() => {
+    const dismissed = new Set(dismissedContentIds);
+    const ids = candidates
+      .filter(candidate => {
+        const decision = decisionsByContentId.get(candidate.content_id);
+        return decision !== undefined
+          && decision.relevance !== "OUT_OF_SCOPE"
+          && decision.relevance_score >= 80
+          && !dismissed.has(candidate.content_id);
+      })
+      .map(candidate => candidate.content_id);
+
+    selectionInitialized.current = true;
+    setSelectedContentIds(Array.from(new Set(ids)));
+  }, [candidates, decisionsByContentId, dismissedContentIds]);
+
+  /* =======================================================
      RESET
   ======================================================= */
 
@@ -763,6 +785,8 @@ export function useTouchResearch():
     dismissContent,
 
     restoreContent,
+
+    applyScoreSelection,
 
     resetResearch,
 
