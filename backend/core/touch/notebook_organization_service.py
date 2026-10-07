@@ -1288,8 +1288,10 @@ def _validate_note_assignment_batch(payload, notes, chapters):
         if not isinstance(item, dict):
             raise ValueError("Invalid assignment entry")
         note_id = item.get("note_id")
-        if not isinstance(note_id, str) or note_id not in expected or note_id in seen:
-            raise ValueError("Unknown or duplicate assigned note_id: " + str(note_id))
+        if not isinstance(note_id, str) or note_id not in expected:
+            raise ValueError("Unknown assigned note_id: " + str(note_id))
+        if note_id in seen:
+            raise ValueError("Duplicate assigned note_id: " + note_id)
         seen.add(note_id)
         keys = set(item)
         if keys == {"note_id", "section_id", "reason"}:
@@ -1345,6 +1347,62 @@ def _review_note_assignment_coherence(request, notes, chapters, assignments, mod
         return assignments
 
 
+def _assign_note_batch(request, batch, chapters, model, max_attempts, offset):
+    """Retry invalid mappings with exact IDs and the rejected response."""
+    note_ids = [note.note_id for note in batch]
+    if any(not isinstance(value, str) or not value.strip() for value in note_ids):
+        raise ValueError("Input notes contain an empty or invalid note_id")
+    if len(set(note_ids)) != len(note_ids):
+        raise ValueError("Input notes contain duplicate note_ids")
+
+    contract = (
+        "\n\nMANDATORY IDENTIFIER CONTRACT\n"
+        "Copy note_id verbatim from allowed_note_ids below. Titles, labels, "
+        "subjects and chapter names are never substitutes for note_id. "
+        "Return exactly one assignment for EACH allowed note_id, including "
+        "explicit exclusions. Never repeat an ID. Use only an allowed "
+        "section_id for an existing chapter. New chapters use "
+        "new_chapter_title and new_chapter_scope, not a made-up section_id.\n"
+        + json.dumps({
+            "allowed_note_ids": note_ids,
+            "allowed_section_ids": [chapter["section_id"] for chapter in chapters],
+        }, ensure_ascii=False)
+    )
+    original = build_touch_notebook_assignment_prompt(request, chapters, batch) + contract
+    prompt = original
+    last_error = ""
+    for attempt in range(max(1, max_attempts)):
+        parsed = None
+        try:
+            raw = run_llm_json(
+                prompt=prompt, model=model, temperature=0.0,
+                system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT,
+            )
+            parsed = extract_json_object(raw)
+            return _validate_note_assignment_batch(parsed, batch, chapters)
+        except (ValueError, TypeError) as exc:
+            last_error = str(exc)
+            print("TOUCH_NOTEBOOK_ASSIGNMENT_BATCH_ERROR", {
+                "subject": request.subject, "offset": offset,
+                "attempt": attempt + 1, "error": last_error,
+                "expected_note_ids": note_ids,
+            }, flush=True)
+            feedback = last_error
+            if isinstance(parsed, dict):
+                feedback += (
+                    "\nRejected assignment response to repair:\n"
+                    + json.dumps(parsed, ensure_ascii=False)
+                )
+            feedback += (
+                "\nReturn the complete corrected assignments array. "
+                "Preserve valid destinations and reasons where possible. "
+                "Use the exact allowed IDs in the original request; do not "
+                "guess an ID from a title or omit an unassigned note."
+            )
+            prompt = build_retry_prompt(original_prompt=original, error=feedback)
+    raise ValueError("Échec de l’affectation des notes : " + last_error)
+
+
 def _organize_from_note_assignments(request, notes, certified_numbers,
                                    chapter_outline, model, max_attempts):
     chapters = [dict(chapter) for chapter in chapter_outline["chapters"]]
@@ -1352,24 +1410,9 @@ def _organize_from_note_assignments(request, notes, certified_numbers,
     # Small independent classification outputs; never re-extract or rewrite notes.
     for offset in range(0, len(notes), 24):
         batch = notes[offset:offset + 24]
-        original = build_touch_notebook_assignment_prompt(request, chapters, batch)
-        prompt = original
-        last_error = ""
-        for attempt in range(max(1, max_attempts)):
-            try:
-                raw = run_llm_json(prompt=prompt, model=model, temperature=0.0,
-                                  system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT)
-                items = _validate_note_assignment_batch(extract_json_object(raw), batch, chapters)
-                break
-            except (ValueError, TypeError) as exc:
-                last_error = str(exc)
-                print("TOUCH_NOTEBOOK_ASSIGNMENT_BATCH_ERROR", {
-                    "subject": request.subject, "offset": offset,
-                    "attempt": attempt + 1, "error": last_error,
-                }, flush=True)
-                prompt = build_retry_prompt(original_prompt=original, error=last_error)
-        else:
-            raise ValueError("Échec de l’affectation des notes : " + last_error)
+        items = _assign_note_batch(
+            request, batch, chapters, model, max_attempts, offset,
+        )
         for item in items:
             if "new_chapter_title" in item:
                 title = item["new_chapter_title"].strip()
