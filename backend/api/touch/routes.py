@@ -669,3 +669,103 @@ def delete_monthly_touch_edition(
         "status": "ok",
         "edition_id": edition_id,
     }
+
+# ============================================================
+# KNOWLEDGE PUBLIC FRONT — PUBLISHED TOUCH REPORTS
+# ============================================================
+
+from fastapi import Request
+from utils.auth import get_user_id_from_request
+from core.user.user_service import get_user_by_id
+from core.touch.library_models import LibraryFilters, LibrarySearchRequest
+from core.touch.library_service import (
+    browse_reports, library_filters, published_report, search_reports,
+    set_report_published,
+)
+
+
+def _require_library_user(request: Request) -> dict:
+    user_id = get_user_id_from_request(request)
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
+
+def _require_library_admin(request: Request) -> None:
+    # Use the existing admin session convention, not the public user header.
+    if request.cookies.get("ratecard_admin_session") != "ok":
+        raise HTTPException(status_code=401, detail="Admin session required")
+
+
+@router.get("/library/filters")
+def get_report_library_filters(request: Request):
+    _require_library_user(request)
+    return {"status": "ok", "filters": library_filters()}
+
+
+@router.get("/library/reports")
+def list_published_touch_reports(
+    request: Request,
+    query: str = Query(default="", max_length=500),
+    expert_id: str | None = None,
+    month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    output_language: Literal["fr", "en"] | None = None,
+    limit: int = Query(default=20, ge=1, le=40),
+    offset: int = Query(default=0, ge=0),
+):
+    _require_library_user(request)
+    return {"status": "ok", **browse_reports(
+        query=query, filters=LibraryFilters(expert_id=expert_id, month=month,
+                                          output_language=output_language),
+        limit=limit, offset=offset,
+    )}
+
+
+@router.get("/library/reports/{report_id}")
+def get_published_touch_report(report_id: str, request: Request):
+    _require_library_user(request)
+    report = published_report(report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Published report not found")
+    # Public reader needs no internal corpus contribution or version lineage.
+    return {"status": "ok", "report": {
+        key: report[key] for key in (
+            "report_id", "subject", "objective", "expert_id", "period_start",
+            "period_end", "output_language", "created_at", "published_at",
+            "sources", "notebook",
+        )
+    }}
+
+
+@router.post("/library/search")
+def search_published_touch_reports(payload: LibrarySearchRequest, request: Request):
+    _require_library_user(request)
+    try:
+        return {"status": "ok", "search": search_reports(payload)}
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Touch report library search failed")
+        raise HTTPException(status_code=503, detail=(
+            "Report discovery is temporarily unavailable. Use the catalogue search."
+        ))
+
+
+@router.post("/reports/{report_id}/publish")
+def publish_touch_report(report_id: str, request: Request):
+    _require_library_admin(request)
+    try:
+        updated = set_report_published(report_id, True)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not updated:
+        raise HTTPException(status_code=404, detail="Touch report not found")
+    return {"status": "ok", "report_id": report_id}
+
+
+@router.post("/reports/{report_id}/unpublish")
+def unpublish_touch_report(report_id: str, request: Request):
+    _require_library_admin(request)
+    if not set_report_published(report_id, False):
+        raise HTTPException(status_code=404, detail="Touch report not found")
+    return {"status": "ok", "report_id": report_id}
