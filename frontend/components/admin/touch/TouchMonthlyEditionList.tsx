@@ -1,309 +1,255 @@
-export type TouchCrossReadingType = "CONVERGENCE" | "DIFFERENCE" | "ENABLING_CONDITION" | "FRICTION" | "EVIDENCE_GAP";
+"use client";
 
-export type TouchEvidenceNoteType =
-  | "FACT"
-  | "MECHANISM"
-  | "NUMBER"
-  | "STRATEGIC_READING"
-  | "TENSION"
-  | "LIMITATION"
-  | "UNCERTAINTY"
-  | "COMPARISON"
-  | "MILESTONE"
-  | "EXAMPLE";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { api } from "@/lib/api";
+import { deleteTouchEdition } from "@/lib/touch";
+import type { TouchSavedReportSummary } from "@/types/touch";
 
-
-export type TouchEvidenceConfidence =
-  | "HIGH"
-  | "MEDIUM"
-  | "LOW";
-
-
-export type TouchEvidenceStatus =
-  | "VALIDATED"
-  | "TO_VERIFY"
-  | "CONTRADICTED";
-
-
-export type TouchEvidenceNote = {
-  note_id: string;
-
-  note_type:
-    TouchEvidenceNoteType;
-
-  statement: string;
-  explanation: string;
-
-  actors: string[];
-  geographies: string[];
-  dates: string[];
-
-  confidence:
-    TouchEvidenceConfidence;
-
-  status:
-    TouchEvidenceStatus;
-
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   NOTEBOOK EVENT
-========================================================= */
-
-export type TouchNotebookEvent = {
-  event_id: string;
-
-  title: string;
-  description: string;
-
-  event_date: string | null;
-
-  actors: string[];
-
-  note_ids: string[];
-  number_ids: string[];
-
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   NOTEBOOK NUMBER ENTITY
-========================================================= */
-
-export type TouchNotebookNumberEntity = {
-  entity_type: string | null;
-  entity_id: string | null;
-  entity_label: string | null;
-};
-
-
-/* =========================================================
-   NOTEBOOK NUMBER
-========================================================= */
-
-export type TouchNotebookNumber = {
-  number_id: string;
-
-  id_content: string;
-
-  label: string | null;
-  metric_type: string | null;
-
-  value:
-    | string
-    | number
-    | null;
-
-  value_min:
-    | string
-    | number
-    | null;
-
-  value_max:
-    | string
-    | number
-    | null;
-
-  unit: string | null;
-  scale: string | null;
-
-  zone: string | null;
-  period_label: string | null;
-
-  value_status: string | null;
-
-  confidence: number;
-
-  entities:
-    TouchNotebookNumberEntity[];
-
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   NOTEBOOK TIMELINE
-========================================================= */
-
-export type TouchNotebookTimelineItem = {
-  date: string;
-
-  label: string;
-  description: string;
-
-  event_id: string | null;
-
-  note_ids: string[];
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   NOTEBOOK DIMENSION
-========================================================= */
-
-export type TouchNotebookDimension = {
-  label: string;
-  summary: string;
-
-  note_ids: string[];
-  source_content_ids: string[];
-};
-
-/* =========================================================
-   NOTEBOOK SECTION
-========================================================= */
-
-export type TouchNotebookSection = {
-  section_id: string;
-
-  title: string;
-  description: string;
-
-  event_ids: string[];
-  note_ids: string[];
-  number_ids: string[];
-};
-
-
-/* =========================================================
-   QUARANTINED NUMBER
-========================================================= */
-
-export type TouchQuarantinedNumber = {
-  value: string;
-  unit: string;
-  metric: string;
-  context: string;
-
-  reason: string;
-
-  source_content_ids: string[];
-};
-
-
-/* =========================================================
-   CONTRADICTION
-========================================================= */
-
-export type TouchNotebookContradiction = {
+/* The existing component now renders the unified reports list. */
+type Edition = {
+  archived_at?: string | null;
+  edition_id: string;
+  expert_id: string;
+  period_start: string;
+  period_end: string;
+  status: string;
   subject: string;
-  description: string;
-
-  note_ids: string[];
-  source_content_ids: string[];
-
-  resolution: string | null;
+  output_language: string;
+  report_id: string | null;
+  error: string | null;
+  selected_count: number;
+  candidate_count?: number | null;
+  proposed_count?: number | null;
 };
-
-export type TouchNotebookExecutiveSummaryItem = {
-  summary_id: string;
-  statement: string;
-  note_ids: string[];
-  source_content_ids: string[];
-};
-
-
-export type TouchNotebookCrossReading = {
-  reading_id: string;
-
-  title: string;
-
-  statement: string;
-
-  reading_type:
-    TouchCrossReadingType;
-
-  note_ids: string[];
-
-  source_content_ids: string[];
-
-  confidence:
-    TouchEvidenceConfidence;
-};
-
-/* =========================================================
-   CORPUS NOTEBOOK
-========================================================= */
-
-export type TouchCorpusNotebook = {
+type SavedReport = TouchSavedReportSummary & { archived_at?: string | null; is_published?: boolean; published_at?: string | null; output_language?: string };
+type Row = {
+  key: string;
+  type: "MONTHLY" | "STANDALONE";
   subject: string;
-  objective: string;
-
-  corpus_summary: string;
-  executive_summary: TouchNotebookExecutiveSummaryItem[];
-  cross_readings:
-     TouchNotebookCrossReading[];
-
-  sections:
-    TouchNotebookSection[];
-
-  notes: TouchEvidenceNote[];
-
-  events: TouchNotebookEvent[];
-
-  timeline:
-    TouchNotebookTimelineItem[];
-
-  dimensions:
-    TouchNotebookDimension[];
-
-  validated_numbers:
-    TouchNotebookNumber[];
-
-  quarantined_numbers:
-    TouchQuarantinedNumber[];
-
-  contradictions:
-    TouchNotebookContradiction[];
-
-  corpus_strengths: string[];
-  corpus_limits: string[];
+  expertId: string | null;
+  period: string;
+  status: string;
+  reportId: string | null;
+  edition: Edition | null;
+  report: SavedReport | null;
+};
+type Props = {
+  onOpenReport: (reportId: string) => Promise<void>;
+  disabled?: boolean;
+  refreshKey?: number;
+  onChanged?: () => void;
+};
+const STATUS_LABELS: Record<string, string> = {
+  BUILDING: "Preparing", TO_REVIEW: "To review", GENERATED: "Generated",
+  ERROR: "Preparation failed", ARCHIVED: "Archived",
 };
 
+export default function TouchMonthlyEditionList({
+  onOpenReport, disabled = false, refreshKey = 0, onChanged,
+}: Props) {
+  const [editions, setEditions] = useState<Edition[]>([]);
+  const [reports, setReports] = useState<SavedReport[]>([]);
+  const [expertNames, setExpertNames] = useState<Record<string, string>>({});
+  const [expertFilter, setExpertFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
+  const [periodFilter, setPeriodFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
-export type KnowledgeSource = {
-  content_id: string;
-  title: string | null;
-  original_title: string | null;
-  source_name: string | null;
-  url: string | null;
-  published_at: string | null;
-};
-export type KnowledgeDocumentSource = {
-  content_id: string; title: string; source_title: string;
-  source_url: string; published_at: string | null;
-};
-export type KnowledgeFilters = {
-  expert_id: string | null; month: string | null; output_language: "fr" | "en" | null;
-};
-export type KnowledgeSummary = {
-  report_id: string; subject: string; objective: string;
-  expert_id: string | null; expert_name: string | null;
-  period_start: string | null; period_end: string | null;
-  output_language: string; created_at: string; published_at: string;
-  source_count: number; summary: string; key_points: string[];
-  match_type?: "DIRECT" | "PARTIAL"; match_reason?: string;
-  match_evidence?: { evidence_id: string; text: string; explanation?: string };
-};
-export type KnowledgeReport = {
-  report_id: string; subject: string; objective: string; expert_id: string | null;
-  period_start: string | null; period_end: string | null;
-  output_language: string; created_at: string; published_at: string;
-  sources: KnowledgeSource[]; notebook: TouchCorpusNotebook;
-};
-export type KnowledgeMessage = {role: "user" | "assistant"; content: string};
-export type KnowledgeCatalogue = {
-  items: KnowledgeSummary[];
-  pagination: {total: number; limit: number; offset: number; has_more: boolean};
-};
-export type KnowledgeSearch = {
-  items: KnowledgeSummary[]; assistant_message: string;
-  phase: "RESULTS" | "CLARIFY" | "OUT_OF_SCOPE"; has_more: boolean;
-};
-export type KnowledgeAvailableFilters = {
-  experts: {expert_id: string; label: string}[]; months: string[]; languages: string[];
-};
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    async function load() {
+      const results = await Promise.allSettled([
+        api.get("/touch/editions?limit=200"),
+        api.get("/touch/reports?archive=all"),
+        api.get("/user/admin/experts"),
+      ]);
+      if (!active) return;
+      // Commit both lists together: partial data cannot reliably deduplicate.
+      if (results[0].status === "fulfilled" && results[1].status === "fulfilled") {
+        setEditions(results[0].value.editions ?? []);
+        setReports(results[1].value.reports ?? []);
+      } else {
+        const failed = results.find(result => result.status === "rejected");
+        setError(failed?.status === "rejected" && failed.reason instanceof Error
+          ? failed.reason.message : "Unable to load reports and editions.");
+      }
+      if (results[2].status === "fulfilled") {
+        const names: Record<string, string> = {};
+        for (const expert of results[2].value.experts ?? []) {
+          const id = expert.ID_USER ?? expert.id_user ?? expert.user_id ?? expert.id;
+          if (id) names[id] = expert.DISPLAY_NAME ?? expert.display_name ?? expert.NAME ?? expert.name ?? id;
+        }
+        setExpertNames(names);
+      }
+      setLoading(false);
+    }
+    void load();
+    return () => { active = false; };
+  }, [reload, refreshKey]);
+
+  const rows = useMemo<Row[]>(() => {
+    const reportsById = new Map(reports.map(report => [report.report_id, report]));
+    // Deduplicate before filtering, using the actual relationship, never titles.
+    const linkedIds = new Set(editions.map(edition => edition.report_id).filter(Boolean));
+    const monthly: Row[] = editions.map(edition => {
+      const report = edition.report_id ? reportsById.get(edition.report_id) ?? null : null;
+      return {
+        key: `edition:${edition.edition_id}`, type: "MONTHLY",
+        subject: edition.subject, expertId: edition.expert_id,
+        period: edition.period_start.slice(0, 7),
+        status: edition.archived_at || report?.archived_at ? "ARCHIVED" : edition.status,
+        reportId: edition.report_id, edition, report,
+      };
+    });
+    const standalone: Row[] = reports.filter(report => !linkedIds.has(report.report_id)).map(report => ({
+      key: `report:${report.report_id}`, type: "STANDALONE",
+      subject: report.subject, expertId: report.expert_id ?? null,
+      period: report.period_start?.slice(0, 7) ?? "",
+      status: report.archived_at ? "ARCHIVED" : "GENERATED",
+      reportId: report.report_id, edition: null, report,
+    }));
+    return [...monthly, ...standalone].sort((a, b) =>
+      b.period.localeCompare(a.period) || a.subject.localeCompare(b.subject) || a.key.localeCompare(b.key));
+  }, [editions, reports]);
+  const expertIds = useMemo(() => Array.from(new Set(rows.map(row => row.expertId)
+    .filter((id): id is string => !!id))).sort((a, b) =>
+      (expertNames[a] ?? a).localeCompare(expertNames[b] ?? b)), [rows, expertNames]);
+  const periods = useMemo(() => Array.from(new Set(rows.map(row => row.period).filter(Boolean)))
+    .sort((a, b) => b.localeCompare(a)), [rows]);
+  const visible = useMemo(() => rows.filter(row =>
+    (!expertFilter || (expertFilter === "NO_EXPERT" ? !row.expertId : row.expertId === expertFilter))
+    && (!periodFilter || (periodFilter === "NO_PERIOD" ? !row.period : row.period === periodFilter))
+    && (!typeFilter || row.type === typeFilter)
+    && (!statusFilter || (statusFilter === "ACTIVE" ? row.status !== "ARCHIVED" : row.status === statusFilter))),
+  [rows, expertFilter, periodFilter, typeFilter, statusFilter]);
+
+  function refreshAfterChange() {
+    setReload(value => value + 1);
+    onChanged?.();
+  }
+  async function manage(row: Row, action: "archive" | "restore" | "delete" | "reopen" | "reset" | "publish" | "unpublish") {
+    if (disabled || busyKey || loading) return;
+    if (action === "reset" && (!row.edition || row.edition.status === "BUILDING")) return;
+    if (action === "delete" && !window.confirm(`Delete “${row.subject}”? This action cannot be undone.`
+      + (row.edition ? " The selected corpus will be preserved for regeneration." : ""))) return;
+    if (action === "reopen" && !window.confirm("Reopen the selected corpus? The current report will be kept in archives.")) return;
+    if (action === "reset" && !window.confirm(`Reset “${row.subject}”? This will permanently delete the monthly corpus, all source selections and the linked report, if any. Previously archived reports will be preserved. Prepare this edition again to use the current expert profile.`)) return;
+    if (action === "publish" && !window.confirm(`Publish “${row.subject}” in Knowledge? Signed-in users will be able to read this saved report.`)) return;
+    setBusyKey(row.key);
+    setError(null);
+    try {
+      if (action === "reset" && row.edition) {
+        await deleteTouchEdition(row.edition.edition_id);
+      } else if (action === "reopen" && row.edition) {
+        await api.post(`/touch/editions/${encodeURIComponent(row.edition.edition_id)}/reopen`, {});
+        window.location.assign(`/admin/touch?edition_id=${encodeURIComponent(row.edition.edition_id)}`);
+        return;
+      } else if (row.reportId) {
+        const path = `/touch/reports/${encodeURIComponent(row.reportId)}`;
+        if (action === "delete") await api.delete(path);
+        else await api.post(`${path}/${action}`, {});
+      } else {
+        throw new Error("This entry has no saved report.");
+      }
+      refreshAfterChange();
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : "Unable to update report.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+  const interactionsDisabled = disabled || busyKey !== null || loading;
+  const selectClass = "rounded-lg border px-3 py-2 text-sm";
+  const buttonClass = "rounded-lg border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50";
+
+  return (
+    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Reports and corpora</h2>
+          <p className="mt-1 text-sm text-gray-500">Monthly editions and standalone reports, including previous archived reports.</p>
+        </div>
+        <button type="button" disabled={interactionsDisabled} onClick={() => setReload(value => value + 1)} className={buttonClass}>Refresh</button>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <select aria-label="Filter by status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className={selectClass}>
+          <option value="ACTIVE">All active statuses</option><option value="">All statuses, including archives</option>
+          {Object.entries(STATUS_LABELS).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
+        </select>
+        <select aria-label="Filter by expert" value={expertFilter} onChange={event => setExpertFilter(event.target.value)} className={selectClass}>
+          <option value="">All experts</option><option value="NO_EXPERT">Without an expert</option>
+          {expertIds.map(id => <option key={id} value={id}>{expertNames[id] ?? id}</option>)}
+        </select>
+        <select aria-label="Filter by period" value={periodFilter} onChange={event => setPeriodFilter(event.target.value)} className={selectClass}>
+          <option value="">All periods</option><option value="NO_PERIOD">Without a period</option>
+          {periods.map(period => <option key={period} value={period}>{period}</option>)}
+        </select>
+        <select aria-label="Filter by type" value={typeFilter} onChange={event => setTypeFilter(event.target.value)} className={selectClass}>
+          <option value="">All types</option><option value="MONTHLY">Monthly editions</option><option value="STANDALONE">Standalone reports</option>
+        </select>
+      </div>
+      {loading && <p className="text-sm text-gray-500">Loading reports and corpora…</p>}
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {!loading && !error && <p className="text-xs text-gray-500">{visible.length} matching entries</p>}
+      {!loading && !error && visible.length === 0 && <p className="text-sm text-gray-500">No matching reports or corpora.</p>}
+      {!loading && visible.map(row => (
+        <article key={row.key} className="rounded-lg border border-gray-200 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-gray-500">
+                {row.type === "MONTHLY" ? "Monthly edition" : "Standalone report"}
+                {row.expertId && ` · ${expertNames[row.expertId] ?? row.expertId}`}
+                {row.period && ` · ${row.period}`}
+              </p>
+              <h3 className="mt-1 font-semibold text-gray-900">{row.subject}</h3>
+              {row.report && row.report.subject !== row.subject && <p className="mt-1 text-sm text-gray-600">{row.report.subject}</p>}
+              {!row.edition && row.report?.objective && <p className="mt-1 text-sm text-gray-600">{row.report.objective}</p>}
+              <p className="mt-2 text-xs text-gray-600">
+                {STATUS_LABELS[row.status] ?? row.status}
+                {row.edition ? <>
+                  {" · "}<span className={row.edition.proposed_count === 0 ? "font-semibold text-amber-700" : "font-semibold text-gray-900"}
+                    title="Excludes dismissed sources and OUT_OF_SCOPE evaluations.">
+                    {row.edition.proposed_count == null ? row.edition.status === "BUILDING" ? "Proposed corpus pending" : "Proposed corpus unavailable" : `${row.edition.proposed_count} contents proposed`}
+                  </span>{` · ${row.edition.selected_count ?? 0} sources selected · ${row.edition.output_language.toUpperCase()}`}
+                </> : row.report && ` · ${row.report.source_count} sources · ${(row.report.output_language ?? "").toUpperCase()}`}
+              </p>
+              {row.edition?.candidate_count != null && <p className="mt-1 text-xs text-gray-500">{row.edition.candidate_count} candidates retrieved before evaluation</p>}
+              {row.report && <p className="mt-1 text-xs text-gray-500">{row.report.is_published ? "Published in Knowledge · " : "Not published · "}Saved {new Date(row.report.created_at).toLocaleDateString("en-GB")} · Version {row.report.version_number}</p>}
+              {row.edition?.error && <p className="mt-2 text-sm text-red-700">{row.edition.error}</p>}
+            </div>
+            <div className="flex flex-wrap items-start gap-2">
+              {row.edition?.status === "TO_REVIEW" && <Link
+                href={`/admin/touch?edition_id=${encodeURIComponent(row.edition.edition_id)}`}
+                aria-disabled={interactionsDisabled} onClick={event => { if (interactionsDisabled) event.preventDefault(); }}
+                className={`rounded-lg bg-ratecard-blue px-3 py-2 text-sm text-white${interactionsDisabled ? " cursor-not-allowed opacity-50" : ""}`}>Review corpus</Link>}
+              {row.edition?.status === "GENERATED" && <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, "reopen")} className={buttonClass}>Reopen corpus</button>}
+              {row.reportId && <>
+                <button type="button" disabled={interactionsDisabled} onClick={() => void onOpenReport(row.reportId!)} className={buttonClass}>Open report</button>
+                {row.report && row.status !== "ARCHIVED" && <button type="button" disabled={interactionsDisabled}
+                  onClick={() => void manage(row, row.report?.is_published ? "unpublish" : "publish")}
+                  className={buttonClass}>{row.report.is_published ? "Unpublish" : "Publish"}</button>}
+                <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, row.status === "ARCHIVED" ? "restore" : "archive")} className={buttonClass}>{row.status === "ARCHIVED" ? "Restore" : "Archive"}</button>
+                <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, "delete")} className={`${buttonClass} border-red-200 text-red-700`}>Delete report</button>
+              </>}
+              {row.edition && <button type="button" disabled={interactionsDisabled || row.edition.status === "BUILDING"}
+                onClick={() => void manage(row, "reset")}
+                title={row.edition.status === "BUILDING" ? "Wait until preparation has finished." : "Delete the monthly corpus, source selections and linked report."}
+                className={`${buttonClass} border-red-200 text-red-700 hover:bg-red-50`}>Reset corpus and report</button>}
+              {busyKey === row.key && <span role="status" className="self-center text-xs text-gray-500">Updating…</span>}
+            </div>
+          </div>
+        </article>
+      ))}
+      {!loading && (editions.length >= 200 || reports.length >= 50) && <p className="text-xs text-amber-700">
+        The list loads up to 200 recent editions and 50 recent saved reports. Filters apply to these loaded entries.
+      </p>}
+    </section>
+  );
+}
