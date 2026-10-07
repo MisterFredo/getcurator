@@ -676,6 +676,7 @@ export default function TouchPage() {
     dismissContent,
     restoreContent,
 
+    applyScoreSelection,
     resetResearch,
   } = useTouchResearch();
 
@@ -2072,6 +2073,32 @@ export default function TouchPage() {
               Refine research
             </button>
 
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={loading || corpusSaving || candidates.length === 0}
+              onClick={() => {
+                const confirmed = window.confirm(
+                  "Replace the current selection with contents scoring 80 or above? "
+                  + "OUT_OF_SCOPE and dismissed contents will remain unselected. "
+                  + "You can adjust the selection afterwards."
+                  + (editionId ? " Save corpus choices to keep this selection." : ""),
+                );
+                if (!confirmed) return;
+                applyScoreSelection();
+                setCorpusSaved(false);
+                setNotebook(null);
+                setBrief(null);
+              }}
+              className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-ratecard-blue hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply selection ≥ 80
+            </button>
+            <p className="text-xs text-gray-500">
+              Works with existing corpora. Replaces the selection without rebuilding the research.
+            </p>
           </div>
 
           <div
