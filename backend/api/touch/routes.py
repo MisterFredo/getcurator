@@ -693,9 +693,11 @@ def _require_library_user(request: Request) -> dict:
 
 
 def _require_library_admin(request: Request) -> None:
-    # Use the existing admin session convention, not the public user header.
-    if request.cookies.get("ratecard_admin_session") != "ok":
-        raise HTTPException(status_code=401, detail="Admin session required")
+    # AdminLoginPage uses /user/login and stores user_id locally.
+    # Resolve the account on the server; never trust a client-supplied role.
+    user = _require_library_user(request)
+    if str(user.get("ROLE") or "").strip().lower() != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
 
 
 @router.get("/library/filters")
