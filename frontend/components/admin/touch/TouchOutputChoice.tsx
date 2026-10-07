@@ -33,6 +33,9 @@ type Props = {
 
   sources: TouchContentCandidate[];
   outputLanguage?: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  expertName?: string | null;
 
   brief:
     TouchBriefStructure | null;
@@ -53,6 +56,9 @@ export default function TouchOutputChoice({
   brief,
   onBriefChange,
   outputLanguage = "fr",
+  periodStart,
+  periodEnd,
+  expertName,
 }: Props) {
 
   const [
@@ -187,7 +193,43 @@ export default function TouchOutputChoice({
 
   function handlePrint() {
 
-    window.print();
+    const datePart = (value?: string | null): string => {
+      if (!value) return "";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+    };
+    const start = datePart(periodStart);
+    let end = datePart(periodEnd);
+    // An exclusive midnight boundary belongs to the preceding day.
+    if (start && periodEnd && end > start) {
+      const endDate = new Date(periodEnd);
+      if (endDate.getUTCHours() === 0 && endDate.getUTCMinutes() === 0
+        && endDate.getUTCSeconds() === 0 && endDate.getUTCMilliseconds() === 0) {
+        end = new Date(endDate.getTime() - 1).toISOString().slice(0, 10);
+      }
+    }
+    const periodName = start && end
+      ? start.slice(0, 7) === end.slice(0, 7)
+        ? start.slice(0, 7)
+        : `${start}_to_${end}`
+      : start || end || "undated";
+    const safeSubject = (expertName?.trim() || notebook.subject || "Report")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "Report";
+    const filename = `GetCurator_${safeSubject}_${periodName}_${outputLanguage.toUpperCase()}_${mode === "DOCUMENTARY" ? "Report" : "Interpretation"}`;
+    const previousTitle = document.title;
+    const restoreTitle = () => {
+      document.title = previousTitle;
+      window.removeEventListener("afterprint", restoreTitle);
+    };
+    window.addEventListener("afterprint", restoreTitle);
+    document.title = filename;
+    try {
+      window.print();
+    } catch (exception) {
+      restoreTitle();
+      throw exception;
+    }
 
   }
 
@@ -601,6 +643,10 @@ export default function TouchOutputChoice({
           </div>
 
           <TouchNotebookDocument
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            outputLanguage={outputLanguage}
+            expertName={expertName}
             notebook={
               notebook
             }
