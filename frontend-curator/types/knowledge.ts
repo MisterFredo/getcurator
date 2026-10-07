@@ -285,6 +285,7 @@ export type KnowledgeSummary = {
   expert_id: string | null; expert_name: string | null;
   period_start: string | null; period_end: string | null;
   output_language: string; created_at: string; published_at: string;
+  candidate_count?: number | null; note_count?: number;
   source_count: number; summary: string; key_points: string[];
   match_type?: "DIRECT" | "PARTIAL"; match_reason?: string;
   match_evidence?: { evidence_id: string; text: string; explanation?: string };
