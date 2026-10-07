@@ -21,7 +21,7 @@ def admin_login(payload: dict, response: Response):
         value="ok",
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
         max_age=60 * 60 * 24 * 30,
         path="/",
     )
