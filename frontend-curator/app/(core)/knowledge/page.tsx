@@ -143,8 +143,16 @@ export default function KnowledgePage() {
             <p className="mb-1 text-xs font-semibold">{item.match_type === "PARTIAL" ? "Partial match" : "Direct match"}</p><p>{item.match_reason}</p>
             {item.match_evidence && <blockquote className="mt-2 border-l-2 border-emerald-200 pl-3 text-xs">{item.match_evidence.text}</blockquote>}
           </div>}
-          <p className="line-clamp-3 text-sm leading-6 text-gray-600">{item.summary || item.objective}</p>
-          {item.key_points.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">{item.key_points.map((point,index) => <li key={index}>{point}</li>)}</ul>}
+          {(item.summary || item.objective || item.key_points.length > 0) && <details className="group">
+            <summary className="cursor-pointer text-sm font-medium text-emerald-700 hover:text-emerald-900">
+              <span className="group-open:hidden">Show more</span>
+              <span className="hidden group-open:inline">Show less</span>
+            </summary>
+            <div className="mt-3 space-y-3">
+              {(item.summary || item.objective) && <p className="text-sm leading-6 text-gray-600">{item.summary || item.objective}</p>}
+              {item.key_points.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">{item.key_points.map((point,index) => <li key={index}>{point}</li>)}</ul>}
+            </div>
+          </details>}
           <button type="button" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50" disabled={opening || searching} onClick={() => void openReport(item.report_id)}>Explore this report →</button>
           </div>
         </article>)}
