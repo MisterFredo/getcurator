@@ -1,4 +1,4 @@
-
+"""Published Touch reports: browsing and bounded conversational discovery."""
 import json
 import logging
 from datetime import datetime, timezone
@@ -60,6 +60,7 @@ def _query_parts(filters: LibraryFilters, groups: list[list[str]], exclusions: l
     # Search editorial text, not JSON IDs, field names or source URLs.
     cte = f"""WITH documents AS (
       SELECT r.*,
+        ARRAY_LENGTH(JSON_QUERY_ARRAY(e.SEARCH_JSON, '$.candidates')) AS CANDIDATE_COUNT,
         COALESCE(JSON_VALUE(TO_JSON_STRING(u), '$.DISPLAY_NAME'),
           JSON_VALUE(TO_JSON_STRING(u), '$.NAME')) AS EXPERT_NAME,
         NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(r.SUBJECT, ''), ' ',
@@ -77,6 +78,11 @@ def _query_parts(filters: LibraryFilters, groups: list[list[str]], exclusions: l
         ), NFKC) AS SEARCH_TEXT
       FROM `{TABLE_TOUCH_REPORT}` r
       LEFT JOIN `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_USER` u ON r.EXPERT_ID = u.ID_USER
+      LEFT JOIN (
+        SELECT REPORT_ID, SEARCH_JSON FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_EDITION`
+        WHERE REPORT_ID IS NOT NULL
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY REPORT_ID ORDER BY UPDATED_AT DESC, EDITION_ID) = 1
+      ) e ON r.REPORT_ID = e.REPORT_ID
       WHERE {PUBLISHED_WHERE}
     )"""
     where = """(@expert_id = '' OR EXPERT_ID = @expert_id)
@@ -112,6 +118,8 @@ def _summary(row: dict) -> dict:
         "period_end": _date_string(row.get("PERIOD_END")),
         "created_at": _date_string(row["CREATED_AT"]), "published_at": _date_string(row["PUBLISHED_AT"]),
         "source_count": len(row.get("CONTENT_IDS") or []),
+        "candidate_count": row.get("CANDIDATE_COUNT"),
+        "note_count": len(notebook.get("notes") or []),
         "summary": notebook.get("corpus_summary") or "",
         "key_points": [x["statement"] for x in notebook.get("executive_summary", [])][:3],
     }
