@@ -136,6 +136,8 @@ export default function TouchReportsPage() {
             ← All reports
           </button>
           <TouchOutputChoice notebook={selectedReport.notebook}
+            periodStart={selectedReport.period_start}
+            periodEnd={selectedReport.period_end}
             outputLanguage={selectedReport.output_language}
             sources={reportSources(selectedReport)} brief={brief} onBriefChange={setBrief} />
         </div>
