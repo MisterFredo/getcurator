@@ -374,3 +374,82 @@ def reopen_touch_edition(edition_id: str) -> dict | None:
         {"edition_id": edition_id},
     )
     return get_touch_edition(edition_id)
+
+# ============================================================
+# DELETE MONTHLY EDITION AND LINKED REPORT
+# ============================================================
+
+def delete_touch_edition(
+    edition_id: str,
+) -> bool:
+    """Delete the edition, its corpus choices and its linked report."""
+
+    cleaned_id = edition_id.strip()
+
+    if not cleaned_id:
+        raise ValueError(
+            "L’identifiant de l’édition Touch est vide."
+        )
+
+    rows = query_bq(
+        f"""
+        DECLARE edition_exists BOOL DEFAULT FALSE;
+        DECLARE edition_building BOOL DEFAULT FALSE;
+
+        BEGIN TRANSACTION;
+
+        SET edition_exists = EXISTS (
+            SELECT 1
+            FROM `{TABLE_TOUCH_EDITION}`
+            WHERE EDITION_ID = @edition_id
+        );
+
+        SET edition_building = EXISTS (
+            SELECT 1
+            FROM `{TABLE_TOUCH_EDITION}`
+            WHERE EDITION_ID = @edition_id
+              AND STATUS = 'BUILDING'
+        );
+
+        IF edition_exists AND NOT edition_building THEN
+
+            DELETE FROM
+              `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_REPORT`
+            WHERE REPORT_ID IN (
+                SELECT REPORT_ID
+                FROM `{TABLE_TOUCH_EDITION}`
+                WHERE EDITION_ID = @edition_id
+                  AND REPORT_ID IS NOT NULL
+            );
+
+            DELETE FROM `{TABLE_TOUCH_EDITION}`
+            WHERE EDITION_ID = @edition_id;
+
+        END IF;
+
+        COMMIT TRANSACTION;
+
+        SELECT
+            edition_exists AS EDITION_EXISTS,
+            edition_building AS EDITION_BUILDING;
+        """,
+        {
+            "edition_id": cleaned_id,
+        },
+    ) or []
+
+    if not rows:
+        raise RuntimeError(
+            "La réinitialisation de l’édition Touch "
+            "n’a retourné aucun résultat."
+        )
+
+    if rows[0]["EDITION_BUILDING"]:
+        raise ValueError(
+            "Cette édition est en cours de construction. "
+            "Attendez la fin avant de la réinitialiser."
+        )
+
+    return bool(
+        rows[0]["EDITION_EXISTS"]
+    )
