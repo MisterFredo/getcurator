@@ -2229,6 +2229,9 @@ export default function TouchPage() {
       ) && (
 
         <TouchOutputChoice
+          periodStart={reportDesign.period_start || periodStart}
+          periodEnd={reportDesign.period_end || periodEnd}
+          expertName={expertOptions.find(expert => expert.id === selectedExpertId)?.label}
           notebook={
             notebook
           }
