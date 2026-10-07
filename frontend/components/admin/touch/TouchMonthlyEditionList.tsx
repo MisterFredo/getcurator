@@ -59,6 +59,8 @@ export default function TouchMonthlyEditionList({
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProgress, setBulkProgress] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -130,6 +132,35 @@ export default function TouchMonthlyEditionList({
     && (!statusFilter || (statusFilter === "ACTIVE" ? row.status !== "ARCHIVED" : row.status === statusFilter))),
   [rows, expertFilter, periodFilter, typeFilter, statusFilter]);
 
+  const publishable = visible.filter(row => row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published);
+  const eligibleIds = new Set(rows.filter(row => row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published).map(row => row.reportId!));
+  const selectedPublishable = [...selectedIds].filter(id => eligibleIds.has(id));
+  function toggleReport(id: string) {
+    setSelectedIds(current => {const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next;});
+  }
+  async function publishSelected() {
+    if (disabled || busyKey || loading || !selectedPublishable.length) return;
+    const ids = [...selectedPublishable];
+    if (!window.confirm(`Publish ${ids.length} selected reports in Knowledge? Signed-in users will be able to read them.`)) return;
+    setBusyKey("bulk"); setError(null);
+    const failures: string[] = [];
+    let firstError = "";
+    for (const [index, id] of ids.entries()) {
+      setBulkProgress(`Publishing ${index + 1} / ${ids.length}…`);
+      try {
+        await api.post(`/touch/reports/${encodeURIComponent(id)}/publish`, {});
+        setReports(current => current.map(report => report.report_id === id ? {...report, is_published: true} : report));
+        setSelectedIds(current => {const next = new Set(current); next.delete(id); return next;});
+      } catch (exception) {
+        failures.push(id);
+        if (!firstError) firstError = exception instanceof Error ? exception.message : "Unable to publish report.";
+      }
+    }
+    setBusyKey(null); setBulkProgress(null);
+    if (failures.length) setError(`${ids.length - failures.length} published; ${failures.length} failed and remain selected. ${firstError}`);
+    if (!failures.length) onChanged?.();
+  }
+
   function refreshAfterChange() {
     setReload(value => value + 1);
     onChanged?.();
@@ -195,6 +226,14 @@ export default function TouchMonthlyEditionList({
           <option value="">All types</option><option value="MONTHLY">Monthly editions</option><option value="STANDALONE">Standalone reports</option>
         </select>
       </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3">
+        <button type="button" disabled={interactionsDisabled || !publishable.length} className={buttonClass}
+          onClick={() => setSelectedIds(current => new Set([...current, ...publishable.map(row => row.reportId!)]))}>Select publishable reports in this view ({publishable.length})</button>
+        <button type="button" disabled={interactionsDisabled || !selectedIds.size} className={buttonClass} onClick={() => setSelectedIds(new Set())}>Clear selection</button>
+        <button type="button" disabled={interactionsDisabled || !selectedPublishable.length} className={`${buttonClass} bg-ratecard-blue text-white`} onClick={() => void publishSelected()}>Publish selection ({selectedPublishable.length})</button>
+        {bulkProgress && <span role="status" className="text-sm text-gray-600">{bulkProgress}</span>}
+        <p className="w-full text-xs text-gray-500">Selection is kept across filters. Only saved, active reports awaiting publication can be selected.</p>
+      </div>
       {loading && <p className="text-sm text-gray-500">Loading reports and corpora…</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!loading && !error && <p className="text-xs text-gray-500">{visible.length} matching entries</p>}
@@ -202,6 +241,9 @@ export default function TouchMonthlyEditionList({
       {!loading && visible.map(row => (
         <article key={row.key} className="rounded-lg border border-gray-200 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
+            {row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published && <input type="checkbox"
+              aria-label={`Select ${row.subject} for publication`} className="mt-1 h-4 w-4" disabled={interactionsDisabled}
+              checked={selectedIds.has(row.reportId)} onChange={() => toggleReport(row.reportId!)} />}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-gray-500">
                 {row.type === "MONTHLY" ? "Monthly edition" : "Standalone report"}
