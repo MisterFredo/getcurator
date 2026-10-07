@@ -134,7 +134,7 @@ export default function TouchMonthlyEditionList({
 
   const publishable = visible.filter(row => row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published);
   const eligibleIds = new Set(rows.filter(row => row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published).map(row => row.reportId!));
-  const selectedPublishable = [...selectedIds].filter(id => eligibleIds.has(id));
+  const selectedPublishable = Array.from(selectedIds).filter(id => eligibleIds.has(id));
   function toggleReport(id: string) {
     setSelectedIds(current => {const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next;});
   }
@@ -145,7 +145,8 @@ export default function TouchMonthlyEditionList({
     setBusyKey("bulk"); setError(null);
     const failures: string[] = [];
     let firstError = "";
-    for (const [index, id] of ids.entries()) {
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index];
       setBulkProgress(`Publishing ${index + 1} / ${ids.length}…`);
       try {
         await api.post(`/touch/reports/${encodeURIComponent(id)}/publish`, {});
@@ -228,7 +229,7 @@ export default function TouchMonthlyEditionList({
       </div>
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3">
         <button type="button" disabled={interactionsDisabled || !publishable.length} className={buttonClass}
-          onClick={() => setSelectedIds(current => new Set([...current, ...publishable.map(row => row.reportId!)]))}>Select publishable reports in this view ({publishable.length})</button>
+          onClick={() => setSelectedIds(current => new Set(Array.from(current).concat(publishable.map(row => row.reportId!))))}>Select publishable reports in this view ({publishable.length})</button>
         <button type="button" disabled={interactionsDisabled || !selectedIds.size} className={buttonClass} onClick={() => setSelectedIds(new Set())}>Clear selection</button>
         <button type="button" disabled={interactionsDisabled || !selectedPublishable.length} className={`${buttonClass} bg-ratecard-blue text-white`} onClick={() => void publishSelected()}>Publish selection ({selectedPublishable.length})</button>
         {bulkProgress && <span role="status" className="text-sm text-gray-600">{bulkProgress}</span>}
