@@ -15,6 +15,12 @@ const EMPTY_CATALOGUE: KnowledgeCatalogue = {items: [], pagination: {total: 0, l
 const inputClass = "rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm";
 const buttonClass = "rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm disabled:opacity-50";
 
+function reportPeriod(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("en-GB", {month: "long", year: "numeric", timeZone: "UTC"}).format(date);
+}
+
 export default function KnowledgePage() {
   const {user, loading: userLoading} = useUser();
   const [filters, setFilters] = useState<KnowledgeFilters>(EMPTY_FILTERS);
@@ -116,16 +122,31 @@ export default function KnowledgePage() {
         {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {(loading && matches === null || searching || opening) && <p role="status" className="text-sm text-gray-500">{searching ? "Finding relevant reports…" : opening ? "Opening report…" : "Loading reports…"}</p>}
         {!(loading && matches === null) && !searching && items.length === 0 && <p className="rounded-xl border bg-white p-6 text-sm text-gray-500">No matching reports. Try another subject or adjust the filters.</p>}
-        {!(loading && matches === null) && !searching && items.map(item => <article key={item.report_id} className="space-y-3 rounded-xl border bg-white p-5">
-          <p className="text-xs text-gray-500">{[item.expert_name, item.period_start?.slice(0,7), item.output_language.toUpperCase(), `${item.source_count} sources`].filter(Boolean).join(" · ")}</p>
-          <h3 className="text-lg font-semibold text-gray-900">{item.subject}</h3>
+        {!(loading && matches === null) && !searching && items.map(item => <article key={item.report_id} className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-md">
+          <div className="space-y-3 border-b border-emerald-100 bg-emerald-50 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              <span>Expert research</span><span>{item.output_language.toUpperCase()}</span>
+            </div>
+            <h3 className="text-xl font-bold leading-snug text-gray-900">{item.expert_name || item.subject}</h3>
+            <p className="text-sm font-medium text-emerald-800">{reportPeriod(item.period_start) || `Published ${new Date(item.published_at).toLocaleDateString("en-GB")}`}</p>
+          </div>
+          <div className="space-y-4 p-6">
+            <div className="rounded-xl bg-gray-50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">The research, done for you</p>
+              <dl className="flex flex-wrap gap-x-8 gap-y-3">
+                {item.candidate_count != null && <div><dd className="text-2xl font-bold text-gray-900">{item.candidate_count}</dd><dt className="text-xs text-gray-500">Candidates reviewed</dt></div>}
+                <div><dd className="text-2xl font-bold text-emerald-700">{item.source_count}</dd><dt className="text-xs text-gray-500">Sources selected</dt></div>
+                {item.note_count != null && <div><dd className="text-2xl font-bold text-gray-900">{item.note_count}</dd><dt className="text-xs text-gray-500">Insights extracted</dt></div>}
+              </dl>
+            </div>
           {item.match_reason && <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
             <p className="mb-1 text-xs font-semibold">{item.match_type === "PARTIAL" ? "Partial match" : "Direct match"}</p><p>{item.match_reason}</p>
             {item.match_evidence && <blockquote className="mt-2 border-l-2 border-emerald-200 pl-3 text-xs">{item.match_evidence.text}</blockquote>}
           </div>}
-          <p className="text-sm leading-6 text-gray-600">{item.summary || item.objective}</p>
+          <p className="line-clamp-3 text-sm leading-6 text-gray-600">{item.summary || item.objective}</p>
           {item.key_points.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">{item.key_points.map((point,index) => <li key={index}>{point}</li>)}</ul>}
-          <button type="button" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50" disabled={opening || searching} onClick={() => void openReport(item.report_id)}>Read report</button>
+          <button type="button" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50" disabled={opening || searching} onClick={() => void openReport(item.report_id)}>Explore this report →</button>
+          </div>
         </article>)}
         {matches && moreMatches && <p className="text-xs text-gray-500">Additional reports matched the search terms. Refine your request to explore them.</p>}
         {matches === null && !loading && <div className="flex items-center justify-between">
