@@ -22,7 +22,7 @@ type Edition = {
   candidate_count?: number | null;
   proposed_count?: number | null;
 };
-type SavedReport = TouchSavedReportSummary & { archived_at?: string | null; output_language?: string };
+type SavedReport = TouchSavedReportSummary & { archived_at?: string | null; is_published?: boolean; published_at?: string | null; output_language?: string };
 type Row = {
   key: string;
   type: "MONTHLY" | "STANDALONE";
@@ -134,13 +134,14 @@ export default function TouchMonthlyEditionList({
     setReload(value => value + 1);
     onChanged?.();
   }
-  async function manage(row: Row, action: "archive" | "restore" | "delete" | "reopen" | "reset") {
+  async function manage(row: Row, action: "archive" | "restore" | "delete" | "reopen" | "reset" | "publish" | "unpublish") {
     if (disabled || busyKey || loading) return;
     if (action === "reset" && (!row.edition || row.edition.status === "BUILDING")) return;
     if (action === "delete" && !window.confirm(`Delete “${row.subject}”? This action cannot be undone.`
       + (row.edition ? " The selected corpus will be preserved for regeneration." : ""))) return;
     if (action === "reopen" && !window.confirm("Reopen the selected corpus? The current report will be kept in archives.")) return;
     if (action === "reset" && !window.confirm(`Reset “${row.subject}”? This will permanently delete the monthly corpus, all source selections and the linked report, if any. Previously archived reports will be preserved. Prepare this edition again to use the current expert profile.`)) return;
+    if (action === "publish" && !window.confirm(`Publish “${row.subject}” in Knowledge? Signed-in users will be able to read this saved report.`)) return;
     setBusyKey(row.key);
     setError(null);
     try {
@@ -220,7 +221,7 @@ export default function TouchMonthlyEditionList({
                 </> : row.report && ` · ${row.report.source_count} sources · ${(row.report.output_language ?? "").toUpperCase()}`}
               </p>
               {row.edition?.candidate_count != null && <p className="mt-1 text-xs text-gray-500">{row.edition.candidate_count} candidates retrieved before evaluation</p>}
-              {row.report && <p className="mt-1 text-xs text-gray-500">Saved {new Date(row.report.created_at).toLocaleDateString("en-GB")} · Version {row.report.version_number}</p>}
+              {row.report && <p className="mt-1 text-xs text-gray-500">{row.report.is_published ? "Published in Knowledge · " : "Not published · "}Saved {new Date(row.report.created_at).toLocaleDateString("en-GB")} · Version {row.report.version_number}</p>}
               {row.edition?.error && <p className="mt-2 text-sm text-red-700">{row.edition.error}</p>}
             </div>
             <div className="flex flex-wrap items-start gap-2">
@@ -231,6 +232,9 @@ export default function TouchMonthlyEditionList({
               {row.edition?.status === "GENERATED" && <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, "reopen")} className={buttonClass}>Reopen corpus</button>}
               {row.reportId && <>
                 <button type="button" disabled={interactionsDisabled} onClick={() => void onOpenReport(row.reportId!)} className={buttonClass}>Open report</button>
+                {row.report && row.status !== "ARCHIVED" && <button type="button" disabled={interactionsDisabled}
+                  onClick={() => void manage(row, row.report?.is_published ? "unpublish" : "publish")}
+                  className={buttonClass}>{row.report.is_published ? "Unpublish" : "Publish"}</button>}
                 <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, row.status === "ARCHIVED" ? "restore" : "archive")} className={buttonClass}>{row.status === "ARCHIVED" ? "Restore" : "Archive"}</button>
                 <button type="button" disabled={interactionsDisabled} onClick={() => void manage(row, "delete")} className={`${buttonClass} border-red-200 text-red-700`}>Delete report</button>
               </>}
