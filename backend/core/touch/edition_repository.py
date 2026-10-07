@@ -131,13 +131,33 @@ def save_touch_edition_search(
     edition_id: str,
     search: dict,
 ) -> None:
-    """No content is selected on the administrator's behalf."""
+    """Initialize the editable selection once when a new corpus is stored."""
+    decisions = {
+        decision.get("content_id"): decision
+        for decision in (search.get("evaluation") or {}).get("decisions", [])
+    }
+    selected_ids = []
+    for candidate in search.get("candidates", []):
+        content_id = candidate.get("content_id")
+        decision = decisions.get(content_id) or {}
+        score = decision.get("relevance_score")
+        if (
+            content_id
+            and isinstance(score, (int, float))
+            and not isinstance(score, bool)
+            and score >= 80
+            and decision.get("relevance") != "OUT_OF_SCOPE"
+        ):
+            selected_ids.append(content_id)
+    selected_ids = list(dict.fromkeys(selected_ids))
     query_bq(
         f"""
         UPDATE `{TABLE_TOUCH_EDITION}`
         SET
           STATUS = 'TO_REVIEW',
           SEARCH_JSON = PARSE_JSON(@search_json),
+          SELECTED_CONTENT_IDS = JSON_VALUE_ARRAY(@selected_json),
+          DISMISSED_CONTENT_IDS = ARRAY<STRING>[] ,
           ERROR = NULL,
           UPDATED_AT = CURRENT_TIMESTAMP()
         WHERE EDITION_ID = @edition_id
@@ -146,6 +166,7 @@ def save_touch_edition_search(
         {
             "edition_id": edition_id,
             "search_json": json.dumps(search, ensure_ascii=False),
+            "selected_json": json.dumps(selected_ids),
         },
     )
 
