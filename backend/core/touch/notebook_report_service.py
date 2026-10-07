@@ -534,6 +534,8 @@ def list_touch_reports(
 
           CREATED_AT,
           ARCHIVED_AT,
+          PUBLISHED_AT,
+          PUBLISHED_VERSION_NUMBER,
 
           EXPERT_ID,
 
@@ -590,6 +592,11 @@ def list_touch_reports(
                 ),
 
             "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
+            "published_at": str(row["PUBLISHED_AT"]) if row.get("PUBLISHED_AT") else None,
+            "is_published": bool(
+                row.get("PUBLISHED_AT") and not row.get("ARCHIVED_AT")
+                and row.get("PUBLISHED_VERSION_NUMBER") == (row.get("VERSION_NUMBER") or 1)
+            ),
 
             "expert_id":
                 row.get("EXPERT_ID"),
@@ -658,6 +665,8 @@ def get_touch_report(
 
           CREATED_AT,
           ARCHIVED_AT,
+          PUBLISHED_AT,
+          PUBLISHED_VERSION_NUMBER,
 
           EXPERT_ID,
 
@@ -728,6 +737,11 @@ def get_touch_report(
             ),
 
         "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
+            "published_at": str(row["PUBLISHED_AT"]) if row.get("PUBLISHED_AT") else None,
+            "is_published": bool(
+                row.get("PUBLISHED_AT") and not row.get("ARCHIVED_AT")
+                and row.get("PUBLISHED_VERSION_NUMBER") == (row.get("VERSION_NUMBER") or 1)
+            ),
 
             "expert_id":
             row.get("EXPERT_ID"),
@@ -856,7 +870,9 @@ def set_touch_report_archived(report_id: str, archived: bool = True) -> bool:
         return False
     query_bq(
         f"""UPDATE `{TABLE_TOUCH_REPORT}`
-        SET ARCHIVED_AT = IF(@archived, COALESCE(ARCHIVED_AT, CURRENT_TIMESTAMP()), NULL)
+        SET ARCHIVED_AT = IF(@archived, COALESCE(ARCHIVED_AT, CURRENT_TIMESTAMP()), NULL),
+            PUBLISHED_AT = IF(@archived, NULL, PUBLISHED_AT),
+            PUBLISHED_VERSION_NUMBER = IF(@archived, NULL, PUBLISHED_VERSION_NUMBER)
         WHERE REPORT_ID = @report_id""",
         {"report_id": report_id, "archived": archived},
     )
