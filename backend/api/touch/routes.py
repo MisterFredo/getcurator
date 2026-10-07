@@ -26,6 +26,7 @@ from core.touch.edition_repository import (
     link_touch_edition_report,
     list_touch_editions,
     update_touch_edition_corpus,
+    delete_touch_edition,
 )
 
 from core.touch.search_models import (
@@ -629,3 +630,42 @@ def reopen_monthly_touch_edition(edition_id: str):
     if edition is None:
         raise HTTPException(status_code=404, detail="Édition Touch introuvable.")
     return {"status": "ok", "edition": _public_admin_edition(edition)}
+
+# ============================================================
+# DELETE MONTHLY EDITION AND LINKED REPORT
+# ============================================================
+
+@router.delete("/editions/{edition_id}")
+def delete_monthly_touch_edition(
+    edition_id: str,
+):
+    try:
+        deleted = delete_touch_edition(
+            edition_id=edition_id,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Erreur lors de la réinitialisation "
+                f"de l’édition Touch : {exc}"
+            ),
+        ) from exc
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Édition Touch introuvable.",
+        )
+
+    return {
+        "status": "ok",
+        "edition_id": edition_id,
+    }
