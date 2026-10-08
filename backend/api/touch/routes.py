@@ -733,7 +733,7 @@ def get_published_touch_report(report_id: str, request: Request):
     # Public reader needs no internal corpus contribution or version lineage.
     return {"status": "ok", "report": {
         key: report[key] for key in (
-            "report_id", "subject", "objective", "expert_id", "period_start",
+            "report_id", "report_type", "subject", "objective", "expert_id", "period_start",
             "period_end", "output_language", "created_at", "published_at",
             "sources", "notebook",
         )
