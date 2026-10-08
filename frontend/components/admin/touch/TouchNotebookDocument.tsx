@@ -668,15 +668,57 @@ function EvidenceNote({
 ========================================================= */
 
 
-function CertifiedNumber({ number, sourceNumberById }: {
-  number: TouchNotebookNumber; sourceNumberById: Map<string, number>;
+function cleanNumberText(value: string | null | undefined): string {
+  const text = value?.trim() || "";
+  return /^(none|null|unknown|undefined|n\/a|not_available)$/i.test(text) ? "" : text;
+}
+
+function formatDocumentNumber(number: TouchNotebookNumber, isFrench: boolean): string {
+  const formatValue = (value: string | number | null): string => {
+    if (value == null) return "";
+    const text = String(value).trim();
+    if (!cleanNumberText(text)) return "";
+    // Only parse unambiguous raw numeric values, preserving other source text.
+    if (/^[+-]?\d+(?:\.\d+)?$/.test(text)) {
+      const numeric = Number(text);
+      if (Number.isFinite(numeric)) return new Intl.NumberFormat(isFrench ? "fr-FR" : "en-GB", {
+        maximumFractionDigits: 12,
+      }).format(numeric);
+    }
+    return text;
+  };
+  const value = formatValue(number.value)
+    || [formatValue(number.value_min), formatValue(number.value_max)].filter(Boolean).join(" – ");
+  const rawScale = cleanNumberText(number.scale);
+  const scales: Record<string, string> = {
+    THOUSAND: isFrench ? "milliers" : "thousand",
+    MILLION: isFrench ? "millions" : "million",
+    BILLION: isFrench ? "milliards" : "billion",
+    TRILLION: isFrench ? "billions" : "trillion",
+  };
+  const scale = scales[rawScale.toUpperCase()] ?? rawScale.replace(/_/g, " ").toLowerCase();
+  const rawUnit = cleanNumberText(number.unit);
+  const units: Record<string, string> = {
+    PERCENT: "%", PERCENTAGE: "%", PCT: "%",
+    PERCENTAGE_POINTS: isFrench ? "points de pourcentage" : "percentage points",
+    TRANSACTIONS: "transactions", USERS: isFrench ? "utilisateurs" : "users",
+    PEOPLE: isFrench ? "personnes" : "people",
+  };
+  const unit = units[rawUnit.toUpperCase()] ?? (/^[A-Z]{3}$/.test(rawUnit) ? rawUnit : rawUnit.replace(/_/g, " ").toLowerCase());
+  // PERCENT values are already percentages: never multiply them by 100.
+  const amount = [value, scale].filter(Boolean).join(" ");
+  return unit === "%" ? amount ? `${amount}${isFrench ? " " : ""}%` : "%"
+    : [amount, unit].filter(Boolean).join(" ");
+}
+
+function CertifiedNumber({ number, sourceNumberById, isFrench }: {
+  number: TouchNotebookNumber; sourceNumberById: Map<string, number>; isFrench: boolean;
 }) {
-  const values = number.value != null ? String(number.value)
-    : [number.value_min, number.value_max].filter(value => value != null).join(" – ");
+  const context = [cleanNumberText(number.zone), cleanNumberText(number.period_label)].filter(Boolean).join(" · ");
   return <div className="break-inside-avoid rounded-lg border border-emerald-100 bg-emerald-50 p-3">
-    <p className="text-lg font-semibold text-emerald-900">{[values, number.scale, number.unit].filter(Boolean).join(" ")}</p>
-    <p className="text-sm font-medium text-slate-900">{number.label ?? number.metric_type}</p>
-    <p className="mt-1 text-xs text-slate-500">{[number.zone, number.period_label].filter(Boolean).join(" · ")}</p>
+    <p className="text-lg font-semibold text-emerald-900">{formatDocumentNumber(number, isFrench)}</p>
+    <p className="text-sm font-medium text-slate-900">{cleanNumberText(number.label) || cleanNumberText(number.metric_type)}</p>
+    {context && <p className="mt-1 text-xs text-slate-500">{context}</p>}
     <SourceReferences sourceContentIds={number.source_content_ids} sourceNumberById={sourceNumberById} />
   </div>;
 }
@@ -1290,6 +1332,7 @@ export default function TouchNotebookDocument({
           <DocumentSection title={isFrench ? "Chiffres validés" : "Verified numbers"}>
             <div className="grid gap-3 sm:grid-cols-2">
               {notebook.validated_numbers.map(number => <CertifiedNumber key={number.number_id}
+                isFrench={isFrench}
                 number={number} sourceNumberById={sourceNumberById} />)}
             </div>
           </DocumentSection>
