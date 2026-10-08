@@ -536,6 +536,8 @@ def list_touch_reports(
           ARCHIVED_AT,
           PUBLISHED_AT,
           PUBLISHED_VERSION_NUMBER,
+          IF(EXISTS(SELECT 1 FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_EDITION` edition
+            WHERE edition.REPORT_ID = report.REPORT_ID), 'MONTHLY', 'RESEARCH') AS REPORT_TYPE,
 
           EXPERT_ID,
 
@@ -552,7 +554,7 @@ def list_touch_reports(
             CONTENT_IDS
           ) AS SOURCE_COUNT
 
-        FROM `{TABLE_TOUCH_REPORT}`
+        FROM `{TABLE_TOUCH_REPORT}` AS report
 
         WHERE (@archive = 'all'
           OR (@archive = 'active' AND ARCHIVED_AT IS NULL)
@@ -591,6 +593,7 @@ def list_touch_reports(
                     row["CREATED_AT"]
                 ),
 
+            "report_type": row.get("REPORT_TYPE") or "RESEARCH",
             "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
             "published_at": str(row["PUBLISHED_AT"]) if row.get("PUBLISHED_AT") else None,
             "is_published": bool(
@@ -667,6 +670,8 @@ def get_touch_report(
           ARCHIVED_AT,
           PUBLISHED_AT,
           PUBLISHED_VERSION_NUMBER,
+          IF(EXISTS(SELECT 1 FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_TOUCH_EDITION` edition
+            WHERE edition.REPORT_ID = report.REPORT_ID), 'MONTHLY', 'RESEARCH') AS REPORT_TYPE,
 
           EXPERT_ID,
 
@@ -687,7 +692,7 @@ def get_touch_report(
 
           NOTEBOOK_JSON
 
-        FROM `{TABLE_TOUCH_REPORT}`
+        FROM `{TABLE_TOUCH_REPORT}` AS report
 
         WHERE
           REPORT_ID = @report_id
@@ -736,7 +741,8 @@ def get_touch_report(
                 row["CREATED_AT"]
             ),
 
-        "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
+        "report_type": row.get("REPORT_TYPE") or "RESEARCH",
+            "archived_at": str(row["ARCHIVED_AT"]) if row.get("ARCHIVED_AT") else None,
             "published_at": str(row["PUBLISHED_AT"]) if row.get("PUBLISHED_AT") else None,
             "is_published": bool(
                 row.get("PUBLISHED_AT") and not row.get("ARCHIVED_AT")
