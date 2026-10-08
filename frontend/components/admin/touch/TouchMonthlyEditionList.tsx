@@ -240,7 +240,7 @@ export default function TouchMonthlyEditionList({
       {!loading && !error && <p className="text-xs text-gray-500">{visible.length} matching entries</p>}
       {!loading && !error && visible.length === 0 && <p className="text-sm text-gray-500">No matching reports or corpora.</p>}
       {!loading && visible.map(row => (
-        <article key={row.key} className="rounded-lg border border-gray-200 p-4">
+        <article key={row.key} className={`rounded-lg border p-4 ${row.type === "MONTHLY" ? "border-emerald-100 bg-emerald-50/30" : "border-blue-100 bg-blue-50/30"}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             {row.reportId && row.report && row.status !== "ARCHIVED" && !row.report.is_published && <input type="checkbox"
               aria-label={`Select ${row.subject} for publication`} className="mt-1 h-4 w-4" disabled={interactionsDisabled}
@@ -251,7 +251,7 @@ export default function TouchMonthlyEditionList({
                 {row.expertId && ` · ${expertNames[row.expertId] ?? row.expertId}`}
                 {row.period && ` · ${row.period}`}
               </p>
-              <h3 className="mt-1 font-semibold text-gray-900">{row.subject}</h3>
+              <h3 className={`mt-1 font-semibold ${row.type === "MONTHLY" ? "text-emerald-900" : "text-blue-900"}`}>{row.subject}</h3>
               {row.report && row.report.subject !== row.subject && <p className="mt-1 text-sm text-gray-600">{row.report.subject}</p>}
               {!row.edition && row.report?.objective && <p className="mt-1 text-sm text-gray-600">{row.report.objective}</p>}
               <p className="mt-2 text-xs text-gray-600">
