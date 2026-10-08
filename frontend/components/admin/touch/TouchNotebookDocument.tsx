@@ -9,6 +9,7 @@ import type {
   TouchEvidenceNote,
   TouchNotebookCrossReading,
   TouchNotebookEvent,
+  TouchNotebookNumber,
 } from "@/types/touch";
 
 
@@ -452,7 +453,9 @@ function DocumentSection({
   title,
   children,
   className = "",
+  id,
 }: {
+  id?: string;
   title: string;
   children: React.ReactNode;
   className?: string;
@@ -461,7 +464,9 @@ function DocumentSection({
   return (
 
     <section
+      id={id}
       className={`
+        scroll-mt-6
         space-y-3
         ${className}
       `}
@@ -662,6 +667,20 @@ function EvidenceNote({
    EVENT
 ========================================================= */
 
+
+function CertifiedNumber({ number, sourceNumberById }: {
+  number: TouchNotebookNumber; sourceNumberById: Map<string, number>;
+}) {
+  const values = number.value != null ? String(number.value)
+    : [number.value_min, number.value_max].filter(value => value != null).join(" – ");
+  return <div className="break-inside-avoid rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+    <p className="text-lg font-semibold text-emerald-900">{[values, number.scale, number.unit].filter(Boolean).join(" ")}</p>
+    <p className="text-sm font-medium text-slate-900">{number.label ?? number.metric_type}</p>
+    <p className="mt-1 text-xs text-slate-500">{[number.zone, number.period_label].filter(Boolean).join(" · ")}</p>
+    <SourceReferences sourceContentIds={number.source_content_ids} sourceNumberById={sourceNumberById} />
+  </div>;
+}
+
 function EventBlock({
   event,
   notes,
@@ -822,10 +841,15 @@ export default function TouchNotebookDocument({
 
   const citedSourceContentIds =
     new Set(
-      notebook.notes.flatMap(
-        note =>
-          note.source_content_ids,
-      ),
+      [
+        ...notebook.notes.flatMap(note => note.source_content_ids),
+        ...notebook.validated_numbers.flatMap(number => number.source_content_ids),
+        ...notebook.events.flatMap(event => event.source_content_ids),
+        ...notebook.executive_summary.flatMap(item => item.source_content_ids),
+        ...notebook.cross_readings.flatMap(item => item.source_content_ids),
+        ...notebook.timeline.flatMap(item => item.source_content_ids),
+        ...notebook.contradictions.flatMap(item => item.source_content_ids),
+      ],
     );
   
   const citedSources =
@@ -915,107 +939,55 @@ export default function TouchNotebookDocument({
       {/* HEADER */}
       {/* ================================================= */}
 
-      <header
-        className="
-          bg-slate-950
-          px-8
-          py-8
-          text-white
-          border-b-4
-          border-blue-600
-          break-inside-avoid
-          print:bg-white
-          print:px-0
-          print:py-0
-          print:text-slate-950
-        "
-      >
-
-        <p
-          className="
-            text-xs
-            font-semibold
-            uppercase
-            tracking-[0.2em]
-            text-blue-300
-            print:text-slate-500
-          "
-        >
-          GetCurator Touch
-        </p>
-
-        <p className="mt-2 text-xs font-medium tracking-wide text-slate-300 print:text-slate-600">
-          {period?.monthly
-            ? (isFrench ? "Rapport mensuel" : "Monthly Report")
-            : (isFrench ? "Rapport d’expertise" : "Expert Report")}
-        </p>
-
-        <h1
-          className="
-            mt-3
-            max-w-4xl
-            text-3xl
-            font-semibold
-            leading-tight
-          "
-        >
-          {reportTitle}
-        </h1>
-
-        {notebook.objective && (
-
-          <p
-            className="
-              mt-3
-              max-w-3xl
-              text-sm
-              leading-6
-              text-slate-300
-              print:text-slate-600
-            "
-          >
-            {notebook.objective}
+      <header className="border-b border-emerald-100 bg-white px-6 py-7 sm:px-8 print:break-after-page print:px-0 print:py-0">
+        <div className="flex items-center justify-between gap-4 border-b border-emerald-100 pb-4">
+          <p className="text-sm font-semibold tracking-tight text-emerald-800">GetCurator</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
+            {isFrench ? "Rapport d’expertise" : "Expert research"} · {outputLanguage.toUpperCase()}
           </p>
+        </div>
 
-        )}
+        <div className="break-inside-avoid pt-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            {period?.monthly ? (isFrench ? "Édition mensuelle" : "Monthly edition") : (isFrench ? "Rapport documentaire" : "Research report")}
+          </p>
+          <h1 className="mt-2 max-w-4xl text-2xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl print:text-2xl">{subject}</h1>
+          {period && <p className="mt-3 text-sm font-medium text-emerald-800">{period.label}</p>}
+        </div>
 
-        <p
-          className="
-            mt-5
-            text-xs
-            text-slate-300
-            print:text-slate-500
-          "
-        >
-          {sources.length}
-          {" documents reviewed · "}
-          
-          {citedSources.length}
-          {" sources cited · "}
-          
-          {notebook.sections.length}
-          {" sections · "}
-          
-          {notebook.notes.length}
-          {" evidence notes"}
-          <span className="mt-2 block">
-          {isFrench ? "Exporté le " : "Exported on "}
+        <div className="mt-6 break-inside-avoid rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 print:bg-white">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+            {isFrench ? "La recherche, réalisée pour vous" : "The research, done for you"}
+          </p>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:grid-cols-4">
+            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Sources retenues" : "Sources selected"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{sources.length}</dd></div>
+            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Sources citées" : "Sources cited"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{citedSources.length}</dd></div>
+            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Enseignements extraits" : "Insights extracted"}</dt><dd className="mt-1 text-xl font-semibold text-emerald-800">{notebook.notes.length}</dd></div>
+            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Chapitres" : "Chapters"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{notebook.sections.length}</dd></div>
+          </dl>
+        </div>
 
-          {
-            new Intl.DateTimeFormat(
-              locale,
-              {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              },
-            ).format(
-              new Date(),
-            )
-          }
-          </span>
+        {(notebook.corpus_summary || notebook.objective) && <section className="mt-5">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{isFrench ? "Périmètre du rapport" : "Report scope"}</h2>
+          <p className="mt-2 text-xs leading-5 text-slate-600">{notebook.corpus_summary || notebook.objective}</p>
+        </section>}
+
+        {notebook.sections.length > 0 && <nav className="mt-5" aria-label={isFrench ? "Sommaire du rapport" : "Report contents"}>
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{isFrench ? "Sommaire" : "Contents"}</h2>
+          <ol className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 print:grid-cols-2">
+            {notebook.sections.map((section, index) => <li key={section.section_id} className="break-inside-avoid">
+              <a href={`#report-section-${section.section_id}`} className="flex gap-2 py-1 text-xs leading-4 text-slate-700 hover:text-emerald-800">
+                <span className="w-5 shrink-0 font-medium text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
+                <span>{section.title}</span>
+              </a>
+            </li>)}
+          </ol>
+        </nav>}
+
+        <p className="mt-5 border-t border-slate-100 pt-3 text-[10px] text-slate-400">
+          {isFrench ? "Édition documentaire · Exporté le " : "Documentary edition · Exported on "}
+          {new Intl.DateTimeFormat(locale, {day: "2-digit", month: "long", year: "numeric"}).format(new Date())}
         </p>
-
       </header>
 
       {/* ================================================= */}
@@ -1031,51 +1003,6 @@ export default function TouchNotebookDocument({
           print:py-6
         "
       >
-
-        {/* ================================================= */}
-        {/* CORPUS SUMMARY */}
-        {/* ================================================= */}
-
-        {notebook.corpus_summary && (
-
-          <section
-            className="
-              break-inside-avoid
-              border-l-4
-              border-blue-300
-              bg-blue-50
-              px-4
-              py-3
-              print:bg-white
-            "
-          >
-
-            <p
-              className="
-                text-[10px]
-                font-semibold
-                uppercase
-                tracking-wide
-                text-blue-700
-              "
-            >
-              Corpus scope
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-sm
-                leading-6
-                text-slate-700
-              "
-            >
-              {notebook.corpus_summary}
-            </p>
-
-          </section>
-
-        )}
 
         {/* ================================================= */}
         {/* EXECUTIVE SUMMARY */}
@@ -1271,6 +1198,7 @@ export default function TouchNotebookDocument({
             return (
 
               <DocumentSection
+                id={`report-section-${section.section_id}`}
                 key={
                   section.section_id
                 }
@@ -1358,6 +1286,15 @@ export default function TouchNotebookDocument({
         )}
 
         {/* ================================================= */}
+        {notebook.validated_numbers.length > 0 && (
+          <DocumentSection title={isFrench ? "Chiffres validés" : "Verified numbers"}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {notebook.validated_numbers.map(number => <CertifiedNumber key={number.number_id}
+                number={number} sourceNumberById={sourceNumberById} />)}
+            </div>
+          </DocumentSection>
+        )}
+
         {/* TIMELINE */}
         {/* ================================================= */}
 
