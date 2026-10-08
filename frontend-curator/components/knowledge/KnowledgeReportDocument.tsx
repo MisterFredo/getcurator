@@ -24,6 +24,7 @@ type Props = {
   periodEnd?: string | null;
   outputLanguage?: string;
   expertName?: string | null;
+  reportType?: "MONTHLY" | "RESEARCH";
 };
 
 
@@ -859,11 +860,16 @@ export default function KnowledgeReportDocument({
   periodEnd,
   outputLanguage = "en",
   expertName,
+  reportType = "RESEARCH",
 }: Props) {
   const isFrench = outputLanguage === "fr";
   const locale = isFrench ? "fr-FR" : "en-GB";
   const period = formatReportPeriod(periodStart, periodEnd, locale);
-  const subject = expertName?.trim() || notebook.subject;
+  const isMonthly = reportType === "MONTHLY";
+  const theme = isMonthly
+    ? {border: "border-emerald-100", text: "text-emerald-800", accent: "text-emerald-700", tint: "bg-emerald-50", hover: "hover:text-emerald-800"}
+    : {border: "border-blue-100", text: "text-blue-800", accent: "text-blue-700", tint: "bg-blue-50", hover: "hover:text-blue-800"};
+  const subject = isMonthly ? expertName?.trim() || notebook.subject : notebook.subject;
   const reportTitle = period
     ? `${subject} — ${period.label}`
     : subject;
@@ -981,30 +987,30 @@ export default function KnowledgeReportDocument({
       {/* HEADER */}
       {/* ================================================= */}
 
-      <header className="border-b border-emerald-100 bg-white px-6 py-7 sm:px-8 print:break-after-page print:px-0 print:py-0">
-        <div className="flex items-center justify-between gap-4 border-b border-emerald-100 pb-4">
-          <p className="text-sm font-semibold tracking-tight text-emerald-800">GetCurator</p>
+      <header className={`border-b ${theme.border} bg-white px-6 py-7 sm:px-8 print:break-after-page print:px-0 print:py-0`}>
+        <div className={`flex items-center justify-between gap-4 border-b ${theme.border} pb-4`}>
+          <p className={`text-sm font-semibold tracking-tight ${theme.text}`}>GetCurator</p>
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-            {isFrench ? "Rapport d’expertise" : "Expert research"} · {outputLanguage.toUpperCase()}
+            {isMonthly ? (isFrench ? "Veille mensuelle" : "Monthly research") : (isFrench ? "Recherche ponctuelle" : "Research report")} · {outputLanguage.toUpperCase()}
           </p>
         </div>
 
         <div className="break-inside-avoid pt-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            {period?.monthly ? (isFrench ? "Édition mensuelle" : "Monthly edition") : (isFrench ? "Rapport documentaire" : "Research report")}
+          <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${theme.accent}`}>
+            {isMonthly ? (isFrench ? "Édition mensuelle" : "Monthly edition") : (isFrench ? "Rapport documentaire" : "Research report")}
           </p>
           <h1 className="mt-2 max-w-4xl text-2xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl print:text-2xl">{subject}</h1>
-          {period && <p className="mt-3 text-sm font-medium text-emerald-800">{period.label}</p>}
+          {period && <p className={`mt-3 text-sm font-medium ${theme.text}`}>{period.label}</p>}
         </div>
 
-        <div className="mt-6 break-inside-avoid rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 print:bg-white">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+        <div className={`mt-6 break-inside-avoid rounded-lg border ${theme.border} ${theme.tint} px-4 py-3 print:bg-white`}>
+          <p className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${theme.text}`}>
             {isFrench ? "La recherche, réalisée pour vous" : "The research, done for you"}
           </p>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:grid-cols-4">
             <div><dt className="text-[10px] text-slate-600">{isFrench ? "Sources retenues" : "Sources selected"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{sources.length}</dd></div>
             <div><dt className="text-[10px] text-slate-600">{isFrench ? "Sources citées" : "Sources cited"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{citedSources.length}</dd></div>
-            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Enseignements extraits" : "Insights extracted"}</dt><dd className="mt-1 text-xl font-semibold text-emerald-800">{notebook.notes.length}</dd></div>
+            <div><dt className="text-[10px] text-slate-600">{isFrench ? "Enseignements extraits" : "Insights extracted"}</dt><dd className={`mt-1 text-xl font-semibold ${theme.text}`}>{notebook.notes.length}</dd></div>
             <div><dt className="text-[10px] text-slate-600">{isFrench ? "Chapitres" : "Chapters"}</dt><dd className="mt-1 text-xl font-semibold text-slate-900">{notebook.sections.length}</dd></div>
           </dl>
         </div>
@@ -1018,8 +1024,8 @@ export default function KnowledgeReportDocument({
           <h2 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{isFrench ? "Sommaire" : "Contents"}</h2>
           <ol className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 print:grid-cols-2">
             {notebook.sections.map((section, index) => <li key={section.section_id} className="break-inside-avoid">
-              <a href={`#report-section-${section.section_id}`} className="flex gap-2 py-1 text-xs leading-4 text-slate-700 hover:text-emerald-800">
-                <span className="w-5 shrink-0 font-medium text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
+              <a href={`#report-section-${section.section_id}`} className={`flex gap-2 py-1 text-xs leading-4 text-slate-700 ${theme.hover}`}>
+                <span className={`w-5 shrink-0 font-medium ${theme.accent}`}>{String(index + 1).padStart(2, "0")}</span>
                 <span>{section.title}</span>
               </a>
             </li>)}
