@@ -33,6 +33,7 @@ export default function KnowledgePage() {
   const [conversation, setConversation] = useState<KnowledgeMessage[]>([]);
   const [message, setMessage] = useState("");
   const [moreMatches, setMoreMatches] = useState(false);
+  const [reportExpertName, setReportExpertName] = useState<string | null>(null);
   const [report, setReport] = useState<KnowledgeReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -80,15 +81,27 @@ export default function KnowledgePage() {
   }
   async function openReport(id: string) {
     setOpening(true); setError(null);
-    try {setReport(await getKnowledgeReport(id));}
+    try {
+      const savedReport = await getKnowledgeReport(id);
+      const summary = (matches ?? catalogue.items).find(item => item.report_id === id);
+      let expertName = summary?.expert_name?.trim() || available.experts.find(expert => expert.expert_id === savedReport.expert_id)?.label.trim() || null;
+      if (savedReport.expert_id && !expertName) {
+        const refreshedFilters = await getKnowledgeFilters();
+        setAvailable(refreshedFilters);
+        expertName = refreshedFilters.experts.find(expert => expert.expert_id === savedReport.expert_id)?.label.trim() || null;
+        if (!expertName) throw new Error("The expert name is unavailable. Refresh the page and try again.");
+      }
+      setReportExpertName(expertName);
+      setReport(savedReport);
+    }
     catch (exception) {setError(exception instanceof Error ? exception.message : "Unable to open report.");}
     finally {setOpening(false);}
   }
   if (userLoading) return <p className="p-6 text-sm text-gray-500">Loading…</p>;
   if (!userId) return <div className="space-y-3"><h1 className="text-2xl font-semibold">Knowledge</h1><p>Sign in to explore the reports.</p><Link href="/login" className="text-emerald-700 underline">Sign in</Link></div>;
   if (report) return <div className="space-y-4">
-    <button type="button" className={buttonClass} onClick={() => setReport(null)}>← Back to reports</button>
-    <KnowledgeReportDocument notebook={report.notebook} periodStart={report.period_start} periodEnd={report.period_end}
+    <button type="button" className={buttonClass} onClick={() => {setReport(null); setReportExpertName(null);}}>← Back to reports</button>
+    <KnowledgeReportDocument expertName={reportExpertName} notebook={report.notebook} periodStart={report.period_start} periodEnd={report.period_end}
       outputLanguage={report.output_language} sources={report.sources.map(source => ({content_id: source.content_id,
         title: source.title ?? source.original_title ?? "Untitled source", source_title: source.source_name ?? "",
         source_url: /^https?:\/\//i.test(source.url ?? "") ? source.url! : "", published_at: source.published_at}))} />
