@@ -36,6 +36,7 @@ type Props = {
   periodStart?: string | null;
   periodEnd?: string | null;
   expertName?: string | null;
+  reportType?: "MONTHLY" | "RESEARCH";
 
   brief:
     TouchBriefStructure | null;
@@ -59,6 +60,7 @@ export default function TouchOutputChoice({
   periodStart,
   periodEnd,
   expertName,
+  reportType = "RESEARCH",
 }: Props) {
 
   const [
@@ -213,7 +215,7 @@ export default function TouchOutputChoice({
         ? start.slice(0, 7)
         : `${start}_to_${end}`
       : start || end || "undated";
-    const safeSubject = (expertName?.trim() || notebook.subject || "Report")
+    const safeSubject = ((reportType === "MONTHLY" ? expertName?.trim() : null) || notebook.subject || "Report")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "Report";
     const filename = `GetCurator_${safeSubject}_${periodName}_${outputLanguage.toUpperCase()}_${mode === "DOCUMENTARY" ? "Report" : "Interpretation"}`;
@@ -647,6 +649,7 @@ export default function TouchOutputChoice({
             periodEnd={periodEnd}
             outputLanguage={outputLanguage}
             expertName={expertName}
+            reportType={reportType}
             notebook={
               notebook
             }
