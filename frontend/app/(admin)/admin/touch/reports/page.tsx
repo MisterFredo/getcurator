@@ -12,6 +12,8 @@ import type {
   TouchSavedReport,
 } from "@/types/touch";
 
+type TypedSavedReport = TouchSavedReport & {report_type?: "MONTHLY" | "RESEARCH"};
+
 function reportSources(
   report: TouchSavedReport,
 ): TouchContentCandidate[] {
@@ -94,7 +96,7 @@ function reportSources(
 
 
 export default function TouchReportsPage() {
-  const [selectedReport, setSelectedReport] = useState<TouchSavedReport | null>(null);
+  const [selectedReport, setSelectedReport] = useState<TypedSavedReport | null>(null);
   const [selectedExpertName, setSelectedExpertName] = useState<string | null>(null);
   const expertNamesRef = useRef<Record<string, string> | null>(null);
   const [brief, setBrief] = useState<TouchBriefStructure | null>(null);
@@ -106,9 +108,9 @@ export default function TouchReportsPage() {
     setOpeningId(reportId);
     setError(null);
     try {
-      const report = await getTouchReport(reportId);
+      const report = await getTouchReport(reportId) as TypedSavedReport;
       let expertName: string | null = null;
-      if (report.expert_id) {
+      if (report.expert_id && report.report_type === "MONTHLY") {
         if (!expertNamesRef.current || !expertNamesRef.current[report.expert_id]) {
           const response = await api.get("/user/admin/experts");
           const names: Record<string, string> = {};
@@ -156,6 +158,7 @@ export default function TouchReportsPage() {
           </button>
           <TouchOutputChoice notebook={selectedReport.notebook}
             expertName={selectedExpertName}
+            reportType={selectedReport.report_type ?? "RESEARCH"}
             periodStart={selectedReport.period_start}
             periodEnd={selectedReport.period_end}
             outputLanguage={selectedReport.output_language}
