@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 import { getTouchReport } from "@/lib/touch";
 import TouchMonthlyEditionList from "@/components/admin/touch/TouchMonthlyEditionList";
 import TouchOutputChoice from "@/components/admin/touch/TouchOutputChoice";
@@ -94,6 +95,8 @@ function reportSources(
 
 export default function TouchReportsPage() {
   const [selectedReport, setSelectedReport] = useState<TouchSavedReport | null>(null);
+  const [selectedExpertName, setSelectedExpertName] = useState<string | null>(null);
+  const expertNamesRef = useRef<Record<string, string> | null>(null);
   const [brief, setBrief] = useState<TouchBriefStructure | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +107,22 @@ export default function TouchReportsPage() {
     setError(null);
     try {
       const report = await getTouchReport(reportId);
+      let expertName: string | null = null;
+      if (report.expert_id) {
+        if (!expertNamesRef.current || !expertNamesRef.current[report.expert_id]) {
+          const response = await api.get("/user/admin/experts");
+          const names: Record<string, string> = {};
+          for (const expert of response.experts ?? []) {
+            const id = expert.ID_USER ?? expert.id_user ?? expert.user_id ?? expert.id;
+            const name = expert.DISPLAY_NAME ?? expert.display_name ?? expert.NAME ?? expert.name;
+            if (typeof id === "string" && typeof name === "string" && name.trim()) names[id] = name.trim();
+          }
+          expertNamesRef.current = names;
+        }
+        expertName = expertNamesRef.current[report.expert_id] ?? null;
+        if (!expertName) throw new Error("The expert name could not be found. Refresh the expert profile before opening this report.");
+      }
+      setSelectedExpertName(expertName);
       setBrief(null);
       setSelectedReport(report);
     } catch (exception) {
@@ -131,11 +150,12 @@ export default function TouchReportsPage() {
       </div>
       {selectedReport && (
         <div className="space-y-6">
-          <button type="button" onClick={() => { setSelectedReport(null); setBrief(null); }}
+          <button type="button" onClick={() => { setSelectedReport(null); setSelectedExpertName(null); setBrief(null); }}
             className="text-sm font-medium text-ratecard-blue hover:underline">
             ← All reports
           </button>
           <TouchOutputChoice notebook={selectedReport.notebook}
+            expertName={selectedExpertName}
             periodStart={selectedReport.period_start}
             periodEnd={selectedReport.period_end}
             outputLanguage={selectedReport.output_language}
