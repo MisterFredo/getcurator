@@ -280,7 +280,9 @@ export type KnowledgeDocumentSource = {
 export type KnowledgeFilters = {
   expert_id: string | null; month: string | null; output_language: "fr" | "en" | null;
 };
+export type KnowledgeReportType = "MONTHLY" | "RESEARCH";
 export type KnowledgeSummary = {
+  report_type?: KnowledgeReportType;
   report_id: string; subject: string; objective: string;
   expert_id: string | null; expert_name: string | null;
   period_start: string | null; period_end: string | null;
@@ -291,6 +293,7 @@ export type KnowledgeSummary = {
   match_evidence?: { evidence_id: string; text: string; explanation?: string };
 };
 export type KnowledgeReport = {
+  report_type?: KnowledgeReportType;
   report_id: string; subject: string; objective: string; expert_id: string | null;
   period_start: string | null; period_end: string | null;
   output_language: string; created_at: string; published_at: string;
