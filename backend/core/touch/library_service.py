@@ -60,6 +60,7 @@ def _query_parts(filters: LibraryFilters, groups: list[list[str]], exclusions: l
     # Search editorial text, not JSON IDs, field names or source URLs.
     cte = f"""WITH documents AS (
       SELECT r.*,
+        IF(e.REPORT_ID IS NOT NULL, 'MONTHLY', 'RESEARCH') AS REPORT_TYPE,
         ARRAY_LENGTH(JSON_QUERY_ARRAY(e.SEARCH_JSON, '$.candidates')) AS CANDIDATE_COUNT,
         COALESCE(JSON_VALUE(TO_JSON_STRING(u), '$.DISPLAY_NAME'),
           JSON_VALUE(TO_JSON_STRING(u), '$.NAME')) AS EXPERT_NAME,
@@ -111,6 +112,7 @@ def _date_string(value):
 def _summary(row: dict) -> dict:
     notebook = _json(row.get("NOTEBOOK_JSON")) or {}
     return {
+        "report_type": row.get("REPORT_TYPE") or "RESEARCH",
         "report_id": row["REPORT_ID"], "subject": row["SUBJECT"],
         "objective": row.get("OBJECTIVE") or "", "expert_id": row.get("EXPERT_ID"),
         "expert_name": row.get("EXPERT_NAME"), "output_language": row["OUTPUT_LANGUAGE"],
