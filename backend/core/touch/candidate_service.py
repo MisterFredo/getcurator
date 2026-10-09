@@ -21,6 +21,10 @@ from core.expertise.selection_engine import (
     select_contents,
 )
 
+from core.user.user_preferences_service import (
+    get_user_preferences_detailed,
+)
+
 from core.touch.search_models import (
     TouchCandidateSource,
     TouchContentCandidate,
@@ -738,6 +742,28 @@ def _add_entity_pools(
     errors: list[str],
 ) -> None:
 
+    # Explicit expert topic preferences are authoritative retrieval anchors.
+    # They expand the candidate pool; the expert mandate still controls evaluation.
+    expert_topics: list[TouchEntityReference] = []
+
+    if brief.expert_id:
+        try:
+            preferences = get_user_preferences_detailed(brief.expert_id)
+            expert_topics = [
+                TouchEntityReference(
+                    entity_type="topic",
+                    entity_id=topic["id"],
+                    entity_label=topic["label"],
+                )
+                for topic in preferences.get("topics", [])
+                if topic.get("id") and topic.get("label")
+            ]
+        except Exception as exc:
+            errors.append(
+                "Échec du chargement des topics associés à l’expert : "
+                f"{str(exc)[:500]}"
+            )
+
     entity_groups: list[
         tuple[
             list[TouchEntityReference],
@@ -745,6 +771,12 @@ def _add_entity_pools(
             Callable,
         ]
     ] = [
+
+        (
+            expert_topics,
+            "CORE_TOPIC",
+            lambda entity: {"topic_id": entity.entity_id},
+        ),
 
         (
             interpretation.companies,
@@ -779,6 +811,8 @@ def _add_entity_pools(
         DEFAULT_TOUCH_MAX_CORE_ENTITIES
     )
 
+    seen_entity_keys: set[tuple[str, str]] = set()
+
     for (
         entities,
         selection_source,
@@ -790,9 +824,10 @@ def _add_entity_pools(
             break
 
         unique_entities = (
-            _unique_entities(
-                entities
-            )
+            _unique_entities([
+                entity for entity in entities
+                if (entity.entity_type, entity.entity_id) not in seen_entity_keys
+            ])
         )
 
         retained_entities = (
@@ -806,6 +841,8 @@ def _add_entity_pools(
         )
 
         for entity in retained_entities:
+
+            seen_entity_keys.add((entity.entity_type, entity.entity_id))
 
             try:
 
