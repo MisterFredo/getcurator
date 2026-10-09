@@ -324,6 +324,75 @@ def _restore_missing_notes(
 
 
 # ============================================================
+# REPAIR OVERLAPPING GROUPS CONSERVATIVELY
+# ============================================================
+
+def _repair_overlapping_groups(
+    result: TouchNoteDeduplicationResult,
+    notes: list[TouchEvidenceNote],
+) -> TouchNoteDeduplicationResult:
+    """Keep ambiguous contributions separate, never guess a merge."""
+
+    expected_ids = {note.note_id for note in notes}
+    counts = {note_id: 0 for note_id in expected_ids}
+
+    # Structural errors must still trigger the existing retry mechanism.
+    # Repair only repeated placements of known, valid contributions.
+    for group in result.groups:
+        if not group.note_ids:
+            raise ValueError("Un groupe de déduplication est vide")
+        if group.representative_note_id not in group.note_ids:
+            raise ValueError(
+                "Un représentant n’est pas membre de son groupe : "
+                f"{group.representative_note_id}"
+            )
+        for note_id in group.note_ids:
+            if note_id not in expected_ids:
+                raise ValueError(
+                    "La déduplication référence un note_id inconnu : "
+                    f"{note_id}"
+                )
+            counts[note_id] += 1
+
+    overlapping_ids = {
+        note_id for note_id, count in counts.items() if count > 1
+    }
+    if not overlapping_ids:
+        return result
+
+    # Dissolve every group touched by an overlap. Taking the first group
+    # or merging connected groups would invent an equivalence between
+    # contributions that the model did not consistently establish.
+    retained_groups = []
+    standalone_ids = set()
+    for group in result.groups:
+        if overlapping_ids.intersection(group.note_ids):
+            standalone_ids.update(group.note_ids)
+        else:
+            retained_groups.append(group)
+
+    repaired_groups = list(retained_groups)
+
+    for note in notes:
+        if note.note_id in standalone_ids:
+            repaired_groups.append(
+                TouchNoteDeduplicationGroup(
+                    representative_note_id=note.note_id,
+                    note_ids=[note.note_id],
+                )
+            )
+
+    print(
+        "TOUCH_NOTEBOOK_DEDUPLICATION_REPAIRED",
+        {
+            "overlapping_note_ids": sorted(overlapping_ids),
+            "standalone_note_count": len(standalone_ids),
+        },
+    )
+    return result.model_copy(update={"groups": repaired_groups})
+
+
+# ============================================================
 # VALIDATE GROUPS
 # ============================================================
 
@@ -790,9 +859,14 @@ def deduplicate_notebook_notes(
                 notes=notes,
             )
 
-            # Les identifiants inventés, les représentants
-            # invalides et les placements multiples restent
-            # des erreurs.
+            # Les groupes qui se chevauchent sont défaits sans
+            # réécriture ni perte de sources. Les erreurs structurelles
+            # et identifiants inventés restent soumis aux tentatives.
+            result = _repair_overlapping_groups(
+                result=result,
+                notes=notes,
+            )
+
             _validate_groups(
                 result=result,
                 notes_by_id=notes_by_id,
