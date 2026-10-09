@@ -322,10 +322,12 @@ def save_editorial_report(
 @router.get("/reports")
 def list_editorial_reports(
     archive: Literal["active", "archived", "all"] = "active",
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
     return {
         "status": "ok",
-        "reports": list_touch_reports(archive=archive),
+        "reports": list_touch_reports(archive=archive, limit=limit, offset=offset),
     }
 
 
