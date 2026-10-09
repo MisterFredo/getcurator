@@ -22,7 +22,7 @@ type Edition = {
   candidate_count?: number | null;
   proposed_count?: number | null;
 };
-type SavedReport = TouchSavedReportSummary & { archived_at?: string | null; is_published?: boolean; published_at?: string | null; output_language?: string };
+type SavedReport = TouchSavedReportSummary & { report_type?: "MONTHLY" | "RESEARCH"; archived_at?: string | null; is_published?: boolean; published_at?: string | null; output_language?: string };
 type Row = {
   key: string;
   type: "MONTHLY" | "STANDALONE";
@@ -44,6 +44,28 @@ const STATUS_LABELS: Record<string, string> = {
   BUILDING: "Preparing", TO_REVIEW: "To review", GENERATED: "Generated",
   ERROR: "Preparation failed", ARCHIVED: "Archived",
 };
+
+const REPORT_PAGE_SIZE = 100;
+
+async function loadAllSavedReports(isActive: () => boolean): Promise<SavedReport[]> {
+  const reportsById = new Map<string, SavedReport>();
+  let offset = 0;
+  while (isActive()) {
+    const response = await api.get(
+      `/touch/reports?archive=all&limit=${REPORT_PAGE_SIZE}&offset=${offset}`,
+    );
+    if (!isActive()) return [];
+    const page: SavedReport[] = response.reports ?? [];
+    const previousSize = reportsById.size;
+    for (const report of page) reportsById.set(report.report_id, report);
+    if (page.length < REPORT_PAGE_SIZE) return Array.from(reportsById.values());
+    if (reportsById.size === previousSize) {
+      throw new Error("Report pagination did not advance. Check the backend deployment and refresh.");
+    }
+    offset += page.length;
+  }
+  return [];
+}
 
 export default function TouchMonthlyEditionList({
   onOpenReport, disabled = false, refreshKey = 0, onChanged,
@@ -69,14 +91,14 @@ export default function TouchMonthlyEditionList({
     async function load() {
       const results = await Promise.allSettled([
         api.get("/touch/editions?limit=200"),
-        api.get("/touch/reports?archive=all"),
+        loadAllSavedReports(() => active),
         api.get("/user/admin/experts"),
       ]);
       if (!active) return;
       // Commit both lists together: partial data cannot reliably deduplicate.
       if (results[0].status === "fulfilled" && results[1].status === "fulfilled") {
         setEditions(results[0].value.editions ?? []);
-        setReports(results[1].value.reports ?? []);
+        setReports(results[1].value);
       } else {
         const failed = results.find(result => result.status === "rejected");
         setError(failed?.status === "rejected" && failed.reason instanceof Error
@@ -110,7 +132,7 @@ export default function TouchMonthlyEditionList({
         reportId: edition.report_id, edition, report,
       };
     });
-    const standalone: Row[] = reports.filter(report => !linkedIds.has(report.report_id)).map(report => ({
+    const standalone: Row[] = reports.filter(report => report.report_type !== "MONTHLY" && !linkedIds.has(report.report_id)).map(report => ({
       key: `report:${report.report_id}`, type: "STANDALONE",
       subject: report.subject, expertId: report.expert_id ?? null,
       period: report.period_start?.slice(0, 7) ?? "",
@@ -290,8 +312,8 @@ export default function TouchMonthlyEditionList({
           </div>
         </article>
       ))}
-      {!loading && (editions.length >= 200 || reports.length >= 50) && <p className="text-xs text-amber-700">
-        The list loads up to 200 recent editions and 50 recent saved reports. Filters apply to these loaded entries.
+      {!loading && editions.length >= 200 && <p className="text-xs text-amber-700">
+        All saved reports have been loaded. Monthly corpora are limited to 200 recent editions; older monthly editions may not appear in this view.
       </p>}
     </section>
   );
