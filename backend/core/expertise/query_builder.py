@@ -388,7 +388,7 @@ def build_selection_context(
 
         date_filter_sql += """
 
-        AND PUBLISHED_AT >= @period_start
+        AND COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) >= @period_start
 
         """
 
@@ -400,7 +400,7 @@ def build_selection_context(
 
         date_filter_sql += """
 
-        AND PUBLISHED_AT < @period_end
+        AND COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) < @period_end
 
         """
 
@@ -601,7 +601,7 @@ def build_selection_query(
     monthly_filter_sql = ""
 
     order_sql = """
-        PUBLISHED_AT DESC
+        COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) DESC
     """
 
     if (
@@ -625,12 +625,12 @@ def build_selection_query(
 
             PARTITION BY
                 DATE_TRUNC(
-                    DATE(PUBLISHED_AT),
+                    DATE(COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT)),
                     MONTH
                 )
 
             ORDER BY
-                PUBLISHED_AT DESC,
+                COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) DESC,
                 ID_CONTENT ASC
 
         ) <= @monthly_quota
@@ -643,17 +643,17 @@ def build_selection_query(
 
             PARTITION BY
                 DATE_TRUNC(
-                    DATE(PUBLISHED_AT),
+                    DATE(COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT)),
                     MONTH
                 )
 
             ORDER BY
-                PUBLISHED_AT DESC,
+                COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) DESC,
                 ID_CONTENT ASC
 
         ) ASC,
 
-        PUBLISHED_AT DESC,
+        COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) DESC,
 
         ID_CONTENT ASC
 
@@ -673,7 +673,7 @@ def build_selection_query(
 
         {excerpt_sql},
 
-        PUBLISHED_AT AS published_at,
+        COALESCE(TIMESTAMP(SOURCE_DATE), PUBLISHED_AT) AS published_at,
 
         SOURCE_ID AS source_id,
 
