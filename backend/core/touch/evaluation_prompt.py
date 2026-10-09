@@ -16,7 +16,7 @@ from core.touch.expert_context_service import (
 # CONFIGURATION
 # ============================================================
 
-TOUCH_EVALUATION_VERSION = "1.1"
+TOUCH_EVALUATION_VERSION = "1.2"
 
 MAX_TOUCH_CONTENT_BODY_LENGTH = 6000
 
@@ -91,6 +91,37 @@ Do not invent missing figures, implications or recommendations.
 Retain concrete target-context evidence for CROSS_SECTOR research.
 The expert profile must not erase axes validated for the report.
 When no expert is supplied, use the existing ad hoc evaluation.
+
+
+============================================================
+TEMPORAL RELEVANCE OF STUDIES AND MARKET DATA
+============================================================
+
+Distinguish the candidate's supplied date from the observation or
+measurement period of the facts it reports. The supplied published_at
+is the corpus date used for selection: a source date when available,
+otherwise a publication-date fallback. Do not infer that it is always
+a verified original source publication date.
+
+A study, barometer, survey or market analysis dated within the report
+period may directly document a retained research axis even when its
+data cover an earlier month, semester or year. Do not downgrade it
+solely because the measurement period precedes the report period or
+because it does not describe an operational launch during that period.
+
+Classify and score it according to its concrete contribution to the
+subject, expert mandate and retained axes. A relevant market study
+can be DIRECT; it does not receive a high score automatically. Generic
+market commentary, a passing reference to the subject or evidence
+outside the expert mandate still follows the normal relevance rules.
+
+Preserve the actual measurement period, market, population, metric
+and methodological limits in key contributions and editorial cautions.
+Never present earlier measured growth as growth during the report
+month, or a forecast as an observed result. Distinguish publication
+of findings from the timing of the underlying developments. Do not
+invent a new study release, original publication date or new event
+from a fallback date or a republication of older material.
 
 
 ============================================================
@@ -915,6 +946,11 @@ def build_touch_evaluation_prompt(
         "coverages of the same event.\n\n"
         "Group common events with event_key, but do "
         "not deduplicate or eliminate their sources.\n\n"
+        "For studies and market analyses, distinguish the "
+        "supplied candidate date from the measurement period. "
+        "Do not downgrade relevant findings solely because "
+        "they measure an earlier period. Preserve that period "
+        "and assess scope and evidence normally.\n\n"
         "Extract the concrete documentary propositions "
         "supplied by each content.\n\n"
         "State every key contribution directly. Never "
