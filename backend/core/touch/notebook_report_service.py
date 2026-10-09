@@ -509,6 +509,7 @@ def save_touch_report(
 def list_touch_reports(
     limit: int = 50,
     archive: str = "active",
+    offset: int = 0,
 ) -> list[dict]:
 
     if archive not in {"active", "archived", "all"}:
@@ -521,6 +522,8 @@ def list_touch_reports(
         ),
         100,
     )
+
+    safe_offset = max(offset, 0)
 
     rows = query_bq(
         f"""
@@ -561,14 +564,15 @@ def list_touch_reports(
           OR (@archive = 'archived' AND ARCHIVED_AT IS NOT NULL))
         ORDER BY
 
-          CREATED_AT DESC
+          CREATED_AT DESC, REPORT_ID DESC
 
-        LIMIT @limit
+        LIMIT @limit OFFSET @offset
         """,
         {
             "limit":
                 safe_limit,
             "archive": archive,
+            "offset": safe_offset,
         },
     ) or []
 
