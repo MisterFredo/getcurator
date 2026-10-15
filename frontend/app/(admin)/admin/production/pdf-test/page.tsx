@@ -13,16 +13,31 @@ import {
 } from "@/lib/api";
 
 
+/* =========================================================
+   TYPES
+========================================================= */
+
 type Job = {
   id: string;
   status: string;
   model: string;
   text: string;
+  input_mode?: "pdf" | "json";
   usage: Record<string, unknown> | null;
   error: unknown;
   incomplete_details: unknown;
   refusal: string[];
 };
+
+type JobResponse = {
+  status: string;
+  job: Job;
+};
+
+
+/* =========================================================
+   CONFIGURATION
+========================================================= */
 
 const STORAGE_KEY =
   "getcurator-production-pdf-test";
@@ -34,7 +49,14 @@ const BASE_URL = (
 
 const MAX_BYTES = 20_000_000;
 
-function isRunning(job: Job | null): boolean {
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function isRunning(
+  job: Job | null,
+): boolean {
   return Boolean(
     job
     && ["queued", "in_progress"].includes(
@@ -43,10 +65,53 @@ function isRunning(job: Job | null): boolean {
   );
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(
+  error: unknown,
+): string {
   return error instanceof Error
     ? error.message
     : "Une erreur est survenue.";
+}
+
+function validateSources(
+  sources: File[],
+): string | null {
+  if (sources.length === 1) {
+    if (
+      !/\.(json|jsonl|txt)$/i.test(
+        sources[0].name,
+      )
+    ) {
+      return (
+        "Pour un seul fichier source, "
+        + "sélectionne un export "
+        + ".json, .jsonl ou .txt "
+        + "contenant les trois rapports."
+      );
+    }
+
+    return null;
+  }
+
+  if (sources.length === 3) {
+    if (
+      !sources.every(file =>
+        /\.pdf$/i.test(file.name),
+      )
+    ) {
+      return (
+        "Pour trois fichiers sources, "
+        + "sélectionne uniquement des PDF."
+      );
+    }
+
+    return null;
+  }
+
+  return (
+    "Sélectionne trois PDF ou un export "
+    + "JSON contenant trois rapports."
+  );
 }
 
 function download(
@@ -66,7 +131,10 @@ function download(
 
   anchor.href = url;
   anchor.download = filename;
+
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
 
   window.setTimeout(
     () => URL.revokeObjectURL(url),
@@ -74,6 +142,23 @@ function download(
   );
 }
 
+function rememberJob(
+  job: Job,
+) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(job),
+    );
+  } catch {
+    // Storage failure must not hide a started job.
+  }
+}
+
+
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default function ProductionPdfTestPage() {
   const [sources, setSources] =
@@ -100,6 +185,31 @@ export default function ProductionPdfTestPage() {
   const submitting =
     useRef(false);
 
+  const running = isRunning(job);
+
+  const sourceError =
+    validateSources(sources);
+
+  const selectedMode =
+    sources.length === 1
+      ? "json"
+      : sources.length === 3
+        ? "pdf"
+        : null;
+
+  const totalBytes = [
+    ...sources,
+    ...(prototype ? [prototype] : []),
+  ].reduce(
+    (sum, file) => sum + file.size,
+    0,
+  );
+
+
+  /* =======================================================
+     RESTORE LAST JOB
+  ======================================================= */
+
   useEffect(() => {
     try {
       const saved =
@@ -108,69 +218,71 @@ export default function ProductionPdfTestPage() {
         );
 
       if (saved) {
-        const parsed =
-          JSON.parse(saved) as Job;
+        const parsed: unknown =
+          JSON.parse(saved);
 
         if (
-          typeof parsed.id === "string"
+          parsed
+          && typeof parsed === "object"
+          && "id" in parsed
+          && "status" in parsed
+          && typeof parsed.id === "string"
           && typeof parsed.status === "string"
         ) {
-          setJob(parsed);
+          setJob(parsed as Job);
         }
       }
     } catch {
-      // The page remains usable if storage is unavailable.
+      // The page remains usable without local storage.
     }
 
     setReady(true);
   }, []);
 
-  function remember(nextJob: Job) {
-    setJob(nextJob);
 
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(nextJob),
-      );
-    } catch {
-      // Storage failure must not hide a started job.
-    }
-  }
+  /* =======================================================
+     POLL CURRENT JOB
+  ======================================================= */
+
+  const jobId = job?.id;
+  const jobStatus = job?.status;
 
   useEffect(() => {
     if (
-      !job
-      || !isRunning(job)
+      !jobId
+      || !jobStatus
+      || !["queued", "in_progress"].includes(
+        jobStatus,
+      )
       || paused
     ) {
       return;
     }
 
     let stopped = false;
+
     let timer:
       ReturnType<typeof setTimeout>
       | undefined;
 
-    const responseId = job.id;
+    const responseId = jobId;
 
     async function poll() {
       try {
-        const response: {
-          status: string;
-          job: Job;
-        } = await api.get(
-          "/production/pdf-test/jobs/"
-          + encodeURIComponent(
-            responseId,
-          ),
-        );
+        const response: JobResponse =
+          await api.get(
+            "/production/pdf-test/jobs/"
+            + encodeURIComponent(
+              responseId,
+            ),
+          );
 
         if (stopped) {
           return;
         }
 
-        remember(response.job);
+        setJob(response.job);
+        rememberJob(response.job);
 
         if (isRunning(response.job)) {
           timer = setTimeout(
@@ -199,40 +311,47 @@ export default function ProductionPdfTestPage() {
       }
     };
   }, [
-    job?.id,
-    job?.status,
+    jobId,
+    jobStatus,
     paused,
   ]);
 
+
+  /* =======================================================
+     START GENERATION
+  ======================================================= */
+
   async function generate() {
-    if (submitting.current) {
+    if (
+      submitting.current
+      || running
+    ) {
       return;
     }
 
     setError("");
 
+    const validationError =
+      validateSources(sources);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     if (
-      sources.length !== 3
-      || !prototype
+      !prototype
+      || !/\.pdf$/i.test(prototype.name)
     ) {
       setError(
-        "Sélectionne trois rapports "
-        + "et un prototype.",
+        "Sélectionne le prototype au format PDF.",
       );
       return;
     }
 
-    const total = [
-      ...sources,
-      prototype,
-    ].reduce(
-      (sum, file) => sum + file.size,
-      0,
-    );
-
-    if (total > MAX_BYTES) {
+    if (totalBytes > MAX_BYTES) {
       setError(
-        "Les quatre PDF doivent totaliser "
+        "Les documents doivent totaliser "
         + "au maximum 20 Mo.",
       );
       return;
@@ -256,10 +375,15 @@ export default function ProductionPdfTestPage() {
         prototype,
       );
 
-      const userId =
-        localStorage.getItem(
+      let userId: string | null = null;
+
+      try {
+        userId = localStorage.getItem(
           "user_id",
         );
+      } catch {
+        // Cookie-based authentication may still be available.
+      }
 
       const headers:
         Record<string, string> = {};
@@ -269,6 +393,8 @@ export default function ProductionPdfTestPage() {
           userId;
       }
 
+      // Do not set Content-Type:
+      // the browser supplies the multipart boundary.
       const response = await fetch(
         `${BASE_URL}/production/pdf-test/jobs`,
         {
@@ -279,17 +405,50 @@ export default function ProductionPdfTestPage() {
         },
       );
 
-      const data = await response.json();
+      const rawBody =
+        await response.text();
+
+      let data: {
+        detail?: unknown;
+        job?: Job;
+      };
+
+      try {
+        data = JSON.parse(rawBody);
+      } catch {
+        throw new Error(
+          "Le serveur a renvoyé une réponse "
+          + `non JSON (HTTP ${response.status}). `
+          + "Si l'envoi a été interrompu, "
+          + "l'acceptation de la génération "
+          + "n'est pas confirmée.",
+        );
+      }
 
       if (!response.ok) {
         throw new Error(
           typeof data.detail === "string"
             ? data.detail
-            : JSON.stringify(data),
+            : JSON.stringify(
+                data.detail ?? data,
+              ),
         );
       }
 
-      remember(data.job as Job);
+      if (
+        !data.job
+        || typeof data.job.id !== "string"
+        || typeof data.job.status !== "string"
+      ) {
+        throw new Error(
+          "La réponse ne contient pas "
+          + "d'identifiant de génération exploitable. "
+          + "Vérifie les logs avant de relancer.",
+        );
+      }
+
+      setJob(data.job);
+      rememberJob(data.job);
       setPaused(false);
     } catch (err) {
       setError(
@@ -303,7 +462,10 @@ export default function ProductionPdfTestPage() {
     }
   }
 
-  const running = isRunning(job);
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -316,24 +478,31 @@ export default function ProductionPdfTestPage() {
 
       <div>
         <h1 className="text-2xl font-semibold">
-          Essai de production à partir des PDF
+          Essai de production — PDF ou JSON
         </h1>
 
         <p className="mt-2 text-gray-600">
-          Trois rapports apportent les faits.
-          Le prototype sert de référence éditoriale.
+          Les trois rapports apportent les faits.
+          Le prototype PDF sert uniquement
+          de référence éditoriale.
         </p>
       </div>
 
       <div className="rounded-xl border bg-white p-6 space-y-5">
         <label className="block space-y-2">
           <span className="block font-medium">
-            Les trois rapports sources
+            Sources : trois PDF ou un export JSON
           </span>
+
+          <p className="text-sm text-gray-600">
+            Pour le test JSON, sélectionne un seul
+            fichier .json, .jsonl ou .txt contenant
+            les trois rapports exportés de BigQuery.
+          </p>
 
           <input
             type="file"
-            accept=".pdf,application/pdf"
+            accept=".pdf,.json,.jsonl,.txt,application/pdf,application/json,text/plain"
             multiple
             disabled={busy || running}
             onChange={event => {
@@ -342,27 +511,45 @@ export default function ProductionPdfTestPage() {
                   event.target.files || [],
                 ),
               );
+
+              setError("");
             }}
           />
 
           <span className="block text-sm text-gray-500">
-            {sources.length} rapport(s) sélectionné(s)
+            {sources.length} fichier(s) sélectionné(s)
           </span>
         </label>
 
         {sources.length > 0 && (
-          <ul className="text-sm text-gray-600 space-y-1">
-            {sources.map((file, index) => (
-              <li key={`${file.name}-${index}`}>
-                {index + 1}. {file.name}
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            <ul className="text-sm text-gray-600 space-y-1">
+              {sources.map((file, index) => (
+                <li key={`${file.name}-${index}`}>
+                  {index + 1}. {file.name}
+                </li>
+              ))}
+            </ul>
+
+            {sourceError ? (
+              <p className="text-sm text-amber-700">
+                {sourceError}
+              </p>
+            ) : (
+              <p className="text-sm text-emerald-700">
+                Mode sélectionné :
+                {" "}
+                {selectedMode === "json"
+                  ? "export JSON des trois rapports"
+                  : "trois rapports PDF"}
+              </p>
+            )}
+          </div>
         )}
 
         <label className="block space-y-2">
           <span className="block font-medium">
-            Prototype de référence
+            Prototype de référence — PDF
           </span>
 
           <input
@@ -374,9 +561,19 @@ export default function ProductionPdfTestPage() {
                 event.target.files?.[0]
                 || null,
               );
+
+              setError("");
             }}
           />
         </label>
+
+        <p className="text-sm text-gray-500">
+          Taille totale :
+          {" "}
+          {(totalBytes / 1_000_000).toFixed(2)}
+          {" "}
+          Mo / 20 Mo
+        </p>
 
         <button
           type="button"
@@ -384,8 +581,10 @@ export default function ProductionPdfTestPage() {
             !ready
             || busy
             || running
-            || sources.length !== 3
+            || Boolean(sourceError)
             || !prototype
+            || !/\.pdf$/i.test(prototype.name)
+            || totalBytes > MAX_BYTES
           }
           onClick={() => void generate()}
           className="
@@ -395,7 +594,7 @@ export default function ProductionPdfTestPage() {
           "
         >
           {busy
-            ? "Envoi des PDF…"
+            ? "Envoi des documents…"
             : running
               ? "Génération en cours…"
               : "Générer un nouveau plan"}
@@ -429,13 +628,24 @@ export default function ProductionPdfTestPage() {
         <section className="rounded-xl border bg-white p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold">
-              Résultat de l’essai
+              Dernière génération
             </h2>
 
             <p className="text-sm text-gray-600">
               État : {job.status}
               {" · "}
               Modèle : {job.model}
+
+              {job.input_mode && (
+                <>
+                  {" · "}
+                  Sources :
+                  {" "}
+                  {job.input_mode === "json"
+                    ? "JSON"
+                    : "PDF"}
+                </>
+              )}
             </p>
 
             <p className="mt-1 break-all text-xs text-gray-500">
@@ -453,12 +663,12 @@ export default function ProductionPdfTestPage() {
           {!running && job.status !== "completed" && (
             <div className="rounded bg-amber-50 p-4">
               <p>
-                La génération n’est pas terminée
+                La génération ne s’est pas terminée
                 correctement. Le texte éventuel
-                peut être partiel.
+                est à considérer comme partiel.
               </p>
 
-              <pre className="mt-2 whitespace-pre-wrap text-xs">
+              <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
                 {JSON.stringify(
                   job.error
                   || job.incomplete_details
@@ -473,6 +683,7 @@ export default function ProductionPdfTestPage() {
           {job.status === "completed" && !job.text && (
             <p className="text-red-700">
               Aucun plan exploitable retourné.
+              {" "}
               {job.refusal?.join(" ")}
             </p>
           )}
@@ -483,14 +694,24 @@ export default function ProductionPdfTestPage() {
                 type="button"
                 className="rounded border px-4 py-2"
                 onClick={() => {
+                  const mode =
+                    job.input_mode || "pdf";
+
+                  const suffix =
+                    job.status === "completed"
+                      ? ""
+                      : "-partiel";
+
                   download(
-                    "plan-audio-pdf.md",
+                    `plan-audio-${mode}${suffix}.md`,
                     job.text,
                     "text/markdown;charset=utf-8",
                   );
                 }}
               >
-                Télécharger le plan
+                {job.status === "completed"
+                  ? "Télécharger le plan"
+                  : "Télécharger le texte partiel"}
               </button>
 
               <pre className="
@@ -507,8 +728,11 @@ export default function ProductionPdfTestPage() {
             type="button"
             className="text-sm underline"
             onClick={() => {
+              const mode =
+                job.input_mode || "pdf";
+
               download(
-                "diagnostic-production-pdf.json",
+                `diagnostic-production-${mode}.json`,
                 JSON.stringify(
                   job,
                   null,
@@ -527,7 +751,7 @@ export default function ProductionPdfTestPage() {
                 Consommation de tokens
               </summary>
 
-              <pre className="mt-2 whitespace-pre-wrap text-xs">
+              <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
                 {JSON.stringify(
                   job.usage,
                   null,
