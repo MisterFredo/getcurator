@@ -18,7 +18,7 @@ export type ProductionPrepareRequest = {
   target_audience: string;
   output_language: "fr" | "en";
   output_format: ProductionOutputFormat;
-  target_page_count: number;
+  target_page_count: number | null;
 };
 
 
@@ -96,7 +96,7 @@ export type ProductionSummary = {
   title: string;
   output_language: "fr" | "en";
   output_format: ProductionOutputFormat;
-  target_page_count: number;
+  target_page_count: number | null;
   created_at: string;
   updated_at: string;
   corpus_sha256: string;
