@@ -1,4 +1,5 @@
 import logging
+import json
 
 from fastapi import (
     APIRouter,
@@ -34,6 +35,7 @@ from core.production.corpus_service import (
 
 from core.production.models import (
     ProductionPrepareRequest,
+    ProductionPreparedCorpus,
 )
 
 from core.production.repository import (
@@ -108,6 +110,184 @@ router = APIRouter(
         ),
     ],
 )
+
+# ============================================================
+# TEST FROM SAVED PRODUCTION + PDF PROTOTYPE
+# ============================================================
+
+@router.post(
+    "/{production_id}/pdf-test/jobs",
+    status_code=202,
+)
+async def create_saved_production_test(
+    production_id: str,
+    prototype: UploadFile = File(...),
+):
+    try:
+        production = await run_in_threadpool(
+            get_production,
+            production_id=production_id,
+        )
+
+        if production is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Production introuvable.",
+            )
+
+        corpus = (
+            ProductionPreparedCorpus.model_validate(
+                production["corpus"]
+            )
+        )
+
+        if len(corpus.reports) != 3:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Cet essai comparatif nécessite "
+                    "une production contenant "
+                    "exactement trois rapports."
+                ),
+            )
+
+        # Preserve the complete saved report payloads.
+        # No new content retrieval or evidence selection.
+        report_export = json.dumps(
+            [
+                {
+                    "report_id": snapshot.report_id,
+                    "report_json": snapshot.payload,
+                }
+                for snapshot in corpus.reports
+            ],
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+
+        remaining = (
+            MAX_TOTAL_BYTES
+            - len(report_export)
+        )
+
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    "Les rapports dépassent "
+                    "la taille autorisée pour l'essai."
+                ),
+            )
+
+        prototype_data = await prototype.read(
+            remaining + 1
+        )
+
+        if len(prototype_data) > remaining:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    "Les rapports et le prototype "
+                    "doivent totaliser au maximum "
+                    "20 Mo."
+                ),
+            )
+
+        if b"%PDF-" not in prototype_data[:1024]:
+            raise HTTPException(
+                status_code=422,
+                detail="Le prototype doit être un PDF.",
+            )
+
+        logger.warning(
+            "Production direct JSON test: "
+            "production_id=%s corpus_sha256=%s "
+            "reports=%s",
+            production_id,
+            corpus.corpus_sha256,
+            [
+                {
+                    "report_id": snapshot.report_id,
+                    "version": snapshot.version_number,
+                }
+                for snapshot in corpus.reports
+            ],
+        )
+
+        job = await run_in_threadpool(
+            start_pdf_test,
+            [
+                (
+                    "rapports-sauvegardes.json",
+                    report_export,
+                ),
+                (
+                    prototype.filename
+                    or "prototype.pdf",
+                    prototype_data,
+                ),
+            ],
+        )
+
+        return {
+            "status": "ok",
+            "job": job,
+        }
+
+    except HTTPException:
+        raise
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except APIStatusError as exc:
+        logger.exception(
+            "Saved production test API rejection"
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "OpenAI a refusé la demande "
+                f"(HTTP {exc.status_code}). "
+                "Consulter les logs backend."
+            ),
+        ) from exc
+
+    except APIConnectionError as exc:
+        logger.exception(
+            "Saved production test connection failure"
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Connexion à OpenAI interrompue. "
+                "L'acceptation de la génération "
+                "n'est pas confirmée. "
+                "Vérifier les logs avant de relancer."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            "Saved production test failed: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Impossible de démarrer l'essai. "
+                "Consulter les logs avant de relancer."
+            ),
+        ) from exc
+
+    finally:
+        await prototype.close()
 
 
 # ============================================================
