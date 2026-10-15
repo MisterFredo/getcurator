@@ -42,8 +42,8 @@ class ProductionPrepareRequest(ProductionModel):
         "SPEAKER_PRESENTATION",
     ] = "AUTONOMOUS_REPORT"
 
-    target_page_count: int = Field(
-        default=12,
+    target_page_count: int | None = Field(
+        default=None,
         ge=4,
         le=40,
     )
