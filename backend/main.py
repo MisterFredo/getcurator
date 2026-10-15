@@ -93,6 +93,7 @@ include_router("api.feedback", "/api/feedback", "FEEDBACK")
 include_router("api.mcp", "/api/mcp", "MCP")
 include_router("api.conversation", "/api/conversation", "CONVERSATION")
 include_router("api.numbers", "/api/numbers", "NUMBERS")
+include_router("api.production", "/api/production", "PRODUCTION")
 
 # --- SUPPORT
 include_router("api.visuals", "/api/visuals", "VISUALS")
