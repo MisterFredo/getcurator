@@ -223,17 +223,44 @@ def _restore_plan_references(
         mode="json",
     )
 
+    references_by_id = {
+        reference.reference_id: reference
+        for reference
+        in corpus.evidence_index
+    }
+
     for page in payload["pages"]:
+        evidence_ids = restore(
+            page["evidence_reference_ids"]
+        )
+
+        number_ids = restore(
+            page["number_reference_ids"]
+        )
+
+        # Include explicitly selected Numbers
+        # in the page's evidence.
+        for reference_id in number_ids:
+            if reference_id not in evidence_ids:
+                evidence_ids.append(reference_id)
+
+        # Include evidence of kind NUMBER
+        # in the dedicated Numbers selection.
+        for reference_id in evidence_ids:
+            if (
+                references_by_id[
+                    reference_id
+                ].kind == "NUMBER"
+                and reference_id not in number_ids
+            ):
+                number_ids.append(reference_id)
+
         page["evidence_reference_ids"] = (
-            restore(
-                page["evidence_reference_ids"]
-            )
+            evidence_ids
         )
 
         page["number_reference_ids"] = (
-            restore(
-                page["number_reference_ids"]
-            )
+            number_ids
         )
 
     return (
