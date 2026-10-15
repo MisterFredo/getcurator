@@ -377,6 +377,79 @@ class ProductionEditorialPlan(ProductionModel):
 
         return pages
 
+# ============================================================
+# EDITORIAL SELECTION BEFORE PAGE PLANNING
+# ============================================================
+
+class ProductionEditorialFinding(ProductionModel):
+    finding_id: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    message: str = Field(
+        min_length=1,
+        max_length=1500,
+    )
+
+    # Why this finding matters for the requested report.
+    editorial_relevance: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    # Includes NUMBER references when relevant.
+    evidence_reference_ids: list[str] = Field(
+        min_length=1,
+    )
+
+    cautions: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+
+
+class ProductionEditorialSelection(ProductionModel):
+    editorial_angle: str = Field(
+        min_length=1,
+        max_length=3000,
+    )
+
+    findings: list[
+        ProductionEditorialFinding
+    ] = Field(
+        min_length=1,
+        max_length=30,
+    )
+
+    # Explain meaningful exclusions, especially numeric data
+    # that are irrelevant, ambiguous or not comparable.
+    exclusions: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+    )
+
+    @field_validator("findings")
+    @classmethod
+    def validate_finding_ids(
+        cls,
+        findings: list[
+            ProductionEditorialFinding
+        ],
+    ) -> list[ProductionEditorialFinding]:
+        ids = [
+            finding.finding_id
+            for finding in findings
+        ]
+
+        if len(ids) != len(set(ids)):
+            raise ValueError(
+                "Les identifiants des constats "
+                "doivent être uniques."
+            )
+
+        return findings
+
 
 # ============================================================
 # PLAN ATTACHED TO ITS SOURCE CORPUS
