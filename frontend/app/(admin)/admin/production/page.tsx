@@ -702,7 +702,7 @@ export default function ProductionPage() {
                         {count}
                       </option>
                     ))}
-                  </select>>
+                  </select>
                 </label>
               </div>
 
