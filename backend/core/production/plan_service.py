@@ -8,6 +8,7 @@ from core.production.models import (
 
 from core.production.plan_prompt import (
     PRODUCTION_PLAN_SYSTEM_PROMPT,
+    build_plan_evidence_aliases,
     build_production_plan_prompt,
 )
 
@@ -37,7 +38,10 @@ def validate_production_plan(
         corpus.request.target_page_count
     )
 
-    if len(plan.pages) != expected_page_count:
+    if (
+        expected_page_count is not None
+        and len(plan.pages) != expected_page_count
+    ):
         raise ValueError(
             "Le plan doit contenir exactement "
             f"{expected_page_count} pages, "
@@ -176,6 +180,68 @@ def validate_production_plan(
                 )
 
 
+def _restore_plan_references(
+    plan: ProductionEditorialPlan,
+    corpus: ProductionPreparedCorpus,
+) -> ProductionEditorialPlan:
+    aliases = build_plan_evidence_aliases(
+        corpus
+    )
+
+    original_ids = {
+        reference.reference_id
+        for reference
+        in corpus.evidence_index
+    }
+
+    def restore(
+        values: list[str],
+    ) -> list[str]:
+        result = []
+
+        for value in values:
+            if value in aliases:
+                original = aliases[value]
+
+            elif value in original_ids:
+                original = value
+
+            else:
+                raise ValueError(
+                    "Référence de preuve inconnue : "
+                    f"{value}. Utilise uniquement "
+                    "les reference_id du catalogue "
+                    "(E00001, E00002, etc.)."
+                )
+
+            if original not in result:
+                result.append(original)
+
+        return result
+
+    payload = plan.model_dump(
+        mode="json",
+    )
+
+    for page in payload["pages"]:
+        page["evidence_reference_ids"] = (
+            restore(
+                page["evidence_reference_ids"]
+            )
+        )
+
+        page["number_reference_ids"] = (
+            restore(
+                page["number_reference_ids"]
+            )
+        )
+
+    return (
+        ProductionEditorialPlan.model_validate(
+            payload
+        )
+    )
+
 # ============================================================
 # GENERATE PLAN FROM SAVED PRODUCTION
 # ============================================================
@@ -237,6 +303,11 @@ def generate_production_plan(
                 ProductionEditorialPlan.model_validate(
                     parsed
                 )
+            )
+
+            plan = _restore_plan_references(
+                plan=plan,
+                corpus=corpus,
             )
 
             validate_production_plan(
