@@ -1,5 +1,6 @@
 import base64
 import os
+import json
 
 from openai import OpenAI
 
@@ -153,6 +154,100 @@ def _serialize(response) -> dict:
         ),
         "refusal": refusal,
     }
+
+def parse_report_export(
+    data: bytes,
+) -> list[dict]:
+    text = data.decode(
+        "utf-8-sig"
+    ).strip()
+
+    # Accept JSON arrays, a single JSON object,
+    # JSONL exports, and the pasted export used here.
+    try:
+        parsed = json.loads(text)
+
+        rows = (
+            parsed
+            if isinstance(parsed, list)
+            else [parsed]
+        )
+
+    except json.JSONDecodeError:
+        rows = []
+
+        for line in text.splitlines():
+            line = line.strip()
+
+            # Ignore copy/paste labels around the
+            # JSONL export, not malformed JSON records.
+            if not line.startswith("{"):
+                continue
+
+            try:
+                rows.append(
+                    json.loads(line)
+                )
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    "Une ligne JSON de l'export "
+                    "est invalide ou tronquée."
+                ) from exc
+
+    reports = []
+
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError(
+                "Chaque ligne doit être "
+                "un objet JSON."
+            )
+
+        report = row.get(
+            "report_json",
+            row,
+        )
+
+        # Some exports encode JSON columns as strings.
+        if isinstance(report, str):
+            report = json.loads(
+                report
+            )
+
+        if (
+            not isinstance(report, dict)
+            or not isinstance(
+                report.get("notebook"),
+                dict,
+            )
+            or not report.get("report_id")
+        ):
+            raise ValueError(
+                "Un rapport ne contient pas "
+                "report_id et notebook."
+            )
+
+        reports.append(report)
+
+    if len(reports) != 3:
+        raise ValueError(
+            "L'export doit contenir exactement "
+            "trois rapports. "
+            f"Reçu : {len(reports)}."
+        )
+
+    ids = [
+        report["report_id"]
+        for report in reports
+    ]
+
+    if len(set(ids)) != 3:
+        raise ValueError(
+            "L'export contient des rapports "
+            "en doublon."
+        )
+
+    return reports
 
 
 def start_pdf_test(
