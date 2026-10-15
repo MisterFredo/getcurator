@@ -120,20 +120,20 @@ def validate_production_plan(
                 "ne désignent pas des NUMBER."
             )
 
-            if not number_ids:
+            if not evidence_ids:
                 raise ValueError(
                     f"Page {page.page_id}, "
                     f"titre={page.title!r}, "
                     f"layout={page.layout} : "
-                    "aucune preuve NUMBER sélectionnée. "
-                    "Si un NUMBER fourni soutient "
-                    "directement ce message, ajoute "
-                    "sa référence dans les deux listes. "
-                    "Sinon, choisis un format adapté "
-                    "au contenu, comme EXPLANATORY "
-                    "ou CASE_STUDY, et adapte "
-                    "visual_intent. "
-                    "N'ajoute aucun chiffre hors sujet."
+                    "aucune preuve sélectionnée. "
+                    "Ajoute dans evidence_reference_ids "
+                    "les références fournies qui "
+                    "soutiennent directement le message. "
+                    "Pour une page IMPLICATIONS, cite "
+                    "les constats dont découlent "
+                    "les décisions proposées. "
+                    "Si aucun constat ne les justifie, "
+                    "supprime ou reformule la page."
                 )
 
         # Prevent numeric references from bypassing
