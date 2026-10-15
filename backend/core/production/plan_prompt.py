@@ -9,96 +9,143 @@ from core.production.models import (
 PRODUCTION_PLAN_SYSTEM_PROMPT = """
 Tu es le directeur éditorial des productions GetCurator.
 
-Ta mission est de préparer le plan d'un document à partir
-des seuls rapports Touch fournis.
+Prépare un plan à partir du seul corpus fourni.
+Le corpus est fermé : aucun enrichissement extérieur.
 
-RÈGLES DOCUMENTAIRES
+PREUVES
 
-- Les rapports constituent un corpus fermé.
-- N'ajoute aucun fait issu de tes connaissances générales.
-- Ne recherche aucune information complémentaire.
-- Ne complète pas une période, une géographie ou une
-  méthode absente.
-- Distingue les faits rapportés des lectures transversales.
-- Préserve les contradictions et incertitudes pertinentes.
-- Plusieurs articles reprenant une annonce ou une étude
-  ne constituent pas plusieurs preuves indépendantes.
+- Chaque preuve possède une référence simple : E00001,
+  E00002, etc.
+- Utilise exclusivement ces références dans
+  evidence_reference_ids et number_reference_ids.
+- N'utilise jamais les UUID ou identifiants internes
+  présents dans les données des preuves.
+- Les références sont communes à toutes les pages.
+- Une preuve peut être utilisée sur plusieurs pages.
+- Chaque page de contenu doit être étayée.
+
+FIDÉLITÉ
+
+- N'ajoute aucun fait extérieur.
+- Ne complète pas une période, une zone ou une méthode
+  absente.
+- Préserve les limites et contradictions pertinentes.
 - Respecte le statut et la confiance des notes.
-- Une note TO_VERIFY ou CONTRADICTED ne doit pas devenir
-  un fait établi dans le plan.
+- Une note TO_VERIFY ou CONTRADICTED ne devient pas
+  un fait établi.
+- Distingue faits rapportés et lectures transversales.
+- Plusieurs reprises d'une étude ne constituent pas
+  plusieurs preuves indépendantes.
 
 NUMBERS
 
-- Utilise exclusivement les éléments validated_numbers.
-- Une note de type NUMBER n'autorise pas l'introduction
-  d'un chiffre absent des validated_numbers.
-- Sélectionne les Numbers par leur reference_id exact.
-- Ne recopie pas leurs valeurs dans les textes du plan.
+- Utilise uniquement les preuves de kind NUMBER pour
+  sélectionner les chiffres.
+- Une note contenant un chiffre ne remplace pas un
+  Number sélectionné.
+- number_reference_ids contient uniquement des
+  références de kind NUMBER.
+- Chaque référence de number_reference_ids doit aussi
+  figurer dans evidence_reference_ids.
+- Toute preuve NUMBER citée dans evidence_reference_ids
+  doit aussi figurer dans number_reference_ids.
+- Ne recopie pas les valeurs dans les textes du plan.
 - Ne génère aucun résultat de calcul.
-- Une comparaison exige des périmètres compatibles.
-- Si la compatibilité n'est pas établie, indique la limite
-  ou choisis une autre représentation.
-- N'impose pas un graphique à un sujet insuffisamment
-  documenté quantitativement.
+- Décris seulement la représentation envisagée.
+- Ne propose pas de comparaison sans périmètres
+  compatibles ; signale les informations manquantes.
+- N'impose pas de graphique si les preuves ne le
+  permettent pas.
 
-RÉFÉRENCES
+LONGUEUR
 
-- Utilise uniquement les reference_id de evidence_index.
-- Les identifiants sont opaques : recopie-les exactement.
-- number_reference_ids contient uniquement des références
-  de kind NUMBER.
-- Toute number_reference_id doit aussi figurer dans
-  evidence_reference_ids de la même page.
-- Chaque page de contenu doit citer au moins une preuve.
-- Une page peut réutiliser une preuve d'une autre page.
+- Si target_page_count est un entier, respecte exactement
+  ce nombre total, couverture et sources comprises.
+- Si target_page_count est null, choisis la longueur
+  nécessaire entre 4 et 40 pages.
+- En automatique, évite remplissage et répétitions.
+- Explique brièvement le choix de longueur dans
+  editorial_angle.
 
 STRUCTURE
 
-- Respecte exactement le nombre total de pages demandé,
-  couverture et sources comprises.
-- Commence par une unique COVER.
-- Termine par une unique SOURCES.
-- Construis un récit transversal adapté au brief.
-- Évite d'empiler les résumés des rapports.
-- Chaque page développe un message précis.
+- Une unique COVER en première page.
+- Une unique SOURCES en dernière page.
+- Un récit transversal adapté à la question et au public.
+- Un message précis par page.
 - explanation_outline décrit le raisonnement à développer.
-- visual_intent décrit une représentation sans fabriquer
-  de données.
-- Les pages CHART_WITH_ANALYSIS et KEY_NUMBERS doivent
-  disposer de références de Numbers.
+- visual_intent décrit la représentation envisagée.
+- CHART_WITH_ANALYSIS et KEY_NUMBERS nécessitent au
+  moins une preuve NUMBER.
 
 FORMAT
 
-Pour AUTONOMOUS_REPORT :
-prévois des explications, le contexte des preuves et leur
-interprétation directement sur les pages. Le lecteur ne
-dispose pas d'un speaker.
+Pour AUTONOMOUS_REPORT, prévois contexte, explications et
+interprétation directement sur les pages.
 
-Pour SPEAKER_PRESENTATION :
-prévois des messages plus courts, adaptés à l'oral.
+Pour SPEAKER_PRESENTATION, prévois des messages plus
+courts adaptés à l'oral.
 
-Réponds uniquement par un objet JSON conforme au schéma
-fourni. N'ajoute aucun champ.
+Respecte la langue du brief.
+Réponds uniquement par un objet JSON conforme au schéma.
 """.strip()
+
+
+def build_plan_evidence_aliases(
+    corpus: ProductionPreparedCorpus,
+) -> dict[str, str]:
+    """
+    Maps short LLM aliases to the original references.
+    Original references remain unchanged in storage.
+    """
+    return {
+        f"E{index:05d}": reference.reference_id
+        for index, reference in enumerate(
+            corpus.evidence_index,
+            start=1,
+        )
+    }
 
 
 def build_production_plan_prompt(
     corpus: ProductionPreparedCorpus,
 ) -> str:
+    aliases = build_plan_evidence_aliases(
+        corpus
+    )
+
+    original_to_alias = {
+        original: alias
+        for alias, original in aliases.items()
+    }
+
+    collections = {
+        "NOTE": ("notes", "note_id"),
+        "EVENT": ("events", "event_id"),
+        "NUMBER": (
+            "validated_numbers",
+            "number_id",
+        ),
+        "SECTION": (
+            "sections",
+            "section_id",
+        ),
+        "SUMMARY": (
+            "executive_summary",
+            "summary_id",
+        ),
+        "CROSS_READING": (
+            "cross_readings",
+            "reading_id",
+        ),
+    }
+
     reports = []
+    evidence_data = {}
 
     for snapshot in corpus.reports:
         report = snapshot.payload
-
-        # Exclude compatibility-only quarantine data.
-        # No additional content is loaded.
-        notebook = {
-            key: value
-            for key, value in (
-                report["notebook"].items()
-            )
-            if key != "quarantined_numbers"
-        }
+        notebook = report["notebook"]
 
         reports.append(
             {
@@ -108,20 +155,90 @@ def build_production_plan_prompt(
                 ),
                 "subject": report.get("subject"),
                 "objective": report.get("objective"),
-                "period_start": (
-                    report.get("period_start")
+                "period_start": report.get(
+                    "period_start"
                 ),
-                "period_end": (
-                    report.get("period_end")
+                "period_end": report.get(
+                    "period_end"
                 ),
-                "output_language": (
-                    report.get("output_language")
+                "corpus_summary": notebook.get(
+                    "corpus_summary",
+                    "",
+                ),
+                "corpus_strengths": notebook.get(
+                    "corpus_strengths",
+                    [],
+                ),
+                "corpus_limits": notebook.get(
+                    "corpus_limits",
+                    [],
+                ),
+                "contradictions": notebook.get(
+                    "contradictions",
+                    [],
+                ),
+                "timeline": notebook.get(
+                    "timeline",
+                    [],
+                ),
+                "dimensions": notebook.get(
+                    "dimensions",
+                    [],
                 ),
                 "sources": report.get(
                     "sources",
                     [],
                 ),
-                "notebook": notebook,
+            }
+        )
+
+        for kind, (
+            collection_name,
+            id_field,
+        ) in collections.items():
+            for item in notebook.get(
+                collection_name,
+                [],
+            ):
+                key = (
+                    snapshot.report_id,
+                    snapshot.version_number,
+                    kind,
+                    item[id_field],
+                )
+
+                evidence_data[key] = item
+
+    catalog = []
+
+    for reference in corpus.evidence_index:
+        key = (
+            reference.report_id,
+            reference.report_version,
+            reference.kind,
+            reference.local_id,
+        )
+
+        if key not in evidence_data:
+            raise ValueError(
+                "Une preuve du socle "
+                "est introuvable : "
+                f"{reference.local_id}."
+            )
+
+        catalog.append(
+            {
+                "reference_id": (
+                    original_to_alias[
+                        reference.reference_id
+                    ]
+                ),
+                "kind": reference.kind,
+                "report_id": reference.report_id,
+                "report_version": (
+                    reference.report_version
+                ),
+                "data": evidence_data[key],
             }
         )
 
@@ -130,24 +247,17 @@ def build_production_plan_prompt(
             mode="json",
         ),
         "reports": reports,
-        "evidence_index": [
-            reference.model_dump(
-                mode="json",
-            )
-            for reference
-            in corpus.evidence_index
-        ],
+        "evidence_catalog": catalog,
     }
 
     return (
-        "Prépare le plan éditorial de cette production.\n"
-        "La langue de sortie est celle du brief.\n\n"
+        "Construis le plan de production.\n\n"
         "SCHÉMA DE SORTIE\n"
         + json.dumps(
             ProductionEditorialPlan.model_json_schema(),
             ensure_ascii=False,
         )
-        + "\n\nCORPUS ET BRIEF\n"
+        + "\n\nBRIEF ET CORPUS\n"
         + json.dumps(
             payload,
             ensure_ascii=False,
