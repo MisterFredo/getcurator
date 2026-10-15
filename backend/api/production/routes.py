@@ -252,6 +252,17 @@ def generate_editorial_plan(
             production_id=production_id,
         )
 
+    except ValueError as exc:
+        logger.exception(
+            "Production plan rejected: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
         logger.exception(
             "Production loading failed: %s",
