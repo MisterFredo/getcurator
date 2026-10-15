@@ -145,6 +145,9 @@ def _serialize(response) -> dict:
             if response.error
             else None
         ),
+         "input_mode": (
+            response.metadata or {}
+        ).get("input_mode", "pdf"),
         "incomplete_details": (
             response.incomplete_details.model_dump(
                 mode="json"
@@ -253,61 +256,45 @@ def parse_report_export(
 def start_pdf_test(
     documents: list[tuple[str, bytes]],
 ) -> dict:
-    if len(documents) != 4:
+    # PDF mode: 3 sources + 1 prototype.
+    # JSON mode: 1 export + 1 prototype.
+    if len(documents) not in {2, 4}:
         raise ValueError(
-            "Trois rapports et un prototype "
-            "sont nécessaires."
+            "Fournis trois PDF sources "
+            "ou un export JSON, "
+            "ainsi qu'un prototype PDF."
         )
 
-    total = sum(
+    if sum(
         len(data)
         for _, data in documents
-    )
-
-    if total > MAX_TOTAL_BYTES:
+    ) > MAX_TOTAL_BYTES:
         raise ValueError(
-            "Les quatre PDF doivent totaliser "
-            "au maximum 20 Mo pour cet essai."
+            "Les documents doivent totaliser "
+            "au maximum 20 Mo."
         )
 
     content = []
+    instructions = INSTRUCTIONS
 
-    for index, (filename, data) in enumerate(
-        documents
-    ):
+    def add_pdf(
+        filename: str,
+        data: bytes,
+        label: str,
+    ) -> None:
         if b"%PDF-" not in data[:1024]:
             raise ValueError(
                 f"PDF invalide : {filename}"
             )
 
-        is_prototype = index == 3
-
-        role = (
-            "PROTOTYPE — RÉFÉRENCE ÉDITORIALE UNIQUEMENT"
-            if is_prototype
-            else f"RAPPORT SOURCE {index + 1}"
-        )
-
-        # Stable filenames distinguish the factual sources
-        # from the prototype inside the request.
-        api_filename = (
-            "prototype.pdf"
-            if is_prototype
-            else f"rapport_source_{index + 1}.pdf"
-        )
-
         content.extend([
             {
                 "type": "input_text",
-                "text": (
-                    f"{role}\n"
-                    f"Nom original : {filename}\n"
-                    f"Nom dans la requête : {api_filename}"
-                ),
+                "text": label,
             },
             {
                 "type": "input_file",
-                "filename": api_filename,
+                "filename": filename,
                 "file_data": (
                     "data:application/pdf;base64,"
                     + base64.b64encode(
@@ -318,13 +305,104 @@ def start_pdf_test(
             },
         ])
 
+    if len(documents) == 2:
+        input_mode = "json"
+
+        reports = parse_report_export(
+            documents[0][1]
+        )
+
+        # Full saved reports, without flattening,
+        # selecting or removing their contents.
+        content.append({
+            "type": "input_text",
+            "text": (
+                "LES TROIS RAPPORTS SOURCES "
+                "AU FORMAT JSON\n\n"
+                + json.dumps(
+                    reports,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                )
+            ),
+        })
+
+        instructions += """
+
+ADAPTATION AU FORMAT JSON DES SOURCES
+
+Les trois rapports sources sont fournis intégralement
+en JSON, dans le message utilisateur.
+Le prototype est le seul PDF joint.
+
+Toute mention précédente de PDF ou de pages sources
+s'applique désormais aux rapports JSON, sauf au prototype.
+
+Les rapports JSON n'ont pas de pagination :
+n'invente aucun numéro de page.
+
+Référence les faits avec :
+- sujet du rapport ;
+- report_id et version_number ;
+- collection et identifiant de l'objet utilisé,
+  par exemple notes/note_id ou
+  validated_numbers/number_id ;
+- pour une contribution, son content_id ;
+- pour un champ sans identifiant, son chemin JSON précis.
+
+Préserve les liens entre sections, notes, chiffres,
+contributions et sources.
+
+Tu peux utiliser les chiffres explicitement présents
+dans le texte du rapport, pas seulement ceux de
+validated_numbers. Indique leur provenance exacte.
+
+N'utilise aucune information factuelle provenant
+uniquement du prototype.
+"""
+
+    else:
+        input_mode = "pdf"
+
+        for index, (
+            filename,
+            data,
+        ) in enumerate(
+            documents[:3],
+            start=1,
+        ):
+            add_pdf(
+                filename=(
+                    f"rapport_source_{index}.pdf"
+                ),
+                data=data,
+                label=(
+                    f"RAPPORT SOURCE {index}\n"
+                    f"Nom original : {filename}"
+                ),
+            )
+
+    prototype_name, prototype_data = (
+        documents[-1]
+    )
+
+    add_pdf(
+        filename="prototype.pdf",
+        data=prototype_data,
+        label=(
+            "PROTOTYPE — RÉFÉRENCE "
+            "ÉDITORIALE UNIQUEMENT\n"
+            f"Nom original : {prototype_name}"
+        ),
+    )
+
     with _client() as client:
         response = client.responses.create(
             model=(
                 os.getenv("PRODUCTION_PDF_MODEL")
                 or "gpt-5.4"
             ),
-            instructions=INSTRUCTIONS,
+            instructions=instructions,
             input=[
                 {
                     "role": "user",
@@ -332,18 +410,18 @@ def start_pdf_test(
                 },
             ],
             reasoning={
-                "effort": "high",
+                "effort": "medium",
             },
-            max_output_tokens=24000,
+            max_output_tokens=48000,
             background=True,
             store=True,
             metadata={
                 "workflow": WORKFLOW,
+                "input_mode": input_mode,
             },
         )
 
     return _serialize(response)
-
 
 def get_pdf_test(
     response_id: str,
