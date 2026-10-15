@@ -520,9 +520,7 @@ export default function ProductionPage() {
         ),
       );
     } catch (err) {
-      setError(
-        `${errorMessage(err)} Consultez l’historique en rouvrant la production avant de relancer.`,
-      );
+      setError(errorMessage(err));
     } finally {
       setGenerating(false);
     }
