@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 
 
 from datetime import datetime, timezone
@@ -283,10 +284,6 @@ def _restore_plan_references(
 # GENERATE PLAN FROM SAVED PRODUCTION
 # ============================================================
 
-# ============================================================
-# GENERATION HELPERS
-# ============================================================
-
 def _generate_validated_json(
     *,
     original_prompt: str,
@@ -298,9 +295,11 @@ def _generate_validated_json(
     stage: str,
 ):
     prompt = original_prompt
-    last_error = "Erreur inconnue."
+    errors: list[str] = []
 
     for attempt in range(attempts):
+        raw_content = ""
+
         try:
             raw_content = run_llm_json(
                 prompt=prompt,
@@ -312,15 +311,12 @@ def _generate_validated_json(
             if not raw_content.strip():
                 raise ValueError(
                     "Le LLM n'a renvoyé aucun "
-                    "contenu exploitable. Vérifier "
-                    "les erreurs du client LLM."
+                    "contenu exploitable."
                 )
 
-            result = (
-                response_model.model_validate(
-                    extract_json_object(
-                        raw_content
-                    )
+            result = response_model.model_validate(
+                extract_json_object(
+                    raw_content
                 )
             )
 
@@ -329,7 +325,8 @@ def _generate_validated_json(
             return result
 
         except Exception as exc:
-            last_error = str(exc)[:4000]
+            error = str(exc)[:4000]
+            errors.append(error)
 
             logger.warning(
                 "Production stage=%s "
@@ -337,23 +334,66 @@ def _generate_validated_json(
                 stage,
                 attempt + 1,
                 attempts,
-                last_error,
+                error,
             )
 
             if attempt + 1 < attempts:
-                prompt = build_retry_prompt(
-                    original_prompt=(
-                        original_prompt
-                    ),
-                    error=last_error,
+                correction = {
+                    "stage": stage,
+                    "validation_errors": errors,
+                    "previous_response": raw_content,
+                    "instructions": [
+                        (
+                            "Corrige la réponse précédente "
+                            "en respectant le schéma et "
+                            "toutes les consignes initiales."
+                        ),
+                        (
+                            "Conserve les éléments valides, "
+                            "sauf si leur modification est "
+                            "nécessaire pour corriger "
+                            "les erreurs."
+                        ),
+                        (
+                            "Utilise uniquement les "
+                            "reference_id E00001, etc., "
+                            "fournis pour cette étape."
+                        ),
+                        (
+                            "N'invente aucune référence "
+                            "et aucun chiffre."
+                        ),
+                        (
+                            "Respecte target_page_count "
+                            "s'il est renseigné."
+                        ),
+                        (
+                            "Si une page ne dispose pas "
+                            "de NUMBER pertinent, choisis "
+                            "un format adapté plutôt que "
+                            "d'ajouter un chiffre hors sujet."
+                        ),
+                        (
+                            "Retourne uniquement "
+                            "l'objet JSON complet corrigé."
+                        ),
+                    ],
+                }
+
+                prompt = (
+                    original_prompt
+                    + "\n\nCORRECTION REQUISE\n"
+                    + json.dumps(
+                        correction,
+                        ensure_ascii=False,
+                    )
                 )
 
     raise ValueError(
         f"Échec de l'étape {stage} "
         f"après {attempts} tentative(s) : "
-        f"{last_error}"
+        f"{errors[-1]}"
     )
-
 
 # ============================================================
 # GENERATE PLAN FROM SAVED PRODUCTION
