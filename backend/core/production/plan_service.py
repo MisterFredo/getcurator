@@ -120,15 +120,21 @@ def validate_production_plan(
                 "ne désignent pas des NUMBER."
             )
 
-        if not number_ids.issubset(
-            evidence_ids
-        ):
-            raise ValueError(
-                f"Page {page.page_id} : "
-                "chaque Number doit aussi être "
-                "référencé dans "
-                "evidence_reference_ids."
-            )
+            if not number_ids:
+                raise ValueError(
+                    f"Page {page.page_id}, "
+                    f"titre={page.title!r}, "
+                    f"layout={page.layout} : "
+                    "aucune preuve NUMBER sélectionnée. "
+                    "Si un NUMBER fourni soutient "
+                    "directement ce message, ajoute "
+                    "sa référence dans les deux listes. "
+                    "Sinon, choisis un format adapté "
+                    "au contenu, comme EXPLANATORY "
+                    "ou CASE_STUDY, et adapte "
+                    "visual_intent. "
+                    "N'ajoute aucun chiffre hors sujet."
+                )
 
         # Prevent numeric references from bypassing
         # the dedicated Numbers selection.
