@@ -1,16 +1,22 @@
+import logging
+import os
+
+
 from datetime import datetime, timezone
+
+from core.production.plan_prompt import (
+    PRODUCTION_SELECTION_SYSTEM_PROMPT,
+    build_production_selection_prompt,
+)
+
 
 from core.production.models import (
     ProductionEditorialPlan,
     ProductionPlanSnapshot,
     ProductionPreparedCorpus,
+    ProductionEditorialSelection,
 )
 
-from core.production.plan_prompt import (
-    PRODUCTION_PLAN_SYSTEM_PROMPT,
-    build_plan_evidence_aliases,
-    build_production_plan_prompt,
-)
 
 from core.production.repository import (
     get_production,
@@ -24,6 +30,7 @@ from core.touch.notebook_utils import (
 from utils.llm import (
     run_llm_json,
 )
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
