@@ -128,12 +128,13 @@ async def create_pdf_test_job(
     ]
 
     try:
-        if len(sources) != 3:
+        if len(sources) not in {1, 3}:
             raise HTTPException(
                 status_code=422,
                 detail=(
-                    "Sélectionne exactement "
-                    "trois rapports sources."
+                    "Sélectionne trois PDF "
+                    "ou un seul export JSON "
+                    "contenant trois rapports."
                 ),
             )
 
