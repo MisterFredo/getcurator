@@ -5,7 +5,10 @@ import os
 from datetime import datetime, timezone
 
 from core.production.plan_prompt import (
+    PRODUCTION_PLAN_SYSTEM_PROMPT,
     PRODUCTION_SELECTION_SYSTEM_PROMPT,
+    build_plan_evidence_aliases,
+    build_production_plan_prompt,
     build_production_selection_prompt,
 )
 
@@ -274,6 +277,82 @@ def _restore_plan_references(
 # GENERATE PLAN FROM SAVED PRODUCTION
 # ============================================================
 
+# ============================================================
+# GENERATION HELPERS
+# ============================================================
+
+def _generate_validated_json(
+    *,
+    original_prompt: str,
+    system_prompt: str,
+    response_model,
+    validate,
+    model: str,
+    attempts: int,
+    stage: str,
+):
+    prompt = original_prompt
+    last_error = "Erreur inconnue."
+
+    for attempt in range(attempts):
+        try:
+            raw_content = run_llm_json(
+                prompt=prompt,
+                model=model,
+                temperature=0.0,
+                system_prompt=system_prompt,
+            )
+
+            if not raw_content.strip():
+                raise ValueError(
+                    "Le LLM n'a renvoyé aucun "
+                    "contenu exploitable. Vérifier "
+                    "les erreurs du client LLM."
+                )
+
+            result = (
+                response_model.model_validate(
+                    extract_json_object(
+                        raw_content
+                    )
+                )
+            )
+
+            validate(result)
+
+            return result
+
+        except Exception as exc:
+            last_error = str(exc)[:4000]
+
+            logger.warning(
+                "Production stage=%s "
+                "attempt=%s/%s failed: %s",
+                stage,
+                attempt + 1,
+                attempts,
+                last_error,
+            )
+
+            if attempt + 1 < attempts:
+                prompt = build_retry_prompt(
+                    original_prompt=(
+                        original_prompt
+                    ),
+                    error=last_error,
+                )
+
+    raise ValueError(
+        f"Échec de l'étape {stage} "
+        f"après {attempts} tentative(s) : "
+        f"{last_error}"
+    )
+
+
+# ============================================================
+# GENERATE PLAN FROM SAVED PRODUCTION
+# ============================================================
+
 def generate_production_plan(
     production_id: str,
     model: str | None = None,
@@ -294,81 +373,156 @@ def generate_production_plan(
         )
     )
 
-    original_prompt = (
-        build_production_plan_prompt(
-            corpus=corpus,
-        )
+    # Separate configuration for Production.
+    # Does not change the shared LLM default.
+    selected_model = (
+        model
+        or os.getenv("PRODUCTION_LLM_MODEL")
+        or "gpt-4o"
     )
-
-    prompt = original_prompt
 
     attempts = min(
         max(max_attempts, 1),
         3,
     )
 
-    last_error = (
-        "Erreur inconnue pendant "
-        "la génération du plan."
+    aliases = build_plan_evidence_aliases(
+        corpus
     )
 
-    for attempt in range(attempts):
-        try:
-            raw_content = run_llm_json(
-                prompt=prompt,
-                model=model,
-                temperature=0.0,
-                system_prompt=(
-                    PRODUCTION_PLAN_SYSTEM_PROMPT
-                ),
-            )
-
-            parsed = extract_json_object(
-                raw_content
-            )
-
-            plan = (
-                ProductionEditorialPlan.model_validate(
-                    parsed
+    def validate_selection(
+        selection: ProductionEditorialSelection,
+    ) -> None:
+        for finding in selection.findings:
+            unknown = (
+                set(
+                    finding
+                    .evidence_reference_ids
                 )
+                - set(aliases)
             )
 
-            plan = _restore_plan_references(
-                plan=plan,
+            if unknown:
+                raise ValueError(
+                    f"Constat {finding.finding_id} : "
+                    "références inconnues : "
+                    + ", ".join(
+                        sorted(unknown)
+                    )
+                )
+
+    logger.info(
+        "Production generation started: "
+        "production_id=%s model=%s",
+        production_id,
+        selected_model,
+    )
+
+    selection = _generate_validated_json(
+        original_prompt=(
+            build_production_selection_prompt(
+                corpus
+            )
+        ),
+        system_prompt=(
+            PRODUCTION_SELECTION_SYSTEM_PROMPT
+        ),
+        response_model=(
+            ProductionEditorialSelection
+        ),
+        validate=validate_selection,
+        model=selected_model,
+        attempts=attempts,
+        stage="selection_editoriale",
+    )
+
+    # Temporary diagnostic trace.
+    # Contains report content: keep in internal logs.
+    logger.info(
+        "Production editorial selection: "
+        "production_id=%s selection=%s",
+        production_id,
+        selection.model_dump_json(),
+    )
+
+    selected_original_ids = {
+        aliases[reference_id]
+        for finding in selection.findings
+        for reference_id
+        in finding.evidence_reference_ids
+    }
+
+    def validate_generated_plan(
+        plan: ProductionEditorialPlan,
+    ) -> None:
+        restored = _restore_plan_references(
+            plan=plan,
+            corpus=corpus,
+        )
+
+        for page in restored.pages:
+            unexpected = (
+                set(
+                    page.evidence_reference_ids
+                )
+                - selected_original_ids
+            )
+
+            if unexpected:
+                raise ValueError(
+                    f"Page {page.page_id} : "
+                    "des preuves ne font pas partie "
+                    "de la sélection éditoriale."
+                )
+
+        validate_production_plan(
+            plan=restored,
+            corpus=corpus,
+        )
+
+    plan = _generate_validated_json(
+        original_prompt=(
+            build_production_plan_prompt(
                 corpus=corpus,
+                selection=selection,
             )
+        ),
+        system_prompt=(
+            PRODUCTION_PLAN_SYSTEM_PROMPT
+        ),
+        response_model=(
+            ProductionEditorialPlan
+        ),
+        validate=validate_generated_plan,
+        model=selected_model,
+        attempts=attempts,
+        stage="construction_plan",
+    )
 
-            validate_production_plan(
-                plan=plan,
-                corpus=corpus,
-            )
+    plan = _restore_plan_references(
+        plan=plan,
+        corpus=corpus,
+    )
 
-            return ProductionPlanSnapshot(
-                production_id=(
-                    corpus.production_id
-                ),
-                corpus_sha256=(
-                    corpus.corpus_sha256
-                ),
-                generated_at=datetime.now(
-                    timezone.utc,
-                ),
-                plan=plan,
-            )
+    logger.info(
+        "Production plan generated: "
+        "production_id=%s findings=%s "
+        "selected_evidence=%s pages=%s",
+        production_id,
+        len(selection.findings),
+        len(selected_original_ids),
+        len(plan.pages),
+    )
 
-        except Exception as exc:
-            last_error = str(exc)[:4000]
-
-            if attempt + 1 >= attempts:
-                break
-
-            prompt = build_retry_prompt(
-                original_prompt=original_prompt,
-                error=last_error,
-            )
-
-    raise ValueError(
-        "Échec de la génération du plan "
-        f"après {attempts} tentative(s) : "
-        f"{last_error}"
+    return ProductionPlanSnapshot(
+        production_id=(
+            corpus.production_id
+        ),
+        corpus_sha256=(
+            corpus.corpus_sha256
+        ),
+        generated_at=datetime.now(
+            timezone.utc,
+        ),
+        plan=plan,
     )
