@@ -28,6 +28,9 @@ import type {
   ProductionSummary,
 } from "@/types/production";
 
+import ProductionPageNumbers from
+  "@/components/admin/production/ProductionPageNumbers";
+
 
 /* =========================================================
    TYPES
@@ -1120,6 +1123,11 @@ export default function ProductionPage() {
                               </ul>
                             </div>
                           )}
+
+                          <ProductionPageNumbers
+                            production={production}
+                            page={page}
+                          />
 
                           <details className="border-t pt-3 text-sm">
                             <summary className="cursor-pointer text-slate-500">
