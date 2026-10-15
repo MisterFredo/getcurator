@@ -483,7 +483,7 @@ def generate_production_plan(
 
     # Temporary diagnostic trace.
     # Contains report content: keep in internal logs.
-    logger.info(
+    logger.warning(
         "Production editorial selection: "
         "production_id=%s selection=%s",
         production_id,
