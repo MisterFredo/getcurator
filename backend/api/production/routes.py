@@ -96,7 +96,7 @@ router = APIRouter(
 # ============================================================
 
 @router.post(
-    "",
+    "/",
     status_code=201,
 )
 def create_production(
@@ -144,7 +144,7 @@ def create_production(
 # LIST PRODUCTIONS
 # ============================================================
 
-@router.get("")
+@router.get("/")
 def browse_productions(
     limit: int = Query(
         default=20,
