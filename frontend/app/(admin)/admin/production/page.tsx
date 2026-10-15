@@ -171,7 +171,7 @@ export default function ProductionPage() {
     );
 
   const [pageCount, setPageCount] =
-    useState(12);
+    useState<number | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -680,15 +680,19 @@ export default function ProductionPage() {
                   <span>Pages</span>
                   <select
                     className={INPUT}
-                    value={pageCount}
+                    value={pageCount ?? "auto"}
                     onChange={(event) =>
                       setPageCount(
-                        Number(
-                          event.target.value,
-                        ),
+                        event.target.value === "auto"
+                          ? null
+                          : Number(event.target.value),
                       )
                     }
                   >
+                    <option value="auto">
+                      Automatique
+                    </option>
+                  
                     {Array.from(
                       { length: 37 },
                       (_, index) => index + 4,
@@ -700,7 +704,7 @@ export default function ProductionPage() {
                         {count}
                       </option>
                     ))}
-                  </select>
+                  </select>>
                 </label>
               </div>
 
