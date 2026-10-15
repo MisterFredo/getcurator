@@ -27,7 +27,6 @@ from core.production.repository import (
 )
 
 from core.touch.notebook_utils import (
-    build_retry_prompt,
     extract_json_object,
 )
 
