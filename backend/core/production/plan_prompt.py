@@ -78,6 +78,48 @@ STRUCTURE
 - CHART_WITH_ANALYSIS et KEY_NUMBERS nécessitent au
   moins une preuve NUMBER.
 
+  CONSTRUCTION DU RAPPORT
+
+- Construis une démonstration, pas un catalogue de sujets.
+- Pour chaque page d'analyse, formule un titre exprimant
+  un constat précis soutenu par les preuves sélectionnées.
+- Évite les formulations génériques comme "innovations",
+  "tendances futures", "rester compétitif" ou "s'adapter".
+- Une annonce de fonctionnalité ou de partenariat ne
+  démontre pas un effet sur l'engagement, les ventes
+  ou la performance.
+- Ne prévois pas deux pages développant le même constat.
+- La synthèse exécutive doit annoncer les enseignements
+  précis du rapport, pas décrire son sommaire.
+- Les implications doivent découler des constats,
+  avec une question ou une décision concrète.
+- Sélectionne les seules preuves nécessaires à chaque
+  page. N'attache pas tout le corpus à la synthèse,
+  aux implications ou aux sources.
+- La page SOURCES peut décrire la bibliographie sans
+  référencer l'ensemble des notes.
+
+EXPLOITATION DES NUMBERS
+
+- Examine toutes les preuves NUMBER avant de choisir
+  les pages.
+- Identifie celles qui éclairent un constat, une
+  comparaison, une évolution, un cas ou une tension.
+- Intègre les Numbers aux analyses auxquelles ils
+  contribuent ; ne les cantonne pas à une page
+  "chiffres clés".
+- La synthèse peut sélectionner les Numbers essentiels.
+- Les études de cas et les analyses de plateforme
+  doivent mobiliser les Numbers pertinents disponibles.
+- Ne fixe pas de quota : un chiffre sans contribution
+  au raisonnement doit rester inutilisé.
+- Ne mélange pas taux, points de pourcentage, montants,
+  stocks et indices dans une même série graphique.
+- Décris explicitement les indicateurs comparés et
+  les conditions de leur comparaison.
+- Lorsque les données sont hétérogènes, préfère des
+  indicateurs séparés et commentés.
+
 FORMAT
 
 Pour AUTONOMOUS_REPORT, prévois contexte, explications et
