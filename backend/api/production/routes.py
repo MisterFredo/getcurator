@@ -64,6 +64,53 @@ from utils.auth import (
 logger = logging.getLogger(__name__)
 
 # ============================================================
+# ADMIN ACCESS
+# ============================================================
+
+def _require_production_admin(
+    request: Request,
+) -> None:
+    user_id = get_user_id_from_request(
+        request
+    )
+
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    user = get_user_by_id(
+        user_id
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    role = str(
+        user.get("ROLE") or ""
+    ).strip().lower()
+
+    if role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required",
+        )
+
+
+router = APIRouter(
+    dependencies=[
+        Depends(
+            _require_production_admin
+        ),
+    ],
+)
+
+
+# ============================================================
 # PDF COMPARISON TEST
 # ============================================================
 
@@ -236,53 +283,6 @@ def read_pdf_test_job(
         "status": "ok",
         "job": job,
     }
-
-
-# ============================================================
-# ADMIN ACCESS
-# ============================================================
-
-def _require_production_admin(
-    request: Request,
-) -> None:
-    user_id = get_user_id_from_request(
-        request
-    )
-
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated",
-        )
-
-    user = get_user_by_id(
-        user_id
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated",
-        )
-
-    role = str(
-        user.get("ROLE") or ""
-    ).strip().lower()
-
-    if role != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access required",
-        )
-
-
-router = APIRouter(
-    dependencies=[
-        Depends(
-            _require_production_admin
-        ),
-    ],
-)
 
 
 # ============================================================
