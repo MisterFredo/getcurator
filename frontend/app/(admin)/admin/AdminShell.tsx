@@ -16,6 +16,7 @@ import {
   Layers,
   LayoutTemplate,
   Link as LinkIcon,
+  Presentation,
   Link2,
   Puzzle,
   Sparkles,
@@ -169,6 +170,11 @@ export default function AdminShell({
           href: "/admin/touch",
           label: "GetCurator Touch",
           icon: Sparkles,
+        },
+        {
+          href: "/admin/production",
+          label: "Productions",
+          icon: Presentation,
         },
         {
           href: "/admin/digest",
