@@ -196,7 +196,9 @@ def save_prepared_production(
             @title AS TITLE,
             @output_language AS OUTPUT_LANGUAGE,
             @output_format AS OUTPUT_FORMAT,
-            @target_page_count AS TARGET_PAGE_COUNT,
+            CAST(
+              @target_page_count AS INT64
+            ) AS TARGET_PAGE_COUNT,
             @corpus_sha256 AS CORPUS_SHA256,
             PARSE_JSON(
               @corpus_json
