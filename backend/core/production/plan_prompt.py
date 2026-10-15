@@ -128,6 +128,24 @@ sont fournies. Organise-les en un rapport cohérent.
   concrètes qui découlent des constats.
 - Évite les répétitions et les pages de remplissage.
 
+PREUVES PAR PAGE
+
+- Chaque page autre que COVER et SOURCES doit contenir
+  au moins une référence dans evidence_reference_ids.
+- Cette obligation concerne aussi EXECUTIVE_SUMMARY
+  et IMPLICATIONS.
+- Pour IMPLICATIONS, référence les faits précis dont
+  découle chaque question ou décision proposée.
+- Une recommandation est une interprétation :
+  les références étayent ses prémisses, elles ne prouvent
+  pas que son résultat futur est garanti.
+- Tu peux réutiliser les références pertinentes des pages
+  d'analyse précédentes.
+- Ne rattache pas toutes les preuves par défaut.
+- Si aucune preuve fournie ne justifie une implication,
+  supprime cette implication.
+- Avant de répondre, vérifie ces règles pour chaque page.
+
 NUMBERS ET VISUELS
 
 - number_reference_ids contient exactement les références
