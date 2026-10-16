@@ -1,107 +1,469 @@
-"""Reusable content/layout contract. No topic-specific data or layouts."""
-from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+)
 
 
-class DocumentModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+class ProductionModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
-class DocumentSource(DocumentModel):
-    id: str = Field(min_length=1, max_length=40)
+# ============================================================
+# REQUEST
+# ============================================================
+
+class ProductionPrepareRequest(ProductionModel):
+    title: str = Field(min_length=1, max_length=250)
+
+    report_ids: list[str] = Field(
+        min_length=1,
+        max_length=20,
+    )
+
+    objective: str = Field(
+        default="",
+        max_length=5000,
+    )
+
+    target_audience: str = Field(
+        default="",
+        max_length=2000,
+    )
+
+    output_language: Literal["fr", "en"] = "fr"
+
+    output_format: Literal[
+        "AUTONOMOUS_REPORT",
+        "SPEAKER_PRESENTATION",
+    ] = "AUTONOMOUS_REPORT"
+
+    target_page_count: int | None = Field(
+        default=None,
+        ge=4,
+        le=40,
+    )
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Le titre de la production est obligatoire."
+            )
+
+        return value
+
+    @field_validator("objective", "target_audience")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("report_ids")
+    @classmethod
+    def normalize_report_ids(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+
+        for value in values:
+            report_id = value.strip()
+
+            if not report_id:
+                raise ValueError(
+                    "Un identifiant de rapport est vide."
+                )
+
+            if report_id not in seen:
+                seen.add(report_id)
+                result.append(report_id)
+
+        return result
+
+
+# ============================================================
+# REPORT SNAPSHOT
+# ============================================================
+
+class ProductionReportSnapshot(ProductionModel):
+    report_id: str
+    version_number: int = Field(ge=1)
+
+    snapshot_sha256: str
+
+    # Exact JSON-compatible response returned by
+    # get_touch_report(), including the saved notebook.
+    payload: dict[str, Any]
+
+
+# ============================================================
+# EVIDENCE REFERENCES
+# ============================================================
+
+ProductionEvidenceKind = Literal[
+    "NOTE",
+    "EVENT",
+    "NUMBER",
+    "SECTION",
+    "SUMMARY",
+    "CROSS_READING",
+]
+
+
+class ProductionEvidenceReference(ProductionModel):
+    # Unique across reports and evidence collections.
+    reference_id: str
+
     report_id: str
     report_version: int = Field(ge=1)
-    # RFC 6901 pointer, relative to the saved report payload.
-    json_pointer: str = Field(min_length=1, max_length=500)
-    # Verbatim substring of the pointed value, not a model paraphrase.
-    quote: str = Field(min_length=1, max_length=1200)
-    content_id: str | None
-    label: str = Field(min_length=1, max_length=300)
+
+    kind: ProductionEvidenceKind
+
+    # Original identifier, unchanged inside its notebook.
+    local_id: str
 
 
-class DocumentMetric(DocumentModel):
-    value: float
-    display_value: str = Field(min_length=1, max_length=45)
-    label: str = Field(min_length=1, max_length=120)
-    context: str = Field(max_length=200)
-    source_id: str
+# ============================================================
+# COUNTS
+# ============================================================
+
+class ProductionCorpusCounts(ProductionModel):
+    reports: int
+    unique_contents: int
+
+    notes: int
+    events: int
+
+    # Counts occurrences in saved reports.
+    # The same canonical Number may appear in several reports.
+    number_occurrences: int
+
+    unique_number_ids: int
+
+    sections: int
+    executive_summary_items: int
+    cross_readings: int
 
 
-class DocumentChartPoint(DocumentModel):
-    label: str = Field(min_length=1, max_length=30)
-    value: float
-    source_id: str
+# ============================================================
+# PREPARED CORPUS
+# ============================================================
 
+class ProductionPreparedCorpus(ProductionModel):
+    schema_version: Literal["1.0"] = "1.0"
 
-class DocumentChart(DocumentModel):
-    kind: Literal["COMPARISON", "TREND"]
-    title: str = Field(min_length=1, max_length=160)
-    unit: str = Field(min_length=1, max_length=40)
-    measure: str = Field(min_length=1, max_length=160)
-    scope: str = Field(min_length=1, max_length=200)
-    comparability_note: str = Field(min_length=1, max_length=350)
-    points: list[DocumentChartPoint] = Field(min_length=2, max_length=6)
+    production_id: str
+    prepared_at: datetime
 
+    status: Literal["CORPUS_PREPARED"] = (
+        "CORPUS_PREPARED"
+    )
 
-class DocumentPage(DocumentModel):
-    page_id: str
-    layout: Literal[
-        "COVER", "SUMMARY", "METRICS", "COMPARISON", "TREND",
-        "CASE_STUDY", "ANALYSIS", "IMPLICATIONS", "SOURCES",
+    data_policy: Literal[
+        "SAVED_TOUCH_REPORTS_ONLY"
+    ] = "SAVED_TOUCH_REPORTS_ONLY"
+
+    request: ProductionPrepareRequest
+
+    reports: list[ProductionReportSnapshot]
+
+    evidence_index: list[
+        ProductionEvidenceReference
     ]
-    title: str = Field(min_length=1, max_length=160)
-    eyebrow: str = Field(max_length=80)
-    paragraphs: list[str] = Field(max_length=3)
-    bullets: list[str] = Field(max_length=4)
-    metrics: list[DocumentMetric] = Field(max_length=4)
-    chart: DocumentChart | None
-    takeaway: str = Field(max_length=450)
-    cautions: list[str] = Field(max_length=3)
-    source_ids: list[str]
+
+    counts: ProductionCorpusCounts
+
+    corpus_sha256: str
 
 
-class ProductionDocument(DocumentModel):
-    schema_version: Literal["1.0"]
-    template: Literal["GETCURATOR_AUTONOMOUS_V1"]
-    title: str = Field(min_length=1, max_length=180)
-    subtitle: str = Field(max_length=240)
-    pages: list[DocumentPage] = Field(min_length=4, max_length=40)
-    sources: list[DocumentSource] = Field(min_length=1, max_length=100)
-    review_notes: list[str] = Field(max_length=30)
+# ============================================================
+# PAGE LAYOUT
+# ============================================================
 
-    @model_validator(mode="after")
-    def validate_structure(self):
-        if self.pages[0].layout != "COVER" or self.pages[-1].layout != "SOURCES":
-            raise ValueError("Couverture en premier et sources en dernier obligatoires.")
-        if sum(p.layout == "COVER" for p in self.pages) != 1 or sum(p.layout == "SOURCES" for p in self.pages) != 1:
-            raise ValueError("Une seule couverture et une seule page sources.")
-        ids = [p.page_id for p in self.pages]
+ProductionPageLayout = Literal[
+    "COVER",
+    "EXECUTIVE_SUMMARY",
+    "CHART_WITH_ANALYSIS",
+    "KEY_NUMBERS",
+    "CASE_STUDY",
+    "COMPARISON",
+    "EXPLANATORY",
+    "IMPLICATIONS",
+    "SOURCES",
+]
+
+
+# ============================================================
+# PAGE PLAN
+# ============================================================
+
+class ProductionPagePlan(ProductionModel):
+    page_id: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    layout: ProductionPageLayout
+
+    title: str = Field(
+        min_length=1,
+        max_length=250,
+    )
+
+    # Main message the page must explain or demonstrate.
+    key_message: str = Field(
+        min_length=1,
+        max_length=1500,
+    )
+
+    # Proposed reasoning, not the final page copy.
+    explanation_outline: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+
+    # References from the prepared corpus evidence_index.
+    evidence_reference_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    # Subset of references whose kind is NUMBER.
+    # No values are generated or copied by the plan LLM.
+    number_reference_ids: list[str] = Field(
+        default_factory=list,
+    )
+
+    # Editorial intent only.
+    # The renderer will later receive validated chart data.
+    visual_intent: str = Field(
+        default="",
+        max_length=2000,
+    )
+
+    # Existing uncertainties to preserve on this page.
+    cautions: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+
+    @field_validator(
+        "page_id",
+        "title",
+        "key_message",
+    )
+    @classmethod
+    def normalize_required_page_text(
+        cls,
+        value: str,
+    ) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Un champ obligatoire de page est vide."
+            )
+
+        return value
+
+    @field_validator(
+        "evidence_reference_ids",
+        "number_reference_ids",
+    )
+    @classmethod
+    def normalize_page_references(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+
+        for value in values:
+            if not value.strip():
+                raise ValueError(
+                    "Une référence de preuve est vide."
+                )
+
+            # Preserve the exact reference identifier.
+            if value not in seen:
+                seen.add(value)
+                result.append(value)
+
+        return result
+
+
+# ============================================================
+# EDITORIAL PLAN GENERATED BY THE MODEL
+# ============================================================
+
+class ProductionEditorialPlan(ProductionModel):
+    title: str = Field(
+        min_length=1,
+        max_length=250,
+    )
+
+    editorial_angle: str = Field(
+        min_length=1,
+        max_length=3000,
+    )
+
+    pages: list[ProductionPagePlan] = Field(
+        min_length=4,
+        max_length=40,
+    )
+
+    @field_validator(
+        "title",
+        "editorial_angle",
+    )
+    @classmethod
+    def normalize_required_plan_text(
+        cls,
+        value: str,
+    ) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Un champ obligatoire du plan est vide."
+            )
+
+        return value
+
+    @field_validator("pages")
+    @classmethod
+    def validate_plan_structure(
+        cls,
+        pages: list[ProductionPagePlan],
+    ) -> list[ProductionPagePlan]:
+        page_ids = [
+            page.page_id
+            for page in pages
+        ]
+
+        if len(page_ids) != len(set(page_ids)):
+            raise ValueError(
+                "Les identifiants des pages "
+                "doivent être uniques."
+            )
+
+        if pages[0].layout != "COVER":
+            raise ValueError(
+                "La première page doit être "
+                "une couverture."
+            )
+
+        if sum(
+            page.layout == "COVER"
+            for page in pages
+        ) != 1:
+            raise ValueError(
+                "Le plan doit contenir "
+                "une seule couverture."
+            )
+
+        if pages[-1].layout != "SOURCES":
+            raise ValueError(
+                "La dernière page doit présenter "
+                "les sources."
+            )
+
+        return pages
+
+# ============================================================
+# EDITORIAL SELECTION BEFORE PAGE PLANNING
+# ============================================================
+
+class ProductionEditorialFinding(ProductionModel):
+    finding_id: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    message: str = Field(
+        min_length=1,
+        max_length=1500,
+    )
+
+    # Why this finding matters for the requested report.
+    editorial_relevance: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    # Includes NUMBER references when relevant.
+    evidence_reference_ids: list[str] = Field(
+        min_length=1,
+    )
+
+    cautions: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+
+
+class ProductionEditorialSelection(ProductionModel):
+    editorial_angle: str = Field(
+        min_length=1,
+        max_length=3000,
+    )
+
+    findings: list[
+        ProductionEditorialFinding
+    ] = Field(
+        min_length=1,
+        max_length=30,
+    )
+
+    # Explain meaningful exclusions, especially numeric data
+    # that are irrelevant, ambiguous or not comparable.
+    exclusions: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+    )
+
+    @field_validator("findings")
+    @classmethod
+    def validate_finding_ids(
+        cls,
+        findings: list[
+            ProductionEditorialFinding
+        ],
+    ) -> list[ProductionEditorialFinding]:
+        ids = [
+            finding.finding_id
+            for finding in findings
+        ]
+
         if len(ids) != len(set(ids)):
-            raise ValueError("Identifiants de pages dupliqués.")
-        source_ids = [s.id for s in self.sources]
-        if len(source_ids) != len(set(source_ids)):
-            raise ValueError("Identifiants de sources dupliqués.")
-        known = set(source_ids)
-        for page in self.pages:
-            cited = set(page.source_ids)
-            if cited - known:
-                raise ValueError(f"Page {page.page_id} : source inconnue.")
-            if page.layout not in {"COVER", "SOURCES"} and not cited:
-                raise ValueError(f"Page {page.page_id} : preuves absentes.")
-            if sum(len(t) for t in page.paragraphs + page.bullets) > 2200:
-                raise ValueError(f"Page {page.page_id} : texte trop long pour le modèle.")
-            if any(not t.strip() for t in page.paragraphs + page.bullets):
-                raise ValueError("Texte vide dans une page.")
-            if page.layout in {"COMPARISON", "TREND"}:
-                if not page.chart or page.chart.kind != page.layout:
-                    raise ValueError("Le graphique doit correspondre à la composition.")
-            elif page.chart:
-                raise ValueError("Graphique réservé aux compositions COMPARISON et TREND.")
-            if page.layout == "METRICS" and not page.metrics:
-                raise ValueError("METRICS nécessite au moins un indicateur.")
-            refs = {m.source_id for m in page.metrics}
-            if page.chart:
-                refs |= {point.source_id for point in page.chart.points}
-            if refs - cited:
-                raise ValueError(f"Page {page.page_id} : citer les sources des indicateurs et du graphique.")
-        return self
+            raise ValueError(
+                "Les identifiants des constats "
+                "doivent être uniques."
+            )
+
+        return findings
+
+
+# ============================================================
+# PLAN ATTACHED TO ITS SOURCE CORPUS
+# ============================================================
+
+class ProductionPlanSnapshot(ProductionModel):
+    production_id: str
+
+    corpus_sha256: str
+
+    generated_at: datetime
+
+    status: Literal[
+        "PLAN_TO_REVIEW"
+    ] = "PLAN_TO_REVIEW"
+
+    plan: ProductionEditorialPlan
