@@ -66,7 +66,30 @@ export function buildDocumentHtml(document: ProductionDocument): string {
     else groups.set(key, { ids: [source.id], label: source.label, version: source.report_version });
   }
   const bibliographyEntries = Array.from(groups.values());
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(document.title)}</title><style>${STYLES}</style></head><body>${document.pages.map((page: DocumentPage, index: number) => {
+  // Bibliography is an appendix, never stacked below the full method page.
+  // Bounded groups keep long titles and many citations readable at print size.
+  const chunks: typeof bibliographyEntries[] = [];
+  let chunk: typeof bibliographyEntries = [];
+  let weight = 0;
+  for (const entry of bibliographyEntries) {
+    const size = entry.label.length + entry.ids.join(" ").length + 70;
+    if (chunk.length && (chunk.length >= 15 || weight + size > 2200)) {
+      chunks.push(chunk); chunk = []; weight = 0;
+    }
+    chunk.push(entry); weight += size;
+  }
+  if (chunk.length) chunks.push(chunk);
+  const composed: { page: DocumentPage; entries: typeof bibliographyEntries }[] =
+    document.pages.map(page => ({ page, entries: [] }));
+  chunks.forEach((entries, index) => composed.push({
+    page: {
+      page_id: `bibliography-${index + 1}`, layout: "SOURCES",
+      title: "Références documentaires", eyebrow: `Bibliographie · ${index + 1}/${chunks.length}`,
+      paragraphs: [], bullets: [], metrics: [], chart: null, takeaway: "",
+      cautions: [], source_ids: [],
+    }, entries,
+  }));
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(document.title)}</title><style>${STYLES}</style></head><body>${composed.map(({ page, entries }, index: number) => {
     const cover = page.layout === "COVER";
     const sources = page.layout === "SOURCES";
     const chart = page.chart ? chartHtml(page.chart) : "";
@@ -74,7 +97,7 @@ export function buildDocumentHtml(document: ProductionDocument): string {
     const visual = chart + metrics;
     const paragraphs = page.paragraphs.map(text => `<p>${escape(text)}</p>`).join("");
     const bullets = page.bullets.length ? `<ul class="${page.layout === "SUMMARY" || page.layout === "IMPLICATIONS" ? "bullets" : ""}">${page.bullets.map(text => `<li>${escape(text)}</li>`).join("")}</ul>` : "";
-    const bibliography = sources ? `<ul class="bibliography">${bibliographyEntries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">Rapport sauvegardé · version ${source.version}</span></li>`).join("")}</ul>` : "";
+    const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">Rapport sauvegardé · version ${source.version}</span></li>`).join("")}</ul>` : "";
     const citations = page.source_ids.filter(id => known.has(id)).map(id => `[${escape(id)}]`).join(" ");
     return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${escape(cover ? document.title : page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${paragraphs}${bullets}${page.takeaway ? `<p class="takeaway">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
   }).join("")}</body></html>`;
@@ -84,12 +107,14 @@ export default function ProductionDocumentPreview({ document }: { document: Prod
   const frame = useRef<HTMLIFrameElement>(null);
   const [overflow, setOverflow] = useState<number[]>([]);
   const [checkedHtml, setCheckedHtml] = useState("");
+  const [printedPages, setPrintedPages] = useState(document.pages.length);
   const html = useMemo(() => buildDocumentHtml(document), [document]);
   const printable = checkedHtml === html && overflow.length === 0;
 
   function checkLayout() {
     const sheets = frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".sheet");
     if (!sheets) return;
+    setPrintedPages(sheets.length);
     const exceeds = (sheet: HTMLElement) => {
       const box = sheet.getBoundingClientRect();
       return box.height > box.width * 210 / 297 + 3 || sheet.scrollWidth > sheet.clientWidth + 2;
@@ -107,7 +132,7 @@ export default function ProductionDocumentPreview({ document }: { document: Prod
 
   return <section className="rounded-xl border bg-white p-6 space-y-4">
     <h2 className="text-lg font-semibold">Rapport GetCurator — compositions génériques</h2>
-    <p className="text-sm text-gray-600">{document.pages.length} pages · A4 paysage · modèle {document.template}. Les contrôles de structure et de provenance ne remplacent pas la relecture des interprétations.</p>
+    <p className="text-sm text-gray-600">{document.pages.length} pages éditoriales{checkedHtml === html && printedPages > document.pages.length ? ` + ${printedPages - document.pages.length} page(s) de bibliographie` : ""} · A4 paysage · modèle {document.template}. Les contrôles de structure et de provenance ne remplacent pas la relecture des interprétations.</p>
     {overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-amber-900">Débordement sur les pages {overflow.join(", ")}. Export désactivé : réduire le contenu ou répartir les pages avant impression.</p>}
     <button type="button" disabled={!printable} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50" onClick={() => { frame.current?.contentWindow?.focus(); frame.current?.contentWindow?.print(); }}>Imprimer / Enregistrer en PDF</button>
     <p className="text-xs text-gray-500">Choisir A4 paysage, arrière-plans activés et en-têtes/pieds de page du navigateur désactivés. Vérifier l’aperçu d’impression.</p>
