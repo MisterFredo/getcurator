@@ -7,8 +7,8 @@ import {
 } from "react";
 
 import Link from "next/link";
-
-import ProductionReportPreview from "@/components/admin/production/ProductionReportPreview";
+import ProductionDocumentPreview from "@/components/admin/production/ProductionDocumentPreview";
+import type { ProductionDocument } from "@/types/production-document";
 
 import {
   api,
@@ -21,7 +21,9 @@ type Job = {
   model: string;
   text: string;
   input_mode?: "pdf" | "json";
-  stage?: "plan" | "report_draft";
+  stage?: "plan" | "report_draft" | "document";
+  document?: ProductionDocument | null;
+  validation_notes?: string[];
   production_id?: string | null;
   corpus_sha256?: string | null;
   usage: Record<string, unknown> | null;
@@ -138,6 +140,7 @@ export default function ProductionPdfTestPage() {
 
   const jobId = job?.id;
   const jobStatus = job?.status;
+  const jobStage = job?.stage;
 
   useEffect(() => {
     try {
@@ -219,7 +222,7 @@ export default function ProductionPdfTestPage() {
           status: string;
           job: Job;
         } = await api.get(
-          "/production/pdf-test/jobs/"
+          (jobStage === "document" ? "/production/documents/jobs/" : "/production/pdf-test/jobs/")
           + encodeURIComponent(
             responseId,
           ),
@@ -269,6 +272,7 @@ export default function ProductionPdfTestPage() {
   }, [
     jobId,
     jobStatus,
+    jobStage,
     paused,
   ]);
 
@@ -427,7 +431,7 @@ export default function ProductionPdfTestPage() {
     setError("");
     try {
       const response: { status: string; job: Job } = await api.post(
-        "/production/" + encodeURIComponent(id) + "/report-draft/jobs",
+        "/production/" + encodeURIComponent(id) + "/documents/jobs",
         { reviewed_plan: reviewedPlan },
       );
       if (!response.job?.id || !response.job?.status) {
@@ -436,7 +440,7 @@ export default function ProductionPdfTestPage() {
       const nextJob: Job = {
         ...response.job,
         production_id: id,
-        stage: "report_draft",
+        stage: "document",
       };
       setJob(nextJob);
       remember(nextJob);
@@ -567,12 +571,12 @@ export default function ProductionPdfTestPage() {
         <h2 className="text-lg font-semibold">Plan relu et rédaction</h2>
         <p className="text-sm text-gray-600">
           Charge le dernier plan terminé ou colle une version déjà téléchargée.
-          Relis et corrige son contenu avant de lancer la rédaction.
+          Relis et corrige son contenu avant de lancer la rédaction et la composition.
           Le prototype PDF n’est pas nécessaire pour cette étape.
         </p>
         <button
           type="button"
-          disabled={busy || running || !job?.text || job.status !== "completed" || job.stage === "report_draft"}
+          disabled={busy || running || !job?.text || job.status !== "completed" || (job.stage === "report_draft" || job.stage === "document")}
           className="rounded border px-4 py-2 disabled:opacity-50"
           onClick={() => {
             if (!job?.text) return;
@@ -621,7 +625,7 @@ export default function ProductionPdfTestPage() {
             disabled={!ready || busy || running || !reviewedPlan.trim() || !reviewProductionId.trim()}
             onClick={() => void writeReport()}
             className="rounded-lg bg-ratecard-blue px-5 py-3 text-white disabled:opacity-50"
-          >{writing ? "Démarrage de la rédaction…" : "Valider le plan et rédiger le rapport"}</button>
+          >{writing ? "Démarrage de la rédaction…" : "Valider le plan et produire le document"}</button>
         </div>
       </section>
 
@@ -629,7 +633,7 @@ export default function ProductionPdfTestPage() {
         <section className="rounded-xl border bg-white p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold">
-              {job.stage === "report_draft" ? "Rapport rédigé" : "Dernier plan généré"}
+              {job.stage === "document" ? "Document structuré" : job.stage === "report_draft" ? "Rapport rédigé" : "Dernier plan généré"}
             </h2>
 
             <p className="text-sm text-gray-600">
@@ -703,26 +707,23 @@ export default function ProductionPdfTestPage() {
                       : "-partiel";
 
                   download(
-                    job.stage === "report_draft"
+                    job.stage === "document"
+                      ? `document-getcurator${suffix}.json`
+                      : job.stage === "report_draft"
                       ? `rapport-audio-redige${suffix}.md`
                       : `plan-audio-${mode}${suffix}.md`,
                     job.text,
-                    "text/markdown;charset=utf-8",
+                    job.stage === "document" ? "application/json" : "text/markdown;charset=utf-8",
                   );
                 }}
               >
                 {job.status === "completed"
-                  ? (job.stage === "report_draft" ? "Télécharger le rapport rédigé" : "Télécharger le plan")
+                  ? (job.stage === "document" ? "Télécharger le document JSON" : job.stage === "report_draft" ? "Télécharger le rapport rédigé" : "Télécharger le plan")
                   : "Télécharger le texte partiel"}
               </button>
 
-              <pre className="
-                whitespace-pre-wrap
-                break-words font-sans
-                text-sm leading-7
-              ">
-                {job.text}
-              </pre>
+              {job.stage !== "document" && <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{job.text}</pre>}
+              {job.stage === "document" && <details><summary className="cursor-pointer text-sm">JSON de génération et diagnostic</summary><pre className="mt-3 whitespace-pre-wrap break-words text-xs">{job.text}</pre></details>}
             </>
           )}
 
@@ -761,11 +762,11 @@ export default function ProductionPdfTestPage() {
           )}
         </section>
       )}
-      {job?.stage === "report_draft" && job.text && (
-        <ProductionReportPreview
-          markdown={job.text}
-          completed={job.status === "completed"}
-        />
+      {job?.stage === "document" && job.status === "completed" && job.document && (
+        <ProductionDocumentPreview document={job.document} />
+      )}
+      {job?.stage === "document" && job.validation_notes && (
+        <ul className="list-disc pl-5 text-xs text-gray-600">{job.validation_notes.map((note, index) => <li key={index}>{note}</li>)}</ul>
       )}
     </div>
   );
