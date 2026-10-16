@@ -19,6 +19,9 @@ type Job = {
   model: string;
   text: string;
   input_mode?: "pdf" | "json";
+  stage?: "plan" | "report_draft";
+  production_id?: string | null;
+  corpus_sha256?: string | null;
   usage: Record<string, unknown> | null;
   error: unknown;
   incomplete_details: unknown;
@@ -34,6 +37,7 @@ const BASE_URL = (
 ).replace(/\/+$/, "");
 
 const MAX_BYTES = 20_000_000;
+const REVIEW_KEY = "getcurator-production-reviewed-plan";
 
 function isRunning(
   job: Job | null,
@@ -120,6 +124,11 @@ export default function ProductionPdfTestPage() {
   const [error, setError] =
     useState("");
 
+  const [reviewedPlan, setReviewedPlan] = useState("");
+  const [reviewProductionId, setReviewProductionId] = useState("");
+  const [writing, setWriting] = useState(false);
+  const [storageWarning, setStorageWarning] = useState("");
+
   const submitting =
     useRef(false);
 
@@ -154,8 +163,33 @@ export default function ProductionPdfTestPage() {
       // Storage is optional.
     }
 
+    try {
+      const savedReview = localStorage.getItem(REVIEW_KEY);
+      if (savedReview) {
+        const review = JSON.parse(savedReview);
+        if (typeof review?.text === "string"
+          && typeof review?.productionId === "string") {
+          setReviewedPlan(review.text);
+          setReviewProductionId(review.productionId);
+        }
+      }
+    } catch {
+      setStorageWarning("La restauration du plan relu a échoué. Conserve une copie téléchargée.");
+    }
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(REVIEW_KEY, JSON.stringify({
+        text: reviewedPlan,
+        productionId: reviewProductionId,
+      }));
+    } catch {
+      setStorageWarning("Le plan relu ne peut pas être sauvegardé dans ce navigateur. Télécharge une copie avant de quitter.");
+    }
+  }, [ready, reviewedPlan, reviewProductionId]);
 
   useEffect(() => {
     if (
@@ -193,8 +227,16 @@ export default function ProductionPdfTestPage() {
           return;
         }
 
-        setJob(response.job);
-        remember(response.job);
+        // Preserve client-side provenance for older backend responses.
+        setJob(previous => {
+          const next = {
+            ...response.job,
+            production_id: response.job.production_id || previous?.production_id,
+            stage: response.job.stage || previous?.stage,
+          };
+          remember(next);
+          return next;
+        });
 
         if (isRunning(response.job)) {
           timer = setTimeout(
@@ -346,8 +388,13 @@ export default function ProductionPdfTestPage() {
         );
       }
 
-      setJob(data.job);
-      remember(data.job);
+      const nextJob: Job = {
+        ...data.job,
+        production_id: id,
+        stage: "plan",
+      };
+      setJob(nextJob);
+      remember(nextJob);
       setPaused(false);
     } catch (err) {
       setError(
@@ -358,6 +405,46 @@ export default function ProductionPdfTestPage() {
     } finally {
       submitting.current = false;
       setBusy(false);
+    }
+  }
+
+  async function writeReport() {
+    if (submitting.current || running) return;
+    const id = reviewProductionId.trim();
+    if (!id || !reviewedPlan.trim()) {
+      setError("Renseigne la production et le plan relu.");
+      return;
+    }
+    if (reviewedPlan.length > 150_000) {
+      setError("Le plan dépasse la limite de 150 000 caractères.");
+      return;
+    }
+    submitting.current = true;
+    setBusy(true);
+    setWriting(true);
+    setError("");
+    try {
+      const response: { status: string; job: Job } = await api.post(
+        "/production/" + encodeURIComponent(id) + "/report-draft/jobs",
+        { reviewed_plan: reviewedPlan },
+      );
+      if (!response.job?.id || !response.job?.status) {
+        throw new Error("Réponse sans identifiant de rédaction. Consulte les logs avant de relancer.");
+      }
+      const nextJob: Job = {
+        ...response.job,
+        production_id: id,
+        stage: "report_draft",
+      };
+      setJob(nextJob);
+      remember(nextJob);
+      setPaused(false);
+    } catch (err) {
+      setError(errorMessage(err) + " Aucune relance automatique n'a été effectuée. Vérifie les logs avant de relancer.");
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+      setWriting(false);
     }
   }
 
@@ -372,7 +459,7 @@ export default function ProductionPdfTestPage() {
 
       <div>
         <h1 className="text-2xl font-semibold">
-          Essai depuis les rapports sauvegardés
+          Production depuis les rapports sauvegardés
         </h1>
 
         <p className="mt-2 text-gray-600">
@@ -444,7 +531,7 @@ export default function ProductionPdfTestPage() {
           "
         >
           {busy
-            ? "Préparation de l’essai…"
+            ? (writing ? "Démarrage de la rédaction…" : "Préparation du plan…")
             : running
               ? "Génération en cours…"
               : "Générer depuis les rapports sauvegardés"}
@@ -474,11 +561,73 @@ export default function ProductionPdfTestPage() {
         </div>
       )}
 
+      <section className="rounded-xl border bg-white p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Plan relu et rédaction</h2>
+        <p className="text-sm text-gray-600">
+          Charge le dernier plan terminé ou colle une version déjà téléchargée.
+          Relis et corrige son contenu avant de lancer la rédaction.
+          Le prototype PDF n’est pas nécessaire pour cette étape.
+        </p>
+        <button
+          type="button"
+          disabled={busy || running || !job?.text || job.status !== "completed" || job.stage === "report_draft"}
+          className="rounded border px-4 py-2 disabled:opacity-50"
+          onClick={() => {
+            if (!job?.text) return;
+            if (reviewedPlan.trim() && reviewedPlan !== job.text
+              && !window.confirm("Remplacer le plan actuellement présent dans l’éditeur ?")) return;
+            setReviewedPlan(job.text);
+            setReviewProductionId(job.production_id || productionId.trim());
+          }}
+        >Charger le dernier plan dans l’éditeur</button>
+        <label className="block space-y-2">
+          <span className="block text-sm font-medium">Production dont les rapports seront utilisés</span>
+          <input
+            type="text"
+            value={reviewProductionId}
+            disabled={busy || running}
+            onChange={event => setReviewProductionId(event.target.value)}
+            className="w-full rounded border px-3 py-2"
+          />
+        </label>
+        <p className="text-xs text-gray-500">
+          Vérifie que cet identifiant correspond aux rapports ayant servi au plan.
+          Pour un ancien résultat sans provenance enregistrée, l’identifiant du formulaire est repris : vérifie-le.
+        </p>
+        <label className="block space-y-2">
+          <span className="block text-sm font-medium">Plan à valider</span>
+          <textarea
+            value={reviewedPlan}
+            disabled={busy || running}
+            onChange={event => setReviewedPlan(event.target.value)}
+            placeholder="Colle ici le plan relu et corrigé…"
+            rows={20}
+            className="w-full rounded-lg border p-4 font-mono text-sm"
+          />
+        </label>
+        {storageWarning && <p role="alert" className="text-sm text-amber-700">{storageWarning}</p>}
+        <p className="text-xs text-gray-500">Le plan édité est conservé dans ce navigateur, pas encore dans BigQuery.</p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={!reviewedPlan.trim()}
+            className="rounded border px-4 py-2 disabled:opacity-50"
+            onClick={() => download("plan-audio-relu.md", reviewedPlan, "text/markdown;charset=utf-8")}
+          >Télécharger le plan relu</button>
+          <button
+            type="button"
+            disabled={!ready || busy || running || !reviewedPlan.trim() || !reviewProductionId.trim()}
+            onClick={() => void writeReport()}
+            className="rounded-lg bg-ratecard-blue px-5 py-3 text-white disabled:opacity-50"
+          >{writing ? "Démarrage de la rédaction…" : "Valider le plan et rédiger le rapport"}</button>
+        </div>
+      </section>
+
       {job && (
         <section className="rounded-xl border bg-white p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold">
-              Dernière génération
+              {job.stage === "report_draft" ? "Rapport rédigé" : "Dernier plan généré"}
             </h2>
 
             <p className="text-sm text-gray-600">
@@ -498,6 +647,7 @@ export default function ProductionPdfTestPage() {
 
             <p className="mt-1 break-all text-xs text-gray-500">
               Identifiant : {job.id}
+              {job.production_id && <> · Production : {job.production_id}</>}
             </p>
           </div>
 
@@ -530,7 +680,7 @@ export default function ProductionPdfTestPage() {
 
           {job.status === "completed" && !job.text && (
             <p className="text-red-700">
-              Aucun plan exploitable retourné.
+              Aucun contenu exploitable retourné.
               {" "}
               {job.refusal?.join(" ")}
             </p>
@@ -551,14 +701,16 @@ export default function ProductionPdfTestPage() {
                       : "-partiel";
 
                   download(
-                    `plan-audio-${mode}${suffix}.md`,
+                    job.stage === "report_draft"
+                      ? `rapport-audio-redige${suffix}.md`
+                      : `plan-audio-${mode}${suffix}.md`,
                     job.text,
                     "text/markdown;charset=utf-8",
                   );
                 }}
               >
                 {job.status === "completed"
-                  ? "Télécharger le plan"
+                  ? (job.stage === "report_draft" ? "Télécharger le rapport rédigé" : "Télécharger le plan")
                   : "Télécharger le texte partiel"}
               </button>
 
