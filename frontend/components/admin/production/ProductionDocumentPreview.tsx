@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { DocumentChart, DocumentPage, ProductionDocument } from "@/types/production-document";
+import { productionPdfFilename } from "@/lib/production-export";
+import type { PdfExportContext } from "@/lib/production-export";
 
 const escape = (value: string) => value.replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -55,7 +57,7 @@ p,li{font-size:13px;line-height:1.55}p{margin:0 0 3mm}ul{padding-left:5mm;margin
 @page{size:A4 landscape;margin:0}@media print{html,body{background:white}.sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}p{orphans:3;widows:3}h1,h3{break-after:avoid}}
 `;
 
-export function buildDocumentHtml(document: ProductionDocument): string {
+export function buildDocumentHtml(document: ProductionDocument, filename?: string | null, language: "fr" | "en" = "fr"): string {
   const known = new Map(document.sources.map(source => [source.id, source]));
   const used = new Set(document.pages.flatMap(page => page.source_ids));
   const groups = new Map<string, { ids: string[]; label: string; version: number }>();
@@ -89,7 +91,7 @@ export function buildDocumentHtml(document: ProductionDocument): string {
       cautions: [], source_ids: [],
     }, entries,
   }));
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(document.title)}</title><style>${STYLES}</style></head><body>${composed.map(({ page, entries }, index: number) => {
+  return `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(filename ? filename.replace(/\.pdf$/i, "") : document.title)}</title><style>${STYLES}</style></head><body>${composed.map(({ page, entries }, index: number) => {
     const cover = page.layout === "COVER";
     const sources = page.layout === "SOURCES";
     const chart = page.chart ? chartHtml(page.chart) : "";
@@ -103,13 +105,17 @@ export function buildDocumentHtml(document: ProductionDocument): string {
   }).join("")}</body></html>`;
 }
 
-export default function ProductionDocumentPreview({ document }: { document: ProductionDocument }) {
+export default function ProductionDocumentPreview({ document, exportContext }: { document: ProductionDocument; exportContext?: PdfExportContext }) {
+  const [naming, setNaming] = useState<PdfExportContext>(() => exportContext || {
+    subject: document.title, language: "fr", periodStart: "", periodEnd: "",
+  });
+  const filename = productionPdfFilename(naming);
   const frame = useRef<HTMLIFrameElement>(null);
   const [overflow, setOverflow] = useState<number[]>([]);
   const [checkedHtml, setCheckedHtml] = useState("");
   const [printedPages, setPrintedPages] = useState(document.pages.length);
-  const html = useMemo(() => buildDocumentHtml(document), [document]);
-  const printable = checkedHtml === html && overflow.length === 0;
+  const html = useMemo(() => buildDocumentHtml(document, filename, naming.language), [document, filename, naming.language]);
+  const printable = checkedHtml === html && overflow.length === 0 && Boolean(filename);
 
   function checkLayout() {
     const sheets = frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".sheet");
@@ -130,11 +136,36 @@ export default function ProductionDocumentPreview({ document }: { document: Prod
     setCheckedHtml(html);
   }
 
+  function printDocument() {
+    const child = frame.current?.contentWindow;
+    if (!child || !filename || !printable) return;
+    const previousTitle = window.document.title;
+    const printTitle = filename.replace(/\.pdf$/i, "");
+    const restore = () => {
+      window.document.title = previousTitle;
+      window.removeEventListener("afterprint", restore);
+      child.removeEventListener("afterprint", restore);
+    };
+    window.document.title = printTitle;
+    child.document.title = printTitle;
+    window.addEventListener("afterprint", restore);
+    child.addEventListener("afterprint", restore);
+    try { child.focus(); child.print(); } catch (error) { restore(); throw error; }
+  }
+
   return <section className="rounded-xl border bg-white p-6 space-y-4">
     <h2 className="text-lg font-semibold">Rapport GetCurator — compositions génériques</h2>
     <p className="text-sm text-gray-600">{document.pages.length} pages éditoriales{checkedHtml === html && printedPages > document.pages.length ? ` + ${printedPages - document.pages.length} page(s) de bibliographie` : ""} · A4 paysage · modèle {document.template}. Les contrôles de structure et de provenance ne remplacent pas la relecture des interprétations.</p>
     {overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-amber-900">Débordement sur les pages {overflow.join(", ")}. Export désactivé : réduire le contenu ou répartir les pages avant impression.</p>}
-    <button type="button" disabled={!printable} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50" onClick={() => { frame.current?.contentWindow?.focus(); frame.current?.contentWindow?.print(); }}>Imprimer / Enregistrer en PDF</button>
+    <fieldset className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
+      <legend className="px-1 text-sm font-medium">Nom du fichier PDF</legend>
+      <label className="text-sm">Sujet<input className="mt-1 w-full rounded border px-3 py-2" value={naming.subject} maxLength={250} onChange={e => setNaming(current => ({ ...current, subject: e.target.value }))} /></label>
+      <label className="text-sm">Langue<select className="mt-1 w-full rounded border px-3 py-2" value={naming.language} onChange={e => setNaming(current => ({ ...current, language: e.target.value as "fr" | "en" }))}><option value="fr">FR</option><option value="en">EN</option></select></label>
+      <label className="text-sm">Début de période<input type="date" className="mt-1 w-full rounded border px-3 py-2" value={naming.periodStart} onChange={e => setNaming(current => ({ ...current, periodStart: e.target.value }))} /></label>
+      <label className="text-sm">Fin de période<input type="date" className="mt-1 w-full rounded border px-3 py-2" value={naming.periodEnd} onChange={e => setNaming(current => ({ ...current, periodEnd: e.target.value }))} /></label>
+      <p className="break-all text-xs text-slate-600 sm:col-span-2">{filename || "Renseignez un sujet et une période valide pour nommer le PDF."}</p>
+    </fieldset>
+    <button type="button" disabled={!printable} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50" onClick={printDocument}>Imprimer / Enregistrer en PDF</button>
     <p className="text-xs text-gray-500">Choisir A4 paysage, arrière-plans activés et en-têtes/pieds de page du navigateur désactivés. Vérifier l’aperçu d’impression.</p>
     <iframe ref={frame} title="Document GetCurator" srcDoc={html} onLoad={checkLayout} sandbox="allow-same-origin allow-modals" className="h-[800px] w-full rounded border" />
     <details><summary className="cursor-pointer">Contrôle éditorial et traçabilité — hors impression</summary>
