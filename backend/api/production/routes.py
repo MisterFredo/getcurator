@@ -1,5 +1,6 @@
 import logging
 import json
+from core.production import workflow_repository, workflow_service
 
 from pydantic import (
     BaseModel,
@@ -134,6 +135,107 @@ class ProductionReportDraftRequest(BaseModel):
         min_length=1,
         max_length=150_000,
     )
+
+
+# ============================================================
+# DURABLE PRODUCTION WORKFLOW (full saved JSON)
+# ============================================================
+
+class WorkflowRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: str = Field(min_length=36, max_length=36)
+
+
+class WorkflowPlanApproval(WorkflowRunRequest):
+    reviewed_plan: str = Field(min_length=1, max_length=150_000)
+    parent_artifact_id: str | None = None
+
+
+class WorkflowDocumentRequest(WorkflowRunRequest):
+    plan_artifact_id: str
+
+
+class WorkflowDocumentImport(WorkflowRunRequest):
+    document: dict
+    plan_artifact_id: str | None = None
+
+
+class WorkflowRefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    response_id: str | None = Field(default=None, max_length=200)
+
+
+def _workflow_action(action):
+    try:
+        return action()
+    except workflow_service.WorkflowConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except APIStatusError as exc:
+        logger.exception("Production workflow API error")
+        raise HTTPException(status_code=502, detail=(
+            "La réponse est indisponible chez le fournisseur. Le suivi reste en base ; "
+            "actualisez cette version sans régénérer."
+        )) from exc
+    except Exception as exc:
+        logger.exception("Production workflow persistence or retrieval failed")
+        raise HTTPException(status_code=500, detail=(
+            "L'opération n'a pas pu être confirmée. Rouvrez la production et consultez "
+            "son historique avant toute nouvelle génération."
+        )) from exc
+
+
+@router.get("/{production_id}/workflow")
+def read_production_workflow(production_id: str, limit: int = Query(30, ge=1, le=100),
+                             offset: int = Query(0, ge=0)):
+    def read():
+        if get_production(production_id) is None:
+            raise LookupError("Production introuvable.")
+        return {"status": "ok", "artifacts": workflow_repository.list_artifacts(production_id, limit, offset)}
+    return _workflow_action(read)
+
+
+@router.get("/{production_id}/workflow/artifacts/{artifact_id}")
+def read_workflow_artifact(production_id: str, artifact_id: str):
+    def read():
+        item = workflow_repository.get_artifact(production_id, artifact_id)
+        if item is None:
+            raise LookupError("Version introuvable.")
+        return {"status": "ok", "artifact": item}
+    return _workflow_action(read)
+
+
+@router.post("/{production_id}/workflow/plan-jobs", status_code=202)
+def create_workflow_plan(production_id: str, payload: WorkflowRunRequest):
+    return _workflow_action(lambda: {"status": "ok", "artifact": workflow_service.start_plan(
+        production_id, payload.request_id)})
+
+
+@router.post("/{production_id}/workflow/approved-plans", status_code=201)
+def approve_workflow_plan(production_id: str, payload: WorkflowPlanApproval):
+    return _workflow_action(lambda: {"status": "ok", "artifact": workflow_service.approve_plan(
+        production_id, payload.request_id, payload.reviewed_plan, payload.parent_artifact_id)})
+
+
+@router.post("/{production_id}/workflow/document-jobs", status_code=202)
+def create_workflow_document(production_id: str, payload: WorkflowDocumentRequest):
+    return _workflow_action(lambda: {"status": "ok", "artifact": workflow_service.start_managed_document(
+        production_id, payload.request_id, payload.plan_artifact_id)})
+
+
+@router.post("/{production_id}/workflow/import-document", status_code=201)
+def import_workflow_document(production_id: str, payload: WorkflowDocumentImport):
+    return _workflow_action(lambda: {"status": "ok", "artifact": workflow_service.import_document(
+        production_id, payload.request_id, payload.document, payload.plan_artifact_id)})
+
+
+@router.post("/{production_id}/workflow/artifacts/{artifact_id}/refresh")
+def refresh_workflow_artifact(production_id: str, artifact_id: str, payload: WorkflowRefreshRequest):
+    return _workflow_action(lambda: {"status": "ok", "artifact": workflow_service.refresh_artifact(
+        production_id, artifact_id, payload.response_id)})
 
 
 # ============================================================
@@ -842,6 +944,12 @@ def browse_productions(
                 "les productions."
             ),
         ) from exc
+
+    workflow = _workflow_action(lambda: workflow_repository.summaries(
+        [item["production_id"] for item in productions]
+    ))
+    for item in productions:
+        item["workflow"] = workflow.get(item["production_id"])
 
     return {
         "status": "ok",
