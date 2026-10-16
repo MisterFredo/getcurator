@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AUDIO_VISUAL_STYLES, REVIEWED_AUDIO_SHA256, audioPageVisual } from "./AudioReportVisuals";
 
 /* Self-contained preview. No raw model HTML is executed. */
 type Props = {
@@ -19,7 +20,7 @@ function escapeHtml(value: string): string {
 function inline(value: string): string {
   // Only explicitly supported Markdown constructs are rendered.
   // Raw HTML, images and scripts are always escaped.
-  const pattern = /(\*\*([^*\n]+)\*\*|`([^`\n]+)`|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\))/g;
+  const pattern = /(\*\*([^*\n]+)\*\*|`([^`\n]+)`|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*([^*\n]+)\*)/g;
   let output = "";
   let cursor = 0;
   for (const match of value.matchAll(pattern)) {
@@ -27,14 +28,22 @@ function inline(value: string): string {
     output += escapeHtml(value.slice(cursor, index));
     if (match[2]) output += `<strong>${escapeHtml(match[2])}</strong>`;
     else if (match[3]) output += `<code>${escapeHtml(match[3])}</code>`;
+    else if (match[6]) output += `<em>${escapeHtml(match[6])}</em>`;
     else output += `<a href="${escapeHtml(match[5])}" target="_blank" rel="noopener noreferrer">${escapeHtml(match[4])}</a>`;
     cursor = index + match[0].length;
   }
   return output + escapeHtml(value.slice(cursor));
 }
 
-function blocks(value: string): string {
-  return value.trim().split(/\n\s*\n/).filter(Boolean).map(block => {
+function blocks(value: string, compactSources = false): string {
+  if (compactSources) {
+    const months: Record<string, string> = { July: "Juillet", August: "Août", September: "Septembre" };
+    value = value.replace(
+      /— Rapport mensuel : \*\*Developments in Audio & Podcast during (July|August|September) (\d{4})\*\*/g,
+      (_, month: string, year: string) => `— **${months[month]} ${year}**`,
+    ).replace(/— Source disponible : (https?:\/\/[^\s]+)/g, "— [Consulter la source]($1)");
+  }
+  return value.replace(/\n(?=\*\*(?:Sources?|Limites|Périmètre|Lecture recommandée|Implication)\s*:)/g, "\n\n").trim().split(/\n\s*\n/).filter(Boolean).map(block => {
     const lines = block.trim().split("\n");
     if (lines.every(line => /^\s*[-*] /.test(line))) {
       return `<ul>${lines.map(line => `<li>${inline(line.replace(/^\s*[-*] /, ""))}</li>`).join("")}</ul>`;
@@ -90,18 +99,32 @@ a{color:var(--teal);overflow-wrap:anywhere}code{font-size:.9em;overflow-wrap:any
 @media print{html,body{background:white}.sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always;min-height:210mm}.sheet:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sources{min-height:210mm}.copy p{orphans:3;widows:3}h1,h3{break-after:avoid}}
 `;
 
-function buildHtml(title: string, pages: ReportPage[]): string {
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${PRINT_STYLES}</style></head><body>${pages.map((page, index) => {
+function buildHtml(title: string, pages: ReportPage[], audioVisuals = false): string {
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${PRINT_STYLES}${AUDIO_VISUAL_STYLES}</style></head><body>${pages.map((page, index) => {
     const cover = index === 0;
-    const sources = index === pages.length - 1 && /sources|méthode|périmètre/i.test(page.title);
-    return `<section class="sheet ${cover ? "cover" : sources ? "sources" : ""}"><div class="header"><div class="brand"><span class="mark">✦</span>GetCurator</div><span class="tagline">Bringing clarity to complexity</span></div><div class="eyebrow">${cover ? "Rapport autonome" : "Analyse & perspectives"}</div><h1>${inline(cover ? title : page.title)}</h1><div class="copy">${blocks(page.body)}</div><div class="footer"><span>GETCURATOR · RAPPORT</span><span>${String(page.number).padStart(2, "0")}</span></div></section>`;
+    const sources = index === pages.length - 1 && (/sources|méthode|périmètre/i.test(page.title) || /Références utilisées|\*\*\[S\d+\]\*\*/.test(page.body));
+    const visual = audioVisuals ? audioPageVisual(page.number) : "";
+    return `<section class="sheet ${visual ? "has-visual" : ""} ${cover ? "cover" : sources ? "sources" : ""}"><div class="header"><div class="brand"><span class="mark">✦</span>GetCurator</div><span class="tagline">Bringing clarity to complexity</span></div><div class="eyebrow">${cover ? "Rapport autonome" : "Analyse & perspectives"}</div><h1>${inline(cover ? title : page.title)}</h1>${visual}<div class="copy">${blocks(page.body, sources)}</div><div class="footer"><span>GETCURATOR · RAPPORT</span><span>${String(page.number).padStart(2, "0")}</span></div></section>`;
   }).join("\n")}</body></html>`;
 }
 
 export default function ProductionReportPreview({ markdown, completed }: Props) {
   const frame = useRef<HTMLIFrameElement>(null);
+  const [verifiedMarkdown, setVerifiedMarkdown] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    const normalized = markdown.replace(/\r\n/g, "\n").trim();
+    if (!window.crypto?.subtle) return;
+    void window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized))
+      .then(buffer => {
+        const hash = Array.from(new Uint8Array(buffer)).map(value => value.toString(16).padStart(2, "0")).join("");
+        if (!cancelled) setVerifiedMarkdown(hash === REVIEWED_AUDIO_SHA256 ? markdown : "");
+      }).catch(() => { if (!cancelled) setVerifiedMarkdown(""); });
+    return () => { cancelled = true; };
+  }, [markdown]);
+  const audioVisuals = verifiedMarkdown === markdown && markdown.length > 0;
   const report = useMemo(() => parseReport(markdown), [markdown]);
-  const html = useMemo(() => buildHtml(report.title, report.pages), [report]);
+  const html = useMemo(() => buildHtml(report.title, report.pages, audioVisuals), [report, audioVisuals]);
   const completeMarker = /^FIN_DU_RAPPORT\s*$/m.test(markdown);
   const exportable = completed && completeMarker && report.contiguous && report.pages.length > 0;
 
@@ -122,6 +145,7 @@ export default function ProductionReportPreview({ markdown, completed }: Props) 
     <section className="space-y-4 rounded-xl border bg-white p-6">
       <h2 className="text-lg font-semibold">Aperçu du rapport GetCurator</h2>
       <p className="text-sm text-gray-600">{report.pages.length} pages éditoriales · A4 paysage. Le registre de contrôle est séparé du document imprimé. La pagination physique dépend de la longueur du contenu.</p>
+      <p className="text-sm text-gray-600">{audioVisuals ? "Visuels du pilote Audio activés : cette version exacte du rapport a une configuration éditoriale dédiée." : "Aperçu typographique : aucune configuration de chiffres vérifiée pour cette version du texte."}</p>
       {!exportable && <p role="alert" className="rounded bg-amber-50 p-3 text-sm text-amber-800">Export désactivé : vérifier que la génération est terminée, que la ligne FIN_DU_RAPPORT est présente et que les numéros de page se suivent depuis 1.</p>}
       <div className="flex flex-wrap gap-3">
         <button type="button" disabled={!exportable} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50" onClick={() => { frame.current?.contentWindow?.focus(); frame.current?.contentWindow?.print(); }}>Imprimer / Enregistrer en PDF</button>
