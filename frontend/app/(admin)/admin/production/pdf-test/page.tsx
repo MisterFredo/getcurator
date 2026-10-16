@@ -454,6 +454,24 @@ export default function ProductionPdfTestPage() {
     }
   }
 
+  async function revalidateDocument() {
+    if (busy || !job || job.stage !== "document") return;
+    setBusy(true);
+    setError("");
+    try {
+      const response: { status: string; job: Job } = await api.get(
+        "/production/documents/jobs/" + encodeURIComponent(job.id),
+      );
+      setJob(response.job);
+      remember(response.job);
+      setPaused(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="max-w-5xl space-y-6">
       <Link
@@ -667,11 +685,16 @@ export default function ProductionPdfTestPage() {
           {!running && job.status !== "completed" && (
             <div className="rounded bg-amber-50 p-4">
               <p>
-                La génération n’est pas terminée
-                correctement. Le texte éventuel
-                est partiel.
+                {job.status === "validation_failed"
+                  ? "La réponse a été reçue, mais les contrôles du document l’ont rejetée. Le détail est indiqué ci-dessous."
+                  : "La génération ne s’est pas terminée correctement. Le texte éventuel peut être partiel."}
               </p>
 
+              {job.stage === "document" && job.status === "validation_failed" && (
+                <button type="button" disabled={busy} onClick={() => void revalidateDocument()} className="mt-3 rounded border px-4 py-2 disabled:opacity-50">
+                  Revérifier le document existant sans régénérer
+                </button>
+              )}
               <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
                 {JSON.stringify(
                   job.error
