@@ -102,11 +102,49 @@ def pointer_value(payload, pointer):
     return str(current)
 
 
+# Small standalone cardinal numbers only. Compound numbers, decimal words,
+# multipliers and written signs are deliberately not converted here.
+SMALL_CARDINALS = {
+    "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+    "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
+    "sept": 7, "huit": 8, "neuf": 9, "dix": 10, "onze": 11, "douze": 12,
+}
+CARDINAL_CONTEXT = set(SMALL_CARDINALS) | {
+    "zero", "one", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+    "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty",
+    "seventy", "eighty", "ninety", "hundred", "thousand", "million", "millions",
+    "billion", "billions", "point", "minus", "negative", "plus", "and",
+    "zéro", "un", "une", "treize", "quatorze", "quinze", "seize", "vingt",
+    "trente", "quarante", "cinquante", "soixante", "cent", "cents", "mille",
+    "milliard", "milliards", "virgule", "moins", "et",
+}
+
+
+def small_cardinals_in_quote(quote):
+    result = set()
+    text = quote.lower()
+    for match in re.finditer(r"(?<![\w-])[a-zà-ÿ]+(?![\w-])", text):
+        value = SMALL_CARDINALS.get(match.group())
+        if value is None:
+            continue
+        before = re.findall(r"[\w]+", text[:match.start()])
+        after = re.findall(r"[\w]+", text[match.end():])
+        neighbors = ([before[-1]] if before else []) + ([after[0]] if after else [])
+        if any(word in CARDINAL_CONTEXT or any(c.isdigit() for c in word) for word in neighbors):
+            continue
+        # Preserve conservative behavior for hyphenated counts and numeric ranges.
+        if text[max(0, match.start()-1):match.start()] in {"-", "−", "+"}:
+            continue
+        result.add(Decimal(value))
+    return result
+
+
 def numbers_in_quote(quote):
     # Deterministic presence check only; not a semantic or unit validator.
     compact = re.sub(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?:\D|$))", "", quote)
     tokens = re.findall(r"(?<![\w.])[-+−]?(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)(?![\w.])", compact)
-    result = set()
+    result = small_cardinals_in_quote(quote)
     for token in tokens:
         token = token.replace("−", "-")
         if re.fullmatch(r"[-+]?\d{1,3}(?:,\d{3})+(?:\.\d+)?", token):
