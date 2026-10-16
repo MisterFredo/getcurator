@@ -161,7 +161,7 @@ def validate_against_corpus(document, corpus):
     return document
 
 
-def start_document(production_id, reviewed_plan):
+def start_document(production_id, reviewed_plan, on_created=None):
     if not reviewed_plan.strip():
         raise ValueError("Le plan relu est obligatoire.")
     corpus = load_corpus(production_id)
@@ -182,6 +182,8 @@ def start_document(production_id, reviewed_plan):
             metadata={"workflow": WORKFLOW, "stage": "document", "input_mode": "json",
                       "production_id": production_id, "corpus_sha256": corpus.corpus_sha256},
         )
+    if on_created is not None:
+        on_created(response)
     return serialize_document_response(response)
 
 
