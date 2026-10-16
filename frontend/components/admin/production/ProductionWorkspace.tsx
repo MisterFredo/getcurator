@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import ProductionDocumentPreview from "@/components/admin/production/ProductionDocumentPreview";
+import { reportPeriodForExport } from "@/lib/production-export";
 import type { ProductionDocument } from "@/types/production-document";
 import {
   browseProductions, readProduction, browseArtifacts, readArtifact,
@@ -409,7 +410,11 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
           {document && <>
             <div className="flex flex-wrap gap-3"><button className={BUTTON} onClick={() => download("document-getcurator.json", JSON.stringify(document, null, 2))}>Télécharger le document JSON</button>
               {artifact?.parent_artifact_id && <button className={BUTTON} disabled={busy} onClick={() => void act(() => chooseArtifact(artifact.parent_artifact_id!))}>Ouvrir le plan source</button>}</div>
-            <ProductionDocumentPreview document={document} />
+            <ProductionDocumentPreview key={artifact?.artifact_id} document={document} exportContext={{
+              subject: production.title,
+              language: production.output_language,
+              ...reportPeriodForExport(production.corpus.reports),
+            }} />
           </>}
         </>}
       </main>}
