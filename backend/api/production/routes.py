@@ -1,15 +1,18 @@
 import logging
 import json
 
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
     Query,
     Request,
-)
-
-from fastapi import (
     File,
     UploadFile,
 )
@@ -23,9 +26,11 @@ from starlette.concurrency import (
     run_in_threadpool,
 )
 
+
 from core.production.pdf_test_service import (
     MAX_TOTAL_BYTES,
     get_pdf_test,
+    start_report_draft,
     start_pdf_test,
 )
 
@@ -110,6 +115,120 @@ router = APIRouter(
         ),
     ],
 )
+
+# ============================================================
+# WRITE REPORT FROM REVIEWED PLAN
+# ============================================================
+
+class ProductionReportDraftRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid"
+    )
+
+    reviewed_plan: str = Field(
+        min_length=1,
+        max_length=150_000,
+    )
+
+
+@router.post(
+    "/{production_id}/report-draft/jobs",
+    status_code=202,
+)
+def create_report_draft_job(
+    production_id: str,
+    payload: ProductionReportDraftRequest,
+):
+    try:
+        production = get_production(
+            production_id=production_id,
+        )
+
+        if production is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Production introuvable.",
+            )
+
+        corpus = (
+            ProductionPreparedCorpus.model_validate(
+                production["corpus"]
+            )
+        )
+
+        job = start_report_draft(
+            production_id=production_id,
+            brief=corpus.request.model_dump(
+                mode="json"
+            ),
+            reports=[
+                snapshot.payload
+                for snapshot in corpus.reports
+            ],
+            reviewed_plan=payload.reviewed_plan,
+            corpus_sha256=corpus.corpus_sha256,
+        )
+
+        return {
+            "status": "ok",
+            "job": job,
+        }
+
+    except HTTPException:
+        raise
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except APIStatusError as exc:
+        logger.exception(
+            "Report draft API rejection: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "OpenAI a refusé la rédaction "
+                f"(HTTP {exc.status_code}). "
+                "Consulter les logs."
+            ),
+        ) from exc
+
+    except APIConnectionError as exc:
+        logger.exception(
+            "Report draft connection failure: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Connexion à OpenAI interrompue. "
+                "L'acceptation de la rédaction "
+                "n'est pas confirmée. "
+                "Ne pas relancer automatiquement."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            "Report draft creation failed: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Impossible de démarrer "
+                "la rédaction du rapport. "
+                "Consulter les logs avant "
+                "de relancer."
+            ),
+        ) from exc
 
 # ============================================================
 # TEST FROM SAVED PRODUCTION + PDF PROTOTYPE
