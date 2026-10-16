@@ -34,6 +34,11 @@ from core.production.pdf_test_service import (
     start_pdf_test,
 )
 
+from core.production.document_service import (
+    get_document_job,
+    start_document,
+)
+
 from core.production.corpus_service import (
     prepare_production_corpus,
 )
@@ -130,6 +135,173 @@ class ProductionReportDraftRequest(BaseModel):
         max_length=150_000,
     )
 
+
+# ============================================================
+# GENERATE A STRUCTURED DOCUMENT FROM THE REVIEWED PLAN
+# ============================================================
+
+@router.post(
+    "/{production_id}/documents/jobs",
+    status_code=202,
+)
+def create_document_job(
+    production_id: str,
+    payload: ProductionReportDraftRequest,
+):
+    try:
+        job = start_document(
+            production_id=production_id,
+            reviewed_plan=payload.reviewed_plan,
+        )
+
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except APIStatusError as exc:
+        logger.exception(
+            "Document API rejection: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "OpenAI a refusé la demande "
+                f"(HTTP {exc.status_code}). "
+                "Consulter les logs."
+            ),
+        ) from exc
+
+    except APIConnectionError as exc:
+        logger.exception(
+            "Document connection interrupted: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Connexion à OpenAI interrompue. "
+                "L'acceptation de la demande "
+                "n'est pas confirmée. Consulter "
+                "les logs avant de relancer."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            "Document creation failed: %s",
+            production_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Impossible de démarrer "
+                "la génération du document. "
+                "Consulter les logs avant "
+                "de relancer."
+            ),
+        ) from exc
+
+    return {
+        "status": "ok",
+        "job": job,
+    }
+
+
+# ============================================================
+# FOLLOW A STRUCTURED DOCUMENT GENERATION
+# ============================================================
+
+@router.get(
+    "/documents/jobs/{response_id}",
+)
+def read_document_job(
+    response_id: str,
+):
+    try:
+        job = get_document_job(
+            response_id=response_id,
+        )
+
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    except APIStatusError as exc:
+        logger.exception(
+            "Document retrieval rejected: %s",
+            response_id,
+        )
+
+        raise HTTPException(
+            status_code=(
+                404 if exc.status_code == 404
+                else 502
+            ),
+            detail=(
+                "Génération introuvable "
+                "ou indisponible chez OpenAI."
+            ),
+        ) from exc
+
+    except APIConnectionError as exc:
+        logger.exception(
+            "Document retrieval connection failure: %s",
+            response_id,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Impossible de récupérer "
+                "la génération. Le traitement "
+                "peut toujours être en cours."
+            ),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            "Document retrieval failed: %s",
+            response_id,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Impossible de récupérer "
+                "le document. Consulter "
+                "les logs backend."
+            ),
+        ) from exc
+
+    return {
+        "status": "ok",
+        "job": job,
+    }
+
+
+# ============================================================
+# WRITE REPORT FROM REVIEWED PLAN (MARKDOWN COMPATIBILITY)
+# ============================================================
 
 @router.post(
     "/{production_id}/report-draft/jobs",
