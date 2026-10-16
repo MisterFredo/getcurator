@@ -142,7 +142,17 @@ def small_cardinals_in_quote(quote):
 
 def numbers_in_quote(quote):
     # Deterministic presence check only; not a semantic or unit validator.
-    compact = re.sub(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?:\D|$))", "", quote)
+    # Multipliers are legitimate numeric displays: 3x, 3×, x3, ×3.
+    # Normalize only bounded numeric forms, not identifiers such as abc3x.
+    numeric_text = re.sub(
+        r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?)[ \u00a0\u202f]*[x×](?![\w])",
+        r"\1 ", quote, flags=re.IGNORECASE,
+    )
+    numeric_text = re.sub(
+        r"(?<![\w])[x×][ \u00a0\u202f]*([-+−]?\d+(?:[.,]\d+)?)(?![\w.])",
+        r" \1", numeric_text, flags=re.IGNORECASE,
+    )
+    compact = re.sub(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?:\D|$))", "", numeric_text)
     tokens = re.findall(r"(?<![\w.])[-+−]?(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)(?![\w.])", compact)
     result = small_cardinals_in_quote(quote)
     for token in tokens:
@@ -189,7 +199,10 @@ def validate_against_corpus(document, corpus):
     for page in document.pages:
         for metric in page.metrics:
             if Decimal(str(metric.value)) not in numbers_in_quote(metric.display_value):
-                raise ValueError(f"Page {page.page_id} : affichage numérique incohérent.")
+                raise ValueError(
+                    f"Page {page.page_id} : affichage {metric.display_value!r} "
+                    f"incompatible avec la valeur {metric.value} ({metric.source_id})."
+                )
         values = [(m.value, m.source_id) for m in page.metrics]
         if page.chart:
             values += [(p.value, p.source_id) for p in page.chart.points]
