@@ -8,7 +8,7 @@ from core.production.document_models import ProductionDocument
 from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
 
-WORKFLOW = "getcurator_document_
+WORKFLOW = "getcurator_document_v1"
 
 INSTRUCTIONS = """
 Tu rédiges un rapport autonome GetCurator à partir d'un plan relu et des
