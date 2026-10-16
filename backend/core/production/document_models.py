@@ -92,8 +92,6 @@ class ProductionDocument(DocumentModel):
                 raise ValueError(f"Page {page.page_id} : texte trop long pour le modèle.")
             if any(not t.strip() for t in page.paragraphs + page.bullets):
                 raise ValueError("Texte vide dans une page.")
-            if page.chart and page.metrics:
-                raise ValueError("Une page utilise un graphique OU des indicateurs, pas les deux.")
             if page.layout in {"COMPARISON", "TREND"}:
                 if not page.chart or page.chart.kind != page.layout:
                     raise ValueError("Le graphique doit correspondre à la composition.")
