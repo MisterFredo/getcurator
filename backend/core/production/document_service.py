@@ -3,7 +3,7 @@ import json
 import os
 import re
 from decimal import Decimal
-from openai import Ope
+from openai import OpenAI
 from core.production.document_models import ProductionDocument
 from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
