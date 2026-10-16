@@ -138,6 +138,17 @@ def _serialize(response) -> dict:
             if response.usage
             else None
         ),
+         "stage": (
+            response.metadata or {}
+        ).get("stage", "plan"),
+
+        "production_id": (
+            response.metadata or {}
+        ).get("production_id"),
+
+        "corpus_sha256": (
+            response.metadata or {}
+        ).get("corpus_sha256"),
         "error": (
             response.error.model_dump(
                 mode="json"
