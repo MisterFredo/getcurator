@@ -1,1224 +1,410 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api";
+import ProductionDocumentPreview from "@/components/admin/production/ProductionDocumentPreview";
+import type { ProductionDocument } from "@/types/production-document";
 import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+  browseProductions, readProduction, browseArtifacts, readArtifact,
+  startPlan, saveReviewedPlan, startDocument, importDocument, refreshArtifact,
+} from "@/lib/production-workflow";
 import {
-  api,
-} from "@/lib/api";
-
-import {
-  createProduction,
-  generateProductionPlan,
-  getProduction,
-  getProductionPlan,
-  listProductionPlans,
-  listProductions,
-} from "@/lib/production";
-
+  blocksSubmission, isRunning, stageLabel, statusLabel,
+} from "@/types/production-workflow";
 import type {
-  Production,
-  ProductionOutputFormat,
-  ProductionPageLayout,
-  ProductionPlanVersionSummary,
-  ProductionSavedPlan,
-  ProductionSummary,
-} from "@/types/production";
-
-import ProductionPageNumbers from
-  "@/components/admin/production/ProductionPageNumbers";
-
-
-/* =========================================================
-   TYPES
-========================================================= */
+  ProductionListItem, ProductionWorkspace, WorkflowArtifact, WorkflowArtifactSummary,
+} from "@/types/production-workflow";
 
 type SourceReport = {
-  report_id: string;
-  subject: string;
-  output_language: string;
-  report_type?: string;
-  period_start?: string | null;
-  period_end?: string | null;
+  report_id: string; subject: string; output_language: string;
+  period_start?: string | null; period_end?: string | null;
 };
-
-type ReportsResponse = {
-  status: string;
-  reports: SourceReport[];
-};
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-const REPORT_LIMIT = 100;
-
-const INPUT =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm";
-
-const BUTTON =
-  "rounded-lg border border-slate-200 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50";
-
-const PRIMARY =
-  "rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50";
-
-const LAYOUT_LABELS: Record<
-  ProductionPageLayout,
-  string
-> = {
-  COVER: "Couverture",
-  EXECUTIVE_SUMMARY: "Synthèse exécutive",
-  CHART_WITH_ANALYSIS: "Graphique commenté",
-  KEY_NUMBERS: "Chiffres clés",
-  CASE_STUDY: "Étude de cas",
-  COMPARISON: "Comparaison",
-  EXPLANATORY: "Explication",
-  IMPLICATIONS: "Implications",
-  SOURCES: "Sources",
-};
-
-function errorMessage(
-  error: unknown,
-): string {
-  return error instanceof Error
-    ? error.message
-    : "Une erreur est survenue.";
+type LegacyPlanSummary = { plan_version: number; plan_id: string };
+type LegacyPlan = { title: string; editorial_angle: string; pages: {
+  title: string; layout: string; key_message: string; explanation_outline: string[];
+  visual_intent: string; cautions: string[];
+}[] };
+const INPUT = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm";
+const BUTTON = "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50";
+const PRIMARY = "rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50";
+const PANEL = "space-y-4 rounded-xl border border-slate-200 bg-white p-5";
+const message = (err: unknown) => err instanceof Error ? err.message : "Une erreur est survenue.";
+const date = (value?: string | null) => value ? new Date(value).toLocaleString("fr-FR") : "";
+function download(name: string, value: string, type = "application/json") {
+  const url = URL.createObjectURL(new Blob([value], { type }));
+  const anchor = window.document.createElement("a");
+  anchor.href = url; anchor.download = name; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+// Keep only an idempotency key locally, never the authoritative result.
+// A lost POST response can then be retried as the same operation.
+async function generationRequest(key: string, submit: (id: string) => Promise<WorkflowArtifact>) {
+  const storageKey = `getcurator-production-pending:${key}`;
+  let id: string = crypto.randomUUID();
+  try {
+    const previous = localStorage.getItem(storageKey);
+    if (previous && /^[0-9a-f-]{36}$/i.test(previous)) id = previous;
+    localStorage.setItem(storageKey, id);
+  } catch { /* BigQuery remains authoritative when browser storage is unavailable. */ }
+  const item = await submit(id);
+  try { localStorage.removeItem(storageKey); } catch { /* Optional browser cache. */ }
+  return item;
 }
 
-function displayDate(
-  value?: string | null,
-): string {
-  if (!value) return "";
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleDateString("fr-FR");
+function legacyText(plan: LegacyPlan) {
+  return `# ${plan.title}\n\n${plan.editorial_angle}\n\n` + plan.pages.map((page, i) =>
+    `## Page ${i + 1} — ${page.title}\nComposition : ${page.layout}\n\n${page.key_message}\n\n` +
+    page.explanation_outline.map(line => `- ${line}`).join("\n") +
+    `\n\nVisuel : ${page.visual_intent}\n` + page.cautions.map(line => `Limite : ${line}`).join("\n")
+  ).join("\n\n");
 }
-
-function reportPeriod(
-  report: SourceReport,
-): string {
-  return [
-    displayDate(report.period_start),
-    displayDate(report.period_end),
-  ]
-    .filter(Boolean)
-    .join(" – ");
-}
-
-async function loadReportBatch(
-  offset: number,
-): Promise<SourceReport[]> {
-  const response: ReportsResponse =
-    await api.get(
-      `/touch/reports?archive=active&limit=${REPORT_LIMIT}&offset=${offset}`,
-    );
-
-  return response.reports;
-}
-
-
-/* =========================================================
-   PAGE
-========================================================= */
 
 export default function ProductionPage() {
-  const [reports, setReports] =
-    useState<SourceReport[]>([]);
+  const [productions, setProductions] = useState<ProductionListItem[]>([]);
+  const [productionOffset, setProductionOffset] = useState(0);
+  const [moreProductions, setMoreProductions] = useState(false);
+  const [reports, setReports] = useState<SourceReport[]>([]);
+  const [reportOffset, setReportOffset] = useState(0);
+  const [moreReports, setMoreReports] = useState(false);
+  const [reportSearch, setReportSearch] = useState("");
+  const [productionSearch, setProductionSearch] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [title, setTitle] = useState("");
+  const [objective, setObjective] = useState("");
+  const [audience, setAudience] = useState("Décideurs médias et marketing");
+  const [language, setLanguage] = useState<"fr" | "en">("fr");
+  const [pages, setPages] = useState<number | null>(null);
+  const [production, setProduction] = useState<ProductionWorkspace | null>(null);
+  const [history, setHistory] = useState<WorkflowArtifactSummary[]>([]);
+  const [historyOffset, setHistoryOffset] = useState(0);
+  const [moreHistory, setMoreHistory] = useState(false);
+  const [artifact, setArtifact] = useState<WorkflowArtifact | null>(null);
+  const [editor, setEditor] = useState("");
+  const [original, setOriginal] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editorParent, setEditorParent] = useState<string | null>(null);
+  const [responseId, setResponseId] = useState("");
+  const [legacy, setLegacy] = useState<LegacyPlanSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const selection = useRef(0);
+  const actionLock = useRef(false);
+  const selectedArtifact = useRef<string | null>(null);
+  const editorDirty = useRef(false);
+  editorDirty.current = editing && editor !== original;
+  const activeRun = history.find(item => isRunning(item.status));
+  const blocked = history.some(item => blocksSubmission(item.status));
 
-  const [reportOffset, setReportOffset] =
-    useState(0);
-
-  const [hasMoreReports, setHasMoreReports] =
-    useState(false);
-
-  const [reportSearch, setReportSearch] =
-    useState("");
-
-  const [selectedReportIds, setSelectedReportIds] =
-    useState<string[]>([]);
-
-  const [productions, setProductions] =
-    useState<ProductionSummary[]>([]);
-
-  const [production, setProduction] =
-    useState<Production | null>(null);
-
-  const [plan, setPlan] =
-    useState<ProductionSavedPlan | null>(null);
-
-  const [versions, setVersions] =
-    useState<ProductionPlanVersionSummary[]>([]);
-
-  const [title, setTitle] =
-    useState("");
-
-  const [objective, setObjective] =
-    useState("");
-
-  const [audience, setAudience] =
-    useState("Décideurs médias et marketing");
-
-  const [language, setLanguage] =
-    useState<"fr" | "en">("fr");
-
-  const [format, setFormat] =
-    useState<ProductionOutputFormat>(
-      "AUTONOMOUS_REPORT",
-    );
-
-  const [pageCount, setPageCount] =
-    useState<number | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [loadingReports, setLoadingReports] =
-    useState(false);
-
-  const [opening, setOpening] =
-    useState(false);
-
-  const [creating, setCreating] =
-    useState(false);
-
-  const [generating, setGenerating] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const selectionRequestRef = useRef(0);
-
-  const busy =
-    loading ||
-    opening ||
-    creating ||
-    generating;
-
-
-  /* =======================================================
-     INITIAL LOAD
-  ======================================================= */
+  function installArtifact(item: WorkflowArtifact) {
+    selectedArtifact.current = item.artifact_id;
+    setArtifact(item);
+    setResponseId("");
+    const plan = ["PLAN", "APPROVED_PLAN"].includes(item.stage) && item.status === "completed";
+    setEditing(plan);
+    const text = plan ? item.result?.text || "" : "";
+    setEditor(text); setOriginal(text);
+    setEditorParent(plan ? item.artifact_id : null);
+  }
+  function mergeArtifact(item: WorkflowArtifact) {
+    setHistory(current => [item, ...current.filter(row => row.artifact_id !== item.artifact_id)]
+      .sort((a, b) => b.version_number - a.version_number));
+  }
+  async function refreshList() {
+    const items = await browseProductions();
+    setProductions(items); setProductionOffset(items.length); setMoreProductions(items.length === 100);
+  }
+  async function openProduction(id: string) {
+    if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) return;
+    const token = ++selection.current;
+    setBusy(true); setError(""); setNotice("");
+    setProduction(null); setHistory([]); setArtifact(null); setLegacy([]);
+    setEditing(false); setEditor(""); setOriginal(""); selectedArtifact.current = null;
+    try {
+      const [saved, items] = await Promise.all([readProduction(id), browseArtifacts(id)]);
+      if (token !== selection.current) return;
+      setProduction(saved); setHistory(items); setHistoryOffset(items.length); setMoreHistory(items.length === 100);
+      const url = new URL(window.location.href); url.searchParams.set("production", id);
+      window.history.replaceState(null, "", url.toString());
+      const first = items.find(row => blocksSubmission(row.status)) || items[0];
+      if (first) {
+        const detail = await readArtifact(id, first.artifact_id);
+        if (token === selection.current) installArtifact(detail);
+      }
+    } catch (err) { if (token === selection.current) setError(message(err)); }
+    finally { if (token === selection.current) setBusy(false); }
+  }
 
   useEffect(() => {
-    let active = true;
-
-    async function load() {
-      try {
-        const [
-          firstReports,
-          savedProductions,
-        ] = await Promise.all([
-          loadReportBatch(0),
-          listProductions(100),
-        ]);
-
-        if (!active) return;
-
-        setReports(firstReports);
-        setReportOffset(firstReports.length);
-
-        setHasMoreReports(
-          firstReports.length === REPORT_LIMIT,
-        );
-
-        setProductions(savedProductions);
-      } catch (err) {
-        if (active) {
-          setError(errorMessage(err));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+    let alive = true;
+    async function init() {
+      const results = await Promise.allSettled([
+        api.get("/touch/reports?archive=active&limit=100&offset=0"), browseProductions(),
+      ]);
+      if (!alive) return;
+      if (results[0].status === "fulfilled") {
+        const rows: SourceReport[] = results[0].value.reports;
+        setReports(rows); setReportOffset(rows.length); setMoreReports(rows.length === 100);
       }
+      if (results[1].status === "fulfilled") {
+        const rows = results[1].value;
+        setProductions(rows); setProductionOffset(rows.length); setMoreProductions(rows.length === 100);
+      }
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (failures.length) setError(failures.map(r => message(r.reason)).join(" · "));
+      setLoading(false);
+      const id = new URLSearchParams(window.location.search).get("production");
+      if (id) await openProduction(id);
     }
-
-    void load();
-
-    return () => {
-      active = false;
-      selectionRequestRef.current += 1;
-    };
+    void init();
+    return () => { alive = false; selection.current += 1; };
+    // Initial load only; further opens are explicit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-  /* =======================================================
-     REPORT SELECTION
-  ======================================================= */
-
-  function toggleReport(
-    reportId: string,
-  ) {
-    setSelectedReportIds((current) => {
-      if (current.includes(reportId)) {
-        return current.filter(
-          (id) => id !== reportId,
-        );
-      }
-
-      if (current.length >= 20) {
-        return current;
-      }
-
-      return [...current, reportId];
-    });
-  }
-
-  async function loadMoreReports() {
-    if (loadingReports) return;
-
-    setLoadingReports(true);
-    setError(null);
-
-    try {
-      const batch = await loadReportBatch(
-        reportOffset,
-      );
-
-      setReports((current) => {
-        const knownIds = new Set(
-          current.map(
-            (report) => report.report_id,
-          ),
-        );
-
-        return [
-          ...current,
-          ...batch.filter(
-            (report) =>
-              !knownIds.has(report.report_id),
-          ),
-        ];
-      });
-
-      setReportOffset(
-        (current) => current + batch.length,
-      );
-
-      setHasMoreReports(
-        batch.length === REPORT_LIMIT,
-      );
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setLoadingReports(false);
-    }
-  }
-
-
-  /* =======================================================
-     OPEN PRODUCTION OR PLAN VERSION
-  ======================================================= */
-
-  async function openProduction(
-    productionId: string,
-  ) {
-    const requestId =
-      ++selectionRequestRef.current;
-
-    setOpening(true);
-    setError(null);
-    setProduction(null);
-    setPlan(null);
-    setVersions([]);
-
-    try {
-      const [
-        savedProduction,
-        history,
-      ] = await Promise.all([
-        getProduction(productionId),
-        listProductionPlans(
-          productionId,
-          100,
-        ),
-      ]);
-
-      if (
-        requestId !==
-        selectionRequestRef.current
-      ) {
-        return;
-      }
-
-      setProduction(savedProduction);
-      setVersions(history);
-
-      if (history.length > 0) {
-        const savedPlan =
-          await getProductionPlan(
-            productionId,
-            history[0].plan_version,
-          );
-
-        if (
-          requestId ===
-          selectionRequestRef.current
-        ) {
-          setPlan(savedPlan);
+  useEffect(() => {
+    if (!production || !activeRun?.response_id) return;
+    const prodId = production.production_id;
+    const runId = activeRun.artifact_id;
+    const token = selection.current;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      try {
+        const updated = await refreshArtifact(prodId, runId);
+        if (stopped || token !== selection.current) return;
+        mergeArtifact(updated);
+        if (selectedArtifact.current === runId) {
+          if (updated.status === "completed" && updated.stage === "PLAN" && !editorDirty.current) installArtifact(updated);
+          else setArtifact(updated);
         }
-      }
-    } catch (err) {
-      if (
-        requestId ===
-        selectionRequestRef.current
-      ) {
-        setError(errorMessage(err));
-      }
-    } finally {
-      if (
-        requestId ===
-        selectionRequestRef.current
-      ) {
-        setOpening(false);
+        if (isRunning(updated.status)) timer = setTimeout(() => void poll(), 8000);
+        else { setNotice("Le résultat et son diagnostic sont enregistrés dans la production."); void refreshList().catch(err => setError(message(err))); }
+      } catch (err) {
+        if (!stopped) setError(`${message(err)} Le suivi automatique est suspendu. Utilisez « Actualiser le suivi ».`);
       }
     }
-  }
+    timer = setTimeout(() => void poll(), 1500);
+    return () => { stopped = true; clearTimeout(timer); };
+    // Stable run ID: polling updates the status without restarting its timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [production?.production_id, activeRun?.artifact_id, activeRun?.response_id]);
 
-  async function openPlanVersion(
-    version: number,
-  ) {
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (editorDirty.current) { event.preventDefault(); event.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
+
+  async function act(action: () => Promise<void>) {
+    if (actionLock.current) return;
+    actionLock.current = true; setBusy(true); setError(""); setNotice("");
+    try { await action(); }
+    catch (err) { setError(message(err)); }
+    finally { actionLock.current = false; setBusy(false); }
+  }
+  async function create() {
+    const res = await api.post("/production/", {
+      title: title.trim(), report_ids: selected, objective: objective.trim(),
+      target_audience: audience.trim(), output_language: language,
+      output_format: "AUTONOMOUS_REPORT", target_page_count: pages,
+    });
+    await openProduction(res.production.production_id); await refreshList();
+  }
+  async function chooseArtifact(id: string) {
     if (!production) return;
-
-    const requestId =
-      ++selectionRequestRef.current;
-
-    setOpening(true);
-    setError(null);
-    setPlan(null);
-
-    try {
-      const savedPlan =
-        await getProductionPlan(
-          production.production_id,
-          version,
-        );
-
-      if (
-        requestId ===
-        selectionRequestRef.current
-      ) {
-        setPlan(savedPlan);
-      }
-    } catch (err) {
-      if (
-        requestId ===
-        selectionRequestRef.current
-      ) {
-        setError(errorMessage(err));
-      }
-    } finally {
-      if (
-        requestId ===
-        selectionRequestRef.current
-      ) {
-        setOpening(false);
-      }
+    if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) return;
+    const token = selection.current;
+    const detail = await readArtifact(production.production_id, id);
+    if (token === selection.current) installArtifact(detail);
+  }
+  async function savePlan() {
+    if (!production) return;
+    const item = await saveReviewedPlan(production.production_id, crypto.randomUUID(), editor, editorParent);
+    mergeArtifact(item); installArtifact(item); await refreshList();
+    setNotice("Plan validé et enregistré. Vous pouvez maintenant générer le rapport depuis cette version.");
+  }
+  async function submitDocument() {
+    if (!production || !artifact) return;
+    const item = await generationRequest(`${production.production_id}:document:${artifact.artifact_id}`,
+      id => startDocument(production.production_id, id, artifact.artifact_id));
+    mergeArtifact(item); installArtifact(item); await refreshList();
+  }
+  async function submitPlan() {
+    if (!production) return;
+    if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) return;
+    const item = await generationRequest(`${production.production_id}:plan`,
+      id => startPlan(production.production_id, id));
+    mergeArtifact(item); installArtifact(item); await refreshList();
+  }
+  async function refreshSelected() {
+    if (!production || !artifact) return;
+    const item = await refreshArtifact(production.production_id, artifact.artifact_id, responseId.trim());
+    mergeArtifact(item);
+    if (!editorDirty.current) installArtifact(item); else setArtifact(item);
+    await refreshList();
+  }
+  async function uploadDocument(file: File) {
+    if (!production) return;
+    if (file.size > 5 * 1024 * 1024) throw new Error("Le fichier JSON dépasse 5 Mo.");
+    const value = JSON.parse(await file.text()) as ProductionDocument;
+    const item = await importDocument(production.production_id, crypto.randomUUID(), value,
+      artifact?.stage === "APPROVED_PLAN" ? artifact.artifact_id : null);
+    mergeArtifact(item); installArtifact(item); await refreshList();
+    setNotice("Document importé, contrôlé contre le socle et enregistré, sans appel LLM.");
+  }
+  async function loadLegacy(version?: number) {
+    if (!production) return;
+    if (!version) {
+      const res = await api.get(`/production/${encodeURIComponent(production.production_id)}/plans?limit=100&offset=0`);
+      setLegacy(res.plans); if (!res.plans.length) setNotice("Aucun plan de l'ancien moteur.");
+    } else {
+      if (editorDirty.current && !window.confirm("Remplacer le plan non enregistré ?")) return;
+      const res = await api.get(`/production/${encodeURIComponent(production.production_id)}/plan?version=${version}`);
+      const text = legacyText(res.plan.snapshot.plan);
+      setArtifact(null); selectedArtifact.current = null;
+      setEditing(true); setEditor(text); setOriginal(""); setEditorParent(null);
+      setNotice("Ancien plan chargé comme brouillon. Relisez-le avant de le valider dans le nouveau parcours.");
     }
   }
 
+  const approved = artifact?.stage === "APPROVED_PLAN" && artifact.status === "completed";
+  const unchangedApproved = approved && editor === original;
+  const document = artifact?.status === "completed" ? artifact.result?.document : null;
 
-  /* =======================================================
-     CREATE
-  ======================================================= */
-
-  async function handleCreate() {
-    if (
-      busy ||
-      !title.trim() ||
-      selectedReportIds.length === 0
-    ) {
-      return;
-    }
-
-    setCreating(true);
-    setError(null);
-
-    try {
-      const created =
-        await createProduction({
-          title: title.trim(),
-          report_ids: selectedReportIds,
-          objective: objective.trim(),
-          target_audience: audience.trim(),
-          output_language: language,
-          output_format: format,
-          target_page_count: pageCount,
-        });
-
-      selectionRequestRef.current += 1;
-
-      setProduction(created);
-      setPlan(null);
-      setVersions([]);
-
-      setProductions((current) => [
-        created,
-        ...current.filter(
-          (item) =>
-            item.production_id !==
-            created.production_id,
-        ),
-      ]);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setCreating(false);
-    }
-  }
-
-
-  /* =======================================================
-     GENERATE
-  ======================================================= */
-
-  async function handleGenerate() {
-    if (!production || busy) return;
-
-    setGenerating(true);
-    setError(null);
-
-    try {
-      const savedPlan =
-        await generateProductionPlan(
-          production.production_id,
-        );
-
-      setPlan(savedPlan);
-
-      setVersions((current) => [
-        savedPlan,
-        ...current.filter(
-          (item) =>
-            item.plan_id !== savedPlan.plan_id,
-        ),
-      ]);
-
-      setProduction((current) =>
-        current
-          ? {
-              ...current,
-              status: "PLAN_TO_REVIEW",
-            }
-          : current,
-      );
-
-      setProductions((current) =>
-        current.map((item) =>
-          item.production_id ===
-          production.production_id
-            ? {
-                ...item,
-                status: "PLAN_TO_REVIEW",
-              }
-            : item,
-        ),
-      );
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-
-  /* =======================================================
-     DERIVED DATA
-  ======================================================= */
-
-  const search = reportSearch
-    .trim()
-    .toLocaleLowerCase();
-
-  const filteredReports = reports.filter(
-    (report) =>
-      report.subject
-        .toLocaleLowerCase()
-        .includes(search),
-  );
-
-  const counts =
-    production?.corpus.counts;
-
-  const evidenceById = new Map(
-    production?.corpus.evidence_index.map(
-      (reference) => [
-        reference.reference_id,
-        reference,
-      ],
-    ) || [],
-  );
-
-  const reportsById = new Map(
-    production?.corpus.reports.map(
-      (report) => [
-        report.report_id,
-        report,
-      ],
-    ) || [],
-  );
-
-  const canGenerate =
-    production?.status ===
-      "CORPUS_PREPARED" ||
-    production?.status ===
-      "PLAN_TO_REVIEW";
-
-
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
-  return (
-    <div className="mx-auto max-w-7xl space-y-8 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-900">
-          Productions
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500">
-          Créez un document à partir des rapports
-          Touch sélectionnés.
-        </p>
-      </header>
-
-      {error && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-slate-500">
-          Chargement…
-        </p>
-      ) : (
-        <div className="grid gap-8 xl:grid-cols-[400px_minmax(0,1fr)]">
-          <aside className="min-w-0 space-y-8">
-            <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="font-semibold">
-                Nouvelle production
-              </h2>
-
-              <label className="block space-y-1 text-sm">
-                <span>Titre</span>
-                <input
-                  className={INPUT}
-                  value={title}
-                  maxLength={250}
-                  onChange={(event) =>
-                    setTitle(event.target.value)
-                  }
-                  placeholder="Audio & Podcast — T3 2026"
-                />
+  return <div className="mx-auto max-w-[1600px] space-y-6">
+    <header className="flex flex-wrap items-start justify-between gap-3">
+      <div><h1 className="text-2xl font-semibold">Productions</h1>
+        <p className="mt-2 text-sm text-slate-500">Rapports Touch sauvegardés → plan relu → rapport autonome.</p></div>
+      <button className={BUTTON} disabled={busy} onClick={() => void act(refreshList)}>Actualiser la liste</button>
+    </header>
+    {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+    {notice && <p role="status" className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}
+    {loading ? <p>Chargement…</p> : <div className="grid items-start gap-6 xl:grid-cols-[330px_minmax(0,1fr)]">
+      <aside className="min-w-0 space-y-5">
+        <details className={PANEL} open={!production}>
+          <summary className="cursor-pointer font-semibold">Nouvelle production</summary>
+          <label className="block text-sm">Titre<input className={INPUT} value={title} maxLength={250} onChange={e => setTitle(e.target.value)} /></label>
+          <label className="block text-sm">Objectif<textarea className={INPUT} rows={3} value={objective} maxLength={5000} onChange={e => setObjective(e.target.value)} /></label>
+          <label className="block text-sm">Public<input className={INPUT} value={audience} maxLength={2000} onChange={e => setAudience(e.target.value)} /></label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm">Langue<select className={INPUT} value={language} onChange={e => setLanguage(e.target.value as "fr" | "en")}><option value="fr">Français</option><option value="en">Anglais</option></select></label>
+            <label className="text-sm">Pages<select className={INPUT} value={pages ?? "auto"} onChange={e => setPages(e.target.value === "auto" ? null : Number(e.target.value))}>
+              <option value="auto">Automatique</option>{Array.from({ length: 37 }, (_, i) => i + 4).map(n => <option key={n} value={n}>{n}</option>)}
+            </select></label>
+          </div>
+          <p className="text-xs text-slate-500">Format disponible : rapport autonome GetCurator. Le format avec speaker sera intégré ultérieurement.</p>
+          <div className="border-t pt-3"><h3 className="mb-2 text-sm font-medium">Rapports Touch · {selected.length}/20</h3>
+            <input className={INPUT} placeholder="Filtrer les rapports chargés" value={reportSearch} onChange={e => setReportSearch(e.target.value)} />
+            <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+              {reports.filter(r => (r.subject || "").toLocaleLowerCase().includes(reportSearch.toLocaleLowerCase())).map(r => <label key={r.report_id} className="flex gap-2 rounded border p-3 text-sm">
+                <input type="checkbox" checked={selected.includes(r.report_id)} disabled={busy || (!selected.includes(r.report_id) && selected.length >= 20)}
+                  onChange={() => setSelected(values => values.includes(r.report_id) ? values.filter(v => v !== r.report_id) : [...values, r.report_id])} />
+                <span>{r.subject}<span className="mt-1 block text-xs text-slate-500">{r.output_language?.toUpperCase()} · {r.period_start} / {r.period_end}</span></span>
+              </label>)}
+            </div>
+            {moreReports && <button className={`${BUTTON} mt-3`} disabled={busy} onClick={() => void act(async () => {
+              const res = await api.get(`/touch/reports?archive=active&limit=100&offset=${reportOffset}`);
+              const rows: SourceReport[] = res.reports;
+              setReports(current => [...current, ...rows.filter(r => !current.some(c => c.report_id === r.report_id))]);
+              setReportOffset(reportOffset + rows.length); setMoreReports(rows.length === 100);
+            })}>Charger plus de rapports</button>}
+          </div>
+          <button className={`${PRIMARY} w-full`} disabled={busy || !title.trim() || !selected.length} onClick={() => void act(create)}>Créer la production</button>
+        </details>
+        <section className={PANEL}>
+          <h2 className="font-semibold">Productions enregistrées</h2>
+          <input className={INPUT} value={productionSearch} onChange={e => setProductionSearch(e.target.value)} placeholder="Filtrer les productions chargées" />
+          {!productions.length && <p className="text-sm text-slate-500">Aucune production enregistrée.</p>}
+          {productions.filter(p => p.title.toLocaleLowerCase().includes(productionSearch.toLocaleLowerCase())).map(p => <button key={p.production_id} disabled={busy}
+            onClick={() => void openProduction(p.production_id)} className={`w-full rounded-lg border p-3 text-left ${production?.production_id === p.production_id ? "border-emerald-500 bg-emerald-50" : "bg-white"}`}>
+            <span className="block text-sm font-medium">{p.title}</span>
+            <span className="mt-1 block text-xs text-slate-500">{p.workflow?.latest ? `${stageLabel(p.workflow.latest.STAGE)} · ${statusLabel(p.workflow.latest.STATUS)}` : "Socle préparé"}</span>
+            <span className="mt-1 block text-xs text-slate-500">{p.workflow?.document_count || 0} rapport(s) · {date(p.workflow?.updated_at || p.updated_at)}</span>
+          </button>)}
+          {moreProductions && <button className={BUTTON} disabled={busy} onClick={() => void act(async () => {
+            const rows = await browseProductions(productionOffset);
+            setProductions(current => [...current, ...rows.filter(r => !current.some(c => c.production_id === r.production_id))]);
+            setProductionOffset(productionOffset + rows.length); setMoreProductions(rows.length === 100);
+          })}>Charger plus de productions</button>}
+        </section>
+      </aside>
+      <main className="min-w-0 space-y-5">
+        {!production ? <div className={PANEL}>Créez une production ou ouvrez une production enregistrée.</div> : <>
+          <section className={PANEL}>
+            <h2 className="text-xl font-semibold">{production.title}</h2>
+            <p className="text-sm text-slate-600">{production.corpus.request.objective || "Aucun objectif complémentaire."}</p>
+            <p className="text-xs text-slate-500">{production.output_language.toUpperCase()} · Rapport autonome · {production.target_page_count ? `${production.target_page_count} pages souhaitées` : "Longueur automatique"}</p>
+            <details><summary className="cursor-pointer text-sm">{production.corpus.reports.length} rapports sources · socle conservé</summary>
+              <ul className="mt-2 space-y-2 text-sm">{production.corpus.reports.map(r => <li key={r.report_id}>{r.payload.subject || r.report_id} · v{r.version_number}</li>)}</ul>
+            </details>
+            {production.output_format !== "AUTONOMOUS_REPORT" && <p className="text-sm text-amber-800">Cette ancienne production utilise le format speaker, non pris en charge par le moteur intégré. Créez un rapport autonome depuis les mêmes sources.</p>}
+            <div className="flex flex-wrap gap-2">
+              <button className={PRIMARY} disabled={busy || blocked || production.output_format !== "AUTONOMOUS_REPORT"} onClick={() => void act(submitPlan)}>Générer un nouveau plan</button>
+              <button className={BUTTON} disabled={busy || blocked} onClick={() => {
+                if (editorDirty.current && !window.confirm("Remplacer le plan non enregistré ?")) return;
+                setArtifact(null); selectedArtifact.current = null; setEditing(true); setEditor(""); setOriginal(""); setEditorParent(null);
+              }}>Coller un plan déjà relu</button>
+              <label className={`${BUTTON} cursor-pointer ${busy || blocked ? "opacity-50" : ""}`}>Importer un document JSON
+                <input type="file" accept="application/json,.json" className="sr-only" disabled={busy || blocked} onChange={e => {
+                  const file = e.target.files?.[0]; e.target.value = "";
+                  if (file) void act(() => uploadDocument(file));
+                }} />
               </label>
-
-              <label className="block space-y-1 text-sm">
-                <span>Objectif</span>
-                <textarea
-                  className={INPUT}
-                  rows={4}
-                  value={objective}
-                  maxLength={5000}
-                  onChange={(event) =>
-                    setObjective(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Quelle question doit traiter le document ?"
-                />
-              </label>
-
-              <label className="block space-y-1 text-sm">
-                <span>Public</span>
-                <input
-                  className={INPUT}
-                  value={audience}
-                  maxLength={2000}
-                  onChange={(event) =>
-                    setAudience(
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1 text-sm">
-                  <span>Langue</span>
-                  <select
-                    className={INPUT}
-                    value={language}
-                    onChange={(event) =>
-                      setLanguage(
-                        event.target.value as
-                          | "fr"
-                          | "en",
-                      )
-                    }
-                  >
-                    <option value="fr">
-                      Français
-                    </option>
-                    <option value="en">
-                      Anglais
-                    </option>
-                  </select>
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span>Pages</span>
-                  <select
-                    className={INPUT}
-                    value={pageCount ?? "auto"}
-                    onChange={(event) =>
-                      setPageCount(
-                        event.target.value === "auto"
-                          ? null
-                          : Number(event.target.value),
-                      )
-                    }
-                  >
-                    <option value="auto">
-                      Automatique
-                    </option>
-                  
-                    {Array.from(
-                      { length: 37 },
-                      (_, index) => index + 4,
-                    ).map((count) => (
-                      <option
-                        key={count}
-                        value={count}
-                      >
-                        {count}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <label className="block space-y-1 text-sm">
-                <span>Format</span>
-                <select
-                  className={INPUT}
-                  value={format}
-                  onChange={(event) =>
-                    setFormat(
-                      event.target.value as
-                        ProductionOutputFormat,
-                    )
-                  }
-                >
-                  <option value="AUTONOMOUS_REPORT">
-                    Rapport autonome
-                  </option>
-                  <option value="SPEAKER_PRESENTATION">
-                    Présentation avec speaker
-                  </option>
-                </select>
-              </label>
-
-              <div className="space-y-3 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium">
-                    Rapports Touch
-                  </h3>
-                  <span className="text-xs text-slate-500">
-                    {selectedReportIds.length}/20
-                  </span>
-                </div>
-
-                <input
-                  className={INPUT}
-                  value={reportSearch}
-                  onChange={(event) =>
-                    setReportSearch(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Filtrer les rapports chargés"
-                />
-
-                <div className="max-h-80 space-y-2 overflow-y-auto">
-                  {filteredReports.map(
-                    (report) => {
-                      const checked =
-                        selectedReportIds.includes(
-                          report.report_id,
-                        );
-
-                      return (
-                        <label
-                          key={report.report_id}
-                          className="flex gap-3 rounded-lg border border-slate-100 p-3 text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={checked}
-                            disabled={
-                              busy ||
-                              (
-                                !checked &&
-                                selectedReportIds.length >=
-                                  20
-                              )
-                            }
-                            onChange={() =>
-                              toggleReport(
-                                report.report_id,
-                              )
-                            }
-                          />
-
-                          <span className="min-w-0">
-                            <span className="block font-medium">
-                              {report.subject}
-                            </span>
-                            <span className="mt-1 block text-xs text-slate-500">
-                              {[
-                                report.output_language.toUpperCase(),
-                                reportPeriod(
-                                  report,
-                                ),
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </span>
-                          </span>
-                        </label>
-                      );
-                    },
-                  )}
-
-                  {filteredReports.length === 0 && (
-                    <p className="py-4 text-sm text-slate-500">
-                      Aucun rapport dans cette sélection.
-                    </p>
-                  )}
-                </div>
-
-                {hasMoreReports && (
-                  <button
-                    type="button"
-                    className={BUTTON}
-                    disabled={
-                      loadingReports || busy
-                    }
-                    onClick={() =>
-                      void loadMoreReports()
-                    }
-                  >
-                    {loadingReports
-                      ? "Chargement…"
-                      : "Charger plus de rapports"}
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className={`${PRIMARY} w-full`}
-                disabled={
-                  busy ||
-                  !title.trim() ||
-                  selectedReportIds.length === 0
-                }
-                onClick={() =>
-                  void handleCreate()
-                }
-              >
-                {creating
-                  ? "Préparation du socle…"
-                  : "Créer la production"}
-              </button>
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="font-semibold">
-                Productions récentes
-              </h2>
-
-              {productions.length === 0 && (
-                <p className="text-sm text-slate-500">
-                  Aucune production enregistrée.
-                </p>
-              )}
-
-              {productions.map((item) => (
-                <button
-                  key={item.production_id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void openProduction(
-                      item.production_id,
-                    )
-                  }
-                  className={`w-full rounded-lg border p-4 text-left disabled:opacity-50 ${
-                    production?.production_id ===
-                    item.production_id
-                      ? "border-emerald-400 bg-emerald-50"
-                      : "border-slate-200 bg-white"
-                  }`}
-                >
-                  <span className="block text-sm font-medium">
-                    {item.title}
-                  </span>
-
-                  <span className="mt-1 block text-xs text-slate-500">
-                    {displayDate(
-                      item.created_at,
-                    )}
-                    {" · "}
-                    {item.status ===
-                    "PLAN_TO_REVIEW"
-                      ? "Plan à relire"
-                      : "Socle préparé"}
-                  </span>
-                </button>
-              ))}
-            </section>
-          </aside>
-
-          <main className="min-w-0 space-y-6">
-            {opening && (
-              <p className="text-sm text-slate-500">
-                Chargement de la sélection…
-              </p>
-            )}
-
-            {!production && !opening && (
-              <div className="rounded-xl border border-dashed border-slate-300 p-10 text-sm text-slate-500">
-                Créez une production ou ouvrez
-                une production enregistrée.
-              </div>
-            )}
-
-            {production && counts && (
-              <>
-                <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-6">
-                  <div>
-                    <h2 className="text-xl font-semibold">
-                      {production.title}
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-500">
-                      {production.corpus.request.objective ||
-                        "Aucun objectif complémentaire."}
-                    </p>
-                  </div>
-
-                  <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    {[
-                      [
-                        "Rapports",
-                        counts.reports,
-                      ],
-                      [
-                        "Contenus uniques",
-                        counts.unique_contents,
-                      ],
-                      [
-                        "Notes",
-                        counts.notes,
-                      ],
-                      [
-                        "Numbers uniques",
-                        counts.unique_number_ids,
-                      ],
-                    ].map(([label, value]) => (
-                      <div key={String(label)}>
-                        <dt className="text-xs text-slate-500">
-                          {label}
-                        </dt>
-                        <dd className="mt-1 text-2xl font-semibold text-emerald-700">
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  <p className="text-xs text-slate-500">
-                    {counts.number_occurrences} occurrences
-                    de Numbers dans les rapports.
-                    Les données sont conservées
-                    dans le socle enregistré.
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-                    <button
-                      type="button"
-                      className={PRIMARY}
-                      disabled={
-                        busy || !canGenerate
-                      }
-                      onClick={() =>
-                        void handleGenerate()
-                      }
-                    >
-                      {generating
-                        ? "Génération du plan…"
-                        : versions.length > 0
-                          ? "Générer une nouvelle version"
-                          : "Générer le plan"}
-                    </button>
-
-                    {versions.length > 0 && (
-                      <select
-                        aria-label="Version du plan"
-                        className={`${INPUT} max-w-52`}
-                        disabled={busy}
-                        value={
-                          plan?.plan_version || ""
-                        }
-                        onChange={(event) =>
-                          void openPlanVersion(
-                            Number(
-                              event.target.value,
-                            ),
-                          )
-                        }
-                      >
-                        <option
-                          value=""
-                          disabled
-                        >
-                          Choisir une version
-                        </option>
-
-                        {versions.map(
-                          (version) => (
-                            <option
-                              key={
-                                version.plan_id
-                              }
-                              value={
-                                version.plan_version
-                              }
-                            >
-                              Version{" "}
-                              {
-                                version.plan_version
-                              }
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    )}
-                  </div>
-
-                  {generating && (
-                    <p
-                      role="status"
-                      className="text-sm text-slate-500"
-                    >
-                      La génération peut prendre
-                      quelques minutes. Gardez
-                      cette page ouverte.
-                    </p>
-                  )}
-                </section>
-
-                {plan && (
-                  <section className="space-y-5">
-                    <div>
-                      <h2 className="text-xl font-semibold">
-                        {plan.snapshot.plan.title}
-                      </h2>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                        {
-                          plan.snapshot.plan
-                            .editorial_angle
-                        }
-                      </p>
-                      <p className="mt-2 text-xs text-emerald-700">
-                        Version {plan.plan_version}
-                        {" · "}
-                        Plan à relire
-                      </p>
-                    </div>
-
-                    {plan.snapshot.plan.pages.map(
-                      (page, index) => (
-                        <article
-                          key={page.page_id}
-                          className="space-y-4 rounded-xl border border-slate-200 bg-white p-6"
-                        >
-                          <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                            Page {index + 1}
-                            {" · "}
-                            {
-                              LAYOUT_LABELS[
-                                page.layout
-                              ]
-                            }
-                          </p>
-
-                          <h3 className="text-lg font-semibold">
-                            {page.title}
-                          </h3>
-
-                          <p className="text-sm leading-relaxed">
-                            {page.key_message}
-                          </p>
-
-                          {page.explanation_outline.length >
-                            0 && (
-                            <ul className="list-disc space-y-2 pl-5 text-sm text-slate-600">
-                              {page.explanation_outline.map(
-                                (item, itemIndex) => (
-                                  <li
-                                    key={
-                                      itemIndex
-                                    }
-                                  >
-                                    {item}
-                                  </li>
-                                ),
-                              )}
-                            </ul>
-                          )}
-
-                          {page.visual_intent && (
-                            <div className="border-t pt-3 text-sm">
-                              <p className="font-medium">
-                                Représentation prévue
-                              </p>
-                              <p className="mt-1 text-slate-600">
-                                {page.visual_intent}
-                              </p>
-                            </div>
-                          )}
-
-                          {page.cautions.length >
-                            0 && (
-                            <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                              <p className="font-medium">
-                                Points d’attention
-                              </p>
-                              <ul className="mt-2 list-disc space-y-1 pl-5">
-                                {page.cautions.map(
-                                  (caution, cautionIndex) => (
-                                    <li
-                                      key={
-                                        cautionIndex
-                                      }
-                                    >
-                                      {caution}
-                                    </li>
-                                  ),
-                                )}
-                              </ul>
-                            </div>
-                          )}
-
-                          <ProductionPageNumbers
-                            production={production}
-                            page={page}
-                          />
-
-                          <details className="border-t pt-3 text-sm">
-                            <summary className="cursor-pointer text-slate-500">
-                              {
-                                page
-                                  .evidence_reference_ids
-                                  .length
-                              } preuves
-                              {" · "}
-                              {
-                                page
-                                  .number_reference_ids
-                                  .length
-                              } Numbers
-                            </summary>
-
-                            <ul className="mt-3 space-y-3">
-                              {page.evidence_reference_ids.map(
-                                (referenceId) => {
-                                  const reference =
-                                    evidenceById.get(
-                                      referenceId,
-                                    );
-
-                                  if (!reference) {
-                                    return (
-                                      <li
-                                        key={
-                                          referenceId
-                                        }
-                                        className="text-red-700"
-                                      >
-                                        Référence
-                                        introuvable.
-                                      </li>
-                                    );
-                                  }
-
-                                  const sourceReport =
-                                    reportsById.get(
-                                      reference.report_id,
-                                    );
-
-                                  const subject =
-                                    sourceReport
-                                      ?.payload
-                                      .subject;
-
-                                  return (
-                                    <li
-                                      key={
-                                        referenceId
-                                      }
-                                      className="text-slate-600"
-                                    >
-                                      <span className="font-medium">
-                                        {
-                                          reference.kind
-                                        }
-                                      </span>
-                                      {" · "}
-                                      {
-                                        reference.local_id
-                                      }
-                                      <span className="block text-xs text-slate-400">
-                                        {typeof subject ===
-                                        "string"
-                                          ? subject
-                                          : reference.report_id}
-                                        {" · "}
-                                        Rapport v
-                                        {
-                                          reference.report_version
-                                        }
-                                      </span>
-                                    </li>
-                                  );
-                                },
-                              )}
-                            </ul>
-                          </details>
-                        </article>
-                      ),
-                    )}
-                  </section>
-                )}
-              </>
-            )}
-          </main>
-        </div>
-      )}
-    </div>
-  );
+            </div>
+            <p className="text-xs text-slate-500">Les générations sont payantes. Sauvegarder, importer et actualiser une réponse existante ne déclenche aucune nouvelle génération.</p>
+          </section>
+          <section className={PANEL}>
+            <h3 className="font-semibold">Historique des plans et rapports</h3>
+            {!history.length && <p className="text-sm text-slate-500">Aucune version dans le nouveau parcours.</p>}
+            <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">{history.map(item => <button key={item.artifact_id} className={`${BUTTON} text-left ${artifact?.artifact_id === item.artifact_id ? "border-emerald-500 bg-emerald-50" : ""}`}
+              disabled={busy} onClick={() => void act(() => chooseArtifact(item.artifact_id))}>
+              V{item.version_number} · {stageLabel(item.stage)} · {statusLabel(item.status)}<span className="ml-2 text-xs text-slate-500">{date(item.created_at)}</span>
+            </button>)}</div>
+            {moreHistory && <button className={BUTTON} disabled={busy} onClick={() => void act(async () => {
+              const rows = await browseArtifacts(production.production_id, historyOffset);
+              setHistory(current => [...current, ...rows.filter(r => !current.some(c => c.artifact_id === r.artifact_id))]);
+              setHistoryOffset(historyOffset + rows.length); setMoreHistory(rows.length === 100);
+            })}>Charger plus de versions</button>}
+            <details><summary className="cursor-pointer text-xs text-slate-500">Historique de l’ancien moteur</summary>
+              <button className={`${BUTTON} mt-2`} disabled={busy} onClick={() => void act(() => loadLegacy())}>Charger les anciens plans</button>
+              {legacy.map(p => <button key={p.plan_id} className={`${BUTTON} ml-2 mt-2`} disabled={busy} onClick={() => void act(() => loadLegacy(p.plan_version))}>Reprendre le plan v{p.plan_version}</button>)}
+            </details>
+          </section>
+          {artifact && <section className={PANEL}>
+            <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">V{artifact.version_number} · {stageLabel(artifact.stage)} · {statusLabel(artifact.status)}</h3>
+              <button className={BUTTON} onClick={() => download(`production-v${artifact.version_number}-diagnostic.json`, JSON.stringify(artifact, null, 2))}>Télécharger le diagnostic</button></div>
+            {artifact.model && <p className="text-xs text-slate-500">Modèle : {artifact.model}</p>}
+            {isRunning(artifact.status) && <p className="text-sm">Le traitement continue en arrière-plan. Vous pouvez fermer cette page puis rouvrir la production.</p>}
+            {artifact.result?.error && <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">{artifact.result.error.message || JSON.stringify(artifact.result.error)}</p>}
+            {artifact.status !== "completed" && artifact.stage !== "APPROVED_PLAN" && <div className="space-y-3">
+              {!artifact.response_id && <label className="block text-sm">Rattacher un identifiant de réponse retrouvé dans les logs
+                <input className={INPUT} value={responseId} placeholder="resp_…" onChange={e => setResponseId(e.target.value)} /></label>}
+              <button className={BUTTON} disabled={busy || (!artifact.response_id && !responseId.startsWith("resp_"))} onClick={() => void act(refreshSelected)}>Actualiser le suivi / revérifier sans régénérer</button>
+            </div>}
+            {artifact.result?.text && !editing && !document && <details><summary className="cursor-pointer text-sm">Texte reçu — peut être partiel</summary><pre className="mt-3 whitespace-pre-wrap break-words text-xs">{artifact.result.text}</pre></details>}
+          </section>}
+          {editing && <section className={PANEL}>
+            <h3 className="font-semibold">{approved ? "Plan validé" : "Plan à relire"}</h3>
+            <p className="text-sm text-slate-500">Relisez les constats, les chiffres et leurs périodes. Toute validation enregistre une nouvelle version du plan.</p>
+            <textarea className={`${INPUT} min-h-[420px] font-mono`} value={editor} maxLength={150000} onChange={e => setEditor(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <button className={PRIMARY} disabled={busy || blocked || !editor.trim() || unchangedApproved} onClick={() => void act(savePlan)}>{approved ? "Enregistrer et valider les modifications" : "Valider et enregistrer le plan"}</button>
+              <button className={PRIMARY} disabled={busy || blocked || !unchangedApproved || production.output_format !== "AUTONOMOUS_REPORT"} onClick={() => void act(submitDocument)}>Générer le rapport depuis ce plan validé</button>
+              <button className={BUTTON} disabled={!editor.trim()} onClick={() => download("plan-getcurator.md", editor, "text/markdown;charset=utf-8")}>Télécharger le plan</button>
+            </div>
+            {editor !== original && <p className="text-xs text-amber-800">Modifications non enregistrées.</p>}
+          </section>}
+          {document && <>
+            <div className="flex flex-wrap gap-3"><button className={BUTTON} onClick={() => download("document-getcurator.json", JSON.stringify(document, null, 2))}>Télécharger le document JSON</button>
+              {artifact?.parent_artifact_id && <button className={BUTTON} disabled={busy} onClick={() => void act(() => chooseArtifact(artifact.parent_artifact_id!))}>Ouvrir le plan source</button>}</div>
+            <ProductionDocumentPreview document={document} />
+          </>}
+        </>}
+      </main>
+    </div>}
+  </div>;
 }
