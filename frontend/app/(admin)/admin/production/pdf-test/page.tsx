@@ -8,6 +8,8 @@ import {
 
 import Link from "next/link";
 
+import ProductionReportPreview from "@/components/admin/production/ProductionReportPreview";
+
 import {
   api,
 } from "@/lib/api";
@@ -758,6 +760,12 @@ export default function ProductionPdfTestPage() {
             </details>
           )}
         </section>
+      )}
+      {job?.stage === "report_draft" && job.text && (
+        <ProductionReportPreview
+          markdown={job.text}
+          completed={job.status === "completed"}
+        />
       )}
     </div>
   );
