@@ -8,6 +8,7 @@ import logging
 import os
 from openai import APIStatusError
 from core.production import workflow_repository as repo
+from core.production import document_service as document_validator
 from core.production.document_models import ProductionDocument
 from core.production.document_service import (
     client, load_corpus, start_document, get_document_job, validate_against_corpus,
@@ -210,6 +211,10 @@ def refresh_artifact(production_id, artifact_id, response_id=None):
     if item["status"] == "validation_failed" and item["stage"] == "DOCUMENT" and (item.get("result") or {}).get("text"):
         # A validator update must not depend on provider response retention.
         job = dict(item["result"])
+        diagnostic = getattr(document_validator, "validator_diagnostics", None)
+        job["validation_diagnostics"] = diagnostic() if callable(diagnostic) else {
+            "revision": "missing-unit-count-v5",
+        }
         try:
             corpus = load_corpus(production_id)
             if corpus.corpus_sha256 != item["corpus_sha256"]:
