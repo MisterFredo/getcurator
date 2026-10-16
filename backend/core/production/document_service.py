@@ -137,6 +137,16 @@ def small_cardinals_in_quote(quote):
         if text[max(0, match.start()-1):match.start()] in {"-", "−", "+"}:
             continue
         result.add(Decimal(value))
+    # "Un"/"une" may be articles: only treat them as 1 when the quote
+    # explicitly states a count per unit ("un marchand par panier").
+    for match in re.finditer(
+        r"(?<![\w-])(?:one|single|un|une)\s+"
+        r"([a-zà-ÿ]+(?:[ -][a-zà-ÿ]+){0,3}?)\s+(?:per|par)\s+[a-zà-ÿ]+(?![\w-])",
+        text,
+    ):
+        between = re.findall(r"[a-zà-ÿ]+", match.group(1))
+        if not any(word in CARDINAL_CONTEXT for word in between):
+            result.add(Decimal(1))
     return result
 
 
