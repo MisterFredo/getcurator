@@ -9,6 +9,7 @@ from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
 
 WORKFLOW = "getcurator_document_v1"
+NUMERIC_VALIDATOR_REVISION = "20261016-unit-count-v5"
 
 INSTRUCTIONS = """
 Tu rédiges un rapport autonome GetCurator à partir d'un plan relu et des
@@ -175,6 +176,14 @@ def numbers_in_quote(quote):
     return result
 
 
+def validator_diagnostics():
+    return {
+        "revision": NUMERIC_VALIDATOR_REVISION,
+        "unit_count_probe": sorted(str(value) for value in numbers_in_quote("un marchand par panier")),
+        "multiplier_probe": sorted(str(value) for value in numbers_in_quote("3x")),
+    }
+
+
 def validate_against_corpus(document, corpus):
     reports = {(r.report_id, r.version_number): r.payload for r in corpus.reports}
     sources = {s.id: s for s in document.sources}
@@ -260,6 +269,7 @@ def serialize_document_response(response):
         "refusal": [getattr(p, "refusal", "") for item in response.output or []
                     for p in getattr(item, "content", []) or [] if getattr(p, "type", "") == "refusal"],
         "document": None,
+        "validation_diagnostics": validator_diagnostics(),
         "validation_notes": [
             "Contrôles automatiques : schéma, références, versions, chemins, citations et présence des valeurs.",
             "Les unités, les périmètres, la comparabilité et les interprétations nécessitent une relecture éditoriale.",
