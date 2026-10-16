@@ -49,6 +49,8 @@ p,li{font-size:13px;line-height:1.55}p{margin:0 0 3mm}ul{padding-left:5mm;margin
 .cover{background:var(--ink);color:white}.cover h1{font-size:43px;margin-top:15mm;max-width:235mm}.cover .eyebrow{margin-top:24mm;color:#8ddbd0}.cover .subtitle{font-size:19px;color:#c1e5df}.cover .header,.cover .footer{border-color:#ffffff30}.cover .tagline,.cover .notes,.cover .footer{color:#c1d3d8}
 .has-visual p,.has-visual li{font-size:12px}.has-visual .notes,.has-visual .context{font-size:9px}.has-visual .value{font-size:28px}.has-visual .chart-note{font-size:9px}
 .bibliography{columns:2;column-gap:8mm;list-style:none;padding:0}.bibliography li{font-size:10px;line-height:1.4;break-inside:avoid;margin-bottom:3mm}.source-label{font-weight:700}.source-report{color:var(--muted)}
+.sources-page .bibliography{columns:3;column-gap:6mm}.sources-page .bibliography li{margin-bottom:2mm}.sources-page p,.sources-page li{font-size:11px;line-height:1.4}.sources-page h1{margin-bottom:4mm}
+.compact{padding:9mm 15mm}.compact .header{padding-bottom:3mm}.compact .eyebrow{margin-top:4mm}.compact h1{font-size:28px;margin:3mm 0 4mm}.compact p{margin-bottom:2mm}.compact .footer{margin-top:3mm;padding-top:2mm}.compact .chart svg{max-height:110px}.compact .metrics{margin-bottom:2mm}.compact .notes{margin-bottom:1mm}.compact .takeaway{padding:2mm 3mm}
 .complement-label{font-size:10px!important;color:var(--muted);margin-bottom:2mm}.has-mixed .chart{margin-bottom:2mm}.has-mixed .chart svg{max-height:135px}.has-mixed .metrics{margin-bottom:3mm}.has-mixed .metric{padding:2mm 3mm}.has-mixed .value{font-size:24px}.has-mixed .context{margin-top:1mm}
 @page{size:A4 landscape;margin:0}@media print{html,body{background:white}.sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}p{orphans:3;widows:3}h1,h3{break-after:avoid}}
 `;
@@ -74,7 +76,7 @@ export function buildDocumentHtml(document: ProductionDocument): string {
     const bullets = page.bullets.length ? `<ul class="${page.layout === "SUMMARY" || page.layout === "IMPLICATIONS" ? "bullets" : ""}">${page.bullets.map(text => `<li>${escape(text)}</li>`).join("")}</ul>` : "";
     const bibliography = sources ? `<ul class="bibliography">${bibliographyEntries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">Rapport sauvegardé · version ${source.version}</span></li>`).join("")}</ul>` : "";
     const citations = page.source_ids.filter(id => known.has(id)).map(id => `[${escape(id)}]`).join(" ");
-    return `<section class="sheet ${cover ? "cover" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${escape(cover ? document.title : page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${paragraphs}${bullets}${page.takeaway ? `<p class="takeaway">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
+    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${escape(cover ? document.title : page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${paragraphs}${bullets}${page.takeaway ? `<p class="takeaway">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
   }).join("")}</body></html>`;
 }
 
@@ -88,10 +90,17 @@ export default function ProductionDocumentPreview({ document }: { document: Prod
   function checkLayout() {
     const sheets = frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".sheet");
     if (!sheets) return;
-    const exceeded = Array.from(sheets).filter(sheet => {
+    const exceeds = (sheet: HTMLElement) => {
       const box = sheet.getBoundingClientRect();
       return box.height > box.width * 210 / 297 + 3 || sheet.scrollWidth > sheet.clientWidth + 2;
-    }).map(sheet => Number(sheet.dataset.page));
+    };
+    // Try a defined, readable compact composition before rejecting export.
+    // No clipping, hidden content, or arbitrary scaling is used.
+    Array.from(sheets).forEach(sheet => {
+      sheet.classList.remove("compact");
+      if (exceeds(sheet)) sheet.classList.add("compact");
+    });
+    const exceeded = Array.from(sheets).filter(exceeds).map(sheet => Number(sheet.dataset.page));
     setOverflow(exceeded);
     setCheckedHtml(html);
   }
