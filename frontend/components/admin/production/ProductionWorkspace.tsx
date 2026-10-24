@@ -237,6 +237,34 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
       id => startDocument(production.production_id, id, artifact.artifact_id));
     mergeArtifact(item); installArtifact(item); await refreshList();
   }
+  async function regenerateDocument() {
+    if (!production || !artifact || artifact.stage !== "DOCUMENT"
+      || artifact.status !== "validation_failed" || !artifact.parent_artifact_id
+      || blocked || production.output_format !== "AUTONOMOUS_REPORT") return;
+    const productionId = production.production_id;
+    const failedArtifactId = artifact.artifact_id;
+    const planId = artifact.parent_artifact_id;
+    const token = selection.current;
+    // Resolve the exact parent, even when it is outside the loaded history.
+    const plan = await readArtifact(productionId, planId);
+    if (token !== selection.current) return;
+    if (plan.stage !== "APPROVED_PLAN" || plan.status !== "completed") {
+      throw new Error("Le plan source n’est pas un plan validé. Ouvrez l’historique et choisissez un plan validé.");
+    }
+    if (!window.confirm(
+      `Générer un nouveau rapport depuis le plan validé V${plan.version_number} ? `
+      + "Cette action déclenche une nouvelle génération payante. Le rapport en échec reste dans l’historique.",
+    )) return;
+    // A new failed artifact defines a new operation; a lost POST response
+    // still retries this same operation through generationRequest.
+    const item = await generationRequest(
+      `${productionId}:document:${planId}:retry:${failedArtifactId}`,
+      id => startDocument(productionId, id, planId),
+    );
+    if (token !== selection.current) return;
+    mergeArtifact(item); installArtifact(item); await refreshList();
+    setNotice("Nouvelle génération du rapport demandée depuis le plan validé. La version précédente reste dans l’historique.");
+  }
   async function submitPlan() {
     if (!production) return;
     if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) return;
@@ -393,6 +421,16 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
               {!artifact.response_id && <label className="block text-sm">Rattacher un identifiant de réponse retrouvé dans les logs
                 <input className={INPUT} value={responseId} placeholder="resp_…" onChange={e => setResponseId(e.target.value)} /></label>}
               <button className={BUTTON} disabled={busy || (!artifact.response_id && !responseId.startsWith("resp_"))} onClick={() => void act(refreshSelected)}>Actualiser le suivi / revérifier sans régénérer</button>
+            </div>}
+            {artifact.stage === "DOCUMENT" && artifact.status === "validation_failed" && <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-sm text-slate-700">La revérification contrôle le texte existant. Pour obtenir un nouveau texte avec les consignes actuelles, relancez la génération depuis son plan validé.</p>
+              {artifact.parent_artifact_id ? <div className="flex flex-wrap gap-2">
+                <button className={PRIMARY} disabled={busy || blocked || production.output_format !== "AUTONOMOUS_REPORT"}
+                  onClick={() => void act(regenerateDocument)}>Régénérer depuis le plan validé</button>
+                <button className={BUTTON} disabled={busy}
+                  onClick={() => void act(() => chooseArtifact(artifact.parent_artifact_id!))}>Ouvrir le plan source</button>
+              </div> : <p className="text-sm text-amber-800">Aucun plan source associé. Ouvrez un plan validé dans l’historique pour générer un nouveau rapport.</p>}
+              <p className="text-xs text-slate-600">Nouvelle génération payante ; la version en échec est conservée.</p>
             </div>}
             {artifact.result?.text && !editing && !document && <details><summary className="cursor-pointer text-sm">Texte reçu — peut être partiel</summary><pre className="mt-3 whitespace-pre-wrap break-words text-xs">{artifact.result.text}</pre></details>}
           </section>}
