@@ -9,7 +9,7 @@ from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261016-unit-count-v5"
+NUMERIC_VALIDATOR_REVISION = "20261024-written-scale-v6"
 
 INSTRUCTIONS = """
 Tu rédiges un rapport autonome GetCurator à partir d'un plan relu et des
@@ -57,6 +57,14 @@ lorsqu'elles sont documentées. Pas de calcul dérivé dans cette version.
 Si la source écrit une réduction de 42 % sans signe négatif, conserve
 value=42 et display_value="42 %", avec un libellé "Baisse du CPM".
 N'invente pas un signe absent de la citation pour passer la validation.
+Une valeur écrite en lettres peut conserver son coefficient numérique :
+"approximately two million cases" donne value=2 et
+ display_value="Approximately 2 million cases". Préserve les approximations,
+les bornes et les objectifs ; ne transforme pas une estimation en valeur exacte.
+Chaque indicateur doit citer son propre passage numérique. Ne réutilise pas
+une source citant "47 states" pour un objectif de "60 million cases", même
+si les deux faits concernent le même acteur. Crée une source distincte vers
+le passage exact ou omets l'indicateur si ce passage n'est pas disponible.
 Pour un graphique, chaque point a sa propre source ; la citation de cette
 source doit contenir sa valeur. Précise mesure, unité, périmètre et raison
 pour laquelle la comparaison est possible. Données incompatibles ou
@@ -103,8 +111,9 @@ def pointer_value(payload, pointer):
     return str(current)
 
 
-# Small standalone cardinal numbers only. Compound numbers, decimal words,
-# multipliers and written signs are deliberately not converted here.
+# Small cardinal coefficients are supported, including before an explicit
+# scale (two million -> coefficient 2). No scale conversion is performed.
+# Compound numbers, decimal words and written signs remain unsupported.
 SMALL_CARDINALS = {
     "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
     "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
@@ -131,7 +140,18 @@ def small_cardinals_in_quote(quote):
             continue
         before = re.findall(r"[\w]+", text[:match.start()])
         after = re.findall(r"[\w]+", text[match.end():])
-        neighbors = ([before[-1]] if before else []) + ([after[0]] if after else [])
+        # A small cardinal before a scale is a coefficient, matching the
+        # document contract (value=2, display_value="2 million cases").
+        # Do not admit fragments of compounds: twenty two million,
+        # two hundred million, two point five million, two million five.
+        scale_words = {
+            "thousand", "million", "millions", "billion", "billions",
+            "mille", "milliard", "milliards",
+        }
+        if after and after[0] in scale_words:
+            neighbors = ([before[-1]] if before else []) + after[1:2]
+        else:
+            neighbors = ([before[-1]] if before else []) + after[:1]
         if any(word in CARDINAL_CONTEXT or any(c.isdigit() for c in word) for word in neighbors):
             continue
         # Preserve conservative behavior for hyphenated counts and numeric ranges.
@@ -181,6 +201,9 @@ def validator_diagnostics():
         "revision": NUMERIC_VALIDATOR_REVISION,
         "unit_count_probe": sorted(str(value) for value in numbers_in_quote("un marchand par panier")),
         "multiplier_probe": sorted(str(value) for value in numbers_in_quote("3x")),
+        "written_scale_probe": sorted(
+            str(value) for value in numbers_in_quote("approximately two million cases")
+        ),
     }
 
 
