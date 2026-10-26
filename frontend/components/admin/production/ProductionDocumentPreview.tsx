@@ -115,7 +115,7 @@ export default function ProductionDocumentPreview({ document, exportContext }: {
   const [checkedHtml, setCheckedHtml] = useState("");
   const [printedPages, setPrintedPages] = useState(document.pages.length);
   const html = useMemo(() => buildDocumentHtml(document, filename, naming.language), [document, filename, naming.language]);
-  const printable = checkedHtml === html && overflow.length === 0 && Boolean(filename);
+  const printable = checkedHtml === html && Boolean(filename);
 
   function checkLayout() {
     const sheets = frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".sheet");
@@ -125,7 +125,7 @@ export default function ProductionDocumentPreview({ document, exportContext }: {
       const box = sheet.getBoundingClientRect();
       return box.height > box.width * 210 / 297 + 3 || sheet.scrollWidth > sheet.clientWidth + 2;
     };
-    // Try a defined, readable compact composition before rejecting export.
+    // Try a defined, readable compact composition before showing a warning.
     // No clipping, hidden content, or arbitrary scaling is used.
     Array.from(sheets).forEach(sheet => {
       sheet.classList.remove("compact");
@@ -156,7 +156,7 @@ export default function ProductionDocumentPreview({ document, exportContext }: {
   return <section className="rounded-xl border bg-white p-6 space-y-4">
     <h2 className="text-lg font-semibold">Rapport GetCurator — compositions génériques</h2>
     <p className="text-sm text-gray-600">{document.pages.length} pages éditoriales{checkedHtml === html && printedPages > document.pages.length ? ` + ${printedPages - document.pages.length} page(s) de bibliographie` : ""} · A4 paysage · modèle {document.template}. Les contrôles de structure et de provenance ne remplacent pas la relecture des interprétations.</p>
-    {overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-amber-900">Débordement sur les pages {overflow.join(", ")}. Export désactivé : réduire le contenu ou répartir les pages avant impression.</p>}
+    {overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-amber-900">Débordement sur les pages {overflow.join(", ")}. Export autorisé : vérifiez le résultat dans l’aperçu d’impression.</p>}
     <fieldset className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
       <legend className="px-1 text-sm font-medium">Nom du fichier PDF</legend>
       <label className="text-sm">Sujet<input className="mt-1 w-full rounded border px-3 py-2" value={naming.subject} maxLength={250} onChange={e => setNaming(current => ({ ...current, subject: e.target.value }))} /></label>
