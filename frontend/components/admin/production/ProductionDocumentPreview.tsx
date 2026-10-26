@@ -48,7 +48,18 @@ const STYLES = `
 p,li{font-size:13px;line-height:1.55}p{margin:0 0 3mm}ul{padding-left:5mm;margin:0 0 4mm}li{margin-bottom:2mm}.bullets{display:grid;grid-template-columns:1fr 1fr;gap:4mm;list-style:none;padding:0}.bullets li{padding:4mm;background:#eef6f4;border-top:2px solid var(--teal)}
 .metrics{display:flex;gap:4mm;margin-bottom:5mm;break-inside:avoid}.metric{flex:1;min-width:0;background:#eef6f4;padding:3mm;border-top:2px solid var(--teal)}.value{overflow-wrap:anywhere;font-size:29px;font-weight:700;color:var(--teal);line-height:1.15;margin-bottom:2mm}.label{overflow-wrap:anywhere;font-size:12px;line-height:1.4}.context{overflow-wrap:anywhere;font-size:10px;color:var(--muted);line-height:1.4;margin-top:2mm}.chart{margin-bottom:4mm;break-inside:avoid}.chart svg{display:block;width:100%;margin:2mm 0}.chart-note{font-size:9px;color:var(--muted)}
 .takeaway{color:#142333;background:#eaf5f2;border-left:3px solid var(--teal);padding:3mm 4mm;break-inside:avoid}.notes{font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:2mm}.footer{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:3mm;margin-top:5mm;font-size:9px;color:var(--muted)}
-.cover{background:var(--ink);color:white}.cover h1{font-size:43px;margin-top:15mm;max-width:235mm}.cover .eyebrow{margin-top:24mm;color:#8ddbd0}.cover .subtitle{font-size:19px;color:#c1e5df}.cover .header,.cover .footer{border-color:#ffffff30}.cover .tagline,.cover .notes,.cover .footer{color:#c1d3d8}.cover .takeaway{background:#eaf5f2;color:#142333;border-left-color:#008c80}
+.cover{background:#fbfcfc;color:var(--ink);display:flex;flex-direction:column;border-top:3mm solid var(--teal);padding-top:9mm}
+.cover .header{border-color:var(--line);padding-bottom:5mm}.cover .tagline{color:var(--muted)}
+.cover .eyebrow{margin-top:13mm;color:var(--teal);letter-spacing:1.6px;font-size:10px}
+.cover h1{font-size:46px;line-height:1.08;letter-spacing:-1.5px;margin:5mm 0 4mm;max-width:245mm;overflow-wrap:anywhere;color:var(--ink)}
+.cover .cover-period{display:block;margin-top:3mm;color:var(--teal);font-size:23px;font-weight:400;letter-spacing:-.3px;line-height:1.2}
+.cover .subtitle{font-size:19px;line-height:1.4;color:#435c69;max-width:220mm;margin-bottom:7mm}
+.cover .cover-introduction{display:grid;grid-template-columns:1fr 1fr;gap:7mm;padding:5mm 6mm;margin-bottom:5mm;background:#f0f5f5;border-left:2px solid var(--teal);break-inside:avoid}
+.cover .cover-introduction p{font-size:12px;line-height:1.55;margin:0}.cover .cover-introduction p:only-child{grid-column:1/-1;max-width:220mm}
+.cover .takeaway{font-size:13px;line-height:1.45;background:#eaf5f2;color:var(--ink);margin-bottom:4mm;padding:3mm 4mm}
+.cover .notes{font-size:9px;line-height:1.4;color:var(--muted)}.cover .footer{margin-top:auto;padding-top:3mm;border-color:var(--line);color:var(--muted)}
+.cover.compact .eyebrow{margin-top:8mm}.cover.compact h1{font-size:38px;margin:4mm 0}.cover.compact .subtitle{margin-bottom:4mm;font-size:17px}.cover.compact .cover-introduction{padding:4mm 5mm;gap:5mm;margin-bottom:4mm}
+
 .has-visual p,.has-visual li{font-size:12px}.has-visual .notes,.has-visual .context{font-size:9px}.has-visual .value{font-size:28px}.has-visual .chart-note{font-size:9px}
 .bibliography{columns:2;column-gap:8mm;list-style:none;padding:0}.bibliography li{font-size:10px;line-height:1.4;break-inside:avoid;margin-bottom:3mm}.source-label{font-weight:700}.source-report{color:var(--muted)}
 .sources-page .bibliography{columns:3;column-gap:6mm}.sources-page .bibliography li{margin-bottom:2mm}.sources-page p,.sources-page li{font-size:11px;line-height:1.4}.sources-page h1{margin-bottom:4mm}
@@ -94,6 +105,12 @@ export function buildDocumentHtml(document: ProductionDocument, filename?: strin
   return `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(filename ? filename.replace(/\.pdf$/i, "") : document.title)}</title><style>${STYLES}</style></head><body>${composed.map(({ page, entries }, index: number) => {
     const cover = page.layout === "COVER";
     const sources = page.layout === "SOURCES";
+    // Separate a recognizable period suffix visually without changing
+    // the document title, saved data, or PDF filename.
+    const titlePeriod = document.title.match(/^(.*?)\s*(?::|—|–|-)\s*((?:Q[1-4]|T[1-4])\s+\d{4}|\d{4}-\d{2})\s*$/i);
+    const coverTitle = titlePeriod
+      ? `${escape(titlePeriod[1])}<span class="cover-period">${escape(titlePeriod[2])}</span>`
+      : escape(document.title);
     const chart = page.chart ? chartHtml(page.chart) : "";
     const metrics = page.metrics.length ? `${page.chart ? '<p class="complement-label">Indicateurs complémentaires — hors série graphique</p>' : ""}<div class="metrics">${page.metrics.map(metric => `<div class="metric"><div class="value">${escape(metric.display_value)}</div><div class="label">${escape(metric.label)}</div><div class="context">${escape(metric.context)} [${escape(metric.source_id)}]</div></div>`).join("")}</div>` : "";
     const visual = chart + metrics;
@@ -101,7 +118,7 @@ export function buildDocumentHtml(document: ProductionDocument, filename?: strin
     const bullets = page.bullets.length ? `<ul class="${page.layout === "SUMMARY" || page.layout === "IMPLICATIONS" ? "bullets" : ""}">${page.bullets.map(text => `<li>${escape(text)}</li>`).join("")}</ul>` : "";
     const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">Rapport sauvegardé · version ${source.version}</span></li>`).join("")}</ul>` : "";
     const citations = page.source_ids.filter(id => known.has(id)).map(id => `[${escape(id)}]`).join(" ");
-    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${escape(cover ? document.title : page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
+    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${cover ? coverTitle : escape(page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${cover && paragraphs ? `<div class="cover-introduction">${paragraphs}</div>` : paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
   }).join("")}</body></html>`;
 }
 
