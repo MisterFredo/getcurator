@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 type EvidenceUnit = { page: number | null; fact: string; quote: string; kind: string; geography: string | null; period: string | null; needs_review: boolean; status: "VERIFIED" | "NEEDS_REVIEW" | "REJECTED"; reason: string; match_score: number; candidate_index: number };
+type ExtractionExport = { document_hash?: string | null; document_title?: string; source_id?: string; next_page?: number | null; rejected_unverified?: number; units: EvidenceUnit[] };
+type ArticleProposal = { id: string; title: string; angle: string; scope: string; editorial_rationale: string; unit_ids: string[]; pages: number[]; evidence_count: number; exact_quote_count: number; review_count: number; editorial_status: string; evidence: EvidenceUnit[] };
+type ConsolidationResult = { summary: { input_units: number; local_proposals: number; article_proposals: number; covered_units: number; uncovered_units: number }; proposals: ArticleProposal[]; uncovered_evidence: EvidenceUnit[]; document_title?: string };
 type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; counts: Record<string, number>; candidate_count: number; rejected_unverified: number; warning: string };
 type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null; acquisition_mode?: string | null };
 type Page = { page: number; char_count: number; image_count: number; needs_visual_review: boolean; preview: string };
@@ -14,6 +17,10 @@ const TOPIC_NAMES: Record<string, string> = { artificial_intelligence: "Intellig
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
 
 export default function PDFStudio() {
+  const [importedExtraction, setImportedExtraction] = useState<ExtractionExport | null>(null);
+  const [consolidating, setConsolidating] = useState(false);
+  const [consolidation, setConsolidation] = useState<ConsolidationResult | null>(null);
+  const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [units, setUnits] = useState<EvidenceUnit[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(1);
@@ -57,7 +64,7 @@ export default function PDFStudio() {
   }, []);
 
   function changeFile(next: File | null) {
-    stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
+    setImportedExtraction(null); setConsolidation(null); stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
     setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
     setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
   }
@@ -74,7 +81,7 @@ export default function PDFStudio() {
     setBusy("inspect"); setError("");
     try {
       const result = await upload("inspect") as Inspection;
-      setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
+      setImportedExtraction(null); setConsolidation(null); setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
       const year = (result.title || file.name).match(/\b20\d{2}\b/);
       setDocumentYear(year?.[0] || "");
@@ -119,7 +126,7 @@ export default function PDFStudio() {
         form.append("file", file);
         form.append("start_page", String(page));
         const batch = await api.postForm("/discovery/pdf-studio/extract", form) as ExtractBatch;
-        setUnits(prev => [...prev, ...batch.units]);
+        setConsolidation(null); setUnits(prev => [...prev, ...batch.units]);
         setRejected(prev => prev + batch.rejected_unverified);
         page = batch.next_page;
         setNextPage(page);
@@ -129,6 +136,53 @@ export default function PDFStudio() {
     } finally {
       setExtracting(false);
     }
+  }
+
+  async function importExtraction(next: File | null) {
+    if (!next) return;
+    setError("");
+    try {
+      const parsed: unknown = JSON.parse(await next.text());
+      if (!parsed || typeof parsed !== "object" || !("units" in parsed) || !Array.isArray((parsed as ExtractionExport).units)) {
+        throw new Error("Ce fichier n'est pas un export PDF Studio valide (units absent).");
+      }
+      const data = parsed as ExtractionExport;
+      if (!data.units.length || data.units.some(u => !u || typeof u.fact !== "string" || !Number.isInteger(u.page) && u.page !== null)) {
+        throw new Error("L'export ne contient pas d'unités exploitables.");
+      }
+      setImportedExtraction(data); setConsolidation(null);
+      setUnits(data.units); setNextPage(data.next_page === undefined ? null : data.next_page);
+      setRejected(data.rejected_unverified || 0);
+      if (data.document_title) setDocumentTitle(data.document_title);
+      if (data.source_id) setSourceId(data.source_id);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d'import JSON."); }
+  }
+
+  async function consolidateExtraction() {
+    if (!units.length || consolidating || extracting) return;
+    setConsolidating(true); setError(""); setConsolidation(null);
+    try {
+      const payload = importedExtraction || {
+        document_hash: inspection?.document_hash || null,
+        document_title: documentTitle,
+        source_id: sourceId,
+        next_page: nextPage,
+        units,
+      };
+      const result = await api.post("/discovery/pdf-studio/consolidate", payload) as ConsolidationResult;
+      if (!result || !Array.isArray(result.proposals)) throw new Error("Réponse de consolidation invalide.");
+      setConsolidation(result);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur pendant la consolidation."); }
+    finally { setConsolidating(false); }
+  }
+
+  function exportConsolidation() {
+    if (!consolidation) return;
+    const blob = new Blob([JSON.stringify(consolidation, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    a.download = `pdf-proposals-${(importedExtraction?.document_hash || inspection?.document_hash || "document").slice(0, 12)}.json`;
+    a.click(); URL.revokeObjectURL(url);
   }
 
   function exportUnits() {
@@ -205,6 +259,30 @@ export default function PDFStudio() {
         </div>
         <p className="text-xs text-amber-700">Résultats en mémoire navigateur uniquement. Exporter le JSON avant de quitter la page : aucune persistance serveur ni reprise après rechargement n'est encore implémentée.</p>
       </section>}
+      <section className="rounded-xl border p-5 space-y-4">
+        <h2 className="text-lg font-semibold">5. Reprendre une extraction et consolider les articles</h2>
+        <p className="text-sm text-gray-600">Importe un export JSON existant, sans recommencer le PDF. La consolidation utilise les unités en mémoire et propose des sujets d'articles. Aucun article n'est généré ni enregistré.</p>
+        <label className="block text-sm font-medium">Importer une extraction JSON</label>
+        <input type="file" accept=".json,application/json" onChange={e => { void importExtraction(e.target.files?.[0] || null); e.currentTarget.value = ""; }} className="block w-full text-sm" disabled={consolidating || extracting} />
+        {importedExtraction && <p className="text-sm text-green-700">Extraction importée : {units.length} unités · {importedExtraction.document_title || "Sans titre"}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => void consolidateExtraction()} disabled={!units.length || consolidating || extracting} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{consolidating ? "Consolidation IA en cours…" : `Consolider ${units.length} unités`}</button>
+          <button type="button" onClick={exportConsolidation} disabled={!consolidation} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter les propositions JSON</button>
+        </div>
+        {consolidating && <p className="text-xs text-amber-700">Plusieurs appels IA sont exécutés sur le serveur. Laisse la page ouverte ; le traitement peut durer plusieurs minutes.</p>}
+        {consolidation && <div className="space-y-3">
+          <p className="text-sm font-medium">{consolidation.summary.article_proposals} propositions · {consolidation.summary.covered_units}/{consolidation.summary.input_units} unités couvertes · {consolidation.summary.uncovered_units} non couvertes</p>
+          {consolidation.proposals.map(p => <div key={p.id} className="rounded border p-3 text-sm">
+            <button type="button" className="w-full text-left font-medium" onClick={() => setExpandedProposal(expandedProposal === p.id ? null : p.id)}>{p.title} <span className="font-normal text-gray-500">· {p.evidence_count} preuves · {p.review_count} à vérifier</span></button>
+            <p className="mt-1 text-gray-600">{p.angle}</p>
+            {expandedProposal === p.id && <div className="mt-3 space-y-2 border-t pt-3">
+              <p>{p.editorial_rationale}</p><p className="text-xs text-gray-500">Pages : {p.pages.join(", ")} · {p.editorial_status}</p>
+              {p.evidence.map((u, i) => <div key={i} className="rounded bg-gray-50 p-2 text-xs">p. {u.page} · {u.status} — {u.fact}</div>)}
+            </div>}
+          </div>)}
+          <p className="text-xs text-amber-700">Propositions uniquement : toutes les preuves et interprétations doivent être validées avant génération.</p>
+        </div>}
+      </section>
       {error && <p role="alert" className="rounded border border-red-200 p-3 text-sm text-red-700">{error}</p>}
       {mapping && <section className="rounded-xl border p-5 space-y-4"><h2 className="text-lg font-semibold">Cartographie — {documentTitle}</h2><p className="text-sm text-gray-500">Éditeur : {selectedSource?.name} · {mapping.document.page_count} pages · {topics.length} thèmes · {mapping.sections.length} titres candidats</p><p className="text-sm">{mapping.note}</p><div className="space-y-2">{topics.map(([key, topic]) => <div key={key} className="rounded border"><button type="button" className="flex w-full justify-between p-3 text-left text-sm" onClick={() => setExpandedTopic(expandedTopic === key ? null : key)}><span>{TOPIC_NAMES[key] || key}</span><span>{topic.page_count} pages</span></button>{expandedTopic === key && <p className="border-t p-3 text-sm text-gray-600">Pages : {topic.pages.map(p => p.page).join(", ")}</p>}</div>)}</div><details className="rounded border p-3"><summary className="cursor-pointer text-sm">Titres candidats</summary><div className="mt-3 max-h-80 overflow-auto text-sm">{mapping.sections.map((s, i) => <p key={i}>p. {s.page} — {s.heading_candidate}</p>)}</div></details><p className="text-sm text-gray-500">La cartographie est heuristique. Le PDF et ses métadonnées ne sont pas encore enregistrés en base ; aucun contenu n'a été généré.</p></section>}
     </div>
