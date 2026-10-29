@@ -6,6 +6,8 @@ from fastapi import (
     APIRouter,
     HTTPException,
     Body,
+    File,
+    UploadFile,
 )
 
 from api.discovery.models import (
@@ -44,9 +46,71 @@ from core.discovery.newsletter_studio import (
 )
 
 
+from core.discovery.pdf_studio import (
+    MAX_BYTES,
+    inspect_pdf,
+    map_pdf,
+)
+
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ============================================================
+# PDF STUDIO — READ UPLOAD
+# ============================================================
+
+async def _read_pdf_studio_upload(file: UploadFile) -> bytes:
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Un fichier .pdf est requis")
+
+    data = await file.read(MAX_BYTES + 1)
+    await file.close()
+
+    if len(data) > MAX_BYTES:
+        raise HTTPException(status_code=413, detail="PDF supérieur à 30 Mo")
+
+    return data
+
+
+# ============================================================
+# PDF STUDIO — INSPECT
+# ============================================================
+
+@router.post("/pdf-studio/inspect")
+async def inspect_pdf_studio(file: UploadFile = File(...)):
+    data = await _read_pdf_studio_upload(file)
+    try:
+        return {
+            "status": "ok",
+            **inspect_pdf(data, file.filename or "document.pdf"),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur inspection PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur lors de l'inspection du PDF")
+
+
+# ============================================================
+# PDF STUDIO — MAP
+# ============================================================
+
+@router.post("/pdf-studio/map")
+async def map_pdf_studio(file: UploadFile = File(...)):
+    data = await _read_pdf_studio_upload(file)
+    try:
+        return {
+            "status": "ok",
+            **map_pdf(data, file.filename or "document.pdf"),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur cartographie PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur lors de la cartographie du PDF")
 
 
 # ============================================================
