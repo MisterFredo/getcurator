@@ -8,6 +8,7 @@ from fastapi import (
     Body,
     File,
     UploadFile,
+    Form,
 )
 
 from api.discovery.models import (
@@ -53,6 +54,8 @@ from core.discovery.pdf_studio import (
 )
 
 
+from core.discovery.pdf_extract import extract_pdf_batch
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -73,6 +76,25 @@ async def _read_pdf_studio_upload(file: UploadFile) -> bytes:
         raise HTTPException(status_code=413, detail="PDF supérieur à 30 Mo")
 
     return data
+
+
+# ============================================================
+# PDF STUDIO — EXTRACT BATCH (NO PERSISTENCE)
+# ============================================================
+
+@router.post("/pdf-studio/extract")
+async def extract_pdf_studio(
+    file: UploadFile = File(...),
+    start_page: int = Form(...),
+):
+    data = await _read_pdf_studio_upload(file)
+    try:
+        return extract_pdf_batch(data, start_page)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur extraction PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur extraction PDF Studio")
 
 
 # ============================================================
