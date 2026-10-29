@@ -183,6 +183,23 @@ def generate_pdf_studio(data: dict = Body(...)):
 
 
 # ============================================================
+# PDF STUDIO — SEGMENT (NO PERSISTENCE)
+# ============================================================
+
+@router.post("/pdf-studio/segment")
+async def segment_pdf_studio(file: UploadFile = File(...)):
+    data = await _read_pdf_studio_upload(file)
+    from core.discovery.pdf_segment import segment_pdf
+    try:
+        return segment_pdf(data, file.filename or "document.pdf")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur segmentation PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur segmentation PDF Studio")
+
+
+# ============================================================
 # PDF STUDIO — INSPECT
 # ============================================================
 
