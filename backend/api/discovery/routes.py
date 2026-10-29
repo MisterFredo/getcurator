@@ -18,6 +18,7 @@ from api.discovery.models import (
     IgnoreResponse,
     ManualDiscoveryListOut,
     LinkedInStudioStoreRequest,
+    NewsletterStudioStoreRequest,
 )
 
 from core.discovery.service import (
@@ -35,6 +36,11 @@ from core.discovery.linkedin_studio import (
     parse_linkedin_activity,
     analyze_linkedin_activity,
     store_linkedin_posts,
+)
+
+from core.discovery.newsletter_studio import (
+    analyze_newsletter,
+    store_newsletter_items,
 )
 
 
@@ -128,6 +134,91 @@ def store_linkedin_studio(
             (
                 "Erreur stockage "
                 f"LinkedIn Studio : {e}"
+            ),
+        )
+
+# ============================================================
+# NEWSLETTER STUDIO — ANALYZE
+# ============================================================
+
+@router.post(
+    "/newsletter-studio/analyze/{source_id}",
+)
+def analyze_newsletter_studio(
+    source_id: str,
+    text: str = Body(
+        ...,
+        media_type="text/plain",
+    ),
+):
+
+    try:
+
+        result = analyze_newsletter(
+            source_id=source_id,
+            text=text,
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur analyse Newsletter Studio"
+        )
+
+        raise HTTPException(
+            500,
+            (
+                "Erreur analyse "
+                f"Newsletter Studio : {e}"
+            ),
+        )
+
+
+# ============================================================
+# NEWSLETTER STUDIO — STORE
+# ============================================================
+
+@router.post(
+    "/newsletter-studio/store/{source_id}",
+)
+def store_newsletter_studio(
+    source_id: str,
+    data: NewsletterStudioStoreRequest,
+):
+
+    try:
+
+        items = [
+            item.model_dump()
+            for item in data.items
+        ]
+
+        result = store_newsletter_items(
+            source_id=source_id,
+            items=items,
+        )
+
+        return {
+            "status": "ok",
+            **result,
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Erreur stockage Newsletter Studio"
+        )
+
+        raise HTTPException(
+            500,
+            (
+                "Erreur stockage "
+                f"Newsletter Studio : {e}"
             ),
         )
 
