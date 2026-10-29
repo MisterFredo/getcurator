@@ -219,6 +219,10 @@ export default function EditSource() {
           <option value="MANUAL">
             MANUAL - Copie / colle
           </option>
+
+          <option value="NEWSLETTER_MANUAL">
+            NEWSLETTER MANUAL - Newsletter copiée / collée
+          </option>
       
           <option value="LINKEDIN_PROFILE">
             LINKEDIN PROFILE - Profil LinkedIn
