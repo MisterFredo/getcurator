@@ -201,13 +201,9 @@ export default function MatchingRow({
               key={`${o.type}-${o.id}`}
               value={o.id}
             >
-
-              [{o.type}]
-              {" "}
               {o.label}
-
             </option>
-
+          
           ))}
 
         </select>
