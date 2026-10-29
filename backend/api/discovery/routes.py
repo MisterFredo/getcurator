@@ -101,6 +101,34 @@ async def register_pdf_studio_document(
 
 
 # ============================================================
+# PDF STUDIO — IMPORT APPROVED ARTICLES
+# ============================================================
+
+@router.post("/pdf-studio/import-approved")
+def import_approved_pdf_studio(data: dict = Body(...)):
+    from core.discovery.pdf_import import import_approved
+    try:
+        return import_approved(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur import articles PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur import articles PDF Studio")
+
+
+@router.get("/pdf-studio/article/{id_raw}")
+def get_pdf_studio_article(id_raw: str):
+    from core.discovery.pdf_import import get_pdf_article
+    try:
+        return get_pdf_article(id_raw)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur lecture article PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur lecture article PDF Studio")
+
+
+# ============================================================
 # PDF STUDIO — EXTRACT BATCH (NO PERSISTENCE)
 # ============================================================
 
