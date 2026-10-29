@@ -19,6 +19,7 @@ from pydantic import (
 
 AcquisitionMode = Literal[
     "MANUAL",
+    "PDF_MANUAL",
     "LINKEDIN_PROFILE",
     "NEWSLETTER_MANUAL",
     "HTML",
