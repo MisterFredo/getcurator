@@ -1,207 +1,173 @@
-"""PDF Studio V4: classify evidence, build dossiers, propose coherent articles.
-Drop-in for core/discovery/pdf_consolidate.py; same consolidate(data) API.
-No DB writes. The original evidence and verification flags are preserved.
+"""PDF Studio V5 — acquisition-first, drop-in consolidate(data) implementation.
+
+One meaningful evidence unit is enough for a candidate RAW content. Related units
+may be combined, but never at the cost of leaving most evidence unprocessed.
+No external API calls, no database writes. Human verification is still required.
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import unicodedata
 from collections import Counter, defaultdict
 from typing import Any
-from openai import OpenAI
 
-MODEL = os.getenv('PDF_STUDIO_MODEL', 'gpt-4o-mini')
-BATCH_SIZE = 35
-MIN_EVIDENCE = 3
-MAX_EDITORIAL_CALLS = int(os.getenv("PDF_STUDIO_MAX_EDITORIAL_CALLS", "32"))
-THEMES = ('MARKET_GROWTH','CONSUMER_BEHAVIOR','PAYMENTS','LOGISTICS','AI_TECH','REGULATION','SUSTAINABILITY','CROSS_BORDER','MARKETPLACES','BUSINESS_DIGITALIZATION','OTHER')
+MODEL = os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini")
+MAX_PER_CONTENT = max(1, int(os.getenv("PDF_STUDIO_V5_MAX_UNITS_PER_CONTENT", "3")))
+MAX_PAGE_GAP = max(0, int(os.getenv("PDF_STUDIO_V5_MAX_PAGE_GAP", "1")))
 
+THEME_RULES = [
+    ("PAYMENTS", r"paiement|payment|bnpl|bancontact|ideal|twint|swish|carte bancaire|credit card|transaction"),
+    ("LOGISTICS", r"livraison|delivery|colis|parcel|logist|last.mile|dernier kilom|locker|consigne|transporteur|shipping|inpost|postnord|dhl|dpd"),
+    ("AI_TECH", r"\bia\b|\bai\b|artificial intelligence|intelligence artificielle|agentic|automatis|technolog"),
+    ("REGULATION", r"réglement|regulat|douan|customs|tarif|compliance|conformit|directive|législat|legislat"),
+    ("SUSTAINABILITY", r"durab|sustainab|circulair|circular|recycl|environ|seconde main|second.hand|refurbish"),
+    ("CROSS_BORDER", r"transfrontal|cross.border|import|export|pays tiers|third.country"),
+    ("MARKETPLACES", r"marketplace|plateforme|platform|amazon|temu|shein|google|moteur de recherche|search engine"),
+    ("BUSINESS_DIGITALIZATION", r"entrepris|enterprise|pme|sme|digitalis|numéri|numériq|ict|tic|formation|skills"),
+    ("CONSUMER_BEHAVIOR", r"consommateur|consumer|acheteur|shopper|achats en ligne|online purchas|sensib|comportement|panier|basket"),
+    ("MARKET_GROWTH", r"chiffre d.affaires|turnover|croissance|growth|\bpib\b|\bgdp\b|marché|market|e.commerce|commerce électronique|vente"),
+]
 
-def ask(client: OpenAI, instruction: str, payload: dict, model: str) -> dict:
-    response = client.chat.completions.create(
-        model=model, temperature=0, response_format={'type': 'json_object'},
-        messages=[{'role':'system','content':instruction+'\nRéponds exclusivement en JSON valide.'},
-                  {'role':'user','content':json.dumps(payload,ensure_ascii=False)}],
-    )
-    result = json.loads(response.choices[0].message.content or '{}')
-    if not isinstance(result, dict):
-        raise ValueError('Réponse JSON invalide')
-    return result
+ALIASES = {
+    "belgium":"Belgique", "ireland":"Irlande", "united kingdom":"Royaume-Uni",
+    "uk":"Royaume-Uni", "germany":"Allemagne", "netherlands":"Pays-Bas",
+    "denmark":"Danemark", "sweden":"Suède", "norway":"Norvège",
+    "poland":"Pologne", "finland":"Finlande", "austria":"Autriche",
+    "spain":"Espagne", "italy":"Italie", "romania":"Roumanie",
+    "switzerland":"Suisse", "bosnia herzegovina":"Bosnie-Herzégovine",
+    "bosnia and herzegovina":"Bosnie-Herzégovine", "croatia":"Croatie",
+    "albania":"Albanie", "hungary":"Hongrie", "slovenia":"Slovénie",
+    "slovak republic":"Slovaquie", "serbia":"Serbie", "moldova":"Moldavie",
+    "montenegro":"Monténégro", "north macedonia":"Macédoine du Nord",
+    "malta":"Malte", "eu":"UE-27", "eu 27":"UE-27",
+    "union europeenne":"UE-27", "european union":"UE-27",
+    "southern europe":"Europe du Sud", "northern europe":"Europe du Nord",
+    "eastern europe":"Europe de l'Est", "western europe":"Europe de l'Ouest",
+}
 
+def _norm(value: Any) -> str:
+    v = unicodedata.normalize("NFKD", str(value or "").lower())
+    return re.sub(r"[^a-z0-9]+", " ", "".join(c for c in v if not unicodedata.combining(c))).strip()
 
-def prepare(data: dict) -> list[dict]:
-    result = []
-    for idx, u in enumerate(data.get('units', []), 1):
-        if not isinstance(u, dict) or u.get('status') == 'REJECTED' or not str(u.get('fact') or '').strip():
+def _scope(value: Any) -> str:
+    raw = str(value or "Non précisé").strip()
+    return ALIASES.get(_norm(raw), raw)
+
+def _theme(fact: str, kind: Any) -> str:
+    s = _norm(fact)
+    for name, pattern in THEME_RULES:
+        if re.search(pattern, s):
+            return name
+    if str(kind).upper() == "REGULATION":
+        return "REGULATION"
+    return "OTHER"
+
+def _title(fact: str, scope: str) -> str:
+    # Do not invent an angle: title is an excerpt of the actual extracted fact.
+    fact = re.sub(r"\s+", " ", str(fact or "")).strip().rstrip(". ;:")
+    if len(fact) > 155:
+        fact = fact[:152].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    return fact[:1].upper() + fact[1:] if fact else f"Information sur {scope}"
+
+def _page(u: dict) -> int | None:
+    p = u.get("page")
+    return p if isinstance(p, int) and not isinstance(p, bool) and p > 0 else None
+
+def consolidate(data: dict[str, Any], model: str = MODEL) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise ValueError("Extraction JSON invalide")
+    units = []
+    for index, raw in enumerate(data.get("units") or [], 1):
+        if not isinstance(raw, dict) or str(raw.get("status") or "").upper() == "REJECTED":
             continue
-        result.append({'id':f'U{idx:05d}','page':u.get('page'),'fact':u['fact'],
-                       'quote':u.get('quote',''),'kind':u.get('kind'),
-                       'geography':u.get('geography'),'period':u.get('period'),
-                       'status':u.get('status','NEEDS_REVIEW'),
-                       'reason':u.get('reason'),'match_score':u.get('match_score')})
-    return result
+        fact = str(raw.get("fact") or "").strip()
+        if not fact:
+            continue
+        u = {"id": f"U{index:05d}", "page": raw.get("page"), "fact": fact,
+             "quote": raw.get("quote") or "", "kind": raw.get("kind"),
+             "geography": raw.get("geography"), "period": raw.get("period"),
+             "status": raw.get("status") or "NEEDS_REVIEW",
+             "reason": raw.get("reason"), "match_score": raw.get("match_score")}
+        units.append(u)
+    if not units:
+        raise ValueError("Aucune unité exploitable")
 
-
-def normalize(value: Any) -> str:
-    value = unicodedata.normalize('NFKD',str(value or '').strip().lower())
-    return re.sub(r'[^a-z0-9]+',' ', ''.join(c for c in value if not unicodedata.combining(c))).strip()
-
-
-CLASSIFY = '''Tu classes des unités documentaires indépendamment de toute rédaction.
-Pour CHAQUE id fourni, retourne exactement un objet {"id":"...","theme":"...","scope":"...","subtopic":"..."}.
-Theme doit être une valeur de allowed_themes. Scope = pays normalisé en français, ou "Europe" pour une donnée véritablement européenne; respecte strictement le champ geography, n'invente pas une portée européenne à une donnée nationale.
-Subtopic = objet précis de la preuve (par ex. "BNPL", "frais de cartes", "livraison en consigne"), 2-5 mots; ne pas employer "tendances" ou "analyse".
-Ne mélange jamais deux thèmes sans preuve. Une unité doit avoir une seule affectation primaire.
-Format JSON: {"assignments":[...]}'''
-
-EDITOR = '''Tu es rédacteur en chef d'un média B2B spécialisé. Tu reçois UN dossier thématique contenant des preuves, jamais des articles préfabriqués.
-Propose au maximum 3 articles DISTINCTS, chacun avec un angle informatif, précis, réellement démontré par les preuves.
-Un article nécessite AU MOINS 3 preuves pertinentes et cohérentes, pas des unités choisies pour atteindre un quota.
-Si le dossier n'offre pas un angle solide, retourne une liste vide. Un dossier n'est pas automatiquement un article.
-Ne transforme pas des observations sans lien en un article artificiel. Tu peux réutiliser une preuve dans deux angles seulement si elle est directement pertinente aux deux.
-Ne crée pas d'affirmations nouvelles, ni de conclusions causales non étayées. Tous les titres, angles et justifications doivent être en français.
-Pour chaque article, sélectionne uniquement les unit_ids qui étayent DIRECTEMENT son angle; les preuves hors sujet doivent rester hors de l'article.
-Format JSON: {"proposals":[{"title":"...","angle":"...","scope":"...","editorial_rationale":"...","unit_ids":["..."]}]}'''
-
-
-def _ids(raw: Any, allowed: set[str]) -> list[str]:
-    if not isinstance(raw,list): return []
-    return list(dict.fromkeys(x for x in raw if isinstance(x,str) and x in allowed))
-
-
-def consolidate(data: dict[str,Any], model: str = MODEL) -> dict[str,Any]:
-    units = prepare(data)
-    if not units: raise ValueError('Aucune unité exploitable')
-    by_id = {u['id']:u for u in units}
-    client = OpenAI(timeout=120,max_retries=2)
     assignments = {}
-    # Step 1: every unit gets a thematic classification, independently of editorial proposals.
-    for start in range(0,len(units),BATCH_SIZE):
-        batch = units[start:start+BATCH_SIZE]
-        result = ask(client,CLASSIFY,{'allowed_themes':THEMES,'units':[
-            {k:u.get(k) for k in ('id','fact','geography','kind','period')} for u in batch]},model)
-        allowed = {u['id'] for u in batch}
-        for a in result.get('assignments',[]):
-            if not isinstance(a,dict) or a.get('id') not in allowed: continue
-            theme = a.get('theme') if a.get('theme') in THEMES else 'OTHER'
-            u = by_id[a['id']]
-            # Source geography takes precedence: model cannot silently reassign Ireland to Luxembourg.
-            scope = str(u.get('geography') or a.get('scope') or 'Non précisé').strip()
-            assignments[a['id']] = {'theme':theme,'scope':scope,'subtopic':str(a.get('subtopic') or '').strip()}
-        for u in batch:
-            assignments.setdefault(u['id'],{'theme':'OTHER','scope':str(u.get('geography') or 'Non précisé'),'subtopic':''})
-
-    # Step 2: country dossiers for provenance, plus cross-country thematic pools.
-    # Country is metadata, NOT an editorial partition: a comparison may use
-    # evidence from multiple countries. Keep every unit in the dossier index.
-    geo_aliases = {
-        'eu':'Europe','eu 27':'Europe','european union':'Europe','union europeenne':'Europe',
-        'ireland':'Irlande','belgium':'Belgique','germany':'Allemagne','france':'France',
-        'netherlands':'Pays-Bas','pays bas':'Pays-Bas','denmark':'Danemark',
-        'sweden':'Suède','norway':'Norvège','poland':'Pologne','finland':'Finlande',
-        'austria':'Autriche','spain':'Espagne','italy':'Italie','luxembourg':'Luxembourg',
-        'estonia':'Estonie','lithuania':'Lituanie','romania':'Roumanie',
-        'switzerland':'Suisse','united kingdom':'Royaume-Uni','uk':'Royaume-Uni',
-        'bosnia herzegovina':'Bosnie-Herzégovine','bosnia and herzegovina':'Bosnie-Herzégovine',
-        'croatia':'Croatie','albania':'Albanie','hungary':'Hongrie',
-        'slovenia':'Slovénie','slovak republic':'Slovaquie','serbia':'Serbie',
-        'moldova':'Moldavie','montenegro':'Monténégro','north macedonia':'Macédoine du Nord',
-        'malta':'Malte','southern europe':'Europe du Sud',
-        'northern europe':'Europe du Nord','eastern europe':'Europe de l’Est',
-    }
-    by_theme = defaultdict(list)
-    by_country = defaultdict(list)
+    by_bucket = defaultdict(list)
     for u in units:
-        a = assignments[u['id']]
-        scope = geo_aliases.get(normalize(a['scope']), a['scope'])
-        a['scope'] = scope
-        by_theme[a['theme']].append(u)
-        by_country[(a['theme'],scope)].append(u)
+        theme = _theme(u["fact"], u.get("kind"))
+        scope = _scope(u.get("geography"))
+        assignments[u["id"]] = {"theme": theme, "scope": scope,
+                                 "subtopic": str(u.get("kind") or "information").lower()}
+        by_bucket[(scope, theme)].append(u)
 
+    # Stable dossiers are an audit index, not an eligibility filter.
     dossiers = []
-    for index,((theme,scope),members) in enumerate(sorted(by_country.items()),1):
-        dossiers.append({'id':f'D{index:04d}','theme':theme,'scope':scope,
-                         'unit_ids':[u['id'] for u in members], 'unit_count':len(members),
-                         'subtopics':dict(Counter(assignments[u['id']]['subtopic'] for u in members
-                                                  if assignments[u['id']]['subtopic']))})
+    for i, ((scope, theme), members) in enumerate(sorted(by_bucket.items()), 1):
+        dossiers.append({"id": f"D{i:04d}", "theme": theme, "scope": scope,
+                         "unit_ids": [u["id"] for u in members],
+                         "unit_count": len(members),
+                         "subtopics": dict(Counter(assignments[u["id"]]["subtopic"] for u in members))})
+    dossier_ids = {(d["scope"], d["theme"]): d["id"] for d in dossiers}
 
-    # Step 3: editorial passes. Prefer a complete thematic view over arbitrary
-    # geography partitions; then a few strong country-specific dossiers.
-    # Every unit can be considered in a cross-country angle, including singletons.
     proposals = []
-    calls = 0
-    editorial_pools = []
-    for theme,members in sorted(by_theme.items(),key=lambda x:-len(x[1])):
-        if theme == 'OTHER' or len(members) < MIN_EVIDENCE:
-            continue
-        # Spread countries across chunks so cross-market patterns can emerge.
-        ordered = sorted(members,key=lambda u:(normalize(assignments[u['id']]['subtopic']),
-                                              normalize(assignments[u['id']]['scope'])))
-        for start in range(0,len(ordered),40):
-            chunk = ordered[start:start+40]
-            if len(chunk) >= MIN_EVIDENCE:
-                editorial_pools.append((f'THEME:{theme}',theme,'Multi-pays',chunk))
-    for d in sorted(dossiers,key=lambda x:-x['unit_count']):
-        if d['unit_count'] >= 4 and d['theme'] != 'OTHER':
-            editorial_pools.append((d['id'],d['theme'],d['scope'],
-                                    [by_id[i] for i in d['unit_ids']]))
+    # Group only facts in the same geography/theme, close in the PDF and in
+    # the same period. Never use the grouping to manufacture a new conclusion.
+    for (scope, theme), members in sorted(by_bucket.items()):
+        ordered = sorted(members, key=lambda u: (_page(u) if _page(u) is not None else 10**9, u["id"]))
+        groups: list[list[dict]] = []
+        for u in ordered:
+            if groups:
+                last = groups[-1][-1]
+                a, b = _page(last), _page(u)
+                compatible_period = (not last.get("period") or not u.get("period")
+                                     or str(last["period"]) == str(u["period"]))
+                if (len(groups[-1]) < MAX_PER_CONTENT and a is not None and b is not None
+                        and 0 <= b - a <= MAX_PAGE_GAP and compatible_period):
+                    groups[-1].append(u)
+                    continue
+            groups.append([u])
 
-    for dossier_id,theme,scope,members in editorial_pools:
-        if calls >= MAX_EDITORIAL_CALLS:
-            break
-        calls += 1
-        instruction = EDITOR + """
-Tu peux proposer un article transversal comparant plusieurs pays, UNIQUEMENT
-si les preuves portent sur le même phénomène comparable. Ne confonds pas
-la proximité thématique avec une démonstration. Ne crée pas un panorama
-fourre-tout. Le dossier peut contenir des unités sans rapport direct : ignore-les.
-Une preuve marquée NEEDS_REVIEW ne doit pas être présentée comme vérifiée.
-Pour les comparaisons, vérifie la compatibilité des périodes et indicateurs.
-"""
-        result = ask(client,instruction,{'dossier':{'theme':theme,'scope':scope},
-            'units':[{'id':u['id'],'fact':u['fact'],'kind':u.get('kind'),
-                      'period':u.get('period'),'geography':assignments[u['id']]['scope'],
-                      'subtopic':assignments[u['id']]['subtopic'],
-                      'status':u['status']} for u in members]},model)
-        allowed = {u['id'] for u in members}
-        for p in result.get('proposals',[]):
-            if not isinstance(p,dict): continue
-            ids = _ids(p.get('unit_ids'),allowed)
-            if len(ids) < MIN_EVIDENCE: continue
-            title = str(p.get('title') or '').strip()
-            angle = str(p.get('angle') or '').strip()
-            if not title or not angle: continue
-            proposals.append({'title':title,'angle':angle,'scope':scope,
-                'editorial_rationale':str(p.get('editorial_rationale') or '').strip(),
-                'unit_ids':ids,'dossier_id':dossier_id})
+        for group in groups:
+            lead = group[0]
+            evidence = group[:]
+            ids = [u["id"] for u in evidence]
+            # The original fact is the candidate title/angle. The later GENERATE
+            # step may write an article but must not assert unsupported context.
+            proposals.append({
+                "title": _title(lead["fact"], scope),
+                "angle": lead["fact"],
+                "scope": scope,
+                "editorial_rationale": ("Contenu source autonome à partir d'une unité extraite."
+                    if len(evidence) == 1 else
+                    f"Contenu source réunissant {len(evidence)} unités proches du même thème et territoire."),
+                "unit_ids": ids,
+                "dossier_id": dossier_ids[(scope, theme)],
+                "pages": sorted({_page(u) for u in evidence if _page(u) is not None}),
+                "evidence_count": len(evidence),
+                "exact_quote_count": sum(u["status"] == "VERIFIED" for u in evidence),
+                "review_count": sum(u["status"] != "VERIFIED" for u in evidence),
+                "editorial_status": "REVIEW_REQUIRED",
+                "evidence": evidence,
+                "content_mode": "SOURCE_CONTENT",
+            })
 
-    # Merge exact duplicate titles in same dossier; preserve evidence.
-    merged = {}
-    for p in proposals:
-        key = (p['dossier_id'],normalize(p['title']))
-        if key in merged:
-            merged[key]['unit_ids'] = list(dict.fromkeys(merged[key]['unit_ids']+p['unit_ids']))
-        else: merged[key] = p
-    final = []
-    used = set()
-    for idx,p in enumerate(merged.values(),1):
-        evidence = [by_id[i] for i in p['unit_ids']]
-        used.update(p['unit_ids'])
-        final.append({**p,'id':f'A{idx:04d}',
-            'pages':sorted({u['page'] for u in evidence if isinstance(u['page'],int)}),
-            'evidence_count':len(evidence),
-            'exact_quote_count':sum(u['status']=='VERIFIED' for u in evidence),
-            'review_count':sum(u['status']!='VERIFIED' for u in evidence),
-            'editorial_status':'REVIEW_REQUIRED','evidence':evidence})
-    uncovered = [u for u in units if u['id'] not in used]
-    return {'document_hash':data.get('document_hash'),'document_title':data.get('document_title'),
-        'source_id':data.get('source_id'),'model':model,'version':'4.0',
-        'summary':{'input_units':len(units),'dossier_count':len(dossiers),
-            'article_proposals':len(final),'editorial_calls':calls,'covered_units':len(used),
-            'uncovered_units':len(uncovered),'coverage_percent':round(100*len(used)/len(units),1),
-            'unit_statuses':dict(Counter(u['status'] for u in units))},
-        'dossiers':dossiers,'assignments':assignments,'proposals':final,
-        'uncovered_evidence':uncovered,'singletons':[],
-        'note':'V4: dossiers par pays + angles transversaux; propositions non validées, aucune écriture en base.'}
+    proposals.sort(key=lambda p: (p["pages"][0] if p["pages"] else 10**9, p["title"]))
+    for i, p in enumerate(proposals, 1):
+        p["id"] = f"A{i:04d}"
+    used = {u_id for p in proposals for u_id in p["unit_ids"]}
+    uncovered = [u for u in units if u["id"] not in used]
+    return {
+        "document_hash": data.get("document_hash"),
+        "document_title": data.get("document_title"),
+        "source_id": data.get("source_id"), "model": model, "version": "5.0",
+        "summary": {"input_units": len(units), "dossier_count": len(dossiers),
+                    "article_proposals": len(proposals), "editorial_calls": 0,
+                    "covered_units": len(used), "uncovered_units": len(uncovered),
+                    "coverage_percent": round(100 * len(used) / len(units), 1),
+                    "unit_statuses": dict(Counter(u["status"] for u in units))},
+        "dossiers": dossiers, "assignments": assignments,
+        "proposals": proposals, "uncovered_evidence": uncovered, "singletons": [],
+        "note": "V5: contenus candidats d'acquisition, sans validation factuelle ni écriture en base."
+    }
