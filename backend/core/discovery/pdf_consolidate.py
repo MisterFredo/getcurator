@@ -1,4 +1,4 @@
-"""PDF Studio V3: classify evidence, build dossiers, propose coherent articles.
+"""PDF Studio V4: classify evidence, build dossiers, propose coherent articles.
 Drop-in for core/discovery/pdf_consolidate.py; same consolidate(data) API.
 No DB writes. The original evidence and verification flags are preserved.
 """
@@ -15,6 +15,7 @@ from openai import OpenAI
 MODEL = os.getenv('PDF_STUDIO_MODEL', 'gpt-4o-mini')
 BATCH_SIZE = 35
 MIN_EVIDENCE = 3
+MAX_EDITORIAL_CALLS = int(os.getenv("PDF_STUDIO_MAX_EDITORIAL_CALLS", "32"))
 THEMES = ('MARKET_GROWTH','CONSUMER_BEHAVIOR','PAYMENTS','LOGISTICS','AI_TECH','REGULATION','SUSTAINABILITY','CROSS_BORDER','MARKETPLACES','BUSINESS_DIGITALIZATION','OTHER')
 
 
@@ -92,43 +93,89 @@ def consolidate(data: dict[str,Any], model: str = MODEL) -> dict[str,Any]:
         for u in batch:
             assignments.setdefault(u['id'],{'theme':'OTHER','scope':str(u.get('geography') or 'Non précisé'),'subtopic':''})
 
-    # Step 2: thematic dossiers. Normalize language variants of geography.
-    geo_aliases = {'eu 27':'Europe','europe':'Europe','ireland':'Irlande','belgium':'Belgique',
-                   'germany':'Allemagne','france':'France','netherlands':'Pays-Bas','pays bas':'Pays-Bas',
-                   'denmark':'Danemark','sweden':'Suède','norway':'Norvège','poland':'Pologne',
-                   'finland':'Finlande','austria':'Autriche','spain':'Espagne','italy':'Italie',
-                   'luxembourg':'Luxembourg','estonia':'Estonie','lithuania':'Lituanie'}
-    grouped = defaultdict(list)
+    # Step 2: country dossiers for provenance, plus cross-country thematic pools.
+    # Country is metadata, NOT an editorial partition: a comparison may use
+    # evidence from multiple countries. Keep every unit in the dossier index.
+    geo_aliases = {
+        'eu':'Europe','eu 27':'Europe','european union':'Europe','union europeenne':'Europe',
+        'ireland':'Irlande','belgium':'Belgique','germany':'Allemagne','france':'France',
+        'netherlands':'Pays-Bas','pays bas':'Pays-Bas','denmark':'Danemark',
+        'sweden':'Suède','norway':'Norvège','poland':'Pologne','finland':'Finlande',
+        'austria':'Autriche','spain':'Espagne','italy':'Italie','luxembourg':'Luxembourg',
+        'estonia':'Estonie','lithuania':'Lituanie','romania':'Roumanie',
+        'switzerland':'Suisse','united kingdom':'Royaume-Uni','uk':'Royaume-Uni',
+        'bosnia herzegovina':'Bosnie-Herzégovine','bosnia and herzegovina':'Bosnie-Herzégovine',
+        'croatia':'Croatie','albania':'Albanie','hungary':'Hongrie',
+        'slovenia':'Slovénie','slovak republic':'Slovaquie','serbia':'Serbie',
+        'moldova':'Moldavie','montenegro':'Monténégro','north macedonia':'Macédoine du Nord',
+        'malta':'Malte','southern europe':'Europe du Sud',
+        'northern europe':'Europe du Nord','eastern europe':'Europe de l’Est',
+    }
+    by_theme = defaultdict(list)
+    by_country = defaultdict(list)
     for u in units:
         a = assignments[u['id']]
-        scope = geo_aliases.get(normalize(a['scope']),a['scope'])
-        grouped[(a['theme'],scope)].append(u)
+        scope = geo_aliases.get(normalize(a['scope']), a['scope'])
+        a['scope'] = scope
+        by_theme[a['theme']].append(u)
+        by_country[(a['theme'],scope)].append(u)
+
     dossiers = []
-    for index,((theme,scope),members) in enumerate(sorted(grouped.items()),1):
+    for index,((theme,scope),members) in enumerate(sorted(by_country.items()),1):
         dossiers.append({'id':f'D{index:04d}','theme':theme,'scope':scope,
                          'unit_ids':[u['id'] for u in members], 'unit_count':len(members),
-                         'subtopics':dict(Counter(assignments[u['id']]['subtopic'] for u in members if assignments[u['id']]['subtopic']))})
+                         'subtopics':dict(Counter(assignments[u['id']]['subtopic'] for u in members
+                                                  if assignments[u['id']]['subtopic']))})
 
-    # Step 3: editorial selection on complete coherent dossiers (chunk large dossiers).
+    # Step 3: editorial passes. Prefer a complete thematic view over arbitrary
+    # geography partitions; then a few strong country-specific dossiers.
+    # Every unit can be considered in a cross-country angle, including singletons.
     proposals = []
-    for dossier in dossiers:
-        members = [by_id[i] for i in dossier['unit_ids']]
-        if len(members) < MIN_EVIDENCE: continue
-        for start in range(0,len(members),45):
-            batch = members[start:start+45]
-            if len(batch) < MIN_EVIDENCE: continue
-            result = ask(client,EDITOR,{'dossier':{'theme':dossier['theme'],'scope':dossier['scope']},
-                 'units':[{k:u.get(k) for k in ('id','fact','kind','period','geography','status')} for u in batch]},model)
-            allowed = {u['id'] for u in batch}
-            for p in result.get('proposals',[]):
-                if not isinstance(p,dict): continue
-                ids = _ids(p.get('unit_ids'),allowed)
-                if len(ids) < MIN_EVIDENCE: continue
-                title = str(p.get('title') or '').strip()
-                if not title: continue
-                proposals.append({'title':title,'angle':str(p.get('angle') or '').strip(),
-                    'scope':dossier['scope'],'editorial_rationale':str(p.get('editorial_rationale') or '').strip(),
-                    'unit_ids':ids,'dossier_id':dossier['id']})
+    calls = 0
+    editorial_pools = []
+    for theme,members in sorted(by_theme.items(),key=lambda x:-len(x[1])):
+        if theme == 'OTHER' or len(members) < MIN_EVIDENCE:
+            continue
+        # Spread countries across chunks so cross-market patterns can emerge.
+        ordered = sorted(members,key=lambda u:(normalize(assignments[u['id']]['subtopic']),
+                                              normalize(assignments[u['id']]['scope'])))
+        for start in range(0,len(ordered),40):
+            chunk = ordered[start:start+40]
+            if len(chunk) >= MIN_EVIDENCE:
+                editorial_pools.append((f'THEME:{theme}',theme,'Multi-pays',chunk))
+    for d in sorted(dossiers,key=lambda x:-x['unit_count']):
+        if d['unit_count'] >= 4 and d['theme'] != 'OTHER':
+            editorial_pools.append((d['id'],d['theme'],d['scope'],
+                                    [by_id[i] for i in d['unit_ids']]))
+
+    for dossier_id,theme,scope,members in editorial_pools:
+        if calls >= MAX_EDITORIAL_CALLS:
+            break
+        calls += 1
+        instruction = EDITOR + """
+Tu peux proposer un article transversal comparant plusieurs pays, UNIQUEMENT
+si les preuves portent sur le même phénomène comparable. Ne confonds pas
+la proximité thématique avec une démonstration. Ne crée pas un panorama
+fourre-tout. Le dossier peut contenir des unités sans rapport direct : ignore-les.
+Une preuve marquée NEEDS_REVIEW ne doit pas être présentée comme vérifiée.
+Pour les comparaisons, vérifie la compatibilité des périodes et indicateurs.
+"""
+        result = ask(client,instruction,{'dossier':{'theme':theme,'scope':scope},
+            'units':[{'id':u['id'],'fact':u['fact'],'kind':u.get('kind'),
+                      'period':u.get('period'),'geography':assignments[u['id']]['scope'],
+                      'subtopic':assignments[u['id']]['subtopic'],
+                      'status':u['status']} for u in members]},model)
+        allowed = {u['id'] for u in members}
+        for p in result.get('proposals',[]):
+            if not isinstance(p,dict): continue
+            ids = _ids(p.get('unit_ids'),allowed)
+            if len(ids) < MIN_EVIDENCE: continue
+            title = str(p.get('title') or '').strip()
+            angle = str(p.get('angle') or '').strip()
+            if not title or not angle: continue
+            proposals.append({'title':title,'angle':angle,'scope':scope,
+                'editorial_rationale':str(p.get('editorial_rationale') or '').strip(),
+                'unit_ids':ids,'dossier_id':dossier_id})
 
     # Merge exact duplicate titles in same dossier; preserve evidence.
     merged = {}
@@ -150,11 +197,11 @@ def consolidate(data: dict[str,Any], model: str = MODEL) -> dict[str,Any]:
             'editorial_status':'REVIEW_REQUIRED','evidence':evidence})
     uncovered = [u for u in units if u['id'] not in used]
     return {'document_hash':data.get('document_hash'),'document_title':data.get('document_title'),
-        'source_id':data.get('source_id'),'model':model,'version':'3.0',
+        'source_id':data.get('source_id'),'model':model,'version':'4.0',
         'summary':{'input_units':len(units),'dossier_count':len(dossiers),
-            'article_proposals':len(final),'covered_units':len(used),
+            'article_proposals':len(final),'editorial_calls':calls,'covered_units':len(used),
             'uncovered_units':len(uncovered),'coverage_percent':round(100*len(used)/len(units),1),
             'unit_statuses':dict(Counter(u['status'] for u in units))},
         'dossiers':dossiers,'assignments':assignments,'proposals':final,
         'uncovered_evidence':uncovered,'singletons':[],
-        'note':'Dossiers documentaires et propositions non validées. Aucune génération ni écriture en base.'}
+        'note':'V4: dossiers par pays + angles transversaux; propositions non validées, aucune écriture en base.'}
