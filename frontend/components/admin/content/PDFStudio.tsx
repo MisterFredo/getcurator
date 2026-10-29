@@ -7,6 +7,7 @@ type EvidenceUnit = { page: number | null; fact: string; quote: string; kind: st
 type ExtractionExport = { document_hash?: string | null; document_title?: string; source_id?: string; next_page?: number | null; rejected_unverified?: number; units: EvidenceUnit[] };
 type ArticleProposal = { id: string; title: string; angle: string; scope: string; editorial_rationale: string; unit_ids: string[]; pages: number[]; evidence_count: number; exact_quote_count: number; review_count: number; editorial_status: string; evidence: EvidenceUnit[] };
 type ConsolidationResult = { summary: { input_units: number; local_proposals: number; article_proposals: number; covered_units: number; uncovered_units: number }; proposals: ArticleProposal[]; uncovered_evidence: EvidenceUnit[]; document_title?: string };
+type GeneratedDraft = { status: string; proposal_id: string; document_title: string; source_id: string; document_hash?: string; title: string; excerpt: string; body: string; used_unit_ids: string[]; warnings: string[]; evidence: EvidenceUnit[]; model: string };
 type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; counts: Record<string, number>; candidate_count: number; rejected_unverified: number; warning: string };
 type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null; acquisition_mode?: string | null };
 type Page = { page: number; char_count: number; image_count: number; needs_visual_review: boolean; preview: string };
@@ -20,6 +21,9 @@ export default function PDFStudio() {
   const [importedExtraction, setImportedExtraction] = useState<ExtractionExport | null>(null);
   const [consolidating, setConsolidating] = useState(false);
   const [consolidation, setConsolidation] = useState<ConsolidationResult | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, GeneratedDraft>>({});
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [units, setUnits] = useState<EvidenceUnit[]>([]);
@@ -64,7 +68,7 @@ export default function PDFStudio() {
   }, []);
 
   function changeFile(next: File | null) {
-    setImportedExtraction(null); setConsolidation(null); stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
+    setImportedExtraction(null); setConsolidation(null); setDrafts({}); setApprovedIds([]); stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
     setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
     setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
   }
@@ -150,7 +154,7 @@ export default function PDFStudio() {
       if (!data.units.length || data.units.some(u => !u || typeof u.fact !== "string" || !Number.isInteger(u.page) && u.page !== null)) {
         throw new Error("L'export ne contient pas d'unités exploitables.");
       }
-      setImportedExtraction(data); setConsolidation(null);
+      setImportedExtraction(data); setConsolidation(null); setDrafts({}); setApprovedIds([]);
       setUnits(data.units); setNextPage(data.next_page === undefined ? null : data.next_page);
       setRejected(data.rejected_unverified || 0);
       if (data.document_title) setDocumentTitle(data.document_title);
@@ -171,9 +175,42 @@ export default function PDFStudio() {
       };
       const result = await api.post("/discovery/pdf-studio/consolidate", payload) as ConsolidationResult;
       if (!result || !Array.isArray(result.proposals)) throw new Error("Réponse de consolidation invalide.");
-      setConsolidation(result);
+      setConsolidation(result); setDrafts({}); setApprovedIds([]);
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur pendant la consolidation."); }
     finally { setConsolidating(false); }
+  }
+
+  async function generateDraft(proposal: ArticleProposal) {
+    if (generatingId || !sourceId) { setError("Sélectionne un éditeur avant de générer."); return; }
+    setGeneratingId(proposal.id); setError("");
+    try {
+      const result = await api.post("/discovery/pdf-studio/generate", {
+        document_hash: importedExtraction?.document_hash || inspection?.document_hash || null,
+        document_title: documentTitle || importedExtraction?.document_title || "Document PDF",
+        source_id: sourceId,
+        proposal,
+      }) as GeneratedDraft;
+      if (!result || result.status !== "DRAFT_REVIEW_REQUIRED") throw new Error("Brouillon invalide.");
+      setDrafts(prev => ({ ...prev, [proposal.id]: result }));
+      setApprovedIds(prev => prev.filter(id => id !== proposal.id));
+      setExpandedProposal(proposal.id);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur de génération."); }
+    finally { setGeneratingId(null); }
+  }
+
+  function editDraft(id: string, field: "title" | "excerpt" | "body", value: string) {
+    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+    setApprovedIds(prev => prev.filter(x => x !== id));
+  }
+
+  function exportDrafts() {
+    const approved = approvedIds.map(id => drafts[id]).filter(Boolean);
+    if (!approved.length) return;
+    const blob = new Blob([JSON.stringify({ version: "generate-v1", status: "APPROVED_FOR_IMPORT", articles: approved }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    a.download = `pdf-approved-articles-${(importedExtraction?.document_hash || inspection?.document_hash || "document").slice(0, 12)}.json`;
+    a.click(); URL.revokeObjectURL(url);
   }
 
   function exportConsolidation() {
@@ -261,7 +298,7 @@ export default function PDFStudio() {
       </section>}
       <section className="rounded-xl border p-5 space-y-4">
         <h2 className="text-lg font-semibold">5. Reprendre une extraction et consolider les articles</h2>
-        <p className="text-sm text-gray-600">Importe un export JSON existant, sans recommencer le PDF. La consolidation utilise les unités en mémoire et propose des sujets d'articles. Aucun article n'est généré ni enregistré.</p>
+        <p className="text-sm text-gray-600">Importe un export JSON existant, sans recommencer le PDF. La consolidation utilise les unités en mémoire et propose des sujets d'articles. Les articles peuvent ensuite être générés, relus et exportés ; aucun enregistrement en base à ce stade.</p>
         <label className="block text-sm font-medium">Importer une extraction JSON</label>
         <input type="file" accept=".json,application/json" onChange={e => { void importExtraction(e.target.files?.[0] || null); e.currentTarget.value = ""; }} className="block w-full text-sm" disabled={consolidating || extracting} />
         {importedExtraction && <p className="text-sm text-green-700">Extraction importée : {units.length} unités · {importedExtraction.document_title || "Sans titre"}</p>}
@@ -278,9 +315,22 @@ export default function PDFStudio() {
             {expandedProposal === p.id && <div className="mt-3 space-y-2 border-t pt-3">
               <p>{p.editorial_rationale}</p><p className="text-xs text-gray-500">Pages : {p.pages.join(", ")} · {p.editorial_status}</p>
               {p.evidence.map((u, i) => <div key={i} className="rounded bg-gray-50 p-2 text-xs">p. {u.page} · {u.status} — {u.fact}</div>)}
+              <button type="button" disabled={Boolean(generatingId) || p.evidence_count < 3 || !sourceId} onClick={() => void generateDraft(p)} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{generatingId === p.id ? "Génération…" : drafts[p.id] ? "Régénérer le brouillon" : "Générer un brouillon"}</button>
+              {drafts[p.id] && <div className="space-y-3 rounded border p-3">
+                <p className="font-semibold">Brouillon à relire — {drafts[p.id].used_unit_ids.length} références utilisées</p>
+                <label className="block">Titre<input className="mt-1 w-full rounded border p-2" value={drafts[p.id].title} onChange={e => editDraft(p.id, "title", e.target.value)} /></label>
+                <label className="block">Extrait<textarea className="mt-1 w-full rounded border p-2" rows={3} value={drafts[p.id].excerpt} onChange={e => editDraft(p.id, "excerpt", e.target.value)} /></label>
+                <label className="block">Article<textarea className="mt-1 w-full rounded border p-2 font-mono text-xs" rows={20} value={drafts[p.id].body} onChange={e => editDraft(p.id, "body", e.target.value)} /></label>
+                {drafts[p.id].warnings.map((w,i) => <p key={i} className="text-xs text-amber-700">{w}</p>)}
+                <label className="flex items-start gap-2"><input type="checkbox" checked={approvedIds.includes(p.id)} disabled={!drafts[p.id].body.trim() || !drafts[p.id].title.trim()} onChange={e => setApprovedIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))} />J'ai contrôlé les faits et les citations dans le PDF, et je valide cet article pour export.</label>
+              </div>}
             </div>}
           </div>)}
-          <p className="text-xs text-amber-700">Propositions uniquement : toutes les preuves et interprétations doivent être validées avant génération.</p>
+          <div className="flex flex-wrap items-center gap-3 border-t pt-3">
+            <button type="button" onClick={exportDrafts} disabled={!approvedIds.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter {approvedIds.length} article(s) validé(s) JSON</button>
+            <p className="text-xs text-gray-500">Les brouillons sont conservés uniquement dans cette session. Aucune écriture en base.</p>
+          </div>
+          <p className="text-xs text-amber-700">Les citations doivent être contrôlées dans le PDF avant toute validation.</p>
         </div>}
       </section>
       {error && <p role="alert" className="rounded border border-red-200 p-3 text-sm text-red-700">{error}</p>}
