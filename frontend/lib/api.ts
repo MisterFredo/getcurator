@@ -6,8 +6,7 @@ const RAW_BASE_URL =
 
 /* ========================================================= */
 
-const BASE_URL =
-  RAW_BASE_URL.replace(/\/+$/, "");
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, "");
 
 /* ========================================================= */
 
@@ -20,6 +19,45 @@ function getUserHeaders(): Record<string, string> {
   return userId ? { "x-user-id": userId } : {};
 }
 
+/* ========================================================= */
+
+async function parseResponse(
+  res: Response,
+  path: string,
+  errorLabel: string,
+  requestBody?: unknown,
+) {
+  let json: any = null;
+
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(
+      `Backend returned a non-JSON response (${res.status}).`
+    );
+  }
+
+  if (!res.ok) {
+    console.error(errorLabel, {
+      status: res.status,
+      path,
+      ...(requestBody !== undefined ? { request: requestBody } : {}),
+      response: json,
+    });
+
+    const message =
+      typeof json?.detail === "string"
+        ? json.detail
+        : JSON.stringify(json, null, 2);
+
+    throw new Error(message);
+  }
+
+  return json;
+}
+
+/* ========================================================= */
+/* JSON REQUEST */
 /* ========================================================= */
 
 async function request(
@@ -36,38 +74,12 @@ async function request(
       "Content-Type": "application/json",
       ...getUserHeaders(),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     cache: "no-store",
     credentials: "include",
   });
 
-  let json: any = null;
-
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(
-      `Backend returned a non-JSON response (${res.status}).`
-    );
-  }
-
-  if (!res.ok) {
-    console.error("❌ API ERROR", {
-      status: res.status,
-      path: cleanPath,
-      request: body,
-      response: json,
-    });
-
-    const message =
-      typeof json?.detail === "string"
-        ? json.detail
-        : JSON.stringify(json, null, 2);
-
-    throw new Error(message);
-  }
-
-  return json;
+  return parseResponse(res, cleanPath, "❌ API ERROR", body);
 }
 
 /* ========================================================= */
@@ -93,32 +105,33 @@ async function requestText(
     credentials: "include",
   });
 
-  let json: any = null;
+  return parseResponse(res, cleanPath, "❌ API TEXT ERROR");
+}
 
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(
-      `Backend returned a non-JSON response (${res.status}).`
-    );
-  }
+/* ========================================================= */
+/* FORM DATA REQUEST — PDF STUDIO */
+/* ========================================================= */
 
-  if (!res.ok) {
-    console.error("❌ API TEXT ERROR", {
-      status: res.status,
-      path: cleanPath,
-      response: json,
-    });
+async function requestForm(
+  method: string,
+  path: string,
+  body: FormData,
+) {
+  const cleanPath =
+    path.startsWith("/") ? path : `/${path}`;
 
-    const message =
-      typeof json?.detail === "string"
-        ? json.detail
-        : JSON.stringify(json, null, 2);
+  const res = await fetch(`${BASE_URL}${cleanPath}`, {
+    method,
+    headers: {
+      ...getUserHeaders(),
+      // Do not set Content-Type: the browser supplies the multipart boundary.
+    },
+    body,
+    cache: "no-store",
+    credentials: "include",
+  });
 
-    throw new Error(message);
-  }
-
-  return json;
+  return parseResponse(res, cleanPath, "❌ API FORM ERROR");
 }
 
 /* ========================================================= */
@@ -127,6 +140,7 @@ export const api = {
   get: (path: string) => request("GET", path),
   post: (path: string, body: any) => request("POST", path, body),
   postText: (path: string, body: string) => requestText("POST", path, body),
+  postForm: (path: string, body: FormData) => requestForm("POST", path, body),
   put: (path: string, body: any) => request("PUT", path, body),
   delete: (path: string) => request("DELETE", path),
 };
