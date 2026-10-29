@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -347,7 +348,22 @@ export default function ContentPage() {
           >
             LinkedIn Studio
           </Link>
-        
+
+          <Link
+            href="/admin/content/newsletter"
+            className="
+              border
+              border-ratecard-blue
+              text-ratecard-blue
+              px-4
+              py-2
+              rounded
+              hover:bg-gray-50
+            "
+          >
+            Newsletter Studio
+          </Link>
+
           <Link
             href="/admin/content/create"
             className="
@@ -360,7 +376,7 @@ export default function ContentPage() {
           >
             New content
           </Link>
-        
+
         </div>
 
       </div>
