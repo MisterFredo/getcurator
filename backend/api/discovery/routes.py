@@ -55,6 +55,7 @@ from core.discovery.pdf_studio import (
 
 
 from core.discovery.pdf_extract import extract_pdf_batch
+from core.discovery.pdf_consolidate import consolidate
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,25 @@ async def extract_pdf_studio(
     except Exception:
         logger.exception("Erreur extraction PDF Studio")
         raise HTTPException(status_code=500, detail="Erreur extraction PDF Studio")
+
+
+# ============================================================
+# PDF STUDIO — CONSOLIDATE (JSON EXTRACTION, NO DB WRITE)
+# ============================================================
+
+@router.post("/pdf-studio/consolidate")
+def consolidate_pdf_studio(data: dict = Body(...)):
+    if not isinstance(data.get("units"), list) or not data["units"]:
+        raise HTTPException(status_code=400, detail="Extraction JSON sans unités")
+    if len(data["units"]) > 5000:
+        raise HTTPException(status_code=400, detail="Trop d'unités (max 5000)")
+    try:
+        return consolidate(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur consolidation PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur consolidation PDF Studio")
 
 
 # ============================================================
