@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
+type EvidenceUnit = { page: number; fact: string; quote: string; kind: string; geography: string | null; period: string | null; needs_review: boolean };
+type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; rejected_unverified: number; warning: string };
 type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null; acquisition_mode?: string | null };
 type Page = { page: number; char_count: number; image_count: number; needs_visual_review: boolean; preview: string };
 type Inspection = { status: string; document_hash: string; filename: string; page_count: number; title: string | null; author: string | null; pages: Page[]; low_text_pages: number[]; visual_review_pages: number[] };
@@ -13,6 +15,11 @@ const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, 
 
 export default function PDFStudio() {
   const [file, setFile] = useState<File | null>(null);
+  const [units, setUnits] = useState<EvidenceUnit[]>([]);
+  const [nextPage, setNextPage] = useState<number | null>(1);
+  const [extracting, setExtracting] = useState(false);
+  const [rejected, setRejected] = useState(0);
+  const stopRef = useRef(false);
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
@@ -43,6 +50,7 @@ export default function PDFStudio() {
   }, []);
 
   function changeFile(next: File | null) {
+    stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0);
     setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
     setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
   }
@@ -59,7 +67,7 @@ export default function PDFStudio() {
     setBusy("inspect"); setError("");
     try {
       const result = await upload("inspect") as Inspection;
-      setInspection(result); setMapping(null); setConfirmed(false);
+      setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0);
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
       const year = (result.title || file.name).match(/\b20\d{2}\b/);
       setDocumentYear(year?.[0] || "");
@@ -90,6 +98,48 @@ export default function PDFStudio() {
     try { setMapping(await upload("map") as Mapping); }
     catch (e) { setError(e instanceof Error ? e.message : "Erreur de cartographie."); }
     finally { setBusy(null); }
+  }
+
+  async function extractAll() {
+    if (!file || !mapping || nextPage === null || extracting) return;
+    stopRef.current = false;
+    setExtracting(true);
+    setError("");
+    let page: number | null = nextPage;
+    try {
+      while (page !== null && !stopRef.current) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("start_page", String(page));
+        const batch = await api.postForm("/discovery/pdf-studio/extract", form) as ExtractBatch;
+        setUnits(prev => [...prev, ...batch.units]);
+        setRejected(prev => prev + batch.rejected_unverified);
+        page = batch.next_page;
+        setNextPage(page);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur pendant l'extraction.");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  function exportUnits() {
+    const payload = {
+      document_hash: inspection?.document_hash,
+      document_title: documentTitle,
+      source_id: sourceId,
+      next_page: nextPage,
+      rejected_unverified: rejected,
+      units,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pdf-extract-${inspection?.document_hash.slice(0, 12) || "document"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -124,6 +174,20 @@ export default function PDFStudio() {
           {showPages && <div className="max-h-80 overflow-y-auto divide-y rounded border">{inspection.pages.map(p => <div key={p.page} className="p-3 text-sm">Page {p.page} · {p.char_count} caractères {p.needs_visual_review ? "· revue visuelle conseillée" : ""}<p className="text-gray-500">{p.preview}</p></div>)}</div>}
         </section>
       </>}
+      {mapping && <section className="rounded-xl border p-5 space-y-4">
+        <h2 className="text-lg font-semibold">4. Extraire les unités d'information</h2>
+        <p className="text-sm text-gray-600">Extraction par lots de 5 pages, sans quota d'articles. Les citations sont rapprochées du texte PDF ; les tableaux et chiffres nécessitent une revue humaine.</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => void extractAll()} disabled={extracting || nextPage === null || busy !== null} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{extracting ? "Extraction en cours…" : nextPage === null ? "Extraction terminée" : units.length ? "Reprendre l'extraction" : "Démarrer l'extraction"}</button>
+          {extracting && <button type="button" onClick={() => { stopRef.current = true; }} className="rounded border px-4 py-2 text-sm">Arrêter après ce lot</button>}
+          <button type="button" onClick={exportUnits} disabled={!units.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter les résultats JSON</button>
+        </div>
+        <p className="text-sm">{units.length} unités extraites · {rejected} citations non vérifiées écartées · {nextPage === null ? `${mapping.document.page_count}/${mapping.document.page_count}` : `${nextPage - 1}/${mapping.document.page_count}`} pages traitées</p>
+        <div className="max-h-[500px] space-y-2 overflow-y-auto">
+          {units.map((u, i) => <details key={`${u.page}-${i}`} className="rounded border p-3 text-sm"><summary className="cursor-pointer"><span className="text-gray-500">p. {u.page} · {u.kind} · </span>{u.fact}</summary><blockquote className="mt-2 border-l-2 pl-3 text-gray-600">{u.quote}</blockquote></details>)}
+        </div>
+        <p className="text-xs text-amber-700">Résultats en mémoire navigateur uniquement. Exporter le JSON avant de quitter la page : aucune persistance serveur ni reprise après rechargement n'est encore implémentée.</p>
+      </section>}
       {error && <p role="alert" className="rounded border border-red-200 p-3 text-sm text-red-700">{error}</p>}
       {mapping && <section className="rounded-xl border p-5 space-y-4"><h2 className="text-lg font-semibold">Cartographie — {documentTitle}</h2><p className="text-sm text-gray-500">Éditeur : {selectedSource?.name} · {mapping.document.page_count} pages · {topics.length} thèmes · {mapping.sections.length} titres candidats</p><p className="text-sm">{mapping.note}</p><div className="space-y-2">{topics.map(([key, topic]) => <div key={key} className="rounded border"><button type="button" className="flex w-full justify-between p-3 text-left text-sm" onClick={() => setExpandedTopic(expandedTopic === key ? null : key)}><span>{TOPIC_NAMES[key] || key}</span><span>{topic.page_count} pages</span></button>{expandedTopic === key && <p className="border-t p-3 text-sm text-gray-600">Pages : {topic.pages.map(p => p.page).join(", ")}</p>}</div>)}</div><details className="rounded border p-3"><summary className="cursor-pointer text-sm">Titres candidats</summary><div className="mt-3 max-h-80 overflow-auto text-sm">{mapping.sections.map((s, i) => <p key={i}>p. {s.page} — {s.heading_candidate}</p>)}</div></details><p className="text-sm text-gray-500">La cartographie est heuristique. Le PDF et ses métadonnées ne sont pas encore enregistrés en base ; aucun contenu n'a été généré.</p></section>}
     </div>
