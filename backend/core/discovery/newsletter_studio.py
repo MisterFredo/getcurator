@@ -108,17 +108,38 @@ def parse_newsletter(text: str) -> List[Dict]:
 
 
 def _existing_hashes(source_id: str) -> set:
-    table = f"`{BQ_PROJECT}.{BQ_DATASET}.RATECARD_CONTENT_RAW`"
-    rows = query_bq(
-        f"SELECT TITLE, RAW_TEXT FROM {table} WHERE SOURCE_ID = @source_id "
-        "AND IMPORT_TYPE = 'NEWSLETTER' AND RAW_TEXT IS NOT NULL",
-        params={"source_id": source_id},
+
+    table = (
+        f"`{BQ_PROJECT}.{BQ_DATASET}."
+        "RATECARD_CONTENT_RAW`"
     )
-    return {normalized_hash(f"{row.get('TITLE') or ''}\n{row.get('RAW_TEXT') or ''}") for row in rows}
+
+    rows = query_bq(
+        f"""
+        SELECT RAW_TEXT
+        FROM {table}
+        WHERE SOURCE_ID = @source_id
+          AND IMPORT_TYPE = 'NEWSLETTER'
+          AND RAW_TEXT IS NOT NULL
+        """,
+        params={
+            "source_id": source_id,
+        },
+    )
+
+    return {
+        normalized_hash(
+            row.get("RAW_TEXT") or ""
+        )
+        for row in rows
+    }
 
 
 def _item_hash(item: Dict) -> str:
-    return normalized_hash(f"{item.get('title') or ''}\n{item.get('raw_text') or ''}")
+
+    return normalized_hash(
+        item.get("raw_text") or ""
+    )
 
 
 def analyze_newsletter(source_id: str, text: str) -> Dict:
