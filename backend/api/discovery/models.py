@@ -207,3 +207,24 @@ class LinkedInStudioStoreRequest(
 
     class Config:
         extra = "forbid"
+
+# ============================================================
+# NEWSLETTER STUDIO
+# ============================================================
+
+class NewsletterStudioItem(BaseModel):
+
+    title: str
+
+    raw_text: str
+
+    date_source: Optional[str] = None
+
+    source_url: Optional[str] = None
+
+    original_source: Optional[str] = None
+
+
+class NewsletterStudioStoreRequest(BaseModel):
+
+    items: List[NewsletterStudioItem]
