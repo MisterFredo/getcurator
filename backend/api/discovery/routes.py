@@ -80,6 +80,27 @@ async def _read_pdf_studio_upload(file: UploadFile) -> bytes:
 
 
 # ============================================================
+# PDF STUDIO — REGISTER ORIGINAL DOCUMENT
+# ============================================================
+
+@router.post("/pdf-studio/document/register")
+async def register_pdf_studio_document(
+    file: UploadFile = File(...),
+    source_id: str = Form(...),
+    title: str = Form(""),
+):
+    data = await _read_pdf_studio_upload(file)
+    from core.discovery.pdf_document_store import register_pdf
+    try:
+        return register_pdf(data, file.filename or "document.pdf", source_id, title or None)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur enregistrement PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur enregistrement du document PDF")
+
+
+# ============================================================
 # PDF STUDIO — EXTRACT BATCH (NO PERSISTENCE)
 # ============================================================
 
