@@ -1,176 +1,160 @@
-"""PDF Studio V2 — exhaustive editorial grouping; no database writes.
-
-Drop-in replacement for core/discovery/pdf_consolidate.py.
-Keeps the V1 consolidate(data) API and response shape.
+"""PDF Studio V3: classify evidence, build dossiers, propose coherent articles.
+Drop-in for core/discovery/pdf_consolidate.py; same consolidate(data) API.
+No DB writes. The original evidence and verification flags are preserved.
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from typing import Any
 from openai import OpenAI
 
-MODEL = os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini")
+MODEL = os.getenv('PDF_STUDIO_MODEL', 'gpt-4o-mini')
 BATCH_SIZE = 35
+MIN_EVIDENCE = 3
+THEMES = ('MARKET_GROWTH','CONSUMER_BEHAVIOR','PAYMENTS','LOGISTICS','AI_TECH','REGULATION','SUSTAINABILITY','CROSS_BORDER','MARKETPLACES','BUSINESS_DIGITALIZATION','OTHER')
 
 
-def ask(client: OpenAI, system: str, payload: dict[str, Any], model: str) -> dict[str, Any]:
+def ask(client: OpenAI, instruction: str, payload: dict, model: str) -> dict:
     response = client.chat.completions.create(
-        model=model,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system + "\nRéponds uniquement par un objet JSON valide."},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-        ],
+        model=model, temperature=0, response_format={'type': 'json_object'},
+        messages=[{'role':'system','content':instruction+'\nRéponds exclusivement en JSON valide.'},
+                  {'role':'user','content':json.dumps(payload,ensure_ascii=False)}],
     )
-    value = json.loads(response.choices[0].message.content or "{}")
-    if not isinstance(value, dict):
-        raise ValueError("Réponse JSON invalide du modèle")
-    return value
-
-
-def prepare(data: dict[str, Any]) -> list[dict[str, Any]]:
-    result = []
-    for index, unit in enumerate(data.get("units", [])):
-        if not isinstance(unit, dict) or unit.get("status") == "REJECTED" or not str(unit.get("fact") or "").strip():
-            continue
-        result.append({
-            "id": f"U{index + 1:05d}",
-            "page": unit.get("page"), "fact": unit["fact"],
-            "quote": unit.get("quote", ""), "kind": unit.get("kind"),
-            "geography": unit.get("geography"), "period": unit.get("period"),
-            "status": unit.get("status", "NEEDS_REVIEW"),
-            "reason": unit.get("reason"), "match_score": unit.get("match_score"),
-        })
+    result = json.loads(response.choices[0].message.content or '{}')
+    if not isinstance(result, dict):
+        raise ValueError('Réponse JSON invalide')
     return result
 
 
-def _unique_ids(ids: Any, allowed: set[str]) -> list[str]:
-    if not isinstance(ids, list):
-        return []
-    return list(dict.fromkeys(i for i in ids if isinstance(i, str) and i in allowed))
-
-
-def _proposals(raw: Any, allowed: set[str]) -> list[dict[str, Any]]:
-    output = []
-    for p in raw if isinstance(raw, list) else []:
-        if not isinstance(p, dict):
+def prepare(data: dict) -> list[dict]:
+    result = []
+    for idx, u in enumerate(data.get('units', []), 1):
+        if not isinstance(u, dict) or u.get('status') == 'REJECTED' or not str(u.get('fact') or '').strip():
             continue
-        title = str(p.get("title") or "").strip()
-        ids = _unique_ids(p.get("unit_ids"), allowed)
-        if title and len(ids) >= 2:
-            output.append({
-                "title": title,
-                "angle": str(p.get("angle") or "").strip(),
-                "scope": str(p.get("scope") or "").strip(),
-                "editorial_rationale": str(p.get("editorial_rationale") or "").strip(),
-                "unit_ids": ids,
-            })
-    return output
+        result.append({'id':f'U{idx:05d}','page':u.get('page'),'fact':u['fact'],
+                       'quote':u.get('quote',''),'kind':u.get('kind'),
+                       'geography':u.get('geography'),'period':u.get('period'),
+                       'status':u.get('status','NEEDS_REVIEW'),
+                       'reason':u.get('reason'),'match_score':u.get('match_score')})
+    return result
 
 
-def _slug(value: str) -> str:
-    return re.sub(r"\W+", " ", value.lower(), flags=re.UNICODE).strip()
+def normalize(value: Any) -> str:
+    value = unicodedata.normalize('NFKD',str(value or '').strip().lower())
+    return re.sub(r'[^a-z0-9]+',' ', ''.join(c for c in value if not unicodedata.combining(c))).strip()
 
 
-def _dedupe(proposals: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Only merge near-identical headings in the same scope; never discard their evidence."""
-    merged: dict[tuple[str, str], dict[str, Any]] = {}
-    for p in proposals:
-        key = (_slug(p["title"]), _slug(p["scope"]))
-        if key not in merged:
-            merged[key] = {**p, "unit_ids": list(p["unit_ids"])}
-        else:
-            merged[key]["unit_ids"] = list(dict.fromkeys(merged[key]["unit_ids"] + p["unit_ids"]))
-    return list(merged.values())
+CLASSIFY = '''Tu classes des unités documentaires indépendamment de toute rédaction.
+Pour CHAQUE id fourni, retourne exactement un objet {"id":"...","theme":"...","scope":"...","subtopic":"..."}.
+Theme doit être une valeur de allowed_themes. Scope = pays normalisé en français, ou "Europe" pour une donnée véritablement européenne; respecte strictement le champ geography, n'invente pas une portée européenne à une donnée nationale.
+Subtopic = objet précis de la preuve (par ex. "BNPL", "frais de cartes", "livraison en consigne"), 2-5 mots; ne pas employer "tendances" ou "analyse".
+Ne mélange jamais deux thèmes sans preuve. Une unité doit avoir une seule affectation primaire.
+Format JSON: {"assignments":[...]}'''
+
+EDITOR = '''Tu es rédacteur en chef d'un média B2B spécialisé. Tu reçois UN dossier thématique contenant des preuves, jamais des articles préfabriqués.
+Propose au maximum 3 articles DISTINCTS, chacun avec un angle informatif, précis, réellement démontré par les preuves.
+Un article nécessite AU MOINS 3 preuves pertinentes et cohérentes, pas des unités choisies pour atteindre un quota.
+Si le dossier n'offre pas un angle solide, retourne une liste vide. Un dossier n'est pas automatiquement un article.
+Ne transforme pas des observations sans lien en un article artificiel. Tu peux réutiliser une preuve dans deux angles seulement si elle est directement pertinente aux deux.
+Ne crée pas d'affirmations nouvelles, ni de conclusions causales non étayées. Tous les titres, angles et justifications doivent être en français.
+Pour chaque article, sélectionne uniquement les unit_ids qui étayent DIRECTEMENT son angle; les preuves hors sujet doivent rester hors de l'article.
+Format JSON: {"proposals":[{"title":"...","angle":"...","scope":"...","editorial_rationale":"...","unit_ids":["..."]}]}'''
 
 
-PROMPT = """Tu es rédacteur en chef B2B. Ton travail est de cartographier EXHAUSTIVEMENT les unités
-sans rédiger d'articles. Propose autant de sujets éditoriaux spécifiques et distincts que justifiés.
-Chaque sujet comporte un angle précis, un périmètre (pays ou transversal), et au moins 2 unit_ids.
-Une unité peut soutenir plusieurs angles. Ne fusionne pas des pays/sujets sans justification.
-NE PAS produire seulement une synthèse générale du lot. Cherche les sujets négligés (paiements,
-logistique, réglementation, consommation, IA, durabilité, marchés, etc.).
-Les unités dont la citation n'est pas vérifiée peuvent servir à la découverte de sujets, mais
-aucune information n'est considérée validée pour publication.
-Rends {"proposals":[{"title":"...","angle":"...","scope":"...",
-"editorial_rationale":"...","unit_ids":["U00001","U00002"]}],
-"singletons":[{"unit_id":"U00003","reason":"..."}]}.
-Toute unité doit être soit utilisée dans au moins une proposition, soit mentionnée dans singletons.
-Ne cite que des IDs fournis. N'invente aucun fait."""
+def _ids(raw: Any, allowed: set[str]) -> list[str]:
+    if not isinstance(raw,list): return []
+    return list(dict.fromkeys(x for x in raw if isinstance(x,str) and x in allowed))
 
 
-def _batch(client: OpenAI, batch: list[dict[str, Any]], model: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    allowed = {u["id"] for u in batch}
-    payload = {"units": [{k: u.get(k) for k in ("id", "page", "fact", "kind", "geography", "period", "status")} for u in batch]}
-    result = ask(client, PROMPT, payload, model)
-    proposals = _proposals(result.get("proposals"), allowed)
-    singletons = [s for s in result.get("singletons", []) if isinstance(s, dict) and s.get("unit_id") in allowed] if isinstance(result.get("singletons"), list) else []
-    return proposals, singletons
-
-
-def consolidate(data: dict[str, Any], model: str = MODEL) -> dict[str, Any]:
+def consolidate(data: dict[str,Any], model: str = MODEL) -> dict[str,Any]:
     units = prepare(data)
-    if not units:
-        raise ValueError("Aucune unité exploitable dans l'extraction")
-    by_id = {u["id"]: u for u in units}
-    client = OpenAI(timeout=120, max_retries=2)
-    proposals: list[dict[str, Any]] = []
-    singletons: list[dict[str, Any]] = []
-    # Stage 1: all units are presented to the model, in bounded batches.
-    for offset in range(0, len(units), BATCH_SIZE):
-        p, s = _batch(client, units[offset:offset + BATCH_SIZE], model)
-        proposals.extend(p)
-        singletons.extend(s)
-    local_count = len(proposals)
+    if not units: raise ValueError('Aucune unité exploitable')
+    by_id = {u['id']:u for u in units}
+    client = OpenAI(timeout=120,max_retries=2)
+    assignments = {}
+    # Step 1: every unit gets a thematic classification, independently of editorial proposals.
+    for start in range(0,len(units),BATCH_SIZE):
+        batch = units[start:start+BATCH_SIZE]
+        result = ask(client,CLASSIFY,{'allowed_themes':THEMES,'units':[
+            {k:u.get(k) for k in ('id','fact','geography','kind','period')} for u in batch]},model)
+        allowed = {u['id'] for u in batch}
+        for a in result.get('assignments',[]):
+            if not isinstance(a,dict) or a.get('id') not in allowed: continue
+            theme = a.get('theme') if a.get('theme') in THEMES else 'OTHER'
+            u = by_id[a['id']]
+            # Source geography takes precedence: model cannot silently reassign Ireland to Luxembourg.
+            scope = str(u.get('geography') or a.get('scope') or 'Non précisé').strip()
+            assignments[a['id']] = {'theme':theme,'scope':scope,'subtopic':str(a.get('subtopic') or '').strip()}
+        for u in batch:
+            assignments.setdefault(u['id'],{'theme':'OTHER','scope':str(u.get('geography') or 'Non précisé'),'subtopic':''})
 
-    # Stage 2: recovery of unused evidence, WITHOUT allowing a global LLM pass
-    # to reduce the final list to ten broad subjects.
-    used = {i for p in proposals for i in p["unit_ids"]}
-    missing = [u for u in units if u["id"] not in used]
-    recovery_count = 0
-    for offset in range(0, len(missing), BATCH_SIZE):
-        p, s = _batch(client, missing[offset:offset + BATCH_SIZE], model)
-        proposals.extend(p)
-        singletons.extend(s)
-        recovery_count += len(p)
+    # Step 2: thematic dossiers. Normalize language variants of geography.
+    geo_aliases = {'eu 27':'Europe','europe':'Europe','ireland':'Irlande','belgium':'Belgique',
+                   'germany':'Allemagne','france':'France','netherlands':'Pays-Bas','pays bas':'Pays-Bas',
+                   'denmark':'Danemark','sweden':'Suède','norway':'Norvège','poland':'Pologne',
+                   'finland':'Finlande','austria':'Autriche','spain':'Espagne','italy':'Italie',
+                   'luxembourg':'Luxembourg','estonia':'Estonie','lithuania':'Lituanie'}
+    grouped = defaultdict(list)
+    for u in units:
+        a = assignments[u['id']]
+        scope = geo_aliases.get(normalize(a['scope']),a['scope'])
+        grouped[(a['theme'],scope)].append(u)
+    dossiers = []
+    for index,((theme,scope),members) in enumerate(sorted(grouped.items()),1):
+        dossiers.append({'id':f'D{index:04d}','theme':theme,'scope':scope,
+                         'unit_ids':[u['id'] for u in members], 'unit_count':len(members),
+                         'subtopics':dict(Counter(assignments[u['id']]['subtopic'] for u in members if assignments[u['id']]['subtopic']))})
 
-    # Stage 3: conservative exact-title deduplication. Broad semantic merges
-    # would recreate the coverage collapse seen in V1.
-    proposals = _dedupe(proposals)
-    final: list[dict[str, Any]] = []
+    # Step 3: editorial selection on complete coherent dossiers (chunk large dossiers).
+    proposals = []
+    for dossier in dossiers:
+        members = [by_id[i] for i in dossier['unit_ids']]
+        if len(members) < MIN_EVIDENCE: continue
+        for start in range(0,len(members),45):
+            batch = members[start:start+45]
+            if len(batch) < MIN_EVIDENCE: continue
+            result = ask(client,EDITOR,{'dossier':{'theme':dossier['theme'],'scope':dossier['scope']},
+                 'units':[{k:u.get(k) for k in ('id','fact','kind','period','geography','status')} for u in batch]},model)
+            allowed = {u['id'] for u in batch}
+            for p in result.get('proposals',[]):
+                if not isinstance(p,dict): continue
+                ids = _ids(p.get('unit_ids'),allowed)
+                if len(ids) < MIN_EVIDENCE: continue
+                title = str(p.get('title') or '').strip()
+                if not title: continue
+                proposals.append({'title':title,'angle':str(p.get('angle') or '').strip(),
+                    'scope':dossier['scope'],'editorial_rationale':str(p.get('editorial_rationale') or '').strip(),
+                    'unit_ids':ids,'dossier_id':dossier['id']})
+
+    # Merge exact duplicate titles in same dossier; preserve evidence.
+    merged = {}
+    for p in proposals:
+        key = (p['dossier_id'],normalize(p['title']))
+        if key in merged:
+            merged[key]['unit_ids'] = list(dict.fromkeys(merged[key]['unit_ids']+p['unit_ids']))
+        else: merged[key] = p
+    final = []
     used = set()
-    for index, p in enumerate(proposals, 1):
-        evidence = [by_id[i] for i in p["unit_ids"]]
-        used.update(p["unit_ids"])
-        final.append({
-            **p, "id": f"A{index:04d}",
-            "pages": sorted({u["page"] for u in evidence if isinstance(u["page"], int)}),
-            "evidence_count": len(evidence),
-            "exact_quote_count": sum(u["status"] == "VERIFIED" for u in evidence),
-            "review_count": sum(u["status"] != "VERIFIED" for u in evidence),
-            "editorial_status": "REVIEW_REQUIRED", "evidence": evidence,
-        })
-    # A standalone fact is preserved, not forced into an artificial article.
-    uncovered = [u for u in units if u["id"] not in used]
-    return {
-        "document_hash": data.get("document_hash"),
-        "document_title": data.get("document_title"),
-        "source_id": data.get("source_id"), "model": model,
-        "version": "2.0",
-        "summary": {
-            "input_units": len(units), "local_proposals": local_count,
-            "recovery_proposals": recovery_count,
-            "article_proposals": len(final),
-            "covered_units": len(used), "uncovered_units": len(uncovered),
-            "coverage_percent": round(100 * len(used) / len(units), 1),
-            "unit_statuses": dict(Counter(u["status"] for u in units)),
-        },
-        "proposals": final,
-        "uncovered_evidence": uncovered,
-        "singletons": singletons,
-        "note": "Editorial candidates only. No generated articles or DB writes. Review source claims and numbers before publication.",
-    }
+    for idx,p in enumerate(merged.values(),1):
+        evidence = [by_id[i] for i in p['unit_ids']]
+        used.update(p['unit_ids'])
+        final.append({**p,'id':f'A{idx:04d}',
+            'pages':sorted({u['page'] for u in evidence if isinstance(u['page'],int)}),
+            'evidence_count':len(evidence),
+            'exact_quote_count':sum(u['status']=='VERIFIED' for u in evidence),
+            'review_count':sum(u['status']!='VERIFIED' for u in evidence),
+            'editorial_status':'REVIEW_REQUIRED','evidence':evidence})
+    uncovered = [u for u in units if u['id'] not in used]
+    return {'document_hash':data.get('document_hash'),'document_title':data.get('document_title'),
+        'source_id':data.get('source_id'),'model':model,'version':'3.0',
+        'summary':{'input_units':len(units),'dossier_count':len(dossiers),
+            'article_proposals':len(final),'covered_units':len(used),
+            'uncovered_units':len(uncovered),'coverage_percent':round(100*len(used)/len(units),1),
+            'unit_statuses':dict(Counter(u['status'] for u in units))},
+        'dossiers':dossiers,'assignments':assignments,'proposals':final,
+        'uncovered_evidence':uncovered,'singletons':[],
+        'note':'Dossiers documentaires et propositions non validées. Aucune génération ni écriture en base.'}
