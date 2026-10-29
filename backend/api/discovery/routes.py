@@ -118,6 +118,22 @@ def consolidate_pdf_studio(data: dict = Body(...)):
 
 
 # ============================================================
+# PDF STUDIO — GENERATE DRAFT (NO DB WRITE)
+# ============================================================
+
+@router.post("/pdf-studio/generate")
+def generate_pdf_studio(data: dict = Body(...)):
+    from core.discovery.pdf_generate import generate_article
+    try:
+        return generate_article(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Erreur génération PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur génération PDF Studio")
+
+
+# ============================================================
 # PDF STUDIO — INSPECT
 # ============================================================
 
