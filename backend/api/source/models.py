@@ -20,6 +20,7 @@ from pydantic import (
 AcquisitionMode = Literal[
     "MANUAL",
     "LINKEDIN_PROFILE",
+    "NEWSLETTER_MANUAL",
     "HTML",
     "RSS",
     "SITEMAP",
