@@ -24,6 +24,10 @@ export default function PDFStudio() {
   const [drafts, setDrafts] = useState<Record<string, GeneratedDraft>>({});
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
+  const [registeredDocument, setRegisteredDocument] = useState<{ id_document: string; sha256: string; already_exists: boolean } | null>(null);
+  const [registeringDocument, setRegisteringDocument] = useState(false);
+  const [importingApproved, setImportingApproved] = useState(false);
+  const [importedArticles, setImportedArticles] = useState<{ id_raw: string; source_url: string; already_exists: boolean }[]>([]);
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [units, setUnits] = useState<EvidenceUnit[]>([]);
@@ -69,7 +73,7 @@ export default function PDFStudio() {
 
   function changeFile(next: File | null) {
     setImportedExtraction(null); setConsolidation(null); setDrafts({}); setApprovedIds([]); stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
-    setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
+    setRegisteredDocument(null); setImportedArticles([]); setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
     setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
   }
 
@@ -85,7 +89,7 @@ export default function PDFStudio() {
     setBusy("inspect"); setError("");
     try {
       const result = await upload("inspect") as Inspection;
-      setImportedExtraction(null); setConsolidation(null); setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
+      setRegisteredDocument(null); setImportedArticles([]); setImportedExtraction(null); setConsolidation(null); setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
       const year = (result.title || file.name).match(/\b20\d{2}\b/);
       setDocumentYear(year?.[0] || "");
@@ -203,6 +207,30 @@ export default function PDFStudio() {
     setApprovedIds(prev => prev.filter(x => x !== id));
   }
 
+  async function registerDocument() {
+    if (!file || !sourceId || !documentTitle.trim()) { setError("Sélectionne le PDF, le titre et l’éditeur."); return; }
+    setRegisteringDocument(true); setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file); form.append("source_id", sourceId); form.append("title", documentTitle);
+      const result = await api.postForm("/discovery/pdf-studio/document/register", form) as { id_document: string; sha256: string; already_exists: boolean };
+      if (result.sha256 !== (importedExtraction?.document_hash || inspection?.document_hash)) throw new Error("Le PDF sélectionné ne correspond pas à l’extraction chargée.");
+      setRegisteredDocument(result);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d’enregistrement du PDF."); }
+    finally { setRegisteringDocument(false); }
+  }
+
+  async function importApproved() {
+    if (!registeredDocument || !approvedIds.length || importingApproved) return;
+    setImportingApproved(true); setError("");
+    try {
+      const articles = approvedIds.map(id => drafts[id]).filter(Boolean);
+      const result = await api.post("/discovery/pdf-studio/import-approved", { id_document: registeredDocument.id_document, articles }) as { articles: { id_raw: string; source_url: string; already_exists: boolean }[] };
+      setImportedArticles(result.articles);
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d’import des articles."); }
+    finally { setImportingApproved(false); }
+  }
+
   function exportDrafts() {
     const approved = approvedIds.map(id => drafts[id]).filter(Boolean);
     if (!approved.length) return;
@@ -298,7 +326,7 @@ export default function PDFStudio() {
       </section>}
       <section className="rounded-xl border p-5 space-y-4">
         <h2 className="text-lg font-semibold">5. Reprendre une extraction et consolider les articles</h2>
-        <p className="text-sm text-gray-600">Importe un export JSON existant, sans recommencer le PDF. La consolidation utilise les unités en mémoire et propose des sujets d'articles. Les articles peuvent ensuite être générés, relus et exportés ; aucun enregistrement en base à ce stade.</p>
+        <p className="text-sm text-gray-600">Reprends une extraction JSON, consolide les propositions, génère les articles puis valide-les avant import.</p>
         <label className="block text-sm font-medium">Importer une extraction JSON</label>
         <input type="file" accept=".json,application/json" onChange={e => { void importExtraction(e.target.files?.[0] || null); e.currentTarget.value = ""; }} className="block w-full text-sm" disabled={consolidating || extracting} />
         {importedExtraction && <p className="text-sm text-green-700">Extraction importée : {units.length} unités · {importedExtraction.document_title || "Sans titre"}</p>}
@@ -328,7 +356,15 @@ export default function PDFStudio() {
           </div>)}
           <div className="flex flex-wrap items-center gap-3 border-t pt-3">
             <button type="button" onClick={exportDrafts} disabled={!approvedIds.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter {approvedIds.length} article(s) validé(s) JSON</button>
-            <p className="text-xs text-gray-500">Les brouillons sont conservés uniquement dans cette session. Aucune écriture en base.</p>
+            <p className="text-xs text-gray-500">L’import en base reste manuel et nécessite le PDF original.</p>
+          </div>
+          <div className="space-y-3 rounded border p-4">
+            <h3 className="font-semibold">6. Enregistrer le PDF et importer les articles validés</h3>
+            <p className="text-xs text-gray-600">Le PDF original doit être sélectionné, même après réimport d’une extraction JSON. L’empreinte SHA-256 est contrôlée.</p>
+            <button type="button" disabled={!file || !sourceId || registeringDocument || !approvedIds.length} onClick={() => void registerDocument()} className="rounded border px-4 py-2 text-sm disabled:opacity-40">{registeringDocument ? "Enregistrement du PDF…" : registeredDocument ? "PDF enregistré ✓" : "Enregistrer le PDF original dans GCS"}</button>
+            {registeredDocument && <p className="text-xs text-green-700">Document enregistré : {registeredDocument.id_document}</p>}
+            <button type="button" disabled={!registeredDocument || !approvedIds.length || importingApproved} onClick={() => void importApproved()} className="ml-2 rounded bg-ratecard-blue px-4 py-2 text-sm text-white disabled:opacity-40">{importingApproved ? "Import en cours…" : `Importer ${approvedIds.length} article(s) validé(s) dans RAW`}</button>
+            {importedArticles.length > 0 && <div className="space-y-1 text-sm text-green-700">{importedArticles.map(a => <p key={a.id_raw}><a className="underline" href={a.source_url} target="_blank" rel="noopener noreferrer">Voir l’article source</a> {a.already_exists ? "(déjà importé)" : "(importé)"}</p>)}</div>}
           </div>
           <p className="text-xs text-amber-700">Les citations doivent être contrôlées dans le PDF avant toute validation.</p>
         </div>}
