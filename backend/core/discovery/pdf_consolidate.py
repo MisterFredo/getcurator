@@ -20,7 +20,7 @@ CHUNK = 65
 def ask(client: OpenAI, system: str, payload: dict[str, Any], model: str) -> dict[str, Any]:
     response = client.chat.completions.create(
         model=model, temperature=0, response_format={'type': 'json_object'},
-        messages=[{'role': 'system', 'content': system}, {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}],
+        messages=[{'role': 'system', 'content': system + '\nRéponds exclusivement avec un objet JSON valide.'}, {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}],
     )
     result = json.loads(response.choices[0].message.content or '{}')
     if not isinstance(result, dict):
