@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
-type EvidenceUnit = { page: number; fact: string; quote: string; kind: string; geography: string | null; period: string | null; needs_review: boolean };
-type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; rejected_unverified: number; warning: string };
+type EvidenceUnit = { page: number | null; fact: string; quote: string; kind: string; geography: string | null; period: string | null; needs_review: boolean; status: "VERIFIED" | "NEEDS_REVIEW" | "REJECTED"; reason: string; match_score: number; candidate_index: number };
+type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; counts: Record<string, number>; candidate_count: number; rejected_unverified: number; warning: string };
 type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null; acquisition_mode?: string | null };
 type Page = { page: number; char_count: number; image_count: number; needs_visual_review: boolean; preview: string };
 type Inspection = { status: string; document_hash: string; filename: string; page_count: number; title: string | null; author: string | null; pages: Page[]; low_text_pages: number[]; visual_review_pages: number[] };
@@ -18,7 +18,14 @@ export default function PDFStudio() {
   const [units, setUnits] = useState<EvidenceUnit[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(1);
   const [extracting, setExtracting] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<"ALL" | EvidenceUnit["status"]>("ALL");
   const [rejected, setRejected] = useState(0);
+  const counts = useMemo(() => ({
+    VERIFIED: units.filter(u => u.status === "VERIFIED").length,
+    NEEDS_REVIEW: units.filter(u => u.status === "NEEDS_REVIEW").length,
+    REJECTED: units.filter(u => u.status === "REJECTED").length,
+  }), [units]);
+  const visibleUnits = useMemo(() => units.filter(u => filterStatus === "ALL" || u.status === filterStatus), [units, filterStatus]);
   const stopRef = useRef(false);
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [mapping, setMapping] = useState<Mapping | null>(null);
@@ -50,7 +57,7 @@ export default function PDFStudio() {
   }, []);
 
   function changeFile(next: File | null) {
-    stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0);
+    stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
     setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
     setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
   }
@@ -67,7 +74,7 @@ export default function PDFStudio() {
     setBusy("inspect"); setError("");
     try {
       const result = await upload("inspect") as Inspection;
-      setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0);
+      setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
       const year = (result.title || file.name).match(/\b20\d{2}\b/);
       setDocumentYear(year?.[0] || "");
@@ -131,6 +138,7 @@ export default function PDFStudio() {
       source_id: sourceId,
       next_page: nextPage,
       rejected_unverified: rejected,
+      counts,
       units,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -176,15 +184,24 @@ export default function PDFStudio() {
       </>}
       {mapping && <section className="rounded-xl border p-5 space-y-4">
         <h2 className="text-lg font-semibold">4. Extraire les unités d'information</h2>
-        <p className="text-sm text-gray-600">Extraction par lots de 5 pages, sans quota d'articles. Les citations sont rapprochées du texte PDF ; les tableaux et chiffres nécessitent une revue humaine.</p>
+        <p className="text-sm text-gray-600">Extraction par lots de 5 pages, sans quota d'articles. Toutes les unités sont conservées, avec leur statut de vérification. Les tableaux, chiffres et interprétations nécessitent une revue humaine.</p>
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={() => void extractAll()} disabled={extracting || nextPage === null || busy !== null} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{extracting ? "Extraction en cours…" : nextPage === null ? "Extraction terminée" : units.length ? "Reprendre l'extraction" : "Démarrer l'extraction"}</button>
           {extracting && <button type="button" onClick={() => { stopRef.current = true; }} className="rounded border px-4 py-2 text-sm">Arrêter après ce lot</button>}
-          <button type="button" onClick={exportUnits} disabled={!units.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter les résultats JSON</button>
+          <button type="button" onClick={exportUnits} disabled={!units.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter toutes les unités JSON</button>
         </div>
-        <p className="text-sm">{units.length} unités extraites · {rejected} citations non vérifiées écartées · {nextPage === null ? `${mapping.document.page_count}/${mapping.document.page_count}` : `${nextPage - 1}/${mapping.document.page_count}`} pages traitées</p>
+        <p className="text-sm">{units.length} candidates · {counts.VERIFIED} citations exactes · {counts.NEEDS_REVIEW} à vérifier · {counts.REJECTED} rejetées · {nextPage === null ? `${mapping.document.page_count}/${mapping.document.page_count}` : `${nextPage - 1}/${mapping.document.page_count}`} pages traitées</p>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <label htmlFor="pdf-unit-status">Afficher :</label>
+          <select id="pdf-unit-status" value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)} className="rounded border px-2 py-1">
+            <option value="ALL">Toutes ({units.length})</option>
+            <option value="VERIFIED">Citation exacte ({counts.VERIFIED})</option>
+            <option value="NEEDS_REVIEW">À vérifier ({counts.NEEDS_REVIEW})</option>
+            <option value="REJECTED">Rejetées ({counts.REJECTED})</option>
+          </select>
+        </div>
         <div className="max-h-[500px] space-y-2 overflow-y-auto">
-          {units.map((u, i) => <details key={`${u.page}-${i}`} className="rounded border p-3 text-sm"><summary className="cursor-pointer"><span className="text-gray-500">p. {u.page} · {u.kind} · </span>{u.fact}</summary><blockquote className="mt-2 border-l-2 pl-3 text-gray-600">{u.quote}</blockquote></details>)}
+          {visibleUnits.map((u, i) => <details key={`${u.page}-${u.candidate_index}-${i}`} className="rounded border p-3 text-sm"><summary className="cursor-pointer"><span className="text-gray-500">p. {u.page ?? "?"} · {u.kind} · {u.status} · </span>{u.fact || "Unité invalide"}</summary><blockquote className="mt-2 border-l-2 pl-3 text-gray-600">{u.quote || "Citation absente"}</blockquote><p className="mt-2 text-xs text-gray-500">Contrôle : {u.reason} · score {u.match_score}</p></details>)}
         </div>
         <p className="text-xs text-amber-700">Résultats en mémoire navigateur uniquement. Exporter le JSON avant de quitter la page : aucune persistance serveur ni reprise après rechargement n'est encore implémentée.</p>
       </section>}
