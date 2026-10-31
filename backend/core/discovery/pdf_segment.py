@@ -136,3 +136,136 @@ def build_document_candidates(pdf_bytes: bytes, filename: str = "document.pdf") 
             continue
         candidates.append({"id": f"C{len(candidates)+1:04d}", "source_segment_id": seg["id"], "title": seg["title"], "kind": seg["kind"], "start_page": seg["start_page"], "end_page": seg["end_page"], "country_primary": seg["country_primary"], "country_mentions": seg["country_mentions"], "subtopic_candidates": seg["subtopic_candidates"], "source_pages": seg["pages"], "review_status": "NEEDS_REVIEW", "generatable": False})
     return {"status": "DOCUMENT_CANDIDATES_REVIEW", "version": result["version"], "document": result["document"], "summary": {**result["summary"], "candidates": len(candidates)}, "candidates": candidates, "warnings": result["warnings"]}
+
+# ---------------------------------------------------------------------------
+# V6.4 — Editorial passages reconstructed from positioned PDF text blocks.
+# Conservative: proposals only; never silently approve or import.
+# ---------------------------------------------------------------------------
+
+def _editorial_blocks(page, number: int) -> list[dict[str, Any]]:
+    """Reading order by column, then top-to-bottom, for multi-column pages.
+
+    Text is kept verbatim (apart from whitespace normalization). Bounding boxes
+    permit manual inspection of ambiguous fragments.
+    """
+    width, height = float(page.rect.width), float(page.rect.height)
+    raw = _page_blocks(page)
+    body = []
+    for b in raw:
+        x0, y0, x1, y1 = b['bbox']
+        text = b['text']
+        if y0 < height * 0.15 or y0 > height * 0.945:
+            continue  # running headers, page number, continuation footers
+        if re.match(r'(?i)^continued (?:from|on) (?:previous|the next) page', text):
+            continue
+        if re.match(r'(?i)^(interview|managing director\b)', text):
+            continue
+        # Pull quotes are visual duplication, not part of the linear interview.
+        if text.lstrip().startswith(('“', '"')) and len(text) < 420:
+            continue
+        body.append({'page': number, 'bbox': b['bbox'], 'text': text,
+                     'x_center': (x0 + x1) / 2})
+    # Estimate a column for each block. Works for 2- and 3-column landscape pages;
+    # avoid splitting a full-width text block into an arbitrary column.
+    for b in body:
+        x0, _, x1, _ = b['bbox']
+        b['column'] = None if x1 - x0 > width * .55 else min(2, int(b['x_center'] / (width / 3)))
+    return sorted(body, key=lambda b: (b['column'] if b['column'] is not None else -1,
+                                       b['bbox'][1], b['bbox'][0]))
+
+
+def _split_heading(text: str) -> tuple[str | None, str | None, str]:
+    """Split only an explicitly recognized heading at the start of a block."""
+    for heading, topic in sorted(HEADINGS.items(), key=lambda x: -len(x[0])):
+        match = re.match(r'^' + re.escape(heading) + r'(?=\s|$)', text, re.I)
+        if match:
+            return heading, topic, text[match.end():].strip()
+    return None, None, text
+
+
+def _editorial_for_segment(doc, segment: dict[str, Any]) -> list[dict[str, Any]]:
+    """Assemble heading-bounded passages, allowing continuation across pages."""
+    if segment.get('kind') != 'country':
+        return []
+    blocks = []
+    for page_no in range(segment['start_page'], segment['end_page'] + 1):
+        blocks.extend(_editorial_blocks(doc[page_no - 1], page_no))
+
+    # Preserve source ordering within the country chapter, never reorder by topic.
+    passages = []
+    current = None
+    preamble = []
+    for block in blocks:
+        heading, topic, rest = _split_heading(block['text'])
+        if heading:
+            if current is not None:
+                passages.append(current)
+            current = {'topic': topic, 'heading': heading, 'blocks': [],
+                       'source_segment_id': segment['id']}
+            if rest:
+                current['blocks'].append({**block, 'text': rest})
+        elif current is not None:
+            current['blocks'].append(block)
+        else:
+            preamble.append(block)
+
+    if current is not None:
+        passages.append(current)
+
+    # Intro/statistical pages and pre-heading text remain reviewable rather than
+    # being silently assigned to the first topic.
+    if preamble:
+        passages.insert(0, {'topic': 'unclassified', 'heading': 'Unclassified / statistics',
+                            'blocks': preamble, 'source_segment_id': segment['id']})
+    return passages
+
+
+def build_editorial_candidates(pdf_bytes: bytes, filename: str = 'document.pdf',
+                               country: str | None = None) -> dict[str, Any]:
+    """Return topic-level editorial proposals with traceable, ordered text blocks.
+
+    Optional country filter allows small, targeted tests without processing
+    every country in the report. This is not semantic extraction or validation.
+    """
+    result = segment_pdf(pdf_bytes, filename)
+    with _open(pdf_bytes) as doc:
+        candidates = []
+        for seg in result['segments']:
+            if seg.get('kind') != 'country':
+                continue
+            if country and seg.get('country_primary', '').casefold() != country.casefold():
+                continue
+            for passage in _editorial_for_segment(doc, seg):
+                if not passage['blocks']:
+                    continue
+                by_page = {}
+                for b in passage['blocks']:
+                    by_page.setdefault(b['page'], []).append(b['text'])
+                pages = [{'page': n, 'text': '\n\n'.join(parts)}
+                         for n, parts in sorted(by_page.items())]
+                candidates.append({
+                    'id': f'E{len(candidates)+1:04d}',
+                    'source_segment_id': seg['id'],
+                    'title': f"{seg['title']} — {passage['heading']}",
+                    'kind': 'editorial_candidate',
+                    'topic': passage['topic'],
+                    'country_primary': seg['country_primary'],
+                    'start_page': pages[0]['page'],
+                    'end_page': pages[-1]['page'],
+                    'pages': pages,
+                    'source_blocks': passage['blocks'],
+                    'review_status': 'NEEDS_REVIEW',
+                    'generatable': False,
+                    'warnings': (["Passage non classé : vérifier les graphiques, tableaux et titres."]
+                                 if passage['topic'] == 'unclassified' else
+                                 ["Ordre reconstruit par colonnes : vérifier visuellement les transitions et citations."]),
+                })
+    return {
+        'status': 'EDITORIAL_CANDIDATES_REVIEW', 'version': '6.4',
+        'document': result['document'],
+        'summary': {'candidates': len(candidates), 'pages_covered_structurally': result['summary']['pages_covered']},
+        'candidates': candidates,
+        'warnings': ['Extraction heuristique des colonnes : non garantie pour tous les PDF.',
+                     'Les titres ne sont reconnus que pour le vocabulaire de rubriques configuré.',
+                     'Chaque candidat nécessite une validation humaine avant génération.'],
+    }
