@@ -6,8 +6,9 @@ import { api } from "@/lib/api";
 type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null };
 type Inspection = { document_hash: string; filename: string; page_count: number; title: string | null; pages: { page: number; char_count: number; needs_visual_review: boolean; preview: string }[]; low_text_pages: number[]; visual_review_pages: number[] };
 type SourcePage = { page: number; text: string };
-type Segment = { id: string; title: string; kind?: string; country_primary?: string | null; region?: string | null; start_page: number; end_page: number; pages: SourcePage[]; subtopic_candidates?: { page: number; heading: string; topic: string }[]; review_status: string; generatable?: boolean; note?: string | null };
+type Segment = { source_segment_id?: string; topic?: string; source_blocks?: { page: number; text: string; x0?: number; y0?: number }[]; warnings?: string[]; id: string; title: string; kind?: string; country_primary?: string | null; region?: string | null; start_page: number; end_page: number; pages: SourcePage[]; subtopic_candidates?: { page: number; heading: string; topic: string }[]; review_status: string; generatable?: boolean; note?: string | null };
 type Segmentation = { status: string; document: { document_hash: string; page_count: number }; summary: { segments: number; pages_covered: number; uncovered_pages: number[] }; segments: Segment[] };
+type EditorialResponse = { status: string; document: { document_hash: string; page_count: number }; summary: { candidates: number; pages_covered_structurally: number }; candidates: Segment[]; warnings: string[] };
 type Draft = { status: string; proposal_id: string; title: string; excerpt: string; body: string; cited_pages: number[]; warnings: string[]; refusal_reason?: string | null; model: string };
 
 const btn = "rounded-md border px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40";
@@ -42,11 +43,16 @@ export default function PDFStudio() {
   const [sourceUniverse, setSourceUniverse] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [segmentation, setSegmentation] = useState<Segmentation | null>(null);
+  const [editorial, setEditorial] = useState<EditorialResponse | null>(null);
+  const [viewMode, setViewMode] = useState<"STRUCTURE" | "EDITORIAL">("STRUCTURE");
+  const [countryFilter, setCountryFilter] = useState("Netherlands");
+  const [editorialCandidates, setEditorialCandidates] = useState<Segment[]>([]);
+  const [structuralCandidates, setStructuralCandidates] = useState<Segment[]>([]);
   const [candidates, setCandidates] = useState<Segment[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [draftApproved, setDraftApproved] = useState<string[]>([]);
-  const [busy, setBusy] = useState<"inspect" | "segment" | "create" | null>(null);
+  const [busy, setBusy] = useState<"inspect" | "segment" | "editorial" | "create" | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -70,7 +76,7 @@ export default function PDFStudio() {
   }, []);
 
   function resetFile(next: File | null) {
-    setFile(next); setInspection(null); setSegmentation(null); setCandidates([]); setSelectedId(null);
+    setFile(next); setInspection(null); setSegmentation(null); setEditorial(null); setStructuralCandidates([]); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates([]); setSelectedId(null);
     setDrafts({}); setDraftApproved([]); setDocumentTitle(""); setConfirmed(false); setError(""); setNotice("");
   }
 
@@ -90,7 +96,7 @@ export default function PDFStudio() {
       const result = await upload("inspect") as Inspection;
       setInspection(result);
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
-      setSegmentation(null); setCandidates([]); setSelectedId(null); setDrafts({}); setDraftApproved([]);
+      setSegmentation(null); setEditorial(null); setStructuralCandidates([]); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates([]); setSelectedId(null); setDrafts({}); setDraftApproved([]);
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur d'inspection."); }
     finally { setBusy(null); }
   }
@@ -122,11 +128,52 @@ export default function PDFStudio() {
         ...s, id: s.id || `S${index + 1}`, review_status: "NEEDS_REVIEW", generatable: false,
         pages: Array.isArray(s.pages) ? s.pages.map(p => ({ page: Number(p.page), text: String(p.text || "") })) : [],
       }));
-      setSegmentation(result); setCandidates(normalized); setSelectedId(normalized[0]?.id || null);
+      setSegmentation(result); setStructuralCandidates(normalized); setEditorial(null); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates(normalized); setSelectedId(normalized[0]?.id || null);
       setDrafts({}); setDraftApproved([]);
       setNotice("Segmentation terminée. Chaque candidat doit être revu avant génération.");
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur de segmentation."); }
     finally { setBusy(null); }
+  }
+
+  async function identifyEditorial() {
+    if (!file || !inspection || !segmentation || !confirmed || !sourceId) {
+      setError("Inspecte et segmente le document, puis confirme la source."); return;
+    }
+    setBusy("editorial"); setError(""); setNotice("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      if (countryFilter.trim()) form.append("country", countryFilter.trim());
+      const result = await api.postForm("/discovery/pdf-studio/editorial-candidates", form) as EditorialResponse;
+      if (!Array.isArray(result.candidates) || result.document.document_hash !== inspection.document_hash) {
+        throw new Error("Réponse éditoriale invalide ou document différent.");
+      }
+      const normalized = result.candidates.map((s, index) => ({
+        ...s, id: s.id || `E${index + 1}`, review_status: "NEEDS_REVIEW", generatable: false,
+        pages: s.pages.map(p => ({ page: Number(p.page), text: String(p.text || "") })),
+      }));
+      setEditorial(result);
+      setEditorialCandidates(normalized);
+      setViewMode("EDITORIAL"); setCandidates(normalized);
+      setSelectedId(normalized[0]?.id || null);
+      setDrafts({}); setDraftApproved([]);
+      setNotice(`${normalized.length} sujets éditoriaux détectés. Vérifie l'ordre des paragraphes avant d'approuver.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur de reconstruction éditoriale.");
+    } finally { setBusy(null); }
+  }
+
+  function switchMode(mode: "STRUCTURE" | "EDITORIAL") {
+    if (mode === viewMode) return;
+    if (candidates.some(s => s.review_status === "APPROVED") || Object.keys(drafts).length) {
+      if (!window.confirm("Changer de vue efface les approbations et brouillons de la vue active. Exporte ton travail JSON avant de continuer. Continuer ?")) return;
+    }
+    if (viewMode === "STRUCTURE") setStructuralCandidates(candidates);
+    else setEditorialCandidates(candidates);
+    const next = mode === "STRUCTURE" ? structuralCandidates : editorialCandidates;
+    setCandidates(next.map(s => ({ ...s, review_status: "NEEDS_REVIEW", generatable: false })));
+    setSelectedId(next[0]?.id || null);
+    setDrafts({}); setDraftApproved([]); setViewMode(mode); setError("");
   }
 
   function changeCandidate(id: string, patch: Partial<Segment>) {
@@ -195,7 +242,7 @@ export default function PDFStudio() {
   function exportWorkspace() {
     if (!inspection || !segmentation) return;
     downloadJson(`pdf-studio-v6-${inspection.document_hash.slice(0, 12)}.json`, {
-      version: "6.3", document_hash: inspection.document_hash, document_title: documentTitle,
+      version: "6.4", mode: viewMode, editorial_summary: editorial?.summary || null, document_hash: inspection.document_hash, document_title: documentTitle,
       source_id: sourceId, segmentation_summary: segmentation.summary, candidates, drafts, draft_approved_ids: draftApproved,
     });
   }
@@ -209,6 +256,10 @@ export default function PDFStudio() {
         throw new Error("Candidats invalides dans l'export.");
       }
       setCandidates(data.candidates); setSelectedId(data.candidates[0]?.id || null);
+      const restoredMode = data.mode === "EDITORIAL" ? "EDITORIAL" : "STRUCTURE";
+      setViewMode(restoredMode);
+      if (restoredMode === "EDITORIAL") setEditorialCandidates(data.candidates);
+      else setStructuralCandidates(data.candidates);
       setDrafts(data.drafts && typeof data.drafts === "object" ? data.drafts : {});
       setDraftApproved(Array.isArray(data.draft_approved_ids) ? data.draft_approved_ids : []);
       setDocumentTitle(data.document_title || documentTitle);
@@ -220,7 +271,7 @@ export default function PDFStudio() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V6 — DEV</span></h1>
+        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V6.4 — DEV</span></h1>
         <p className="mt-1 text-sm text-gray-600">Document → segmentation → revue des passages → génération sourcée. Ancienne consolidation désactivée.</p>
       </header>
 
@@ -266,11 +317,25 @@ export default function PDFStudio() {
 
       {segmentation && <section className="space-y-4 rounded-xl border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="font-semibold">3. Segmentation et revue éditoriale</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {approvedCount} approuvés · {segmentation.summary.pages_covered}/{segmentation.document.page_count} pages couvertes initialement</p></div>
+          <div><h2 className="font-semibold">3. Structure et candidats éditoriaux</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {approvedCount} approuvés · {segmentation.summary.pages_covered}/{segmentation.document.page_count} pages couvertes initialement</p></div>
           <div className="flex gap-2"><button type="button" className={btn} onClick={exportWorkspace}>Exporter le travail JSON</button><label className={`${btn} cursor-pointer`}>Reprendre un JSON<input className="hidden" type="file" accept=".json" onChange={e => { void importWorkspace(e.target.files?.[0] || null); e.currentTarget.value = ""; }} /></label></div>
         </div>
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border p-3">
+          <label className="text-sm">Pays à reconstruire (vide = tous les pays)
+            <input className={field} value={countryFilter} onChange={e => setCountryFilter(e.target.value)} placeholder="Netherlands" />
+          </label>
+          <button type="button" className={primary} disabled={busy !== null || !confirmed} onClick={() => void identifyEditorial()}>
+            {busy === "editorial" ? "Reconstruction en cours…" : "Identifier les sujets éditoriaux (V6.4)"}
+          </button>
+          {editorial && <span className="text-sm text-gray-600">{editorial.summary.candidates} sujets · {editorial.summary.pages_covered_structurally} pages couvertes dans le plan</span>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={viewMode === "STRUCTURE" ? primary : btn} onClick={() => switchMode("STRUCTURE")}>Sections documentaires</button>
+          <button type="button" className={viewMode === "EDITORIAL" ? primary : btn} disabled={!editorialCandidates.length} onClick={() => switchMode("EDITORIAL")}>Sujets éditoriaux ({editorialCandidates.length})</button>
+        </div>
+        {viewMode === "EDITORIAL" && editorial?.warnings?.map((warning, i) => <p key={i} className="text-xs text-amber-700">{warning}</p>)}
         {segmentation.summary.uncovered_pages.length > 0 && <p className="text-sm text-amber-700">Pages non couvertes : {segmentation.summary.uncovered_pages.join(", ")}</p>}
-        <p className="text-xs text-amber-700">Les segments sont des candidats, pas des articles. Pour les interviews multicolonnes, corrige les passages manuellement avant approbation. Les tableaux et les données masquées demandent une vérification visuelle.</p>
+        <p className="text-xs text-amber-700">Les candidats restent à vérifier. La V6.4 reconstruit les colonnes de manière heuristique : contrôle les transitions, les tableaux et les données masquées dans le PDF original.</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(250px,1fr)_minmax(0,2fr)]">
           <aside className="space-y-2">
             <label className="block text-xs">Filtre
@@ -291,6 +356,8 @@ export default function PDFStudio() {
                   <label className="block text-sm">Pays principal<input className={field} value={selected.country_primary || ""} onChange={e => changeCandidate(selected.id, { country_primary: e.target.value || null })} /></label>
                   <label className="block text-sm">Région<input className={field} value={selected.region || ""} onChange={e => changeCandidate(selected.id, { region: e.target.value || null })} /></label>
                 </div>
+                {selected.source_segment_id && <p className="text-xs text-gray-500">Section parente : {selected.source_segment_id} · Thème : {selected.topic || "non classé"}</p>}
+                {selected.warnings?.map((w, i) => <p key={i} className="text-xs text-amber-700">{w}</p>)}
                 {selected.subtopic_candidates?.length ? <details className="rounded border p-3 text-sm"><summary className="cursor-pointer">Rubriques détectées ({selected.subtopic_candidates.length})</summary><div className="mt-2 space-y-1">{selected.subtopic_candidates.map((h, i) => <p key={i}>p. {h.page} — {h.heading} ({h.topic})</p>)}</div></details> : null}
                 <p className="text-xs text-gray-500">Les textes ci-dessous constituent la matière exacte envoyée à la génération. Supprime les paragraphes hors sujet et conserve les pages correspondantes. Une modification invalide toute approbation précédente.</p>
                 <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">{selected.pages.map(p => <label key={p.page} className="block text-sm"><span className="font-medium">Page PDF {p.page}</span><textarea className={`${field} font-mono text-xs`} rows={Math.min(16, Math.max(5, Math.ceil(p.text.length / 95)))} value={p.text} onChange={e => editPage(selected.id, p.page, e.target.value)} /></label>)}</div>
