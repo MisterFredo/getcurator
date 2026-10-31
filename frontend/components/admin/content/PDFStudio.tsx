@@ -3,377 +3,306 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
-type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null };
-type Inspection = { document_hash: string; filename: string; page_count: number; title: string | null; pages: { page: number; char_count: number; needs_visual_review: boolean; preview: string }[]; low_text_pages: number[]; visual_review_pages: number[] };
-type SourcePage = { page: number; text: string };
-type Segment = { source_segment_id?: string; topic?: string; source_blocks?: { page: number; text: string; x0?: number; y0?: number }[]; warnings?: string[]; id: string; title: string; kind?: string; country_primary?: string | null; region?: string | null; start_page: number; end_page: number; pages: SourcePage[]; subtopic_candidates?: { page: number; heading: string; topic: string }[]; review_status: string; generatable?: boolean; note?: string | null };
-type Segmentation = { status: string; document: { document_hash: string; page_count: number }; summary: { segments: number; pages_covered: number; uncovered_pages: number[] }; segments: Segment[] };
-type EditorialResponse = { status: string; document: { document_hash: string; page_count: number }; summary: { candidates: number; pages_covered_structurally: number }; candidates: Segment[]; warnings: string[] };
-type Draft = { status: string; proposal_id: string; title: string; excerpt: string; body: string; cited_pages: number[]; warnings: string[]; refusal_reason?: string | null; model: string };
+type Source = { source_id: string; name: string };
+type Page = { page: number; text: string };
+type Candidate = {
+  id: string; title: string; kind: string; parent?: string | null;
+  start_page: number; end_page: number; pages: Page[];
+  visual_review_pages?: number[]; review_status: "NEEDS_REVIEW" | "APPROVED";
+};
+type Segmentation = {
+  version: string;
+  document: { document_hash: string; filename: string; page_count: number; title?: string | null };
+  summary: { candidates: number; excluded_pages: number[]; candidate_pages: number };
+  candidates: Candidate[]; warnings: string[];
+};
+type Draft = {
+  version: string; status: "DRAFT_REVIEW_REQUIRED" | "GENERATION_REJECTED" | "APPROVED";
+  proposal_id: string; document_hash: string; document_title: string; source_id: string;
+  title: string; excerpt: string; body: string; key_points: string[];
+  cited_pages: number[]; source_pages: Page[];
+  warnings: string[]; refusal_reason?: string | null; model: string;
+};
+type RegisterResponse = { id_document?: string; document_id?: string; status?: string };
+type ImportResponse = {
+  status: string; count: number;
+  articles: { proposal_id: string; id_raw: string; already_exists: boolean }[];
+};
 
-const btn = "rounded-md border px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40";
-const primary = `${btn} bg-ratecard-blue text-white`;
+const button = "rounded-md border px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40";
+const primary = `${button} bg-ratecard-blue text-white`;
 const field = "mt-1 w-full rounded-md border p-2 text-sm";
-const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+const citedPages = (value: string) => [...value.matchAll(/\[p\.\s*(\d+)\]/gi)].map(match => Number(match[1]));
 
-function downloadJson(filename: string, value: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function renumber(segment: Segment): Segment {
-  const pages = [...segment.pages].sort((a, b) => a.page - b.page);
-  return { ...segment, pages, start_page: pages[0]?.page ?? segment.start_page, end_page: pages[pages.length - 1]?.page ?? segment.end_page };
+function downloadJson(filename: string, data: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function PDFStudio() {
   const [file, setFile] = useState<File | null>(null);
-  const [inspection, setInspection] = useState<Inspection | null>(null);
+  const [segmentation, setSegmentation] = useState<Segmentation | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [documentTitle, setDocumentTitle] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
-  const [sourcesLoading, setSourcesLoading] = useState(true);
-  const [sourceMode, setSourceMode] = useState<"existing" | "new">("existing");
   const [sourceId, setSourceId] = useState("");
+  const [sourceMode, setSourceMode] = useState<"existing" | "new">("existing");
   const [sourceName, setSourceName] = useState("");
   const [sourceDomain, setSourceDomain] = useState("");
   const [sourceUniverse, setSourceUniverse] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const [segmentation, setSegmentation] = useState<Segmentation | null>(null);
-  const [editorial, setEditorial] = useState<EditorialResponse | null>(null);
-  const [viewMode, setViewMode] = useState<"STRUCTURE" | "EDITORIAL">("STRUCTURE");
-  const [countryFilter, setCountryFilter] = useState("Netherlands");
-  const [editorialCandidates, setEditorialCandidates] = useState<Segment[]>([]);
-  const [structuralCandidates, setStructuralCandidates] = useState<Segment[]>([]);
-  const [candidates, setCandidates] = useState<Segment[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [draftApproved, setDraftApproved] = useState<string[]>([]);
-  const [busy, setBusy] = useState<"inspect" | "segment" | "editorial" | "create" | null>(null);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [approvedDraftIds, setApprovedDraftIds] = useState<string[]>([]);
+  const [documentId, setDocumentId] = useState("");
+  const [importResult, setImportResult] = useState<ImportResponse | null>(null);
+  const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [filter, setFilter] = useState<"ALL" | "NEEDS_REVIEW" | "APPROVED">("ALL");
-  const [showPages, setShowPages] = useState(false);
-  const [splitPage, setSplitPage] = useState("");
-
-  const duplicate = sources.find(s => normalize(s.name) === normalize(sourceName));
-  const selectedSource = sources.find(s => s.source_id === sourceId);
-  const selected = candidates.find(s => s.id === selectedId) || null;
-  const approvedCount = candidates.filter(s => s.review_status === "APPROVED" && s.generatable).length;
-  const visible = useMemo(() => candidates.filter(s => filter === "ALL" || s.review_status === filter), [candidates, filter]);
+  const [filter, setFilter] = useState("");
+  const [showSource, setShowSource] = useState(false);
 
   useEffect(() => {
     let active = true;
     api.get("/source/list")
-      .then((res: { sources?: Source[] }) => { if (active) setSources(res.sources || []); })
-      .catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : "Impossible de charger les sources."); })
-      .finally(() => { if (active) setSourcesLoading(false); });
+      .then((result: { sources?: Source[] }) => { if (active) setSources(result.sources || []); })
+      .catch((e: unknown) => { if (active) setError(`Chargement des sources : ${message(e)}`); });
     return () => { active = false; };
   }, []);
 
-  function resetFile(next: File | null) {
-    setFile(next); setInspection(null); setSegmentation(null); setEditorial(null); setStructuralCandidates([]); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates([]); setSelectedId(null);
-    setDrafts({}); setDraftApproved([]); setDocumentTitle(""); setConfirmed(false); setError(""); setNotice("");
+  const selected = candidates.find(candidate => candidate.id === selectedId) || null;
+  const visible = useMemo(() => candidates.filter(candidate => normalize(candidate.title).includes(normalize(filter))), [candidates, filter]);
+  const approvedDrafts = approvedDraftIds.map(id => drafts[id]).filter((draft): draft is Draft => Boolean(draft));
+  const duplicate = sources.find(source => normalize(source.name) === normalize(sourceName));
+  const locked = Boolean(documentId) || Boolean(importResult);
+
+  function reset(next: File | null) {
+    setFile(next); setSegmentation(null); setCandidates([]); setSelectedId(null);
+    setDrafts({}); setApprovedDraftIds([]); setDocumentId(""); setImportResult(null);
+    setDocumentTitle(""); setError(""); setNotice(""); setFilter("");
   }
 
-  async function upload(action: "inspect" | "segment") {
-    if (!file) throw new Error("Sélectionne un PDF.");
-    const form = new FormData(); form.append("file", file);
-    return api.postForm(`/discovery/pdf-studio/${action}`, form);
-  }
-
-  async function inspect() {
+  async function segment() {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".pdf") || file.size > 30 * 1024 * 1024) {
-      setError("PDF requis, 30 Mo maximum."); return;
+      setError("Fichier PDF requis (30 Mo maximum)."); return;
     }
-    setBusy("inspect"); setError(""); setNotice("");
+    setBusy("segment"); setError(""); setNotice("");
     try {
-      const result = await upload("inspect") as Inspection;
-      setInspection(result);
-      setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
-      setSegmentation(null); setEditorial(null); setStructuralCandidates([]); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates([]); setSelectedId(null); setDrafts({}); setDraftApproved([]);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d'inspection."); }
-    finally { setBusy(null); }
+      const form = new FormData(); form.append("file", file);
+      const result = await api.postForm("/discovery/pdf-studio/segment", form) as Segmentation;
+      if (result.version !== "7.0" || !Array.isArray(result.candidates)) throw new Error("Réponse de segmentation V7 invalide.");
+      setSegmentation(result);
+      setCandidates(result.candidates);
+      setSelectedId(result.candidates[0]?.id || null);
+      setDocumentTitle(result.document.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
+      setDrafts({}); setApprovedDraftIds([]); setDocumentId(""); setImportResult(null);
+      setNotice(`${result.candidates.length} candidats détectés. Vérifie les unités éditoriales avant génération.`);
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(""); }
   }
 
   async function createSource() {
     if (!sourceName.trim() || duplicate) { setError("Source vide ou déjà existante."); return; }
-    setBusy("create"); setError("");
+    setBusy("source"); setError("");
     try {
-      const res = await api.post("/source/create", {
-        name: sourceName.trim(), type_source: "PUBLISHER", domain: sourceDomain.trim() || null,
-        universe_id: sourceUniverse.trim() || null, acquisition_mode: "PDF_MANUAL",
+      const result = await api.post("/source/create", {
+        name: sourceName.trim(), type_source: "PUBLISHER",
+        domain: sourceDomain.trim() || null,
+        universe_id: sourceUniverse.trim() || null,
+        acquisition_mode: "PDF_MANUAL",
       }) as { source_id: string };
-      if (!res.source_id) throw new Error("ID source absent.");
-      setSources(prev => [...prev, { source_id: res.source_id, name: sourceName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
-      setSourceId(res.source_id); setSourceMode("existing"); setConfirmed(false);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur de création de source."); }
-    finally { setBusy(null); }
+      if (!result.source_id) throw new Error("Identifiant de source absent.");
+      setSources(previous => [...previous, { source_id: result.source_id, name: sourceName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
+      setSourceId(result.source_id); setSourceMode("existing");
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(""); }
   }
 
-  async function segment() {
-    if (!inspection || !confirmed || !sourceId || !documentTitle.trim()) { setError("Confirme le document et sa source."); return; }
-    setBusy("segment"); setError(""); setNotice("");
-    try {
-      const result = await upload("segment") as Segmentation;
-      if (!Array.isArray(result.segments) || result.document.document_hash !== inspection.document_hash) {
-        throw new Error("Segmentation invalide ou PDF différent.");
-      }
-      const normalized = result.segments.map((s, index) => ({
-        ...s, id: s.id || `S${index + 1}`, review_status: "NEEDS_REVIEW", generatable: false,
-        pages: Array.isArray(s.pages) ? s.pages.map(p => ({ page: Number(p.page), text: String(p.text || "") })) : [],
-      }));
-      setSegmentation(result); setStructuralCandidates(normalized); setEditorial(null); setEditorialCandidates([]); setViewMode("STRUCTURE"); setCandidates(normalized); setSelectedId(normalized[0]?.id || null);
-      setDrafts({}); setDraftApproved([]);
-      setNotice("Segmentation terminée. Chaque candidat doit être revu avant génération.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur de segmentation."); }
-    finally { setBusy(null); }
+  function invalidate(id: string) {
+    setDrafts(previous => { const next = { ...previous }; delete next[id]; return next; });
+    setApprovedDraftIds(previous => previous.filter(item => item !== id));
+    setImportResult(null);
   }
 
-  async function identifyEditorial() {
-    if (!file || !inspection || !segmentation || !confirmed || !sourceId) {
-      setError("Inspecte et segmente le document, puis confirme la source."); return;
-    }
-    setBusy("editorial"); setError(""); setNotice("");
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      if (countryFilter.trim()) form.append("country", countryFilter.trim());
-      const result = await api.postForm("/discovery/pdf-studio/editorial-candidates", form) as EditorialResponse;
-      if (!Array.isArray(result.candidates) || result.document.document_hash !== inspection.document_hash) {
-        throw new Error("Réponse éditoriale invalide ou document différent.");
-      }
-      const normalized = result.candidates.map((s, index) => ({
-        ...s, id: s.id || `E${index + 1}`, review_status: "NEEDS_REVIEW", generatable: false,
-        pages: s.pages.map(p => ({ page: Number(p.page), text: String(p.text || "") })),
-      }));
-      setEditorial(result);
-      setEditorialCandidates(normalized);
-      setViewMode("EDITORIAL"); setCandidates(normalized);
-      setSelectedId(normalized[0]?.id || null);
-      setDrafts({}); setDraftApproved([]);
-      setNotice(`${normalized.length} sujets éditoriaux détectés. Vérifie l'ordre des paragraphes avant d'approuver.`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur de reconstruction éditoriale.");
-    } finally { setBusy(null); }
-  }
-
-  function switchMode(mode: "STRUCTURE" | "EDITORIAL") {
-    if (mode === viewMode) return;
-    if (candidates.some(s => s.review_status === "APPROVED") || Object.keys(drafts).length) {
-      if (!window.confirm("Changer de vue efface les approbations et brouillons de la vue active. Exporte ton travail JSON avant de continuer. Continuer ?")) return;
-    }
-    if (viewMode === "STRUCTURE") setStructuralCandidates(candidates);
-    else setEditorialCandidates(candidates);
-    const next = mode === "STRUCTURE" ? structuralCandidates : editorialCandidates;
-    setCandidates(next.map(s => ({ ...s, review_status: "NEEDS_REVIEW", generatable: false })));
-    setSelectedId(next[0]?.id || null);
-    setDrafts({}); setDraftApproved([]); setViewMode(mode); setError("");
-  }
-
-  function changeCandidate(id: string, patch: Partial<Segment>) {
-    setCandidates(prev => prev.map(s => s.id === id ? { ...s, ...patch, review_status: "NEEDS_REVIEW", generatable: false } : s));
-    setDrafts(prev => { const next = { ...prev }; delete next[id]; return next; });
-    setDraftApproved(prev => prev.filter(x => x !== id));
-  }
-
-  function editPage(id: string, page: number, text: string) {
-    const s = candidates.find(x => x.id === id);
-    if (!s) return;
-    changeCandidate(id, { pages: s.pages.map(p => p.page === page ? { ...p, text } : p) });
-  }
-
-  function approveCandidate(id: string) {
-    const s = candidates.find(x => x.id === id);
-    if (!s || !s.title.trim() || !s.pages.some(p => p.text.trim())) {
-      setError("Un titre et au moins un passage source sont nécessaires."); return;
-    }
-    setCandidates(prev => prev.map(x => x.id === id ? { ...x, review_status: "APPROVED", generatable: true } : x));
-    setError("");
+  function updateCandidate(id: string, patch: Partial<Candidate>) {
+    if (locked) return;
+    setCandidates(previous => previous.map(candidate => candidate.id === id ? { ...candidate, ...patch, review_status: patch.review_status ?? "NEEDS_REVIEW" } : candidate));
+    invalidate(id);
   }
 
   function splitCandidate() {
-    if (!selected) return;
-    const boundary = Number(splitPage);
-    if (!Number.isInteger(boundary)) { setError("Indique un numéro de page valide."); return; }
-    const left = selected.pages.filter(p => p.page < boundary);
-    const right = selected.pages.filter(p => p.page >= boundary);
-    if (!left.length || !right.length) { setError("La coupure doit séparer deux groupes de pages non vides."); return; }
-    const suffix = Date.now().toString(36);
-    const a = renumber({ ...selected, id: `${selected.id}-A-${suffix}`, title: `${selected.title} — partie 1`, pages: left, review_status: "NEEDS_REVIEW", generatable: false });
-    const b = renumber({ ...selected, id: `${selected.id}-B-${suffix}`, title: `${selected.title} — partie 2`, pages: right, review_status: "NEEDS_REVIEW", generatable: false });
-    setCandidates(prev => prev.flatMap(s => s.id === selected.id ? [a, b] : [s]));
-    setSelectedId(a.id); setSplitPage(""); setNotice("Segment scindé. Vérifie et approuve les deux nouveaux candidats."); setError("");
+    if (!selected || locked) return;
+    const input = window.prompt(`Scinder « ${selected.title} » avant quelle page ?`, String(selected.start_page + 1));
+    if (input === null) return;
+    const boundary = Number(input);
+    const left = selected.pages.filter(page => page.page < boundary);
+    const right = selected.pages.filter(page => page.page >= boundary);
+    if (!Number.isInteger(boundary) || !left.length || !right.length) { setError("Page de coupure invalide."); return; }
+    const first = { ...selected, id: `${selected.id}-A`, title: `${selected.title} — partie 1`, pages: left, end_page: left[left.length - 1].page, review_status: "NEEDS_REVIEW" as const };
+    const second = { ...selected, id: `${selected.id}-B`, title: `${selected.title} — partie 2`, pages: right, start_page: right[0].page, review_status: "NEEDS_REVIEW" as const };
+    if (candidates.some(candidate => candidate.id === first.id || candidate.id === second.id)) { setError("Identifiant de découpage déjà utilisé."); return; }
+    setCandidates(previous => previous.flatMap(candidate => candidate.id === selected.id ? [first, second] : [candidate]));
+    invalidate(selected.id); setSelectedId(first.id); setError("");
   }
 
-  function removeCandidate(id: string) {
-    if (!window.confirm("Écarter ce candidat du parcours de génération ?")) return;
-    setCandidates(prev => prev.filter(s => s.id !== id));
-    setSelectedId(prev => prev === id ? candidates.find(s => s.id !== id)?.id || null : prev);
-    setNotice("Candidat écarté. Les pages du PDF original restent inchangées.");
+  function removeCandidate() {
+    if (!selected || locked || !window.confirm(`Écarter « ${selected.title} » ?`)) return;
+    setCandidates(previous => previous.filter(candidate => candidate.id !== selected.id));
+    invalidate(selected.id);
+    setSelectedId(candidates.find(candidate => candidate.id !== selected.id)?.id || null);
   }
 
-  async function generate(id: string) {
-    const candidate = candidates.find(s => s.id === id);
-    if (!candidate || !inspection || !sourceId || generatingId) return;
-    if (candidate.review_status !== "APPROVED" || !candidate.generatable) { setError("Approuve le candidat avant génération."); return; }
-    setGeneratingId(id); setError(""); setNotice("");
+  async function generate() {
+    if (!selected || !segmentation || !sourceId || !documentTitle.trim()) { setError("Titre du document et source obligatoires."); return; }
+    if (selected.review_status !== "APPROVED") { setError("Approuve d'abord le candidat."); return; }
+    setBusy("generate"); setError(""); setNotice("");
     try {
-      const result = await api.post("/discovery/pdf-studio/generate", {
-        document_hash: inspection.document_hash, document_title: documentTitle, source_id: sourceId, candidate,
+      const draft = await api.post("/discovery/pdf-studio/generate", {
+        document_hash: segmentation.document.document_hash,
+        document_title: documentTitle.trim(), source_id: sourceId, candidate: selected,
       }) as Draft;
-      setDrafts(prev => ({ ...prev, [id]: result }));
-      setDraftApproved(prev => prev.filter(x => x !== id));
-      if (result.status !== "DRAFT_REVIEW_REQUIRED") setNotice(result.refusal_reason || "La génération a été refusée : vérifie le périmètre du candidat.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur de génération."); }
-    finally { setGeneratingId(null); }
+      if (draft.version !== "7.0" || draft.proposal_id !== selected.id) throw new Error("Réponse du générateur incompatible.");
+      setDrafts(previous => ({ ...previous, [selected.id]: draft }));
+      setApprovedDraftIds(previous => previous.filter(id => id !== selected.id));
+      setNotice(draft.status === "GENERATION_REJECTED" ? draft.refusal_reason || "Génération rejetée." : "Brouillon généré : relis-le avant validation.");
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(""); }
   }
 
-  function editDraft(id: string, key: "title" | "excerpt" | "body", value: string) {
-    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
-    setDraftApproved(prev => prev.filter(x => x !== id));
+  function editDraft(id: string, patch: Partial<Draft>) {
+    if (locked) return;
+    setDrafts(previous => ({ ...previous, [id]: { ...previous[id], ...patch } }));
+    setApprovedDraftIds(previous => previous.filter(item => item !== id));
   }
 
-  function exportWorkspace() {
-    if (!inspection || !segmentation) return;
-    downloadJson(`pdf-studio-v6-${inspection.document_hash.slice(0, 12)}.json`, {
-      version: "6.4", mode: viewMode, editorial_summary: editorial?.summary || null, document_hash: inspection.document_hash, document_title: documentTitle,
-      source_id: sourceId, segmentation_summary: segmentation.summary, candidates, drafts, draft_approved_ids: draftApproved,
-    });
-  }
-
-  async function importWorkspace(next: File | null) {
-    if (!next || !inspection) return;
-    try {
-      const data = JSON.parse(await next.text());
-      if (data.document_hash !== inspection.document_hash || !Array.isArray(data.candidates)) throw new Error("Export incompatible avec ce PDF.");
-      if (data.candidates.some((s: Segment) => !s.id || !Array.isArray(s.pages) || s.pages.some(p => !Number.isInteger(p.page) || typeof p.text !== "string"))) {
-        throw new Error("Candidats invalides dans l'export.");
+  function validateDraft(id: string, checked: boolean) {
+    const draft = drafts[id];
+    if (!draft || draft.status === "GENERATION_REJECTED") return;
+    if (checked) {
+      const source = new Set(draft.source_pages.map(page => page.page));
+      const all = [draft.body, ...draft.key_points].flatMap(citedPages);
+      if (!draft.title.trim() || !draft.excerpt.trim() || !draft.body.trim() || !citedPages(draft.body).length ||
+          draft.key_points.some(point => !citedPages(point).length) || all.some(page => !source.has(page))) {
+        setError("Titre, extrait, corps et références valides sont obligatoires."); return;
       }
-      setCandidates(data.candidates); setSelectedId(data.candidates[0]?.id || null);
-      const restoredMode = data.mode === "EDITORIAL" ? "EDITORIAL" : "STRUCTURE";
-      setViewMode(restoredMode);
-      if (restoredMode === "EDITORIAL") setEditorialCandidates(data.candidates);
-      else setStructuralCandidates(data.candidates);
-      setDrafts(data.drafts && typeof data.drafts === "object" ? data.drafts : {});
-      setDraftApproved(Array.isArray(data.draft_approved_ids) ? data.draft_approved_ids : []);
-      setDocumentTitle(data.document_title || documentTitle);
-      setSourceId(data.source_id || sourceId);
-      setConfirmed(false); setError(""); setNotice("Travail restauré. Reconfirme la source avant toute génération.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Import JSON impossible."); }
+    }
+    setApprovedDraftIds(previous => checked ? [...new Set([...previous, id])] : previous.filter(item => item !== id));
+    setError("");
   }
+
+  async function importApproved() {
+    if (!file || !segmentation || !sourceId || !documentTitle.trim() || !approvedDrafts.length) return;
+    setBusy("import"); setError(""); setNotice("");
+    try {
+      let id = documentId;
+      if (!id) {
+        const form = new FormData();
+        form.append("file", file); form.append("source_id", sourceId); form.append("title", documentTitle.trim());
+        const registered = await api.postForm("/discovery/pdf-studio/document/register", form) as RegisterResponse;
+        id = registered.id_document || registered.document_id || "";
+        if (!id) throw new Error("Document enregistré mais id_document absent de la réponse.");
+        setDocumentId(id);
+      }
+      const articles = approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" as const }));
+      const result = await api.post("/discovery/pdf-studio/import-approved", { id_document: id, articles }) as ImportResponse;
+      setImportResult(result);
+      setNotice(`${result.count} article(s) importé(s) dans RATECARD_CONTENT_RAW.`);
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(""); }
+  }
+
+  const draft = selected ? drafts[selected.id] : undefined;
+  const canEdit = !locked && !busy;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V6.4 — DEV</span></h1>
-        <p className="mt-1 text-sm text-gray-600">Document → segmentation → revue des passages → génération sourcée. Ancienne consolidation désactivée.</p>
+        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V7 — DEV</span></h1>
+        <p className="mt-1 text-sm text-gray-600">PDF → unités éditoriales → articles synthétiques → GetCurator RAW.</p>
       </header>
 
       {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
-      {notice && <div className="rounded-lg border p-3 text-sm text-gray-700">{notice}</div>}
+      {notice && <div className="rounded-lg border p-3 text-sm">{notice}</div>}
 
       <section className="space-y-4 rounded-xl border p-5">
-        <h2 className="font-semibold">1. Importer et inspecter le document</h2>
-        <input type="file" accept=".pdf,application/pdf" onChange={e => resetFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
+        <h2 className="font-semibold">1. Importer le PDF</h2>
+        <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)} onChange={event => reset(event.target.files?.[0] || null)} className="block w-full text-sm" />
         {file && <p className="text-sm text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
-        <button type="button" className={primary} disabled={!file || busy !== null} onClick={() => void inspect()}>{busy === "inspect" ? "Inspection…" : "Inspecter le PDF"}</button>
-        {inspection && <div className="space-y-2 text-sm">
-          <p>{inspection.page_count} pages · {inspection.low_text_pages.length} pages avec peu de texte · {inspection.visual_review_pages.length} à revoir visuellement</p>
-          <p className="break-all text-xs text-gray-500">SHA-256 : {inspection.document_hash}</p>
-          <button type="button" className="underline" onClick={() => setShowPages(v => !v)}>{showPages ? "Masquer" : "Voir"} le diagnostic des pages</button>
-          {showPages && <div className="max-h-60 divide-y overflow-y-auto rounded border">{inspection.pages.map(p => <div key={p.page} className="p-2"><strong>p. {p.page}</strong> · {p.char_count} caractères {p.needs_visual_review ? "· revue visuelle" : ""}<p className="text-gray-500">{p.preview}</p></div>)}</div>}
-        </div>}
+        <button className={primary} type="button" disabled={!file || Boolean(busy)} onClick={() => void segment()}>{busy === "segment" ? "Analyse en cours…" : "Analyser et proposer les articles"}</button>
+        {segmentation && <p className="text-sm">{segmentation.document.page_count} pages · {candidates.length} candidats · {segmentation.summary.candidate_pages} pages attribuées</p>}
+        {segmentation?.warnings.map((warning, index) => <p key={index} className="text-xs text-amber-700">{warning}</p>)}
       </section>
 
-      {inspection && <section className="space-y-4 rounded-xl border p-5">
-        <h2 className="font-semibold">2. Document et éditeur</h2>
-        <label className="block text-sm">Titre du document<input className={field} value={documentTitle} onChange={e => { setDocumentTitle(e.target.value); setConfirmed(false); }} /></label>
-        <div className="flex gap-5 text-sm">
-          <label><input type="radio" checked={sourceMode === "existing"} onChange={() => { setSourceMode("existing"); setConfirmed(false); }} /> Source existante</label>
-          <label><input type="radio" checked={sourceMode === "new"} onChange={() => { setSourceMode("new"); setConfirmed(false); }} /> Nouvelle source</label>
+      {segmentation && <section className="space-y-4 rounded-xl border p-5">
+        <h2 className="font-semibold">2. Document et source</h2>
+        <label className="block text-sm">Titre du document<input className={field} value={documentTitle} disabled={locked} onChange={event => { setDocumentTitle(event.target.value); setDrafts({}); setApprovedDraftIds([]); }} /></label>
+        <div className="flex gap-4 text-sm">
+          <label><input type="radio" checked={sourceMode === "existing"} disabled={locked} onChange={() => setSourceMode("existing")} /> Source existante</label>
+          <label><input type="radio" checked={sourceMode === "new"} disabled={locked} onChange={() => setSourceMode("new")} /> Nouvelle source</label>
         </div>
         {sourceMode === "existing" ? <label className="block text-sm">Éditeur
-          <select className={field} value={sourceId} disabled={sourcesLoading} onChange={e => { setSourceId(e.target.value); setConfirmed(false); }}>
-            <option value="">{sourcesLoading ? "Chargement…" : "Sélectionner une source"}</option>
-            {sources.map(s => <option key={s.source_id} value={s.source_id}>{s.name}</option>)}
+          <select className={field} value={sourceId} disabled={locked} onChange={event => { setSourceId(event.target.value); setDrafts({}); setApprovedDraftIds([]); }}>
+            <option value="">Sélectionner une source</option>
+            {sources.map(source => <option key={source.source_id} value={source.source_id}>{source.name}</option>)}
           </select>
         </label> : <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm">Nom<input className={field} value={sourceName} onChange={e => setSourceName(e.target.value)} /></label>
-          <label className="text-sm">Domaine<input className={field} value={sourceDomain} onChange={e => setSourceDomain(e.target.value)} /></label>
-          <label className="text-sm">ID univers (facultatif)<input className={field} value={sourceUniverse} onChange={e => setSourceUniverse(e.target.value)} /></label>
-          <div className="flex items-end"><button type="button" className={btn} disabled={busy !== null || !sourceName.trim() || Boolean(duplicate)} onClick={() => void createSource()}>Créer la source</button></div>
-          {duplicate && <p className="text-sm text-amber-700">Source déjà existante : {duplicate.name}</p>}
+          <label className="text-sm">Nom<input className={field} value={sourceName} onChange={event => setSourceName(event.target.value)} /></label>
+          <label className="text-sm">Domaine<input className={field} value={sourceDomain} onChange={event => setSourceDomain(event.target.value)} /></label>
+          <label className="text-sm">ID univers (facultatif)<input className={field} value={sourceUniverse} onChange={event => setSourceUniverse(event.target.value)} /></label>
+          <div className="flex items-end"><button className={button} type="button" disabled={Boolean(busy) || !sourceName.trim() || Boolean(duplicate)} onClick={() => void createSource()}>Créer la source</button></div>
+          {duplicate && <p className="text-sm text-amber-700">Source existante : {duplicate.name}</p>}
         </div>}
-        {selectedSource && <p className="text-xs text-gray-500">Source : {selectedSource.name} · {selectedSource.source_id}</p>}
-        <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={!sourceId || !documentTitle.trim() || sourceMode !== "existing"} onChange={e => setConfirmed(e.target.checked)} /> Je confirme le document et l'éditeur.</label>
-        <button type="button" className={primary} disabled={!confirmed || busy !== null} onClick={() => void segment()}>{busy === "segment" ? "Segmentation…" : "3. Segmenter le PDF"}</button>
       </section>}
 
       {segmentation && <section className="space-y-4 rounded-xl border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="font-semibold">3. Structure et candidats éditoriaux</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {approvedCount} approuvés · {segmentation.summary.pages_covered}/{segmentation.document.page_count} pages couvertes initialement</p></div>
-          <div className="flex gap-2"><button type="button" className={btn} onClick={exportWorkspace}>Exporter le travail JSON</button><label className={`${btn} cursor-pointer`}>Reprendre un JSON<input className="hidden" type="file" accept=".json" onChange={e => { void importWorkspace(e.target.files?.[0] || null); e.currentTarget.value = ""; }} /></label></div>
+          <div><h2 className="font-semibold">3. Candidats et synthèses</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {Object.keys(drafts).length} brouillons · {approvedDraftIds.length} articles validés</p></div>
+          <button className={button} type="button" onClick={() => downloadJson(`pdf-studio-v7-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document: segmentation.document, document_title: documentTitle, source_id: sourceId, candidates, drafts, approved_draft_ids: approvedDraftIds })}>Exporter le travail JSON</button>
         </div>
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border p-3">
-          <label className="text-sm">Pays à reconstruire (vide = tous les pays)
-            <input className={field} value={countryFilter} onChange={e => setCountryFilter(e.target.value)} placeholder="Netherlands" />
-          </label>
-          <button type="button" className={primary} disabled={busy !== null || !confirmed} onClick={() => void identifyEditorial()}>
-            {busy === "editorial" ? "Reconstruction en cours…" : "Identifier les sujets éditoriaux (V6.4)"}
-          </button>
-          {editorial && <span className="text-sm text-gray-600">{editorial.summary.candidates} sujets · {editorial.summary.pages_covered_structurally} pages couvertes dans le plan</span>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={viewMode === "STRUCTURE" ? primary : btn} onClick={() => switchMode("STRUCTURE")}>Sections documentaires</button>
-          <button type="button" className={viewMode === "EDITORIAL" ? primary : btn} disabled={!editorialCandidates.length} onClick={() => switchMode("EDITORIAL")}>Sujets éditoriaux ({editorialCandidates.length})</button>
-        </div>
-        {viewMode === "EDITORIAL" && editorial?.warnings?.map((warning, i) => <p key={i} className="text-xs text-amber-700">{warning}</p>)}
-        {segmentation.summary.uncovered_pages.length > 0 && <p className="text-sm text-amber-700">Pages non couvertes : {segmentation.summary.uncovered_pages.join(", ")}</p>}
-        <p className="text-xs text-amber-700">Les candidats restent à vérifier. La V6.4 reconstruit les colonnes de manière heuristique : contrôle les transitions, les tableaux et les données masquées dans le PDF original.</p>
-        <div className="grid gap-4 lg:grid-cols-[minmax(250px,1fr)_minmax(0,2fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)]">
           <aside className="space-y-2">
-            <label className="block text-xs">Filtre
-              <select className={field} value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="ALL">Tous</option><option value="NEEDS_REVIEW">À revoir</option><option value="APPROVED">Approuvés</option></select>
-            </label>
-            <div className="max-h-[720px] space-y-1 overflow-y-auto">
-              {visible.map(s => <button key={s.id} type="button" onClick={() => { setSelectedId(s.id); setSplitPage(""); }} className={`w-full rounded-md border p-3 text-left text-sm ${selectedId === s.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
-                <span className="block font-medium">{s.title}</span><span className="text-xs text-gray-500">p. {s.start_page}–{s.end_page} · {s.review_status === "APPROVED" ? "Validé" : "À revoir"}</span>
+            <input className={field} placeholder="Filtrer les candidats…" value={filter} onChange={event => setFilter(event.target.value)} />
+            <div className="max-h-[700px] space-y-1 overflow-y-auto">
+              {visible.map(candidate => <button key={candidate.id} type="button" className={`w-full rounded-md border p-3 text-left text-sm ${candidate.id === selectedId ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`} onClick={() => { setSelectedId(candidate.id); setShowSource(false); }}>
+                <span className="block font-medium">{candidate.title}</span>
+                <span className="text-xs text-gray-500">p. {candidate.start_page}–{candidate.end_page} · {approvedDraftIds.includes(candidate.id) ? "Article validé" : drafts[candidate.id] ? "Brouillon" : candidate.review_status === "APPROVED" ? "Prêt à générer" : "À revoir"}</span>
               </button>)}
             </div>
           </aside>
           <div className="min-w-0 space-y-4">
             {!selected ? <p className="text-sm text-gray-500">Sélectionne un candidat.</p> : <>
               <div className="space-y-3 rounded-lg border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Candidat {selected.id}</h3><span className="text-xs text-gray-500">{selected.kind || "section"} · p. {selected.start_page}–{selected.end_page}</span></div>
-                <label className="block text-sm">Titre éditorial<input className={field} value={selected.title} onChange={e => changeCandidate(selected.id, { title: e.target.value })} /></label>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-sm">Pays principal<input className={field} value={selected.country_primary || ""} onChange={e => changeCandidate(selected.id, { country_primary: e.target.value || null })} /></label>
-                  <label className="block text-sm">Région<input className={field} value={selected.region || ""} onChange={e => changeCandidate(selected.id, { region: e.target.value || null })} /></label>
+                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Candidat {selected.id}</h3><span className="text-xs text-gray-500">{selected.kind} · p. {selected.start_page}–{selected.end_page}</span></div>
+                <label className="block text-sm">Titre de l'unité<input className={field} value={selected.title} disabled={!canEdit} onChange={event => updateCandidate(selected.id, { title: event.target.value })} /></label>
+                {selected.parent && <p className="text-xs text-gray-500">Section parente : {selected.parent}</p>}
+                {!!selected.visual_review_pages?.length && <p className="text-xs text-amber-700">Pages avec peu de texte : {selected.visual_review_pages.join(", ")}. Vérifier les tableaux et graphiques dans le PDF.</p>}
+                <div className="flex flex-wrap gap-2">
+                  <button className={button} type="button" disabled={!canEdit || selected.pages.length < 2} onClick={splitCandidate}>Scinder par page</button>
+                  <button className={button} type="button" disabled={!canEdit} onClick={removeCandidate}>Écarter</button>
+                  <button className={button} type="button" onClick={() => setShowSource(value => !value)}>{showSource ? "Masquer" : "Afficher"} les pages sources</button>
                 </div>
-                {selected.source_segment_id && <p className="text-xs text-gray-500">Section parente : {selected.source_segment_id} · Thème : {selected.topic || "non classé"}</p>}
-                {selected.warnings?.map((w, i) => <p key={i} className="text-xs text-amber-700">{w}</p>)}
-                {selected.subtopic_candidates?.length ? <details className="rounded border p-3 text-sm"><summary className="cursor-pointer">Rubriques détectées ({selected.subtopic_candidates.length})</summary><div className="mt-2 space-y-1">{selected.subtopic_candidates.map((h, i) => <p key={i}>p. {h.page} — {h.heading} ({h.topic})</p>)}</div></details> : null}
-                <p className="text-xs text-gray-500">Les textes ci-dessous constituent la matière exacte envoyée à la génération. Supprime les paragraphes hors sujet et conserve les pages correspondantes. Une modification invalide toute approbation précédente.</p>
-                <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">{selected.pages.map(p => <label key={p.page} className="block text-sm"><span className="font-medium">Page PDF {p.page}</span><textarea className={`${field} font-mono text-xs`} rows={Math.min(16, Math.max(5, Math.ceil(p.text.length / 95)))} value={p.text} onChange={e => editPage(selected.id, p.page, e.target.value)} /></label>)}</div>
-                <div className="flex flex-wrap items-end gap-2 border-t pt-3"><label className="text-sm">Scinder avant la page<input className={field} type="number" min={selected.start_page + 1} max={selected.end_page} value={splitPage} onChange={e => setSplitPage(e.target.value)} /></label><button type="button" className={btn} onClick={splitCandidate} disabled={selected.pages.length < 2}>Scinder</button><button type="button" className={btn} onClick={() => removeCandidate(selected.id)}>Écarter</button></div>
-                <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.review_status === "APPROVED" && selected.generatable === true} onChange={e => e.target.checked ? approveCandidate(selected.id) : changeCandidate(selected.id, {})} /> J'ai vérifié les passages source et confirmé qu'ils constituent un seul contenu autonome.</label>
-                <button type="button" className={primary} disabled={selected.review_status !== "APPROVED" || !selected.generatable || Boolean(generatingId) || !confirmed} onClick={() => void generate(selected.id)}>{generatingId === selected.id ? "Génération en cours…" : drafts[selected.id] ? "Régénérer l'article" : "4. Générer l'article"}</button>
+                {showSource && <div className="max-h-[550px] space-y-3 overflow-y-auto">{selected.pages.map(page => <label key={page.page} className="block text-sm">Page {page.page}<textarea className={`${field} font-mono text-xs`} rows={8} disabled={!canEdit} value={page.text} onChange={event => updateCandidate(selected.id, { pages: selected.pages.map(item => item.page === page.page ? { ...item, text: event.target.value } : item) })} /></label>)}</div>}
+                <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.review_status === "APPROVED"} disabled={!canEdit || !selected.pages.some(page => page.text.trim())} onChange={event => updateCandidate(selected.id, { review_status: event.target.checked ? "APPROVED" : "NEEDS_REVIEW" })} /> J'ai vérifié le périmètre et les pages de ce candidat.</label>
+                <button className={primary} type="button" disabled={Boolean(busy) || locked || !sourceId || !documentTitle.trim() || selected.review_status !== "APPROVED"} onClick={() => void generate()}>{busy === "generate" ? "Génération…" : draft ? "Régénérer l'article" : "Générer l'article"}</button>
               </div>
-              {drafts[selected.id] && <div className="space-y-3 rounded-lg border p-4">
-                <h3 className="font-semibold">4. Brouillon généré — revue obligatoire</h3>
-                <p className="text-xs text-gray-500">Statut : {drafts[selected.id].status} · Modèle : {drafts[selected.id].model} · Pages citées : {drafts[selected.id].cited_pages?.join(", ") || "aucune"}</p>
-                {drafts[selected.id].refusal_reason && <p className="text-sm text-amber-700">{drafts[selected.id].refusal_reason}</p>}
-                {(drafts[selected.id].warnings || []).map((w, i) => <p key={i} className="text-sm text-amber-700">{w}</p>)}
-                <label className="block text-sm">Titre<input className={field} value={drafts[selected.id].title} onChange={e => editDraft(selected.id, "title", e.target.value)} /></label>
-                <label className="block text-sm">Extrait<textarea className={field} rows={3} value={drafts[selected.id].excerpt} onChange={e => editDraft(selected.id, "excerpt", e.target.value)} /></label>
-                <label className="block text-sm">Article<textarea className={`${field} font-mono text-xs`} rows={20} value={drafts[selected.id].body} onChange={e => editDraft(selected.id, "body", e.target.value)} /></label>
-                <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={draftApproved.includes(selected.id)} disabled={!drafts[selected.id].body.trim() || !drafts[selected.id].title.trim()} onChange={e => setDraftApproved(prev => e.target.checked ? [...prev, selected.id] : prev.filter(id => id !== selected.id))} /> J'ai contrôlé les affirmations et les références dans le PDF original ; je valide ce brouillon.</label>
+              {draft && <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">Brouillon — revue éditoriale</h3>
+                <p className="text-xs text-gray-500">{draft.status} · {draft.model} · pages citées : {draft.cited_pages.join(", ") || "aucune"}</p>
+                {draft.refusal_reason && <p className="text-sm text-red-700">{draft.refusal_reason}</p>}
+                {draft.warnings.map((warning, index) => <p key={index} className="text-xs text-amber-700">{warning}</p>)}
+                {draft.status !== "GENERATION_REJECTED" && <>
+                  <label className="block text-sm">Titre<input className={field} disabled={!canEdit} value={draft.title} onChange={event => editDraft(selected.id, { title: event.target.value })} /></label>
+                  <label className="block text-sm">Extrait<textarea className={field} rows={3} disabled={!canEdit} value={draft.excerpt} onChange={event => editDraft(selected.id, { excerpt: event.target.value })} /></label>
+                  <label className="block text-sm">Principaux enseignements (une ligne par point)<textarea className={field} rows={6} disabled={!canEdit} value={draft.key_points.join("\n")} onChange={event => editDraft(selected.id, { key_points: event.target.value.split("\n").map(point => point.trim()).filter(Boolean) })} /></label>
+                  <label className="block text-sm">Article<textarea className={`${field} font-mono text-xs`} rows={20} disabled={!canEdit} value={draft.body} onChange={event => editDraft(selected.id, { body: event.target.value })} /></label>
+                  <label className="flex items-start gap-2 text-sm"><input type="checkbox" disabled={!canEdit} checked={approvedDraftIds.includes(selected.id)} onChange={event => validateDraft(selected.id, event.target.checked)} /> J'ai relu l'article, ses chiffres et ses références au PDF ; je valide cette version.</label>
+                </>}
               </div>}
             </>}
           </div>
@@ -381,13 +310,14 @@ export default function PDFStudio() {
       </section>}
 
       {segmentation && <section className="space-y-3 rounded-xl border p-5">
-        <h2 className="font-semibold">5. Export et import RAW</h2>
-        <p className="text-sm">{draftApproved.length} brouillon(s) validé(s). L'import BigQuery est volontairement désactivé tant que <code>pdf_import.py</code> n'accepte pas la provenance V6.</p>
-        <button type="button" className={btn} disabled={!draftApproved.length} onClick={() => downloadJson(`pdf-approved-v6-${inspection?.document_hash.slice(0, 12)}.json`, {
-          version: "6.3", document_hash: inspection?.document_hash, document_title: documentTitle, source_id: sourceId,
-          articles: draftApproved.map(id => drafts[id]).filter(Boolean),
-        })}>Exporter les articles validés JSON</button>
-        <button type="button" className={`${primary} ml-2`} disabled>Importer dans RATECARD_CONTENT_RAW — à connecter</button>
+        <h2 className="font-semibold">4. Importer dans GetCurator</h2>
+        <p className="text-sm">{approvedDrafts.length} article(s) approuvé(s) · import dans RATECARD_CONTENT_RAW après enregistrement du PDF original.</p>
+        <div className="flex flex-wrap gap-2">
+          <button className={button} type="button" disabled={!approvedDrafts.length} onClick={() => downloadJson(`pdf-approved-v7-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document_hash: segmentation.document.document_hash, document_title: documentTitle, source_id: sourceId, articles: approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" })) })}>Exporter les articles validés</button>
+          <button className={primary} type="button" disabled={!approvedDrafts.length || Boolean(busy) || Boolean(importResult)} onClick={() => void importApproved()}>{busy === "import" ? "Import en cours…" : "Enregistrer le PDF et importer les articles"}</button>
+        </div>
+        {documentId && <p className="text-xs text-gray-500">Document enregistré : {documentId}</p>}
+        {importResult && <div className="space-y-1 text-sm">{importResult.articles.map(item => <p key={item.proposal_id}>{item.proposal_id} → {item.id_raw}{item.already_exists ? " (déjà importé)" : ""}</p>)}</div>}
       </section>}
     </div>
   );
