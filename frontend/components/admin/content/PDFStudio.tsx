@@ -1,49 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
-type EvidenceUnit = { page: number | null; fact: string; quote: string; kind: string; geography: string | null; period: string | null; needs_review: boolean; status: "VERIFIED" | "NEEDS_REVIEW" | "REJECTED"; reason: string; match_score: number; candidate_index: number };
-type ExtractionExport = { document_hash?: string | null; document_title?: string; source_id?: string; next_page?: number | null; rejected_unverified?: number; units: EvidenceUnit[] };
-type ArticleProposal = { id: string; title: string; angle: string; scope: string; editorial_rationale: string; unit_ids: string[]; pages: number[]; evidence_count: number; exact_quote_count: number; review_count: number; editorial_status: string; evidence: EvidenceUnit[] };
-type ConsolidationResult = { summary: { input_units: number; local_proposals: number; article_proposals: number; covered_units: number; uncovered_units: number }; proposals: ArticleProposal[]; uncovered_evidence: EvidenceUnit[]; document_title?: string };
-type GeneratedDraft = { status: string; proposal_id: string; document_title: string; source_id: string; document_hash?: string; title: string; excerpt: string; body: string; used_unit_ids: string[]; warnings: string[]; evidence: EvidenceUnit[]; model: string };
-type ExtractBatch = { status: string; start_page: number; end_page: number; page_count: number; next_page: number | null; units: EvidenceUnit[]; counts: Record<string, number>; candidate_count: number; rejected_unverified: number; warning: string };
-type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null; acquisition_mode?: string | null };
-type Page = { page: number; char_count: number; image_count: number; needs_visual_review: boolean; preview: string };
-type Inspection = { status: string; document_hash: string; filename: string; page_count: number; title: string | null; author: string | null; pages: Page[]; low_text_pages: number[]; visual_review_pages: number[] };
-type Topic = { page_count: number; pages: { page: number; mentions: number }[] };
-type Mapping = { status: string; document: { document_hash: string; filename: string; page_count: number; title: string | null; author: string | null }; quality: { low_text_pages: number[]; visual_review_pages: number[] }; sections: { page: number; heading_candidate: string }[]; topics: Record<string, Topic>; note: string };
-const TOPIC_NAMES: Record<string, string> = { artificial_intelligence: "Intelligence artificielle", marketplaces: "Marketplaces", payments: "Paiements", logistics: "Logistique", regulation: "Réglementation", sustainability: "Développement durable", ecommerce_market: "Marché e-commerce" };
-const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+type Source = { source_id: string; name: string; domain?: string | null; universe_id?: string | null };
+type Inspection = { document_hash: string; filename: string; page_count: number; title: string | null; pages: { page: number; char_count: number; needs_visual_review: boolean; preview: string }[]; low_text_pages: number[]; visual_review_pages: number[] };
+type SourcePage = { page: number; text: string };
+type Segment = { id: string; title: string; kind?: string; country_primary?: string | null; region?: string | null; start_page: number; end_page: number; pages: SourcePage[]; subtopic_candidates?: { page: number; heading: string; topic: string }[]; review_status: string; generatable?: boolean; note?: string | null };
+type Segmentation = { status: string; document: { document_hash: string; page_count: number }; summary: { segments: number; pages_covered: number; uncovered_pages: number[] }; segments: Segment[] };
+type Draft = { status: string; proposal_id: string; title: string; excerpt: string; body: string; cited_pages: number[]; warnings: string[]; refusal_reason?: string | null; model: string };
+
+const btn = "rounded-md border px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40";
+const primary = `${btn} bg-ratecard-blue text-white`;
+const field = "mt-1 w-full rounded-md border p-2 text-sm";
+const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+function downloadJson(filename: string, value: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function renumber(segment: Segment): Segment {
+  const pages = [...segment.pages].sort((a, b) => a.page - b.page);
+  return { ...segment, pages, start_page: pages[0]?.page ?? segment.start_page, end_page: pages[pages.length - 1]?.page ?? segment.end_page };
+}
 
 export default function PDFStudio() {
-  const [importedExtraction, setImportedExtraction] = useState<ExtractionExport | null>(null);
-  const [consolidating, setConsolidating] = useState(false);
-  const [consolidation, setConsolidation] = useState<ConsolidationResult | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, GeneratedDraft>>({});
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [approvedIds, setApprovedIds] = useState<string[]>([]);
-  const [registeredDocument, setRegisteredDocument] = useState<{ id_document: string; sha256: string; already_exists: boolean } | null>(null);
-  const [registeringDocument, setRegisteringDocument] = useState(false);
-  const [importingApproved, setImportingApproved] = useState(false);
-  const [importedArticles, setImportedArticles] = useState<{ id_raw: string; source_url: string; already_exists: boolean }[]>([]);
-  const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [units, setUnits] = useState<EvidenceUnit[]>([]);
-  const [nextPage, setNextPage] = useState<number | null>(1);
-  const [extracting, setExtracting] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"ALL" | EvidenceUnit["status"]>("ALL");
-  const [rejected, setRejected] = useState(0);
-  const counts = useMemo(() => ({
-    VERIFIED: units.filter(u => u.status === "VERIFIED").length,
-    NEEDS_REVIEW: units.filter(u => u.status === "NEEDS_REVIEW").length,
-    REJECTED: units.filter(u => u.status === "REJECTED").length,
-  }), [units]);
-  const visibleUnits = useMemo(() => units.filter(u => filterStatus === "ALL" || u.status === filterStatus), [units, filterStatus]);
-  const stopRef = useRef(false);
   const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [mapping, setMapping] = useState<Mapping | null>(null);
+  const [documentTitle, setDocumentTitle] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(true);
   const [sourceMode, setSourceMode] = useState<"existing" | "new">("existing");
@@ -51,326 +40,288 @@ export default function PDFStudio() {
   const [sourceName, setSourceName] = useState("");
   const [sourceDomain, setSourceDomain] = useState("");
   const [sourceUniverse, setSourceUniverse] = useState("");
-  const [documentTitle, setDocumentTitle] = useState("");
-  const [documentYear, setDocumentYear] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [busy, setBusy] = useState<"inspect" | "map" | "create" | null>(null);
+  const [segmentation, setSegmentation] = useState<Segmentation | null>(null);
+  const [candidates, setCandidates] = useState<Segment[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [draftApproved, setDraftApproved] = useState<string[]>([]);
+  const [busy, setBusy] = useState<"inspect" | "segment" | "create" | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const [filter, setFilter] = useState<"ALL" | "NEEDS_REVIEW" | "APPROVED">("ALL");
   const [showPages, setShowPages] = useState(false);
-  const topics = useMemo(() => Object.entries(mapping?.topics || {}).sort((a, b) => b[1].page_count - a[1].page_count), [mapping]);
-  const duplicate = useMemo(() => sources.find(s => normalize(s.name) === normalize(sourceName)), [sources, sourceName]);
+  const [splitPage, setSplitPage] = useState("");
+
+  const duplicate = sources.find(s => normalize(s.name) === normalize(sourceName));
   const selectedSource = sources.find(s => s.source_id === sourceId);
+  const selected = candidates.find(s => s.id === selectedId) || null;
+  const approvedCount = candidates.filter(s => s.review_status === "APPROVED" && s.generatable).length;
+  const visible = useMemo(() => candidates.filter(s => filter === "ALL" || s.review_status === filter), [candidates, filter]);
 
   useEffect(() => {
     let active = true;
-    api.get("/source/list").then((res: { sources?: Source[] }) => {
-      if (active) setSources(res.sources || []);
-    }).catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : "Impossible de charger les sources."); })
+    api.get("/source/list")
+      .then((res: { sources?: Source[] }) => { if (active) setSources(res.sources || []); })
+      .catch((e: unknown) => { if (active) setError(e instanceof Error ? e.message : "Impossible de charger les sources."); })
       .finally(() => { if (active) setSourcesLoading(false); });
     return () => { active = false; };
   }, []);
 
-  function changeFile(next: File | null) {
-    setImportedExtraction(null); setConsolidation(null); setDrafts({}); setApprovedIds([]); stopRef.current = true; setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
-    setRegisteredDocument(null); setImportedArticles([]); setFile(next); setInspection(null); setMapping(null); setConfirmed(false);
-    setDocumentTitle(""); setDocumentYear(""); setError(""); setShowPages(false);
+  function resetFile(next: File | null) {
+    setFile(next); setInspection(null); setSegmentation(null); setCandidates([]); setSelectedId(null);
+    setDrafts({}); setDraftApproved([]); setDocumentTitle(""); setConfirmed(false); setError(""); setNotice("");
   }
 
-  async function upload(action: "inspect" | "map"): Promise<Inspection | Mapping> {
+  async function upload(action: "inspect" | "segment") {
     if (!file) throw new Error("Sélectionne un PDF.");
-    const data = new FormData(); data.append("file", file);
-    return api.postForm(`/discovery/pdf-studio/${action}`, data);
+    const form = new FormData(); form.append("file", file);
+    return api.postForm(`/discovery/pdf-studio/${action}`, form);
   }
 
   async function inspect() {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".pdf") || file.size > 30 * 1024 * 1024) { setError("PDF requis, 30 Mo maximum."); return; }
-    setBusy("inspect"); setError("");
+    if (!file.name.toLowerCase().endsWith(".pdf") || file.size > 30 * 1024 * 1024) {
+      setError("PDF requis, 30 Mo maximum."); return;
+    }
+    setBusy("inspect"); setError(""); setNotice("");
     try {
       const result = await upload("inspect") as Inspection;
-      setRegisteredDocument(null); setImportedArticles([]); setImportedExtraction(null); setConsolidation(null); setInspection(result); setMapping(null); setConfirmed(false); setUnits([]); setNextPage(1); setRejected(0); setFilterStatus("ALL");
+      setInspection(result);
       setDocumentTitle(result.title?.trim() || file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
-      const year = (result.title || file.name).match(/\b20\d{2}\b/);
-      setDocumentYear(year?.[0] || "");
+      setSegmentation(null); setCandidates([]); setSelectedId(null); setDrafts({}); setDraftApproved([]);
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur d'inspection."); }
     finally { setBusy(null); }
   }
 
   async function createSource() {
-    if (!sourceName.trim()) { setError("Indique le nom de l'éditeur."); return; }
-    if (duplicate) { setError(`La source « ${duplicate.name} » existe déjà. Sélectionne-la.`); return; }
+    if (!sourceName.trim() || duplicate) { setError("Source vide ou déjà existante."); return; }
     setBusy("create"); setError("");
     try {
       const res = await api.post("/source/create", {
         name: sourceName.trim(), type_source: "PUBLISHER", domain: sourceDomain.trim() || null,
         universe_id: sourceUniverse.trim() || null, acquisition_mode: "PDF_MANUAL",
-      });
-      if (!res.source_id) throw new Error("Identifiant de source absent de la réponse.");
-      const source: Source = { source_id: res.source_id, name: sourceName.trim(), domain: sourceDomain.trim() || null, universe_id: sourceUniverse.trim() || null, acquisition_mode: "PDF_MANUAL" };
-      setSources(prev => [...prev, source].sort((a, b) => a.name.localeCompare(b.name)));
+      }) as { source_id: string };
+      if (!res.source_id) throw new Error("ID source absent.");
+      setSources(prev => [...prev, { source_id: res.source_id, name: sourceName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
       setSourceId(res.source_id); setSourceMode("existing"); setConfirmed(false);
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur de création de source."); }
     finally { setBusy(null); }
   }
 
-  async function map() {
-    if (!inspection || !confirmed || !sourceId || !documentTitle.trim()) { setError("Valide le document et sa source avant la cartographie."); return; }
-    setBusy("map"); setError("");
-    try { setMapping(await upload("map") as Mapping); }
-    catch (e) { setError(e instanceof Error ? e.message : "Erreur de cartographie."); }
+  async function segment() {
+    if (!inspection || !confirmed || !sourceId || !documentTitle.trim()) { setError("Confirme le document et sa source."); return; }
+    setBusy("segment"); setError(""); setNotice("");
+    try {
+      const result = await upload("segment") as Segmentation;
+      if (!Array.isArray(result.segments) || result.document.document_hash !== inspection.document_hash) {
+        throw new Error("Segmentation invalide ou PDF différent.");
+      }
+      const normalized = result.segments.map((s, index) => ({
+        ...s, id: s.id || `S${index + 1}`, review_status: "NEEDS_REVIEW", generatable: false,
+        pages: Array.isArray(s.pages) ? s.pages.map(p => ({ page: Number(p.page), text: String(p.text || "") })) : [],
+      }));
+      setSegmentation(result); setCandidates(normalized); setSelectedId(normalized[0]?.id || null);
+      setDrafts({}); setDraftApproved([]);
+      setNotice("Segmentation terminée. Chaque candidat doit être revu avant génération.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Erreur de segmentation."); }
     finally { setBusy(null); }
   }
 
-  async function extractAll() {
-    if (!file || !mapping || nextPage === null || extracting) return;
-    stopRef.current = false;
-    setExtracting(true);
-    setError("");
-    let page: number | null = nextPage;
-    try {
-      while (page !== null && !stopRef.current) {
-        const form = new FormData();
-        form.append("file", file);
-        form.append("start_page", String(page));
-        const batch = await api.postForm("/discovery/pdf-studio/extract", form) as ExtractBatch;
-        setConsolidation(null); setUnits(prev => [...prev, ...batch.units]);
-        setRejected(prev => prev + batch.rejected_unverified);
-        page = batch.next_page;
-        setNextPage(page);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur pendant l'extraction.");
-    } finally {
-      setExtracting(false);
+  function changeCandidate(id: string, patch: Partial<Segment>) {
+    setCandidates(prev => prev.map(s => s.id === id ? { ...s, ...patch, review_status: "NEEDS_REVIEW", generatable: false } : s));
+    setDrafts(prev => { const next = { ...prev }; delete next[id]; return next; });
+    setDraftApproved(prev => prev.filter(x => x !== id));
+  }
+
+  function editPage(id: string, page: number, text: string) {
+    const s = candidates.find(x => x.id === id);
+    if (!s) return;
+    changeCandidate(id, { pages: s.pages.map(p => p.page === page ? { ...p, text } : p) });
+  }
+
+  function approveCandidate(id: string) {
+    const s = candidates.find(x => x.id === id);
+    if (!s || !s.title.trim() || !s.pages.some(p => p.text.trim())) {
+      setError("Un titre et au moins un passage source sont nécessaires."); return;
     }
-  }
-
-  async function importExtraction(next: File | null) {
-    if (!next) return;
+    setCandidates(prev => prev.map(x => x.id === id ? { ...x, review_status: "APPROVED", generatable: true } : x));
     setError("");
-    try {
-      const parsed: unknown = JSON.parse(await next.text());
-      if (!parsed || typeof parsed !== "object" || !("units" in parsed) || !Array.isArray((parsed as ExtractionExport).units)) {
-        throw new Error("Ce fichier n'est pas un export PDF Studio valide (units absent).");
-      }
-      const data = parsed as ExtractionExport;
-      if (!data.units.length || data.units.some(u => !u || typeof u.fact !== "string" || !Number.isInteger(u.page) && u.page !== null)) {
-        throw new Error("L'export ne contient pas d'unités exploitables.");
-      }
-      setImportedExtraction(data); setConsolidation(null); setDrafts({}); setApprovedIds([]);
-      setUnits(data.units); setNextPage(data.next_page === undefined ? null : data.next_page);
-      setRejected(data.rejected_unverified || 0);
-      if (data.document_title) setDocumentTitle(data.document_title);
-      if (data.source_id) setSourceId(data.source_id);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d'import JSON."); }
   }
 
-  async function consolidateExtraction() {
-    if (!units.length || consolidating || extracting) return;
-    setConsolidating(true); setError(""); setConsolidation(null);
-    try {
-      const payload = importedExtraction || {
-        document_hash: inspection?.document_hash || null,
-        document_title: documentTitle,
-        source_id: sourceId,
-        next_page: nextPage,
-        units,
-      };
-      const result = await api.post("/discovery/pdf-studio/consolidate", payload) as ConsolidationResult;
-      if (!result || !Array.isArray(result.proposals)) throw new Error("Réponse de consolidation invalide.");
-      setConsolidation(result); setDrafts({}); setApprovedIds([]);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur pendant la consolidation."); }
-    finally { setConsolidating(false); }
+  function splitCandidate() {
+    if (!selected) return;
+    const boundary = Number(splitPage);
+    if (!Number.isInteger(boundary)) { setError("Indique un numéro de page valide."); return; }
+    const left = selected.pages.filter(p => p.page < boundary);
+    const right = selected.pages.filter(p => p.page >= boundary);
+    if (!left.length || !right.length) { setError("La coupure doit séparer deux groupes de pages non vides."); return; }
+    const suffix = Date.now().toString(36);
+    const a = renumber({ ...selected, id: `${selected.id}-A-${suffix}`, title: `${selected.title} — partie 1`, pages: left, review_status: "NEEDS_REVIEW", generatable: false });
+    const b = renumber({ ...selected, id: `${selected.id}-B-${suffix}`, title: `${selected.title} — partie 2`, pages: right, review_status: "NEEDS_REVIEW", generatable: false });
+    setCandidates(prev => prev.flatMap(s => s.id === selected.id ? [a, b] : [s]));
+    setSelectedId(a.id); setSplitPage(""); setNotice("Segment scindé. Vérifie et approuve les deux nouveaux candidats."); setError("");
   }
 
-  async function generateDraft(proposal: ArticleProposal) {
-    if (generatingId || !sourceId) { setError("Sélectionne un éditeur avant de générer."); return; }
-    setGeneratingId(proposal.id); setError("");
+  function removeCandidate(id: string) {
+    if (!window.confirm("Écarter ce candidat du parcours de génération ?")) return;
+    setCandidates(prev => prev.filter(s => s.id !== id));
+    setSelectedId(prev => prev === id ? candidates.find(s => s.id !== id)?.id || null : prev);
+    setNotice("Candidat écarté. Les pages du PDF original restent inchangées.");
+  }
+
+  async function generate(id: string) {
+    const candidate = candidates.find(s => s.id === id);
+    if (!candidate || !inspection || !sourceId || generatingId) return;
+    if (candidate.review_status !== "APPROVED" || !candidate.generatable) { setError("Approuve le candidat avant génération."); return; }
+    setGeneratingId(id); setError(""); setNotice("");
     try {
       const result = await api.post("/discovery/pdf-studio/generate", {
-        document_hash: importedExtraction?.document_hash || inspection?.document_hash || null,
-        document_title: documentTitle || importedExtraction?.document_title || "Document PDF",
-        source_id: sourceId,
-        proposal,
-      }) as GeneratedDraft;
-      if (!result || result.status !== "DRAFT_REVIEW_REQUIRED") throw new Error("Brouillon invalide.");
-      setDrafts(prev => ({ ...prev, [proposal.id]: result }));
-      setApprovedIds(prev => prev.filter(id => id !== proposal.id));
-      setExpandedProposal(proposal.id);
+        document_hash: inspection.document_hash, document_title: documentTitle, source_id: sourceId, candidate,
+      }) as Draft;
+      setDrafts(prev => ({ ...prev, [id]: result }));
+      setDraftApproved(prev => prev.filter(x => x !== id));
+      if (result.status !== "DRAFT_REVIEW_REQUIRED") setNotice(result.refusal_reason || "La génération a été refusée : vérifie le périmètre du candidat.");
     } catch (e) { setError(e instanceof Error ? e.message : "Erreur de génération."); }
     finally { setGeneratingId(null); }
   }
 
-  function editDraft(id: string, field: "title" | "excerpt" | "body", value: string) {
-    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
-    setApprovedIds(prev => prev.filter(x => x !== id));
+  function editDraft(id: string, key: "title" | "excerpt" | "body", value: string) {
+    setDrafts(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+    setDraftApproved(prev => prev.filter(x => x !== id));
   }
 
-  async function registerDocument() {
-    if (!file || !sourceId || !documentTitle.trim()) { setError("Sélectionne le PDF, le titre et l’éditeur."); return; }
-    setRegisteringDocument(true); setError("");
+  function exportWorkspace() {
+    if (!inspection || !segmentation) return;
+    downloadJson(`pdf-studio-v6-${inspection.document_hash.slice(0, 12)}.json`, {
+      version: "6.3", document_hash: inspection.document_hash, document_title: documentTitle,
+      source_id: sourceId, segmentation_summary: segmentation.summary, candidates, drafts, draft_approved_ids: draftApproved,
+    });
+  }
+
+  async function importWorkspace(next: File | null) {
+    if (!next || !inspection) return;
     try {
-      const form = new FormData();
-      form.append("file", file); form.append("source_id", sourceId); form.append("title", documentTitle);
-      const result = await api.postForm("/discovery/pdf-studio/document/register", form) as { id_document: string; sha256: string; already_exists: boolean };
-      if (result.sha256 !== (importedExtraction?.document_hash || inspection?.document_hash)) throw new Error("Le PDF sélectionné ne correspond pas à l’extraction chargée.");
-      setRegisteredDocument(result);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d’enregistrement du PDF."); }
-    finally { setRegisteringDocument(false); }
-  }
-
-  async function importApproved() {
-    if (!registeredDocument || !approvedIds.length || importingApproved) return;
-    setImportingApproved(true); setError("");
-    try {
-      const articles = approvedIds.map(id => drafts[id]).filter(Boolean);
-      const result = await api.post("/discovery/pdf-studio/import-approved", { id_document: registeredDocument.id_document, articles }) as { articles: { id_raw: string; source_url: string; already_exists: boolean }[] };
-      setImportedArticles(result.articles);
-    } catch (e) { setError(e instanceof Error ? e.message : "Erreur d’import des articles."); }
-    finally { setImportingApproved(false); }
-  }
-
-  function exportDrafts() {
-    const approved = approvedIds.map(id => drafts[id]).filter(Boolean);
-    if (!approved.length) return;
-    const blob = new Blob([JSON.stringify({ version: "generate-v1", status: "APPROVED_FOR_IMPORT", articles: approved }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
-    a.download = `pdf-approved-articles-${(importedExtraction?.document_hash || inspection?.document_hash || "document").slice(0, 12)}.json`;
-    a.click(); URL.revokeObjectURL(url);
-  }
-
-  function exportConsolidation() {
-    if (!consolidation) return;
-    const blob = new Blob([JSON.stringify(consolidation, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
-    a.download = `pdf-proposals-${(importedExtraction?.document_hash || inspection?.document_hash || "document").slice(0, 12)}.json`;
-    a.click(); URL.revokeObjectURL(url);
-  }
-
-  function exportUnits() {
-    const payload = {
-      document_hash: inspection?.document_hash,
-      document_title: documentTitle,
-      source_id: sourceId,
-      next_page: nextPage,
-      rejected_unverified: rejected,
-      counts,
-      units,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `pdf-extract-${inspection?.document_hash.slice(0, 12) || "document"}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+      const data = JSON.parse(await next.text());
+      if (data.document_hash !== inspection.document_hash || !Array.isArray(data.candidates)) throw new Error("Export incompatible avec ce PDF.");
+      if (data.candidates.some((s: Segment) => !s.id || !Array.isArray(s.pages) || s.pages.some(p => !Number.isInteger(p.page) || typeof p.text !== "string"))) {
+        throw new Error("Candidats invalides dans l'export.");
+      }
+      setCandidates(data.candidates); setSelectedId(data.candidates[0]?.id || null);
+      setDrafts(data.drafts && typeof data.drafts === "object" ? data.drafts : {});
+      setDraftApproved(Array.isArray(data.draft_approved_ids) ? data.draft_approved_ids : []);
+      setDocumentTitle(data.document_title || documentTitle);
+      setSourceId(data.source_id || sourceId);
+      setConfirmed(false); setError(""); setNotice("Travail restauré. Reconfirme la source avant toute génération.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Import JSON impossible."); }
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <div><h1 className="text-2xl font-semibold">PDF Studio</h1><p className="mt-1 text-sm text-gray-500">Inspection, identification de l'éditeur et cartographie. Aucun article n'est créé à ce stade.</p></div>
-      <section className="rounded-xl border p-5 space-y-4">
-        <h2 className="font-semibold">1. Importer un document</h2>
-        <input type="file" accept=".pdf,application/pdf" disabled={busy !== null} onChange={e => changeFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
+      <header>
+        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V6 — DEV</span></h1>
+        <p className="mt-1 text-sm text-gray-600">Document → segmentation → revue des passages → génération sourcée. Ancienne consolidation désactivée.</p>
+      </header>
+
+      {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+      {notice && <div className="rounded-lg border p-3 text-sm text-gray-700">{notice}</div>}
+
+      <section className="space-y-4 rounded-xl border p-5">
+        <h2 className="font-semibold">1. Importer et inspecter le document</h2>
+        <input type="file" accept=".pdf,application/pdf" onChange={e => resetFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
         {file && <p className="text-sm text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
-        <button type="button" onClick={() => void inspect()} disabled={!file || busy !== null} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{busy === "inspect" ? "Inspection…" : "Inspecter le PDF"}</button>
-      </section>
-      {inspection && <>
-        <section className="rounded-xl border p-5 space-y-4">
-          <h2 className="font-semibold">2. Document et source</h2>
-          <p className="text-sm text-gray-500">{inspection.page_count} pages · {inspection.low_text_pages.length} pages avec peu de texte · {inspection.visual_review_pages.length} pages à revoir visuellement</p>
-          <div className="grid gap-4 md:grid-cols-3">
-            <label className="block text-sm md:col-span-2">Titre du document<input value={documentTitle} onChange={e => { setDocumentTitle(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded border p-2" /></label>
-            <label className="block text-sm">Année (facultative)<input value={documentYear} onChange={e => { setDocumentYear(e.target.value); setConfirmed(false); }} placeholder="2026" className="mt-1 w-full rounded border p-2" /></label>
-          </div>
-          <div className="flex gap-4 text-sm"><label><input type="radio" checked={sourceMode === "existing"} onChange={() => { setSourceMode("existing"); setConfirmed(false); }} /> Source existante</label><label><input type="radio" checked={sourceMode === "new"} onChange={() => { setSourceMode("new"); setConfirmed(false); }} /> Nouvelle source</label></div>
-          {sourceMode === "existing" ? <label className="block text-sm">Éditeur<select value={sourceId} disabled={sourcesLoading} onChange={e => { setSourceId(e.target.value); setConfirmed(false); }} className="mt-1 w-full rounded border p-2"><option value="">{sourcesLoading ? "Chargement…" : "Sélectionner une source"}</option>{sources.map(s => <option key={s.source_id} value={s.source_id}>{s.name}</option>)}</select></label> : <div className="space-y-3">
-            <label className="block text-sm">Nom de l'éditeur<input value={sourceName} onChange={e => setSourceName(e.target.value)} className="mt-1 w-full rounded border p-2" /></label>
-            {duplicate && <p className="text-sm text-amber-700">Cette source existe déjà : {duplicate.name}. Utilise la source existante.</p>}
-            <div className="grid gap-3 md:grid-cols-2"><label className="block text-sm">Domaine (facultatif)<input value={sourceDomain} onChange={e => setSourceDomain(e.target.value)} placeholder="example.org" className="mt-1 w-full rounded border p-2" /></label><label className="block text-sm">ID univers (facultatif)<input value={sourceUniverse} onChange={e => setSourceUniverse(e.target.value)} className="mt-1 w-full rounded border p-2" /></label></div>
-            <button type="button" disabled={busy !== null || !sourceName.trim() || Boolean(duplicate)} onClick={() => void createSource()} className="rounded border px-4 py-2 text-sm disabled:opacity-40">{busy === "create" ? "Création…" : "Créer la source"}</button>
-          </div>}
-          {sourceMode === "existing" && selectedSource && <p className="text-sm text-gray-600">Source sélectionnée : <strong>{selectedSource.name}</strong> · {selectedSource.source_id}</p>}
-          <p className="break-all text-xs text-gray-500">Empreinte SHA-256 : {inspection.document_hash}. Détection des doublons de PDF non encore persistée.</p>
-          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={!sourceId || !documentTitle.trim() || sourceMode !== "existing"} onChange={e => setConfirmed(e.target.checked)} /> Je confirme le titre du document et son éditeur.</label>
-          <button type="button" disabled={!confirmed || !sourceId || busy !== null} onClick={() => void map()} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{busy === "map" ? "Cartographie…" : "3. Cartographier"}</button>
-          <button type="button" className="ml-3 text-sm underline" onClick={() => setShowPages(!showPages)}>{showPages ? "Masquer" : "Afficher"} le détail des pages</button>
-          {showPages && <div className="max-h-80 overflow-y-auto divide-y rounded border">{inspection.pages.map(p => <div key={p.page} className="p-3 text-sm">Page {p.page} · {p.char_count} caractères {p.needs_visual_review ? "· revue visuelle conseillée" : ""}<p className="text-gray-500">{p.preview}</p></div>)}</div>}
-        </section>
-      </>}
-      {mapping && <section className="rounded-xl border p-5 space-y-4">
-        <h2 className="text-lg font-semibold">4. Extraire les unités d'information</h2>
-        <p className="text-sm text-gray-600">Extraction par lots de 5 pages, sans quota d'articles. Toutes les unités sont conservées, avec leur statut de vérification. Les tableaux, chiffres et interprétations nécessitent une revue humaine.</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => void extractAll()} disabled={extracting || nextPage === null || busy !== null} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{extracting ? "Extraction en cours…" : nextPage === null ? "Extraction terminée" : units.length ? "Reprendre l'extraction" : "Démarrer l'extraction"}</button>
-          {extracting && <button type="button" onClick={() => { stopRef.current = true; }} className="rounded border px-4 py-2 text-sm">Arrêter après ce lot</button>}
-          <button type="button" onClick={exportUnits} disabled={!units.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter toutes les unités JSON</button>
-        </div>
-        <p className="text-sm">{units.length} candidates · {counts.VERIFIED} citations exactes · {counts.NEEDS_REVIEW} à vérifier · {counts.REJECTED} rejetées · {nextPage === null ? `${mapping.document.page_count}/${mapping.document.page_count}` : `${nextPage - 1}/${mapping.document.page_count}`} pages traitées</p>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <label htmlFor="pdf-unit-status">Afficher :</label>
-          <select id="pdf-unit-status" value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)} className="rounded border px-2 py-1">
-            <option value="ALL">Toutes ({units.length})</option>
-            <option value="VERIFIED">Citation exacte ({counts.VERIFIED})</option>
-            <option value="NEEDS_REVIEW">À vérifier ({counts.NEEDS_REVIEW})</option>
-            <option value="REJECTED">Rejetées ({counts.REJECTED})</option>
-          </select>
-        </div>
-        <div className="max-h-[500px] space-y-2 overflow-y-auto">
-          {visibleUnits.map((u, i) => <details key={`${u.page}-${u.candidate_index}-${i}`} className="rounded border p-3 text-sm"><summary className="cursor-pointer"><span className="text-gray-500">p. {u.page ?? "?"} · {u.kind} · {u.status} · </span>{u.fact || "Unité invalide"}</summary><blockquote className="mt-2 border-l-2 pl-3 text-gray-600">{u.quote || "Citation absente"}</blockquote><p className="mt-2 text-xs text-gray-500">Contrôle : {u.reason} · score {u.match_score}</p></details>)}
-        </div>
-        <p className="text-xs text-amber-700">Résultats en mémoire navigateur uniquement. Exporter le JSON avant de quitter la page : aucune persistance serveur ni reprise après rechargement n'est encore implémentée.</p>
-      </section>}
-      <section className="rounded-xl border p-5 space-y-4">
-        <h2 className="text-lg font-semibold">5. Reprendre une extraction et consolider les articles</h2>
-        <p className="text-sm text-gray-600">Reprends une extraction JSON, consolide les propositions, génère les articles puis valide-les avant import.</p>
-        <label className="block text-sm font-medium">Importer une extraction JSON</label>
-        <input type="file" accept=".json,application/json" onChange={e => { void importExtraction(e.target.files?.[0] || null); e.currentTarget.value = ""; }} className="block w-full text-sm" disabled={consolidating || extracting} />
-        {importedExtraction && <p className="text-sm text-green-700">Extraction importée : {units.length} unités · {importedExtraction.document_title || "Sans titre"}</p>}
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => void consolidateExtraction()} disabled={!units.length || consolidating || extracting} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{consolidating ? "Consolidation IA en cours…" : `Consolider ${units.length} unités`}</button>
-          <button type="button" onClick={exportConsolidation} disabled={!consolidation} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter les propositions JSON</button>
-        </div>
-        {consolidating && <p className="text-xs text-amber-700">Plusieurs appels IA sont exécutés sur le serveur. Laisse la page ouverte ; le traitement peut durer plusieurs minutes.</p>}
-        {consolidation && <div className="space-y-3">
-          <p className="text-sm font-medium">{consolidation.summary.article_proposals} propositions · {consolidation.summary.covered_units}/{consolidation.summary.input_units} unités couvertes · {consolidation.summary.uncovered_units} non couvertes</p>
-          {consolidation.proposals.map(p => <div key={p.id} className="rounded border p-3 text-sm">
-            <button type="button" className="w-full text-left font-medium" onClick={() => setExpandedProposal(expandedProposal === p.id ? null : p.id)}>{p.title} <span className="font-normal text-gray-500">· {p.evidence_count} preuves · {p.review_count} à vérifier</span></button>
-            <p className="mt-1 text-gray-600">{p.angle}</p>
-            {expandedProposal === p.id && <div className="mt-3 space-y-2 border-t pt-3">
-              <p>{p.editorial_rationale}</p><p className="text-xs text-gray-500">Pages : {p.pages.join(", ")} · {p.editorial_status}</p>
-              {p.evidence.map((u, i) => <div key={i} className="rounded bg-gray-50 p-2 text-xs">p. {u.page} · {u.status} — {u.fact}</div>)}
-              <button type="button" disabled={Boolean(generatingId) || p.evidence_count < 3 || !sourceId} onClick={() => void generateDraft(p)} className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-40">{generatingId === p.id ? "Génération…" : drafts[p.id] ? "Régénérer le brouillon" : "Générer un brouillon"}</button>
-              {drafts[p.id] && <div className="space-y-3 rounded border p-3">
-                <p className="font-semibold">Brouillon à relire — {drafts[p.id].used_unit_ids.length} références utilisées</p>
-                <label className="block">Titre<input className="mt-1 w-full rounded border p-2" value={drafts[p.id].title} onChange={e => editDraft(p.id, "title", e.target.value)} /></label>
-                <label className="block">Extrait<textarea className="mt-1 w-full rounded border p-2" rows={3} value={drafts[p.id].excerpt} onChange={e => editDraft(p.id, "excerpt", e.target.value)} /></label>
-                <label className="block">Article<textarea className="mt-1 w-full rounded border p-2 font-mono text-xs" rows={20} value={drafts[p.id].body} onChange={e => editDraft(p.id, "body", e.target.value)} /></label>
-                {drafts[p.id].warnings.map((w,i) => <p key={i} className="text-xs text-amber-700">{w}</p>)}
-                <label className="flex items-start gap-2"><input type="checkbox" checked={approvedIds.includes(p.id)} disabled={!drafts[p.id].body.trim() || !drafts[p.id].title.trim()} onChange={e => setApprovedIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))} />J'ai contrôlé les faits et les citations dans le PDF, et je valide cet article pour export.</label>
-              </div>}
-            </div>}
-          </div>)}
-          <div className="flex flex-wrap items-center gap-3 border-t pt-3">
-            <button type="button" onClick={exportDrafts} disabled={!approvedIds.length} className="rounded border px-4 py-2 text-sm disabled:opacity-40">Exporter {approvedIds.length} article(s) validé(s) JSON</button>
-            <p className="text-xs text-gray-500">L’import en base reste manuel et nécessite le PDF original.</p>
-          </div>
-          <div className="space-y-3 rounded border p-4">
-            <h3 className="font-semibold">6. Enregistrer le PDF et importer les articles validés</h3>
-            <p className="text-xs text-gray-600">Le PDF original doit être sélectionné, même après réimport d’une extraction JSON. L’empreinte SHA-256 est contrôlée.</p>
-            <button type="button" disabled={!file || !sourceId || registeringDocument || !approvedIds.length} onClick={() => void registerDocument()} className="rounded border px-4 py-2 text-sm disabled:opacity-40">{registeringDocument ? "Enregistrement du PDF…" : registeredDocument ? "PDF enregistré ✓" : "Enregistrer le PDF original dans GCS"}</button>
-            {registeredDocument && <p className="text-xs text-green-700">Document enregistré : {registeredDocument.id_document}</p>}
-            <button type="button" disabled={!registeredDocument || !approvedIds.length || importingApproved} onClick={() => void importApproved()} className="ml-2 rounded bg-ratecard-blue px-4 py-2 text-sm text-white disabled:opacity-40">{importingApproved ? "Import en cours…" : `Importer ${approvedIds.length} article(s) validé(s) dans RAW`}</button>
-            {importedArticles.length > 0 && <div className="space-y-1 text-sm text-green-700">{importedArticles.map(a => <p key={a.id_raw}><a className="underline" href={a.source_url} target="_blank" rel="noopener noreferrer">Voir l’article source</a> {a.already_exists ? "(déjà importé)" : "(importé)"}</p>)}</div>}
-          </div>
-          <p className="text-xs text-amber-700">Les citations doivent être contrôlées dans le PDF avant toute validation.</p>
+        <button type="button" className={primary} disabled={!file || busy !== null} onClick={() => void inspect()}>{busy === "inspect" ? "Inspection…" : "Inspecter le PDF"}</button>
+        {inspection && <div className="space-y-2 text-sm">
+          <p>{inspection.page_count} pages · {inspection.low_text_pages.length} pages avec peu de texte · {inspection.visual_review_pages.length} à revoir visuellement</p>
+          <p className="break-all text-xs text-gray-500">SHA-256 : {inspection.document_hash}</p>
+          <button type="button" className="underline" onClick={() => setShowPages(v => !v)}>{showPages ? "Masquer" : "Voir"} le diagnostic des pages</button>
+          {showPages && <div className="max-h-60 divide-y overflow-y-auto rounded border">{inspection.pages.map(p => <div key={p.page} className="p-2"><strong>p. {p.page}</strong> · {p.char_count} caractères {p.needs_visual_review ? "· revue visuelle" : ""}<p className="text-gray-500">{p.preview}</p></div>)}</div>}
         </div>}
       </section>
-      {error && <p role="alert" className="rounded border border-red-200 p-3 text-sm text-red-700">{error}</p>}
-      {mapping && <section className="rounded-xl border p-5 space-y-4"><h2 className="text-lg font-semibold">Cartographie — {documentTitle}</h2><p className="text-sm text-gray-500">Éditeur : {selectedSource?.name} · {mapping.document.page_count} pages · {topics.length} thèmes · {mapping.sections.length} titres candidats</p><p className="text-sm">{mapping.note}</p><div className="space-y-2">{topics.map(([key, topic]) => <div key={key} className="rounded border"><button type="button" className="flex w-full justify-between p-3 text-left text-sm" onClick={() => setExpandedTopic(expandedTopic === key ? null : key)}><span>{TOPIC_NAMES[key] || key}</span><span>{topic.page_count} pages</span></button>{expandedTopic === key && <p className="border-t p-3 text-sm text-gray-600">Pages : {topic.pages.map(p => p.page).join(", ")}</p>}</div>)}</div><details className="rounded border p-3"><summary className="cursor-pointer text-sm">Titres candidats</summary><div className="mt-3 max-h-80 overflow-auto text-sm">{mapping.sections.map((s, i) => <p key={i}>p. {s.page} — {s.heading_candidate}</p>)}</div></details><p className="text-sm text-gray-500">La cartographie est heuristique. Le PDF et ses métadonnées ne sont pas encore enregistrés en base ; aucun contenu n'a été généré.</p></section>}
+
+      {inspection && <section className="space-y-4 rounded-xl border p-5">
+        <h2 className="font-semibold">2. Document et éditeur</h2>
+        <label className="block text-sm">Titre du document<input className={field} value={documentTitle} onChange={e => { setDocumentTitle(e.target.value); setConfirmed(false); }} /></label>
+        <div className="flex gap-5 text-sm">
+          <label><input type="radio" checked={sourceMode === "existing"} onChange={() => { setSourceMode("existing"); setConfirmed(false); }} /> Source existante</label>
+          <label><input type="radio" checked={sourceMode === "new"} onChange={() => { setSourceMode("new"); setConfirmed(false); }} /> Nouvelle source</label>
+        </div>
+        {sourceMode === "existing" ? <label className="block text-sm">Éditeur
+          <select className={field} value={sourceId} disabled={sourcesLoading} onChange={e => { setSourceId(e.target.value); setConfirmed(false); }}>
+            <option value="">{sourcesLoading ? "Chargement…" : "Sélectionner une source"}</option>
+            {sources.map(s => <option key={s.source_id} value={s.source_id}>{s.name}</option>)}
+          </select>
+        </label> : <div className="grid gap-3 md:grid-cols-2">
+          <label className="text-sm">Nom<input className={field} value={sourceName} onChange={e => setSourceName(e.target.value)} /></label>
+          <label className="text-sm">Domaine<input className={field} value={sourceDomain} onChange={e => setSourceDomain(e.target.value)} /></label>
+          <label className="text-sm">ID univers (facultatif)<input className={field} value={sourceUniverse} onChange={e => setSourceUniverse(e.target.value)} /></label>
+          <div className="flex items-end"><button type="button" className={btn} disabled={busy !== null || !sourceName.trim() || Boolean(duplicate)} onClick={() => void createSource()}>Créer la source</button></div>
+          {duplicate && <p className="text-sm text-amber-700">Source déjà existante : {duplicate.name}</p>}
+        </div>}
+        {selectedSource && <p className="text-xs text-gray-500">Source : {selectedSource.name} · {selectedSource.source_id}</p>}
+        <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={!sourceId || !documentTitle.trim() || sourceMode !== "existing"} onChange={e => setConfirmed(e.target.checked)} /> Je confirme le document et l'éditeur.</label>
+        <button type="button" className={primary} disabled={!confirmed || busy !== null} onClick={() => void segment()}>{busy === "segment" ? "Segmentation…" : "3. Segmenter le PDF"}</button>
+      </section>}
+
+      {segmentation && <section className="space-y-4 rounded-xl border p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="font-semibold">3. Segmentation et revue éditoriale</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {approvedCount} approuvés · {segmentation.summary.pages_covered}/{segmentation.document.page_count} pages couvertes initialement</p></div>
+          <div className="flex gap-2"><button type="button" className={btn} onClick={exportWorkspace}>Exporter le travail JSON</button><label className={`${btn} cursor-pointer`}>Reprendre un JSON<input className="hidden" type="file" accept=".json" onChange={e => { void importWorkspace(e.target.files?.[0] || null); e.currentTarget.value = ""; }} /></label></div>
+        </div>
+        {segmentation.summary.uncovered_pages.length > 0 && <p className="text-sm text-amber-700">Pages non couvertes : {segmentation.summary.uncovered_pages.join(", ")}</p>}
+        <p className="text-xs text-amber-700">Les segments sont des candidats, pas des articles. Pour les interviews multicolonnes, corrige les passages manuellement avant approbation. Les tableaux et les données masquées demandent une vérification visuelle.</p>
+        <div className="grid gap-4 lg:grid-cols-[minmax(250px,1fr)_minmax(0,2fr)]">
+          <aside className="space-y-2">
+            <label className="block text-xs">Filtre
+              <select className={field} value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="ALL">Tous</option><option value="NEEDS_REVIEW">À revoir</option><option value="APPROVED">Approuvés</option></select>
+            </label>
+            <div className="max-h-[720px] space-y-1 overflow-y-auto">
+              {visible.map(s => <button key={s.id} type="button" onClick={() => { setSelectedId(s.id); setSplitPage(""); }} className={`w-full rounded-md border p-3 text-left text-sm ${selectedId === s.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
+                <span className="block font-medium">{s.title}</span><span className="text-xs text-gray-500">p. {s.start_page}–{s.end_page} · {s.review_status === "APPROVED" ? "Validé" : "À revoir"}</span>
+              </button>)}
+            </div>
+          </aside>
+          <div className="min-w-0 space-y-4">
+            {!selected ? <p className="text-sm text-gray-500">Sélectionne un candidat.</p> : <>
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Candidat {selected.id}</h3><span className="text-xs text-gray-500">{selected.kind || "section"} · p. {selected.start_page}–{selected.end_page}</span></div>
+                <label className="block text-sm">Titre éditorial<input className={field} value={selected.title} onChange={e => changeCandidate(selected.id, { title: e.target.value })} /></label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block text-sm">Pays principal<input className={field} value={selected.country_primary || ""} onChange={e => changeCandidate(selected.id, { country_primary: e.target.value || null })} /></label>
+                  <label className="block text-sm">Région<input className={field} value={selected.region || ""} onChange={e => changeCandidate(selected.id, { region: e.target.value || null })} /></label>
+                </div>
+                {selected.subtopic_candidates?.length ? <details className="rounded border p-3 text-sm"><summary className="cursor-pointer">Rubriques détectées ({selected.subtopic_candidates.length})</summary><div className="mt-2 space-y-1">{selected.subtopic_candidates.map((h, i) => <p key={i}>p. {h.page} — {h.heading} ({h.topic})</p>)}</div></details> : null}
+                <p className="text-xs text-gray-500">Les textes ci-dessous constituent la matière exacte envoyée à la génération. Supprime les paragraphes hors sujet et conserve les pages correspondantes. Une modification invalide toute approbation précédente.</p>
+                <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">{selected.pages.map(p => <label key={p.page} className="block text-sm"><span className="font-medium">Page PDF {p.page}</span><textarea className={`${field} font-mono text-xs`} rows={Math.min(16, Math.max(5, Math.ceil(p.text.length / 95)))} value={p.text} onChange={e => editPage(selected.id, p.page, e.target.value)} /></label>)}</div>
+                <div className="flex flex-wrap items-end gap-2 border-t pt-3"><label className="text-sm">Scinder avant la page<input className={field} type="number" min={selected.start_page + 1} max={selected.end_page} value={splitPage} onChange={e => setSplitPage(e.target.value)} /></label><button type="button" className={btn} onClick={splitCandidate} disabled={selected.pages.length < 2}>Scinder</button><button type="button" className={btn} onClick={() => removeCandidate(selected.id)}>Écarter</button></div>
+                <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.review_status === "APPROVED" && selected.generatable === true} onChange={e => e.target.checked ? approveCandidate(selected.id) : changeCandidate(selected.id, {})} /> J'ai vérifié les passages source et confirmé qu'ils constituent un seul contenu autonome.</label>
+                <button type="button" className={primary} disabled={selected.review_status !== "APPROVED" || !selected.generatable || Boolean(generatingId) || !confirmed} onClick={() => void generate(selected.id)}>{generatingId === selected.id ? "Génération en cours…" : drafts[selected.id] ? "Régénérer l'article" : "4. Générer l'article"}</button>
+              </div>
+              {drafts[selected.id] && <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">4. Brouillon généré — revue obligatoire</h3>
+                <p className="text-xs text-gray-500">Statut : {drafts[selected.id].status} · Modèle : {drafts[selected.id].model} · Pages citées : {drafts[selected.id].cited_pages?.join(", ") || "aucune"}</p>
+                {drafts[selected.id].refusal_reason && <p className="text-sm text-amber-700">{drafts[selected.id].refusal_reason}</p>}
+                {(drafts[selected.id].warnings || []).map((w, i) => <p key={i} className="text-sm text-amber-700">{w}</p>)}
+                <label className="block text-sm">Titre<input className={field} value={drafts[selected.id].title} onChange={e => editDraft(selected.id, "title", e.target.value)} /></label>
+                <label className="block text-sm">Extrait<textarea className={field} rows={3} value={drafts[selected.id].excerpt} onChange={e => editDraft(selected.id, "excerpt", e.target.value)} /></label>
+                <label className="block text-sm">Article<textarea className={`${field} font-mono text-xs`} rows={20} value={drafts[selected.id].body} onChange={e => editDraft(selected.id, "body", e.target.value)} /></label>
+                <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={draftApproved.includes(selected.id)} disabled={!drafts[selected.id].body.trim() || !drafts[selected.id].title.trim()} onChange={e => setDraftApproved(prev => e.target.checked ? [...prev, selected.id] : prev.filter(id => id !== selected.id))} /> J'ai contrôlé les affirmations et les références dans le PDF original ; je valide ce brouillon.</label>
+              </div>}
+            </>}
+          </div>
+        </div>
+      </section>}
+
+      {segmentation && <section className="space-y-3 rounded-xl border p-5">
+        <h2 className="font-semibold">5. Export et import RAW</h2>
+        <p className="text-sm">{draftApproved.length} brouillon(s) validé(s). L'import BigQuery est volontairement désactivé tant que <code>pdf_import.py</code> n'accepte pas la provenance V6.</p>
+        <button type="button" className={btn} disabled={!draftApproved.length} onClick={() => downloadJson(`pdf-approved-v6-${inspection?.document_hash.slice(0, 12)}.json`, {
+          version: "6.3", document_hash: inspection?.document_hash, document_title: documentTitle, source_id: sourceId,
+          articles: draftApproved.map(id => drafts[id]).filter(Boolean),
+        })}>Exporter les articles validés JSON</button>
+        <button type="button" className={`${primary} ml-2`} disabled>Importer dans RATECARD_CONTENT_RAW — à connecter</button>
+      </section>}
     </div>
   );
 }
