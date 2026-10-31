@@ -34,7 +34,17 @@ const primary = `${button} bg-ratecard-blue text-white`;
 const field = "mt-1 w-full rounded-md border p-2 text-sm";
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
-const citedPages = (value: string) => [...value.matchAll(/\[p\.\s*(\d+)\]/gi)].map(match => Number(match[1]));
+const citedPages = (value: string): number[] => {
+  const pages: number[] = [];
+  const regex = /\[p\.\s*(\d+)\]/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(value)) !== null) {
+    pages.push(Number(match[1]));
+  }
+
+  return pages;
+};
 
 function downloadJson(filename: string, data: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
