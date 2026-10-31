@@ -1,15 +1,9 @@
+"""Discovery API — PDF Studio V7 and existing Discovery workflows."""
+
 import logging
-import os
 import requests
 
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Body,
-    File,
-    UploadFile,
-    Form,
-)
+from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form
 
 from api.discovery.models import (
     DiscoveryListOut,
@@ -23,7 +17,6 @@ from api.discovery.models import (
     LinkedInStudioStoreRequest,
     NewsletterStudioStoreRequest,
 )
-
 from core.discovery.service import (
     scan_all_sources,
     scan_source,
@@ -34,54 +27,65 @@ from core.discovery.service import (
     list_manual_discovery,
     dismiss_discovery,
 )
-
 from core.discovery.linkedin_studio import (
     parse_linkedin_activity,
     analyze_linkedin_activity,
     store_linkedin_posts,
 )
-
 from core.discovery.newsletter_studio import (
     analyze_newsletter,
     store_newsletter_items,
 )
-
-
-from core.discovery.pdf_studio import (
-    MAX_BYTES,
-    inspect_pdf,
-    map_pdf,
-)
-
-
-from core.discovery.pdf_extract import extract_pdf_batch
-from core.discovery.pdf_consolidate import consolidate
+from core.discovery.pdf_studio import MAX_BYTES
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 
 # ============================================================
-# PDF STUDIO — READ UPLOAD
+# PDF STUDIO V7
 # ============================================================
 
 async def _read_pdf_studio_upload(file: UploadFile) -> bytes:
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Un fichier .pdf est requis")
-
-    data = await file.read(MAX_BYTES + 1)
-    await file.close()
-
+    try:
+        data = await file.read(MAX_BYTES + 1)
+    finally:
+        await file.close()
     if len(data) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="PDF supérieur à 30 Mo")
-
+    if not data:
+        raise HTTPException(status_code=400, detail="PDF vide")
     return data
 
 
-# ============================================================
-# PDF STUDIO — REGISTER ORIGINAL DOCUMENT
-# ============================================================
+@router.post("/pdf-studio/segment")
+async def segment_pdf_studio(file: UploadFile = File(...)):
+    """Step 1: propose coherent article candidates and source pages."""
+    from core.discovery.pdf_segment import segment_pdf
+    data = await _read_pdf_studio_upload(file)
+    try:
+        return segment_pdf(data, file.filename or "document.pdf")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur segmentation PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur segmentation PDF Studio") from exc
+
+
+@router.post("/pdf-studio/generate")
+def generate_pdf_studio(data: dict = Body(...)):
+    """Step 2: generate a draft from one approved candidate; no DB write."""
+    from core.discovery.pdf_generate import generate_article
+    try:
+        return generate_article(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur génération PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur génération PDF Studio") from exc
+
 
 @router.post("/pdf-studio/document/register")
 async def register_pdf_studio_document(
@@ -89,31 +93,29 @@ async def register_pdf_studio_document(
     source_id: str = Form(...),
     title: str = Form(""),
 ):
-    data = await _read_pdf_studio_upload(file)
+    """Register original PDF for provenance before RAW import."""
     from core.discovery.pdf_document_store import register_pdf
+    data = await _read_pdf_studio_upload(file)
     try:
         return register_pdf(data, file.filename or "document.pdf", source_id, title or None)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
+    except Exception as exc:
         logger.exception("Erreur enregistrement PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur enregistrement du document PDF")
+        raise HTTPException(status_code=500, detail="Erreur enregistrement du document PDF") from exc
 
-
-# ============================================================
-# PDF STUDIO — IMPORT APPROVED ARTICLES
-# ============================================================
 
 @router.post("/pdf-studio/import-approved")
 def import_approved_pdf_studio(data: dict = Body(...)):
+    """Step 3: import reviewed and explicitly approved V7 articles."""
     from core.discovery.pdf_import import import_approved
     try:
         return import_approved(data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
+    except Exception as exc:
         logger.exception("Erreur import articles PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur import articles PDF Studio")
+        raise HTTPException(status_code=500, detail="Erreur import articles PDF Studio") from exc
 
 
 @router.get("/pdf-studio/article/{id_raw}")
@@ -123,188 +125,9 @@ def get_pdf_studio_article(id_raw: str):
         return get_pdf_article(id_raw)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception:
+    except Exception as exc:
         logger.exception("Erreur lecture article PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur lecture article PDF Studio")
-
-
-# ============================================================
-# PDF STUDIO — EXTRACT BATCH (NO PERSISTENCE)
-# ============================================================
-
-@router.post("/pdf-studio/extract")
-async def extract_pdf_studio(
-    file: UploadFile = File(...),
-    start_page: int = Form(...),
-):
-    data = await _read_pdf_studio_upload(file)
-    try:
-        return extract_pdf_batch(data, start_page)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur extraction PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur extraction PDF Studio")
-
-
-# ============================================================
-# PDF STUDIO — CONSOLIDATE (JSON EXTRACTION, NO DB WRITE)
-# ============================================================
-
-@router.post("/pdf-studio/consolidate")
-def consolidate_pdf_studio(data: dict = Body(...)):
-    if not isinstance(data.get("units"), list) or not data["units"]:
-        raise HTTPException(status_code=400, detail="Extraction JSON sans unités")
-    if len(data["units"]) > 5000:
-        raise HTTPException(status_code=400, detail="Trop d'unités (max 5000)")
-    try:
-        return consolidate(data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur consolidation PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur consolidation PDF Studio")
-
-
-# ============================================================
-# PDF STUDIO — GENERATE DRAFT (NO DB WRITE)
-# ============================================================
-
-@router.post("/pdf-studio/generate")
-def generate_pdf_studio(data: dict = Body(...)):
-    from core.discovery.pdf_generate import generate_article
-    try:
-        return generate_article(data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur génération PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur génération PDF Studio")
-
-
-# ============================================================
-# PDF STUDIO — SEGMENT (NO PERSISTENCE)
-# ============================================================
-
-@router.post("/pdf-studio/segment")
-async def segment_pdf_studio(file: UploadFile = File(...)):
-    data = await _read_pdf_studio_upload(file)
-    from core.discovery.pdf_segment import segment_pdf
-    try:
-        return segment_pdf(data, file.filename or "document.pdf")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur segmentation PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur segmentation PDF Studio")
-
-# ============================================================
-# PDF STUDIO — DOCUMENT CANDIDATES (V6)
-# ============================================================
-
-@router.post("/pdf-studio/document-candidates")
-async def document_candidates_pdf_studio(
-    file: UploadFile = File(...),
-):
-    data = await _read_pdf_studio_upload(file)
-
-    from core.discovery.pdf_segment import (
-        build_document_candidates,
-    )
-
-    try:
-        return build_document_candidates(
-            data,
-            file.filename or "document.pdf",
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
-
-    except Exception:
-        logger.exception(
-            "Erreur création candidats documentaires PDF Studio"
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Erreur création candidats documentaires PDF Studio",
-        )
-
-
-# ============================================================
-# PDF STUDIO — INSPECT
-# ============================================================
-
-@router.post("/pdf-studio/inspect")
-async def inspect_pdf_studio(file: UploadFile = File(...)):
-    data = await _read_pdf_studio_upload(file)
-    try:
-        return {
-            "status": "ok",
-            **inspect_pdf(data, file.filename or "document.pdf"),
-        }
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur inspection PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur lors de l'inspection du PDF")
-
-
-# ============================================================
-# PDF STUDIO — MAP
-# ============================================================
-
-@router.post("/pdf-studio/map")
-async def map_pdf_studio(file: UploadFile = File(...)):
-    data = await _read_pdf_studio_upload(file)
-    try:
-        return {
-            "status": "ok",
-            **map_pdf(data, file.filename or "document.pdf"),
-        }
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception:
-        logger.exception("Erreur cartographie PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur lors de la cartographie du PDF")
-
-
-@router.post("/pdf-studio/editorial-candidates")
-async def editorial_candidates_pdf_studio(
-    file: UploadFile = File(...),
-    country: str | None = Form(None),
-):
-    data = await _read_pdf_studio_upload(file)
-
-    from core.discovery.pdf_segment import (
-        build_editorial_candidates,
-    )
-
-    try:
-        return build_editorial_candidates(
-            data,
-            file.filename or "document.pdf",
-            country=country,
-        )
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
-
-    except Exception:
-        logger.exception(
-            "Erreur candidats éditoriaux PDF Studio"
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Erreur candidats éditoriaux PDF Studio",
-        )
-
+        raise HTTPException(status_code=500, detail="Erreur lecture article PDF Studio") from exc
 
 
 # ============================================================
