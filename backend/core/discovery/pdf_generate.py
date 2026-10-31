@@ -1,4 +1,4 @@
-"""PDF Studio V7 — one grounded synthesis per approved editorial unit.
+"""PDF Studio V7.1 — one grounded factual dossier per approved editorial unit.
 
 No database writes. Source page numbers are 1-based.
 """
@@ -26,7 +26,7 @@ def _pages(candidate: dict) -> list[dict]:
     if not isinstance(source, list) or not source:
         raise ValueError("Le candidat ne contient aucune page source.")
     if len(source) > MAX_PAGES:
-        raise ValueError(f"Maximum {MAX_PAGES} pages par article candidat.")
+        raise ValueError(f"Maximum {MAX_PAGES} pages par fiche candidate.")
     result = []
     seen = set()
     for item in source:
@@ -59,7 +59,7 @@ def _paragraphs(text: str) -> list[str]:
 
 
 def generate_article(payload: dict) -> dict:
-    """Generate one reviewable article from a V7 candidate; never import it."""
+    """Generate one reviewable factual dossier from a V7 candidate; never import it."""
     if not isinstance(payload, dict):
         raise ValueError("Payload invalide.")
     candidate = payload.get("candidate")
@@ -76,39 +76,61 @@ def generate_article(payload: dict) -> dict:
 
     pages = _pages(candidate)
     allowed = {p["page"] for p in pages}
-    system = """Tu produis pour GetCurator UN article de synthèse en français par unité éditoriale du PDF.
-La source fournie est la seule référence factuelle. Plusieurs thèmes dans la même unité
-(par exemple un chapitre pays couvrant IA, paiements, logistique, réglementation) sont
-NORMAUX : ne refuse pas l'article pour ce motif.
+    system = """Tu prépares une FICHE DOCUMENTAIRE FACTUELLE en français destinée à alimenter
+RATECARD_CONTENT_RAW puis le pipeline d'analyse GetCurator. Tu ne rédiges PAS un article.
+Une unité documentaire cohérente = une fiche = un RAW. Plusieurs sujets dans une unité
+(pays : marché, IA, paiements, réglementation, logistique...) doivent rester dans la
+MÊME fiche, regroupés sous des rubriques thématiques.
 
-OBJECTIF : identifier les principaux enseignements, les faits et les chiffres vraiment
-significatifs. Ne reproduis pas le document intégral et ne crée pas un article par rubrique.
-Couvre les dimensions importantes, sans imposer une longueur artificielle (environ
-300 à 700 mots si la matière le permet). Un titre informatif, un extrait court et
-un corps structuré en paragraphes. Pas d'implications personnalisées : GetCurator
-les calculera plus tard.
+MISSION : extraire et organiser la matière informationnelle utile présente dans les
+pages fournies, sans la transformer en récit, sans introduction ou conclusion
+rhétorique, sans transitions de remplissage et sans interprétation stratégique.
+Cherche à préserver les faits substantiels, données chiffrées, comparaisons,
+évolutions, acteurs, dates, conditions et réserves, plutôt qu'à limiter arbitrairement
+le nombre de points. Évite les répétitions et les formulations vagues.
 
-FIABILITÉ : aucune connaissance externe, aucun chiffre inventé, aucune extrapolation.
-Respecte les réserves, les années, les prévisions et les attributions. Ne transforme
-pas les données masquées de la version Light en chiffres. Ignore les en-têtes et
-mentions répétées. Le texte PDF peut être désordonné (colonnes) : reconstitue le
-sens prudemment; si un passage est ambigu, omets-le et signale-le en warnings.
+FORMAT DU CORPS (body) : texte brut structuré, immédiatement lisible et indexable.
+Chaque rubrique commence par un intitulé sur une ligne (ex. « Marché et adoption »),
+puis une ou plusieurs lignes « - Fait précis ... [p. N] ».
+Une ligne peut couvrir un fait composite cohérent, mais pas plusieurs affirmations
+sans rapport. Ne crée que les rubriques appuyées par les pages. Ne crée pas de rubrique
+vide. La longueur suit la densité de la source : ni quota de mots ni quota de points.
 
-TRAÇABILITÉ : chaque paragraphe factuel du body se termine par au moins une
-référence de page exacte, par exemple [p. 33]. Chaque point clé porte une ou
-plusieurs références de pages. Ne cite que les pages fournies.
+CHIFFRES : conserver les valeurs significatives avec unité, population, géographie,
+période et statut (observé, prévision, objectif) lorsque ces informations figurent dans
+la source. Ne pas arrondir arbitrairement. Ne jamais compléter les données masquées,
+absentes ou illisibles de la version Light. Si une statistique est ambiguë (par exemple
+100 % d'acheteurs en ligne), ne pas la transformer en fait certain : conserver la
+qualification source si elle est claire, sinon omettre et signaler en warnings.
+
+FIDÉLITÉ : le texte source est la SEULE référence. Aucune connaissance extérieure,
+aucune causalité ou conclusion inventée, aucune extrapolation, aucune recommandation
+personnalisée. Distinguer les faits, déclarations attribuées et prévisions. Le texte
+PDF peut être désordonné (colonnes, tableaux) : n'affirmer que ce qui est reconstitué
+avec confiance. Signaler dans warnings les limites pertinentes et les pages
+nécessitant une vérification visuelle si elles contiennent des données importantes.
+
+TRAÇABILITÉ : CHAQUE ligne factuelle du body porte une ou plusieurs citations de page
+exactes [p. 32]. Chaque élément de key_points est également cité. Ne citer que les
+pages fournies. Les références servent à la vérification humaine ; elles ne prouvent
+pas à elles seules la justesse de l'extraction.
+
+CHAMPS : title = titre documentaire neutre et précis ; excerpt = description courte
+factuelle de la portée de la fiche, sans conclusions nouvelles ; key_points =
+quelques repères majeurs, facultatifs, non exhaustifs, qui ne remplacent pas le body.
+Ne pas répéter tout le body dans key_points. Le body est la source principale de faits.
 
 Retourne UNIQUEMENT un objet JSON :
 {
   "title": "...",
   "excerpt": "...",
-  "body": "...",
-  "key_points": ["Enseignement [p. 33]"],
+  "body": "Marché et adoption\n- Fait ... [p. 32]\n- Fait ... [p. 33]\n\nPaiements\n- Fait ... [p. 34]",
+  "key_points": ["Repère majeur [p. 32]"],
   "warnings": [],
   "refusal_reason": null
 }
-Refuse uniquement si les pages sont inutilisables ou si aucun enseignement fiable
-ne peut être extrait. Dans ce cas body="", key_points=[] et refusal_reason explique pourquoi.
+Refuse seulement si les pages sont inutilisables ou si aucun fait fiable ne peut être
+extrait. Dans ce cas body="", key_points=[] et refusal_reason explique pourquoi.
 """
     request = {
         "document_title": document_title,
@@ -152,21 +174,25 @@ ne peut être extrait. Dans ce cas body="", key_points=[] et refusal_reason expl
     if invalid:
         warnings.append("Citations hors du candidat : " + ", ".join(map(str, invalid)))
     if body and not _citations(body):
-        warnings.append("Le corps de l'article ne comporte aucune citation de page.")
-    missing_paragraphs = [i for i, p in enumerate(_paragraphs(body), 1) if not _citations(p)]
-    if body and missing_paragraphs:
-        warnings.append("Paragraphes sans citation : " + ", ".join(map(str, missing_paragraphs)))
+        warnings.append("La fiche ne comporte aucune citation de page.")
+    factual_lines = [(i, line.strip()) for i, line in enumerate(body.splitlines(), 1)
+                     if line.strip().startswith(("- ", "• ", "* "))]
+    missing_paragraphs = [i for i, line in factual_lines if not _citations(line)]
+    if body and not factual_lines:
+        warnings.append("La fiche ne contient aucune ligne factuelle structurée.")
+    if missing_paragraphs:
+        warnings.append("Lignes factuelles sans citation : " + ", ".join(map(str, missing_paragraphs)))
     missing_points = [i for i, p in enumerate(points, 1) if not _citations(p)]
     if points and missing_points:
         warnings.append("Points clés sans citation : " + ", ".join(map(str, missing_points)))
 
-    valid = bool(body and not refusal and not invalid and not missing_paragraphs and not missing_points)
+    valid = bool(body and not refusal and not invalid and bool(factual_lines) and not missing_paragraphs and not missing_points)
     if not valid:
         body = ""
         excerpt = ""
         points = []
         if not refusal:
-            refusal = "Citations absentes ou invalides : régénération nécessaire."
+            refusal = "Fiche non structurée ou références absentes/invalides : régénération nécessaire."
     return {
         "status": "DRAFT_REVIEW_REQUIRED" if valid else "GENERATION_REJECTED",
         "version": "7.0",
