@@ -38,11 +38,7 @@ const citedPages = (value: string): number[] => {
   const pages: number[] = [];
   const regex = /\[p\.\s*(\d+)\]/gi;
   let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(value)) !== null) {
-    pages.push(Number(match[1]));
-  }
-
+  while ((match = regex.exec(value)) !== null) pages.push(Number(match[1]));
   return pages;
 };
 
@@ -180,7 +176,7 @@ export default function PDFStudio() {
       if (draft.version !== "7.0" || draft.proposal_id !== selected.id) throw new Error("Réponse du générateur incompatible.");
       setDrafts(previous => ({ ...previous, [selected.id]: draft }));
       setApprovedDraftIds(previous => previous.filter(id => id !== selected.id));
-      setNotice(draft.status === "GENERATION_REJECTED" ? draft.refusal_reason || "Génération rejetée." : "Brouillon généré : relis-le avant validation.");
+      setNotice(draft.status === "GENERATION_REJECTED" ? draft.refusal_reason || "Génération rejetée." : "Fiche générée : vérifie les faits et les citations avant validation.");
     } catch (e) { setError(message(e)); }
     finally { setBusy(""); }
   }
@@ -196,19 +192,14 @@ export default function PDFStudio() {
     if (!draft || draft.status === "GENERATION_REJECTED") return;
     if (checked) {
       const source = new Set(draft.source_pages.map(page => page.page));
-      const all = [draft.body, ...draft.key_points].flatMap(citedPages);
+      const all = [draft.body, ...draft.key_points].reduce<number[]>((acc, value) => acc.concat(citedPages(value)), []);
+      const facts = draft.body.split("\n").map(line => line.trim()).filter(line => /^[-*•]\s/.test(line));
       if (!draft.title.trim() || !draft.excerpt.trim() || !draft.body.trim() || !citedPages(draft.body).length ||
-          draft.key_points.some(point => !citedPages(point).length) || all.some(page => !source.has(page))) {
-        setError("Titre, extrait, corps et références valides sont obligatoires."); return;
+          draft.key_points.some(point => !citedPages(point).length) || !facts.length || facts.some(line => !citedPages(line).length) || all.some(page => !source.has(page))) {
+        setError("Titre, description, lignes factuelles et références de pages valides sont obligatoires."); return;
       }
     }
-    setApprovedDraftIds(previous =>
-      checked
-        ? previous.includes(id)
-          ? previous
-          : [...previous, id]
-        : previous.filter(item => item !== id)
-    );
+    setApprovedDraftIds(previous => checked ? (previous.includes(id) ? previous : [...previous, id]) : previous.filter(item => item !== id));
     setError("");
   }
 
@@ -228,7 +219,7 @@ export default function PDFStudio() {
       const articles = approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" as const }));
       const result = await api.post("/discovery/pdf-studio/import-approved", { id_document: id, articles }) as ImportResponse;
       setImportResult(result);
-      setNotice(`${result.count} article(s) importé(s) dans RATECARD_CONTENT_RAW.`);
+      setNotice(`${result.count} fiche(s) documentaire(s) importée(s) dans RATECARD_CONTENT_RAW.`);
     } catch (e) { setError(message(e)); }
     finally { setBusy(""); }
   }
@@ -239,8 +230,8 @@ export default function PDFStudio() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
       <header>
-        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V7 — DEV</span></h1>
-        <p className="mt-1 text-sm text-gray-600">PDF → unités éditoriales → articles synthétiques → GetCurator RAW.</p>
+        <h1 className="text-2xl font-semibold">PDF Studio <span className="text-sm font-normal text-gray-500">V7.1 — DEV</span></h1>
+        <p className="mt-1 text-sm text-gray-600">PDF → unités documentaires → fiches factuelles sourcées → GetCurator RAW.</p>
       </header>
 
       {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
@@ -250,7 +241,7 @@ export default function PDFStudio() {
         <h2 className="font-semibold">1. Importer le PDF</h2>
         <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)} onChange={event => reset(event.target.files?.[0] || null)} className="block w-full text-sm" />
         {file && <p className="text-sm text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
-        <button className={primary} type="button" disabled={!file || Boolean(busy)} onClick={() => void segment()}>{busy === "segment" ? "Analyse en cours…" : "Analyser et proposer les articles"}</button>
+        <button className={primary} type="button" disabled={!file || Boolean(busy)} onClick={() => void segment()}>{busy === "segment" ? "Analyse en cours…" : "Analyser et proposer les unités"}</button>
         {segmentation && <p className="text-sm">{segmentation.document.page_count} pages · {candidates.length} candidats · {segmentation.summary.candidate_pages} pages attribuées</p>}
         {segmentation?.warnings.map((warning, index) => <p key={index} className="text-xs text-amber-700">{warning}</p>)}
       </section>
@@ -278,8 +269,8 @@ export default function PDFStudio() {
 
       {segmentation && <section className="space-y-4 rounded-xl border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="font-semibold">3. Candidats et synthèses</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {Object.keys(drafts).length} brouillons · {approvedDraftIds.length} articles validés</p></div>
-          <button className={button} type="button" onClick={() => downloadJson(`pdf-studio-v7-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document: segmentation.document, document_title: documentTitle, source_id: sourceId, candidates, drafts, approved_draft_ids: approvedDraftIds })}>Exporter le travail JSON</button>
+          <div><h2 className="font-semibold">3. Candidats et synthèses</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {Object.keys(drafts).length} brouillons · {approvedDraftIds.length} fiches validées</p></div>
+          <button className={button} type="button" onClick={() => downloadJson(`pdf-studio-v71-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document: segmentation.document, document_title: documentTitle, source_id: sourceId, candidates, drafts, approved_draft_ids: approvedDraftIds })}>Exporter le travail JSON</button>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)]">
           <aside className="space-y-2">
@@ -287,7 +278,7 @@ export default function PDFStudio() {
             <div className="max-h-[700px] space-y-1 overflow-y-auto">
               {visible.map(candidate => <button key={candidate.id} type="button" className={`w-full rounded-md border p-3 text-left text-sm ${candidate.id === selectedId ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`} onClick={() => { setSelectedId(candidate.id); setShowSource(false); }}>
                 <span className="block font-medium">{candidate.title}</span>
-                <span className="text-xs text-gray-500">p. {candidate.start_page}–{candidate.end_page} · {approvedDraftIds.includes(candidate.id) ? "Article validé" : drafts[candidate.id] ? "Brouillon" : candidate.review_status === "APPROVED" ? "Prêt à générer" : "À revoir"}</span>
+                <span className="text-xs text-gray-500">p. {candidate.start_page}–{candidate.end_page} · {approvedDraftIds.includes(candidate.id) ? "Fiche validée" : drafts[candidate.id] ? "Brouillon" : candidate.review_status === "APPROVED" ? "Prêt à générer" : "À revoir"}</span>
               </button>)}
             </div>
           </aside>
@@ -305,19 +296,19 @@ export default function PDFStudio() {
                 </div>
                 {showSource && <div className="max-h-[550px] space-y-3 overflow-y-auto">{selected.pages.map(page => <label key={page.page} className="block text-sm">Page {page.page}<textarea className={`${field} font-mono text-xs`} rows={8} disabled={!canEdit} value={page.text} onChange={event => updateCandidate(selected.id, { pages: selected.pages.map(item => item.page === page.page ? { ...item, text: event.target.value } : item) })} /></label>)}</div>}
                 <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.review_status === "APPROVED"} disabled={!canEdit || !selected.pages.some(page => page.text.trim())} onChange={event => updateCandidate(selected.id, { review_status: event.target.checked ? "APPROVED" : "NEEDS_REVIEW" })} /> J'ai vérifié le périmètre et les pages de ce candidat.</label>
-                <button className={primary} type="button" disabled={Boolean(busy) || locked || !sourceId || !documentTitle.trim() || selected.review_status !== "APPROVED"} onClick={() => void generate()}>{busy === "generate" ? "Génération…" : draft ? "Régénérer l'article" : "Générer l'article"}</button>
+                <button className={primary} type="button" disabled={Boolean(busy) || locked || !sourceId || !documentTitle.trim() || selected.review_status !== "APPROVED"} onClick={() => void generate()}>{busy === "generate" ? "Génération…" : draft ? "Régénérer la fiche" : "Générer la fiche"}</button>
               </div>
               {draft && <div className="space-y-3 rounded-lg border p-4">
-                <h3 className="font-semibold">Brouillon — revue éditoriale</h3>
+                <h3 className="font-semibold">Fiche factuelle — revue documentaire</h3>
                 <p className="text-xs text-gray-500">{draft.status} · {draft.model} · pages citées : {draft.cited_pages.join(", ") || "aucune"}</p>
                 {draft.refusal_reason && <p className="text-sm text-red-700">{draft.refusal_reason}</p>}
                 {draft.warnings.map((warning, index) => <p key={index} className="text-xs text-amber-700">{warning}</p>)}
                 {draft.status !== "GENERATION_REJECTED" && <>
                   <label className="block text-sm">Titre<input className={field} disabled={!canEdit} value={draft.title} onChange={event => editDraft(selected.id, { title: event.target.value })} /></label>
                   <label className="block text-sm">Extrait<textarea className={field} rows={3} disabled={!canEdit} value={draft.excerpt} onChange={event => editDraft(selected.id, { excerpt: event.target.value })} /></label>
-                  <label className="block text-sm">Principaux enseignements (une ligne par point)<textarea className={field} rows={6} disabled={!canEdit} value={draft.key_points.join("\n")} onChange={event => editDraft(selected.id, { key_points: event.target.value.split("\n").map(point => point.trim()).filter(Boolean) })} /></label>
-                  <label className="block text-sm">Article<textarea className={`${field} font-mono text-xs`} rows={20} disabled={!canEdit} value={draft.body} onChange={event => editDraft(selected.id, { body: event.target.value })} /></label>
-                  <label className="flex items-start gap-2 text-sm"><input type="checkbox" disabled={!canEdit} checked={approvedDraftIds.includes(selected.id)} onChange={event => validateDraft(selected.id, event.target.checked)} /> J'ai relu l'article, ses chiffres et ses références au PDF ; je valide cette version.</label>
+                  <label className="block text-sm">Repères majeurs (facultatifs, un par ligne)<textarea className={field} rows={6} disabled={!canEdit} value={draft.key_points.join("\n")} onChange={event => editDraft(selected.id, { key_points: event.target.value.split("\n").map(point => point.trim()).filter(Boolean) })} /></label>
+                  <label className="block text-sm">Faits structurés par rubrique<textarea className={`${field} font-mono text-xs`} rows={20} disabled={!canEdit} value={draft.body} onChange={event => editDraft(selected.id, { body: event.target.value })} /></label>
+                  <label className="flex items-start gap-2 text-sm"><input type="checkbox" disabled={!canEdit} checked={approvedDraftIds.includes(selected.id)} onChange={event => validateDraft(selected.id, event.target.checked)} /> J'ai vérifié les faits, chiffres et références dans le PDF original ; je valide cette fiche.</label>
                 </>}
               </div>}
             </>}
@@ -327,10 +318,10 @@ export default function PDFStudio() {
 
       {segmentation && <section className="space-y-3 rounded-xl border p-5">
         <h2 className="font-semibold">4. Importer dans GetCurator</h2>
-        <p className="text-sm">{approvedDrafts.length} article(s) approuvé(s) · import dans RATECARD_CONTENT_RAW après enregistrement du PDF original.</p>
+        <p className="text-sm">{approvedDrafts.length} fiche(s) approuvée(s) · import dans RATECARD_CONTENT_RAW après enregistrement du PDF original.</p>
         <div className="flex flex-wrap gap-2">
-          <button className={button} type="button" disabled={!approvedDrafts.length} onClick={() => downloadJson(`pdf-approved-v7-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document_hash: segmentation.document.document_hash, document_title: documentTitle, source_id: sourceId, articles: approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" })) })}>Exporter les articles validés</button>
-          <button className={primary} type="button" disabled={!approvedDrafts.length || Boolean(busy) || Boolean(importResult)} onClick={() => void importApproved()}>{busy === "import" ? "Import en cours…" : "Enregistrer le PDF et importer les articles"}</button>
+          <button className={button} type="button" disabled={!approvedDrafts.length} onClick={() => downloadJson(`pdf-approved-v71-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document_hash: segmentation.document.document_hash, document_title: documentTitle, source_id: sourceId, articles: approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" })) })}>Exporter les fiches validées</button>
+          <button className={primary} type="button" disabled={!approvedDrafts.length || Boolean(busy) || Boolean(importResult)} onClick={() => void importApproved()}>{busy === "import" ? "Import en cours…" : "Enregistrer le PDF et importer les fiches"}</button>
         </div>
         {documentId && <p className="text-xs text-gray-500">Document enregistré : {documentId}</p>}
         {importResult && <div className="space-y-1 text-sm">{importResult.articles.map(item => <p key={item.proposal_id}>{item.proposal_id} → {item.id_raw}{item.already_exists ? " (déjà importé)" : ""}</p>)}</div>}
