@@ -202,7 +202,13 @@ export default function PDFStudio() {
         setError("Titre, extrait, corps et références valides sont obligatoires."); return;
       }
     }
-    setApprovedDraftIds(previous => checked ? [...new Set([...previous, id])] : previous.filter(item => item !== id));
+    setApprovedDraftIds(previous =>
+      checked
+        ? previous.includes(id)
+          ? previous
+          : [...previous, id]
+        : previous.filter(item => item !== id)
+    );
     setError("");
   }
 
