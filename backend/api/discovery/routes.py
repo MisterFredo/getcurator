@@ -198,6 +198,41 @@ async def segment_pdf_studio(file: UploadFile = File(...)):
         logger.exception("Erreur segmentation PDF Studio")
         raise HTTPException(status_code=500, detail="Erreur segmentation PDF Studio")
 
+# ============================================================
+# PDF STUDIO — DOCUMENT CANDIDATES (V6)
+# ============================================================
+
+@router.post("/pdf-studio/document-candidates")
+async def document_candidates_pdf_studio(
+    file: UploadFile = File(...),
+):
+    data = await _read_pdf_studio_upload(file)
+
+    from core.discovery.pdf_segment import (
+        build_document_candidates,
+    )
+
+    try:
+        return build_document_candidates(
+            data,
+            file.filename or "document.pdf",
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception:
+        logger.exception(
+            "Erreur création candidats documentaires PDF Studio"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur création candidats documentaires PDF Studio",
+        )
+
 
 # ============================================================
 # PDF STUDIO — INSPECT
