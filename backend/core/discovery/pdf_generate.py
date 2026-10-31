@@ -1,10 +1,7 @@
+"""PDF Studio V7 — one grounded synthesis per approved editorial unit.
 
-"""PDF Studio V6.3 — Generate a grounded draft from an approved document candidate.
-
-No BigQuery writes.
-The source of truth is the document segment, not consolidated evidence units.
+No database writes. Source page numbers are 1-based.
 """
-
 from __future__ import annotations
 
 import json
@@ -14,289 +11,176 @@ from typing import Any
 
 from openai import OpenAI
 
-
-MODEL = os.getenv(
-    "PDF_STUDIO_GENERATE_MODEL",
-    os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini"),
-)
-
-MAX_SOURCE_CHARS = 60000
-MAX_PAGES = 30
+MODEL = os.getenv("PDF_STUDIO_GENERATE_MODEL", os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini"))
+MAX_SOURCE_CHARS = 90000
+MAX_PAGES = 40
+PAGE_REF = re.compile(r"\[p\.\s*(\d+)\]", re.I)
 
 
 def _clean(value: Any) -> str:
     return str(value or "").strip()
 
 
-def _normalize_pages(candidate: dict) -> list[dict]:
-    """Normalize page text while preserving source page numbers."""
-
-    pages = candidate.get("pages") or []
-
-    if not isinstance(pages, list) or not pages:
+def _pages(candidate: dict) -> list[dict]:
+    source = candidate.get("pages")
+    if not isinstance(source, list) or not source:
         raise ValueError("Le candidat ne contient aucune page source.")
-
-    if len(pages) > MAX_PAGES:
-        raise ValueError(
-            f"Maximum {MAX_PAGES} pages par candidat."
-        )
-
-    normalized = []
+    if len(source) > MAX_PAGES:
+        raise ValueError(f"Maximum {MAX_PAGES} pages par article candidat.")
+    result = []
     seen = set()
-
-    for item in pages:
+    for item in source:
         if not isinstance(item, dict):
             raise ValueError("Format de page invalide.")
-
         try:
             number = int(item.get("page"))
-        except (TypeError, ValueError):
-            raise ValueError("Numéro de page invalide.")
-
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Numéro de page invalide.") from exc
         if number < 1 or number in seen:
             raise ValueError("Pages invalides ou dupliquées.")
-
-        text = _clean(item.get("text"))
-
-        if text:
-            normalized.append({
-                "page": number,
-                "text": text,
-            })
-
         seen.add(number)
-
-    if not normalized:
+        text = _clean(item.get("text"))
+        if text:
+            result.append({"page": number, "text": text})
+    if not result:
         raise ValueError("Aucun texte exploitable dans le candidat.")
-
-    normalized.sort(key=lambda x: x["page"])
-
-    return normalized
-
-
-def _prepare_candidate(payload: dict) -> tuple[dict, list[dict]]:
-    """Validate the candidate before sending any source text to the model."""
-
-    candidate = payload.get("candidate")
-
-    if not isinstance(candidate, dict):
-        raise ValueError("Un candidat documentaire est obligatoire.")
-
-    if _clean(candidate.get("review_status")) != "APPROVED":
-        raise ValueError(
-            "Le candidat doit être approuvé avant génération."
-        )
-
-    if candidate.get("generatable") is not True:
-        raise ValueError(
-            "Le candidat n'est pas validé comme contenu autonome."
-        )
-
-    if not _clean(payload.get("document_title")):
-        raise ValueError("Le titre du document est obligatoire.")
-
-    if not _clean(payload.get("source_id")):
-        raise ValueError("L'identifiant de la source est obligatoire.")
-
-    if not _clean(candidate.get("title")):
-        raise ValueError("Le titre du candidat est obligatoire.")
-
-    pages = _normalize_pages(candidate)
-
-    total_chars = sum(len(p["text"]) for p in pages)
-
-    if total_chars > MAX_SOURCE_CHARS:
-        raise ValueError(
-            "Segment trop long : découpage supplémentaire nécessaire."
-        )
-
-    return candidate, pages
+    result.sort(key=lambda p: p["page"])
+    if sum(len(p["text"]) for p in result) > MAX_SOURCE_CHARS:
+        raise ValueError("Texte source trop volumineux pour une génération fiable.")
+    return result
 
 
-def _extract_cited_pages(body: str) -> list[int]:
-    """Extract explicit [p. N] references from the generated article."""
+def _citations(text: str) -> set[int]:
+    return {int(x) for x in PAGE_REF.findall(text or "")}
 
-    values = re.findall(
-        r"\[p\.\s*(\d+)\]",
-        body or "",
-        flags=re.IGNORECASE,
-    )
 
-    return sorted({int(value) for value in values})
+def _paragraphs(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
 
 
 def generate_article(payload: dict) -> dict:
-    """Generate one editable article from an approved documentary segment."""
+    """Generate one reviewable article from a V7 candidate; never import it."""
+    if not isinstance(payload, dict):
+        raise ValueError("Payload invalide.")
+    candidate = payload.get("candidate")
+    if not isinstance(candidate, dict):
+        raise ValueError("Un candidat documentaire est obligatoire.")
+    if _clean(candidate.get("review_status")) != "APPROVED":
+        raise ValueError("Le candidat doit être approuvé avant génération.")
+    if not _clean(candidate.get("title")):
+        raise ValueError("Le titre du candidat est obligatoire.")
+    document_title = _clean(payload.get("document_title"))
+    source_id = _clean(payload.get("source_id"))
+    if not document_title or not source_id:
+        raise ValueError("Titre du document et identifiant source obligatoires.")
 
-    candidate, pages = _prepare_candidate(payload)
+    pages = _pages(candidate)
+    allowed = {p["page"] for p in pages}
+    system = """Tu produis pour GetCurator UN article de synthèse en français par unité éditoriale du PDF.
+La source fournie est la seule référence factuelle. Plusieurs thèmes dans la même unité
+(par exemple un chapitre pays couvrant IA, paiements, logistique, réglementation) sont
+NORMAUX : ne refuse pas l'article pour ce motif.
 
-    allowed_pages = {p["page"] for p in pages}
+OBJECTIF : identifier les principaux enseignements, les faits et les chiffres vraiment
+significatifs. Ne reproduis pas le document intégral et ne crée pas un article par rubrique.
+Couvre les dimensions importantes, sans imposer une longueur artificielle (environ
+300 à 700 mots si la matière le permet). Un titre informatif, un extrait court et
+un corps structuré en paragraphes. Pas d'implications personnalisées : GetCurator
+les calculera plus tard.
 
-    instructions = """
-Tu es un rédacteur B2B spécialisé dans l'analyse documentaire.
+FIABILITÉ : aucune connaissance externe, aucun chiffre inventé, aucune extrapolation.
+Respecte les réserves, les années, les prévisions et les attributions. Ne transforme
+pas les données masquées de la version Light en chiffres. Ignore les en-têtes et
+mentions répétées. Le texte PDF peut être désordonné (colonnes) : reconstitue le
+sens prudemment; si un passage est ambigu, omets-le et signale-le en warnings.
 
-Tu produis un article autonome en français à partir d'un extrait
-de document fourni par l'utilisateur.
+TRAÇABILITÉ : chaque paragraphe factuel du body se termine par au moins une
+référence de page exacte, par exemple [p. 33]. Chaque point clé porte une ou
+plusieurs références de pages. Ne cite que les pages fournies.
 
-Le texte source constitue ton unique référence factuelle.
-
-OBJECTIF
-Transformer un segment documentaire cohérent en article informatif,
-fidèle au document original et directement exploitable dans GetCurator.
-
-RÈGLES DE FIDÉLITÉ
-- N'utilise aucune connaissance extérieure.
-- N'invente aucun chiffre, aucune entreprise, aucune déclaration.
-- Ne crée aucune relation causale absente du texte source.
-- Préserve les nuances, réserves et limites des auteurs.
-- Ne présente jamais une prévision comme un résultat observé.
-- N'invente aucune donnée masquée ou absente de la version source.
-- N'attribue pas à un pays une donnée concernant une autre zone.
-- Ignore les en-têtes, pieds de page et mentions répétitives.
-
-PÉRIMÈTRE
-- Respecte le sujet et le périmètre du candidat.
-- Ne fusionne pas artificiellement des sujets indépendants.
-- Si le segment contient plusieurs sujets autonomes, refuse
-  de produire un article unique et explique pourquoi.
-- Ne complète pas un texte incomplet par des suppositions.
-
-RÉDACTION
-- Langue : français.
-- Titre précis, informatif et non promotionnel.
-- Extrait de deux phrases maximum.
-- Corps structuré en paragraphes lisibles.
-- Longueur indicative : 300 à 650 mots, uniquement si la
-  matière documentaire est suffisante.
-- Ne produis pas de remplissage pour atteindre cette longueur.
-- Ne formule pas d'implications stratégiques personnalisées :
-  elles relèvent de l'Expertise Engine de GetCurator.
-
-CITATIONS
-- Chaque paragraphe factuel doit contenir au moins une référence
-  à la page source, au format exact [p. 32].
-- Cite uniquement des pages présentes dans le segment.
-- Ne prétends pas avoir vérifié des informations hors du document.
-
-SORTIE
-Retourne exclusivement un objet JSON valide avec :
+Retourne UNIQUEMENT un objet JSON :
 {
-  "title": "Titre",
-  "excerpt": "Résumé court",
-  "body": "Article avec références de pages",
+  "title": "...",
+  "excerpt": "...",
+  "body": "...",
+  "key_points": ["Enseignement [p. 33]"],
   "warnings": [],
   "refusal_reason": null
 }
-
-Si le segment ne permet pas un article cohérent :
-- body doit être une chaîne vide.
-- refusal_reason doit expliquer le problème.
-- warnings doit signaler les limites documentaires.
+Refuse uniquement si les pages sont inutilisables ou si aucun enseignement fiable
+ne peut être extrait. Dans ce cas body="", key_points=[] et refusal_reason explique pourquoi.
 """
-
-    request_data = {
-        "document_title": _clean(payload.get("document_title")),
+    request = {
+        "document_title": document_title,
         "candidate": {
             "id": candidate.get("id"),
             "title": candidate.get("title"),
             "kind": candidate.get("kind"),
-            "country_primary": candidate.get("country_primary"),
-            "region": candidate.get("region"),
+            "parent": candidate.get("parent"),
             "start_page": candidate.get("start_page"),
             "end_page": candidate.get("end_page"),
         },
         "source_pages": pages,
     }
-
-    response = OpenAI(
-        timeout=120,
-        max_retries=2,
-    ).chat.completions.create(
+    response = OpenAI(timeout=120, max_retries=2).chat.completions.create(
         model=MODEL,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
-            {
-                "role": "system",
-                "content": instructions,
-            },
-            {
-                "role": "user",
-                "content": json.dumps(
-                    request_data,
-                    ensure_ascii=False,
-                ),
-            },
+            {"role": "system", "content": system},
+            {"role": "user", "content": json.dumps(request, ensure_ascii=False)},
         ],
     )
-
-    result = json.loads(
-        response.choices[0].message.content or "{}"
-    )
-
+    raw = response.choices[0].message.content or "{}"
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Le modèle n'a pas retourné un JSON valide.") from exc
     if not isinstance(result, dict):
         raise ValueError("Réponse de génération invalide.")
 
     body = _clean(result.get("body"))
-    refusal_reason = _clean(result.get("refusal_reason"))
+    excerpt = _clean(result.get("excerpt"))
+    refusal = _clean(result.get("refusal_reason"))
+    points = result.get("key_points")
+    points = [_clean(p) for p in points if isinstance(p, str) and _clean(p)] if isinstance(points, list) else []
+    raw_warnings = result.get("warnings")
+    warnings = [_clean(w) for w in raw_warnings if isinstance(w, str) and _clean(w)] if isinstance(raw_warnings, list) else []
 
-    cited_pages = _extract_cited_pages(body)
+    cited = _citations(body + "\n" + "\n".join(points))
+    invalid = sorted(cited - allowed)
+    if invalid:
+        warnings.append("Citations hors du candidat : " + ", ".join(map(str, invalid)))
+    if body and not _citations(body):
+        warnings.append("Le corps de l'article ne comporte aucune citation de page.")
+    missing_paragraphs = [i for i, p in enumerate(_paragraphs(body), 1) if not _citations(p)]
+    if body and missing_paragraphs:
+        warnings.append("Paragraphes sans citation : " + ", ".join(map(str, missing_paragraphs)))
+    missing_points = [i for i, p in enumerate(points, 1) if not _citations(p)]
+    if points and missing_points:
+        warnings.append("Points clés sans citation : " + ", ".join(map(str, missing_points)))
 
-    invalid_pages = [
-        page for page in cited_pages
-        if page not in allowed_pages
-    ]
-
-    warnings = result.get("warnings")
-
-    if not isinstance(warnings, list):
-        warnings = []
-
-    warnings = [
-        _clean(warning)
-        for warning in warnings
-        if _clean(warning)
-    ]
-
-    if invalid_pages:
-        warnings.append(
-            "Références à des pages absentes du segment : "
-            + ", ".join(str(p) for p in invalid_pages)
-        )
+    valid = bool(body and not refusal and not invalid and not missing_paragraphs and not missing_points)
+    if not valid:
         body = ""
-
-    if body and not cited_pages:
-        warnings.append(
-            "Article sans références de pages : validation impossible."
-        )
-        body = ""
-
-    if refusal_reason:
-        body = ""
-
-    if not body and not refusal_reason:
-        refusal_reason = (
-            "Le segment ne permet pas de générer un article "
-            "suffisamment cohérent ou correctement sourcé."
-        )
-
+        excerpt = ""
+        points = []
+        if not refusal:
+            refusal = "Citations absentes ou invalides : régénération nécessaire."
     return {
-        "status": (
-            "DRAFT_REVIEW_REQUIRED"
-            if body
-            else "GENERATION_REJECTED"
-        ),
-        "version": "6.3",
+        "status": "DRAFT_REVIEW_REQUIRED" if valid else "GENERATION_REJECTED",
+        "version": "7.0",
         "proposal_id": candidate.get("id"),
         "document_hash": payload.get("document_hash"),
-        "document_title": _clean(payload.get("document_title")),
-        "source_id": _clean(payload.get("source_id")),
+        "document_title": document_title,
+        "source_id": source_id,
         "title": _clean(result.get("title")) or _clean(candidate.get("title")),
-        "excerpt": _clean(result.get("excerpt")) if body else "",
+        "excerpt": excerpt,
         "body": body,
-        "cited_pages": cited_pages if body else [],
+        "key_points": points,
+        "cited_pages": sorted(cited) if valid else [],
         "warnings": warnings,
-        "refusal_reason": refusal_reason or None,
+        "refusal_reason": refusal or None,
         "source_pages": pages,
         "model": MODEL,
     }
