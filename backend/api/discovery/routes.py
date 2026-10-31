@@ -272,6 +272,41 @@ async def map_pdf_studio(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Erreur lors de la cartographie du PDF")
 
 
+@router.post("/pdf-studio/editorial-candidates")
+async def editorial_candidates_pdf_studio(
+    file: UploadFile = File(...),
+    country: str | None = Form(None),
+):
+    data = await _read_pdf_studio_upload(file)
+
+    from core.discovery.pdf_segment import (
+        build_editorial_candidates,
+    )
+
+    try:
+        return build_editorial_candidates(
+            data,
+            file.filename or "document.pdf",
+            country=country,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception:
+        logger.exception(
+            "Erreur candidats éditoriaux PDF Studio"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur candidats éditoriaux PDF Studio",
+        )
+
+
+
 # ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
