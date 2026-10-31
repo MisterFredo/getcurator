@@ -269,8 +269,8 @@ export default function PDFStudio() {
 
       {segmentation && <section className="space-y-4 rounded-xl border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="font-semibold">3. Candidats et synthèses</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {Object.keys(drafts).length} brouillons · {approvedDraftIds.length} fiches validées</p></div>
-          <button className={button} type="button" onClick={() => downloadJson(`pdf-studio-v71-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document: segmentation.document, document_title: documentTitle, source_id: sourceId, candidates, drafts, approved_draft_ids: approvedDraftIds })}>Exporter le travail JSON</button>
+          <div><h2 className="font-semibold">3. Candidats et extractions factuelles</h2><p className="text-sm text-gray-500">{candidates.length} candidats · {Object.keys(drafts).length} brouillons · {approvedDraftIds.length} fiches validées</p></div>
+          <button className={button} type="button" onClick={() => downloadJson(`pdf-studio-v72-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document: segmentation.document, document_title: documentTitle, source_id: sourceId, candidates, drafts, approved_draft_ids: approvedDraftIds })}>Exporter le travail JSON</button>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)]">
           <aside className="space-y-2">
@@ -306,8 +306,8 @@ export default function PDFStudio() {
                 {draft.status !== "GENERATION_REJECTED" && <>
                   <label className="block text-sm">Titre<input className={field} disabled={!canEdit} value={draft.title} onChange={event => editDraft(selected.id, { title: event.target.value })} /></label>
                   <label className="block text-sm">Extrait<textarea className={field} rows={3} disabled={!canEdit} value={draft.excerpt} onChange={event => editDraft(selected.id, { excerpt: event.target.value })} /></label>
-                  <label className="block text-sm">Repères majeurs (facultatifs, un par ligne)<textarea className={field} rows={6} disabled={!canEdit} value={draft.key_points.join("\n")} onChange={event => editDraft(selected.id, { key_points: event.target.value.split("\n").map(point => point.trim()).filter(Boolean) })} /></label>
-                  <label className="block text-sm">Faits structurés par rubrique<textarea className={`${field} font-mono text-xs`} rows={20} disabled={!canEdit} value={draft.body} onChange={event => editDraft(selected.id, { body: event.target.value })} /></label>
+                  <label className="block text-sm">Repères majeurs (non utilisés en V7.2)<textarea className={field} rows={6} disabled={!canEdit} value={draft.key_points.join("\n")} onChange={event => editDraft(selected.id, { key_points: event.target.value.split("\n").map(point => point.trim()).filter(Boolean) })} /></label>
+                  <label className="block text-sm">Extraction exhaustive en bullet points (par rubrique)<textarea className={`${field} font-mono text-xs`} rows={20} disabled={!canEdit} value={draft.body} onChange={event => editDraft(selected.id, { body: event.target.value })} /></label>
                   <label className="flex items-start gap-2 text-sm"><input type="checkbox" disabled={!canEdit} checked={approvedDraftIds.includes(selected.id)} onChange={event => validateDraft(selected.id, event.target.checked)} /> J'ai vérifié les faits, chiffres et références dans le PDF original ; je valide cette fiche.</label>
                 </>}
               </div>}
@@ -320,7 +320,7 @@ export default function PDFStudio() {
         <h2 className="font-semibold">4. Importer dans GetCurator</h2>
         <p className="text-sm">{approvedDrafts.length} fiche(s) approuvée(s) · import dans RATECARD_CONTENT_RAW après enregistrement du PDF original.</p>
         <div className="flex flex-wrap gap-2">
-          <button className={button} type="button" disabled={!approvedDrafts.length} onClick={() => downloadJson(`pdf-approved-v71-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document_hash: segmentation.document.document_hash, document_title: documentTitle, source_id: sourceId, articles: approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" })) })}>Exporter les fiches validées</button>
+          <button className={button} type="button" disabled={!approvedDrafts.length} onClick={() => downloadJson(`pdf-approved-v72-${segmentation.document.document_hash.slice(0, 12)}.json`, { version: "7.0", document_hash: segmentation.document.document_hash, document_title: documentTitle, source_id: sourceId, articles: approvedDrafts.map(draft => ({ ...draft, status: "APPROVED" })) })}>Exporter les fiches validées</button>
           <button className={primary} type="button" disabled={!approvedDrafts.length || Boolean(busy) || Boolean(importResult)} onClick={() => void importApproved()}>{busy === "import" ? "Import en cours…" : "Enregistrer le PDF et importer les fiches"}</button>
         </div>
         {documentId && <p className="text-xs text-gray-500">Document enregistré : {documentId}</p>}
