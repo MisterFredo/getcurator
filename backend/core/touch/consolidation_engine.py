@@ -1187,17 +1187,12 @@ def consolidate_touch_evaluation(
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
-                system_prompt=(
-                    TOUCH_CONSOLIDATION_SYSTEM_PROMPT
-                ),
-
+                system_prompt=TOUCH_CONSOLIDATION_SYSTEM_PROMPT,
+                profile="smart",
+                operation="touch_consolidation",
             )
 
             parsed = _extract_json_object(
