@@ -23,6 +23,27 @@ type Draft = {
   cited_pages: number[]; source_pages: Page[];
   warnings: string[]; refusal_reason?: string | null; model: string;
 };
+type EvidenceUnit = {
+  id: string; page: number; fact: string; quote: string;
+  kind?: string; geography?: string | null; period?: string | null;
+  status: "VERIFIED" | "NEEDS_REVIEW" | "REJECTED";
+};
+type ExtractionBatch = {
+  start_page: number; end_page: number; page_count: number;
+  next_page: number | null; units: Omit<EvidenceUnit, "id" | "status">[];
+  rejected_unverified?: number; warning?: string;
+};
+type TopicProposal = {
+  id: string; title: string; angle: string; editorial_rationale: string;
+  unit_ids: string[]; pages: number[]; evidence_count: number;
+  review_count: number; evidence: EvidenceUnit[];
+};
+type TopicsResponse = {
+  version: string; proposals: TopicProposal[];
+  summary: { eligible_units: number; covered_units: number; uncovered_units: number;
+    coverage_percent: number; topic_proposals: number; analysis_batches: number };
+  uncovered_evidence: EvidenceUnit[];
+};
 type RegisterResponse = { id_document?: string; document_id?: string; status?: string };
 type ImportResponse = {
   status: string; count: number;
@@ -72,6 +93,17 @@ export default function PDFStudio() {
   const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState("");
   const [showSource, setShowSource] = useState(false);
+  // V8 is an independent, read-only editorial discovery path. V7 import is untouched.
+  const [v8Units, setV8Units] = useState<EvidenceUnit[]>([]);
+  const [v8NextPage, setV8NextPage] = useState<number | null>(1);
+  const [v8PageCount, setV8PageCount] = useState<number | null>(null);
+  const [v8Rejected, setV8Rejected] = useState(0);
+  const [v8Topics, setV8Topics] = useState<TopicsResponse | null>(null);
+  const [v8Approved, setV8Approved] = useState<string[]>([]);
+  const [v8Selected, setV8Selected] = useState<string | null>(null);
+  const [v8Busy, setV8Busy] = useState(false);
+  const [v8Error, setV8Error] = useState("");
+
 
   useEffect(() => {
     let active = true;
@@ -91,6 +123,9 @@ export default function PDFStudio() {
     setFile(next); setSegmentation(null); setCandidates([]); setSelectedId(null);
     setDrafts({}); setApprovedDraftIds([]); setDocumentId(""); setImportResult(null);
     setDocumentTitle(""); setError(""); setNotice(""); setFilter("");
+    setV8Units([]); setV8NextPage(1); setV8PageCount(null);
+    setV8Rejected(0); setV8Topics(null); setV8Approved([]);
+    setV8Selected(null); setV8Busy(false); setV8Error("");
   }
 
   async function segment() {
@@ -224,6 +259,57 @@ export default function PDFStudio() {
     finally { setBusy(""); }
   }
 
+  async function extractV8() {
+    if (!file || v8NextPage === null || v8Busy) return;
+    setV8Busy(true); setV8Error("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("start_page", String(v8NextPage));
+      const batch = await api.postForm("/discovery/pdf-studio/v8/extract", form) as ExtractionBatch;
+      if (batch.start_page !== v8NextPage || !Array.isArray(batch.units) ||
+          (batch.next_page !== null && batch.next_page <= v8NextPage)) {
+        throw new Error("Lot d'extraction V8 incohérent.");
+      }
+      const offset = v8Units.length;
+      const units: EvidenceUnit[] = batch.units.map((unit, index) => ({
+        ...unit, id: `U${String(offset + index + 1).padStart(5, "0")}`,
+        status: "NEEDS_REVIEW",
+      }));
+      setV8Units(previous => [...previous, ...units]);
+      setV8NextPage(batch.next_page);
+      setV8PageCount(batch.page_count);
+      setV8Rejected(previous => previous + (batch.rejected_unverified || 0));
+      setV8Topics(null); setV8Approved([]); setV8Selected(null);
+    } catch (e) { setV8Error(message(e)); }
+    finally { setV8Busy(false); }
+  }
+
+  async function discoverTopicsV8() {
+    if (!file || !v8Units.length || v8NextPage !== null || v8Busy || !documentTitle.trim()) return;
+    setV8Busy(true); setV8Error("");
+    try {
+      const result = await api.post("/discovery/pdf-studio/v8/topics", {
+        document_title: documentTitle.trim(),
+        document_hash: segmentation?.document.document_hash || null,
+        source_id: sourceId || null,
+        units: v8Units,
+      }) as TopicsResponse;
+      if (result.version !== "8.0" || !Array.isArray(result.proposals)) {
+        throw new Error("Réponse des sujets V8 invalide.");
+      }
+      setV8Topics(result); setV8Approved([]);
+      setV8Selected(result.proposals[0]?.id || null);
+    } catch (e) { setV8Error(message(e)); }
+    finally { setV8Busy(false); }
+  }
+
+  function updateEvidenceV8(id: string, status: EvidenceUnit["status"]) {
+    setV8Units(previous => previous.map(unit => unit.id === id ? { ...unit, status } : unit));
+    setV8Topics(null); setV8Approved([]);
+  }
+
+  const v8SelectedTopic = v8Topics?.proposals.find(topic => topic.id === v8Selected);
   const draft = selected ? drafts[selected.id] : undefined;
   const canEdit = !locked && !busy;
 
@@ -314,6 +400,74 @@ export default function PDFStudio() {
             </>}
           </div>
         </div>
+      </section>}
+
+      {file && <section className="space-y-4 rounded-xl border p-5">
+        <div>
+          <h2 className="font-semibold">PDF Studio V8 — découverte éditoriale</h2>
+          <p className="text-sm text-gray-600">Extraction exhaustive par lots, puis identification des sujets par Sol. Cette section n'importe rien dans GetCurator.</p>
+        </div>
+        {v8Error && <p role="alert" className="text-sm text-red-700">{v8Error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" className={primary} disabled={v8Busy || Boolean(busy) || v8NextPage === null} onClick={() => void extractV8()}>
+            {v8Busy ? "Traitement en cours…" : v8NextPage === null ? "Extraction terminée" : `Extraire les pages à partir de ${v8NextPage}`}
+          </button>
+          <span className="text-sm text-gray-600">{v8Units.length} unités · {v8Rejected} citations écartées · {v8PageCount ?? "?"} pages</span>
+        </div>
+        {v8Units.length > 0 && <>
+          <p className="text-xs text-amber-700">Les citations sont rapprochées du texte extrait, mais les chiffres et interprétations doivent être vérifiés dans le PDF.</p>
+          <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
+            {v8Units.map(unit => <div key={unit.id} className="border-b pb-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{unit.id} · p. {unit.page}</span>
+                <select aria-label={`Statut ${unit.id}`} className="rounded border p-1 text-xs" value={unit.status} disabled={v8Busy || Boolean(v8Topics)} onChange={event => updateEvidenceV8(unit.id, event.target.value as EvidenceUnit["status"])}>
+                  <option value="NEEDS_REVIEW">À vérifier</option>
+                  <option value="VERIFIED">Vérifié manuellement</option>
+                  <option value="REJECTED">Écarter</option>
+                </select>
+              </div>
+              <p>{unit.fact}</p>
+              <p className="mt-1 text-xs text-gray-500">Citation : {unit.quote}</p>
+            </div>)}
+          </div>
+        </>}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={primary} disabled={v8Busy || Boolean(busy) || v8NextPage !== null || !v8Units.some(unit => unit.status !== "REJECTED") || !documentTitle.trim()} onClick={() => void discoverTopicsV8()}>
+            {v8Busy ? "Analyse…" : "Identifier les sujets éditoriaux"}
+          </button>
+          <button type="button" className={button} disabled={!v8Units.length} onClick={() => downloadJson("pdf-studio-v8-evidence.json", { document_title: documentTitle, source_id: sourceId, units: v8Units, next_page: v8NextPage })}>Exporter les preuves</button>
+        </div>
+        {v8Topics && <div className="space-y-3 border-t pt-4">
+          <h3 className="font-semibold">{v8Topics.proposals.length} sujets proposés · couverture {v8Topics.summary.coverage_percent}% ({v8Topics.summary.covered_units}/{v8Topics.summary.eligible_units} unités)</h3>
+          <p className="text-xs text-gray-500">{v8Topics.summary.uncovered_units} unités non couvertes · {v8Topics.summary.analysis_batches} lots analysés</p>
+          <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]">
+            <div className="max-h-[550px] space-y-2 overflow-y-auto">
+              {v8Topics.proposals.map(topic => <button type="button" key={topic.id} className={`w-full rounded-md border p-3 text-left text-sm ${v8Selected === topic.id ? "border-blue-500 bg-blue-50" : ""}`} onClick={() => setV8Selected(topic.id)}>
+                <span className="block font-medium">{topic.title}</span>
+                <span className="text-xs text-gray-500">{topic.evidence_count} preuves · p. {topic.pages.join(", ")}</span>
+              </button>)}
+            </div>
+            {v8SelectedTopic && <div className="space-y-3 rounded-md border p-3 text-sm">
+              <h4 className="font-semibold">{v8SelectedTopic.title}</h4>
+              <p><strong>Angle :</strong> {v8SelectedTopic.angle}</p>
+              <p><strong>Justification :</strong> {v8SelectedTopic.editorial_rationale}</p>
+              <p className="text-amber-700">{v8SelectedTopic.review_count} preuves nécessitent une revue</p>
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {v8SelectedTopic.evidence.map(unit => <div key={unit.id} className="border-b pb-2">
+                  <span className="text-xs font-semibold">{unit.id} · p. {unit.page} · {unit.status}</span>
+                  <p>{unit.fact}</p>
+                  <p className="text-xs text-gray-500">{unit.quote}</p>
+                </div>)}
+              </div>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={v8Approved.includes(v8SelectedTopic.id)} onChange={event => setV8Approved(previous => event.target.checked ? [...previous.filter(id => id !== v8SelectedTopic.id), v8SelectedTopic.id] : previous.filter(id => id !== v8SelectedTopic.id))} /> Valider ce sujet pour la future génération</label>
+            </div>}
+          </div>
+          {v8Topics.uncovered_evidence.length > 0 && <details className="rounded-md border p-3 text-sm"><summary>Afficher les {v8Topics.uncovered_evidence.length} unités non couvertes</summary>
+            <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">{v8Topics.uncovered_evidence.map(unit => <p key={unit.id}>{unit.id} · p. {unit.page} — {unit.fact}</p>)}</div>
+          </details>}
+          <button type="button" className={button} onClick={() => downloadJson("pdf-studio-v8-topics.json", { ...v8Topics, approved_topic_ids: v8Approved })}>Exporter les sujets et validations ({v8Approved.length} approuvés)</button>
+          <p className="text-xs text-gray-500">La génération d'articles V8 et l'import RAW ne sont pas encore raccordés. Les validations sont exportables en JSON.</p>
+        </div>}
       </section>}
 
       {segmentation && <section className="space-y-3 rounded-xl border p-5">
