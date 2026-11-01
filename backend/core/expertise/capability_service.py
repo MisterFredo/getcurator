@@ -232,13 +232,14 @@ requested format.
 
 def _run_capability_prompt(
     prompt: str,
+    capability: str,
 ) -> str:
 
     return run_llm(
         prompt=prompt,
-        temperature=(
-            CAPABILITY_TEMPERATURE
-        ),
+        temperature=CAPABILITY_TEMPERATURE,
+        profile="smart",
+        operation=f"expertise_{capability.lower()}",
     )
 
 
@@ -258,7 +259,8 @@ def _execute_implications(
     ):
 
         result = _run_capability_prompt(
-            current_prompt
+            current_prompt,
+            CAPABILITY_IMPLICATIONS,
         )
 
         if not result:
@@ -328,6 +330,11 @@ def execute_capability(
         return _execute_implications(
             prompt
         )
+    
+    result = _run_capability_prompt(
+        prompt,
+        capability,
+    )
 
     # ========================================================
     # STANDARD CAPABILITY
