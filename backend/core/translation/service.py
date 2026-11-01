@@ -218,7 +218,9 @@ Return ONLY the translated text.
 """
 
         raw = run_llm(
-            prompt
+            prompt=prompt,
+            profile="basic",
+            operation="content_translation",
         )
 
         if not raw:
