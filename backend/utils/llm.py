@@ -270,7 +270,7 @@ def _log_llm_usage(
         payload["error"] = error[:500]
 
     try:
-        logger.info(
+        logger.warning(
             "LLM_USAGE %s",
             json.dumps(
                 payload,
