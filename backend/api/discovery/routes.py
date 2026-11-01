@@ -185,6 +185,39 @@ def propose_pdf_studio_topics(data: dict = Body(...)):
         ) from exc
 
 
+@router.post("/pdf-studio/v8/topics/batch")
+def propose_pdf_studio_topics_batch(data: dict = Body(...)):
+    from core.discovery.pdf_topics_large import propose_pdf_topics_batch
+
+    try:
+        return propose_pdf_topics_batch(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur lot sujets PDF Studio V8")
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur analyse lot sujets PDF Studio V8",
+        ) from exc
+
+
+@router.post("/pdf-studio/v8/topics/finalize")
+def finalize_pdf_studio_topics(data: dict = Body(...)):
+    from core.discovery.pdf_topics_large import finalize_pdf_topics_batches
+
+    try:
+        return finalize_pdf_topics_batches(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur consolidation PDF Studio V8")
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur consolidation PDF Studio V8",
+        ) from exc
+
+
+
 # ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
