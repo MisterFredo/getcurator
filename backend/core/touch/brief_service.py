@@ -955,17 +955,12 @@ def build_touch_brief(
             try:
 
                 raw_content = run_llm_json(
-
                     prompt=prompt,
-
                     model=model,
-
                     temperature=0.0,
-
-                    system_prompt=(
-                        TOUCH_BRIEF_SYSTEM_PROMPT
-                    ),
-
+                    system_prompt=TOUCH_BRIEF_SYSTEM_PROMPT,
+                    profile="smart",
+                    operation="touch_brief_generation",
                 )
 
                 parsed = _extract_json_object(
