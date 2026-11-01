@@ -249,3 +249,108 @@ def _prepare_all(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[
     if not eligible:
         raise ValueError("Aucune unité documentaire exploitable.")
     return eligible, excluded
+
+
+# ============================================================
+# Resumable discovery: one HTTP call per batch, browser checkpoints.
+# ============================================================
+
+def propose_pdf_topics_batch(data: dict[str, Any], *, model: str | None = None) -> dict[str, Any]:
+    """Analyze exactly one <=100-unit slice. Never process the whole corpus here."""
+    raw = data.get("units")
+    if not isinstance(raw, list) or not raw or len(raw) > BATCH_UNITS:
+        raise ValueError(f"Chaque lot doit contenir entre 1 et {BATCH_UNITS} unités.")
+    batch_number = data.get("batch_number")
+    if type(batch_number) is not int or batch_number < 1:
+        raise ValueError("batch_number invalide.")
+    # Normalize IDs without the global-corpus sentinel.
+    normalized = [
+        {**item, "id": _clean(item.get("id")) or f"U{(batch_number - 1)*BATCH_UNITS + i:05d}"}
+        if isinstance(item, dict) else item
+        for i, item in enumerate(raw, 1)
+    ]
+    eligible, excluded = _prepare_units({"units": normalized})
+    if not eligible:
+        return {"batch_number": batch_number, "proposals": [], "excluded_count": len(excluded)}
+    local = propose_pdf_topics({
+        "units": eligible,
+        "document_title": data.get("document_title"),
+        "document_hash": data.get("document_hash"),
+        "source_id": data.get("source_id"),
+    }, model=model)
+    proposals = [{
+        "id": f"B{batch_number:04d}{topic['id']}",
+        "title": topic["title"],
+        "angle": topic["angle"],
+        "editorial_rationale": topic["editorial_rationale"],
+        "unit_ids": topic["unit_ids"],
+    } for topic in local["proposals"]]
+    return {"batch_number": batch_number, "proposals": proposals,
+            "excluded_count": len(excluded)}
+
+
+def finalize_pdf_topics_batches(data: dict[str, Any], *, model: str | None = None) -> dict[str, Any]:
+    """Consolidate completed saved batches, checking complete batch coverage."""
+    units, excluded = _prepare_all(data)
+    by_id = {u["id"]: u for u in units}
+    batch_results = data.get("batches")
+    if not isinstance(batch_results, list):
+        raise ValueError("batches doit être une liste.")
+    expected = (len(data["units"]) + BATCH_UNITS - 1) // BATCH_UNITS
+    # Browser sends slices of original units, including rejected ones.
+    if len(batch_results) != expected:
+        raise ValueError(f"Lots incomplets : {len(batch_results)}/{expected}.")
+    seen_batches = set()
+    provisional = []
+    for result in batch_results:
+        number = result.get("batch_number")
+        if type(number) is not int or number < 1 or number > expected or number in seen_batches:
+            raise ValueError("Numéro de lot absent, invalide ou dupliqué.")
+        seen_batches.add(number)
+        for topic in result.get("proposals", []):
+            tid = topic.get("id")
+            if not isinstance(tid, str) or not tid.startswith(f"B{number:04d}"):
+                raise ValueError("Identifiant de sujet provisoire invalide.")
+            uids = topic.get("unit_ids")
+            if not isinstance(uids, list) or not uids or any(uid not in by_id for uid in uids):
+                raise ValueError(f"Preuves invalides pour {tid}.")
+            provisional.append(topic)
+    if not provisional:
+        raise ValueError("Aucun sujet provisoire à consolider.")
+    if len({t["id"] for t in provisional}) != len(provisional):
+        raise ValueError("Sujets provisoires dupliqués.")
+    groups = _merge_topics(provisional, model)
+    lookup = {t["id"]: t for t in provisional}
+    covered: set[str] = set()
+    proposals = []
+    for index, group in enumerate(groups, 1):
+        ids = list(dict.fromkeys(uid for tid in group["topic_ids"] for uid in lookup[tid]["unit_ids"]))
+        evidence = [by_id[uid] for uid in ids]
+        covered.update(ids)
+        review_count = sum(u["status"] != "VERIFIED" for u in evidence)
+        proposals.append({
+            "id": f"T{index:04d}", "title": group["title"], "angle": group["angle"],
+            "editorial_rationale": group["editorial_rationale"],
+            "unit_ids": ids, "pages": sorted({u["page"] for u in evidence}),
+            "evidence_count": len(evidence), "exact_quote_count": len(evidence) - review_count,
+            "review_count": review_count, "editorial_status": "REVIEW_REQUIRED",
+            "evidence": evidence, "content_mode": "SOURCE_CONTENT",
+            "merged_from": group["topic_ids"],
+        })
+    uncovered = [u for u in units if u["id"] not in covered]
+    return {
+        "status": "TOPICS_REVIEW_REQUIRED", "version": "8.0",
+        "document_hash": data.get("document_hash"),
+        "document_title": data.get("document_title"), "source_id": data.get("source_id"),
+        "summary": {
+            "input_units": len(data["units"]), "eligible_units": len(units),
+            "excluded_units": len(excluded), "topic_proposals": len(proposals),
+            "provisional_topics": len(provisional), "analysis_batches": expected,
+            "covered_units": len(covered), "uncovered_units": len(uncovered),
+            "coverage_percent": round(100 * len(covered) / len(units), 1),
+            "unit_statuses": dict(Counter(u["status"] for u in units)),
+        },
+        "proposals": proposals, "uncovered_evidence": uncovered,
+        "excluded_evidence": excluded,
+        "note": "Lots sauvegardés côté navigateur ; consolidation inter-lots, validation humaine requise.",
+    }
