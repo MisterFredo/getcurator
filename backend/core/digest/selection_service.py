@@ -552,17 +552,12 @@ def _select_candidate_batch(
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
-                system_prompt=(
-                    DIGEST_SELECTION_SYSTEM_PROMPT
-                ),
-
+                system_prompt=DIGEST_SELECTION_SYSTEM_PROMPT,
+                profile="basic",
+                operation="digest_selection",
             )
 
             parsed = _extract_json_object(
