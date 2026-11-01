@@ -12,7 +12,7 @@ import unicodedata
 from difflib import SequenceMatcher
 from typing import Any
 
-from openai import OpenAI
+from utils.llm import run_llm_json
 from core.discovery.pdf_studio import _load, _normalize
 
 BATCH_SIZE = 5
