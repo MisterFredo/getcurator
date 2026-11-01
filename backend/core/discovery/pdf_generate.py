@@ -9,9 +9,9 @@ import os
 import re
 from typing import Any
 
-from openai import OpenAI
+from utils.llm import run_llm_json
 
-MODEL = os.getenv("PDF_STUDIO_GENERATE_MODEL", os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini"))
+MODEL = os.getenv("PDF_STUDIO_GENERATE_MODEL") or os.getenv("PDF_STUDIO_MODEL") or None
 MAX_SOURCE_CHARS = 90000
 MAX_PAGES = 40
 PAGE_REF = re.compile(r"\[p\.\s*(\d+)\]", re.I)
@@ -59,17 +59,16 @@ def _paragraphs(text: str) -> list[str]:
 
 
 def _model_json(system: str, data: dict) -> dict:
-    response = OpenAI(timeout=120, max_retries=2).chat.completions.create(
+    raw_content = run_llm_json(
+        prompt=json.dumps(data, ensure_ascii=False),
         model=MODEL,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": json.dumps(data, ensure_ascii=False)},
-        ],
+        temperature=0.0,
+        system_prompt=system,
+        profile="smart",
+        operation="pdf_studio_page_facts",
     )
     try:
-        result = json.loads(response.choices[0].message.content or "{}")
+        result = json.loads(raw_content or "{}")
     except json.JSONDecodeError as exc:
         raise ValueError("Réponse JSON du modèle invalide.") from exc
     if not isinstance(result, dict):
@@ -206,6 +205,6 @@ def generate_article(payload: dict) -> dict:
         "warnings": warnings,
         "refusal_reason": None if valid else "Aucun fait fiable extrait des pages fournies.",
         "source_pages": pages,
-        "model": MODEL,
+        "model": MODEL or os.getenv("OPENAI_MODEL_SMART") or os.getenv("OPENAI_MODEL_DEFAULT"),
         "page_fact_counts": page_counts,
     }
