@@ -109,12 +109,15 @@ def _load_concepts_text() -> str:
 # PARSE LLM SECTIONS
 # ============================================================
 
+# ============================================================
+# PARSE LLM SECTIONS
+# ============================================================
+
 def _parse_llm_sections(
     raw: str,
-):
+) -> Dict[str, str]:
 
     sections = {
-
         "TITLE": "",
         "EXCERPT": "",
         "POINTS CLES": "",
@@ -127,7 +130,23 @@ def _parse_llm_sections(
         "ENJEU": "",
         "FRICTION": "",
         "SIGNAL": "",
+    }
 
+    # Variantes autorisées des en-têtes
+    aliases = {
+        "TITLE": "TITLE",
+        "EXCERPT": "EXCERPT",
+        "POINTS CLES": "POINTS CLES",
+        "POINTS CLES PRINCIPAUX": "POINTS CLES",
+        "CHIFFRES": "CHIFFRES",
+        "ACTEURS": "ACTEURS",
+        "CONCEPTS": "CONCEPTS",
+        "SOLUTIONS": "SOLUTIONS",
+        "TOPICS": "TOPICS",
+        "MECANIQUE": "MECANIQUE",
+        "ENJEU": "ENJEU",
+        "FRICTION": "FRICTION",
+        "SIGNAL": "SIGNAL",
     }
 
     current = None
@@ -139,24 +158,47 @@ def _parse_llm_sections(
         if not clean:
             continue
 
-        normalized = normalize_key(
-            clean
+        normalized = normalize_key(clean)
+
+        # --------------------------------------------
+        # EXACT HEADER MATCH
+        # --------------------------------------------
+
+        if normalized in aliases:
+
+            current = aliases[normalized]
+
+            continue
+
+        # --------------------------------------------
+        # INLINE HEADER: TITLE: ...
+        # --------------------------------------------
+
+        inline_match = re.match(
+            r"^([A-Za-zÀ-ÿ ]+)\s*:\s*(.+)$",
+            clean,
         )
 
-        matched = False
+        if inline_match:
 
-        for key in sections:
+            possible_header = normalize_key(
+                inline_match.group(1)
+            )
 
-            if normalized.startswith(key):
+            if possible_header in aliases:
 
-                current = key
+                current = aliases[possible_header]
 
-                matched = True
+                sections[current] += (
+                    inline_match.group(2).strip()
+                    + "\n"
+                )
 
-                break
+                continue
 
-        if matched:
-            continue
+        # --------------------------------------------
+        # CONTENT
+        # --------------------------------------------
 
         if current:
 
@@ -165,7 +207,6 @@ def _parse_llm_sections(
             )
 
     return sections
-
 # ============================================================
 # PARSE LIST
 # ============================================================
