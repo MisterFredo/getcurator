@@ -304,6 +304,10 @@ def generate_summary(
         operation="content_analysis",
     )
 
+    print("========== CONTENT ANALYSIS RAW START ==========")
+    print(raw)
+    print("========== CONTENT ANALYSIS RAW END ==========")
+
     if not raw:
         raise ValueError(
             "Réponse LLM vide"
