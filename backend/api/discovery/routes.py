@@ -131,6 +131,35 @@ def get_pdf_studio_article(id_raw: str):
 
 
 # ============================================================
+# PDF STUDIO V8 — EVIDENCE EXTRACTION (NO DB WRITE)
+# ============================================================
+
+@router.post("/pdf-studio/v8/extract")
+async def extract_pdf_studio_v8(
+    file: UploadFile = File(...),
+    start_page: int = Form(1),
+):
+    """Extract auditable evidence from one five-page batch.
+
+    Call repeatedly with next_page until it is null. Editorial topic
+    discovery and RAW import are deliberately separate steps.
+    """
+    from core.discovery.pdf_extract import extract_pdf_batch
+
+    data = await _read_pdf_studio_upload(file)
+    try:
+        return extract_pdf_batch(data, start_page=start_page)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur extraction PDF Studio V8")
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur extraction PDF Studio V8",
+        ) from exc
+
+
+# ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
 
