@@ -511,17 +511,12 @@ def build_notebook_executive_summary(
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
-                system_prompt=(
-                    TOUCH_NOTEBOOK_SUMMARY_SYSTEM_PROMPT
-                ),
-
+                system_prompt=TOUCH_NOTEBOOK_SUMMARY_SYSTEM_PROMPT,
+                profile="smart",
+                operation="touch_notebook_executive_summary",
             )
 
             parsed = extract_json_object(
