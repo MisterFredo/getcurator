@@ -307,9 +307,9 @@ def transform_user_profile(
         prompt=prompt,
         model=model,
         temperature=0.0,
-        system_prompt=(
-            PROFILE_TRANSFORMER_SYSTEM_PROMPT
-        ),
+        system_prompt=PROFILE_TRANSFORMER_SYSTEM_PROMPT,
+        profile="smart",
+        operation="user_profile_transformer",
     )
 
     if not raw_content:
