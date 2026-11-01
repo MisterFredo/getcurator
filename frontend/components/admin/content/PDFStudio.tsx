@@ -49,6 +49,8 @@ type TopicsResult = {
   uncovered_evidence: Evidence[];
 };
 
+const CORPUS_KEY = "pdfstudio:v8:corpus:latest";
+
 const button = "rounded-md border px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40";
 const primary = `${button} border-ratecard-blue bg-ratecard-blue text-white`;
 const field = "mt-1 w-full rounded-md border p-2 text-sm";
@@ -85,6 +87,8 @@ export default function PDFStudio() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const abortRef = useRef(false);
+  const [restored, setRestored] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -98,6 +102,83 @@ export default function PDFStudio() {
     return () => { mounted = false; abortRef.current = true; };
   }, []);
 
+  // Restore the last corpus on page reload. No PDF file is required to identify topics.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CORPUS_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (Array.isArray(data.units) && data.units.length) {
+          setUnits(data.units);
+          setTitle(String(data.document_title || ""));
+          setSourceId(String(data.source_id || ""));
+          setPageCount(typeof data.page_count === "number" ? data.page_count : null);
+          setNextPage(data.extraction_complete === true ? null : (data.next_page ?? 1));
+          if (data.topics?.proposals) setTopics(data.topics);
+          if (Array.isArray(data.approved_topic_ids)) setApprovedIds(data.approved_topic_ids);
+          setNotice(`${data.units.length} informations restaurées depuis la sauvegarde locale.`);
+        }
+      }
+    } catch (e) {
+      setError(`Impossible de restaurer la sauvegarde locale : ${errText(e)}`);
+    } finally { setRestored(true); }
+  }, []);
+
+  // Persist corpus and editorial decisions. Warn if browser storage is exhausted.
+  useEffect(() => {
+    if (!restored || !units.length) return;
+    try {
+      localStorage.setItem(CORPUS_KEY, JSON.stringify({
+        version: "8.0", document_title: title, source_id: sourceId || null,
+        page_count: pageCount, extraction_complete: nextPage === null,
+        next_page: nextPage, units, topics, approved_topic_ids: approvedIds,
+      }));
+    } catch (e) {
+      setError(`Sauvegarde automatique impossible : ${errText(e)}. Exporte immédiatement le travail en JSON.`);
+    }
+  }, [restored, title, sourceId, pageCount, nextPage, units, topics, approvedIds]);
+
+  async function importWork(selected: File | undefined) {
+    if (!selected || busy) return;
+    try {
+      const data = JSON.parse(await selected.text());
+      if (!Array.isArray(data.units) || !data.units.length ||
+          data.units.some((u: unknown) => !u || typeof u !== "object" ||
+            typeof (u as Evidence).id !== "string" ||
+            typeof (u as Evidence).fact !== "string" ||
+            typeof (u as Evidence).page !== "number")) {
+        throw new Error("Le JSON ne contient pas un corpus PDF Studio valide.");
+      }
+      const restoredUnits = data.units as Evidence[];
+      const importedTitle = String(data.document_title || selected.name.replace(/\.json$/i, ""));
+      const importedSourceId = String(data.source_id || "");
+      const importedPageCount = typeof data.page_count === "number" ? data.page_count : null;
+      const importedNextPage = data.extraction_complete === true ? null :
+        (typeof data.next_page === "number" ? data.next_page : 1);
+      // Write synchronously before updating React state, so a refresh cannot lose it.
+      localStorage.setItem(CORPUS_KEY, JSON.stringify({
+        version: "8.0", document_title: importedTitle, source_id: importedSourceId || null,
+        page_count: importedPageCount, extraction_complete: importedNextPage === null,
+        next_page: importedNextPage, units: restoredUnits,
+        topics: data.topics || null,
+        approved_topic_ids: data.approved_topic_ids || [],
+      }));
+      setFile(null);
+      setTitle(importedTitle);
+      setSourceId(importedSourceId);
+      setUnits(restoredUnits);
+      setPageCount(importedPageCount);
+      setNextPage(importedNextPage);
+      setTopics(data.topics?.proposals ? data.topics : null);
+      setApprovedIds(Array.isArray(data.approved_topic_ids) ? data.approved_topic_ids : []);
+      setSelectedTopic(data.topics?.proposals?.[0]?.id || null);
+      setTopicProgress(0);
+      setError("");
+      setNotice(`${restoredUnits.length} informations importées et sauvegardées. Tu peux identifier les sujets sans réextraire le PDF.`);
+    } catch (e) { setError(`Import impossible : ${errText(e)}`); }
+    finally { if (importRef.current) importRef.current.value = ""; }
+  }
+
   const completed = nextPage === null;
   const acceptedUnits = useMemo(() => units.filter(unit => unit.status !== "REJECTED"), [units]);
   const rejectedCount = units.length - acceptedUnits.length;
@@ -106,6 +187,7 @@ export default function PDFStudio() {
 
   function reset(next: File | null) {
     if (busy) return;
+    localStorage.removeItem(CORPUS_KEY);
     setFile(next);
     setTitle(next?.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ") || "");
     setUnits([]);
@@ -270,6 +352,13 @@ export default function PDFStudio() {
 
       <section className="space-y-4 rounded-xl border p-5">
         <h2 className="font-semibold">1. Document</h2>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+          <label className="block font-medium">Reprendre un travail existant (JSON)</label>
+          <input ref={importRef} type="file" accept=".json,application/json"
+            disabled={Boolean(busy)} onChange={event => void importWork(event.target.files?.[0])}
+            className="mt-2 block w-full text-sm" />
+          <p className="mt-1 text-xs text-gray-600">Importe le corpus récupéré de 2 641 informations. Aucun PDF ni nouvel appel Sol nécessaire pour l'import.</p>
+        </div>
         <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)}
           onChange={event => reset(event.target.files?.[0] || null)} className="block w-full text-sm" />
         {file && <p className="text-xs text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
