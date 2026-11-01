@@ -294,7 +294,7 @@ export default function PDFStudio() {
           valid.set(batch.batch_number, batch);
         }
       }
-      batches = [...valid.values()].sort((a, b) => a.batch_number - b.batch_number);
+      batches = Array.from(valid.values()).sort((a, b) => a.batch_number - b.batch_number);
       setTopicProgress(batches.length);
       for (let index = 0; index < total; index++) {
         const number = index + 1;
