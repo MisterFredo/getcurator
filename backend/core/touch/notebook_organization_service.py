@@ -862,6 +862,8 @@ def _repair_remaining_note_assignments(request, organization, notes, exclusions,
                + json.dumps(payload, ensure_ascii=False),
         model=model,
         temperature=0.0,
+        profile="basic",
+        operation="touch_notebook_assignment_repair",
         system_prompt=(
             "You repair missing assignments in a documentary notebook. "
             "Do not regenerate the existing plan, notes or events. For each "
@@ -1077,6 +1079,8 @@ def _prepare_chapter_outline(request, notes, model=None):
             model=model,
             temperature=0.0,
             system_prompt=TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
+            profile="smart",
+            operation="touch_notebook_outline",
         )
         outline = _validate_chapter_outline(extract_json_object(raw))
         print("TOUCH_NOTEBOOK_OUTLINE", {
@@ -1138,6 +1142,8 @@ def _review_single_section_navigation(
         ),
         model=model,
         temperature=0.0,
+        profile="smart",
+        operation="touch_notebook_navigation_review",
         system_prompt=(
             "You review chapter navigation, not evidence quality or coverage. "
             "Accept one section for a coherent narrow subject, even when it "
@@ -1318,7 +1324,8 @@ def _review_note_assignment_coherence(request, notes, chapters, assignments, mod
     try:
         raw = run_llm_json(prompt=json.dumps(payload, ensure_ascii=False), model=model,
                           temperature=0.0,
-                          system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT)
+                                                     system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT,
+                           profile="smart", operation="touch_notebook_assignment_review")
         result = extract_json_object(raw)
         if set(result) != {"moves"} or not isinstance(result["moves"], list):
             raise ValueError("Invalid coherence review response")
@@ -1377,6 +1384,8 @@ def _assign_note_batch(request, batch, chapters, model, max_attempts, offset):
             raw = run_llm_json(
                 prompt=prompt, model=model, temperature=0.0,
                 system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT,
+                profile="basic",
+                operation="touch_notebook_assignment",
             )
             parsed = extract_json_object(raw)
             return _validate_note_assignment_batch(parsed, batch, chapters)
@@ -1455,7 +1464,8 @@ def _organize_from_note_assignments(request, notes, certified_numbers,
     for attempt in range(max(1, max_attempts)):
         try:
             raw = run_llm_json(prompt=assessment_prompt, model=model, temperature=0.0,
-                              system_prompt=TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT)
+                                                             system_prompt=TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT,
+                               profile="smart", operation="touch_notebook_assessment")
             payload = extract_json_object(raw)
             if set(payload) != {"corpus_summary", "corpus_strengths", "corpus_limits"}:
                 raise ValueError("Invalid corpus assessment fields")
@@ -1550,6 +1560,8 @@ def organize_notebook(
                 system_prompt=(
                     TOUCH_NOTEBOOK_ORGANIZATION_SYSTEM_PROMPT
                 ),
+                profile="smart",
+                operation="touch_notebook_organization",
 
             )
 
