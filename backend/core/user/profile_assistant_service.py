@@ -275,9 +275,9 @@ def run_profile_assistant(
         prompt=prompt,
         model=model,
         temperature=0.1,
-        system_prompt=(
-            PROFILE_ASSISTANT_SYSTEM_PROMPT
-        ),
+        system_prompt=PROFILE_ASSISTANT_SYSTEM_PROMPT,
+        profile="smart",
+        operation="user_profile_assistant",
     )
 
     if not raw_content:
