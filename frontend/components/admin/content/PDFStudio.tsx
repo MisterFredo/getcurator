@@ -77,6 +77,7 @@ export default function PDFStudio() {
   const [nextPage, setNextPage] = useState<number | null>(1);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [topics, setTopics] = useState<TopicsResult | null>(null);
+  const [topicProgress, setTopicProgress] = useState(0);
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
@@ -185,21 +186,64 @@ export default function PDFStudio() {
   async function identifyTopics() {
     if (!completed || !acceptedUnits.length || !title.trim() || busy) return;
     setBusy("topics"); setError(""); setNotice("");
+    const batchSize = 100;
+    const total = Math.ceil(units.length / batchSize);
+    // Fingerprint includes ALL evidence and editorial context; changed data invalidates cache.
+    const serialized = JSON.stringify({ title: title.trim(), sourceId, units });
+    let fingerprint = 2166136261;
+    for (let i = 0; i < serialized.length; i++) {
+      fingerprint = Math.imul(fingerprint ^ serialized.charCodeAt(i), 16777619);
+    }
+    const key = `pdfstudio:v8:topics:${fingerprint >>> 0}:${serialized.length}`;
+    type SavedBatch = { batch_number: number; proposals: Array<{
+      id: string; title: string; angle: string; editorial_rationale: string; unit_ids: string[];
+    }> };
+    let batches: SavedBatch[] = [];
     try {
-      const result = await api.post("/discovery/pdf-studio/v8/topics", {
-        document_title: title.trim(),
-        source_id: sourceId || null,
-        units,
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored) as { batches?: SavedBatch[] };
+        if (Array.isArray(parsed.batches)) batches = parsed.batches;
+      }
+      const valid = new Map<number, SavedBatch>();
+      for (const batch of batches) {
+        if (Number.isInteger(batch.batch_number) && batch.batch_number >= 1 &&
+            batch.batch_number <= total && Array.isArray(batch.proposals)) {
+          valid.set(batch.batch_number, batch);
+        }
+      }
+      batches = [...valid.values()].sort((a, b) => a.batch_number - b.batch_number);
+      setTopicProgress(batches.length);
+      for (let index = 0; index < total; index++) {
+        const number = index + 1;
+        if (valid.has(number)) continue;
+        const result = await api.post("/discovery/pdf-studio/v8/topics/batch", {
+          document_title: title.trim(), source_id: sourceId || null,
+          batch_number: number, units: units.slice(index * batchSize, (index + 1) * batchSize),
+        }) as SavedBatch;
+        if (result.batch_number !== number || !Array.isArray(result.proposals)) {
+          throw new Error(`Réponse invalide pour le lot ${number}.`);
+        }
+        valid.set(number, result);
+        batches = [...valid.values()].sort((a, b) => a.batch_number - b.batch_number);
+        // Checkpoint immediately after every successful batch, before next LLM call.
+        localStorage.setItem(key, JSON.stringify({ batches }));
+        setTopicProgress(batches.length);
+      }
+      setNotice(`${total} lots analysés et sauvegardés. Consolidation éditoriale en cours…`);
+      const result = await api.post("/discovery/pdf-studio/v8/topics/finalize", {
+        document_title: title.trim(), source_id: sourceId || null, units, batches,
       }) as TopicsResult;
       if (result.version !== "8.0" || !Array.isArray(result.proposals)) {
-        throw new Error("Réponse d'identification des sujets invalide.");
+        throw new Error("Réponse de consolidation invalide.");
       }
       setTopics(result);
       setApprovedIds([]);
       setSelectedTopic(result.proposals[0]?.id || null);
-      setNotice(`${result.proposals.length} sujets proposés. Vérifie les angles et leurs preuves.`);
-    } catch (e) { setError(errText(e)); }
-    finally { setBusy(""); }
+      setNotice(`${result.proposals.length} sujets proposés. Les ${total} lots restent sauvegardés dans ce navigateur.`);
+    } catch (e) {
+      setError(`${errText(e)} — ${batches.length}/${total} lots sauvegardés. Clique de nouveau pour reprendre sans recalculer ces lots.`);
+    } finally { setBusy(""); }
   }
 
   const exportData = {
@@ -299,8 +343,9 @@ export default function PDFStudio() {
         </div>
         <button type="button" className={primary} disabled={Boolean(busy) || !completed || !acceptedUnits.length || !title.trim()}
           onClick={() => void identifyTopics()}>
-          {busy === "topics" ? "Identification en cours…" : topics ? "Relancer l'identification" : "Identifier les sujets"}
+          {busy === "topics" ? `Identification : ${topicProgress}/${Math.ceil(units.length / 100)} lots…` : topics ? "Relancer l'identification" : "Identifier les sujets"}
         </button>
+        {busy === "topics" && <p className="text-sm text-gray-600">Chaque lot terminé est sauvegardé dans ce navigateur. Ne ferme pas cet onglet pendant un appel en cours.</p>}
         {topics && <>
           <p className="text-sm font-medium">{topics.proposals.length} sujets proposés · {topics.summary.coverage_percent}% de couverture ({topics.summary.covered_units}/{topics.summary.eligible_units} informations)</p>
           <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]">
