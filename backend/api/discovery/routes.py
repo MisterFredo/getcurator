@@ -160,6 +160,32 @@ async def extract_pdf_studio_v8(
 
 
 # ============================================================
+# PDF STUDIO V8 — EDITORIAL TOPIC DISCOVERY (NO DB WRITE)
+# ============================================================
+
+@router.post("/pdf-studio/v8/topics")
+def propose_pdf_studio_topics(data: dict = Body(...)):
+    """Propose evidence-grounded editorial topics from accumulated PDF units.
+
+    Expects units with stable, unique IDs across all extraction batches.
+    Returns reviewable proposals, uncovered evidence and coverage statistics.
+    The caller must split larger corpora explicitly; no evidence is discarded.
+    """
+    from core.discovery.pdf_topics import propose_pdf_topics
+
+    try:
+        return propose_pdf_topics(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur identification des sujets PDF Studio V8")
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur identification des sujets PDF Studio V8",
+        ) from exc
+
+
+# ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
 
