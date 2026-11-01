@@ -1112,8 +1112,9 @@ def preview_content_numbers(
     response = run_llm(
         prompt=prompt,
         temperature=0,
+        profile="smart",
+        operation="numbers_transformer",
     )
-
     parsed = _safe_parse_json(
         response
     )
