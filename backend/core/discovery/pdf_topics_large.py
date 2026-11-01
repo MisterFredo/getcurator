@@ -14,7 +14,7 @@ from core.discovery.pdf_topics import propose_pdf_topics, _prepare_units
 from utils.llm import run_llm_json
 
 BATCH_UNITS = 100
-MAX_MERGE_TOPICS = 180
+MAX_MERGE_TOPICS = 60
 MAX_MERGE_CHARS = 130_000
 MAX_ATTEMPTS = 2
 
@@ -35,7 +35,7 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def _merge_topics(topics: list[dict[str, Any]], model: str | None) -> list[dict[str, Any]]:
+def _merge_topics_once(topics: list[dict[str, Any]], model: str | None) -> list[dict[str, Any]]:
     if len(topics) <= 1:
         return [{"topic_ids": [t["id"]], "title": t["title"],
                  "angle": t["angle"], "editorial_rationale": t["editorial_rationale"]} for t in topics]
@@ -89,6 +89,60 @@ def _merge_topics(topics: list[dict[str, Any]], model: str | None) -> list[dict[
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             last_error = exc
     raise ValueError(f"Consolidation globale invalide : {last_error}")
+
+
+
+def _merge_topics(topics: list[dict[str, Any]], model: str | None) -> list[dict[str, Any]]:
+    """Bounded hierarchical merge, preserving every original topic ID exactly once.
+
+    Each pass merges adjacent chunks, then mixes the resulting groups by size to
+    allow topics originating in different batches to meet in later passes.
+    If no reduction occurs, stop rather than endlessly repeating model calls.
+    """
+    if len(topics) <= 1:
+        return _merge_topics_once(topics, model)
+
+    originals = {t["id"] for t in topics}
+    current = [{**t, "original_ids": [t["id"]]} for t in topics]
+    max_passes = 5
+    for level in range(max_passes):
+        if len(current) <= MAX_MERGE_TOPICS:
+            batches = [current]
+        else:
+            # Deterministic mixing between passes helps cross-batch consolidation.
+            if level:
+                current.sort(key=lambda t: (-len(t["original_ids"]), t["id"]))
+            batches = [current[i:i + MAX_MERGE_TOPICS]
+                       for i in range(0, len(current), MAX_MERGE_TOPICS)]
+
+        next_items = []
+        for batch_index, batch in enumerate(batches):
+            merged = _merge_topics_once(batch, model)
+            lookup = {t["id"]: t for t in batch}
+            for group_index, group in enumerate(merged):
+                original_ids = [oid for tid in group["topic_ids"]
+                                for oid in lookup[tid]["original_ids"]]
+                next_items.append({
+                    "id": f"M{level:02d}_{batch_index:04d}_{group_index:04d}",
+                    "title": group["title"], "angle": group["angle"],
+                    "editorial_rationale": group["editorial_rationale"],
+                    "unit_ids": list(dict.fromkeys(
+                        uid for tid in group["topic_ids"]
+                        for uid in lookup[tid]["unit_ids"])),
+                    "original_ids": original_ids,
+                })
+
+        flattened = [oid for item in next_items for oid in item["original_ids"]]
+        if len(flattened) != len(originals) or set(flattened) != originals:
+            raise ValueError("Consolidation hiérarchique : couverture des sujets incohérente")
+        if len(next_items) >= len(current) or len(next_items) <= 1:
+            current = next_items
+            break
+        current = next_items
+
+    return [{"topic_ids": item["original_ids"], "title": item["title"],
+             "angle": item["angle"], "editorial_rationale": item["editorial_rationale"]}
+            for item in current]
 
 
 def propose_pdf_topics_large(data: dict[str, Any], *, model: str | None = None) -> dict[str, Any]:
