@@ -156,29 +156,82 @@ même si elle n'est pas comparable à d'autres entreprises.
 
 --------------------------------------------------
 
-4. FIDÉLITÉ DES DONNÉES
 
-- Ne jamais inventer une valeur
-- Ne jamais inventer un acteur, un marché ou une période
-- Préserver le sens exact du KPI
-- Ne pas transformer une croissance en valeur absolue
-- Ne pas transformer un objectif en résultat réalisé
-- Ne pas transformer une borne ("plus de", "jusqu'à")
-  en valeur exacte sans le signaler dans le label
-- Conserver les unités monétaires
-- Tenir compte de l'échelle fournie
+4. FIDÉLITÉ ET NORMALISATION DES DONNÉES
 
-IMPORTANT :
-Si la valeur est exprimée en millions ou milliards,
-convertir en valeur absolue lorsque cela est possible.
+RÈGLES GÉNÉRALES
+
+- Ne jamais inventer une valeur, un acteur, un marché ou une période.
+- Préserver le sens exact de l'indicateur.
+- Ne jamais transformer une croissance en valeur absolue.
+- Ne jamais transformer un objectif en résultat réalisé.
+- Ne jamais confondre une valeur monétaire et un volume.
+- Ne jamais convertir une devise dans une autre devise.
+- Ne jamais modifier une valeur pour la rendre plus attractive.
+
+VALEURS ET ÉCHELLES
+
+Convertir les millions et milliards en valeurs absolues :
+
+- 847 millions USD → value = 847000000, unit = USD
+- 3 milliards USD → value = 3000000000, unit = USD
+- 20 millions de produits → value = 20000000, unit = OTHER
+- 50 % → value = 50, unit = PERCENT
+
+DEVISES
+
+- $ ou USD, lorsqu'ils désignent des dollars américains → USD
+- € ou EUR → EUR
+- Ne jamais déduire une devise uniquement du pays de l'acteur.
+- Si la devise n'est pas identifiable, utiliser OTHER.
+- Ne jamais confondre une valeur en dollars et un pourcentage.
+
+QUALIFICATION DES VALEURS
+
+Conserver explicitement dans le label les qualifications :
+
+- "more than" / "plus de" → borne inférieure
+- "less than" / "moins de" → borne supérieure
+- "up to" / "jusqu'à" → plafond
+- "at least" / "au moins" → minimum
+- "approximately" / "environ" → estimation
+- "target" / "objectif" → objectif, non résultat
+- "forecast" / "prévision" → prévision, non résultat
 
 Exemples :
-847 millions USD → value = 847000000, unit = USD
-3 milliards USD → value = 3000000000, unit = USD
-50 % → value = 50, unit = PERCENT
-6.87 USD → value = 6.87, unit = USD
 
-Ne jamais supposer une devise absente des données.
+"More than 80% of monetization"
+→ label = "Share of monetization from logged-in users exceeds 80%"
+→ value = 80
+→ unit = PERCENT
+
+"Shopping campaign capacity up to 20 million products"
+→ label = "Shopping campaign capacity of up to 20 million products"
+→ value = 20000000
+→ unit = OTHER
+
+"Annual revenue target of 5 billion USD"
+→ label = "Annual revenue target of 5 billion USD"
+→ value = 5000000000
+→ unit = USD
+
+La valeur numérique représente le seuil indiqué.
+Le label doit préciser lorsqu'il ne s'agit pas d'une valeur exacte.
+
+ACTEURS
+
+- Utiliser l'acteur fourni lorsqu'il est identifiable.
+- Si l'acteur fourni est "Aucun" mais qu'une entreprise
+  est explicitement nommée dans le KPI, utiliser cette entreprise.
+- Ne jamais inventer un acteur.
+
+PÉRIODES ET MARCHÉS
+
+- Conserver les périodes et marchés explicitement fournis.
+- Ne pas inventer une année lorsque seule une période
+  comme Q3 ou October est disponible.
+- Ne pas transformer "Non précisé" en période supposée.
+
 
 --------------------------------------------------
 
