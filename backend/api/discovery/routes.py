@@ -169,12 +169,12 @@ def propose_pdf_studio_topics(data: dict = Body(...)):
 
     Expects units with stable, unique IDs across all extraction batches.
     Returns reviewable proposals, uncovered evidence and coverage statistics.
-    The caller must split larger corpora explicitly; no evidence is discarded.
+    Large corpora are processed in bounded batches and globally consolidated.
     """
-    from core.discovery.pdf_topics import propose_pdf_topics
+    from core.discovery.pdf_topics_large import propose_pdf_topics_large
 
     try:
-        return propose_pdf_topics(data)
+        return propose_pdf_topics_large(data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
