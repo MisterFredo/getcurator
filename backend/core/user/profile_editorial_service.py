@@ -219,9 +219,9 @@ def generate_profile_editorial_text(
 
     result = run_llm(
         prompt=prompt,
-        temperature=(
-            PROFILE_EDITORIAL_TEMPERATURE
-        ),
+        temperature=PROFILE_EDITORIAL_TEMPERATURE,
+        profile="smart",
+        operation="profile_editorial_generation",
     )
 
     editorial_text = (
