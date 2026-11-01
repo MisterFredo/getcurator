@@ -830,9 +830,9 @@ def deduplicate_notebook_notes(
                 prompt=prompt,
                 model=model,
                 temperature=0.0,
-                system_prompt=(
-                    TOUCH_NOTEBOOK_NOTE_DEDUPLICATION_SYSTEM_PROMPT
-                ),
+                system_prompt=TOUCH_NOTEBOOK_NOTE_DEDUPLICATION_SYSTEM_PROMPT,
+                profile="smart",
+                operation="touch_notebook_note_deduplication",
             )
 
             parsed = extract_json_object(
