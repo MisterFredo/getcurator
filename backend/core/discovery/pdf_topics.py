@@ -10,7 +10,6 @@ import re
 from collections import Counter
 from typing import Any
 
-from core.discovery.pdf_topics import propose_pdf_topics, _prepare_units
 from utils.llm import run_llm_json
 
 BATCH_UNITS = 100
