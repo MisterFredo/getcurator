@@ -307,7 +307,7 @@ export default function PDFStudio() {
           throw new Error(`Réponse invalide pour le lot ${number}.`);
         }
         valid.set(number, result);
-        batches = [...valid.values()].sort((a, b) => a.batch_number - b.batch_number);
+        batches = Array.from(valid.values()).sort((a, b) => a.batch_number - b.batch_number);
         // Checkpoint immediately after every successful batch, before next LLM call.
         localStorage.setItem(key, JSON.stringify({ batches }));
         setTopicProgress(batches.length);
