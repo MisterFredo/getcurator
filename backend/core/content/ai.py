@@ -300,6 +300,8 @@ def generate_summary(
 
     raw = run_llm(
         prompt,
+        profile="smart",
+        operation="content_analysis",
     )
 
     if not raw:
@@ -427,6 +429,8 @@ TOPICS
 
     raw = run_llm(
         prompt,
+        profile="basic",
+        operation="content_topics",
     )
 
     if not raw:
