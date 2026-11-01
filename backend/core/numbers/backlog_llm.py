@@ -109,7 +109,9 @@ def process_backlog_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
         response = run_llm(
             prompt=prompt,
-            temperature=0
+            temperature=0,
+            profile="basic",
+            operation="numbers_backlog",
         )
 
         # ========================================================
