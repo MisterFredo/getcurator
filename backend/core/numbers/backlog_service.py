@@ -198,9 +198,11 @@ Retourne UNIQUEMENT un JSON valide :
 
 DONNÉES :
 
-Chiffre : {row.get("chiffre")}
-Date : {row.get("date")}
-Topics : {row.get("topics")}
-Companies : {row.get("companies")}
-Solutions : {row.get("solutions")}
+KPI : {row.get("label")}
+Valeur : {row.get("value")}
+Unité : {row.get("unit")}
+Échelle : {row.get("scale")}
+Acteur : {row.get("actor")}
+Marché : {row.get("zone")}
+Période : {row.get("period")}
 """
