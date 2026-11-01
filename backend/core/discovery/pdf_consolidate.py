@@ -12,7 +12,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from typing import Any
 
-MODEL = os.getenv("PDF_STUDIO_MODEL", "gpt-4o-mini")
+MODEL = os.getenv("PDF_STUDIO_MODEL") or os.getenv("OPENAI_MODEL_SMART") or ""
 MAX_PER_CONTENT = max(1, int(os.getenv("PDF_STUDIO_V5_MAX_UNITS_PER_CONTENT", "3")))
 MAX_PAGE_GAP = max(0, int(os.getenv("PDF_STUDIO_V5_MAX_PAGE_GAP", "1")))
 
@@ -30,29 +30,32 @@ THEME_RULES = [
 ]
 
 ALIASES = {
-    "belgium":"Belgique", "ireland":"Irlande", "united kingdom":"Royaume-Uni",
-    "uk":"Royaume-Uni", "germany":"Allemagne", "netherlands":"Pays-Bas",
-    "denmark":"Danemark", "sweden":"Suède", "norway":"Norvège",
-    "poland":"Pologne", "finland":"Finlande", "austria":"Autriche",
-    "spain":"Espagne", "italy":"Italie", "romania":"Roumanie",
-    "switzerland":"Suisse", "bosnia herzegovina":"Bosnie-Herzégovine",
-    "bosnia and herzegovina":"Bosnie-Herzégovine", "croatia":"Croatie",
-    "albania":"Albanie", "hungary":"Hongrie", "slovenia":"Slovénie",
-    "slovak republic":"Slovaquie", "serbia":"Serbie", "moldova":"Moldavie",
-    "montenegro":"Monténégro", "north macedonia":"Macédoine du Nord",
-    "malta":"Malte", "eu":"UE-27", "eu 27":"UE-27",
-    "union europeenne":"UE-27", "european union":"UE-27",
-    "southern europe":"Europe du Sud", "northern europe":"Europe du Nord",
-    "eastern europe":"Europe de l'Est", "western europe":"Europe de l'Ouest",
+    "belgium": "Belgique", "ireland": "Irlande", "united kingdom": "Royaume-Uni",
+    "uk": "Royaume-Uni", "germany": "Allemagne", "netherlands": "Pays-Bas",
+    "denmark": "Danemark", "sweden": "Suède", "norway": "Norvège",
+    "poland": "Pologne", "finland": "Finlande", "austria": "Autriche",
+    "spain": "Espagne", "italy": "Italie", "romania": "Roumanie",
+    "switzerland": "Suisse", "bosnia herzegovina": "Bosnie-Herzégovine",
+    "bosnia and herzegovina": "Bosnie-Herzégovine", "croatia": "Croatie",
+    "albania": "Albanie", "hungary": "Hongrie", "slovenia": "Slovénie",
+    "slovak republic": "Slovaquie", "serbia": "Serbie", "moldova": "Moldavie",
+    "montenegro": "Monténégro", "north macedonia": "Macédoine du Nord",
+    "malta": "Malte", "eu": "UE-27", "eu 27": "UE-27",
+    "union europeenne": "UE-27", "european union": "UE-27",
+    "southern europe": "Europe du Sud", "northern europe": "Europe du Nord",
+    "eastern europe": "Europe de l'Est", "western europe": "Europe de l'Ouest",
 }
+
 
 def _norm(value: Any) -> str:
     v = unicodedata.normalize("NFKD", str(value or "").lower())
     return re.sub(r"[^a-z0-9]+", " ", "".join(c for c in v if not unicodedata.combining(c))).strip()
 
+
 def _scope(value: Any) -> str:
     raw = str(value or "Non précisé").strip()
     return ALIASES.get(_norm(raw), raw)
+
 
 def _theme(fact: str, kind: Any) -> str:
     s = _norm(fact)
@@ -63,6 +66,7 @@ def _theme(fact: str, kind: Any) -> str:
         return "REGULATION"
     return "OTHER"
 
+
 def _title(fact: str, scope: str) -> str:
     # Do not invent an angle: title is an excerpt of the actual extracted fact.
     fact = re.sub(r"\s+", " ", str(fact or "")).strip().rstrip(". ;:")
@@ -70,9 +74,11 @@ def _title(fact: str, scope: str) -> str:
         fact = fact[:152].rsplit(" ", 1)[0].rstrip(",;:") + "…"
     return fact[:1].upper() + fact[1:] if fact else f"Information sur {scope}"
 
+
 def _page(u: dict) -> int | None:
     p = u.get("page")
     return p if isinstance(p, int) and not isinstance(p, bool) and p > 0 else None
+
 
 def consolidate(data: dict[str, Any], model: str = MODEL) -> dict[str, Any]:
     if not isinstance(data, dict):
