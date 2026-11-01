@@ -86,67 +86,103 @@ def get_numbers_backlog(
     return rows
 
 
-# ============================================================
-# PROMPT
-# ============================================================
 
 def build_prompt(row: dict) -> str:
 
     return f"""
-Tu es un expert data marketing senior.
+Tu es un analyste senior spécialisé dans les données
+économiques, marketing, publicitaires et technologiques.
 
-Ta mission est de décider si un chiffre peut être intégré dans un dashboard professionnel.
+Ta mission est de sélectionner et structurer les chiffres
+factuels qui peuvent enrichir la base de connaissances
+GetCurator.
 
---------------------------------------------------
-
-OBJECTIF
-
-Ne garder QUE des KPI solides, comparables et réellement exploitables business.
-
---------------------------------------------------
-
-1. DECISION
-
-- KEEP → uniquement si le chiffre peut être utilisé directement dans un dashboard
-- IGNORE → sinon
+Ces chiffres seront utilisés pour :
+- documenter des évolutions de marché
+- analyser les performances des entreprises
+- identifier des tendances et des signaux
+- produire des rapports et des analyses
+- construire des tableaux et graphiques lorsque cela est pertinent
 
 --------------------------------------------------
 
-2. CRITÈRES KEEP (OBLIGATOIRES)
+1. OBJECTIF
 
-Le chiffre doit :
+Conserver les chiffres factuels qui apportent une
+information exploitable à une analyse professionnelle.
 
-✔ être un KPI business clair
-(revenus, part de marché, croissance, CPM, CPC, CPA, volume utilisateurs…)
-
-✔ être comparable
-(entre acteurs, périodes ou marchés)
-
-✔ être compréhensible seul
-(sans contexte externe)
-
-✔ contenir au moins un élément de contexte exploitable
-(acteur OU marché OU période)
-
-✔ les projections marché et tailles de marché sont autorisées
-si elles sont clairement quantifiées et datées
+Un chiffre n'a PAS besoin d'être directement comparable
+entre plusieurs entreprises pour être conservé.
 
 --------------------------------------------------
 
-3. IGNORE SI (STRICT)
+2. DECISION
 
-❌ métrique marketing "soft"
-❌ KPI vague ou non standardisable
-❌ événement ponctuel
-❌ plusieurs chiffres ambigus
-❌ ranges
-❌ absence de contexte exploitable
-❌ KPI non comparable
-❌ chiffre trop ancien sans valeur benchmark
+KEEP :
+- chiffre quantifié et intelligible
+- indicateur économique, financier, marketing ou business
+- évolution mesurée d'un indicateur
+- taille ou projection de marché
+- performance d'une entreprise ou d'un produit
+- résultat d'une campagne ou d'une étude
+- objectif chiffré clairement identifié
+- donnée utile pour comprendre une tendance
+
+IGNORE :
+- chiffre purement anecdotique
+- chiffre sans signification business identifiable
+- donnée trop ambiguë pour être interprétée
+- nombre utilisé uniquement comme référence ou identifiant
+- chiffre dont la valeur ou l'unité est incohérente
+- donnée impossible à contextualiser
 
 --------------------------------------------------
 
-4. STRUCTURE SI KEEP
+3. CONTEXTE
+
+Un chiffre peut être conservé si au moins un des
+éléments suivants est identifiable :
+
+- acteur
+- marché
+- période
+- indicateur clairement défini
+
+Une période manquante ne justifie pas automatiquement
+un rejet.
+
+Une donnée propre à une entreprise peut être utile,
+même si elle n'est pas comparable à d'autres entreprises.
+
+--------------------------------------------------
+
+4. FIDÉLITÉ DES DONNÉES
+
+- Ne jamais inventer une valeur
+- Ne jamais inventer un acteur, un marché ou une période
+- Préserver le sens exact du KPI
+- Ne pas transformer une croissance en valeur absolue
+- Ne pas transformer un objectif en résultat réalisé
+- Ne pas transformer une borne ("plus de", "jusqu'à")
+  en valeur exacte sans le signaler dans le label
+- Conserver les unités monétaires
+- Tenir compte de l'échelle fournie
+
+IMPORTANT :
+Si la valeur est exprimée en millions ou milliards,
+convertir en valeur absolue lorsque cela est possible.
+
+Exemples :
+847 millions USD → value = 847000000, unit = USD
+3 milliards USD → value = 3000000000, unit = USD
+50 % → value = 50, unit = PERCENT
+6.87 USD → value = 6.87, unit = USD
+
+Ne jamais supposer une devise absente des données.
+
+--------------------------------------------------
+
+5. STRUCTURE SI KEEP
 
 - decision
 - label
@@ -157,9 +193,15 @@ si elles sont clairement quantifiées et datées
 - period
 - confidence
 
+Le label doit être :
+- explicite
+- autonome
+- fidèle à la donnée originale
+- suffisamment précis pour être réutilisé
+
 --------------------------------------------------
 
-5. UNITÉS AUTORISÉES
+6. UNITÉS AUTORISÉES
 
 - PERCENT
 - EUR
@@ -168,31 +210,39 @@ si elles sont clairement quantifiées et datées
 - USERS
 - OTHER
 
---------------------------------------------------
-
-6. IMPORTANT
-
-- Si doute → IGNORE
-- Priorité à la qualité
-- Objectif ≈ 20-30% de KEEP
-- Le KPI doit être directement exploitable
+Utiliser OTHER lorsque l'unité ne correspond
+à aucune catégorie disponible.
 
 --------------------------------------------------
 
-7. FORMAT
+7. PRINCIPES DE SÉLECTION
+
+- Priorité à la pertinence analytique
+- Ne pas imposer de quota de KEEP
+- Ne pas rejeter un chiffre uniquement parce qu'il
+  est spécifique à une entreprise
+- Ne pas rejeter un KPI uniquement parce qu'il
+  n'est pas standardisé entre entreprises
+- En cas d'ambiguïté importante, choisir IGNORE
+
+--------------------------------------------------
+
+8. FORMAT
 
 Retourne UNIQUEMENT un JSON valide :
 
 {{
   "decision": "...",
   "label": "...",
-  "value": ...,
+  "value": null,
   "unit": "...",
   "actor": "...",
   "market": "...",
   "period": "...",
   "confidence": "..."
 }}
+
+Pour IGNORE, les champs non pertinents peuvent être null.
 
 --------------------------------------------------
 
