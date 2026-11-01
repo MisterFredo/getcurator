@@ -1051,17 +1051,12 @@ def continue_touch_guided_research(
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
-                system_prompt=(
-                    TOUCH_GUIDED_RESEARCH_SYSTEM_PROMPT
-                ),
-
+                system_prompt=TOUCH_GUIDED_RESEARCH_SYSTEM_PROMPT,
+                profile="smart",
+                operation="touch_guided_research",
             )
 
             parsed = _extract_json_object(
