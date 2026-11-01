@@ -604,17 +604,12 @@ def build_notebook_cross_readings(
         try:
 
             raw_content = run_llm_json(
-
                 prompt=prompt,
-
                 model=model,
-
                 temperature=0.0,
-
-                system_prompt=(
-                    TOUCH_NOTEBOOK_CROSS_READING_SYSTEM_PROMPT
-                ),
-
+                system_prompt=TOUCH_NOTEBOOK_CROSS_READING_SYSTEM_PROMPT,
+                profile="smart",
+                operation="touch_notebook_cross_reading",
             )
 
             parsed = extract_json_object(
