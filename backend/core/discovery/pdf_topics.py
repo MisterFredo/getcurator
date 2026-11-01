@@ -1,7 +1,10 @@
-"""PDF Studio V8 — document-wide editorial discovery with bounded evidence batches.
+"""PDF Studio V8 — evidence-grounded editorial topic discovery.
 
-No persistence. No evidence is silently dropped. Local topic discovery is followed
-by a global semantic merge; proposals remain subject to human review.
+Input: accumulated, reviewed or unreviewed units from PDF extraction.
+Output: auditable editorial topic proposals; no articles and no database writes.
+
+Every eligible evidence unit is either linked to at least one proposed topic or
+explicitly listed as uncovered. VERIFIED certifies a quote match, not its meaning.
 """
 from __future__ import annotations
 
@@ -12,21 +15,44 @@ from typing import Any
 
 from utils.llm import run_llm_json
 
-BATCH_UNITS = 100
-MAX_MERGE_TOPICS = 180
-MAX_MERGE_CHARS = 130_000
+MAX_UNITS = 250
+MAX_PROMPT_CHARS = 150_000
 MAX_ATTEMPTS = 2
 
-MERGE_PROMPT = """Tu consolides des PROPOSITIONS de sujets éditoriaux issues de plusieurs lots
-DU MÊME document. Les lots sont artificiels : un sujet peut traverser les lots.
-- Fusionne uniquement les sujets qui traitent réellement du même angle éditorial.
-- Ne fusionne pas deux sujets simplement parce qu'ils partagent un pays, un mot ou un secteur.
-- Ne supprime aucun sujet. Chaque ID doit apparaître UNE FOIS dans les groupes.
-- Un sujet isolé doit être conservé comme groupe à un seul membre.
-- Un titre et un angle factuels, autonomes, sans invention.
-- N'ajoute aucune référence de preuve : les unit_ids seront réunis par le code.
-Retourne UNIQUEMENT du JSON :
-{"groups":[{"topic_ids":["B0001T0001"],"title":"Titre factuel","angle":"Angle précis","editorial_rationale":"Justification"}]}
+SYSTEM_PROMPT = """Tu es responsable de l'identification des sujets éditoriaux d'un document PDF.
+Tu reçois des unités documentaires extraites, avec leurs identifiants et pages.
+
+MISSION : identifier les sujets RÉELLEMENT étayés par les unités, pas découper
+artificiellement le PDF, ni le résumer globalement.
+
+RÈGLES :
+- Propose autant de sujets distincts que le corpus le justifie, sans quota.
+- Un sujet = une question ou un fait central autonome, intelligible hors du PDF.
+- Plusieurs unités d'un même sujet peuvent provenir de pages éloignées.
+- Une unité peut soutenir plusieurs sujets, uniquement si c'est pertinent.
+- Ne regroupe pas des unités au seul motif qu'elles partagent une géographie,
+  une période, un mot-clé ou des pages voisines.
+- Ne sépare pas artificiellement un même sujet en plusieurs propositions.
+- Une seule unité substantielle peut justifier un sujet.
+- Ne fabrique aucun chiffre, aucune causalité, aucun acteur, aucun contexte.
+- Les unités NEEDS_REVIEW sont utilisables mais doivent être signalées comme
+  nécessitant une vérification humaine ; VERIFIED n'atteste que la citation.
+- Les unités trop isolées ou insuffisantes peuvent rester non attribuées.
+- Pour chaque sujet, cite UNIQUEMENT les IDs d'unités fournis.
+- Donne un titre factuel, un angle précis, et une justification de la cohérence.
+- N'écris PAS les articles et ne décide PAS de leur approbation.
+
+Retourne uniquement un objet JSON :
+{
+  "topics": [
+    {
+      "title": "Titre factuel autonome",
+      "angle": "Sujet précis et périmètre du futur contenu",
+      "editorial_rationale": "Pourquoi ces faits constituent un sujet cohérent",
+      "unit_ids": ["U00001"]
+    }
+  ]
+}
 """
 
 
@@ -34,163 +60,190 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def _merge_topics(topics: list[dict[str, Any]], model: str | None) -> list[dict[str, Any]]:
-    if len(topics) <= 1:
-        return [{"topic_ids": [t["id"]], "title": t["title"],
-                 "angle": t["angle"], "editorial_rationale": t["editorial_rationale"]} for t in topics]
-    if len(topics) > MAX_MERGE_TOPICS:
+def _prepare_units(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    raw_units = data.get("units")
+    if not isinstance(raw_units, list):
+        raise ValueError("Le champ units doit être une liste.")
+
+    eligible: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    ids: set[str] = set()
+
+    for index, raw in enumerate(raw_units, 1):
+        if not isinstance(raw, dict):
+            excluded.append({"input_index": index, "reason": "INVALID_ITEM"})
+            continue
+
+        unit_id = _clean(raw.get("id")) or f"U{index:05d}"
+        if unit_id in ids:
+            raise ValueError(f"Identifiant d'unité dupliqué : {unit_id}")
+        ids.add(unit_id)
+
+        status = _clean(raw.get("status") or "NEEDS_REVIEW").upper()
+        fact = _clean(raw.get("fact"))
+        page = raw.get("page")
+        if status == "REJECTED" or not fact or type(page) is not int or page < 1:
+            excluded.append({
+                "unit_id": unit_id,
+                "page": page,
+                "reason": "REJECTED" if status == "REJECTED" else "INVALID_EVIDENCE",
+            })
+            continue
+        if status not in {"VERIFIED", "NEEDS_REVIEW"}:
+            raise ValueError(f"Statut d'unité inconnu : {unit_id} ({status})")
+
+        eligible.append({
+            "id": unit_id,
+            "page": page,
+            "fact": fact,
+            "kind": _clean(raw.get("kind")) or "OTHER",
+            "geography": _clean(raw.get("geography")) or None,
+            "period": _clean(raw.get("period")) or None,
+            "status": status,
+            "quote": _clean(raw.get("quote")),
+        })
+
+    if not eligible:
+        raise ValueError("Aucune unité documentaire exploitable.")
+    if len(eligible) > MAX_UNITS:
         raise ValueError(
-            f"{len(topics)} sujets provisoires : limite de consolidation globale "
-            f"({MAX_MERGE_TOPICS}). Aucun sujet n'a été supprimé. "
-            "Prévoir une consolidation hiérarchique avant de continuer."
+            f"{len(eligible)} unités exploitables : limite de {MAX_UNITS} par analyse. "
+            "Traiter le document en plusieurs corpus, puis consolider les sujets."
         )
-    cards = [{"id": t["id"], "title": t["title"], "angle": t["angle"],
-              "editorial_rationale": t["editorial_rationale"],
-              "evidence_count": len(t["unit_ids"])} for t in topics]
-    prompt = json.dumps({"topics": cards}, ensure_ascii=False)
-    if len(prompt) > MAX_MERGE_CHARS:
-        raise ValueError("Sujets provisoires trop volumineux pour une consolidation globale fiable.")
-    allowed = {t["id"] for t in topics}
-    last_error: Exception | None = None
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            request = prompt if attempt == 0 else prompt + f"\nErreur précédente à corriger : {last_error}"
-            raw = run_llm_json(
-                prompt=request, model=model, temperature=0.0,
-                system_prompt=MERGE_PROMPT, profile="smart",
-                operation="pdf_studio_topic_global_merge",
-            )
-            parsed = json.loads(raw or "{}")
-            groups = parsed.get("groups")
-            if not isinstance(groups, list) or not groups:
-                raise ValueError("groups absent ou vide")
-            seen: set[str] = set()
-            clean_groups = []
-            for group in groups:
-                if not isinstance(group, dict):
-                    raise ValueError("Groupe invalide")
-                ids = group.get("topic_ids")
-                if not isinstance(ids, list) or not ids or any(not isinstance(v, str) for v in ids):
-                    raise ValueError("topic_ids invalide")
-                if len(set(ids)) != len(ids) or set(ids) - allowed or set(ids) & seen:
-                    raise ValueError("IDs de sujets inconnus ou dupliqués")
-                seen.update(ids)
-                title = _clean(group.get("title"))
-                angle = _clean(group.get("angle"))
-                rationale = _clean(group.get("editorial_rationale"))
-                if not title or not angle or not rationale:
-                    raise ValueError("Métadonnées éditoriales incomplètes")
-                clean_groups.append({"topic_ids": ids, "title": title, "angle": angle,
-                                     "editorial_rationale": rationale})
-            if seen != allowed:
-                raise ValueError(f"{len(allowed - seen)} sujets provisoires manquants")
-            return clean_groups
-        except (ValueError, TypeError, json.JSONDecodeError) as exc:
-            last_error = exc
-    raise ValueError(f"Consolidation globale invalide : {last_error}")
+    return eligible, excluded
 
 
-def propose_pdf_topics_large(data: dict[str, Any], *, model: str | None = None) -> dict[str, Any]:
-    """Process all eligible evidence; merge cross-batch topics with exact ID accounting.
+def _validate_topics(parsed: Any, units: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("topics"), list):
+        raise ValueError("Réponse invalide : topics doit être une liste.")
 
-    Input/output compatible with /pdf-studio/v8/topics. No automatic approval.
+    allowed = {unit["id"] for unit in units}
+    topics: list[dict[str, Any]] = []
+    signatures: set[frozenset[str]] = set()
+
+    for index, raw in enumerate(parsed["topics"], 1):
+        if not isinstance(raw, dict):
+            raise ValueError(f"Sujet {index} invalide.")
+        title = _clean(raw.get("title"))
+        angle = _clean(raw.get("angle"))
+        rationale = _clean(raw.get("editorial_rationale"))
+        ids = raw.get("unit_ids")
+        if not title or not angle or not rationale:
+            raise ValueError(f"Sujet {index} : titre, angle ou justification absent.")
+        if not isinstance(ids, list) or not ids or any(not isinstance(v, str) for v in ids):
+            raise ValueError(f"Sujet {index} : liste unit_ids invalide.")
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"Sujet {index} : unités répétées.")
+        unknown = set(ids) - allowed
+        if unknown:
+            raise ValueError(f"Sujet {index} : unités inconnues {sorted(unknown)}.")
+        signature = frozenset(ids)
+        if signature in signatures:
+            raise ValueError(f"Sujet {index} : même ensemble de preuves qu'un autre sujet.")
+        signatures.add(signature)
+        topics.append({
+            "id": f"T{index:04d}",
+            "title": title,
+            "angle": angle,
+            "editorial_rationale": rationale,
+            "unit_ids": ids,
+        })
+    return topics
+
+
+def propose_pdf_topics(
+    data: dict[str, Any],
+    *,
+    model: str | None = None,
+) -> dict[str, Any]:
+    """Discover editorial topics from accumulated evidence units.
+
+    Expects {units: [{id?, page, fact, status, ...}], document_hash?,
+    document_title?, source_id?}. No persistence or article generation.
     """
     if not isinstance(data, dict):
         raise ValueError("Corpus documentaire JSON invalide.")
-    # The existing validator assigns IDs to missing entries and separates rejected units.
-    units, excluded = _prepare_all(data)
-    by_id = {u["id"]: u for u in units}
-    provisional: list[dict[str, Any]] = []
-    for start in range(0, len(units), BATCH_UNITS):
-        batch = units[start:start + BATCH_UNITS]
-        local = propose_pdf_topics({
-            "units": batch,
-            "document_title": data.get("document_title"),
-            "document_hash": data.get("document_hash"),
-            "source_id": data.get("source_id"),
-        }, model=model)
-        batch_num = start // BATCH_UNITS + 1
-        for proposal in local["proposals"]:
-            provisional.append({
-                "id": f"B{batch_num:04d}{proposal['id']}",
-                "title": proposal["title"],
-                "angle": proposal["angle"],
-                "editorial_rationale": proposal["editorial_rationale"],
-                "unit_ids": proposal["unit_ids"],
-            })
-    groups = _merge_topics(provisional, model)
-    provisional_by_id = {t["id"]: t for t in provisional}
+
+    units, excluded = _prepare_units(data)
+    unit_by_id = {unit["id"]: unit for unit in units}
+    prompt_data = {
+        "document_title": _clean(data.get("document_title")),
+        "units": units,
+    }
+    prompt = json.dumps(prompt_data, ensure_ascii=False)
+    if len(prompt) > MAX_PROMPT_CHARS:
+        raise ValueError(
+            "Corpus trop volumineux pour une analyse éditoriale unique. "
+            "Fractionner explicitement le corpus sans supprimer d'unités."
+        )
+
+    last_error: Exception | None = None
+    topics: list[dict[str, Any]] | None = None
+    for attempt in range(MAX_ATTEMPTS):
+        request = prompt
+        if attempt and last_error is not None:
+            request += (
+                "\n\nLa réponse précédente était invalide. "
+                f"Corrige uniquement ce problème : {last_error}"
+            )
+        try:
+            raw = run_llm_json(
+                prompt=request,
+                model=model,
+                temperature=0.0,
+                system_prompt=SYSTEM_PROMPT,
+                profile="smart",
+                operation="pdf_studio_topic_discovery",
+            )
+            topics = _validate_topics(json.loads(raw or "{}"), units)
+            break
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            last_error = exc
+
+    if topics is None:
+        raise ValueError(f"Identification éditoriale invalide après {MAX_ATTEMPTS} essais : {last_error}")
+
     covered: set[str] = set()
-    proposals = []
-    for index, group in enumerate(groups, 1):
-        ids = list(dict.fromkeys(
-            uid for tid in group["topic_ids"] for uid in provisional_by_id[tid]["unit_ids"]
-        ))
-        evidence = [by_id[uid] for uid in ids]
-        covered.update(ids)
-        review_count = sum(u["status"] != "VERIFIED" for u in evidence)
+    proposals: list[dict[str, Any]] = []
+    for topic in topics:
+        evidence = [unit_by_id[unit_id] for unit_id in topic["unit_ids"]]
+        covered.update(topic["unit_ids"])
+        pages = sorted({unit["page"] for unit in evidence})
+        review_count = sum(unit["status"] != "VERIFIED" for unit in evidence)
         proposals.append({
-            "id": f"T{index:04d}", "title": group["title"], "angle": group["angle"],
-            "editorial_rationale": group["editorial_rationale"],
-            "unit_ids": ids, "pages": sorted({u["page"] for u in evidence}),
+            **topic,
+            "pages": pages,
             "evidence_count": len(evidence),
             "exact_quote_count": len(evidence) - review_count,
-            "review_count": review_count, "editorial_status": "REVIEW_REQUIRED",
-            "evidence": evidence, "content_mode": "SOURCE_CONTENT",
-            "merged_from": group["topic_ids"],
+            "review_count": review_count,
+            "editorial_status": "REVIEW_REQUIRED",
+            "evidence": evidence,
+            "content_mode": "SOURCE_CONTENT",
         })
-    uncovered = [u for u in units if u["id"] not in covered]
+
+    uncovered = [unit for unit in units if unit["id"] not in covered]
     return {
-        "status": "TOPICS_REVIEW_REQUIRED", "version": "8.0",
+        "status": "TOPICS_REVIEW_REQUIRED",
+        "version": "8.0",
         "document_hash": data.get("document_hash"),
         "document_title": data.get("document_title"),
         "source_id": data.get("source_id"),
         "summary": {
-            "input_units": len(data["units"]), "eligible_units": len(units),
-            "excluded_units": len(excluded), "topic_proposals": len(proposals),
-            "provisional_topics": len(provisional),
-            "analysis_batches": (len(units) + BATCH_UNITS - 1) // BATCH_UNITS,
-            "covered_units": len(covered), "uncovered_units": len(uncovered),
+            "input_units": len(data["units"]),
+            "eligible_units": len(units),
+            "excluded_units": len(excluded),
+            "topic_proposals": len(proposals),
+            "covered_units": len(covered),
+            "uncovered_units": len(uncovered),
             "coverage_percent": round(100 * len(covered) / len(units), 1),
-            "unit_statuses": dict(Counter(u["status"] for u in units)),
+            "unit_statuses": dict(Counter(unit["status"] for unit in units)),
         },
-        "proposals": proposals, "uncovered_evidence": uncovered,
+        "proposals": proposals,
+        "uncovered_evidence": uncovered,
         "excluded_evidence": excluded,
-        "note": "Consolidation inter-lots ; aucun sujet approuvé automatiquement. VERIFIED atteste uniquement la correspondance textuelle de la citation.",
+        "note": (
+            "Sujets proposés à partir des unités documentaires. "
+            "Aucun sujet n'est approuvé automatiquement ; les citations VERIFIED "
+            "n'attestent pas la validité de l'interprétation."
+        ),
     }
-
-
-def _prepare_all(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    raw = data.get("units")
-    if not isinstance(raw, list):
-        raise ValueError("Le champ units doit être une liste.")
-    if not raw:
-        raise ValueError("Aucune unité documentaire exploitable.")
-    # Validate in slices to reuse existing status/quote normalization without its
-    # 250-unit limit. Preserve global positional IDs and detect global duplicates.
-    eligible: list[dict[str, Any]] = []
-    excluded: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for start in range(0, len(raw), BATCH_UNITS):
-        normalized = []
-        for index, item in enumerate(raw[start:start + BATCH_UNITS], start + 1):
-            if isinstance(item, dict):
-                normalized.append({**item, "id": _clean(item.get("id")) or f"U{index:05d}"})
-            else:
-                normalized.append(item)
-        # _prepare_units requires at least one eligible unit. Handle all-invalid slices
-        # by using a known valid sentinel (removed after validation).
-        sentinel = {"id": "__VALIDATION_SENTINEL__", "page": 1, "fact": "Validation sentinel", "status": "VERIFIED"}
-        batch_eligible, batch_excluded = _prepare_units({"units": normalized + [sentinel]})
-        batch_eligible = [u for u in batch_eligible if u["id"] != sentinel["id"]]
-        for item in batch_eligible + batch_excluded:
-            uid = item.get("id") or item.get("unit_id")
-            if uid:
-                if uid in seen:
-                    raise ValueError(f"Identifiant d'unité dupliqué : {uid}")
-                seen.add(uid)
-        eligible.extend(batch_eligible)
-        excluded.extend(batch_excluded)
-    if not eligible:
-        raise ValueError("Aucune unité documentaire exploitable.")
-    return eligible, excluded
