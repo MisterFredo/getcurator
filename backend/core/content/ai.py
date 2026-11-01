@@ -109,9 +109,6 @@ def _load_concepts_text() -> str:
 # PARSE LLM SECTIONS
 # ============================================================
 
-# ============================================================
-# PARSE LLM SECTIONS
-# ============================================================
 
 def _parse_llm_sections(
     raw: str,
@@ -360,6 +357,21 @@ def generate_summary(
 
     sections = _parse_llm_sections(
         raw,
+    )
+    print(
+        "========== CONTENT ANALYSIS PARSED ==========",
+        flush=True,
+    )
+    
+    for key, value in sections.items():
+        print(
+            f"{key}: {len(value.strip())} caractères",
+            flush=True,
+        )
+    
+    print(
+        "========== END PARSED ==========",
+        flush=True,
     )
 
     # ========================================================
