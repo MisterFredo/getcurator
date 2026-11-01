@@ -289,7 +289,7 @@ def _generate_validated_json(
     system_prompt: str,
     response_model,
     validate,
-    model: str,
+    model: str | None,
     attempts: int,
     stage: str,
 ):
@@ -300,11 +300,13 @@ def _generate_validated_json(
         raw_content = ""
 
         try:
-            raw_content = run_llm_json(
+            rraw_content = run_llm_json(
                 prompt=prompt,
                 model=model,
                 temperature=0.0,
                 system_prompt=system_prompt,
+                profile="smart",
+                operation=f"production_{stage}",
             )
 
             if not raw_content.strip():
@@ -423,7 +425,7 @@ def generate_production_plan(
     selected_model = (
         model
         or os.getenv("PRODUCTION_LLM_MODEL")
-        or "gpt-4o"
+        or None
     )
 
     attempts = min(
@@ -458,7 +460,7 @@ def generate_production_plan(
 
     logger.info(
         "Production generation started: "
-        "production_id=%s model=%s",
+        "production_id=%s profile=smart model_override=%s",
         production_id,
         selected_model,
     )
