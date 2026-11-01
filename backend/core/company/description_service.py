@@ -174,8 +174,9 @@ def generate_company_description(
             company["NAME"],
         ),
         temperature=0.1,
-        system_prompt=
-            COMPANY_DESCRIPTION_SYSTEM_PROMPT,
+        system_prompt=COMPANY_DESCRIPTION_SYSTEM_PROMPT,
+        profile="basic",
+        operation="company_description",
     ).strip()
 
     if not description:
@@ -333,8 +334,9 @@ def generate_company_description_preview(
             company_name,
         ),
         temperature=0.1,
-        system_prompt=
-            COMPANY_DESCRIPTION_SYSTEM_PROMPT,
+        system_prompt=COMPANY_DESCRIPTION_SYSTEM_PROMPT,
+        profile="basic",
+        operation="company_description_preview",
     ).strip()
 
     return description
