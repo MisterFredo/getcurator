@@ -297,6 +297,7 @@ def _execute_implications(
 # EXECUTE CAPABILITY
 # ============================================================
 
+
 def execute_capability(
     expertise: Expertise,
     capability: str,
@@ -304,21 +305,16 @@ def execute_capability(
 ) -> str:
 
     if expertise.count == 0:
-
         return ""
 
     # ========================================================
-    # PROMPT
+    # BUILD PROMPT
     # ========================================================
 
     prompt = _build_prompt(
-
         capability=capability,
-
         expertise=expertise,
-
         context=context,
-
     )
 
     # ========================================================
@@ -326,22 +322,15 @@ def execute_capability(
     # ========================================================
 
     if capability == CAPABILITY_IMPLICATIONS:
-
-        return _execute_implications(
-            prompt
-        )
-    
-    result = _run_capability_prompt(
-        prompt,
-        capability,
-    )
+        return _execute_implications(prompt)
 
     # ========================================================
     # STANDARD CAPABILITY
     # ========================================================
 
     result = _run_capability_prompt(
-        prompt
+        prompt,
+        capability,
     )
 
     return result or ""
