@@ -164,7 +164,7 @@ export default function AdminShell({
       items: [
         {
           href: "/admin/document-library",
-          label: "Bibliothèque documentaire",
+          label: "Bibliothèque",
           icon: LibraryBig,
         },
         {
