@@ -17,7 +17,7 @@ from core.feedback.models import (
 # CONFIGURATION
 # ============================================================
 
-DIGEST_SELECTION_VERSION = "1.5"
+DIGEST_SELECTION_VERSION = "1.5.1"
 
 
 # ============================================================
@@ -663,7 +663,7 @@ current batch.
 
 Never omit a candidate.
 
-Never invent or modify a content_id.
+Never invent or modify a content_id. Each content_id is a batch-local alias such as C01, C02, or C03. Return the exact alias from the input.
 
 Never return the same content_id twice.
 
@@ -678,7 +678,7 @@ near the end of the input.
 
 For every decision:
 
-- content_id must reproduce the supplied identifier exactly;
+- content_id must reproduce the supplied batch-local alias exactly;
 - event_key must identify the underlying event;
 - priority must be SELECT or IGNORE;
 - relevance_class must be CORE, ADJACENT, OUT_OF_SCOPE or
@@ -729,7 +729,7 @@ Return only one valid JSON object with this exact structure:
 {
   "decisions": [
     {
-      "content_id": "exact supplied identifier",
+      "content_id": "C01",
       "event_key": "canonical-event-identifier",
       "priority": "SELECT",
       "relevance_class": "CORE",
@@ -741,7 +741,7 @@ Return only one valid JSON object with this exact structure:
       "matched_negative_preferences": []
     },
     {
-      "content_id": "exact supplied identifier",
+      "content_id": "C02",
       "event_key": "canonical-event-identifier",
       "priority": "IGNORE",
       "relevance_class": "ADJACENT",
@@ -753,7 +753,7 @@ Return only one valid JSON object with this exact structure:
       "matched_negative_preferences": []
     },
     {
-      "content_id": "exact supplied identifier",
+      "content_id": "C03",
       "event_key": "canonical-event-identifier",
       "priority": "IGNORE",
       "relevance_class": "EXCLUDED",
@@ -936,6 +936,9 @@ def build_digest_selection_user_prompt(
     )
 
     return (
+        "Candidate content_id values are short batch-local aliases (C01, C02, etc.). "
+        "Copy those aliases exactly; do not invent identifiers.\n\n"
+
         "Evaluate every supplied candidate "
         "against this specific user profile.\n\n"
 
