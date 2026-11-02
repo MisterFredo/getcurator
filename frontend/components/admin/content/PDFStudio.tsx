@@ -85,7 +85,6 @@ export default function PDFStudio() {
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [topics, setTopics] = useState<TopicsResult | null>(null);
   const [topicProgress, setTopicProgress] = useState(0);
-  const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
   const [busy, setBusy] = useState<"" | "source" | "extract" | "topics" | "register" | "library">("");
@@ -124,7 +123,6 @@ export default function PDFStudio() {
           setPageCount(typeof data.page_count === "number" ? data.page_count : null);
           setNextPage(data.extraction_complete === true ? null : (data.next_page ?? 1));
           if (data.topics?.proposals) setTopics(data.topics);
-          if (Array.isArray(data.approved_topic_ids)) setApprovedIds(data.approved_topic_ids);
           setNotice(`${data.units.length} informations restaurées depuis la sauvegarde locale.`);
         }
       }
@@ -140,13 +138,13 @@ export default function PDFStudio() {
       localStorage.setItem(CORPUS_KEY, JSON.stringify({
         version: "8.0", document_title: title, source_id: sourceId || null,
         page_count: pageCount, extraction_complete: nextPage === null,
-        next_page: nextPage, units, topics, approved_topic_ids: approvedIds,
+        next_page: nextPage, units, topics,
         registered_document: registeredDocument, library_imported: libraryImported,
       }));
     } catch (e) {
       setError(`Sauvegarde automatique impossible : ${errText(e)}. Exporte immédiatement le travail en JSON.`);
     }
-  }, [restored, title, sourceId, pageCount, nextPage, units, topics, approvedIds, registeredDocument, libraryImported]);
+  }, [restored, title, sourceId, pageCount, nextPage, units, topics, registeredDocument, libraryImported]);
 
   async function importWork(selected: File | undefined) {
     if (!selected || busy) return;
@@ -171,7 +169,6 @@ export default function PDFStudio() {
         page_count: importedPageCount, extraction_complete: importedNextPage === null,
         next_page: importedNextPage, units: restoredUnits,
         topics: data.topics || null,
-        approved_topic_ids: data.approved_topic_ids || [],
         registered_document: data.registered_document || null,
         library_imported: data.library_imported === true,
       }));
@@ -184,7 +181,6 @@ export default function PDFStudio() {
       setPageCount(importedPageCount);
       setNextPage(importedNextPage);
       setTopics(data.topics?.proposals ? data.topics : null);
-      setApprovedIds(Array.isArray(data.approved_topic_ids) ? data.approved_topic_ids : []);
       setSelectedTopic(data.topics?.proposals?.[0]?.id || null);
       setTopicProgress(0);
       setError("");
@@ -210,7 +206,6 @@ export default function PDFStudio() {
     setNextPage(1);
     setPageCount(null);
     setTopics(null);
-    setApprovedIds([]);
     setSelectedTopic(null);
     setShowEvidence(false);
     setError("");
@@ -280,7 +275,7 @@ export default function PDFStudio() {
 
   function updateUnit(id: string, status: Evidence["status"]) {
     setUnits(previous => previous.map(unit => unit.id === id ? { ...unit, status } : unit));
-    setTopics(null); setApprovedIds([]); setSelectedTopic(null); setLibraryImported(false);
+    setTopics(null); setSelectedTopic(null); setLibraryImported(false);
   }
 
   async function identifyTopics() {
@@ -339,8 +334,7 @@ export default function PDFStudio() {
       }
       setTopics(result);
       setLibraryImported(false);
-      setApprovedIds([]);
-      setSelectedTopic(result.proposals[0]?.id || null);
+        setSelectedTopic(result.proposals[0]?.id || null);
       setNotice(`${result.proposals.length} sujets proposés. Les ${total} lots restent sauvegardés dans ce navigateur.`);
     } catch (e) {
       setError(`${errText(e)} — ${batches.length}/${total} lots sauvegardés. Clique de nouveau pour reprendre sans recalculer ces lots.`);
@@ -403,7 +397,7 @@ export default function PDFStudio() {
         document_hash: registeredDocument.document_hash,
         document_title: title.trim(), source_id: sourceId,
         extraction_complete: completed, page_count: pageCount,
-        units, topics, approved_topic_ids: approvedIds,
+        units, topics,
       }) as LibraryImportResponse;
       if (result.status !== "IMPORTED") throw new Error("Réponse d'import inattendue.");
       setLibraryImported(true);
@@ -422,7 +416,6 @@ export default function PDFStudio() {
     page_count: pageCount,
     units,
     topics,
-    approved_topic_ids: approvedIds,
     registered_document: registeredDocument,
     library_imported: libraryImported,
     document_hash: registeredDocument?.document_hash || null,
@@ -446,10 +439,12 @@ export default function PDFStudio() {
           <input ref={importRef} type="file" accept=".json,application/json"
             disabled={Boolean(busy)} onChange={event => void importWork(event.target.files?.[0])}
             className="mt-2 block w-full text-sm" />
-          <p className="mt-1 text-xs text-gray-600">Importe le corpus récupéré de 2 641 informations. Aucun PDF ni nouvel appel Sol nécessaire pour l'import.</p>
+          <p className="mt-1 text-xs text-gray-600">Restaure un corpus précédemment exporté, sans nouvelle extraction ni appel LLM.</p>
         </div>
-        <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)}
-          onChange={event => reset(event.target.files?.[0] || null)} className="block w-full text-sm" />
+        <label className="block text-sm">Nouveau PDF à extraire
+          <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)}
+            onChange={event => reset(event.target.files?.[0] || null)} className="mt-2 block w-full text-sm" />
+        </label>
         {file && <p className="text-xs text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
         {!!units.length && !file && <label className="block text-sm">PDF original pour l'enregistrement (sans réextraire)
           <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)}
@@ -479,14 +474,6 @@ export default function PDFStudio() {
             {duplicateSource && <p className="text-sm text-amber-700">Cette source existe déjà : {duplicateSource.name}</p>}
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className={button}
-            disabled={!file || !sourceId || !title.trim() || Boolean(busy)}
-            onClick={() => void registerDocument()}>
-            {busy === "register" ? "Enregistrement…" : registeredDocument ? "Réenregistrer le PDF" : "Enregistrer le PDF original"}
-          </button>
-          {registeredDocument && <span className="text-xs text-gray-600">Document enregistré : {registeredDocument.id_document}</span>}
-        </div>
       </section>
 
       <section className="space-y-4 rounded-xl border p-5">
@@ -531,9 +518,9 @@ export default function PDFStudio() {
           <h2 className="font-semibold">3. Sujets éditoriaux</h2>
           <p className="mt-1 text-sm text-gray-600">Sol propose des angles autonomes à partir de toutes les informations disponibles, sans découpage imposé par les pages ou les pays.</p>
         </div>
-        <button type="button" className={primary} disabled={Boolean(busy) || !completed || !acceptedUnits.length || !title.trim()}
+        <button type="button" className={primary} disabled={Boolean(busy) || libraryImported || !completed || !acceptedUnits.length || !title.trim()}
           onClick={() => void identifyTopics()}>
-          {busy === "topics" ? `Identification : ${topicProgress}/${Math.ceil(units.length / 100)} lots…` : topics ? "Relancer l'identification" : "Identifier les sujets"}
+          {busy === "topics" ? `Identification : ${topicProgress}/${Math.ceil(units.length / 100)} lots…` : libraryImported ? "Sujets déjà importés" : topics ? "Relancer l'identification" : "Identifier les sujets"}
         </button>
         {busy === "topics" && <p className="text-sm text-gray-600">Chaque lot terminé est sauvegardé dans ce navigateur. Ne ferme pas cet onglet pendant un appel en cours.</p>}
         {topics && <>
@@ -543,7 +530,7 @@ export default function PDFStudio() {
               {topics.proposals.map(topic => <button type="button" key={topic.id} onClick={() => setSelectedTopic(topic.id)}
                 className={`w-full rounded-lg border p-3 text-left text-sm ${selectedTopic === topic.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
                 <span className="block font-medium">{topic.title}</span>
-                <span className="mt-1 block text-xs text-gray-500">{topic.evidence_count} preuves · {approvedIds.includes(topic.id) ? "Validé" : "À examiner"}</span>
+                <span className="mt-1 block text-xs text-gray-500">{topic.evidence_count} preuves · {topic.review_count} à vérifier</span>
               </button>)}
             </div>
             {activeTopic && <div className="space-y-3 rounded-lg border p-4 text-sm">
@@ -557,13 +544,6 @@ export default function PDFStudio() {
                   <p className="mt-1 text-xs text-gray-500">{evidence.quote}</p>
                 </div>)}
               </div>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={approvedIds.includes(activeTopic.id)}
-                  onChange={event => setApprovedIds(previous => event.target.checked
-                    ? [...previous.filter(id => id !== activeTopic.id), activeTopic.id]
-                    : previous.filter(id => id !== activeTopic.id))} />
-                Valider ce sujet
-              </label>
             </div>}
           </div>
           {!!topics.uncovered_evidence.length && <details className="rounded-lg border p-3 text-sm">
@@ -574,19 +554,28 @@ export default function PDFStudio() {
       </section>
 
       <section className="space-y-3 rounded-xl border p-5">
-        <h2 className="font-semibold">4. Préparer les contenus GetCurator</h2>
-        <p className="text-sm text-gray-600">{approvedIds.length} sujet(s) validé(s). La bibliothèque conserve tous les sujets et leurs preuves, sans créer d'articles RAW.</p>
+        <h2 className="font-semibold">4. Enregistrer dans la bibliothèque documentaire</h2>
+        <p className="text-sm text-gray-600">Enregistre le PDF source, puis importe toutes les informations et tous les sujets. La qualification éditoriale se fait ensuite dans la bibliothèque, sans création automatique d'articles RAW.</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" className={button}
+            disabled={!file || !sourceId || !title.trim() || Boolean(busy)}
+            onClick={() => void registerDocument()}>
+            {busy === "register" ? "Enregistrement…" : registeredDocument ? "Réenregistrer le PDF original" : "Enregistrer le PDF original"}
+          </button>
+          {registeredDocument && <span className="text-xs text-gray-600">Document enregistré : {registeredDocument.id_document}</span>}
+        </div>
         <button type="button" className={primary}
           disabled={Boolean(busy) || !registeredDocument || !completed || !topics?.proposals.length || !sourceId}
           onClick={() => void importLibrary()}>
           {busy === "library" ? "Import en cours…" : libraryImported ? "Réimporter dans la bibliothèque" : "Importer dans la bibliothèque"}
         </button>
-        {libraryImported && <p className="text-sm text-green-700">Import effectué. Les sujets restent disponibles pour une qualification ultérieure.</p>}
+        {libraryImported && <p className="text-sm text-green-700">Import effectué. Les informations et les sujets sont consultables dans la bibliothèque.</p>}
+        {libraryImported && <a href="/admin/document-library" className="inline-block text-sm font-medium text-ratecard-blue underline">Ouvrir la bibliothèque documentaire</a>}
         <button type="button" className={button} disabled={!units.length || Boolean(busy)}
           onClick={() => downloadJson(`pdf-studio-${file?.name.replace(/\.pdf$/i, "") || "document"}.json`, exportData)}>
-          Exporter le travail (preuves, sujets et validations)
+          Exporter le travail (informations et sujets)
         </button>
-        <p className="text-xs text-gray-500">Cet export permet de conserver le travail. Il ne crée aucun contenu dans GetCurator.</p>
+        <p className="text-xs text-gray-500">Cet export permet de reprendre le travail. Il ne crée aucun contenu dans GetCurator.</p>
       </section>
     </div>
   );
