@@ -362,3 +362,137 @@ def import_document_library(payload: dict) -> dict:
         "topics": len(topic_rows),
         "associations": len(link_rows),
     }
+
+# ============================================================
+# PDF STUDIO V8 — DOCUMENTARY LIBRARY READ OPERATIONS
+# Append below import_document_library in pdf_library.py.
+# ============================================================
+
+
+def list_library_documents(limit: int = 100, offset: int = 0) -> dict:
+    """List documents having at least one imported topic."""
+    if not 1 <= limit <= 200 or offset < 0:
+        raise ValueError("Pagination invalide.")
+
+    client = get_bigquery_client()
+    rows = _query(client, f"""
+        WITH topic_counts AS (
+            SELECT ID_DOCUMENT, COUNT(*) AS TOPIC_COUNT
+            FROM `{TOPIC}`
+            GROUP BY ID_DOCUMENT
+        ), unit_counts AS (
+            SELECT ID_DOCUMENT, COUNT(*) AS UNIT_COUNT
+            FROM `{UNIT}`
+            GROUP BY ID_DOCUMENT
+        )
+        SELECT d.ID_DOCUMENT, d.ID_SOURCE, d.TITLE, d.PAGE_COUNT,
+               d.SHA256, tc.TOPIC_COUNT,
+               COALESCE(uc.UNIT_COUNT, 0) AS UNIT_COUNT
+        FROM `{DOCUMENT}` d
+        JOIN topic_counts tc ON tc.ID_DOCUMENT = d.ID_DOCUMENT
+        LEFT JOIN unit_counts uc ON uc.ID_DOCUMENT = d.ID_DOCUMENT
+        ORDER BY d.TITLE, d.ID_DOCUMENT
+        LIMIT @limit OFFSET @offset
+    """, [
+        bigquery.ScalarQueryParameter("limit", "INT64", limit),
+        bigquery.ScalarQueryParameter("offset", "INT64", offset),
+    ])
+    return {
+        "documents": [dict(row.items()) for row in rows],
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+def get_library_document(document_id: str) -> dict:
+    """Read a registered document with library counts."""
+    document_id = _required(document_id, "id_document")
+    client = get_bigquery_client()
+    rows = _query(client, f"""
+        SELECT d.ID_DOCUMENT, d.ID_SOURCE, d.TITLE, d.PAGE_COUNT, d.SHA256,
+          (SELECT COUNT(*) FROM `{UNIT}` u WHERE u.ID_DOCUMENT = d.ID_DOCUMENT) AS UNIT_COUNT,
+          (SELECT COUNT(*) FROM `{TOPIC}` t WHERE t.ID_DOCUMENT = d.ID_DOCUMENT) AS TOPIC_COUNT,
+          (SELECT COUNT(*) FROM `{LINK}` l WHERE l.ID_DOCUMENT = d.ID_DOCUMENT) AS ASSOCIATION_COUNT
+        FROM `{DOCUMENT}` d
+        WHERE d.ID_DOCUMENT = @document_id
+        LIMIT 1
+    """, [bigquery.ScalarQueryParameter("document_id", "STRING", document_id)])
+    if not rows:
+        raise ValueError("Document introuvable.")
+    return dict(rows[0].items())
+
+
+def list_library_topics(
+    document_id: str,
+    query: str | None = None,
+    editorial_status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """List topics without loading their evidence payloads."""
+    document_id = _required(document_id, "id_document")
+    if not 1 <= limit <= 500 or offset < 0:
+        raise ValueError("Pagination invalide.")
+    params = [
+        bigquery.ScalarQueryParameter("document_id", "STRING", document_id),
+        bigquery.ScalarQueryParameter("limit", "INT64", limit),
+        bigquery.ScalarQueryParameter("offset", "INT64", offset),
+    ]
+    where = ["ID_DOCUMENT = @document_id"]
+    if query and query.strip():
+        where.append("(CONTAINS_SUBSTR(TITLE, @query) OR CONTAINS_SUBSTR(ANGLE, @query) OR CONTAINS_SUBSTR(EDITORIAL_RATIONALE, @query))")
+        params.append(bigquery.ScalarQueryParameter("query", "STRING", query.strip()))
+    if editorial_status and editorial_status.strip():
+        where.append("EDITORIAL_STATUS = @editorial_status")
+        params.append(bigquery.ScalarQueryParameter("editorial_status", "STRING", editorial_status.strip()))
+    predicate = " AND ".join(where)
+    rows = _query(get_bigquery_client(), f"""
+        SELECT TOPIC_ID, TITLE, ANGLE, EDITORIAL_RATIONALE,
+               EVIDENCE_COUNT, REVIEW_COUNT, EDITORIAL_STATUS,
+               MERGED_INTO_TOPIC_ID, ID_RAW, ID_CONTENT
+        FROM `{TOPIC}`
+        WHERE {predicate}
+        ORDER BY TOPIC_ID
+        LIMIT @limit OFFSET @offset
+    """, params)
+    return {
+        "topics": [dict(row.items()) for row in rows],
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+def get_library_topic(document_id: str, topic_id: str) -> dict:
+    """Read a topic and its ordered, source-traceable evidence units."""
+    document_id = _required(document_id, "id_document")
+    topic_id = _required(topic_id, "topic_id")
+    client = get_bigquery_client()
+    params = [
+        bigquery.ScalarQueryParameter("document_id", "STRING", document_id),
+        bigquery.ScalarQueryParameter("topic_id", "STRING", topic_id),
+    ]
+    topic_rows = _query(client, f"""
+        SELECT TOPIC_ID, TITLE, ANGLE, EDITORIAL_RATIONALE,
+               EVIDENCE_COUNT, REVIEW_COUNT, EDITORIAL_STATUS,
+               MERGED_INTO_TOPIC_ID, ID_RAW, ID_CONTENT
+        FROM `{TOPIC}`
+        WHERE ID_DOCUMENT = @document_id AND TOPIC_ID = @topic_id
+        LIMIT 1
+    """, params)
+    if not topic_rows:
+        raise ValueError("Sujet introuvable.")
+    evidence_rows = _query(client, f"""
+        SELECT u.UNIT_ID, u.PDF_PAGE, u.FACT, u.QUOTE,
+               u.VERIFICATION_STATUS, u.KIND, u.GEOGRAPHY, u.PERIOD
+        FROM `{LINK}` l
+        JOIN `{UNIT}` u
+          ON u.ID_DOCUMENT = l.ID_DOCUMENT AND u.UNIT_ID = l.UNIT_ID
+        WHERE l.ID_DOCUMENT = @document_id AND l.TOPIC_ID = @topic_id
+        ORDER BY u.PDF_PAGE, u.UNIT_ID
+    """, params)
+    return {
+        **dict(topic_rows[0].items()),
+        "id_document": document_id,
+        "evidence": [dict(row.items()) for row in evidence_rows],
+    }
+
