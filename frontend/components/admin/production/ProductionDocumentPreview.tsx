@@ -68,10 +68,16 @@ p,li{font-size:13px;line-height:1.55}p{margin:0 0 3mm}ul{padding-left:5mm;margin
 @page{size:A4 landscape;margin:0}@media print{html,body{background:white}.sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}p{orphans:3;widows:3}h1,h3{break-after:avoid}}
 `;
 
-export function buildDocumentHtml(document: ProductionDocument, filename?: string | null, language: "fr" | "en" = "fr"): string {
+// Rendering also accepts a live Touch notebook: never invent a saved report version.
+export type RenderableDocument = Omit<ProductionDocument, "sources"> & {
+  sources: (Omit<ProductionDocument["sources"][number], "report_id" | "report_version"> & {
+    report_id?: string; report_version?: number;
+  })[];
+};
+export function buildDocumentHtml(document: RenderableDocument, filename?: string | null, language: "fr" | "en" = "fr", touchPresentation = false): string {
   const known = new Map(document.sources.map(source => [source.id, source]));
   const used = new Set(document.pages.flatMap(page => page.source_ids));
-  const groups = new Map<string, { ids: string[]; label: string; version: number }>();
+  const groups = new Map<string, { ids: string[]; label: string; version: number | undefined }>();
   for (const source of document.sources.filter(item => used.has(item.id))) {
     const key = `${source.report_id}:${source.report_version}:${source.content_id || "report"}`;
     const existing = groups.get(key);
@@ -97,7 +103,7 @@ export function buildDocumentHtml(document: ProductionDocument, filename?: strin
   chunks.forEach((entries, index) => composed.push({
     page: {
       page_id: `bibliography-${index + 1}`, layout: "SOURCES",
-      title: "Références documentaires", eyebrow: `Bibliographie · ${index + 1}/${chunks.length}`,
+      title: touchPresentation && language === "en" ? "Documentary references" : "Références documentaires", eyebrow: `${touchPresentation && language === "en" ? "Bibliography" : "Bibliographie"} · ${index + 1}/${chunks.length}`,
       paragraphs: [], bullets: [], metrics: [], chart: null, takeaway: "",
       cautions: [], source_ids: [],
     }, entries,
@@ -116,9 +122,9 @@ export function buildDocumentHtml(document: ProductionDocument, filename?: strin
     const visual = chart + metrics;
     const paragraphs = page.paragraphs.map(text => `<p>${escape(text)}</p>`).join("");
     const bullets = page.bullets.length ? `<ul class="${page.layout === "SUMMARY" || page.layout === "IMPLICATIONS" ? "bullets" : ""}">${page.bullets.map(text => `<li>${escape(text)}</li>`).join("")}</ul>` : "";
-    const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">Rapport sauvegardé · version ${source.version}</span></li>`).join("")}</ul>` : "";
+    const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">${source.version === undefined ? (language === "fr" ? "Source du rapport Touch" : "Touch report source") : `Rapport sauvegardé · version ${source.version}`}</span></li>`).join("")}</ul>` : "";
     const citations = page.source_ids.filter(id => known.has(id)).map(id => `[${escape(id)}]`).join(" ");
-    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${cover ? coverTitle : escape(page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${cover && paragraphs ? `<div class="cover-introduction">${paragraphs}</div>` : paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · RAPPORT AUTONOME</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
+    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (touchPresentation ? "Touch" : cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${cover ? coverTitle : escape(page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${cover && paragraphs ? `<div class="cover-introduction">${paragraphs}</div>` : paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · ${touchPresentation ? (language === "fr" ? "TOUCH · PRÉSENTATION" : "TOUCH · PRESENTATION") : "RAPPORT AUTONOME"}</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
   }).join("")}</body></html>`;
 }
 
