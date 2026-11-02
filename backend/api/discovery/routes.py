@@ -6,8 +6,6 @@ import requests
 
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form
 
-from pydantic import BaseModel
-
 from api.discovery.models import (
     DiscoveryListOut,
     ScanAllRequest,
@@ -162,22 +160,6 @@ async def extract_pdf_studio_v8(
             detail="Erreur extraction PDF Studio V8",
         ) from exc
 
-class LibraryEditorialDecision(BaseModel):
-    editorial_status: str
-
-@router.patch("/pdf-studio/v8/library/documents/{document_id}/topics/{topic_id}/editorial")
-def patch_library_topic_editorial(document_id: str, topic_id: str, payload: LibraryEditorialDecision):
-    from core.discovery.pdf_library_editorial import update_topic_editorial_status
-    try:
-        return update_topic_editorial_status(document_id, topic_id, payload.editorial_status)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur qualification éditoriale bibliothèque")
-        raise HTTPException(status_code=500, detail="Erreur qualification éditoriale") from exc
-
 
 # ============================================================
 # PDF STUDIO V8 — EDITORIAL TOPIC DISCOVERY (NO DB WRITE)
@@ -281,7 +263,7 @@ def finalize_pdf_studio_topics(
 def import_pdf_studio_library(
     data: dict = Body(...),
 ):
-    from core.discovery.pdf_library import (
+    from core.library.pdf_library import (
         import_document_library,
     )
 
@@ -303,91 +285,6 @@ def import_pdf_studio_library(
             detail="Erreur import bibliothèque documentaire",
         ) from exc
 
-@router.post("/pdf-studio/v8/library/documents/{document_id}/quality")
-def save_pdf_studio_topic_quality(document_id: str, data: dict = Body(...)):
-    from core.discovery.pdf_quality import save_topic_quality
-    try:
-        return save_topic_quality(document_id, data.get("decisions"))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur sauvegarde qualité sujets PDF")
-        raise HTTPException(status_code=500, detail="Erreur sauvegarde qualité documentaire") from exc
-
-
-
-
-# ============================================================
-# PDF STUDIO V8 — DOCUMENTARY LIBRARY READ API
-# ============================================================
-
-@router.get("/pdf-studio/v8/library/documents")
-def list_pdf_studio_library_documents(
-    limit: int = 100,
-    offset: int = 0,
-):
-    from core.discovery.pdf_library import list_library_documents
-
-    try:
-        return list_library_documents(limit=limit, offset=offset)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur liste bibliothèque documentaire")
-        raise HTTPException(status_code=500, detail="Erreur lecture bibliothèque documentaire") from exc
-
-
-@router.get("/pdf-studio/v8/library/documents/{document_id}")
-def get_pdf_studio_library_document(document_id: str):
-    from core.discovery.pdf_library import get_library_document
-
-    try:
-        return get_library_document(document_id)
-    except ValueError as exc:
-        status = 404 if str(exc) == "Document introuvable." else 400
-        raise HTTPException(status_code=status, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur lecture document documentaire")
-        raise HTTPException(status_code=500, detail="Erreur lecture du document") from exc
-
-
-@router.get("/pdf-studio/v8/library/documents/{document_id}/topics")
-def list_pdf_studio_library_topics(
-    document_id: str,
-    query: str | None = None,
-    editorial_status: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
-):
-    from core.discovery.pdf_library import list_library_topics
-
-    try:
-        return list_library_topics(
-            document_id=document_id,
-            query=query,
-            editorial_status=editorial_status,
-            limit=limit,
-            offset=offset,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur liste sujets bibliothèque documentaire")
-        raise HTTPException(status_code=500, detail="Erreur lecture des sujets") from exc
-
-
-@router.get("/pdf-studio/v8/library/documents/{document_id}/topics/{topic_id}")
-def get_pdf_studio_library_topic(document_id: str, topic_id: str):
-    from core.discovery.pdf_library import get_library_topic
-
-    try:
-        return get_library_topic(document_id, topic_id)
-    except ValueError as exc:
-        status = 404 if str(exc) == "Sujet introuvable." else 400
-        raise HTTPException(status_code=status, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur lecture sujet documentaire")
-        raise HTTPException(status_code=500, detail="Erreur lecture du sujet") from exc
 
 
 # ============================================================
