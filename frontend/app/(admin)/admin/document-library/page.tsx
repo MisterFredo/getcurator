@@ -54,6 +54,8 @@ export default function DocumentLibraryPage() {
   const [qualitySaving, setQualitySaving] = useState(false);
   const [qualityMessage, setQualityMessage] = useState("");
   const [qualityError, setQualityError] = useState("");
+  const [editorialSaving, setEditorialSaving] = useState(false);
+  const [editorialError, setEditorialError] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -161,6 +163,28 @@ export default function DocumentLibraryPage() {
     return () => { alive = false; };
   }, [selected, mode]);
 
+  const updateEditorial = async (topic: TopicRow, status: "REVIEW" | "SELECTED" | "IGNORED") => {
+    if (editorialSaving) return;
+    setEditorialSaving(true);
+    setEditorialError("");
+    try {
+      await api.patch(`${base}/documents/${encodeURIComponent(topic.ID_DOCUMENT)}/topics/${encodeURIComponent(topic.TOPIC_ID)}/editorial`, { editorial_status: status });
+      const apply = (t: TopicRow) => t.ID_DOCUMENT === topic.ID_DOCUMENT && t.TOPIC_ID === topic.TOPIC_ID
+        ? { ...t, EDITORIAL_STATUS: status } : t;
+      setTopics(prev => prev.map(apply));
+      setSelected(prev => prev && "TOPIC_ID" in prev ? apply(prev) : prev);
+      setDetail(prev => prev ? apply(prev) : prev);
+      // If the current filter excludes the new status, remove it from the visible list.
+      if (editorial && editorial !== status) {
+        setTopics(prev => prev.filter(t => !(t.ID_DOCUMENT === topic.ID_DOCUMENT && t.TOPIC_ID === topic.TOPIC_ID)));
+        setSelected(null);
+        setDetail(null);
+        setTotal(prev => Math.max(0, prev - 1));
+      }
+    } catch (e) { setEditorialError(errText(e)); }
+    finally { setEditorialSaving(false); }
+  };
+
   const topicSelected = selected && "TOPIC_ID" in selected ? selected : null;
   const unitSelected = selected && "UNIT_ID" in selected ? selected : null;
   const entries = mode === "topics" ? topics : units;
@@ -250,6 +274,7 @@ export default function DocumentLibraryPage() {
         }}>Réinitialiser</button>
       </form>
 
+      {editorialError && <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{editorialError}</div>}
       {error && <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
       <p className="text-sm text-gray-600">{loading ? "Recherche en cours…" : `${total.toLocaleString("fr-FR")} résultat(s)`}</p>
 
@@ -289,7 +314,16 @@ export default function DocumentLibraryPage() {
               </div>
               <p><strong>Qualité :</strong> {qualityLabel(topicSelected)}</p>
               {topicSelected.QUALITY_REASON && <p><strong>Motif :</strong> {topicSelected.QUALITY_REASON}</p>}
-              <p><strong>Éditorial :</strong> {topicSelected.EDITORIAL_STATUS}</p>
+              <div className="space-y-2">
+                <p><strong>Éditorial :</strong> {topicSelected.EDITORIAL_STATUS}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className={button} disabled={editorialSaving || topicSelected.EDITORIAL_STATUS === "REVIEW"} onClick={() => updateEditorial(topicSelected, "REVIEW")}>À examiner</button>
+                  <button type="button" className={`${button} ${topicSelected.EDITORIAL_STATUS === "SELECTED" ? "border-green-500 bg-green-50" : ""}`} disabled={editorialSaving || topicSelected.EDITORIAL_STATUS === "SELECTED" || !topicSelected.QUALITY_VALIDATED_AT || topicSelected.QUALITY_STATUS !== "ACCEPTED"} onClick={() => updateEditorial(topicSelected, "SELECTED")}>Sélectionner</button>
+                  <button type="button" className={`${button} ${topicSelected.EDITORIAL_STATUS === "IGNORED" ? "border-gray-500 bg-gray-100" : ""}`} disabled={editorialSaving || topicSelected.EDITORIAL_STATUS === "IGNORED"} onClick={() => updateEditorial(topicSelected, "IGNORED")}>Ignorer</button>
+                </div>
+                {(!topicSelected.QUALITY_VALIDATED_AT || topicSelected.QUALITY_STATUS !== "ACCEPTED") && <p className="text-xs text-amber-700">La sélection nécessite un contrôle qualité validé et accepté.</p>}
+                <p className="text-xs text-gray-500">La sélection n'active pas encore de contenu RAW.</p>
+              </div>
               <p><strong>Angle :</strong> {topicSelected.ANGLE || "Non renseigné"}</p>
               <p><strong>Justification :</strong> {topicSelected.EDITORIAL_RATIONALE || "Non renseignée"}</p>
               <h3 className="border-t pt-3 font-semibold">Preuves ({topicSelected.EVIDENCE_COUNT})</h3>
