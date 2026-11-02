@@ -16,6 +16,7 @@ import type {
 } from "@/types/touch";
 
 import TouchBriefPreview from "@/components/admin/touch/TouchBriefPreview";
+import TouchPresentationPreview from "@/components/admin/touch/TouchPresentationPreview";
 import TouchNotebookDocument from "@/components/admin/touch/TouchNotebookDocument";
 
 
@@ -62,6 +63,8 @@ export default function TouchOutputChoice({
   expertName,
   reportType = "RESEARCH",
 }: Props) {
+
+  const [format, setFormat] = useState<"REPORT" | "PRESENTATION">("REPORT");
 
   const [
     mode,
@@ -558,8 +561,8 @@ export default function TouchOutputChoice({
       {/* ================================================= */}
 
       {(
-        mode === "DOCUMENTARY"
-        || brief
+        (mode === "DOCUMENTARY" && format === "REPORT")
+        || (mode === "INTERPRETATION" && brief)
       ) && (
 
         <div
@@ -644,7 +647,16 @@ export default function TouchOutputChoice({
 
           </div>
 
-          <TouchNotebookDocument
+          <div className="touch-output-toolbar flex flex-wrap gap-3" role="group" aria-label="Report format">
+            <button type="button" aria-pressed={format === "REPORT"} onClick={() => setFormat("REPORT")}
+              className={`rounded-lg border px-4 py-2 text-sm ${format === "REPORT" ? "bg-blue-50 border-blue-500" : "bg-white"}`}>Rapport / Report</button>
+            <button type="button" aria-pressed={format === "PRESENTATION"} onClick={() => setFormat("PRESENTATION")}
+              className={`rounded-lg border px-4 py-2 text-sm ${format === "PRESENTATION" ? "bg-blue-50 border-blue-500" : "bg-white"}`}>Présentation / Presentation</button>
+          </div>
+          {format === "PRESENTATION" ? <TouchPresentationPreview
+            notebook={notebook} sources={sources} outputLanguage={outputLanguage}
+            periodStart={periodStart} periodEnd={periodEnd} expertName={expertName} reportType={reportType}
+          /> : <TouchNotebookDocument
             periodStart={periodStart}
             periodEnd={periodEnd}
             outputLanguage={outputLanguage}
@@ -656,7 +668,7 @@ export default function TouchOutputChoice({
             sources={
               sources
             }
-          />
+          />}
 
         </div>
 
