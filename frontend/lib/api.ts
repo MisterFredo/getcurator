@@ -138,6 +138,7 @@ async function requestForm(
 
 export const api = {
   get: (path: string) => request("GET", path),
+  patch: (path: string, body: any) => request("PATCH", path, body),
   post: (path: string, body: any) => request("POST", path, body),
   postText: (path: string, body: string) => requestText("POST", path, body),
   postForm: (path: string, body: FormData) => requestForm("POST", path, body),
