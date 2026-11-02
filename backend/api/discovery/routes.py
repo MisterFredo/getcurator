@@ -256,6 +256,38 @@ def finalize_pdf_studio_topics(
 
 
 # ============================================================
+# PDF STUDIO V8 — DOCUMENTARY LIBRARY IMPORT
+# ============================================================
+
+@router.post("/pdf-studio/v8/library/import")
+def import_pdf_studio_library(
+    data: dict = Body(...),
+):
+    from core.discovery.pdf_library import (
+        import_document_library,
+    )
+
+    try:
+        return import_document_library(data)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        logger.exception(
+            "Erreur import bibliothèque PDF Studio"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur import bibliothèque documentaire",
+        ) from exc
+
+
+
+# ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
 
