@@ -16,6 +16,7 @@ import type {
 } from "@/types/touch";
 
 import TouchBriefPreview from "@/components/admin/touch/TouchBriefPreview";
+import TouchLlmPresentation from "@/components/admin/touch/TouchLlmPresentation";
 import TouchPresentationPreview from "@/components/admin/touch/TouchPresentationPreview";
 import TouchNotebookDocument from "@/components/admin/touch/TouchNotebookDocument";
 
@@ -30,6 +31,7 @@ type TouchOutputMode =
 
 
 type Props = {
+  reportId?: string | null;
   notebook: TouchCorpusNotebook;
 
   sources: TouchContentCandidate[];
@@ -53,6 +55,7 @@ type Props = {
 ========================================================= */
 
 export default function TouchOutputChoice({
+  reportId = null,
   notebook,
   sources,
   brief,
@@ -64,6 +67,7 @@ export default function TouchOutputChoice({
   reportType = "RESEARCH",
 }: Props) {
 
+  const [presentationMode, setPresentationMode] = useState<"DIRECT" | "LLM">("LLM");
   const [format, setFormat] = useState<"REPORT" | "PRESENTATION">("REPORT");
 
   const [
@@ -653,7 +657,14 @@ export default function TouchOutputChoice({
             <button type="button" aria-pressed={format === "PRESENTATION"} onClick={() => setFormat("PRESENTATION")}
               className={`rounded-lg border px-4 py-2 text-sm ${format === "PRESENTATION" ? "bg-blue-50 border-blue-500" : "bg-white"}`}>Présentation / Presentation</button>
           </div>
-          {format === "PRESENTATION" ? <TouchPresentationPreview
+          {format === "PRESENTATION" && <div className="touch-output-toolbar flex flex-wrap gap-3" role="group" aria-label="Presentation mode">
+            <button type="button" className="rounded-lg border px-4 py-2 text-sm" aria-pressed={presentationMode === "LLM"} onClick={() => setPresentationMode("LLM")}>Présentation éditorialisée</button>
+            <button type="button" className="rounded-lg border px-4 py-2 text-sm" aria-pressed={presentationMode === "DIRECT"} onClick={() => setPresentationMode("DIRECT")}>Mise en page directe sans LLM</button>
+          </div>}
+          {format === "PRESENTATION" ? presentationMode === "LLM" ? <TouchLlmPresentation
+            reportId={reportId} notebook={notebook} sources={sources} outputLanguage={outputLanguage}
+            periodStart={periodStart} periodEnd={periodEnd} expertName={expertName} reportType={reportType}
+          /> : <TouchPresentationPreview
             notebook={notebook} sources={sources} outputLanguage={outputLanguage}
             periodStart={periodStart} periodEnd={periodEnd} expertName={expertName} reportType={reportType}
           /> : <TouchNotebookDocument
