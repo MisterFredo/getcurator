@@ -285,6 +285,18 @@ def import_pdf_studio_library(
             detail="Erreur import bibliothèque documentaire",
         ) from exc
 
+@router.post("/pdf-studio/v8/library/documents/{document_id}/quality")
+def save_pdf_studio_topic_quality(document_id: str, data: dict = Body(...)):
+    from core.discovery.pdf_quality import save_topic_quality
+    try:
+        return save_topic_quality(document_id, data.get("decisions"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur sauvegarde qualité sujets PDF")
+        raise HTTPException(status_code=500, detail="Erreur sauvegarde qualité documentaire") from exc
+
+
 
 
 # ============================================================
