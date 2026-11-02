@@ -210,7 +210,6 @@ export default function PDFStudio() {
     quality_status: quality[topic.id]?.status || "ACCEPTED",
     quality_reason: quality[topic.id]?.status === "REJECTED" ? (quality[topic.id]?.reason || "").trim() : null,
   })) || [];
-  const missingReasons = qualityDecisions.some(d => d.quality_status === "REJECTED" && !d.quality_reason);
 
   function setTopicQuality(topicId: string, patch: Partial<QualityDecision>) {
     if (busy) return;
@@ -222,16 +221,20 @@ export default function PDFStudio() {
   }
 
   async function saveQuality() {
-    if (!registeredDocument || !libraryImported || !qualityDecisions.length || missingReasons || busy) return;
+    if (!registeredDocument || !libraryImported || !topics?.proposals.length || busy) return;
     setBusy("library"); setError("");
     try {
       const response = await api.post(
         `/discovery/pdf-studio/v8/library/documents/${encodeURIComponent(registeredDocument.id_document)}/quality`,
-        { decisions: qualityDecisions },
+        { decisions: topics.proposals.map(topic => ({
+          topic_id: topic.id,
+          quality_status: quality[topic.id]?.status === "REJECTED" ? "REJECTED" : "ACCEPTED",
+          quality_reason: quality[topic.id]?.status === "REJECTED" ? (quality[topic.id]?.reason || "").trim() || null : null,
+        })) },
       ) as { status: string; updated: number };
       if (response.status !== "SAVED") throw new Error("Réponse qualité inattendue.");
       setQualitySaved(true);
-      setNotice(`${response.updated} décisions qualité enregistrées, dont ${rejectedTopics} sujets écartés.`);
+      setNotice(`Contrôle qualité global validé : ${response.updated} sujets, dont ${rejectedTopics} écartés.`);
     } catch (e) {
       setError(`Sauvegarde qualité impossible : ${errText(e)}`);
     } finally { setBusy(""); }
@@ -577,7 +580,7 @@ export default function PDFStudio() {
           <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]">
             <div className="max-h-[520px] space-y-2 overflow-y-auto">
               {topics.proposals.map(topic => <button type="button" key={topic.id} onClick={() => setSelectedTopic(topic.id)}
-                className={`w-full rounded-lg border p-3 text-left text-sm ${selectedTopic === topic.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
+                className={`w-full rounded-lg border p-3 text-left text-sm ${qualitySaved && quality[topic.id]?.status === "REJECTED" ? "border-red-300 bg-red-100 text-red-900" : selectedTopic === topic.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"} ${selectedTopic === topic.id ? "ring-2 ring-blue-400" : ""}`}>
                 <span className="block font-medium">{topic.title}</span>
                 <span className="mt-1 block text-xs text-gray-500">{topic.evidence_count} preuves · {quality[topic.id]?.status === "REJECTED" ? "Écarté (qualité)" : "Conservé"} · {topic.review_count} à vérifier</span>
               </button>)}
@@ -595,7 +598,7 @@ export default function PDFStudio() {
                 <label className="flex items-center gap-2"><input type="radio" name={`quality-${activeTopic.id}`}
                   checked={quality[activeTopic.id]?.status === "REJECTED"} disabled={Boolean(busy)}
                   onChange={() => setTopicQuality(activeTopic.id, { status: "REJECTED" })} />Écarter pour problème de qualité</label>
-                {quality[activeTopic.id]?.status === "REJECTED" && <label className="block">Motif obligatoire
+                {quality[activeTopic.id]?.status === "REJECTED" && <label className="block">Motif (facultatif)
                   <textarea className={field} maxLength={500} disabled={Boolean(busy)}
                     placeholder="Doublon, preuves insuffisantes, angle incohérent…"
                     value={quality[activeTopic.id]?.reason || ""}
@@ -636,10 +639,10 @@ export default function PDFStudio() {
         {libraryImported && <p className="text-sm text-green-700">Import effectué. Les informations et les sujets sont consultables dans la bibliothèque.</p>}
         {libraryImported && <div className="space-y-2 rounded-lg border p-3">
           <p className="text-sm">Contrôle qualité : {topics?.proposals.length || 0} sujets, dont {rejectedTopics} écartés localement. {qualityDecisions.length} décision(s) à synchroniser. Les sujets écartés restent enregistrés avec leurs preuves.</p>
-          {missingReasons && <p className="text-sm text-red-700">Renseigne un motif pour chaque sujet écarté.</p>}
-          <button type="button" className={primary} disabled={Boolean(busy) || missingReasons || !qualityDecisions.length}
+          <p className="text-xs text-gray-600">La validation globale confirme tous les sujets : ceux non écartés sont acceptés. Les sujets écartés apparaissent en rouge dans la liste de gauche après validation.</p>
+          <button type="button" className={primary} disabled={Boolean(busy) || !topics?.proposals.length}
             onClick={() => void saveQuality()}>
-            {busy === "library" ? "Enregistrement…" : qualitySaved ? "Contrôle qualité enregistré — Mettre à jour" : "Enregistrer le contrôle qualité"}
+            {busy === "library" ? "Enregistrement…" : qualitySaved ? "Contrôle qualité validé — Revalider" : "Valider globalement le contrôle qualité"}
           </button>
         </div>}
         {libraryImported && <a href="/admin/document-library" className="inline-block text-sm font-medium text-ratecard-blue underline">Ouvrir la bibliothèque documentaire</a>}
