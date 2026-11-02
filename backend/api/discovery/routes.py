@@ -1,4 +1,5 @@
-"""Discovery API — PDF Studio V7 and existing Discovery workflows."""
+
+"""Discovery API — PDF Studio V8 and existing Discovery workflows."""
 
 import logging
 import requests
@@ -17,6 +18,7 @@ from api.discovery.models import (
     LinkedInStudioStoreRequest,
     NewsletterStudioStoreRequest,
 )
+
 from core.discovery.service import (
     scan_all_sources,
     scan_source,
@@ -27,65 +29,60 @@ from core.discovery.service import (
     list_manual_discovery,
     dismiss_discovery,
 )
+
 from core.discovery.linkedin_studio import (
     parse_linkedin_activity,
     analyze_linkedin_activity,
     store_linkedin_posts,
 )
+
 from core.discovery.newsletter_studio import (
     analyze_newsletter,
     store_newsletter_items,
 )
+
 from core.discovery.pdf_studio import MAX_BYTES
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 # ============================================================
-# PDF STUDIO V7
+# PDF STUDIO — UPLOAD HELPER
 # ============================================================
 
 async def _read_pdf_studio_upload(file: UploadFile) -> bytes:
+
     if not (file.filename or "").lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Un fichier .pdf est requis")
+        raise HTTPException(
+            status_code=400,
+            detail="Un fichier .pdf est requis",
+        )
+
     try:
         data = await file.read(MAX_BYTES + 1)
     finally:
         await file.close()
+
     if len(data) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="PDF supérieur à 30 Mo")
+        raise HTTPException(
+            status_code=413,
+            detail="PDF supérieur à 30 Mo",
+        )
+
     if not data:
-        raise HTTPException(status_code=400, detail="PDF vide")
+        raise HTTPException(
+            status_code=400,
+            detail="PDF vide",
+        )
+
     return data
 
 
-@router.post("/pdf-studio/segment")
-async def segment_pdf_studio(file: UploadFile = File(...)):
-    """Step 1: propose coherent article candidates and source pages."""
-    from core.discovery.pdf_segment import segment_pdf
-    data = await _read_pdf_studio_upload(file)
-    try:
-        return segment_pdf(data, file.filename or "document.pdf")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur segmentation PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur segmentation PDF Studio") from exc
-
-
-@router.post("/pdf-studio/generate")
-def generate_pdf_studio(data: dict = Body(...)):
-    """Step 2: generate a draft from one approved candidate; no DB write."""
-    from core.discovery.pdf_generate import generate_article
-    try:
-        return generate_article(data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur génération PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur génération PDF Studio") from exc
-
+# ============================================================
+# PDF STUDIO — DOCUMENT REGISTRATION
+# ============================================================
 
 @router.post("/pdf-studio/document/register")
 async def register_pdf_studio_document(
@@ -93,41 +90,34 @@ async def register_pdf_studio_document(
     source_id: str = Form(...),
     title: str = Form(""),
 ):
-    """Register original PDF for provenance before RAW import."""
+    """Register original PDF for provenance."""
+
     from core.discovery.pdf_document_store import register_pdf
+
     data = await _read_pdf_studio_upload(file)
+
     try:
-        return register_pdf(data, file.filename or "document.pdf", source_id, title or None)
+        return register_pdf(
+            data,
+            file.filename or "document.pdf",
+            source_id,
+            title or None,
+        )
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        logger.exception("Erreur enregistrement PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur enregistrement du document PDF") from exc
-
-
-@router.post("/pdf-studio/import-approved")
-def import_approved_pdf_studio(data: dict = Body(...)):
-    """Step 3: import reviewed and explicitly approved V7 articles."""
-    from core.discovery.pdf_import import import_approved
-    try:
-        return import_approved(data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur import articles PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur import articles PDF Studio") from exc
-
-
-@router.get("/pdf-studio/article/{id_raw}")
-def get_pdf_studio_article(id_raw: str):
-    from core.discovery.pdf_import import get_pdf_article
-    try:
-        return get_pdf_article(id_raw)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Erreur lecture article PDF Studio")
-        raise HTTPException(status_code=500, detail="Erreur lecture article PDF Studio") from exc
+        logger.exception(
+            "Erreur enregistrement PDF Studio"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur enregistrement du document PDF",
+        ) from exc
 
 
 # ============================================================
@@ -141,18 +131,30 @@ async def extract_pdf_studio_v8(
 ):
     """Extract auditable evidence from one five-page batch.
 
-    Call repeatedly with next_page until it is null. Editorial topic
-    discovery and RAW import are deliberately separate steps.
+    Call repeatedly with next_page until it is null.
+    Editorial topic discovery and persistence are separate steps.
     """
+
     from core.discovery.pdf_extract import extract_pdf_batch
 
     data = await _read_pdf_studio_upload(file)
+
     try:
-        return extract_pdf_batch(data, start_page=start_page)
+        return extract_pdf_batch(
+            data,
+            start_page=start_page,
+        )
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        logger.exception("Erreur extraction PDF Studio V8")
+        logger.exception(
+            "Erreur extraction PDF Studio V8"
+        )
         raise HTTPException(
             status_code=500,
             detail="Erreur extraction PDF Studio V8",
@@ -164,21 +166,33 @@ async def extract_pdf_studio_v8(
 # ============================================================
 
 @router.post("/pdf-studio/v8/topics")
-def propose_pdf_studio_topics(data: dict = Body(...)):
-    """Propose evidence-grounded editorial topics from accumulated PDF units.
+def propose_pdf_studio_topics(
+    data: dict = Body(...),
+):
+    """Propose evidence-grounded editorial topics.
 
-    Expects units with stable, unique IDs across all extraction batches.
-    Returns reviewable proposals, uncovered evidence and coverage statistics.
-    Large corpora are processed in bounded batches and globally consolidated.
+    Expects units with stable, unique IDs across extraction batches.
+    Returns proposals, uncovered evidence and coverage statistics.
+    Large corpora are processed in batches and consolidated.
     """
-    from core.discovery.pdf_topics_large import propose_pdf_topics_large
+
+    from core.discovery.pdf_topics_large import (
+        propose_pdf_topics_large,
+    )
 
     try:
         return propose_pdf_topics_large(data)
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        logger.exception("Erreur identification des sujets PDF Studio V8")
+        logger.exception(
+            "Erreur identification des sujets PDF Studio V8"
+        )
         raise HTTPException(
             status_code=500,
             detail="Erreur identification des sujets PDF Studio V8",
@@ -186,15 +200,27 @@ def propose_pdf_studio_topics(data: dict = Body(...)):
 
 
 @router.post("/pdf-studio/v8/topics/batch")
-def propose_pdf_studio_topics_batch(data: dict = Body(...)):
-    from core.discovery.pdf_topics_large import propose_pdf_topics_batch
+def propose_pdf_studio_topics_batch(
+    data: dict = Body(...),
+):
+
+    from core.discovery.pdf_topics_large import (
+        propose_pdf_topics_batch,
+    )
 
     try:
         return propose_pdf_topics_batch(data)
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        logger.exception("Erreur lot sujets PDF Studio V8")
+        logger.exception(
+            "Erreur lot sujets PDF Studio V8"
+        )
         raise HTTPException(
             status_code=500,
             detail="Erreur analyse lot sujets PDF Studio V8",
@@ -202,20 +228,31 @@ def propose_pdf_studio_topics_batch(data: dict = Body(...)):
 
 
 @router.post("/pdf-studio/v8/topics/finalize")
-def finalize_pdf_studio_topics(data: dict = Body(...)):
-    from core.discovery.pdf_topics_large import finalize_pdf_topics_batches
+def finalize_pdf_studio_topics(
+    data: dict = Body(...),
+):
+
+    from core.discovery.pdf_topics_large import (
+        finalize_pdf_topics_batches,
+    )
 
     try:
         return finalize_pdf_topics_batches(data)
+
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
     except Exception as exc:
-        logger.exception("Erreur consolidation PDF Studio V8")
+        logger.exception(
+            "Erreur consolidation PDF Studio V8"
+        )
         raise HTTPException(
             status_code=500,
             detail="Erreur consolidation PDF Studio V8",
         ) from exc
-
 
 
 # ============================================================
@@ -235,11 +272,9 @@ def analyze_linkedin_studio(
 
     try:
 
-        result = (
-            analyze_linkedin_activity(
-                source_id=source_id,
-                text=text,
-            )
+        result = analyze_linkedin_activity(
+            source_id=source_id,
+            text=text,
         )
 
         return {
@@ -261,6 +296,7 @@ def analyze_linkedin_studio(
             ),
         )
 
+
 # ============================================================
 # LINKEDIN STUDIO — STORE
 # ============================================================
@@ -280,11 +316,9 @@ def store_linkedin_studio(
             for post in data.posts
         ]
 
-        result = (
-            store_linkedin_posts(
-                source_id=source_id,
-                posts=posts,
-            )
+        result = store_linkedin_posts(
+            source_id=source_id,
+            posts=posts,
         )
 
         return {
@@ -305,6 +339,7 @@ def store_linkedin_studio(
                 f"LinkedIn Studio : {e}"
             ),
         )
+
 
 # ============================================================
 # NEWSLETTER STUDIO — ANALYZE
@@ -457,9 +492,7 @@ def test_rss():
 
                     data["parse_error"] = str(e)
 
-            results.append(
-                data
-            )
+            results.append(data)
 
         except Exception as e:
 
@@ -473,8 +506,6 @@ def test_rss():
     return {
         "results": results
     }
-
-
 
 
 # ============================================================
@@ -503,6 +534,7 @@ def scan_all_route(
             400,
             f"Erreur scan global : {e}"
         )
+
 
 # ============================================================
 # SCAN ONE SOURCE
@@ -553,6 +585,7 @@ def list_route():
             400,
             f"Erreur liste discovery : {e}"
         )
+
 
 # ============================================================
 # MANUAL DISCOVERY LIST
@@ -661,6 +694,7 @@ def dismiss_route(
             400,
             f"Erreur dismiss URL : {e}"
         )
+
 
 # ============================================================
 # SEND TO MANUAL REVIEW
