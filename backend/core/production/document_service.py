@@ -134,40 +134,69 @@ CARDINAL_CONTEXT = set(SMALL_CARDINALS) | {
 def small_cardinals_in_quote(quote):
     result = set()
     text = quote.lower()
-    for match in re.finditer(r"(?<![\w-])[a-zà-ÿ]+(?![\w-])", text):
+
+    for match in re.finditer(
+        r"(?<![\w-])[a-zà-ÿ]+(?![\w-])",
+        text,
+    ):
         value = SMALL_CARDINALS.get(match.group())
+
         if value is None:
             continue
+
+        # "Tous deux", "toutes deux", "tous les deux" refer
+        # to previously mentioned items, not a numerical observation.
+        if match.group() == "deux" and re.search(
+            r"\b(?:tous|toutes)(?:\s+les)?\s*$",
+            text[:match.start()],
+        ):
+            continue
+
         before = re.findall(r"[\w]+", text[:match.start()])
         after = re.findall(r"[\w]+", text[match.end():])
-        # A small cardinal before a scale is a coefficient, matching the
-        # document contract (value=2, display_value="2 million cases").
-        # Do not admit fragments of compounds: twenty two million,
-        # two hundred million, two point five million, two million five.
+
+        # A small cardinal before a scale is a coefficient.
+        # Do not admit fragments of compound numbers.
         scale_words = {
             "thousand", "million", "millions", "billion", "billions",
             "mille", "milliard", "milliards",
         }
+
         if after and after[0] in scale_words:
-            neighbors = ([before[-1]] if before else []) + after[1:2]
+            neighbors = (
+                ([before[-1]] if before else [])
+                + after[1:2]
+            )
         else:
-            neighbors = ([before[-1]] if before else []) + after[:1]
-        if any(word in CARDINAL_CONTEXT or any(c.isdigit() for c in word) for word in neighbors):
+            neighbors = (
+                ([before[-1]] if before else [])
+                + after[:1]
+            )
+
+        if any(
+            word in CARDINAL_CONTEXT
+            or any(c.isdigit() for c in word)
+            for word in neighbors
+        ):
             continue
-        # Preserve conservative behavior for hyphenated counts and numeric ranges.
-        if text[max(0, match.start()-1):match.start()] in {"-", "−", "+"}:
+
+        # Preserve conservative behavior for signed and hyphenated forms.
+        if text[max(0, match.start() - 1):match.start()] in {"-", "−", "+"}:
             continue
+
         result.add(Decimal(value))
-    # "Un"/"une" may be articles: only treat them as 1 when the quote
-    # explicitly states a count per unit ("un marchand par panier").
+
+    # "Un"/"une" may be articles: accept 1 only for an explicit count per unit.
     for match in re.finditer(
         r"(?<![\w-])(?:one|single|un|une)\s+"
         r"([a-zà-ÿ]+(?:[ -][a-zà-ÿ]+){0,3}?)\s+(?:per|par)\s+[a-zà-ÿ]+(?![\w-])",
         text,
     ):
         between = re.findall(r"[a-zà-ÿ]+", match.group(1))
+
         if not any(word in CARDINAL_CONTEXT for word in between):
             result.add(Decimal(1))
+
     return result
 
 
