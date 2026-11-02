@@ -513,27 +513,22 @@ def _select_candidate_batch(
         or UserFeedbackContext()
     )
 
-    original_prompt = (
-        build_digest_selection_user_prompt(
+    # Keep real UUIDs in Python. The LLM sees only batch-local IDs.
+    alias_to_content_id = {
+        f"C{index:02d}": candidate.content_id
+        for index, candidate in enumerate(candidates, start=1)
+    }
 
-            profile=profile,
+    aliased_candidates = [
+        candidate.model_copy(update={"content_id": alias})
+        for alias, candidate in zip(alias_to_content_id, candidates)
+    ]
 
-            candidates=candidates,
-
-            selection_limit=(
-                min(
-                    selection_limit,
-                    len(
-                        candidates
-                    ),
-                )
-            ),
-
-            feedback_context=(
-                feedback_context
-            ),
-
-        )
+    original_prompt = build_digest_selection_user_prompt(
+        profile=profile,
+        candidates=aliased_candidates,
+        selection_limit=min(selection_limit, len(candidates)),
+        feedback_context=feedback_context,
     )
 
     prompt = original_prompt
@@ -571,12 +566,25 @@ def _select_candidate_batch(
                 )
             )
 
+            # Validate aliases BEFORE mapping them to real UUIDs.
             _validate_decision_ids(
-
-                candidates=candidates,
-
+                candidates=aliased_candidates,
                 selection=selection,
+            )
 
+            # Restore canonical content IDs without asking the LLM
+            # to copy long UUID strings.
+            selection = DigestCandidateSelectionResult(
+                decisions=[
+                    decision.model_copy(
+                        update={
+                            "content_id": alias_to_content_id[
+                                decision.content_id
+                            ]
+                        }
+                    )
+                    for decision in selection.decisions
+                ]
             )
 
             _validate_decision_consistency(
@@ -981,109 +989,6 @@ def _log_selection_outcome(
 
 
 # ============================================================
-# FALLBACK
-# ============================================================
-
-def _build_fallback_outcome(
-    candidates: list[
-        DigestContentCandidate
-    ],
-    language: str,
-    error: str,
-) -> DigestSelectionOutcome:
-
-    decisions = []
-
-    for candidate in candidates:
-
-        if language == "fr":
-
-            reason = (
-                "Contenu non classé à la suite "
-                "d’une erreur du moteur de sélection."
-            )
-
-        else:
-
-            reason = (
-                "Content not classified following "
-                "a selection engine error."
-            )
-
-        decisions.append(
-
-            DigestContentDecision(
-
-                content_id=(
-                    candidate.content_id
-                ),
-
-                event_key=None,
-
-                priority="IGNORE",
-
-                relevance_class=(
-                    "OUT_OF_SCOPE"
-                ),
-
-                relevance_score=0,
-
-                reason=reason,
-
-                matched_priorities=[],
-
-                matched_negative_preferences=[],
-
-            )
-
-        )
-
-    selection = (
-        DigestCandidateSelectionResult(
-
-            decisions=decisions,
-
-        )
-    )
-
-    outcome = DigestSelectionOutcome(
-
-        selection=selection,
-
-        selected_content_ids=[],
-
-        additional_content_ids=[],
-
-        used_fallback=True,
-
-        error=error[
-            :2000
-        ],
-
-    )
-
-    _log_selection_outcome(
-
-        candidate_count=len(
-            candidates
-        ),
-
-        selection=selection,
-
-        selected_content_ids=[],
-
-        additional_content_ids=[],
-
-        used_fallback=True,
-
-        error=outcome.error,
-
-    )
-
-    return outcome
-
-
-# ============================================================
 # SELECT DIGEST CANDIDATES
 # ============================================================
 
@@ -1331,15 +1236,9 @@ def select_digest_candidates(
         return outcome
 
     except Exception as exc:
-
-        return _build_fallback_outcome(
-
-            candidates=candidates,
-
-            language=profile.language,
-
-            error=str(
-                exc
-            ),
-
-        )
+        # Do not turn a technical failure into editorial IGNORE
+        # decisions. The caller must mark generation as failed.
+        raise RuntimeError(
+            "DIGEST_SELECTION_FAILED: "
+            f"{len(candidates)} candidates; {exc}"
+        ) from exc
