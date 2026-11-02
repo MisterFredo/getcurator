@@ -6,6 +6,8 @@ import requests
 
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form
 
+from pydantic import BaseModel
+
 from api.discovery.models import (
     DiscoveryListOut,
     ScanAllRequest,
@@ -159,6 +161,22 @@ async def extract_pdf_studio_v8(
             status_code=500,
             detail="Erreur extraction PDF Studio V8",
         ) from exc
+
+class LibraryEditorialDecision(BaseModel):
+    editorial_status: str
+
+@router.patch("/pdf-studio/v8/library/documents/{document_id}/topics/{topic_id}/editorial")
+def patch_library_topic_editorial(document_id: str, topic_id: str, payload: LibraryEditorialDecision):
+    from core.discovery.pdf_library_editorial import update_topic_editorial_status
+    try:
+        return update_topic_editorial_status(document_id, topic_id, payload.editorial_status)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur qualification éditoriale bibliothèque")
+        raise HTTPException(status_code=500, detail="Erreur qualification éditoriale") from exc
 
 
 # ============================================================
