@@ -1,21 +1,25 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import type { ProductionDocument } from "@/types/production-document";
+import { buildTouchEditorialHtml, checkTouchEditorialLayout } from "@/lib/touch-editorial-layout";
 import { buildTouchPresentationHtml, paginateTouchPresentation } from "@/lib/touch-presentation-layout";
 import { buildTouchPresentation, touchExportPeriod } from "@/lib/touch-presentation";
 import type { TouchPresentationOptions } from "@/lib/touch-presentation";
 import { pdfSubject, productionPdfFilename } from "@/lib/production-export";
 
-export default function TouchPresentationPreview(props: TouchPresentationOptions) {
+export default function TouchPresentationPreview(props: TouchPresentationOptions & { documentOverride?: ProductionDocument }) {
   const fr = props.outputLanguage !== "en";
-  const presentation = useMemo(() => buildTouchPresentation(props), [props.notebook, props.sources,
+  const presentation = useMemo(() => props.documentOverride || buildTouchPresentation(props), [props.documentOverride, props.notebook, props.sources,
     props.outputLanguage, props.periodStart, props.periodEnd, props.expertName, props.reportType]);
   const period = touchExportPeriod(props.periodStart, props.periodEnd);
   const filename = productionPdfFilename({ subject: presentation.title, language: fr ? "fr" : "en", ...period })
     ?.replace(/_Report\.pdf$/i, "_Presentation.pdf")
     || `GetCurator_${pdfSubject(presentation.title) || "Touch"}_undated_${fr ? "FR" : "EN"}_Presentation.pdf`;
-  const html = useMemo(() => buildTouchPresentationHtml(presentation, filename, fr ? "fr" : "en"),
-    [presentation, filename, fr]);
+  const html = useMemo(() => props.documentOverride
+    ? buildTouchEditorialHtml(props.documentOverride, filename, fr ? "fr" : "en")
+    : buildTouchPresentationHtml(presentation, filename, fr ? "fr" : "en"),
+    [props.documentOverride, presentation, filename, fr]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [checked, setChecked] = useState("");
   const [overflow, setOverflow] = useState<number[]>([]);
@@ -25,7 +29,7 @@ export default function TouchPresentationPreview(props: TouchPresentationOptions
     if (!doc) return;
     await doc.fonts.ready;
     if (frame.current?.contentDocument !== doc) return;
-    const result = paginateTouchPresentation(doc, fr ? "fr" : "en");
+    const result = props.documentOverride ? checkTouchEditorialLayout(doc) : paginateTouchPresentation(doc, fr ? "fr" : "en");
     setOverflow(result.overflow); setCount(result.count); setChecked(html);
   }
   function print() {
@@ -44,7 +48,7 @@ export default function TouchPresentationPreview(props: TouchPresentationOptions
   return <section className="space-y-4 rounded-xl border bg-white p-5">
     <div className="touch-output-toolbar space-y-3">
       <h3 className="text-lg font-semibold">{fr ? "Présentation du rapport Touch" : "Touch report presentation"}</h3>
-      <p className="text-sm text-slate-600">{fr
+      <p className="text-sm text-slate-600">{props.documentOverride ? (fr ? "Présentation éditorialisée à partir du rapport enregistré. Sources et limites conservées ; relisez les interprétations avant diffusion." : "Editorial presentation from the saved report. Sources and limitations preserved; review interpretations before sharing.") : fr
         ? "Version sans synthèse LLM : contenu conservé, réparti en pages A4 paysage. Chiffres intégrés aux bullet points, sans section Numbers séparée."
         : "No LLM synthesis: original content arranged across landscape A4 pages. Figures remain within bullet points; no separate Numbers section."}</p>
       <p className="text-xs text-slate-500">{checked === html ? count : presentation.pages.length} {fr ? "pages, bibliographie comprise après contrôle" : "pages, including bibliography after layout check"}</p>
