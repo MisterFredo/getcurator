@@ -12,8 +12,7 @@ export type TouchPresentationOptions = {
   reportType?: "MONTHLY" | "RESEARCH";
 };
 type Block = { text: string; refs: string[]; cautions?: string[] };
-const unique = (items: string[]): string[] =>
-  Array.from(new Set(items.filter(Boolean)));
+const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
 
 // Touch timestamps use an exclusive midnight end; export dates are inclusive.
 export function touchExportPeriod(start?: string | null, end?: string | null) {
@@ -44,7 +43,7 @@ export function buildTouchPresentation(options: TouchPresentationOptions): Rende
       const source = metadata.get(contentId);
       const id = `S${sources.length + 1}`;
       sources.push({ id, json_pointer: pointer, quote, content_id: contentId,
-        label: source ? [source.title, source.source_title, source.published_at?.slice(0, 10)].filter(Boolean).join(" · ") : contentId });
+        label: source ? unique([source.title, source.source_title, source.published_at?.slice(0, 10) || ""]).join(" · ") : contentId });
       ids.push(id);
     }
     return ids;
@@ -57,24 +56,15 @@ export function buildTouchPresentation(options: TouchPresentationOptions): Rende
       source_ids: unique(blocks.flatMap(b => b.refs)) });
   };
   const paginate = (layout: DocumentPage["layout"], title: string, blocks: Block[]) => {
-    let batch: Block[] = [], weight = 0, index = 0;
-    const flush = () => {
-      if (!batch.length) return;
-      page(layout, title + (index ? (fr ? " — suite" : " — continued") + ` ${index + 1}` : ""), batch);
-      index++; batch = []; weight = 0;
-    };
-    for (const block of blocks) {
-      const size = block.text.length + block.refs.join(", ").length + (block.cautions || []).join(" ").length;
-      if (batch.length && (batch.length >= 3 || weight + size > 1250)) flush();
-      batch.push(block); weight += size;
-    }
-    flush();
+    // Browser layout performs pagination using measured block heights.
+    // Keep complete section groups here, with no fixed bullet count.
+    if (blocks.length) page(layout, title, blocks);
   };
   const title = (options.reportType === "MONTHLY" && options.expertName?.trim()) || n.subject;
   const period = touchExportPeriod(options.periodStart, options.periodEnd);
   const periodLabel = period.periodStart && period.periodEnd
     ? `${period.periodStart} – ${period.periodEnd}` : "";
-  page("COVER", title, [], [periodLabel, n.objective].filter(Boolean));
+  page("COVER", title, [], [n.objective].filter(Boolean));
 
   const summary = (n.executive_summary || []).map((item, i) => ({ text: item.statement,
     refs: addReference(`/notebook/executive_summary/${i}/statement`, item.statement, item.source_content_ids) }));
