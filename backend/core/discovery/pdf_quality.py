@@ -27,8 +27,6 @@ def save_topic_quality(document_id: str, decisions: list[dict]) -> dict:
         if reason is not None and not isinstance(reason, str):
             raise ValueError(f"Motif invalide pour {tid}.")
         reason = (reason or "").strip()
-        if status == "REJECTED" and not reason:
-            raise ValueError(f"Motif obligatoire pour le rejet de {tid}.")
         if len(reason) > 500:
             raise ValueError(f"Motif trop long pour {tid}.")
         ids.add(tid)
@@ -52,10 +50,17 @@ def save_topic_quality(document_id: str, decisions: list[dict]) -> dict:
     if unknown:
         raise ValueError("Sujets absents de la bibliothèque : " + ", ".join(r.TOPIC_ID for r in unknown[:10]))
 
+    # Global validation: require a decision for every topic in the document.
+    count_sql = f"SELECT COUNT(*) AS n FROM `{TOPIC_TABLE}` WHERE ID_DOCUMENT = @document_id"
+    total = next(iter(client.query(count_sql, job_config=bigquery.QueryJobConfig(query_parameters=params)).result())).n
+    if total != len(clean):
+        raise ValueError(f"Validation globale incomplète : {len(clean)} sujets transmis pour {total} sujets enregistrés.")
+
     sql = f"""
       UPDATE `{TOPIC_TABLE}` t
       SET QUALITY_STATUS = JSON_VALUE(d, "$.quality_status"),
           QUALITY_REASON = JSON_VALUE(d, "$.quality_reason"),
+          QUALITY_VALIDATED_AT = CURRENT_TIMESTAMP(),
           UPDATED_AT = CURRENT_TIMESTAMP()
       FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@decisions_json))) d
       WHERE t.ID_DOCUMENT = @document_id AND t.TOPIC_ID = JSON_VALUE(d, "$.topic_id")
