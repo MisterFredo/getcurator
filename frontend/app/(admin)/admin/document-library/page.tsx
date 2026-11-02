@@ -3,197 +3,320 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
-type DocumentRow = {
-  ID_DOCUMENT: string;
-  ID_SOURCE: string;
-  TITLE: string;
-  PAGE_COUNT: number | null;
-  UNIT_COUNT: number;
-  TOPIC_COUNT: number;
-};
+type DocumentRow = { ID_DOCUMENT: string; TITLE: string; PAGE_COUNT: number | null; UNIT_COUNT: number; TOPIC_COUNT: number };
 type TopicRow = {
-  TOPIC_ID: string;
-  TITLE: string;
-  ANGLE: string | null;
-  EDITORIAL_RATIONALE: string | null;
-  EVIDENCE_COUNT: number;
-  REVIEW_COUNT: number;
-  EDITORIAL_STATUS: string;
-  ID_RAW: string | null;
-  ID_CONTENT: string | null;
+  ID_DOCUMENT: string; DOCUMENT_TITLE: string; TOPIC_ID: string; TITLE: string;
+  ANGLE: string | null; EDITORIAL_RATIONALE: string | null;
+  EVIDENCE_COUNT: number; REVIEW_COUNT: number; EDITORIAL_STATUS: string;
+  QUALITY_STATUS: string | null; QUALITY_REASON: string | null; QUALITY_VALIDATED_AT: string | null;
 };
-type EvidenceRow = {
-  UNIT_ID: string;
-  PDF_PAGE: number;
-  FACT: string;
-  QUOTE: string | null;
-  VERIFICATION_STATUS: string;
-  KIND: string | null;
-  GEOGRAPHY: string | null;
-  PERIOD: string | null;
+type UnitRow = {
+  ID_DOCUMENT: string; DOCUMENT_TITLE: string; UNIT_ID: string; PDF_PAGE: number;
+  FACT: string; QUOTE: string | null; VERIFICATION_STATUS: string;
+  KIND: string | null; GEOGRAPHY: string | null; PERIOD: string | null; TOPIC_COUNT: number;
 };
-type TopicDetail = TopicRow & { id_document: string; evidence: EvidenceRow[] };
-
-type DocumentsResponse = { documents: DocumentRow[] };
-type TopicsResponse = { topics: TopicRow[] };
+type TopicDetail = TopicRow & { evidence: UnitRow[] };
+type SearchTopics = { topics: TopicRow[]; total: number };
+type SearchUnits = { units: UnitRow[]; total: number };
+type Mode = "topics" | "units" | "quality";
 
 const base = "/discovery/pdf-studio/v8/library";
 const field = "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm";
-const action = "rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-40";
-const errorMessage = (e: unknown) => e instanceof Error ? e.message : String(e);
+const button = "rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-40";
+const errText = (e: unknown) => e instanceof Error ? e.message : String(e);
+const PAGE_SIZE = 50;
+
+function qualityLabel(topic: TopicRow) {
+  if (!topic.QUALITY_VALIDATED_AT) return "Qualité non validée";
+  return topic.QUALITY_STATUS === "REJECTED" ? "Écarté (qualité)" : "Accepté (qualité)";
+}
 
 export default function DocumentLibraryPage() {
+  const [mode, setMode] = useState<Mode>("topics");
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [documentId, setDocumentId] = useState("");
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [topicId, setTopicId] = useState("");
-  const [detail, setDetail] = useState<TopicDetail | null>(null);
+  const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [quality, setQuality] = useState("");
+  const [editorial, setEditorial] = useState("");
   const [offset, setOffset] = useState(0);
-  const [loadingDocuments, setLoadingDocuments] = useState(true);
-  const [loadingTopics, setLoadingTopics] = useState(false);
+  const [topics, setTopics] = useState<TopicRow[]>([]);
+  const [units, setUnits] = useState<UnitRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [selected, setSelected] = useState<TopicRow | UnitRow | null>(null);
+  const [detail, setDetail] = useState<TopicDetail | null>(null);
+  const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
-  const pageSize = 50;
+  const [qualityTopics, setQualityTopics] = useState<TopicRow[]>([]);
+  const [qualityEdits, setQualityEdits] = useState<Record<string, { status: "ACCEPTED" | "REJECTED"; reason: string }>>({});
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualitySaving, setQualitySaving] = useState(false);
+  const [qualityMessage, setQualityMessage] = useState("");
+  const [qualityError, setQualityError] = useState("");
 
-  const loadDocuments = useCallback(async () => {
-    setLoadingDocuments(true);
-    setError("");
-    try {
-      const result = await api.get(`${base}/documents?limit=200&offset=0`) as DocumentsResponse;
-      setDocuments(result.documents || []);
-      setDocumentId(previous => previous && result.documents.some(d => d.ID_DOCUMENT === previous)
-        ? previous : (result.documents[0]?.ID_DOCUMENT || ""));
-    } catch (e) {
-      setError(`Chargement des documents : ${errorMessage(e)}`);
-    } finally {
-      setLoadingDocuments(false);
-    }
+  useEffect(() => {
+    let alive = true;
+    api.get(`${base}/documents?limit=200&offset=0`)
+      .then((r: { documents: DocumentRow[] }) => { if (alive) setDocuments(r.documents || []); })
+      .catch((e: unknown) => { if (alive) setError(`Documents : ${errText(e)}`); });
+    return () => { alive = false; };
   }, []);
 
-  useEffect(() => { void loadDocuments(); }, [loadDocuments]);
+  useEffect(() => {
+    if (mode !== "quality" || !documentId) { setQualityTopics([]); setQualityEdits({}); return; }
+    let alive = true;
+    setQualityLoading(true);
+    setQualityError("");
+    setQualityMessage("");
+    (async () => {
+      const all: TopicRow[] = [];
+      let total = Infinity;
+      while (all.length < total) {
+        const params = new URLSearchParams({ document_id: documentId, limit: "100", offset: String(all.length) });
+        const result = await api.get(`${base}/search/topics?${params}`) as SearchTopics;
+        total = result.total;
+        if (!result.topics.length) break;
+        all.push(...result.topics);
+        if (all.length > 2000) throw new Error("Ce document dépasse la limite de 2 000 sujets pour la validation globale.");
+      }
+      if (all.length !== total) throw new Error("Chargement incomplet : impossible de valider globalement.");
+      if (alive) {
+        setQualityTopics(all);
+        setQualityEdits(Object.fromEntries(all.map(t => [t.TOPIC_ID, {
+          status: t.QUALITY_VALIDATED_AT && t.QUALITY_STATUS === "REJECTED" ? "REJECTED" : "ACCEPTED",
+          reason: t.QUALITY_REASON || "",
+        }])));
+      }
+    })().catch((e: unknown) => { if (alive) setQualityError(errText(e)); })
+      .finally(() => { if (alive) setQualityLoading(false); });
+    return () => { alive = false; };
+  }, [mode, documentId]);
+
+  const validateQuality = async () => {
+    if (!documentId || !qualityTopics.length || qualitySaving) return;
+    if (!window.confirm(`Valider le contrôle qualité des ${qualityTopics.length} sujets de ce document ?`)) return;
+    setQualitySaving(true);
+    setQualityError(""); setQualityMessage("");
+    try {
+      const decisions = qualityTopics.map(t => ({
+        topic_id: t.TOPIC_ID,
+        quality_status: qualityEdits[t.TOPIC_ID]?.status || "ACCEPTED",
+        quality_reason: qualityEdits[t.TOPIC_ID]?.status === "REJECTED" ? (qualityEdits[t.TOPIC_ID]?.reason || "").trim() || null : null,
+      }));
+      await api.post(`${base}/documents/${encodeURIComponent(documentId)}/quality`, { decisions });
+      setQualityMessage(`${decisions.length} sujets validés dans BigQuery.`);
+      setQualityTopics(previous => previous.map(t => ({ ...t,
+        QUALITY_STATUS: qualityEdits[t.TOPIC_ID]?.status || "ACCEPTED",
+        QUALITY_REASON: qualityEdits[t.TOPIC_ID]?.status === "REJECTED" ? qualityEdits[t.TOPIC_ID]?.reason || null : null,
+        QUALITY_VALIDATED_AT: new Date().toISOString(),
+      })));
+    } catch (e) { setQualityError(errText(e)); }
+    finally { setQualitySaving(false); }
+  };
+
+  const search = useCallback(async () => {
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+    if (query.trim()) params.set("query", query.trim());
+    if (documentId) params.set("document_id", documentId);
+    if (mode === "topics") {
+      if (quality) params.set("quality_status", quality);
+      if (editorial) params.set("editorial_status", editorial);
+    }
+    return mode === "topics"
+      ? await api.get(`${base}/search/topics?${params}`) as SearchTopics
+      : await api.get(`${base}/search/units?${params}`) as SearchUnits;
+  }, [mode, query, documentId, quality, editorial, offset]);
 
   useEffect(() => {
-    if (!documentId) { setTopics([]); setTopicId(""); setDetail(null); return; }
-    let active = true;
-    setLoadingTopics(true);
+    if (mode === "quality") return;
+    let alive = true;
+    setLoading(true);
     setError("");
-    setTopicId("");
+    setSelected(null);
     setDetail(null);
-    const params = new URLSearchParams({ limit: String(pageSize), offset: String(offset) });
-    if (search.trim()) params.set("query", search.trim());
-    if (status) params.set("editorial_status", status);
-    api.get(`${base}/documents/${encodeURIComponent(documentId)}/topics?${params.toString()}`)
-      .then((result: TopicsResponse) => { if (active) setTopics(result.topics || []); })
-      .catch((e: unknown) => { if (active) { setTopics([]); setError(`Chargement des sujets : ${errorMessage(e)}`); } })
-      .finally(() => { if (active) setLoadingTopics(false); });
-    return () => { active = false; };
-  }, [documentId, search, status, offset]);
+    search().then(result => {
+      if (!alive) return;
+      setTotal(result.total || 0);
+      if ("topics" in result) { setTopics(result.topics || []); setUnits([]); }
+      else { setUnits(result.units || []); setTopics([]); }
+    }).catch((e: unknown) => {
+      if (!alive) return;
+      setError(`Recherche : ${errText(e)}`);
+      setTopics([]); setUnits([]); setTotal(0);
+    }).finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [search]);
 
   useEffect(() => {
-    if (!documentId || !topicId) { setDetail(null); return; }
-    let active = true;
+    if (!selected || mode !== "topics" || !("TOPIC_ID" in selected)) {
+      setDetail(null); return;
+    }
+    let alive = true;
     setLoadingDetail(true);
-    setDetail(null);
-    api.get(`${base}/documents/${encodeURIComponent(documentId)}/topics/${encodeURIComponent(topicId)}`)
-      .then((result: TopicDetail) => { if (active) setDetail(result); })
-      .catch((e: unknown) => { if (active) setError(`Chargement des preuves : ${errorMessage(e)}`); })
-      .finally(() => { if (active) setLoadingDetail(false); });
-    return () => { active = false; };
-  }, [documentId, topicId]);
+    api.get(`${base}/documents/${encodeURIComponent(selected.ID_DOCUMENT)}/topics/${encodeURIComponent(selected.TOPIC_ID)}`)
+      .then((r: TopicDetail) => { if (alive) setDetail(r); })
+      .catch((e: unknown) => { if (alive) setError(`Preuves : ${errText(e)}`); })
+      .finally(() => { if (alive) setLoadingDetail(false); });
+    return () => { alive = false; };
+  }, [selected, mode]);
 
-  const selectedDocument = documents.find(d => d.ID_DOCUMENT === documentId);
+  const topicSelected = selected && "TOPIC_ID" in selected ? selected : null;
+  const unitSelected = selected && "UNIT_ID" in selected ? selected : null;
+  const entries = mode === "topics" ? topics : units;
+  const qualityRejected = qualityTopics.filter(t => qualityEdits[t.TOPIC_ID]?.status === "REJECTED").length;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6">
-      <header className="space-y-1">
+    <main className="mx-auto max-w-7xl space-y-5 p-6">
+      <header>
         <h1 className="text-2xl font-semibold">Bibliothèque documentaire</h1>
-        <p className="text-sm text-gray-600">Documents, sujets et preuves importés depuis PDF Studio V8. Consultation uniquement : aucun article RAW n’est créé.</p>
+        <p className="mt-1 text-sm text-gray-600">Recherche sur l'ensemble des PDF importés. Consultation uniquement : aucun contenu RAW créé.</p>
       </header>
 
-      {error && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+      <div className="flex gap-2 border-b pb-2">
+        <button type="button" className={`${button} ${mode === "topics" ? "border-blue-500 bg-blue-50 font-semibold" : ""}`}
+          onClick={() => { setMode("topics"); setOffset(0); }}>Sujets</button>
+        <button type="button" className={`${button} ${mode === "units" ? "border-blue-500 bg-blue-50 font-semibold" : ""}`}
+          onClick={() => { setMode("units"); setOffset(0); }}>Informations</button>
+        <button type="button" className={`${button} ${mode === "quality" ? "border-blue-500 bg-blue-50 font-semibold" : ""}`}
+          onClick={() => { setMode("quality"); setOffset(0); }}>Contrôle qualité</button>
+      </div>
 
-      <section className="space-y-3 rounded-xl border p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-semibold">1. Documents</h2>
-          <button type="button" className={action} disabled={loadingDocuments} onClick={() => void loadDocuments()}>Actualiser</button>
-        </div>
-        {loadingDocuments ? <p className="text-sm text-gray-500">Chargement…</p> : documents.length === 0 ? (
-          <p className="text-sm text-gray-500">Aucun document importé.</p>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {documents.map(document => (
-              <button key={document.ID_DOCUMENT} type="button" onClick={() => { setDocumentId(document.ID_DOCUMENT); setOffset(0); }}
-                className={`rounded-lg border p-4 text-left ${documentId === document.ID_DOCUMENT ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
-                <span className="block font-medium">{document.TITLE || document.ID_DOCUMENT}</span>
-                <span className="mt-2 block text-xs text-gray-600">{document.TOPIC_COUNT} sujets · {document.UNIT_COUNT} informations · {document.PAGE_COUNT ?? "?"} pages</span>
+      {mode === "quality" ? (
+        <section className="space-y-4">
+          <div className="rounded-lg border bg-gray-50 p-4 space-y-2">
+            <h2 className="font-semibold">Reprendre le contrôle qualité d’un document</h2>
+            <p className="text-sm text-gray-600">Les sujets sont rechargés depuis BigQuery, sans réextraction. Le motif de rejet est facultatif. La validation est globale et remplace les décisions précédentes.</p>
+            <select className={field} aria-label="Document à contrôler" value={documentId} onChange={e => setDocumentId(e.target.value)}>
+              <option value="">Choisir un document</option>
+              {documents.map(d => <option key={d.ID_DOCUMENT} value={d.ID_DOCUMENT}>{d.TITLE || d.ID_DOCUMENT} ({d.TOPIC_COUNT} sujets)</option>)}
+            </select>
+            {qualityLoading && <p className="text-sm">Chargement de tous les sujets…</p>}
+            {documentId && !qualityLoading && !qualityError && <p className="text-sm">{qualityTopics.length} sujets · {qualityRejected} écartés · {qualityTopics.length - qualityRejected} conservés</p>}
+          </div>
+          {qualityError && <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{qualityError}</p>}
+          {qualityMessage && <p role="status" className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800">{qualityMessage}</p>}
+          <div className="max-h-[650px] space-y-2 overflow-y-auto">
+            {qualityTopics.map(t => {
+              const edit = qualityEdits[t.TOPIC_ID];
+              const rejected = edit?.status === "REJECTED";
+              return <article key={t.TOPIC_ID} className={`rounded-lg border p-3 ${rejected ? "border-red-300 bg-red-50" : "bg-white"}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1"><p className="font-semibold text-sm">{t.TITLE}</p><p className="text-xs text-gray-500">{t.EVIDENCE_COUNT} preuves · {t.EDITORIAL_STATUS}{t.QUALITY_VALIDATED_AT ? " · déjà validé" : " · non validé"}</p></div>
+                  <select className={field} aria-label={`Qualité : ${t.TITLE}`} value={edit?.status || "ACCEPTED"} onChange={e => {
+                    const status = e.target.value as "ACCEPTED" | "REJECTED";
+                    setQualityEdits(prev => ({ ...prev, [t.TOPIC_ID]: { status, reason: prev[t.TOPIC_ID]?.reason || "" } }));
+                    setQualityMessage("");
+                  }}><option value="ACCEPTED">Conserver</option><option value="REJECTED">Écarter</option></select>
+                </div>
+                {rejected && <input className={`${field} mt-2 w-full`} maxLength={500} placeholder="Motif facultatif" value={edit?.reason || ""} onChange={e => {
+                  const reason = e.target.value;
+                  setQualityEdits(prev => ({ ...prev, [t.TOPIC_ID]: { status: "REJECTED", reason } }));
+                  setQualityMessage("");
+                }} />}
+              </article>;
+            })}
+          </div>
+          {qualityTopics.length > 0 && <div className="sticky bottom-3 rounded-lg border bg-white p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm">{qualityRejected} sujet(s) écarté(s) sur {qualityTopics.length}</span>
+            <button type="button" className={button} disabled={qualityLoading || qualitySaving || Boolean(qualityError)} onClick={validateQuality}>{qualitySaving ? "Enregistrement…" : "Valider globalement le contrôle qualité"}</button>
+          </div>}
+        </section>
+      ) : <>
+      <form className="flex flex-wrap items-center gap-2" onSubmit={e => { e.preventDefault(); setOffset(0); setQuery(input); }}>
+        <input className={`${field} min-w-[220px] flex-1`} value={input} onChange={e => setInput(e.target.value)}
+          placeholder={mode === "topics" ? "Rechercher titres, angles et justifications" : "Rechercher faits et citations"} />
+        <select className={field} aria-label="Filtre document" value={documentId} onChange={e => { setDocumentId(e.target.value); setOffset(0); }}>
+          <option value="">Tous les documents</option>
+          {documents.map(d => <option key={d.ID_DOCUMENT} value={d.ID_DOCUMENT}>{d.TITLE || d.ID_DOCUMENT}</option>)}
+        </select>
+        {mode === "topics" && <>
+          <select className={field} aria-label="Filtre qualité" value={quality} onChange={e => { setQuality(e.target.value); setOffset(0); }}>
+            <option value="">Toute qualité</option>
+            <option value="PENDING">Non validés</option>
+            <option value="ACCEPTED">Acceptés</option>
+            <option value="REJECTED">Écartés (qualité)</option>
+          </select>
+          <select className={field} aria-label="Filtre éditorial" value={editorial} onChange={e => { setEditorial(e.target.value); setOffset(0); }}>
+            <option value="">Tout statut éditorial</option>
+            <option value="REVIEW">À examiner</option>
+            <option value="SELECTED">Sélectionnés</option>
+            <option value="IGNORED">Ignorés</option>
+          </select>
+        </>}
+        <button type="submit" className={button}>Rechercher</button>
+        <button type="button" className={button} onClick={() => {
+          setInput(""); setQuery(""); setDocumentId(""); setQuality(""); setEditorial(""); setOffset(0);
+        }}>Réinitialiser</button>
+      </form>
+
+      {error && <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+      <p className="text-sm text-gray-600">{loading ? "Recherche en cours…" : `${total.toLocaleString("fr-FR")} résultat(s)`}</p>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(300px,1fr)_minmax(0,1.4fr)]">
+        <section className="space-y-2">
+          <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
+            {!loading && entries.length === 0 && <p className="text-sm text-gray-500">Aucun résultat pour ces critères.</p>}
+            {mode === "topics" && topics.map(t => (
+              <button key={`${t.ID_DOCUMENT}:${t.TOPIC_ID}`} type="button" onClick={() => setSelected(t)}
+                className={`w-full rounded-lg border p-3 text-left text-sm ${t.QUALITY_VALIDATED_AT && t.QUALITY_STATUS === "REJECTED" ? "border-red-300 bg-red-50" : "hover:bg-gray-50"} ${topicSelected?.ID_DOCUMENT === t.ID_DOCUMENT && topicSelected?.TOPIC_ID === t.TOPIC_ID ? "ring-2 ring-blue-400" : ""}`}>
+                <span className="block font-semibold">{t.TITLE}</span>
+                <span className="mt-1 block text-xs text-gray-600">{t.DOCUMENT_TITLE} · {t.EVIDENCE_COUNT} preuves</span>
+                <span className="mt-1 block text-xs text-gray-500">{qualityLabel(t)} · {t.EDITORIAL_STATUS}</span>
+              </button>
+            ))}
+            {mode === "units" && units.map(u => (
+              <button key={`${u.ID_DOCUMENT}:${u.UNIT_ID}`} type="button" onClick={() => setSelected(u)}
+                className={`w-full rounded-lg border p-3 text-left text-sm hover:bg-gray-50 ${unitSelected?.ID_DOCUMENT === u.ID_DOCUMENT && unitSelected?.UNIT_ID === u.UNIT_ID ? "ring-2 ring-blue-400" : ""}`}>
+                <span className="block font-medium">{u.FACT}</span>
+                <span className="mt-1 block text-xs text-gray-600">{u.DOCUMENT_TITLE} · p. {u.PDF_PAGE} · {u.TOPIC_COUNT} sujet(s)</span>
               </button>
             ))}
           </div>
-        )}
-      </section>
-
-      {selectedDocument && <section className="space-y-4 rounded-xl border p-5">
-        <h2 className="font-semibold">2. Sujets — {selectedDocument.TITLE}</h2>
-        <form className="flex flex-wrap gap-2" onSubmit={e => { e.preventDefault(); setOffset(0); setSearch(query); }}>
-          <input className={`${field} min-w-[220px] flex-1`} value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher dans les titres, angles et justifications" aria-label="Rechercher des sujets" />
-          <select className={field} value={status} onChange={e => { setStatus(e.target.value); setOffset(0); }} aria-label="Statut éditorial">
-            <option value="">Tous les statuts</option>
-            <option value="REVIEW">À examiner (REVIEW)</option>
-            <option value="SELECTED">Sélectionnés</option>
-            <option value="IGNORED">Écartés</option>
-          </select>
-          <button className={action} type="submit">Rechercher</button>
-          {(search || status) && <button type="button" className={action} onClick={() => { setQuery(""); setSearch(""); setStatus(""); setOffset(0); }}>Effacer</button>}
-        </form>
-        <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_minmax(0,1.5fr)]">
-          <div className="space-y-2">
-            {loadingTopics ? <p className="text-sm text-gray-500">Chargement des sujets…</p> : topics.length === 0 ? <p className="text-sm text-gray-500">Aucun sujet pour ces critères.</p> : (
-              <div className="max-h-[650px] space-y-2 overflow-y-auto pr-1">
-                {topics.map(topic => <button key={topic.TOPIC_ID} type="button" onClick={() => setTopicId(topic.TOPIC_ID)}
-                  className={`w-full rounded-lg border p-3 text-left text-sm ${topicId === topic.TOPIC_ID ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
-                  <span className="block font-medium">{topic.TITLE}</span>
-                  <span className="mt-1 block text-xs text-gray-500">{topic.TOPIC_ID} · {topic.EVIDENCE_COUNT} preuves · {topic.EDITORIAL_STATUS}</span>
-                </button>)}
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-2 pt-2">
-              <button type="button" className={action} disabled={loadingTopics || offset === 0} onClick={() => setOffset(v => Math.max(0, v - pageSize))}>Précédent</button>
-              <span className="text-xs text-gray-500">{offset + 1}–{offset + topics.length}</span>
-              <button type="button" className={action} disabled={loadingTopics || topics.length < pageSize} onClick={() => setOffset(v => v + pageSize)}>Suivant</button>
-            </div>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <button type="button" className={button} disabled={loading || offset === 0} onClick={() => setOffset(v => Math.max(0, v - PAGE_SIZE))}>Précédent</button>
+            <span className="text-xs text-gray-500">{total ? `${offset + 1}–${Math.min(offset + entries.length, total)} / ${total}` : "0 résultat"}</span>
+            <button type="button" className={button} disabled={loading || offset + PAGE_SIZE >= total} onClick={() => setOffset(v => v + PAGE_SIZE)}>Suivant</button>
           </div>
-          <div className="min-h-[250px] rounded-lg border p-4">
-            {loadingDetail ? <p className="text-sm text-gray-500">Chargement des preuves…</p> : !detail ? (
-              <p className="text-sm text-gray-500">Sélectionne un sujet pour consulter son angle et ses preuves.</p>
-            ) : <div className="space-y-4">
+        </section>
+
+        <section className="min-h-[280px] rounded-lg border p-4">
+          {!selected ? <p className="text-sm text-gray-500">Sélectionne un résultat pour afficher ses détails.</p> : topicSelected ? (
+            <div className="space-y-4 text-sm">
               <div>
-                <h3 className="text-lg font-semibold">{detail.TITLE}</h3>
-                <p className="mt-1 text-xs text-gray-500">{detail.TOPIC_ID} · {detail.EDITORIAL_STATUS} · {detail.EVIDENCE_COUNT} preuves · {detail.REVIEW_COUNT} à vérifier</p>
+                <h2 className="text-lg font-semibold">{topicSelected.TITLE}</h2>
+                <p className="text-xs text-gray-500">{topicSelected.DOCUMENT_TITLE} · {topicSelected.TOPIC_ID}</p>
               </div>
-              <div className="space-y-2 text-sm">
-                <p><strong>Angle :</strong> {detail.ANGLE || "Non renseigné"}</p>
-                <p><strong>Justification éditoriale :</strong> {detail.EDITORIAL_RATIONALE || "Non renseignée"}</p>
-              </div>
-              <div className="border-t pt-3">
-                <h4 className="mb-3 font-semibold">Preuves documentaires ({detail.evidence.length})</h4>
-                <div className="max-h-[560px] space-y-3 overflow-y-auto">
-                  {detail.evidence.map(unit => <article key={unit.UNIT_ID} className="space-y-2 rounded-md border p-3 text-sm">
-                    <div className="flex flex-wrap justify-between gap-2 text-xs text-gray-500">
-                      <span>{unit.UNIT_ID} · page {unit.PDF_PAGE}</span><span>{unit.VERIFICATION_STATUS}</span>
-                    </div>
-                    <p className="font-medium">{unit.FACT}</p>
-                    {unit.QUOTE && <p className="border-l-2 pl-3 text-gray-600">« {unit.QUOTE} »</p>}
-                    {(unit.GEOGRAPHY || unit.PERIOD || unit.KIND) && <p className="text-xs text-gray-500">{[unit.GEOGRAPHY, unit.PERIOD, unit.KIND].filter(Boolean).join(" · ")}</p>}
+              <p><strong>Qualité :</strong> {qualityLabel(topicSelected)}</p>
+              {topicSelected.QUALITY_REASON && <p><strong>Motif :</strong> {topicSelected.QUALITY_REASON}</p>}
+              <p><strong>Éditorial :</strong> {topicSelected.EDITORIAL_STATUS}</p>
+              <p><strong>Angle :</strong> {topicSelected.ANGLE || "Non renseigné"}</p>
+              <p><strong>Justification :</strong> {topicSelected.EDITORIAL_RATIONALE || "Non renseignée"}</p>
+              <h3 className="border-t pt-3 font-semibold">Preuves ({topicSelected.EVIDENCE_COUNT})</h3>
+              {loadingDetail ? <p>Chargement des preuves…</p> : !detail ? <p className="text-gray-500">Détails indisponibles.</p> : (
+                <div className="max-h-[500px] space-y-3 overflow-y-auto">
+                  {detail.evidence.map(u => <article key={u.UNIT_ID} className="rounded-md border p-3">
+                    <p className="mb-1 text-xs text-gray-500">Page {u.PDF_PAGE} · {u.UNIT_ID} · {u.VERIFICATION_STATUS}</p>
+                    <p className="font-medium">{u.FACT}</p>
+                    {u.QUOTE && <p className="mt-2 border-l-2 pl-3 text-gray-600">« {u.QUOTE} »</p>}
                   </article>)}
                 </div>
-              </div>
-            </div>}
-          </div>
-        </div>
-      </section>}
+              )}
+            </div>
+          ) : unitSelected ? (
+            <div className="space-y-3 text-sm">
+              <h2 className="text-lg font-semibold">Information documentaire</h2>
+              <p className="text-xs text-gray-500">{unitSelected.DOCUMENT_TITLE} · page {unitSelected.PDF_PAGE} · {unitSelected.UNIT_ID}</p>
+              <p className="font-medium">{unitSelected.FACT}</p>
+              {unitSelected.QUOTE && <p className="border-l-2 pl-3 text-gray-600">« {unitSelected.QUOTE} »</p>}
+              <p><strong>Vérification :</strong> {unitSelected.VERIFICATION_STATUS}</p>
+              <p><strong>Sujets associés :</strong> {unitSelected.TOPIC_COUNT}</p>
+              <p className="text-gray-600">{[unitSelected.KIND, unitSelected.GEOGRAPHY, unitSelected.PERIOD].filter(Boolean).join(" · ")}</p>
+            </div>
+          ) : null}
+        </section>
+      </div>
+      </>}
     </main>
   );
 }
