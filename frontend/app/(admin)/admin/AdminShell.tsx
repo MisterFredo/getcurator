@@ -163,8 +163,8 @@ export default function AdminShell({
     
       items: [
         {
-          href: "/admin/document-library",
-          label: "Bibliothèque",
+          href: "/admin/library",
+          label: "Library",
           icon: Library,
         },
         {
