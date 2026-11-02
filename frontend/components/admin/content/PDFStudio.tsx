@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 type Source = { source_id: string; name: string };
 type RegisteredDocument = { id_document: string; document_hash: string; source_id: string };
 type RegisterResponse = { id_document?: string; document_id?: string; sha256?: string; document_hash?: string };
+type QualityDecision = { status: "ACCEPTED" | "REJECTED"; reason: string };
+type QualityDecisions = Record<string, QualityDecision>;
 type LibraryImportResponse = { status: string; units: number; topics: number; associations: number };
 type Evidence = {
   id: string;
@@ -73,6 +75,8 @@ export default function PDFStudio() {
   const [file, setFile] = useState<File | null>(null);
   const [registeredDocument, setRegisteredDocument] = useState<RegisteredDocument | null>(null);
   const [libraryImported, setLibraryImported] = useState(false);
+  const [quality, setQuality] = useState<QualityDecisions>({});
+  const [qualitySaved, setQualitySaved] = useState(false);
   const [title, setTitle] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [sourceId, setSourceId] = useState("");
@@ -120,6 +124,8 @@ export default function PDFStudio() {
             setRegisteredDocument(data.registered_document);
           }
           setLibraryImported(data.library_imported === true);
+          setQuality(data.topic_quality && typeof data.topic_quality === "object" ? data.topic_quality : {});
+          setQualitySaved(data.quality_saved === true);
           setPageCount(typeof data.page_count === "number" ? data.page_count : null);
           setNextPage(data.extraction_complete === true ? null : (data.next_page ?? 1));
           if (data.topics?.proposals) setTopics(data.topics);
@@ -140,11 +146,12 @@ export default function PDFStudio() {
         page_count: pageCount, extraction_complete: nextPage === null,
         next_page: nextPage, units, topics,
         registered_document: registeredDocument, library_imported: libraryImported,
+        topic_quality: quality, quality_saved: qualitySaved,
       }));
     } catch (e) {
       setError(`Sauvegarde automatique impossible : ${errText(e)}. Exporte immédiatement le travail en JSON.`);
     }
-  }, [restored, title, sourceId, pageCount, nextPage, units, topics, registeredDocument, libraryImported]);
+  }, [restored, title, sourceId, pageCount, nextPage, units, topics, registeredDocument, libraryImported, quality, qualitySaved]);
 
   async function importWork(selected: File | undefined) {
     if (!selected || busy) return;
@@ -171,10 +178,13 @@ export default function PDFStudio() {
         topics: data.topics || null,
         registered_document: data.registered_document || null,
         library_imported: data.library_imported === true,
+        topic_quality: data.topic_quality || {}, quality_saved: data.quality_saved === true,
       }));
       setFile(null);
       setRegisteredDocument(data.registered_document?.id_document && data.registered_document?.document_hash ? data.registered_document : null);
       setLibraryImported(data.library_imported === true);
+      setQuality(data.topic_quality && typeof data.topic_quality === "object" ? data.topic_quality : {});
+      setQualitySaved(data.quality_saved === true);
       setTitle(importedTitle);
       setSourceId(importedSourceId);
       setUnits(restoredUnits);
@@ -194,6 +204,38 @@ export default function PDFStudio() {
   const rejectedCount = units.length - acceptedUnits.length;
   const duplicateSource = sources.find(source => normalize(source.name) === normalize(sourceName));
   const activeTopic = topics?.proposals.find(topic => topic.id === selectedTopic);
+  const rejectedTopics = topics?.proposals.filter(topic => quality[topic.id]?.status === "REJECTED").length ?? 0;
+  const qualityDecisions = topics?.proposals.filter(topic => quality[topic.id]).map(topic => ({
+    topic_id: topic.id,
+    quality_status: quality[topic.id]?.status || "ACCEPTED",
+    quality_reason: quality[topic.id]?.status === "REJECTED" ? (quality[topic.id]?.reason || "").trim() : null,
+  })) || [];
+  const missingReasons = qualityDecisions.some(d => d.quality_status === "REJECTED" && !d.quality_reason);
+
+  function setTopicQuality(topicId: string, patch: Partial<QualityDecision>) {
+    if (busy) return;
+    setQuality(previous => ({
+      ...previous,
+      [topicId]: { status: "ACCEPTED", reason: "", ...previous[topicId], ...patch },
+    }));
+    setQualitySaved(false);
+  }
+
+  async function saveQuality() {
+    if (!registeredDocument || !libraryImported || !qualityDecisions.length || missingReasons || busy) return;
+    setBusy("library"); setError("");
+    try {
+      const response = await api.post(
+        `/discovery/pdf-studio/v8/library/documents/${encodeURIComponent(registeredDocument.id_document)}/quality`,
+        { decisions: qualityDecisions },
+      ) as { status: string; updated: number };
+      if (response.status !== "SAVED") throw new Error("Réponse qualité inattendue.");
+      setQualitySaved(true);
+      setNotice(`${response.updated} décisions qualité enregistrées, dont ${rejectedTopics} sujets écartés.`);
+    } catch (e) {
+      setError(`Sauvegarde qualité impossible : ${errText(e)}`);
+    } finally { setBusy(""); }
+  }
 
   function reset(next: File | null) {
     if (busy) return;
@@ -201,6 +243,8 @@ export default function PDFStudio() {
     setFile(next);
     setRegisteredDocument(null);
     setLibraryImported(false);
+    setQuality({});
+    setQualitySaved(false);
     setTitle(next?.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ") || "");
     setUnits([]);
     setNextPage(1);
@@ -333,6 +377,8 @@ export default function PDFStudio() {
         throw new Error("Réponse de consolidation invalide.");
       }
       setTopics(result);
+      setQuality({});
+      setQualitySaved(false);
       setLibraryImported(false);
         setSelectedTopic(result.proposals[0]?.id || null);
       setNotice(`${result.proposals.length} sujets proposés. Les ${total} lots restent sauvegardés dans ce navigateur.`);
@@ -401,6 +447,7 @@ export default function PDFStudio() {
       }) as LibraryImportResponse;
       if (result.status !== "IMPORTED") throw new Error("Réponse d'import inattendue.");
       setLibraryImported(true);
+      setQualitySaved(false);
       setNotice(`Bibliothèque enregistrée : ${result.units} informations, ${result.topics} sujets, ${result.associations} associations.`);
     } catch (e) {
       setError(`Import bibliothèque impossible : ${errText(e)}`);
@@ -418,6 +465,8 @@ export default function PDFStudio() {
     topics,
     registered_document: registeredDocument,
     library_imported: libraryImported,
+    topic_quality: quality,
+    quality_saved: qualitySaved,
     document_hash: registeredDocument?.document_hash || null,
     id_document: registeredDocument?.id_document || null,
   };
@@ -524,13 +573,13 @@ export default function PDFStudio() {
         </button>
         {busy === "topics" && <p className="text-sm text-gray-600">Chaque lot terminé est sauvegardé dans ce navigateur. Ne ferme pas cet onglet pendant un appel en cours.</p>}
         {topics && <>
-          <p className="text-sm font-medium">{topics.proposals.length} sujets proposés · {topics.summary.coverage_percent}% de couverture ({topics.summary.covered_units}/{topics.summary.eligible_units} informations)</p>
+          <p className="text-sm font-medium">{topics.proposals.length} sujets proposés · {topics.proposals.length - rejectedTopics} conservés · {rejectedTopics} écartés · {topics.summary.coverage_percent}% de couverture ({topics.summary.covered_units}/{topics.summary.eligible_units} informations)</p>
           <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]">
             <div className="max-h-[520px] space-y-2 overflow-y-auto">
               {topics.proposals.map(topic => <button type="button" key={topic.id} onClick={() => setSelectedTopic(topic.id)}
                 className={`w-full rounded-lg border p-3 text-left text-sm ${selectedTopic === topic.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}`}>
                 <span className="block font-medium">{topic.title}</span>
-                <span className="mt-1 block text-xs text-gray-500">{topic.evidence_count} preuves · {topic.review_count} à vérifier</span>
+                <span className="mt-1 block text-xs text-gray-500">{topic.evidence_count} preuves · {quality[topic.id]?.status === "REJECTED" ? "Écarté (qualité)" : "Conservé"} · {topic.review_count} à vérifier</span>
               </button>)}
             </div>
             {activeTopic && <div className="space-y-3 rounded-lg border p-4 text-sm">
@@ -538,6 +587,21 @@ export default function PDFStudio() {
               <p><strong>Angle :</strong> {activeTopic.angle}</p>
               <p><strong>Pourquoi ce sujet :</strong> {activeTopic.editorial_rationale}</p>
               <p className="text-xs text-gray-500">Pages : {activeTopic.pages.join(", ")} · {activeTopic.review_count} preuves à revoir</p>
+              <div className="rounded-md border p-3 space-y-2">
+                <p className="font-medium">Contrôle qualité documentaire</p>
+                <label className="flex items-center gap-2"><input type="radio" name={`quality-${activeTopic.id}`}
+                  checked={quality[activeTopic.id]?.status !== "REJECTED"} disabled={Boolean(busy)}
+                  onChange={() => setTopicQuality(activeTopic.id, { status: "ACCEPTED", reason: "" })} />Conserver</label>
+                <label className="flex items-center gap-2"><input type="radio" name={`quality-${activeTopic.id}`}
+                  checked={quality[activeTopic.id]?.status === "REJECTED"} disabled={Boolean(busy)}
+                  onChange={() => setTopicQuality(activeTopic.id, { status: "REJECTED" })} />Écarter pour problème de qualité</label>
+                {quality[activeTopic.id]?.status === "REJECTED" && <label className="block">Motif obligatoire
+                  <textarea className={field} maxLength={500} disabled={Boolean(busy)}
+                    placeholder="Doublon, preuves insuffisantes, angle incohérent…"
+                    value={quality[activeTopic.id]?.reason || ""}
+                    onChange={event => setTopicQuality(activeTopic.id, { reason: event.target.value })} />
+                </label>}
+              </div>
               <div className="max-h-72 space-y-2 overflow-y-auto border-t pt-3">
                 {activeTopic.evidence.map(evidence => <div key={evidence.id} className="border-b pb-2">
                   <p className="font-medium">p. {evidence.page} · {evidence.fact}</p>
@@ -570,6 +634,14 @@ export default function PDFStudio() {
           {busy === "library" ? "Import en cours…" : libraryImported ? "Réimporter dans la bibliothèque" : "Importer dans la bibliothèque"}
         </button>
         {libraryImported && <p className="text-sm text-green-700">Import effectué. Les informations et les sujets sont consultables dans la bibliothèque.</p>}
+        {libraryImported && <div className="space-y-2 rounded-lg border p-3">
+          <p className="text-sm">Contrôle qualité : {topics?.proposals.length || 0} sujets, dont {rejectedTopics} écartés localement. {qualityDecisions.length} décision(s) à synchroniser. Les sujets écartés restent enregistrés avec leurs preuves.</p>
+          {missingReasons && <p className="text-sm text-red-700">Renseigne un motif pour chaque sujet écarté.</p>}
+          <button type="button" className={primary} disabled={Boolean(busy) || missingReasons || !qualityDecisions.length}
+            onClick={() => void saveQuality()}>
+            {busy === "library" ? "Enregistrement…" : qualitySaved ? "Contrôle qualité enregistré — Mettre à jour" : "Enregistrer le contrôle qualité"}
+          </button>
+        </div>}
         {libraryImported && <a href="/admin/document-library" className="inline-block text-sm font-medium text-ratecard-blue underline">Ouvrir la bibliothèque documentaire</a>}
         <button type="button" className={button} disabled={!units.length || Boolean(busy)}
           onClick={() => downloadJson(`pdf-studio-${file?.name.replace(/\.pdf$/i, "") || "document"}.json`, exportData)}>
