@@ -667,6 +667,7 @@ function EvidenceNote({
    EVENT
 ========================================================= */
 
+
 function EventBlock({
   event,
   notes,
