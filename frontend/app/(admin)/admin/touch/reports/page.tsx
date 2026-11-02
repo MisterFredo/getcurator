@@ -156,13 +156,18 @@ export default function TouchReportsPage() {
             className="text-sm font-medium text-ratecard-blue hover:underline">
             ← All reports
           </button>
-          <TouchOutputChoice notebook={selectedReport.notebook}
+          <TouchOutputChoice
+            reportId={selectedReport.report_id}
+            notebook={selectedReport.notebook}
             expertName={selectedExpertName}
             reportType={selectedReport.report_type ?? "RESEARCH"}
             periodStart={selectedReport.period_start}
             periodEnd={selectedReport.period_end}
             outputLanguage={selectedReport.output_language}
-            sources={reportSources(selectedReport)} brief={brief} onBriefChange={setBrief} />
+            sources={reportSources(selectedReport)}
+            brief={brief}
+            onBriefChange={setBrief}
+          />
         </div>
       )}
     </div>
