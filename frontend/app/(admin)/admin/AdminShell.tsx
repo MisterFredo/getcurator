@@ -16,7 +16,7 @@ import {
   Layers,
   LayoutTemplate,
   Link as LinkIcon,
-  LibraryBig,
+  Library,
   Presentation,
   Link2,
   Puzzle,
@@ -165,7 +165,7 @@ export default function AdminShell({
         {
           href: "/admin/document-library",
           label: "Bibliothèque",
-          icon: LibraryBig,
+          icon: Library,
         },
         {
           href: "/admin/knowledge",
