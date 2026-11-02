@@ -225,7 +225,7 @@ export default function PDFStudio() {
     setBusy("library"); setError("");
     try {
       const response = await api.post(
-        `/discovery/pdf-studio/v8/library/documents/${encodeURIComponent(registeredDocument.id_document)}/quality`,
+        `/library/documents/${encodeURIComponent(registeredDocument.id_document)}/quality`,
         { decisions: topics.proposals.map(topic => ({
           topic_id: topic.id,
           quality_status: quality[topic.id]?.status === "REJECTED" ? "REJECTED" : "ACCEPTED",
