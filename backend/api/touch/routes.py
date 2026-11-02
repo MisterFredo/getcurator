@@ -773,3 +773,68 @@ def unpublish_touch_report(report_id: str, request: Request):
     if not set_report_published(report_id, False):
         raise HTTPException(status_code=404, detail="Touch report not found")
     return {"status": "ok", "report_id": report_id}
+
+# ============================================================
+# TOUCH PRESENTATIONS — ADMIN, SAVED REPORTS ONLY
+# ============================================================
+from uuid import UUID
+from core.touch import presentation_service
+from core.touch.presentation_repository import PresentationConflict
+
+
+class TouchPresentationStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    artifact_id: UUID
+    expected_version: int = Field(ge=1)
+
+
+class TouchPresentationRefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    response_id: str | None = Field(default=None, max_length=200)
+
+
+def _touch_presentation_call(action):
+    try:
+        return action()
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PresentationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception("Touch presentation operation failed")
+        raise HTTPException(status_code=503, detail="Présentation temporairement indisponible. Actualisez le suivi avant toute nouvelle génération.") from exc
+
+
+@router.post("/reports/{report_id}/presentations")
+def start_touch_presentation(report_id: str, payload: TouchPresentationStartRequest, request: Request):
+    _require_library_admin(request)
+    item = _touch_presentation_call(lambda: presentation_service.start_presentation(
+        report_id, str(payload.artifact_id), payload.expected_version))
+    return {"status": "ok", "presentation": item}
+
+
+@router.get("/reports/{report_id}/presentations")
+def list_touch_presentations(report_id: str, request: Request,
+                            limit: int = Query(default=30, ge=1, le=100),
+                            offset: int = Query(default=0, ge=0)):
+    _require_library_admin(request)
+    return {"status": "ok", "presentations": _touch_presentation_call(
+        lambda: presentation_service.list_presentations(report_id, limit, offset))}
+
+
+@router.get("/reports/{report_id}/presentations/{artifact_id}")
+def read_touch_presentation(report_id: str, artifact_id: UUID, request: Request):
+    _require_library_admin(request)
+    return {"status": "ok", "presentation": _touch_presentation_call(
+        lambda: presentation_service.get_presentation(report_id, str(artifact_id)))}
+
+
+@router.post("/reports/{report_id}/presentations/{artifact_id}/refresh")
+def refresh_touch_presentation(report_id: str, artifact_id: UUID,
+                               payload: TouchPresentationRefreshRequest, request: Request):
+    _require_library_admin(request)
+    return {"status": "ok", "presentation": _touch_presentation_call(
+        lambda: presentation_service.refresh_presentation(report_id, str(artifact_id), payload.response_id))}
