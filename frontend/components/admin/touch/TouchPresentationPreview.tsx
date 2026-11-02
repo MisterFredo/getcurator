@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { buildDocumentHtml } from "@/components/admin/production/ProductionDocumentPreview";
+import { buildTouchPresentationHtml, paginateTouchPresentation } from "@/lib/touch-presentation-layout";
 import { buildTouchPresentation, touchExportPeriod } from "@/lib/touch-presentation";
 import type { TouchPresentationOptions } from "@/lib/touch-presentation";
 import { pdfSubject, productionPdfFilename } from "@/lib/production-export";
@@ -14,27 +14,23 @@ export default function TouchPresentationPreview(props: TouchPresentationOptions
   const filename = productionPdfFilename({ subject: presentation.title, language: fr ? "fr" : "en", ...period })
     ?.replace(/_Report\.pdf$/i, "_Presentation.pdf")
     || `GetCurator_${pdfSubject(presentation.title) || "Touch"}_undated_${fr ? "FR" : "EN"}_Presentation.pdf`;
-  const html = useMemo(() => buildDocumentHtml(presentation, filename, fr ? "fr" : "en", true),
+  const html = useMemo(() => buildTouchPresentationHtml(presentation, filename, fr ? "fr" : "en"),
     [presentation, filename, fr]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [checked, setChecked] = useState("");
   const [overflow, setOverflow] = useState<number[]>([]);
   const [count, setCount] = useState(0);
-  function checkLayout() {
-    const sheets = frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".sheet");
-    if (!sheets) return;
-    const exceeds = (sheet: HTMLElement) => sheet.getBoundingClientRect().height
-      > sheet.getBoundingClientRect().width * 210 / 297 + 3 || sheet.scrollWidth > sheet.clientWidth + 2;
-    Array.from(sheets).forEach(sheet => {
-      sheet.classList.remove("compact");
-      if (exceeds(sheet)) sheet.classList.add("compact");
-    });
-    setOverflow(Array.from(sheets).filter(exceeds).map(sheet => Number(sheet.dataset.page)));
-    setCount(sheets.length); setChecked(html);
+  async function checkLayout() {
+    const doc = frame.current?.contentDocument;
+    if (!doc) return;
+    await doc.fonts.ready;
+    if (frame.current?.contentDocument !== doc) return;
+    const result = paginateTouchPresentation(doc, fr ? "fr" : "en");
+    setOverflow(result.overflow); setCount(result.count); setChecked(html);
   }
   function print() {
     const child = frame.current?.contentWindow;
-    if (!child || checked !== html) return;
+    if (!child || checked !== html || overflow.length) return;
     const previous = window.document.title;
     const restore = () => {
       window.document.title = previous;
@@ -53,9 +49,9 @@ export default function TouchPresentationPreview(props: TouchPresentationOptions
         : "No LLM synthesis: original content arranged across landscape A4 pages. Figures remain within bullet points; no separate Numbers section."}</p>
       <p className="text-xs text-slate-500">{checked === html ? count : presentation.pages.length} {fr ? "pages, bibliographie comprise après contrôle" : "pages, including bibliography after layout check"}</p>
       {checked === html && overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-sm text-amber-900">{fr
-        ? `Pages trop denses : ${overflow.join(", ")}. Aucun contenu n’est masqué. Vérifiez l’aperçu d’impression ; ces pages peuvent s’étendre sur plusieurs feuilles.`
-        : `Dense pages: ${overflow.join(", ")}. No content is hidden. Check print preview; these pages may span multiple sheets.`}</p>}
-      <button type="button" disabled={checked !== html} onClick={print}
+        ? `Pages trop denses : ${overflow.join(", ")}. Export suspendu pour éviter de couper le contenu.`
+        : `Dense pages: ${overflow.join(", ")}. Export paused to avoid cutting content.`}</p>}
+      <button type="button" disabled={checked !== html || overflow.length > 0} onClick={print}
         className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         {fr ? "Imprimer / Enregistrer la présentation en PDF" : "Print / Save presentation as PDF"}
       </button>
