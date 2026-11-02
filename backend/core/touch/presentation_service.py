@@ -76,8 +76,48 @@ def build_evidence(report):
     return evidence
 
 
+def _restore_omitted_sources(payload, snapshot):
+    """Restore only missing entries already present in the frozen evidence registry.
+
+    This runs before ProductionDocument's structural validator. Existing source
+    objects, page references and prose are never rewritten or removed. Unknown
+    references still fail; all provenance/numeric/coverage checks run afterwards.
+    """
+    if not isinstance(payload, dict) or not isinstance(payload.get("document"), dict):
+        return []
+    document = payload["document"]
+    sources = document.get("sources")
+    pages = document.get("pages")
+    if not isinstance(sources, list) or not isinstance(pages, list):
+        return []  # The normal schema validator will explain the invalid shape.
+    evidence = {item["id"]: item for item in snapshot["evidence"]}
+    present = {source.get("id") for source in sources
+               if isinstance(source, dict) and isinstance(source.get("id"), str)}
+    missing = []
+    for page in pages:
+        if not isinstance(page, dict) or not isinstance(page.get("source_ids"), list):
+            continue
+        for source_id in page["source_ids"]:
+            if not isinstance(source_id, str) or source_id in present:
+                continue
+            if source_id not in evidence:
+                raise ValueError(
+                    f"Page {page.get('page_id', '?')} : source {source_id} "
+                    "absente du registre de preuves figé. Aucune réparation automatique possible."
+                )
+            # Copy the exact registered entry, never reconstruct or paraphrase it.
+            sources.append(dict(evidence[source_id]))
+            present.add(source_id)
+            missing.append(source_id)
+    if missing:
+        logger.warning("Touch presentation: restored omitted frozen sources %s", missing)
+    return missing
+
+
 def validate_result(text, snapshot):
-    result = PresentationResult.model_validate_json(text)
+    payload = json.loads(text)
+    restored = _restore_omitted_sources(payload, snapshot)
+    result = PresentationResult.model_validate(payload)
     report = snapshot["saved_report"]
     evidence = {item["id"]: item for item in snapshot["evidence"]}
     for source in result.document.sources:
@@ -129,7 +169,9 @@ def validate_result(text, snapshot):
             if pointers and not any(sources[sid].json_pointer.startswith(tuple(pointers))
                                     for sid in page.source_ids):
                 raise ValueError(f"Chapitre {section['title']} : page sans preuve du chapitre.")
-    return result.model_dump(mode="json")
+    validated = result.model_dump(mode="json")
+    validated["restored_source_ids"] = restored
+    return validated
 
 
 def public(item):
