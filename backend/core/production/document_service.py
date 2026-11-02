@@ -144,8 +144,7 @@ def small_cardinals_in_quote(quote):
         if value is None:
             continue
 
-        # "Tous deux", "toutes deux", "tous les deux" refer
-        # to previously mentioned items, not a numerical observation.
+        # References to previously mentioned items, not numerical observations.
         if match.group() == "deux" and re.search(
             r"\b(?:tous|toutes)(?:\s+les)?\s*$",
             text[:match.start()],
@@ -154,6 +153,16 @@ def small_cardinals_in_quote(quote):
 
         before = re.findall(r"[\w]+", text[:match.start()])
         after = re.findall(r"[\w]+", text[match.end():])
+
+        # Editorial structure, not a numerical observation.
+        if (
+            match.group() == "deux"
+            and before
+            and before[-1] == "distingue"
+            and after
+            and after[0] == "problèmes"
+        ):
+            continue
 
         # A small cardinal before a scale is a coefficient.
         # Do not admit fragments of compound numbers.
@@ -198,7 +207,6 @@ def small_cardinals_in_quote(quote):
             result.add(Decimal(1))
 
     return result
-
 
 def numbers_in_quote(quote):
     # Ignore sentence-ending periods after numbers,
