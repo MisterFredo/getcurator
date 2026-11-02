@@ -12,7 +12,8 @@ export type TouchPresentationOptions = {
   reportType?: "MONTHLY" | "RESEARCH";
 };
 type Block = { text: string; refs: string[]; cautions?: string[] };
-const unique = (items: string[]) => [...new Set(items.filter(Boolean))];
+const unique = (items: string[]): string[] =>
+  Array.from(new Set(items.filter(Boolean)));
 
 // Touch timestamps use an exclusive midnight end; export dates are inclusive.
 export function touchExportPeriod(start?: string | null, end?: string | null) {
@@ -107,7 +108,7 @@ export function buildTouchPresentation(options: TouchPresentationOptions): Rende
   // Old or imperfect saved plans must not silently lose unassigned evidence.
   paginate("ANALYSIS", fr ? "Éléments complémentaires" : "Additional evidence",
     collect(n.notes.filter(item => !displayed.has(item.note_id)).map(item => item.note_id)));
-  for (const [i, reading] of (n.cross_readings || []).entries()) {
+  for (const [i, reading] of Array.from((n.cross_readings || []).entries())) {
     page("ANALYSIS", reading.title, [{ text: `${reading.statement}\n(${reading.reading_type} · ${reading.confidence})`,
       refs: addReference(`/notebook/cross_readings/${i}/statement`, reading.statement, reading.source_content_ids) }]);
   }
