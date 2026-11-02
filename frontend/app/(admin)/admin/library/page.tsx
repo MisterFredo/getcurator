@@ -173,7 +173,18 @@ export default function DocumentLibraryPage() {
         ? { ...t, EDITORIAL_STATUS: status } : t;
       setTopics(prev => prev.map(apply));
       setSelected(prev => prev && "TOPIC_ID" in prev ? apply(prev) : prev);
-      setDetail(prev => prev ? apply(prev) : prev);
+      setDetail(prev =>
+        prev
+          ? {
+              ...prev,
+              EDITORIAL_STATUS:
+                prev.ID_DOCUMENT === topic.ID_DOCUMENT &&
+                prev.TOPIC_ID === topic.TOPIC_ID
+                  ? status
+                  : prev.EDITORIAL_STATUS,
+            }
+          : prev
+      );
       // If the current filter excludes the new status, remove it from the visible list.
       if (editorial && editorial !== status) {
         setTopics(prev => prev.filter(t => !(t.ID_DOCUMENT === topic.ID_DOCUMENT && t.TOPIC_ID === topic.TOPIC_ID)));
