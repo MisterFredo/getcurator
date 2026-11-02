@@ -20,7 +20,7 @@ type SearchTopics = { topics: TopicRow[]; total: number };
 type SearchUnits = { units: UnitRow[]; total: number };
 type Mode = "topics" | "units" | "quality";
 
-const base = "/discovery/pdf-studio/v8/library";
+const base = "/library";
 const field = "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm";
 const button = "rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-40";
 const errText = (e: unknown) => e instanceof Error ? e.message : String(e);
