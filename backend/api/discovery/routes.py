@@ -288,6 +288,79 @@ def import_pdf_studio_library(
 
 
 # ============================================================
+# PDF STUDIO V8 — DOCUMENTARY LIBRARY READ API
+# ============================================================
+
+@router.get("/pdf-studio/v8/library/documents")
+def list_pdf_studio_library_documents(
+    limit: int = 100,
+    offset: int = 0,
+):
+    from core.discovery.pdf_library import list_library_documents
+
+    try:
+        return list_library_documents(limit=limit, offset=offset)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur liste bibliothèque documentaire")
+        raise HTTPException(status_code=500, detail="Erreur lecture bibliothèque documentaire") from exc
+
+
+@router.get("/pdf-studio/v8/library/documents/{document_id}")
+def get_pdf_studio_library_document(document_id: str):
+    from core.discovery.pdf_library import get_library_document
+
+    try:
+        return get_library_document(document_id)
+    except ValueError as exc:
+        status = 404 if str(exc) == "Document introuvable." else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur lecture document documentaire")
+        raise HTTPException(status_code=500, detail="Erreur lecture du document") from exc
+
+
+@router.get("/pdf-studio/v8/library/documents/{document_id}/topics")
+def list_pdf_studio_library_topics(
+    document_id: str,
+    query: str | None = None,
+    editorial_status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    from core.discovery.pdf_library import list_library_topics
+
+    try:
+        return list_library_topics(
+            document_id=document_id,
+            query=query,
+            editorial_status=editorial_status,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur liste sujets bibliothèque documentaire")
+        raise HTTPException(status_code=500, detail="Erreur lecture des sujets") from exc
+
+
+@router.get("/pdf-studio/v8/library/documents/{document_id}/topics/{topic_id}")
+def get_pdf_studio_library_topic(document_id: str, topic_id: str):
+    from core.discovery.pdf_library import get_library_topic
+
+    try:
+        return get_library_topic(document_id, topic_id)
+    except ValueError as exc:
+        status = 404 if str(exc) == "Sujet introuvable." else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Erreur lecture sujet documentaire")
+        raise HTTPException(status_code=500, detail="Erreur lecture du sujet") from exc
+
+
+# ============================================================
 # LINKEDIN STUDIO — ANALYZE
 # ============================================================
 
