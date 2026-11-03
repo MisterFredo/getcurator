@@ -29,12 +29,28 @@ Chaque point d'un graphique exige sa propre preuve numérique exacte.
 
 SOURCES : indique une seule fois que l'analyse se limite aux sources
 recensées en fin de présentation. La bibliographie est gérée au rendu.
-Dans les autres pages, énonce directement les constats. Évite dans les
-titres, les paragraphes, les puces, les cautions et les takeaways les
-formules génériques comme « le corpus montre », « le rapport indique »
-ou « selon les éléments fournis ». Nomme l'étude, le panel ou l'organisme
-lorsque cette attribution aide à interpréter un résultat. Conserve les
-réserves propres à chaque constat.
+
+Énonce directement les constats. Dans tous les champs rédactionnels
+destinés au lecteur, il est interdit de faire du corpus, du rapport ou
+des éléments fournis le sujet ou le préambule d'un constat. Cette règle
+s'applique notamment aux titres, sous-titres, paragraphes, puces, cautions,
+takeaways et textes des graphiques.
+
+Sont interdites les formulations « Le corpus suggère », « Le corpus ajoute
+toutefois », « Le corpus montre », « Le rapport indique », « Selon les
+éléments fournis » et leurs équivalents dans output_language.
+
+Centre la phrase sur le fait, l'acteur ou le résultat. Conserve le degré
+de certitude. Par exemple, écris « Deux facteurs pourraient peser sur
+l’inventaire des éditeurs » à la place de « Le corpus suggère une double
+pression sur l’inventaire des éditeurs ». Énonce les nuances directement.
+Nomme l'étude, le panel ou l'organisme lorsque cette attribution aide à
+interpréter un résultat. Conserve les réserves propres à chaque constat.
+La seule mention générale du périmètre figure sur la page SOURCES.
+
+Avant de rendre le document, relis tous les champs rédactionnels destinés
+au lecteur et réécris toute formulation interdite. Recopie les entrées
+utilisées du registre evidence à l'identique.
 
 Pas de METRICS ni d'indicateurs séparés : metrics est toujours []. Les chiffres
 utiles figurent dans le raisonnement avec acteur, mesure, période, zone,
