@@ -69,6 +69,11 @@ ni version. source_ids sur chaque page référence ces IDs. Chaque page hors
 COVER/SOURCES exige des preuves portant réellement ses affirmations.
 Pour un chiffre, cite une entrée dont quote contient précisément cette valeur.
 Pas de calcul dérivé, changement d'échelle, signe inventé ou année inférée.
+Lorsque la preuve exprime le sens d'une variation par un mot, conserve
+ce sens en toutes lettres et reprends la valeur sans lui ajouter de signe.
+Par exemple, écris « une baisse de 20,8 % » si la preuve dit « une baisse
+de 20,8 % ». Utilise « −20,8 % » uniquement si la preuve porte déjà
+explicitement le signe négatif.
 Les validated_numbers ne constituent pas une section à réintroduire.
 Aucune URL ni identifiant technique dans les textes destinés au lecteur.
 
