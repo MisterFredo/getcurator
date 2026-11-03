@@ -401,7 +401,11 @@ export default function PDFStudio() {
     setRegisteredDocument(null);
     setLibraryImported(false);
     setError("");
-    setNotice("PDF original sélectionné. Les informations et sujets existants sont conservés.");
+    setNotice(
+      completed
+        ? "PDF original sélectionné. Les informations et sujets existants sont conservés."
+        : `PDF sélectionné. Les ${units.length} informations existantes sont conservées. Tu peux reprendre l'extraction à partir de la page ${nextPage}.`
+    );
   }
 
   async function registerDocument() {
@@ -498,7 +502,10 @@ export default function PDFStudio() {
             onChange={event => reset(event.target.files?.[0] || null)} className="mt-2 block w-full text-sm" />
         </label>
         {file && <p className="text-xs text-gray-500">{file.name} · {(file.size / 1048576).toFixed(2)} Mo</p>}
-        {!!units.length && !file && <label className="block text-sm">PDF original pour l'enregistrement (sans réextraire)
+        {!!units.length && !file && <label className="block text-sm">
+          {completed
+            ? "PDF original pour l'enregistrement (sans réextraire)"
+            : "Resélectionner le PDF original pour reprendre l'extraction"}
           <input type="file" accept=".pdf,application/pdf" disabled={Boolean(busy)}
             onChange={event => attachOriginalPdf(event.target.files?.[0] || null)} className="mt-2 block w-full text-sm" />
         </label>}
