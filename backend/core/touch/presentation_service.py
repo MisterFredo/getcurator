@@ -6,7 +6,7 @@ import os
 from types import SimpleNamespace
 from pydantic import BaseModel, ConfigDict, Field
 from openai import APIStatusError
-from core.production.document_models import ProductionDocument
+from core.production.document_models import DocumentSource, ProductionDocument
 from core.production.document_service import client, validate_against_corpus, numbers_in_quote
 from core.touch.notebook_report_service import get_touch_report
 from core.touch import presentation_repository as repo
@@ -23,9 +23,13 @@ class Coverage(BaseModel):
     omitted_details: str
 
 
+class TouchPresentationDocument(ProductionDocument):
+    sources: list[DocumentSource] = Field(min_length=1, max_length=200)
+
+
 class PresentationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    document: ProductionDocument
+    document: TouchPresentationDocument
     section_coverage: list[Coverage]
 
 
