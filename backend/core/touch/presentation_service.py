@@ -122,57 +122,125 @@ def validate_result(text, snapshot):
     payload = json.loads(text)
     restored = _restore_omitted_sources(payload, snapshot)
     result = PresentationResult.model_validate(payload)
+
     report = snapshot["saved_report"]
     evidence = {item["id"]: item for item in snapshot["evidence"]}
+
     for source in result.document.sources:
         if source.model_dump(mode="json") != evidence.get(source.id):
             raise ValueError(f"Source {source.id} : preuve modifiée ou inconnue.")
-    corpus = SimpleNamespace(reports=[SimpleNamespace(report_id=report["report_id"],
-                            version_number=report["version_number"], payload=report)])
+
+    corpus = SimpleNamespace(
+        reports=[
+            SimpleNamespace(
+                report_id=report["report_id"],
+                version_number=report["version_number"],
+                payload=report,
+            )
+        ]
+    )
     validate_against_corpus(result.document, corpus)
-    sources = {s.id: s for s in result.document.sources}
-    pages = {p.page_id: p for p in result.document.pages}
-    if not any(p.layout == "SUMMARY" for p in result.document.pages):
+
+    sources = {source.id: source for source in result.document.sources}
+    pages = {page.page_id: page for page in result.document.pages}
+
+    if not any(page.layout == "SUMMARY" for page in result.document.pages):
         raise ValueError("Une synthèse des enseignements est obligatoire.")
+
     for page in result.document.pages:
         if page.layout == "METRICS" or page.metrics:
-            raise ValueError("Les chiffres doivent rester contextualisés dans les explications.")
+            raise ValueError(
+                "Les chiffres doivent rester contextualisés dans les explications."
+            )
+
         if page.layout not in {"COVER", "SOURCES"}:
-            # Presence check only, not a semantic assertion. Reuse Production's
-            # conservative parser for every number written in the narrative.
             allowed = set()
-            for sid in page.source_ids:
-                allowed |= numbers_in_quote(sources[sid].quote)
-            written = numbers_in_quote(" ".join([page.title, *page.paragraphs, *page.bullets,
-                                                page.takeaway, *page.cautions]))
-            if written - allowed:
-                raise ValueError(f"Page {page.page_id} : valeurs sans preuve citée : "
-                                 + ", ".join(sorted(str(v) for v in written - allowed)))
-    sections = report["notebook"].get("sections", [])
-    expected = {s["section_id"] for s in sections}
-    actual = [c.section_id for c in result.section_coverage]
+            for source_id in page.source_ids:
+                allowed |= numbers_in_quote(sources[source_id].quote)
+
+            written = numbers_in_quote(
+                " ".join([
+                    page.title,
+                    *page.paragraphs,
+                    *page.bullets,
+                    page.takeaway,
+                    *page.cautions,
+                ])
+            )
+            unsupported_values = written - allowed
+            if unsupported_values:
+                values = ", ".join(sorted(str(value) for value in unsupported_values))
+                raise ValueError(
+                    f"Page {page.page_id} : valeurs sans preuve citée : {values}"
+                )
+
+    notebook = report["notebook"]
+    sections = notebook.get("sections", [])
+    expected = {section["section_id"] for section in sections}
+    actual = [coverage.section_id for coverage in result.section_coverage]
+
     if set(actual) != expected or len(actual) != len(set(actual)):
-        raise ValueError("La couverture doit référencer chaque chapitre exactement une fois.")
-    notes = report["notebook"].get("notes", [])
-    events = report["notebook"].get("events", [])
+        raise ValueError(
+            "La couverture doit référencer chaque chapitre exactement une fois."
+        )
+
+    coverage_by_section = {
+        coverage.section_id: coverage for coverage in result.section_coverage
+    }
+    notes = notebook.get("notes", [])
+    events = notebook.get("events", [])
+
     for section in sections:
-        coverage = next(c for c in result.section_coverage if c.section_id == section["section_id"])
+        coverage = coverage_by_section[section["section_id"]]
         note_ids = set(section.get("note_ids", []))
+        event_ids = set(section.get("event_ids", []))
+
         for event in events:
-            if event["event_id"] in section.get("event_ids", []):
+            if event["event_id"] in event_ids:
                 note_ids.update(event.get("note_ids", []))
-        pointers = {f"/notebook/notes/{i}/" for i, note in enumerate(notes) if note["note_id"] in note_ids}
-        pointers |= {f"/notebook/events/{i}/" for i, event in enumerate(events)
-                     if event["event_id"] in section.get("event_ids", [])}
+
+        pointers = {
+            f"/notebook/notes/{index}/"
+            for index, note in enumerate(notes)
+            if note["note_id"] in note_ids
+        }
+        pointers |= {
+            f"/notebook/events/{index}/"
+            for index, event in enumerate(events)
+            if event["event_id"] in event_ids
+        }
+
         if pointers and not coverage.page_ids:
             raise ValueError(f"Chapitre omis : {section['title']}.")
-        for pid in coverage.page_ids:
-            page = pages.get(pid)
+
+        chapter_pointers = tuple(pointers)
+        supported_page_ids = []
+
+        for page_id in coverage.page_ids:
+            page = pages.get(page_id)
             if not page or page.layout in {"COVER", "SOURCES"}:
-                raise ValueError("Couverture : page inconnue ou sans contenu éditorial.")
-            if pointers and not any(sources[sid].json_pointer.startswith(tuple(pointers))
-                                    for sid in page.source_ids):
-                raise ValueError(f"Chapitre {section['title']} : page sans preuve du chapitre.")
+                raise ValueError(
+                    f"Chapitre {section['title']} : "
+                    f"page inconnue ou sans contenu éditorial ({page_id})."
+                )
+
+            if chapter_pointers and not any(
+                sources[source_id].json_pointer.startswith(chapter_pointers)
+                for source_id in page.source_ids
+            ):
+                continue
+
+            supported_page_ids.append(page_id)
+
+        if chapter_pointers and not supported_page_ids:
+            proposed = ", ".join(coverage.page_ids)
+            raise ValueError(
+                f"Chapitre {section['title']} : aucune page proposée "
+                f"ne cite de preuve directe du chapitre ({proposed})."
+            )
+
+        coverage.page_ids = supported_page_ids
+
     validated = result.model_dump(mode="json")
     validated["restored_source_ids"] = restored
     return validated
