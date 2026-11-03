@@ -195,21 +195,19 @@ def small_cardinals_in_quote(quote):
 
         result.add(Decimal(value))
 
-    # "Un"/"une" may be articles.
-    # Exclude agent phrases such as "un examen par l’Autorité".
+    # Recognize 1 in explicit per-unit expressions such as
+    # "un marchand par panier".
     for match in re.finditer(
         r"(?<![\w-])(?:one|single|un|une)\s+"
         r"([a-zà-ÿ]+(?:[ -][a-zà-ÿ]+){0,3}?)\s+"
         r"(?:per|par)\s+"
-        r"(?!(?:le|la|les|l|un|une|des|du|d)\b)"
-        r"[a-zà-ÿ]+(?![\w-])",
+        r"(?:panier|commande|transaction|requête|impression|clic|visite|"
+        r"jour|semaine|mois|an|année|"
+        r"basket|cart|order|query|click|visit|day|week|month|year)"
+        r"(?![\w-])",
         text,
     ):
-        between = re.findall(
-            r"[a-zà-ÿ]+",
-            match.group(1),
-        )
-
+        between = re.findall(r"[a-zà-ÿ]+", match.group(1))
         if not any(word in CARDINAL_CONTEXT for word in between):
             result.add(Decimal(1))
 
