@@ -267,6 +267,29 @@ def numbers_in_quote(quote):
 
     return result
 
+def chart_value_in_quote(value, quote, unit):
+    expected = Decimal(str(value))
+    if expected in numbers_in_quote(quote):
+        return True
+
+    # An unsigned percentage can support a negative chart value
+    # when the citation explicitly describes a decrease of that amount.
+    if expected >= 0 or unit.strip() != "%":
+        return False
+
+    declines = re.finditer(
+        r"\b(?:fell|dropped|declined|decreased|"
+        r"a diminué|ont diminué|a baissé|ont baissé|baisse de|recul de)"
+        r"\s+(?:by\s+|de\s+)?"
+        r"(?P<amount>[0-9]+(?:[.,][0-9]+)?)\s*%",
+        quote,
+        flags=re.IGNORECASE,
+    )
+    return any(
+        -Decimal(match.group("amount").replace(",", ".")) == expected
+        for match in declines
+    )
+
 def validator_diagnostics():
     return {
         "revision": NUMERIC_VALIDATOR_REVISION,
@@ -281,34 +304,59 @@ def validator_diagnostics():
 def validate_against_corpus(document, corpus):
     reports = {(r.report_id, r.version_number): r.payload for r in corpus.reports}
     sources = {s.id: s for s in document.sources}
+
     for source in document.sources:
         report = reports.get((source.report_id, source.report_version))
         if report is None:
             raise ValueError(f"Source {source.id} : rapport ou version inconnus.")
+
         try:
             value = pointer_value(report, source.json_pointer)
         except (ValueError, KeyError, IndexError) as exc:
             raise ValueError(f"Source {source.id} : chemin JSON introuvable.") from exc
+
         if source.quote not in value:
-            raise ValueError(f"Source {source.id} : citation absente du passage référencé.")
+            raise ValueError(
+                f"Source {source.id} : citation absente du passage référencé."
+            )
+
         source.label = str(report.get("subject") or source.label)
         if source.content_id:
             container = report
             for raw in source.json_pointer[1:].split("/")[:-1]:
                 token = raw.replace("~1", "/").replace("~0", "~")
-                container = container[int(token)] if isinstance(container, list) else container[token]
+                container = (
+                    container[int(token)] if isinstance(container, list)
+                    else container[token]
+                )
+
             if isinstance(container, dict):
                 related = container.get("source_content_ids")
                 if related is not None and source.content_id not in related:
-                    raise ValueError(f"Source {source.id} : contenu sans lien avec la preuve.")
+                    raise ValueError(
+                        f"Source {source.id} : contenu sans lien avec la preuve."
+                    )
                 if container.get("content_id") and container["content_id"] != source.content_id:
-                    raise ValueError(f"Source {source.id} : contenu sans lien avec le passage.")
-            saved_source = next((s for s in report.get("sources", [])
-                                 if s.get("content_id") == source.content_id), None)
+                    raise ValueError(
+                        f"Source {source.id} : contenu sans lien avec le passage."
+                    )
+
+            saved_source = next(
+                (
+                    s for s in report.get("sources", [])
+                    if s.get("content_id") == source.content_id
+                ),
+                None,
+            )
             if saved_source is None:
-                raise ValueError(f"Source {source.id} : contenu absent des sources sauvegardées.")
-            # Use the saved title, not an invented bibliography entry.
-            source.label = str(saved_source.get("title") or report.get("subject") or source.label)
+                raise ValueError(
+                    f"Source {source.id} : contenu absent des sources sauvegardées."
+                )
+
+            source.label = str(
+                saved_source.get("title") or report.get("subject") or source.label
+            )
+
     for page in document.pages:
         for metric in page.metrics:
             if Decimal(str(metric.value)) not in numbers_in_quote(metric.display_value):
@@ -316,14 +364,25 @@ def validate_against_corpus(document, corpus):
                     f"Page {page.page_id} : affichage {metric.display_value!r} "
                     f"incompatible avec la valeur {metric.value} ({metric.source_id})."
                 )
-        values = [(m.value, m.source_id) for m in page.metrics]
-        if page.chart:
-            values += [(p.value, p.source_id) for p in page.chart.points]
-        for value, source_id in values:
-            if Decimal(str(value)) not in numbers_in_quote(sources[source_id].quote):
-                raise ValueError(f"Page {page.page_id} : valeur {value} absente de la citation {source_id}.")
-    return document
 
+        for metric in page.metrics:
+            quote = sources[metric.source_id].quote
+            if Decimal(str(metric.value)) not in numbers_in_quote(quote):
+                raise ValueError(
+                    f"Page {page.page_id} : valeur {metric.value} "
+                    f"absente de la citation {metric.source_id}."
+                )
+
+        if page.chart:
+            for point in page.chart.points:
+                quote = sources[point.source_id].quote
+                if not chart_value_in_quote(point.value, quote, page.chart.unit):
+                    raise ValueError(
+                        f"Page {page.page_id} : valeur {point.value} "
+                        f"absente de la citation {point.source_id}."
+                    )
+
+    return document
 
 def start_document(production_id, reviewed_plan, on_created=None):
     if not reviewed_plan.strip():
