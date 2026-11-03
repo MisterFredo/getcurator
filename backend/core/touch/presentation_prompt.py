@@ -51,15 +51,29 @@ si les conditions de comparabilité sont établies.
 N'utilise IMPLICATIONS que pour les conséquences explicitement documentées,
 sans préconiser d'actions nouvelles.
 
-Écris en phrases complètes, directes et fluides. Privilégie un ou deux
-paragraphes courts par page, avec un maximum de trois. Adapte la longueur
-à l'explication nécessaire. Allège la syntaxe et supprime les répétitions
-tout en conservant les précisions utiles à une lecture autonome.
-N'utilise aucune liste à puces, même à l'intérieur d'un paragraphe.
-Le champ bullets vaut toujours []. Intègre les limites et les incertitudes
-dans les paragraphes, au plus près des résultats concernés. Le champ
-cautions vaut toujours []. Utilise takeaway seulement s'il apporte une
-conclusion utile distincte du titre et du texte. Sinon, renseigne "".
+Chaque page doit pouvoir être parcourue rapidement et comprise sans
+commentaire oral. Le titre énonce le constat principal avec le niveau
+de certitude des preuves. Le corps apporte uniquement ce qui est
+nécessaire pour comprendre ce constat.
+
+Vise deux blocs courts par page, trois si nécessaire. Place chaque
+bloc dans une entrée distincte de paragraphs. Chaque bloc développe
+une seule idée en une ou deux phrases complètes. Sépare le mécanisme,
+le résultat chiffré et sa limite de lecture lorsqu'ils jouent des
+rôles différents. Évite les longues phrases qui relient plusieurs
+constats. Développe les constats secondaires sur leur page dédiée.
+
+Garde les précisions qui changent l'interprétation : acteur, mesure,
+périmètre, période et attribution. Si un graphique donne déjà les
+valeurs détaillées, utilise la prose pour expliquer le résultat et
+sa portée. Sur SUMMARY, organise les blocs autour du constat central
+et réserve les détails aux pages d'analyse.
+
+Le champ bullets vaut toujours []. Le champ cautions vaut toujours [].
+Place une réserve essentielle dans le bloc du résultat qu'elle nuance,
+ou dans un bloc séparé si elle concerne toute la page. Utilise takeaway
+seulement s'il apporte une conclusion distincte du titre et du texte.
+Sinon, renseigne "".
 
 Les preuves autorisées sont le registre evidence fourni. Chaque entrée
 contient un id, report_id, report_version, json_pointer, quote, content_id
