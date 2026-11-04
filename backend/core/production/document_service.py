@@ -131,6 +131,32 @@ CARDINAL_CONTEXT = set(SMALL_CARDINALS) | {
 }
 
 
+SMALL_ORDINALS = {
+    "first": 1,
+    "second": 2,
+    "third": 3,
+    "fourth": 4,
+    "fifth": 5,
+    "sixth": 6,
+    "seventh": 7,
+    "eighth": 8,
+    "ninth": 9,
+    "tenth": 10,
+    "premier": 1,
+    "première": 1,
+    "seconde": 2,
+    "deuxième": 2,
+    "troisième": 3,
+    "quatrième": 4,
+    "cinquième": 5,
+    "sixième": 6,
+    "septième": 7,
+    "huitième": 8,
+    "neuvième": 9,
+    "dixième": 10,
+}
+
+
 def small_cardinals_in_quote(quote):
     result = set()
     text = quote.lower()
@@ -139,13 +165,17 @@ def small_cardinals_in_quote(quote):
         r"(?<![\w-])[a-zà-ÿ]+(?![\w-])",
         text,
     ):
-        value = SMALL_CARDINALS.get(match.group())
+        word = match.group()
+        value = SMALL_CARDINALS.get(word)
+
+        if value is None:
+            value = SMALL_ORDINALS.get(word)
 
         if value is None:
             continue
 
         # References to previously mentioned items, not numerical observations.
-        if match.group() == "deux" and re.search(
+        if word == "deux" and re.search(
             r"\b(?:tous|toutes)(?:\s+les)?\s*$",
             text[:match.start()],
         ):
@@ -156,7 +186,7 @@ def small_cardinals_in_quote(quote):
 
         # Editorial structure, not a numerical observation.
         if (
-            match.group() == "deux"
+            word == "deux"
             and before
             and before[-1] == "distingue"
             and after
@@ -183,9 +213,9 @@ def small_cardinals_in_quote(quote):
             )
 
         if any(
-            word in CARDINAL_CONTEXT
-            or any(c.isdigit() for c in word)
-            for word in neighbors
+            neighbor in CARDINAL_CONTEXT
+            or any(c.isdigit() for c in neighbor)
+            for neighbor in neighbors
         ):
             continue
 
@@ -212,7 +242,6 @@ def small_cardinals_in_quote(quote):
             result.add(Decimal(1))
 
     return result
-
 def numbers_in_quote(quote):
     # Ignore sentence-ending periods after numbers,
     # without changing decimal separators.
