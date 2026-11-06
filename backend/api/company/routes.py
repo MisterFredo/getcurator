@@ -134,8 +134,7 @@ def import_watch_text_route(id_company: str, id_company_watch: str, data: Compan
 
 @router.post("/{id_company}/watch/{id_company_watch}/publications/{id_document}/extract-step")
 def extract_watch_step_route(id_company: str, id_company_watch: str, id_document: str):
-    _watch_call(active_watch, id_company, id_company_watch)
-    return _watch_call(extract_step, id_company, id_company_watch, id_document)
+    raise HTTPException(409, "Le déstockage Corpo est suspendu ; aucune extraction automatique. Actualiser le frontend.")
 
 
 @router.get("/{id_company}/watch/{id_company_watch}/publications")
@@ -153,6 +152,31 @@ def get_watch_publication_route(
     offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
 ):
     return _watch_call(publication_detail, id_company, id_company_watch, id_document, offset, limit)
+
+
+
+# ============================================================
+# CORPO — DÉCOUVERTE ET STOCK DISTINCTS DE LA LIBRARY
+# ============================================================
+from core.company.watch_discovery_service import list_candidates, store_candidate, candidate_detail
+
+
+@router.get("/watch/discovery/list")
+def list_watch_discoveries_route(
+    id_company: Optional[str] = None, id_company_watch: Optional[str] = None,
+    status: str = "NEW", offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
+):
+    return _watch_call(list_candidates, id_company, id_company_watch, status, offset, limit)
+
+
+@router.post("/watch/discovery/{id_discovery}/store")
+def store_watch_discovery_route(id_discovery: str):
+    return _watch_call(store_candidate, id_discovery)
+
+
+@router.get("/watch/discovery/{id_discovery}/content")
+def get_watch_stored_content_route(id_discovery: str):
+    return _watch_call(candidate_detail, id_discovery)
 
 
 # ============================================================
@@ -340,4 +364,5 @@ def get_route(id_company: str):
     if not company:
         raise HTTPException(404, "Société introuvable")
     return company
+
 
