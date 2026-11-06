@@ -5,11 +5,16 @@ import { api } from "@/lib/api";
 import { listWatchCompanies } from "@/lib/companyWatch";
 import type { WatchCompany } from "@/lib/companyWatch";
 
-type Result = {url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
+type Result = {resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
 type Run = {id_run:string; company_name:string; start:string; end:string; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
+
+function reasonLabel(reason?:string) {
+  const labels:Record<string,string>={PUBLICATION_DATE_UNKNOWN:"Article ou page pertinente, mais date de publication non vérifiable",PUBLICATION_DATE_CONFLICT:"Dates de publication contradictoires",OUTSIDE_PUBLICATION_PERIOD:"Publication hors période",REFERENCE_PAGE_NOT_NEWS:"Page de référence ou fiche outil — pas une publication d’actualité identifiée",NO_EDITORIAL_MENTION:"Aucune mention dans le texte éditorial",EDITORIAL_RELEVANCE_UNCERTAIN:"Pertinence éditoriale non confirmée",CORPORATE_DOMAIN:"Publication corporate exclue des mentions externes",DUPLICATE_FINAL_URL:"Même URL finale déjà examinée",QUOTE_NOT_VERIFIED:"Citation non vérifiée"};
+  return labels[reason||""]||reason;
+}
 
 export default function MentionsPage() {
   const [companies,setCompanies]=useState<WatchCompany[]>([]);
@@ -48,6 +53,12 @@ export default function MentionsPage() {
       setRun(r);localStorage.setItem("corpo_mentions_run",r.id_run);window.history.replaceState(null,"",`?run=${encodeURIComponent(r.id_run)}`);setRunning(true);
     }catch(e){setError(errorText(e));}finally{setLoading(false);}
   }
+  async function recheck() {
+    if(!run)return;
+    setLoading(true);setError("");
+    try {const next:Run=await api.post(`/company/watch/mentions/${encodeURIComponent(run.id_run)}/recheck`,{});setRun(next);setRunning(true);}
+    catch(e){setError(errorText(e));}finally{setLoading(false);}
+  }
   const imported=run?.results.filter(r=>r.status==="IMPORTED")||[];
   const journal=run?.results.filter(r=>r.status==="JOURNAL")||[];
   return <div className="space-y-6">
@@ -71,10 +82,11 @@ export default function MentionsPage() {
         {!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>}
       </div>
+      {["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
       <h2 className="font-semibold">Mentions ajoutées</h2>
       {imported.map((r,i)=><article key={i} className="bg-white border rounded p-4"><strong>{r.title}</strong><p>{r.explanation}</p><Link className="underline" href={`/admin/library/corpo?document=${encodeURIComponent(r.id_document||"")}`}>Consulter dans la Library</Link></article>)}
       <details className="bg-white border rounded p-4"><summary>Journal technique ({journal.length}) — éléments exclus</summary><p className="text-sm text-gray-600 my-2">Ce journal explique les exclusions. Il ne constitue pas une liste à valider manuellement.</p>
-        {journal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-sm">{r.reason}</p></div>)}
+        {journal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.resolved_url||r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-xs text-gray-500">{r.resolved_url||r.url}</p><p className="text-sm">{reasonLabel(r.reason)}</p>{!!r.date_sources?.length&&<p className="text-xs">Dates de parution détectées : {r.date_sources.map(d=>`${d.value} (${d.locator})`).join(" · ")}</p>}</div>)}
       </details>
     </section>}
   </div>;
