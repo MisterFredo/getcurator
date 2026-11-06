@@ -57,7 +57,7 @@ from pydantic import validator, root_validator
 
 CompanyWatchSourceType = Literal["HTML", "LINKEDIN", "NEWSLETTER", "PDF"]
 CompanyWatchSourceRole = Literal["CORPORATE", "EMPLOYEE"]
-CompanyWatchCollectionMethod = Literal["MANUAL", "STUDIO", "HTML"]
+CompanyWatchCollectionMethod = Literal["MANUAL", "STUDIO", "HTML", "BRIGHTDATA"]
 
 
 class CompanyWatchBase(BaseModel):
@@ -98,6 +98,15 @@ class CompanyWatchCreate(CompanyWatchBase):
     collection_method: CompanyWatchCollectionMethod = "MANUAL"
     collection_config: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
+
+    @root_validator(skip_on_failure=True)
+    def validate_brightdata(cls, values):
+        if values.get("collection_method") == "BRIGHTDATA":
+            from core.discovery.brightdata_linkedin import validate_config
+            if values.get("source_type") not in {"LINKEDIN", "HTML"}:
+                raise ValueError("Bright Data LinkedIn nécessite un format LINKEDIN ou HTML")
+            validate_config(values["source_url"], values.get("collection_config") or {})
+        return values
 
 
 class CompanyWatchUpdate(CompanyWatchBase):
@@ -142,3 +151,10 @@ class CompanyWatchImportRequest(BaseModel):
     class Config:
         extra = "forbid"
 
+
+
+class CompanyWatchAttachSnapshot(BaseModel):
+    snapshot_id: str = Field(min_length=4, max_length=150)
+
+    class Config:
+        extra = "forbid"
