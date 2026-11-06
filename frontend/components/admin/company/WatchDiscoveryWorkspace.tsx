@@ -148,8 +148,19 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
   const eligible = items.filter(row => row.status === "NEW" && row.watch_active && row.collection_method === "HTML");
   const allPageSelected = eligible.length > 0 && eligible.every(row => selected.includes(row.id_discovery));
   function togglePage() {
-    const ids = eligible.map(row => row.id_discovery);
-    setSelected(previous => allPageSelected ? previous.filter(id => !ids.includes(id)) : [...new Set([...previous,...ids])]);
+    const ids = eligible.map(
+      row => row.id_discovery
+    );
+  
+    setSelected(previous =>
+      allPageSelected
+        ? previous.filter(
+            id => !ids.includes(id)
+          )
+        : Array.from(
+            new Set([...previous, ...ids])
+          )
+    );
   }
   return <section className="space-y-4" aria-label="Discovery Corpo">
     <div className="flex flex-wrap justify-between gap-3 items-center">
