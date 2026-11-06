@@ -25,6 +25,18 @@ export default function CorpoLibraryPage() {
   const [detailLoading,setDetailLoading] = useState(false);
   const [detailError,setDetailError] = useState("");
   const sequence=useRef(0);
+  const dialogRef=useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog=dialogRef.current;
+    if (!dialog) return;
+    if (documentId && !dialog.open) dialog.showModal();
+    if (!documentId && dialog.open) dialog.close();
+    if (!documentId) return;
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    return () => { document.body.style.overflow=previousOverflow; };
+  }, [documentId]);
 
   useEffect(() => { setDocumentId(new URLSearchParams(window.location.search).get("document") || ""); },[]);
   useEffect(() => {
@@ -67,11 +79,17 @@ export default function CorpoLibraryPage() {
     </div>}
     <div className="flex justify-end gap-2"><button className={button} disabled={loading||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
       <button className={button} disabled={loading||!hasMore} onClick={()=>setOffset(v=>v+50)}>Suivant</button></div>
-    {detailLoading && <p>Chargement de la publication…</p>}
-    {detailError && <p role="alert" className="text-red-700">{detailError}</p>}
+    <dialog ref={dialogRef} aria-labelledby="corpo-document-title"
+      onClose={()=>setDocumentId("")}
+      className="w-[calc(100%-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg border bg-white p-6 shadow-xl backdrop:bg-black/40">
+      <header className="flex justify-between items-start gap-4 border-b pb-4 mb-4">
+        <h2 id="corpo-document-title" className="text-xl font-semibold text-ratecard-blue">{detail?.title || "Publication Library"}</h2>
+        <button type="button" className={button} onClick={()=>setDocumentId("")}>Fermer</button>
+      </header>
+    {detailLoading && <p role="status">Chargement de la publication…</p>}
+    {detailError && <div role="alert" className="text-red-700 space-y-3"><p>{detailError}</p>
+      <button type="button" className={button} onClick={()=>setRevision(v=>v+1)}>Réessayer</button></div>}
     {detail && <section className="border rounded bg-white p-5 space-y-4">
-      <div className="flex justify-between gap-4"><h2 className="text-xl font-semibold">{detail.title}</h2>
-        <button className={button} onClick={()=>setDocumentId("")}>Fermer</button></div>
       <p className="text-sm">Parution : {date(detail.published_at)} · Auteur : {detail.author_name || detail.author_id || 'Non renseigné'}</p>
       {detail.monitored_account_url && <p className="text-sm">Compte suivi : {detail.monitored_account_url}. La date d’un éventuel relais reste indéterminée.</p>}
       <a className="underline text-ratecard-blue" href={safeUrl(detail.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a>
@@ -85,5 +103,6 @@ export default function CorpoLibraryPage() {
       <div className="flex gap-2"><button className={button} disabled={detailLoading||unitOffset===0} onClick={()=>setUnitOffset(v=>Math.max(0,v-100))}>Informations précédentes</button>
         <button className={button} disabled={detailLoading||!detail.has_more} onClick={()=>setUnitOffset(v=>v+100)}>Informations suivantes</button></div>
     </section>}
+    </dialog>
   </div>;
 }
