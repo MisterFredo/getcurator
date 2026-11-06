@@ -158,3 +158,14 @@ class CompanyWatchAttachSnapshot(BaseModel):
 
     class Config:
         extra = "forbid"
+
+
+class MentionRunRequest(BaseModel):
+    id_company: str = Field(min_length=1, max_length=100)
+    period_start: date
+    period_end: date
+    excluded_domains: List[str] = Field(default_factory=list, max_items=20)
+    max_pages: int = Field(default=2, ge=1, le=5)
+    max_candidates: int = Field(default=100, ge=1, le=300)
+    class Config:
+        extra = 'forbid'
