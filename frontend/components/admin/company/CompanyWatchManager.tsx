@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import WatchCollectionPanel from "./WatchCollectionPanel";
+import WatchDiscoveryWorkspace from "./WatchDiscoveryWorkspace";
 import {
   listWatchCompanies, listCompanyWatches, createCompanyWatch, updateCompanyWatch,
 } from "@/lib/companyWatch";
@@ -52,6 +53,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const [editor, setEditor] = useState<{ companyId: string; watchId?: string; companyName: string } | null>(null);
   const [draft, setDraft] = useState<WatchPayload>(emptyPayload);
   const [configText, setConfigText] = useState("{}");
+  const [monitorMode, setMonitorMode] = useState<"LISTING" | "SINGLE_PAGE">("LISTING");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [collectionRow, setCollectionRow] = useState<CompanyWatch | null>(null);
@@ -122,7 +124,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     const company = fixedCompany || companies.find(c => c.id_company === companyId);
     if (!company || !discardAllowed()) return;
     setEditor({ companyId: company.id_company, companyName: company.name });
-    setDraft(emptyPayload()); setConfigText("{}"); setDirty(false); setNotice(""); setActionError("");
+    setDraft(emptyPayload()); setConfigText("{}"); setMonitorMode("LISTING"); setDirty(false); setNotice(""); setActionError("");
   }
   function startEdit(row: CompanyWatch) {
     if (!discardAllowed()) return;
@@ -132,6 +134,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       source_role: row.source_role, author_name: row.author_name,
       collection_method: row.collection_method, collection_config: row.collection_config, is_active: row.is_active });
     setConfigText(JSON.stringify(row.collection_config || {}, null, 2));
+    setMonitorMode(row.collection_config?.mode === "SINGLE_PAGE" || (!row.collection_config?.mode && row.source_url.includes("linkedin.com")) ? "SINGLE_PAGE" : "LISTING");
     setDirty(false); setNotice(""); setActionError("");
   }
   function change<K extends keyof WatchPayload>(key: K, value: WatchPayload[K]) {
@@ -154,7 +157,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("La configuration doit être un objet JSON.");
       }
-      config = parsed as Record<string, unknown>;
+      config = { ...(parsed as Record<string, unknown>), mode: monitorMode };
     } catch (error) { setActionError(message(error)); return; }
     const url = safeUrl(draft.source_url.trim());
     if (!url) { setActionError("Saisissez une URL HTTP(S) valide."); return; }
@@ -270,6 +273,12 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             <label className="flex items-center gap-2 self-end py-2">
               <input type="checkbox" checked={draft.is_active} onChange={event => change("is_active", event.target.checked)} />Suivi actif
             </label>
+            <label className="space-y-1 md:col-span-2"><span className="text-sm">Comportement du scan HTML</span>
+              <select className={control} value={monitorMode} onChange={event => { setMonitorMode(event.target.value as "LISTING" | "SINGLE_PAGE"); setDirty(true); }}>
+                <option value="LISTING">Liste de publications — découvrir de nouvelles URL</option>
+                <option value="SINGLE_PAGE">Page précise — détecter ses mises à jour</option>
+              </select>
+            </label>
             <details className="md:col-span-2">
               <summary className="cursor-pointer text-sm text-gray-600">Paramètres avancés</summary>
               <label className="block mt-3 space-y-1"><span className="text-sm">Configuration JSON</span>
@@ -309,7 +318,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
               <td className="px-4 py-3"><div className="flex gap-2">
                 <button type="button" className={button} disabled={busy || !!editor || !!collectionRow}
                   onClick={() => { setCollectionRow(row); setActionError(""); setNotice(""); }}>
-                  Collecte / publications
+                  Scan / URL
                 </button>
                 <button type="button" className={button} disabled={busy || !!collectionRow} onClick={() => startEdit(row)}>Modifier</button>
                 <button type="button" className={button} disabled={busy || !!editor || !!collectionRow} onClick={() => toggle(row)}>
@@ -327,7 +336,11 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           </div>
         </div>
       </section>
+      {!collectionRow && <div className="pt-8 border-t">
+        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} onBusyChange={setBusy}/>
+      </div>}
     </div>
   );
 }
+
 
