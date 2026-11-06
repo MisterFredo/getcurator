@@ -190,6 +190,10 @@ def scan_source(
     # DISCOVER
     # ========================================================
 
+    if source.get("ACQUISITION_MODE") == "LINKEDIN_BRIGHTDATA":
+        from core.discovery.linkedin_brightdata_service import scan
+        return scan(source_id, start=True)
+
     urls = discover_urls(
         source
     )
@@ -302,7 +306,7 @@ def scan_all_sources(
         WHERE s.DOMAIN IS NOT NULL
           AND s.DOMAIN != ''
           AND s.ACQUISITION_MODE IS NOT NULL
-          AND s.ACQUISITION_MODE != 'MANUAL'
+          AND s.ACQUISITION_MODE NOT IN ('MANUAL','PDF_MANUAL','LINKEDIN_PROFILE','NEWSLETTER_MANUAL','LINKEDIN_BRIGHTDATA')
     """
 
     # ========================================================
@@ -388,6 +392,7 @@ def list_discovery_items():
             d.STATUS,
             d.DATE_FOUND,
             d.CREATED_AT,
+            d.PUBLISHED_AT,
 
             s.NAME AS SOURCE_NAME
 
@@ -413,6 +418,7 @@ def list_discovery_items():
             "url": r["URL"],
             "title": r.get("TITLE"),
             "status": r["STATUS"],
+            "published_at": r.get("PUBLISHED_AT"),
             "date_found": r.get(
                 "DATE_FOUND"
             ),
@@ -458,9 +464,9 @@ def ignore_discovery_urls(
             "ignored": 0,
         }
 
-    ids_sql = ",".join(
-        [f"'{x}'" for x in discovery_ids]
-    )
+    # IDs are UUIDs from the discovery table; validate before existing SQL interpolation.
+    discovery_ids = [str(uuid.UUID(value)) for value in discovery_ids]
+    ids_sql = ",".join("'" + value + "'" for value in discovery_ids)
 
     sql = f"""
         UPDATE `{TABLE_DISCOVERY}`
@@ -492,9 +498,9 @@ def store_discovery_urls(
             "errors": 0,
         }
 
-    ids_sql = ",".join(
-        [f"'{x}'" for x in discovery_ids]
-    )
+    # IDs are UUIDs from the discovery table; validate before existing SQL interpolation.
+    discovery_ids = [str(uuid.UUID(value)) for value in discovery_ids]
+    ids_sql = ",".join("'" + value + "'" for value in discovery_ids)
 
     sql = f"""
         SELECT
@@ -509,9 +515,12 @@ def store_discovery_urls(
 
     rows = query_bq(sql)
 
-    stored = 0
-    skipped = 0
-    errors = 0
+    from core.discovery.linkedin_brightdata_service import store_discoveries
+    cached = query_bq(f"SELECT ID_DISCOVERY FROM `{TABLE_DISCOVERY}` WHERE ID_DISCOVERY IN ({ids_sql}) AND CAPTURE_URI IS NOT NULL")
+    cached_ids = {r["ID_DISCOVERY"] for r in cached}
+    linked = store_discoveries(list(cached_ids)) if cached_ids else {"stored":0,"skipped":0,"errors":0}
+    stored, skipped, errors = linked["stored"], linked["skipped"], linked["errors"]
+    rows = [r for r in rows if r["ID_DISCOVERY"] not in cached_ids]
 
     for row in rows:
 
@@ -594,9 +603,9 @@ def mark_discovery_manual(
             "manual": 0,
         }
 
-    ids_sql = ",".join(
-        [f"'{x}'" for x in discovery_ids]
-    )
+    # IDs are UUIDs from the discovery table; validate before existing SQL interpolation.
+    discovery_ids = [str(uuid.UUID(value)) for value in discovery_ids]
+    ids_sql = ",".join("'" + value + "'" for value in discovery_ids)
 
     sql = f"""
         UPDATE `{TABLE_DISCOVERY}`
