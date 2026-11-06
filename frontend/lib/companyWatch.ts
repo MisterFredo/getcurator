@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 
 export type WatchSourceType = "HTML" | "LINKEDIN" | "NEWSLETTER" | "PDF";
 export type WatchSourceRole = "CORPORATE" | "EMPLOYEE";
-export type WatchMethod = "MANUAL" | "STUDIO" | "HTML";
+export type WatchMethod = "MANUAL" | "STUDIO" | "HTML" | "BRIGHTDATA";
 export type WatchPayload = {
   label: string;
   source_type: WatchSourceType;
@@ -67,9 +67,18 @@ export type CorpoDiscovery = {
   status: "NEW" | "STORED" | "DISMISSED"; error?: string; date_found?: string; id_stock?: string;
   watch_active?: boolean; collection_method?: string;
 };
-export async function scanCorpoSource(watch: CompanyWatch): Promise<{
+export type CorpoScanResult = {
+  status: "ok" | "IDLE" | "STARTING" | "RUNNING" | "UNKNOWN" | "COMPLETE" | "FAILED";
   new: number; known: number; unchanged: number; warnings: string[];
-}> {
+  snapshot_id?: string; message?: string; received?: number;
+};
+export async function getCorpoScanStatus(watch: CompanyWatch): Promise<CorpoScanResult> {
+  return api.get(`/company/${encodeURIComponent(watch.id_company)}/watch/${encodeURIComponent(watch.id_company_watch)}/scan/status`);
+}
+export async function attachCorpoSnapshot(watch: CompanyWatch, snapshotId: string): Promise<CorpoScanResult> {
+  return api.post(`/company/${encodeURIComponent(watch.id_company)}/watch/${encodeURIComponent(watch.id_company_watch)}/scan/attach`, {snapshot_id: snapshotId});
+}
+export async function scanCorpoSource(watch: CompanyWatch): Promise<CorpoScanResult> {
   return api.post(`/company/${encodeURIComponent(watch.id_company)}/watch/${encodeURIComponent(watch.id_company_watch)}/scan`, {});
 }
 export async function listCorpoDiscovery(options: {
@@ -90,6 +99,8 @@ export async function changeCorpoDiscoveryStatus(ids: string[], action: "dismiss
 }
 export async function getCorpoStoredContent(id: string): Promise<{
   title: string; text: string; url: string; captured_at: string;
+  published_at?: string | null; author_name?: string | null; author_id?: string | null;
+  monitored_account_url?: string | null; repost?: Record<string, unknown> | null; share_date?: string | null;
 }> {
   return api.get(`/company/watch/discovery/${encodeURIComponent(id)}/content`);
 }
