@@ -91,6 +91,70 @@ def update_company_watch_route(
     return update_company_watch(id_company, id_company_watch, data)
 
 
+
+# ============================================================
+# WATCH CORPO — COLLECTE ET PUBLICATIONS LIBRARY
+# ============================================================
+from api.company.models import CompanyWatchCollectRequest, CompanyWatchImportRequest
+from core.company.watch_collection_service import active_watch, scan_watch, collect_url, import_text
+from core.library.company_watch_library import (
+    extract_step, list_publications, publication_detail,
+)
+import logging
+
+_watch_logger = logging.getLogger(__name__)
+
+
+def _watch_call(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        _watch_logger.exception("Erreur traitement Corpo")
+        raise HTTPException(500, "Erreur traitement Corpo ; consulter les logs et réessayer") from exc
+
+
+@router.post("/{id_company}/watch/{id_company_watch}/scan")
+def scan_watch_route(id_company: str, id_company_watch: str):
+    return _watch_call(scan_watch, id_company, id_company_watch)
+
+
+@router.post("/{id_company}/watch/{id_company_watch}/collect")
+def collect_watch_route(id_company: str, id_company_watch: str, data: CompanyWatchCollectRequest):
+    return _watch_call(collect_url, id_company, id_company_watch, data.url)
+
+
+@router.post("/{id_company}/watch/{id_company_watch}/import-text")
+def import_watch_text_route(id_company: str, id_company_watch: str, data: CompanyWatchImportRequest):
+    return _watch_call(import_text, id_company, id_company_watch, data)
+
+
+@router.post("/{id_company}/watch/{id_company_watch}/publications/{id_document}/extract-step")
+def extract_watch_step_route(id_company: str, id_company_watch: str, id_document: str):
+    _watch_call(active_watch, id_company, id_company_watch)
+    return _watch_call(extract_step, id_company, id_company_watch, id_document)
+
+
+@router.get("/{id_company}/watch/{id_company_watch}/publications")
+def list_watch_publications_route(
+    id_company: str, id_company_watch: str,
+    offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
+):
+    get_company_watch(id_company, id_company_watch)
+    return _watch_call(list_publications, id_company, id_company_watch, offset, limit)
+
+
+@router.get("/{id_company}/watch/{id_company_watch}/publications/{id_document}")
+def get_watch_publication_route(
+    id_company: str, id_company_watch: str, id_document: str,
+    offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
+):
+    return _watch_call(publication_detail, id_company, id_company_watch, id_document, offset, limit)
+
+
 # ============================================================
 # CREATE
 # ============================================================
@@ -276,3 +340,4 @@ def get_route(id_company: str):
     if not company:
         raise HTTPException(404, "Société introuvable")
     return company
+
