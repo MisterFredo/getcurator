@@ -1,168 +1,53 @@
-# backend/api/source/models.py
-
 from datetime import datetime
-from typing import (
-    List,
-    Literal,
-    Optional,
-)
+from typing import List, Literal, Optional
+from pydantic import BaseModel, Field
 
-from pydantic import (
-    BaseModel,
-    Field,
-)
-
-
-# ============================================================
-# ACQUISITION MODE
-# ============================================================
-
-AcquisitionMode = Literal[
-    "MANUAL",
-    "PDF_MANUAL",
-    "LINKEDIN_PROFILE",
-    "NEWSLETTER_MANUAL",
-    "HTML",
-    "RSS",
-    "SITEMAP",
-    "WORDPRESS_API",
-    "API",
-]
-
-
-# ============================================================
-# CREATE
-# ============================================================
+AcquisitionMode=Literal['MANUAL','PDF_MANUAL','LINKEDIN_PROFILE','LINKEDIN_BRIGHTDATA',
+    'NEWSLETTER_MANUAL','HTML','RSS','SITEMAP','WORDPRESS_API','API']
 
 class SourceCreate(BaseModel):
-    """
-    Création d'une source éditoriale.
-    Contrat API 100% snake_case.
-    """
-
-    name: str = Field(
-        ...,
-        min_length=1,
-    )
-
+    name: str = Field(...,min_length=1)
     type_source: Optional[str] = None
     description: Optional[str] = None
     domain: Optional[str] = None
-
     author: Optional[str] = None
     author_profile: Optional[str] = None
-
     logo: Optional[str] = None
-
-    # ========================================================
-    # UNIVERS
-    # ========================================================
-
     universe_id: Optional[str] = None
-
-    # ========================================================
-    # ACQUISITION
-    # ========================================================
-
-    acquisition_mode: AcquisitionMode = (
-        "MANUAL"
-    )
-
+    acquisition_mode: AcquisitionMode = 'MANUAL'
     class Config:
-        extra = "forbid"
-
-
-# ============================================================
-# UPDATE
-# ============================================================
+        extra='forbid'
 
 class SourceUpdate(BaseModel):
-    """
-    Mise à jour partielle d'une source.
-    """
-
     name: Optional[str] = None
-
     type_source: Optional[str] = None
     description: Optional[str] = None
     domain: Optional[str] = None
-
     author: Optional[str] = None
     author_profile: Optional[str] = None
-
     logo: Optional[str] = None
-
-    # ========================================================
-    # UNIVERS
-    # ========================================================
-
     universe_id: Optional[str] = None
-
-    # ========================================================
-    # ACQUISITION
-    # ========================================================
-
-    acquisition_mode: Optional[
-        AcquisitionMode
-    ] = None
-
+    acquisition_mode: Optional[AcquisitionMode] = None
     class Config:
-        extra = "forbid"
-
-
-# ============================================================
-# OUT
-# ============================================================
+        extra='forbid'
 
 class SourceOut(BaseModel):
-    """
-    Représentation retournée par l'API.
-    Snake_case strict.
-    """
-
     source_id: str
     name: str
-
     type_source: Optional[str] = None
     description: Optional[str] = None
     domain: Optional[str] = None
-
     author: Optional[str] = None
     author_profile: Optional[str] = None
-
     logo: Optional[str] = None
-
     created_at: Optional[datetime] = None
-
-    # ========================================================
-    # UNIVERS
-    # ========================================================
-
     universe_id: Optional[str] = None
-
-    # ========================================================
-    # ACQUISITION
-    # ========================================================
-
-    acquisition_mode: Optional[
-        AcquisitionMode
-    ] = None
-
+    acquisition_mode: Optional[AcquisitionMode] = None
     class Config:
-        extra = "forbid"
-
-
-# ============================================================
-# LIST OUT
-# ============================================================
+        extra='forbid'
 
 class SourceListOut(BaseModel):
-
     status: str
-
-    sources: List[
-        SourceOut
-    ]
-
+    sources: List[SourceOut]
     class Config:
-        extra = "forbid"
+        extra='forbid'
