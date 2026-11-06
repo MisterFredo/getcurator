@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import WatchCollectionPanel from "./WatchCollectionPanel";
 import {
   listWatchCompanies, listCompanyWatches, createCompanyWatch, updateCompanyWatch,
 } from "@/lib/companyWatch";
@@ -53,6 +54,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const [configText, setConfigText] = useState("{}");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [collectionRow, setCollectionRow] = useState<CompanyWatch | null>(null);
   const mutation = useRef(false);
   const mounted = useRef(true);
 
@@ -198,7 +200,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             ? `Gérez les points de collecte de ${fixedCompany.name}.`
             : "Configurez les pages, comptes et newsletters à suivre pour chaque société."}</p>
         </div>
-        <button type="button" onClick={startCreate} disabled={!companyId || companiesLoading || busy}
+        <button type="button" onClick={startCreate} disabled={!companyId || companiesLoading || busy || !!collectionRow}
           className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
           Ajouter un point de collecte
         </button>
@@ -206,7 +208,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       <div className="bg-white border rounded p-4 flex flex-wrap items-end gap-4">
         {!fixedCompany && <label className="flex-1 min-w-64 space-y-1">
           <span className="text-sm font-medium">Société</span>
-          <select className={control} value={companyId} disabled={busy || !!editor || companiesLoading}
+          <select className={control} value={companyId} disabled={busy || !!editor || !!collectionRow || companiesLoading}
             onChange={event => { setCompanyId(event.target.value); setOffset(0); setNotice(""); setActionError(""); }}>
             <option value="">Toutes les sociétés</option>
             {companies.map(company => <option key={company.id_company} value={company.id_company}>{company.name}</option>)}
@@ -214,12 +216,12 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
         </label>}
         <label className="space-y-1">
           <span className="text-sm font-medium">État</span>
-          <select className={control} value={status} disabled={busy || !!editor}
+          <select className={control} value={status} disabled={busy || !!editor || !!collectionRow}
             onChange={event => { setStatus(event.target.value); setOffset(0); }}>
             <option value="all">Tous</option><option value="active">Actifs</option><option value="inactive">Suspendus</option>
           </select>
         </label>
-        <button type="button" className={button} disabled={loading || busy || !!editor}
+        <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow}
           onClick={() => setRevision(value => value + 1)}>Actualiser</button>
       </div>
       {!companyId && <p className="text-sm text-gray-500">Sélectionnez une société pour ajouter un point de collecte.</p>}
@@ -260,10 +262,10 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             <label className="space-y-1"><span className="text-sm">Auteur / personne suivie</span>
               <input maxLength={250} className={control} value={draft.author_name || ""}
                 onChange={event => change("author_name", event.target.value || null)} /></label>
-            <label className="space-y-1"><span className="text-sm">Mode d’alimentation prévu</span>
+            <label className="space-y-1"><span className="text-sm">Méthode de récupération</span>
               <select className={control} value={draft.collection_method}
                 onChange={event => change("collection_method", event.target.value as WatchMethod)}>
-                <option value="MANUAL">Manuel</option><option value="STUDIO">Studio</option>
+                <option value="MANUAL">Manuel — publication collée</option><option value="STUDIO">Studio — texte collé</option><option value="HTML">HTML — récupération web</option>
               </select></label>
             <label className="flex items-center gap-2 self-end py-2">
               <input type="checkbox" checked={draft.is_active} onChange={event => change("is_active", event.target.checked)} />Suivi actif
@@ -282,6 +284,8 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           </div>
         </form>
       </section>}
+      {collectionRow && <WatchCollectionPanel key={collectionRow.id_company_watch}
+        watch={collectionRow} onClose={() => setCollectionRow(null)} onBusyChange={setBusy} />}
       <section className="bg-white border rounded overflow-hidden" aria-label="Points de collecte">
         {loading ? <p role="status" className="p-8 text-gray-500">Chargement…</p>
           : loadError ? <div role="alert" className="p-6 text-red-700 whitespace-pre-wrap">{loadError}
@@ -289,7 +293,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           : !rows.length ? <p className="p-8 text-center text-gray-500">Aucun point de collecte pour ces filtres.</p>
           : <div className="overflow-x-auto"><table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600"><tr>
-              {['Société', 'Point de collecte', 'Format / origine', 'Mode prévu', 'État', 'Actions'].map(label =>
+              {['Société', 'Point de collecte', 'Format / origine', 'Récupération', 'État', 'Actions'].map(label =>
                 <th scope="col" key={label} className="px-4 py-3 font-medium">{label}</th>)}
             </tr></thead>
             <tbody>{rows.map(row => <tr key={row.id_company_watch} className="border-t align-top">
@@ -299,12 +303,16 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
                   target="_blank" rel="noopener noreferrer">{row.source_url}</a> : <span>{row.source_url}</span>}
                 {row.author_name && <div className="text-gray-500">{row.author_name}</div>}</td>
               <td className="px-4 py-3">{row.source_type}<div className="text-gray-500">{row.source_role === 'EMPLOYEE' ? 'Salarié' : 'Corporate'}</div></td>
-              <td className="px-4 py-3">{row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
+              <td className="px-4 py-3">{row.collection_method === 'HTML' ? 'HTML' : row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
               <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                 {row.is_active ? 'Actif' : 'Suspendu'}</span></td>
               <td className="px-4 py-3"><div className="flex gap-2">
-                <button type="button" className={button} disabled={busy} onClick={() => startEdit(row)}>Modifier</button>
-                <button type="button" className={button} disabled={busy || !!editor} onClick={() => toggle(row)}>
+                <button type="button" className={button} disabled={busy || !!editor || !!collectionRow}
+                  onClick={() => { setCollectionRow(row); setActionError(""); setNotice(""); }}>
+                  Collecte / publications
+                </button>
+                <button type="button" className={button} disabled={busy || !!collectionRow} onClick={() => startEdit(row)}>Modifier</button>
+                <button type="button" className={button} disabled={busy || !!editor || !!collectionRow} onClick={() => toggle(row)}>
                   {row.is_active ? 'Suspendre' : 'Activer'}</button>
               </div></td>
             </tr>)}</tbody>
@@ -312,9 +320,9 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
         <div className="border-t px-4 py-3 flex items-center justify-between gap-3 text-sm">
           <span>{!loading && !loadError && rows.length ? `Lignes ${offset + 1}–${offset + rows.length}` : ' '}</span>
           <div className="flex gap-2">
-            <button type="button" className={button} disabled={loading || busy || !!editor || offset === 0 || !!loadError}
+            <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow || offset === 0 || !!loadError}
               onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>Précédent</button>
-            <button type="button" className={button} disabled={loading || busy || !!editor || !hasMore || !!loadError}
+            <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow || !hasMore || !!loadError}
               onClick={() => setOffset(value => value + PAGE_SIZE)}>Suivant</button>
           </div>
         </div>
@@ -322,3 +330,4 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     </div>
   );
 }
+
