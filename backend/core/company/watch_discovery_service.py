@@ -256,6 +256,7 @@ def scan_watch(company_id, watch_id):
 
 def _candidate_out(row):
     item = {k.lower(): v for k, v in dict(row).items()}
+    item["library_status"] = item.get("library_status") or "PENDING"
     item["published_at"] = None
     item["publication_date_note"] = None
     snapshot = item.get("snapshot_uri")
@@ -279,14 +280,18 @@ def _candidate_out(row):
 
 
 def list_candidates(company_id=None, watch_id=None, status="NEW", offset=0, limit=50):
-    if status not in {"NEW", "STORED", "DISMISSED", "ALL"}:
+    if status not in {"NEW", "STORED", "DISMISSED", "ALL", "IMPORTING", "IMPORTED", "ERROR"}:
         raise ValueError("Statut invalide")
     clauses, params = [], []
     if company_id:
         clauses.append("d.ID_COMPANY=@company"); params.append(_p("company", "STRING", company_id))
     if watch_id:
         clauses.append("d.ID_COMPANY_WATCH=@watch"); params.append(_p("watch", "STRING", watch_id))
-    if status != "ALL":
+    if status == "NEW":
+        clauses.append("d.STATUS IN ('NEW','STORED') AND COALESCE(d.LIBRARY_STATUS,'PENDING')='PENDING'")
+    elif status in {"IMPORTING", "IMPORTED", "ERROR"}:
+        clauses.append("d.LIBRARY_STATUS=@status"); params.append(_p("status", "STRING", status))
+    elif status != "ALL":
         clauses.append("d.STATUS=@status"); params.append(_p("status", "STRING", status))
     where = "WHERE " + " AND ".join(clauses) if clauses else ""
     params += [_p("limit", "INT64", limit + 1), _p("offset", "INT64", offset)]
@@ -322,7 +327,9 @@ def change_candidates_status(discovery_ids, action):
     before, after = transitions[action]
     rows = _query(f"""UPDATE `{DISCOVERY}` SET STATUS=@after,
         ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP()
-        WHERE ID_DISCOVERY IN UNNEST(@ids) AND STATUS=@before;
+        WHERE ID_DISCOVERY IN UNNEST(@ids) AND STATUS=@before
+          AND COALESCE(LIBRARY_STATUS,'PENDING') IN ('PENDING','ERROR')
+          AND (@after='NEW' OR ID_DOCUMENT IS NULL);
         SELECT @@row_count AS UPDATED_COUNT;""",
         [bigquery.ArrayQueryParameter("ids", "STRING", ids),
          _p("before", "STRING", before), _p("after", "STRING", after)])
