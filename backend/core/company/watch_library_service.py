@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date, timedelta
 from fastapi import HTTPException
 from core.company import watch_discovery_service as discovery
 from core.library import company_watch_library as library
@@ -76,24 +77,64 @@ def import_step(candidate_id):
             raise
 
 
-def list_corpo_library(company_id=None, offset=0, limit=50):
+def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
+                       sort="published_at", direction="desc", status=None,
+                       published_from=None, published_to=None):
+    if not 1 <= limit <= 200 or offset < 0:
+        raise ValueError("Pagination invalide")
+    sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
+             "company":"LOWER(COALESCE(c.NAME,''))", "title":"LOWER(COALESCE(d.TITLE,''))",
+             "units":"UNIT_COUNT"}
+    if sort not in sorts or direction not in {"asc","desc"}:
+        raise ValueError("Tri invalide")
+    if status not in {None,"", "COMPLETE", "PENDING", "ERROR"}:
+        raise ValueError("État invalide")
+    start = date.fromisoformat(published_from) if published_from else None
+    end = date.fromisoformat(published_to) if published_to else None
+    if start and end and start > end:
+        raise ValueError("La date de début doit précéder la date de fin")
     params = [library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)]
-    where = 'd.ID_COMPANY_WATCH IS NOT NULL'
+    where = ['d.ID_COMPANY_WATCH IS NOT NULL']
     if company_id:
-        where += ' AND d.ID_COMPANY=@company'
+        where.append('d.ID_COMPANY=@company')
         params.append(library._p('company','STRING',company_id))
+    if query and query.strip():
+        query = query.strip()
+        if len(query) > 500:
+            raise ValueError("Recherche limitée à 500 caractères")
+        # Literal case-insensitive substring, not SQL LIKE or user-controlled SQL.
+        where.append("""(CONTAINS_SUBSTR(COALESCE(d.TITLE,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(d.AUTHOR_NAME,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(d.SOURCE_URL,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(c.NAME,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(w.LABEL,''),@query)
+            OR EXISTS (SELECT 1 FROM `{units}` evidence WHERE evidence.ID_DOCUMENT=d.ID_DOCUMENT
+                AND (CONTAINS_SUBSTR(COALESCE(evidence.FACT,''),@query)
+                     OR CONTAINS_SUBSTR(COALESCE(evidence.QUOTE,''),@query))))""".format(units=library.UNIT))
+        params.append(library._p('query','STRING',query))
+    if status:
+        where.append('d.EXTRACTION_STATUS=@status'); params.append(library._p('status','STRING',status))
+    if start:
+        where.append("d.PUBLISHED_AT >= TIMESTAMP(@start,'Europe/Paris')")
+        params.append(library._p('start','DATE',start))
+    if end:
+        where.append("d.PUBLISHED_AT < TIMESTAMP(@end,'Europe/Paris')")
+        params.append(library._p('end','DATE',end+timedelta(days=1)))
+    predicate = ' AND '.join(where)
+    ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
     rows = library._query(f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
-        d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
+        d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
         d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
         c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
         (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
         FROM `{library.DOCUMENT}` d
         LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
         LEFT JOIN `{discovery.WATCH}` w ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
-        WHERE {where} ORDER BY COALESCE(d.PUBLISHED_AT,d.COLLECTED_AT,d.CREATED_AT) DESC, d.ID_DOCUMENT
+        WHERE {predicate} ORDER BY {ordering}
         LIMIT @limit OFFSET @offset""", params)
     return {'items':[{k.lower():v for k,v in dict(r).items()} for r in rows[:limit]],
-            'has_more':len(rows)>limit}
+            'has_more':len(rows)>limit, 'offset':offset, 'limit':limit}
+
 
 
 def corpo_library_detail(document_id, offset=0, limit=100):
