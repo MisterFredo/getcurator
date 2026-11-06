@@ -175,8 +175,7 @@ export default function LinkedInStudio() {
         const linkedinSources =
           allSources.filter(
             (source) =>
-              source.acquisition_mode ===
-              "LINKEDIN_PROFILE",
+              ["LINKEDIN_PROFILE", "LINKEDIN_BRIGHTDATA"].includes(source.acquisition_mode || ""),
           );
 
         if (cancelled) {
@@ -735,7 +734,7 @@ export default function LinkedInStudio() {
                 text-amber-600
               "
             >
-              No source with acquisition mode
+              No source with acquisition mode LINKEDIN_BRIGHTDATA or
               {" "}
               LINKEDIN_PROFILE found.
             </div>
