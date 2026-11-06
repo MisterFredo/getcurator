@@ -214,6 +214,32 @@ def get_watch_stored_content_route(id_discovery: str):
 
 
 # ============================================================
+# CORPO -> LIBRARY (no RAW, no topics)
+# ============================================================
+from core.company.watch_library_service import import_step, list_corpo_library, corpo_library_detail
+
+
+@router.post("/watch/discovery/{id_discovery}/library-step")
+def import_corpo_library_step_route(id_discovery: str):
+    return _watch_call(import_step, id_discovery)
+
+
+@router.get("/watch/library/list")
+def list_corpo_library_route(
+    id_company: Optional[str] = None,
+    offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
+):
+    return _watch_call(list_corpo_library, id_company, offset, limit)
+
+
+@router.get("/watch/library/{id_document}")
+def corpo_library_detail_route(
+    id_document: str, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
+):
+    return _watch_call(corpo_library_detail, id_document, offset, limit)
+
+
+# ============================================================
 # CREATE
 # ============================================================
 @router.post("/create")
