@@ -85,7 +85,7 @@ def discover(watch: dict) -> dict:
     if mode != "LISTING":
         raise ValueError("collection_config.mode : LISTING ou SINGLE_PAGE attendu")
     max_pages = config.get("max_pages", 5)
-    max_urls = config.get("max_urls", 100)
+    max_urls = config.get("max_urls", 500)
     if type(max_pages) is not int or not 1 <= max_pages <= 20:
         raise ValueError("max_pages doit être compris entre 1 et 20")
     if type(max_urls) is not int or not 1 <= max_urls <= 500:
