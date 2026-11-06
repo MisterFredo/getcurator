@@ -224,6 +224,22 @@ def import_corpo_library_step_route(id_discovery: str):
     return _watch_call(import_step, id_discovery)
 
 
+from api.company.models import MentionRunRequest
+from core.company import mention_service
+
+@router.post('/watch/mentions/create')
+def create_mention_run(data: MentionRunRequest):
+    return _watch_call(mention_service.create, data)
+
+@router.get('/watch/mentions/{id_run}')
+def get_mention_run(id_run: str):
+    return _watch_call(mention_service.read, id_run)
+
+@router.post('/watch/mentions/{id_run}/step')
+def step_mention_run(id_run: str):
+    return _watch_call(mention_service.step, id_run)
+
+
 @router.get("/watch/library/list")
 def list_corpo_library_route(
     id_company: Optional[str] = None,
@@ -231,9 +247,10 @@ def list_corpo_library_route(
     q: Optional[str] = Query(None, max_length=500),
     sort: str = "published_at", direction: str = "desc", status: Optional[str] = None,
     published_from: Optional[str] = None, published_to: Optional[str] = None,
+    document_type: Optional[str] = None,
 ):
     return _watch_call(list_corpo_library, id_company, offset, limit,
-        q, sort, direction, status, published_from, published_to)
+        q, sort, direction, status, published_from, published_to, document_type)
 
 
 @router.get("/watch/library/{id_document}")
