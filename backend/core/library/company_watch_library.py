@@ -114,7 +114,8 @@ def register_publication(watch: dict, *, source_url: str, original: bytes, text:
         original_hash = hashlib.sha256(original).hexdigest()
         # Un retry peut recevoir un HTML différent pour le même texte extrait.
         # Nommer l'original par son hash garantit SHA256 == octets réellement stockés.
-        filename = f"original-{original_hash}.html" if mime == "text/html" else f"original-{original_hash}.txt"
+        extension = {"text/html": "html", "application/json": "json"}.get(mime, "txt")
+        filename = f"original-{original_hash}.{extension}"
         original_uri = _upload(f"{path}/{filename}", original, mime)
         text_uri = _upload(f"{path}/text.txt", text.encode("utf-8"), "text/plain; charset=utf-8")
         metadata = {"company_name": watch.get("company_name"), "source_url": source_url,
@@ -168,6 +169,9 @@ def extract_step(company_id: str, watch_id: str, document_id: str) -> dict:
             units = validate_candidates(candidates, chunks[index], index)
             # Une transaction par segment : unités + curseur sont validés ensemble.
             _query(f"""BEGIN TRANSACTION;
+                ASSERT (SELECT COUNT(*) FROM `{DOCUMENT}` WHERE ID_DOCUMENT=@id
+                    AND NEXT_CHUNK=@current AND EXTRACTION_VERSION=@version) = 1
+                    AS 'Le curseur d’extraction a changé ; reprendre le traitement';
                 MERGE `{UNIT}` T
                 USING (
                   SELECT JSON_VALUE(u, '$.unit_id') AS UNIT_ID,
@@ -195,6 +199,7 @@ def extract_step(company_id: str, watch_id: str, document_id: str) -> dict:
                   EXTRACTION_ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP() WHERE ID_DOCUMENT=@id;
                 COMMIT TRANSACTION;""",
                 [_p("id", "STRING", document_id), _p("next", "INT64", index + 1),
+                 _p("current", "INT64", index), _p("version", "STRING", VERSION),
                  _p("payload", "STRING", json.dumps(units, ensure_ascii=False))])
         except Exception as exc:
             _query(f"""UPDATE `{DOCUMENT}` SET EXTRACTION_STATUS='ERROR', EXTRACTION_ERROR=@error,
