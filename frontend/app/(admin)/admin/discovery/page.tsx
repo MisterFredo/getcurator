@@ -3,12 +3,14 @@
 import {
   useEffect,
   useState,
+  useRef,
 } from "react";
 
 import {
   api,
 } from "@/lib/api";
 
+import {mediaLinkedInScan,mediaLinkedInAttach} from "@/lib/mediaLinkedIn";
 import DiscoverySources from "@/components/admin/discovery/DiscoverySources";
 import DiscoveryStats from "@/components/admin/discovery/DiscoveryStats";
 import DiscoveryActions from "@/components/admin/discovery/DiscoveryActions";
@@ -32,6 +34,7 @@ type DiscoveryItem = {
   status: string;
 
   date_found?: string | null;
+  published_at?: string | null;
   created_at?: string | null;
 
 };
@@ -67,6 +70,13 @@ type SourceMode =
 ========================================================= */
 
 export default function DiscoveryPage() {
+
+  const [scanProgress,setScanProgress]=useState("");
+  const [scanWarnings,setScanWarnings]=useState<string[]>([]);
+  const [scanErrors,setScanErrors]=useState<string[]>([]);
+  const mounted=useRef(true);
+  const stopScan=useRef(false);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stopScan.current=true;};},[]);
 
   const [
     items,
@@ -208,105 +218,59 @@ export default function DiscoveryPage() {
      SCAN ALL
   ======================================================== */
 
+  async function collectLinkedIn(sourceId:string,name:string,resume=false) {
+    let result=await mediaLinkedInScan(sourceId,resume);
+    if(result.status==='UNKNOWN') {
+      const snapshot=window.prompt(`${name} : lancement incertain. Copiez le snapshot ID depuis Bright Data pour reprendre sans nouvel achat.`);
+      if(!snapshot)throw new Error(result.message || 'Lancement à vérifier dans Bright Data');
+      result=await mediaLinkedInAttach(sourceId,snapshot.trim());
+    }
+    while(['RUNNING','STARTING'].includes(result.status) && mounted.current && !stopScan.current){
+      setScanProgress(`${name} : collecte en cours chez Bright Data…`);
+      for(let tick=0;tick<20 && mounted.current && !stopScan.current;tick++) await new Promise<void>(resolve=>setTimeout(resolve,500));
+      if(!mounted.current || stopScan.current)return null;
+      result=await mediaLinkedInScan(sourceId,true);
+    }
+    if(!mounted.current || stopScan.current)return null;
+    if(!['COMPLETE','ok'].includes(result.status))throw new Error(result.message || 'Aucun résultat à reprendre ; lancer un scan si nécessaire.');
+    setScanWarnings(previous=>[...previous,...(result.warnings||[]).map(w=>`${name} : ${w}`)]);
+    return result;
+  }
+
   async function scanAll() {
-
-    if (isScanning) {
-      return;
-    }
-
+    if(isScanning)return;
+    stopScan.current=false;setScanningAll(true);setScanWarnings([]);setScanErrors([]);
     try {
-
-      setScanningAll(
-        true
-      );
-
-      const res =
-        await api.post(
-          "/discovery/scan-all",
-          {
-            universe_id:
-              universeId || null,
-          }
-        );
-
-      alert(
-        `${
-          res.discovered_urls || 0
-        } URL(s) découverte(s)`
-      );
-
-      await loadData();
-
-    } catch (e) {
-
-      console.error(e);
-
-      alert(
-        "❌ Erreur scan"
-      );
-
-    } finally {
-
-      setScanningAll(
-        false
-      );
-
-    }
-
+      setScanProgress('Scan des sources web…');
+      const res=await api.post('/discovery/scan-all',{universe_id:universeId||null});
+      let found=res.discovered_urls||0;
+      if(res.failed_sources)setScanErrors(previous=>[...previous,`${res.failed_sources} source(s) web en échec ; consulter les logs.`]);
+      const linked=Array.from(new Map(sources.filter(source=>source.acquisition_mode==='LINKEDIN_BRIGHTDATA' && (!universeId||source.universe_id===universeId)).map(source=>[source.source_id,source])).values());
+      for(const source of linked){
+        if(!mounted.current||stopScan.current)break;
+        try{const result=await collectLinkedIn(source.source_id,source.name);if(result)found+=result.discovered_urls;}
+        catch(e){if(mounted.current)setScanErrors(previous=>[...previous,`${source.name} : ${e instanceof Error?e.message:'Erreur scan'}`]);}
+      }
+      if(mounted.current){setScanProgress(stopScan.current?'Suivi arrêté. Les collectes déjà lancées continuent chez Bright Data ; utilisez Reprendre le résultat.':`Scan terminé : ${found} nouvelle(s) URL.`);await loadData();}
+    }catch(e){if(mounted.current)setScanErrors([e instanceof Error?e.message:'Erreur scan']);}
+    finally{if(mounted.current)setScanningAll(false);}
   }
 
-
-  /* =======================================================
-     SCAN SOURCE
-  ======================================================== */
-
-  async function scanSource(
-    sourceId: string,
-    sourceName: string
-  ) {
-
-    if (isScanning) {
-      return;
-    }
-
-    try {
-
-      setScanningSourceId(
-        sourceId
-      );
-
-      const res =
-        await api.post(
-          `/discovery/scan/${sourceId}`,
-          {}
-        );
-
-      alert(
-        `${sourceName}\n${
-          res.discovered_urls || 0
-        } URL(s) découverte(s)`
-      );
-
-      await loadData();
-
-    } catch (e) {
-
-      console.error(e);
-
-      alert(
-        `❌ Erreur scan ${sourceName}`
-      );
-
-    } finally {
-
-      setScanningSourceId(
-        null
-      );
-
-    }
-
+  async function scanSource(sourceId:string,sourceName:string,resume=false) {
+    if(isScanning)return;
+    stopScan.current=false;setScanningSourceId(sourceId);setScanWarnings([]);setScanErrors([]);
+    try{
+      const source=sources.find(item=>item.source_id===sourceId);
+      const res=source?.acquisition_mode==='LINKEDIN_BRIGHTDATA'
+        ? await collectLinkedIn(sourceId,sourceName,resume)
+        : await api.post(`/discovery/scan/${sourceId}`,{});
+      if(mounted.current){
+        setScanProgress(stopScan.current?'Suivi arrêté. La collecte fournisseur continue ; utilisez Reprendre le résultat.':`${sourceName} : ${res?.discovered_urls||0} nouvelle(s) URL, ${res?.known||0} connues.`);
+        await loadData();
+      }
+    }catch(e){if(mounted.current)setScanErrors([e instanceof Error?e.message:'Erreur scan']);}
+    finally{if(mounted.current)setScanningSourceId(null);}
   }
-
 
   /* =======================================================
      TOGGLE SELECTION
@@ -516,10 +480,10 @@ export default function DiscoveryPage() {
   
         const matchesMode =
           sourceMode === "MANUAL"
-            ? mode === "MANUAL"
+            ? ["MANUAL","PDF_MANUAL","LINKEDIN_PROFILE","NEWSLETTER_MANUAL"].includes(mode)
             : (
                 mode !== "" &&
-                mode !== "MANUAL"
+                !["MANUAL","PDF_MANUAL","LINKEDIN_PROFILE","NEWSLETTER_MANUAL"].includes(mode)
               );
   
   
@@ -720,9 +684,8 @@ export default function DiscoveryPage() {
         sources={
           filteredSources
         }
-        onScan={
-          scanSource
-        }
+        onScan={scanSource}
+        onResume={(id,name)=>void scanSource(id,name,true)}
         scanningSourceId={
           scanningSourceId
         }
@@ -747,7 +710,12 @@ export default function DiscoveryPage() {
           ACTIONS
       ==================================================== */}
 
+      {scanProgress&&<p role="status" className="p-3 rounded bg-blue-50">{scanProgress}</p>}
+      {isScanning&&<button className="border rounded px-3 py-2" onClick={()=>{stopScan.current=true;}}>Arrêter le suivi après l’étape en cours</button>}
+      {!!scanWarnings.length&&<details><summary>Avertissements ({scanWarnings.length})</summary><ul className="list-disc pl-5">{scanWarnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>}
+      {!!scanErrors.length&&<div role="alert" className="text-red-700">{scanErrors.map((e,i)=><p key={i}>{e}</p>)}</div>}
       <DiscoveryActions
+        disabled={isScanning}
         selectedCount={
           selectedIds.length
         }
@@ -782,6 +750,7 @@ export default function DiscoveryPage() {
       ) : (
 
         <DiscoveryTable
+          disabled={isScanning}
           items={
             items
           }
