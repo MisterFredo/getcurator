@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import logging
 import uuid
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
+from google.api_core.exceptions import NotFound, PreconditionFailed
 from fastapi import HTTPException
 from core.company.mention_qualification import POLICY, Uncertain, domain, excluded, google_url, editorial_page, validate_assessment
 from core.company.mention_serp import search
@@ -24,16 +26,48 @@ ROOT=f'company-mentions/{lib.BASE}/{POLICY}'
 def _path(run):return f'{ROOT}/runs/{run}.json'
 
 
+# Mutable run state must never use a public object's cached media response.
+# Immutable SERP/capture caches below deliberately keep their existing behavior.
+logger=logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+logger.propagate=False
+
+
 def _save(state):
-    bucket.blob(_path(state['id_run'])).upload_from_string(json.dumps(state,ensure_ascii=False),content_type='application/json')
+    expected=int(state.get('storage_generation',0))
+    payload={k:v for k,v in state.items() if k!='storage_generation'}
+    payload['revision']=int(state.get('revision',0))+1
+    payload['updated_at']=datetime.now(timezone.utc).isoformat()
+    blob=bucket.blob(_path(state['id_run']))
+    blob.cache_control='private, no-store, max-age=0'
+    try:
+        blob.upload_from_string(json.dumps(payload,ensure_ascii=False),content_type='application/json',
+            if_generation_match=expected)
+    except PreconditionFailed:
+        raise HTTPException(409,'La collecte a progressé dans une autre requête ; actualisez cette page') from None
+    state.update(payload)
+    state['storage_generation']=str(blob.generation)
 
 
 def read(run):
     try:uuid.UUID(run)
-    except ValueError:raise ValueError('Identifiant de collecte invalide')
-    blob=bucket.blob(_path(run))
-    if not blob.exists():raise HTTPException(404,'Collecte introuvable')
-    return json.loads(blob.download_as_text())
+    except (ValueError,TypeError):raise ValueError('Identifiant de collecte invalide')
+    # Metadata is fetched first; pin the media GET to its exact generation.
+    # This also fixes existing run objects whose old cache headers were public.
+    for _ in range(3):
+        blob=bucket.blob(_path(run))
+        try:
+            blob.reload()
+            generation=int(blob.generation)
+            current=bucket.blob(_path(run),generation=generation)
+            state=json.loads(current.download_as_text(if_generation_match=generation))
+            state['storage_generation']=str(generation)
+            return state
+        except (NotFound,PreconditionFailed):
+            continue
+    raise HTTPException(409,'État de collecte momentanément indisponible ; réessayez')
 
 
 def create(data):
@@ -117,6 +151,8 @@ def step(run):
     with lib.document_lock('mention-run-'+run):
         state=read(run)
         if state['status'] in ('COMPLETE','PARTIAL'):return state
+        logger.info('[MENTIONS] start run=%s revision=%s status=%s tasks=%s candidates=%s processed=%s',
+            run,state.get('revision',0),state['status'],len(state['tasks']),len(state['candidates']),len(state['results']))
         if state['tasks']:
             task=state['tasks'].pop(0)
             signature=_hash([task,state['start'],state['end'],state['domains'],datetime.now(timezone.utc).date().isoformat()])
@@ -166,4 +202,7 @@ def step(run):
             inaccessible=sum(str(r.get('reason') or '').startswith(('TECHNICAL_','UNRESOLVED_SEARCH_REDIRECT')) for r in state['results'])
             if inaccessible:state['warnings'].append(f'{inaccessible} page(s) non consultable(s) : couverture documentaire partielle')
             state['status']='PARTIAL' if state['warnings'] else 'COMPLETE'
-        _save(state);return state
+        _save(state)
+        logger.info('[MENTIONS] saved run=%s revision=%s status=%s tasks=%s candidates=%s processed=%s',
+            run,state.get('revision',0),state['status'],len(state['tasks']),len(state['candidates']),len(state['results']))
+        return state
