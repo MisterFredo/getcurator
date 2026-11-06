@@ -94,3 +94,60 @@ def _ingest(source_id,state,records):
     posts,issues=provider.normalize_records(records)
     hashes,ids=existing(source_id)
     known=query(f'SELECT URL, CONTENT_HASH FROM `{DISCOVERY}` WHERE SOURCE_ID=@source',[param('source','STRING',source_id)])
+    hashes|={r['CONTENT_HASH'] for r in known if r.get('CONTENT_HASH')}
+    ids|={i for r in known if (i:=provider.post_id(r.get('URL')))}
+    pending=[];count_known=0
+    for post in posts:
+        h=content_hash(post['text'])
+        if post['post_id'] in ids or h in hashes:count_known+=1;continue
+        uri=_upload(f"media-linkedin/captures/{state['run_id']}/{post['post_id']}.json",
+            json.dumps(post,ensure_ascii=False).encode(),'application/json')
+        pending.append({'id':str(uuid.uuid5(uuid.NAMESPACE_URL,BASE+source_id+':'+post['post_id'])),
+            'url':post['url'],'title':' '.join(post['text'].split())[:200],
+            'published':post['published_at'],'capture':uri,'hash':h})
+        ids.add(post['post_id']);hashes.add(h)
+    if pending:
+        # One atomic MERGE for all posts, never a per-URL insert.
+        query(f"""MERGE `{DISCOVERY}` T USING (
+            SELECT JSON_VALUE(p,'$.id') AS ID_DISCOVERY, JSON_VALUE(p,'$.url') AS URL,
+              JSON_VALUE(p,'$.title') AS TITLE, JSON_VALUE(p,'$.published') AS PUBLISHED_AT,
+              JSON_VALUE(p,'$.capture') AS CAPTURE_URI, JSON_VALUE(p,'$.hash') AS CONTENT_HASH
+            FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@payload))) p
+        ) S ON T.ID_DISCOVERY=S.ID_DISCOVERY
+        WHEN NOT MATCHED THEN INSERT (ID_DISCOVERY,SOURCE_ID,URL,TITLE,STATUS,DATE_FOUND,CREATED_AT,
+            PUBLISHED_AT,CAPTURE_URI,CONTENT_HASH)
+        VALUES (S.ID_DISCOVERY,@source,S.URL,S.TITLE,'NEW',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),
+            SAFE_CAST(S.PUBLISHED_AT AS TIMESTAMP),S.CAPTURE_URI,S.CONTENT_HASH)""",
+            [param('payload','STRING',json.dumps(pending,ensure_ascii=False)),param('source','STRING',source_id)])
+    warnings=['La couverture LinkedIn peut être partielle. Le Studio reste disponible pour compléter.']
+    if issues:
+        _upload(f"media-linkedin/results/{state['run_id']}-issues.json",json.dumps(issues).encode(),'application/json')
+        warnings.append(f'{len(issues)} anomalie(s) conservée(s) dans l’audit fournisseur.')
+    if len(records)>=state['limit']:warnings.append(f"Plafond de {state['limit']} résultats atteint : collecte potentiellement partielle.")
+    state.update(status='COMPLETE' if posts or not records else 'FAILED',new=len(pending),known=count_known,warnings=warnings)
+    _save(source_id,state)
+
+
+def store_discoveries(ids):
+    if not ids:return {'status':'ok','stored':0,'skipped':0,'errors':0}
+    rows=query(f'SELECT * FROM `{DISCOVERY}` WHERE ID_DISCOVERY IN UNNEST(@ids)',
+        [bigquery.ArrayQueryParameter('ids','STRING',ids)])
+    grouped={};skipped=0;errors=0;stored=0
+    for row in rows:
+        if row['STATUS']!='NEW':skipped+=1;continue
+        try:
+            post=json.loads(_read_uri(row['CAPTURE_URI']))
+            if provider.post_id(row['URL'])!=post['post_id']:raise ValueError('Capture incohérente')
+            grouped.setdefault(row['SOURCE_ID'],[]).append((row['ID_DISCOVERY'],{
+                'raw_text':post['text'],'title':row.get('TITLE'),'source_url':post['url'],'date_source':post['published_at']}))
+        except Exception:
+            logger.exception("[MEDIA LINKEDIN] Erreur lecture capture discovery=%s",row['ID_DISCOVERY'])
+            errors+=1
+    for source,items in grouped.items():
+        try:
+            result=store_posts(source,[post for _,post in items],discovery_ids=[id for id,_ in items])
+            stored+=result['stored'];skipped+=result['skipped']
+        except Exception:
+            logger.exception("[MEDIA LINKEDIN] Erreur stockage RAW source=%s",source)
+            errors+=len(items)
+    return {'status':'ok','stored':stored,'skipped':skipped,'errors':errors}
