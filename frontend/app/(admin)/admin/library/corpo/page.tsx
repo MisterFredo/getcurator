@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { listCorpoLibrary, getCorpoLibraryDocument } from "@/lib/companyWatch";
-import type { CorpoLibraryDocument, CorpoLibraryDetail } from "@/lib/companyWatch";
+import { listCorpoLibrary, getCorpoLibraryDocument, listWatchCompanies } from "@/lib/companyWatch";
+import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, WatchCompany } from "@/lib/companyWatch";
 
+const initialFilters: Required<CorpoLibraryFilters> = {
+  q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+};
+const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
 const message = (error: unknown) => error instanceof Error ? error.message : "Erreur de chargement";
 const date = (value?: string) => value ? new Date(value).toLocaleString("fr-FR", {timeZone:"Europe/Paris"}) : "—";
@@ -13,6 +17,16 @@ function safeUrl(value?: string) {
 }
 
 export default function CorpoLibraryPage() {
+  const [draft,setDraft]=useState({...initialFilters});
+  const [filters,setFilters]=useState({...initialFilters});
+  const [companies,setCompanies]=useState<WatchCompany[]>([]);
+  const [companyError,setCompanyError]=useState("");
+  useEffect(()=>{
+    let cancelled=false;
+    listWatchCompanies().then(items=>{if(!cancelled)setCompanies(items.sort((a,b)=>a.name.localeCompare(b.name)));})
+      .catch(e=>{if(!cancelled)setCompanyError(message(e));});
+    return ()=>{cancelled=true;};
+  },[]);
   const [rows,setRows] = useState<CorpoLibraryDocument[]>([]);
   const [offset,setOffset] = useState(0);
   const [hasMore,setHasMore] = useState(false);
@@ -40,12 +54,12 @@ export default function CorpoLibraryPage() {
 
   useEffect(() => { setDocumentId(new URLSearchParams(window.location.search).get("document") || ""); },[]);
   useEffect(() => {
-    let cancelled=false; setLoading(true); setError("");
-    listCorpoLibrary(offset).then(result => {
+    let cancelled=false; setLoading(true); setError(""); setRows([]); setHasMore(false);
+    listCorpoLibrary(offset,filters).then(result => {
       if (!cancelled) {setRows(result.items);setHasMore(result.has_more);}
     }).catch(e=>{if(!cancelled)setError(message(e));}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
-  },[offset,revision]);
+  },[offset,revision,filters]);
   useEffect(()=>{
     const request=++sequence.current;
     if (!documentId) {setDetail(null);setDetailLoading(false);return;}
@@ -63,8 +77,42 @@ export default function CorpoLibraryPage() {
       <p className="text-gray-500 mt-2">Publications, informations atomiques et preuves. Aucun sujet documentaire.</p>
     </div><div className="space-x-3"><a className="underline" href="/admin/library">Library</a><a className="underline" href="/admin/discovery/corpo">Discovery Corpo</a>
       <button className={button} onClick={()=>setRevision(v=>v+1)}>Actualiser</button></div></header>
+    <form className="bg-white border rounded p-4 space-y-4" onSubmit={event=>{
+      event.preventDefault();
+      if (draft.publishedFrom && draft.publishedTo && draft.publishedFrom>draft.publishedTo) {
+        setError("La date de début doit précéder la date de fin.");return;
+      }
+      setOffset(0);setFilters({...draft,q:draft.q.trim()});
+    }}>
+      <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
+        <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
+          value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
+        <span className="text-xs text-gray-500">Recherche littérale dans les titres, auteurs, sociétés, points de collecte, URL, informations extraites et citations. Le texte source intégral n’est pas indexé par ce filtre.</span>
+      </label>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
+          <option value="">Toutes les sociétés</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
+        </select></label>
+        <label className="space-y-1"><span className="text-sm">État</span><select className={control} value={draft.status} onChange={e=>setDraft(v=>({...v,status:e.target.value}))}>
+          <option value="">Tous</option><option value="COMPLETE">Importé</option><option value="PENDING">En cours</option><option value="ERROR">Erreur</option>
+        </select></label>
+        <label className="space-y-1"><span className="text-sm">Trier par</span><select className={control} value={draft.sort} onChange={e=>setDraft(v=>({...v,sort:e.target.value}))}>
+          <option value="published_at">Date de parution</option><option value="imported_at">Date d’import</option><option value="company">Société</option><option value="title">Titre</option><option value="units">Nombre d’informations</option>
+        </select></label>
+        <label className="space-y-1"><span className="text-sm">Parution à partir du</span><input className={control} type="date" value={draft.publishedFrom} onChange={e=>setDraft(v=>({...v,publishedFrom:e.target.value}))}/></label>
+        <label className="space-y-1"><span className="text-sm">Parution jusqu’au</span><input className={control} type="date" value={draft.publishedTo} onChange={e=>setDraft(v=>({...v,publishedTo:e.target.value}))}/></label>
+        <label className="space-y-1"><span className="text-sm">Ordre</span><select className={control} value={draft.direction} onChange={e=>setDraft(v=>({...v,direction:e.target.value}))}>
+          <option value="desc">Décroissant / Z → A</option><option value="asc">Croissant / A → Z</option>
+        </select></label>
+      </div>
+      {companyError && <p className="text-sm text-red-700" role="alert">Filtre société : {companyError}</p>}
+      <div className="flex gap-3 items-center"><button type="submit" className="bg-ratecard-blue text-white rounded px-4 py-2">Rechercher / appliquer</button>
+        <button type="button" className={button} onClick={()=>{setDraft({...initialFilters});setFilters({...initialFilters});setOffset(0);}}>Réinitialiser</button>
+        <span className="text-sm text-gray-500">Filtres et tri appliqués à l’ensemble de la Library Corpo.</span>
+      </div>
+    </form>
     {error && <p role="alert" className="text-red-700">{error}</p>}
-    {loading ? <p>Chargement…</p> : !rows.length && !error ? <p>Aucune publication importée.</p> : <div className="border rounded bg-white overflow-x-auto">
+    {loading ? <p>Chargement…</p> : !rows.length && !error ? <p>Aucune publication ne correspond aux filtres.</p> : <div className="border rounded bg-white overflow-x-auto">
       <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
         {['Société / point','Publication','Parution','État','Informations',''].map((label,i)=><th key={i} className="p-3">{label}</th>)}
       </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
@@ -77,8 +125,8 @@ export default function CorpoLibraryPage() {
         <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button></td>
       </tr>)}</tbody></table>
     </div>}
-    <div className="flex justify-end gap-2"><button className={button} disabled={loading||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
-      <button className={button} disabled={loading||!hasMore} onClick={()=>setOffset(v=>v+50)}>Suivant</button></div>
+    <div className="flex justify-end gap-2 items-center"><span className="text-sm text-gray-500">Page {Math.floor(offset/50)+1}</span><button className={button} disabled={loading||!!error||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
+      <button className={button} disabled={loading||!!error||!hasMore} onClick={()=>setOffset(v=>v+50)}>Suivant</button></div>
     <dialog ref={dialogRef} aria-labelledby="corpo-document-title"
       onClose={()=>setDocumentId("")}
       className="w-[calc(100%-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg border bg-white p-6 shadow-xl backdrop:bg-black/40">
