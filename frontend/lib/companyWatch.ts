@@ -64,7 +64,7 @@ export type CorpoDiscovery = {
   id_discovery: string; id_company: string; id_company_watch: string;
   company_name?: string; watch_label?: string;
   url: string; title?: string; change_type: "NEW_URL" | "NEW_PAGE" | "UPDATED_PAGE";
-  status: "NEW" | "STORED"; error?: string; date_found?: string; id_stock?: string;
+  status: "NEW" | "STORED" | "DISMISSED"; error?: string; date_found?: string; id_stock?: string;
   watch_active?: boolean; collection_method?: string;
 };
 export async function scanCorpoSource(watch: CompanyWatch): Promise<{
@@ -82,6 +82,11 @@ export async function listCorpoDiscovery(options: {
 }
 export async function storeCorpoDiscovery(id: string): Promise<{id_stock: string; already_exists: boolean}> {
   return api.post(`/company/watch/discovery/${encodeURIComponent(id)}/store`, {});
+}
+export async function changeCorpoDiscoveryStatus(ids: string[], action: "dismiss" | "restore"): Promise<{
+  requested: number; updated: number; skipped: number;
+}> {
+  return api.post(`/company/watch/discovery/${action}`, {discovery_ids: ids});
 }
 export async function getCorpoStoredContent(id: string): Promise<{
   title: string; text: string; url: string; captured_at: string;
