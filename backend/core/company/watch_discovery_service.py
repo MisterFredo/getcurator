@@ -145,21 +145,21 @@ def _insert_candidate(watch, url, title, change, *, content_hash=None, snapshot=
     return candidate_id
 
 
-def _insert_candidates_batch(watch, items):
+def _insert_candidates_batch(watch, items, *, batch_id=None):
     """One load job for all new listing URLs. Never stream or INSERT per URL."""
     if not items:
         return 0
     now = datetime.now(timezone.utc).isoformat()
     rows = [{
-        "ID_DISCOVERY": str(uuid.uuid4()),
+        "ID_DISCOVERY": str(uuid.uuid5(uuid.NAMESPACE_URL, batch_id + ":" + item["url"])) if batch_id else str(uuid.uuid4()),
         "ID_COMPANY": watch["id_company"],
         "ID_COMPANY_WATCH": watch["id_company_watch"],
         "URL": item["url"],
         "TITLE": item.get("title"),
         "CHANGE_TYPE": "NEW_URL",
         "STATUS": "NEW",
-        "CONTENT_SHA256": None,
-        "SNAPSHOT_URI": None,
+        "CONTENT_SHA256": item.get("content_hash"),
+        "SNAPSHOT_URI": item.get("snapshot"),
         "ID_STOCK": None,
         "ERROR": None,
         "DATE_FOUND": now,
@@ -174,10 +174,20 @@ def _insert_candidates_batch(watch, items):
         column, "TIMESTAMP" if column in timestamps else "STRING",
         mode="REQUIRED" if column in required else "NULLABLE",
     ) for column in rows[0]]
-    get_bigquery_client().load_table_from_json(
-        rows, DISCOVERY,
-        job_config=bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_APPEND"),
-    ).result()
+    client = get_bigquery_client()
+    config = bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_APPEND")
+    if batch_id:
+        # A response timeout must not create a second append job on recovery.
+        from google.api_core.exceptions import Conflict
+        job_id = "corpo_bd_" + hashlib.sha256(batch_id.encode()).hexdigest()
+        try:
+            job = client.load_table_from_json(rows, DISCOVERY, job_config=config, job_id=job_id)
+        except Conflict:
+            location = client.get_dataset(BASE).location
+            job = client.get_job(job_id, location=location)
+        job.result()
+    else:
+        client.load_table_from_json(rows, DISCOVERY, job_config=config).result()
     logger.info("[CORPO SCAN] watch=%s inserted=%d load_jobs=1", watch["id_company_watch"], len(rows))
     return len(rows)
 
@@ -189,8 +199,11 @@ def _touch(candidate_id):
 
 def scan_watch(company_id, watch_id):
     watch = active_watch(company_id, watch_id)
+    if watch["collection_method"] == "BRIGHTDATA":
+        from core.company.watch_brightdata_service import scan_linkedin
+        return scan_linkedin(company_id, watch_id, start=True)
     if watch["collection_method"] != "HTML" or watch["source_type"] == "PDF":
-        raise ValueError("Le scan nécessite un point HTML actif")
+        raise ValueError("Le scan nécessite un point HTML ou Bright Data actif")
     # Shared company scope avoids concurrent discoveries of the same URL via
     # two different entry points. Other companies remain independent.
     with document_lock("scan-company-" + company_id):
@@ -298,13 +311,15 @@ def store_candidate(candidate_id):
         if candidate["STATUS"] != "NEW":
             raise HTTPException(409, "Cette URL n'est pas disponible pour stockage")
         watch = active_watch(candidate["ID_COMPANY"], candidate["ID_COMPANY_WATCH"])
-        if watch["collection_method"] != "HTML":
-            raise HTTPException(409, "Ce point n'est plus configuré en HTML")
+        if watch["collection_method"] not in {"HTML", "BRIGHTDATA"}:
+            raise HTTPException(409, "Ce point n'est plus configuré pour une collecte automatique")
         try:
             if candidate.get("SNAPSHOT_URI"):
                 metadata_uri = candidate["SNAPSHOT_URI"]
                 metadata = json.loads(_read_uri(metadata_uri))
             else:
+                if watch["collection_method"] == "BRIGHTDATA":
+                    raise HTTPException(409, "Capture Bright Data absente ; aucun repli HTML vers LinkedIn")
                 metadata, metadata_uri = _capture(watch, candidate["URL"])
                 # Fixer la capture avant la transaction pour une reprise idempotente.
                 _query(f"""UPDATE `{DISCOVERY}` SET SNAPSHOT_URI=@snapshot,
@@ -347,4 +362,7 @@ def candidate_detail(candidate_id):
         raise HTTPException(409, "Le contenu n'est consultable qu'après stockage")
     metadata = json.loads(_read_uri(candidate["SNAPSHOT_URI"]))
     return {"title": metadata["title"], "url": metadata["url"],
-            "captured_at": metadata["captured_at"], "text": _read_uri(metadata["text_storage_uri"])}
+            "captured_at": metadata["captured_at"], "text": _read_uri(metadata["text_storage_uri"]),
+            "published_at": metadata.get("published_at"), "author_name": metadata.get("author_name"),
+            "author_id": metadata.get("author_id"), "monitored_account_url": metadata.get("monitored_account_url"),
+            "repost": metadata.get("repost"), "share_date": metadata.get("share_date")}
