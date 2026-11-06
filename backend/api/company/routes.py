@@ -228,8 +228,12 @@ def import_corpo_library_step_route(id_discovery: str):
 def list_corpo_library_route(
     id_company: Optional[str] = None,
     offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
+    q: Optional[str] = Query(None, max_length=500),
+    sort: str = "published_at", direction: str = "desc", status: Optional[str] = None,
+    published_from: Optional[str] = None, published_to: Optional[str] = None,
 ):
-    return _watch_call(list_corpo_library, id_company, offset, limit)
+    return _watch_call(list_corpo_library, id_company, offset, limit,
+        q, sort, direction, status, published_from, published_to)
 
 
 @router.get("/watch/library/{id_document}")
