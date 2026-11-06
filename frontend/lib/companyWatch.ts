@@ -131,8 +131,16 @@ export type CorpoLibraryDetail = {
   monitored_account_url?: string; status: string; units: CorpoLibraryUnit[];
   has_more: boolean; warning: string;
 };
-export async function listCorpoLibrary(offset = 0): Promise<{items: CorpoLibraryDocument[];has_more: boolean}> {
-  return api.get(`/company/watch/library/list?offset=${offset}&limit=50`);
+export type CorpoLibraryFilters = {
+  q?: string; companyId?: string; sort?: string; direction?: string;
+  status?: string; publishedFrom?: string; publishedTo?: string;
+};
+export async function listCorpoLibrary(offset = 0, filters: CorpoLibraryFilters = {}): Promise<{items: CorpoLibraryDocument[];has_more: boolean}> {
+  const params = new URLSearchParams({offset:String(offset),limit:"50"});
+  const entries = {q:filters.q, id_company:filters.companyId, sort:filters.sort,
+    direction:filters.direction, status:filters.status, published_from:filters.publishedFrom, published_to:filters.publishedTo};
+  Object.entries(entries).forEach(([key,value])=>{if(value)params.set(key,value);});
+  return api.get(`/company/watch/library/list?${params.toString()}`);
 }
 export async function getCorpoLibraryDocument(id: string, offset = 0): Promise<CorpoLibraryDetail> {
   return api.get(`/company/watch/library/${encodeURIComponent(id)}?offset=${offset}&limit=100`);
