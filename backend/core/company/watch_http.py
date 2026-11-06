@@ -5,7 +5,7 @@ import ipaddress
 import json
 import re
 import socket
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qsl, urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -23,6 +23,21 @@ def normalize_url(value: str) -> str:
     if parts.username or parts.password or parts.port not in {None, 80, 443}:
         raise ValueError("Identifiants ou port non pris en charge")
     return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), parts.path or "/", parts.query, ""))
+
+
+def url_key(value: str) -> str:
+    """Comparison key only: keep the original URL for fetching and provenance."""
+    parts = urlsplit(normalize_url(value))
+    query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
+             if not key.lower().startswith("utm_") and key.lower() not in {
+                 "fbclid", "gclid", "msclkid", "li_fat_id", "mc_cid", "mc_eid"}]
+    host = parts.hostname
+    if ":" in host:
+        host = f"[{host}]"
+    if parts.port and parts.port != (443 if parts.scheme == "https" else 80):
+        host += f":{parts.port}"
+    return urlunsplit((parts.scheme, host, parts.path.rstrip("/") or "/",
+                       urlencode(sorted(query, key=lambda item: item[0])), ""))
 
 
 def _public_url(url: str):
@@ -84,70 +99,57 @@ def discover(watch: dict) -> dict:
                 "warnings": ["Périmètre : cette page uniquement."]}
     if mode != "LISTING":
         raise ValueError("collection_config.mode : LISTING ou SINGLE_PAGE attendu")
-    max_pages = config.get("max_pages", 5)
     max_urls = config.get("max_urls", 500)
-    if type(max_pages) is not int or not 1 <= max_pages <= 20:
-        raise ValueError("max_pages doit être compris entre 1 et 20")
     if type(max_urls) is not int or not 1 <= max_urls <= 500:
         raise ValueError("max_urls doit être compris entre 1 et 500")
     prefix = config.get("path_prefix") or urlsplit(source_url).path.rstrip("/") or "/"
     if not isinstance(prefix, str) or not prefix.startswith("/"):
         raise ValueError("path_prefix doit commencer par /")
     selector = config.get("link_selector") or "a[href]"
-    next_selector = config.get("next_selector") or 'a[rel~="next"]'
-    page_url, visited, seen, items, warnings = source_url, set(), set(), [], []
-    while page_url and len(visited) < max_pages:
-        if page_url in visited:
-            warnings.append("Pagination en boucle : arrêt explicite.")
-            break
-        # Une erreur de pagination ne doit pas annuler les URL déjà découvertes.
+    # One configured document only. No article, author or pagination request.
+    page = fetch_html(source_url)
+    if _host(page["url"]) != _host(source_url):
+        raise ValueError("La page configurée redirige vers un autre domaine")
+    soup = BeautifulSoup(page["html"], "html.parser")
+    seen, items = set(), []
+    warnings = ["Page configurée uniquement ; pagination non suivie."]
+    # Do not propose navigation controls as content to store.
+    pagination_nodes = {id(node) for node in soup.select(
+        'a[rel~="next"], a[rel~="prev"], .pagination a[href], .w-pagination-wrapper a[href], '
+        '[aria-label*="pagination" i] a[href]')}
+    self_keys = {url_key(source_url), url_key(page["url"])}
+    source_path = urlsplit(page["url"]).path.rstrip("/") or "/"
+    for link in soup.select(selector):
+        if id(link) in pagination_nodes:
+            continue
+        href = link.get("href")
+        if not href:
+            continue
         try:
-            page = fetch_html(page_url)
-        except Exception as exc:
-            if not visited:
-                raise
-            warnings.append(f"Pagination interrompue sur {page_url} : {exc}")
+            url = normalize_url(urljoin(page["url"], href))
+            key = url_key(url)
+        except (ValueError, TypeError):
+            continue
+        if not in_scope(url, source_url, prefix) or key in seen or key in self_keys:
+            continue
+        target = urlsplit(url)
+        query_keys = {key.lower() for key, _ in parse_qsl(target.query)}
+        if (target.path.rstrip("/") or "/") == source_path and any(
+            key in {"page", "paged", "pageno", "pg"} or key.endswith("_page") for key in query_keys
+        ):
+            continue
+        if re.fullmatch(re.escape(source_path.rstrip("/")) + r"/page/\d+/?", target.path):
+            continue
+        if re.search(r"\.(?:png|jpg|jpeg|gif|svg|zip|pdf|mp4)(?:$|\?)", url, re.I):
+            continue
+        seen.add(key)
+        if len(items) >= max_urls:
+            warnings.append("Limite max_urls atteinte sur cette page ; augmenter le paramètre.")
             break
-        if _host(page["url"]) != _host(source_url):
-            raise ValueError("La page de liste redirige vers un autre domaine")
-        visited.add(page_url)
-        soup = BeautifulSoup(page["html"], "html.parser")
-        next_node = soup.select_one(next_selector)
-        next_url = None
-        if next_node and next_node.get("href"):
-            try:
-                candidate = normalize_url(urljoin(page["url"], next_node["href"]))
-                if _host(candidate) == _host(source_url):
-                    next_url = candidate
-            except ValueError:
-                pass
-        for link in soup.select(selector):
-            href = link.get("href")
-            if not href:
-                continue
-            try:
-                url = normalize_url(urljoin(page["url"], href))
-            except ValueError:
-                continue
-            if not in_scope(url, source_url, prefix) or url in seen:
-                continue
-            if url in {source_url, page_url, page["url"], next_url}:
-                continue
-            # Pas d'exclusions éditoriales /about, /contact, etc.
-            if re.search(r"\.(?:png|jpg|jpeg|gif|svg|zip|pdf|mp4)(?:$|\?)", url, re.I):
-                continue
-            seen.add(url)
-            if len(items) >= max_urls:
-                warnings.append("Limite max_urls atteinte : collecte partielle, augmenter le paramètre.")
-                return {"items": items, "pages_scanned": len(visited), "warnings": warnings}
-            items.append({"url": url, "title": link.get_text(" ", strip=True) or url})
-        page_url = next_url
-    if page_url and len(visited) >= max_pages:
-        warnings.append("Limite max_pages atteinte : pagination restante non parcourue.")
-    warnings.append("Couverture limitée aux liens HTML et à la pagination exposés dans le périmètre configuré.")
+        items.append({"url": url, "title": link.get_text(" ", strip=True) or url})
     if not items:
         warnings.append("Aucune URL détectée : vérifier le périmètre, le sélecteur ou une page de connexion.")
-    return {"items": items, "pages_scanned": len(visited), "warnings": warnings}
+    return {"items": items, "pages_scanned": 1, "warnings": warnings}
 
 
 def parse_html(html: str, url: str, config: dict) -> dict:
@@ -210,3 +212,4 @@ def parse_html(html: str, url: str, config: dict) -> dict:
         raise ValueError("Page de connexion ou de protection reçue ; utiliser un autre mode de récupération")
     return {"title": title, "text": text, "published_at": published,
             "date_precision": "SOURCE" if published else "UNKNOWN"}
+
