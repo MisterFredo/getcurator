@@ -59,46 +59,33 @@ export async function updateCompanyWatch(
   return api.put(`/company/${encodeURIComponent(companyId)}/watch/${encodeURIComponent(watchId)}`, payload);
 }
 
-export type WatchPublication = {
-  id_document: string;
-  title: string;
-  source_url?: string;
-  status?: string;
-  extraction_status?: string;
-  extraction_error?: string | null;
-  next_chunk: number;
-  chunk_count: number;
-  already_exists?: boolean;
-  unit_count?: number;
-  review_count?: number;
+
+export type CorpoDiscovery = {
+  id_discovery: string; id_company: string; id_company_watch: string;
+  company_name?: string; watch_label?: string;
+  url: string; title?: string; change_type: "NEW_URL" | "NEW_PAGE" | "UPDATED_PAGE";
+  status: "NEW" | "STORED"; error?: string; date_found?: string; id_stock?: string;
+  watch_active?: boolean; collection_method?: string;
 };
-export type WatchEvidence = {
-  unit_id: string; fact: string; quote: string; verification_status: string;
-  verification_reason?: string; source_locator?: string;
-};
-export type WatchDetail = WatchPublication & { text: string; units: WatchEvidence[]; has_more: boolean; warning: string };
-function watchPath(watch: CompanyWatch) {
-  return `/company/${encodeURIComponent(watch.id_company)}/watch/${encodeURIComponent(watch.id_company_watch)}`;
+export async function scanCorpoSource(watch: CompanyWatch): Promise<{
+  new: number; known: number; unchanged: number; warnings: string[];
+}> {
+  return api.post(`/company/${encodeURIComponent(watch.id_company)}/watch/${encodeURIComponent(watch.id_company_watch)}/scan`, {});
 }
-export async function scanWatch(watch: CompanyWatch): Promise<{
-  items: {url: string; title?: string}[]; warnings: string[]; pages_scanned: number;
-}> { return api.post(`${watchPath(watch)}/scan`, {}); }
-export async function collectWatchUrl(watch: CompanyWatch, url: string): Promise<WatchPublication> {
-  return api.post(`${watchPath(watch)}/collect`, { url });
+export async function listCorpoDiscovery(options: {
+  companyId?: string; watchId?: string; status?: string; offset?: number;
+}): Promise<{items: CorpoDiscovery[]; has_more: boolean}> {
+  const query = new URLSearchParams({status: options.status || "NEW", offset: String(options.offset || 0), limit:"50"});
+  if (options.companyId) query.set("id_company",options.companyId);
+  if (options.watchId) query.set("id_company_watch",options.watchId);
+  return api.get(`/company/watch/discovery/list?${query}`);
 }
-export async function extractWatchStep(watch: CompanyWatch, id: string): Promise<WatchPublication> {
-  return api.post(`${watchPath(watch)}/publications/${encodeURIComponent(id)}/extract-step`, {});
+export async function storeCorpoDiscovery(id: string): Promise<{id_stock: string; already_exists: boolean}> {
+  return api.post(`/company/watch/discovery/${encodeURIComponent(id)}/store`, {});
 }
-export async function importWatchText(watch: CompanyWatch, data: {
-  text: string; format: "SINGLE" | "LINKEDIN_ACTIVITY"; title?: string; source_url?: string;
-  reference_date?: string; published_date?: string;
-}): Promise<{items: WatchPublication[]; errors: {index: number; error: string}[]; warnings: string[]}> {
-  return api.post(`${watchPath(watch)}/import-text`, data);
-}
-export async function listWatchPublications(watch: CompanyWatch, offset=0): Promise<{
-  items: WatchPublication[]; has_more: boolean;
-}> { return api.get(`${watchPath(watch)}/publications?offset=${offset}&limit=50`); }
-export async function getWatchPublication(watch: CompanyWatch, id: string, offset=0): Promise<WatchDetail> {
-  return api.get(`${watchPath(watch)}/publications/${encodeURIComponent(id)}?offset=${offset}&limit=100`);
+export async function getCorpoStoredContent(id: string): Promise<{
+  title: string; text: string; url: string; captured_at: string;
+}> {
+  return api.get(`/company/watch/discovery/${encodeURIComponent(id)}/content`);
 }
 
