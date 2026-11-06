@@ -189,6 +189,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const editorCompany = fixedCompany || companies.find(c => c.id_company === editor?.companyId);
   return (
     <div className="space-y-6">
+      <a href="/admin/discovery/corpo/mentions" className="inline-block border rounded px-3 py-2 underline">Mentions externes → Library</a>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           {fixedCompany ? (
