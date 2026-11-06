@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listCompanyWatches, scanCorpoSource, listCorpoDiscovery, storeCorpoDiscovery, changeCorpoDiscoveryStatus,
-  getCorpoStoredContent } from "@/lib/companyWatch";
-import type { CompanyWatch, CorpoDiscovery } from "@/lib/companyWatch";
+  getCorpoStoredContent, getCorpoScanStatus, attachCorpoSnapshot } from "@/lib/companyWatch";
+import type { CompanyWatch, CorpoDiscovery, CorpoScanResult } from "@/lib/companyWatch";
 
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed";
 const labels = { NEW_URL: "Nouvelle URL", NEW_PAGE: "Nouvelle page", UPDATED_PAGE: "Mise à jour" };
+const canScan = (source: CompanyWatch) => ["HTML", "BRIGHTDATA"].includes(source.collection_method) && source.source_type !== "PDF" && source.is_active;
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Erreur de traitement";
 function safeUrl(value: string) {
   try { const u = new URL(value); return ["http:", "https:"].includes(u.protocol) ? u.href : undefined; }
@@ -27,7 +28,8 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
   const [progress, setProgress] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [content, setContent] = useState<{title:string;text:string;captured_at:string;url:string} | null>(null);
+  const [content, setContent] = useState<Awaited<ReturnType<typeof getCorpoStoredContent>> | null>(null);
+  const [snapshotId, setSnapshotId] = useState("");
   const [contentLoading, setContentLoading] = useState(false);
   const mounted = useRef(true);
   const working = useRef(false);
@@ -75,35 +77,55 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     working.current = false;
     if (!mounted.current) return;
     setRunning(false); onBusyChange?.(false);
-    if (stop.current) setProgress("Arrêt effectué. Les découvertes et stockages terminés sont conservés.");
+    if (stop.current) setProgress("Arrêt du suivi effectué. Les découvertes et stockages sont conservés ; une collecte déjà lancée chez Bright Data continue.");
     await reload();
   }
   async function sourcesToScan(): Promise<CompanyWatch[]> {
-    if (watch) return watch.collection_method === "HTML" && watch.is_active && watch.source_type !== "PDF" ? [watch] : [];
+    if (watch) return canScan(watch) ? [watch] : [];
     const result: CompanyWatch[] = [];
     let pageOffset = 0;
     while (mounted.current && !stop.current) {
       const response = await listCompanyWatches({id_company:scopeCompany,is_active:true,limit:500,offset:pageOffset});
-      result.push(...response.watches.filter(source => source.collection_method === "HTML" && source.source_type !== "PDF"));
+      result.push(...response.watches.filter(source => canScan(source)));
       if (!response.has_more) break;
       pageOffset += 500;
     }
     return result;
   }
-  async function scan() {
+  async function waitForScan(source: CompanyWatch, response: CorpoScanResult) {
+    let result = response;
+    while (["RUNNING", "STARTING"].includes(result.status) && mounted.current && !stop.current) {
+      setProgress(`${source.label} : collecte LinkedIn en cours. Vous pourrez reprendre la récupération si vous quittez la page.`);
+      // Short sleeps allow stop/unmount without leaving a pending long timer.
+      for (let tick = 0; tick < 20 && mounted.current && !stop.current; tick++) {
+        await new Promise<void>(resolve => setTimeout(resolve, 500));
+      }
+      if (!mounted.current || stop.current) return null;
+      result = await getCorpoScanStatus(source);
+    }
+    if (!mounted.current || stop.current) return null;
+    if (["FAILED", "UNKNOWN", "IDLE"].includes(result.status)) {
+      throw new Error(result.message || (result.status === "IDLE" ? "Aucune collecte à reprendre. Lancez un scan." : "Collecte indisponible."));
+    }
+    return result;
+  }
+  async function scan(resume = false) {
     if (!begin()) return;
     let found = 0, known = 0, unchanged = 0;
     try {
-      setProgress("Chargement des points HTML actifs…");
+      setProgress("Chargement des points de collecte automatiques actifs…");
       const sources = await sourcesToScan();
       if (!sources.length && mounted.current && !stop.current) {
-        setProgress("Aucun point HTML actif dans ce périmètre. Modifier sa méthode de récupération si nécessaire.");
+        setProgress("Aucun point automatique actif dans ce périmètre. Modifier sa méthode de récupération si nécessaire.");
       }
       for (let index=0;index<sources.length && mounted.current && !stop.current;index++) {
         const source = sources[index];
         setProgress(`Scan ${index+1}/${sources.length} — ${source.company_name || ""} / ${source.label}`);
         try {
-          const response = await scanCorpoSource(source);
+          const initial = resume && source.collection_method === "BRIGHTDATA"
+            ? await getCorpoScanStatus(source) : await scanCorpoSource(source);
+          const response = await waitForScan(source, initial);
+          if (!response) break;
           if (!mounted.current) break;
           found += response.new;
           known += response.known; unchanged += response.unchanged;
@@ -177,10 +199,24 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     <div className="flex flex-wrap justify-between gap-3 items-center">
       <div><h2 className="text-xl font-semibold text-ratecard-blue">{watch ? watch.label : "URL découvertes — Corpo"}</h2>
         <p className="text-sm text-gray-500">Scanner → sélectionner → stocker les captures.</p></div>
-      <button type="button" className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50" disabled={running || !!(watch && (!watch.is_active || watch.collection_method !== "HTML" || watch.source_type === "PDF"))}
-        onClick={() => void scan()}>{watch ? "Scanner ce point" : "SCAN ALL — points HTML actifs"}</button>
+      <button type="button" className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50" disabled={running || !!(watch && (!watch.is_active || !["HTML", "BRIGHTDATA"].includes(watch.collection_method) || watch.source_type === "PDF"))}
+        onClick={() => void scan()}>{watch ? "Scanner ce point" : "SCAN ALL — points de collecte automatiques actifs"}</button>
     </div>
-    {watch && watch.collection_method !== "HTML" && <p className="text-sm text-gray-500">Le scan est disponible pour les points configurés en méthode HTML. L’entrée Manuel / Studio sera raccordée au stock séparément.</p>}
+    {watch && !["HTML", "BRIGHTDATA"].includes(watch.collection_method) && <p className="text-sm text-gray-500">Le scan est disponible pour les points configurés en HTML ou Bright Data. L’entrée Manuel / Studio sera raccordée au stock séparément.</p>}
+    {watch?.collection_method === "BRIGHTDATA" && <div className="border rounded p-3 space-y-3 bg-blue-50">
+      <p className="text-sm">La collecte continue chez Bright Data après fermeture de cette page. La récupération reprend le dernier scan sans en acheter un nouveau.</p>
+      <button type="button" className={button} disabled={running} onClick={() => void scan(true)}>Récupérer / reprendre le dernier scan</button>
+      <details><summary className="text-sm cursor-pointer">Rattacher un lancement incertain</summary>
+        <p className="text-sm mt-2">Uniquement si le lancement a été interrompu avant réception de son identifiant : recopiez le snapshot ID depuis Bright Data.</p>
+        <input className="border rounded px-3 py-2 mt-2" value={snapshotId} placeholder="sd_…" onChange={event => setSnapshotId(event.target.value)} disabled={running}/>
+        <button type="button" className={`${button} ml-2`} disabled={running || !snapshotId.trim()} onClick={async () => {
+          if (!begin()) return;
+          try { await attachCorpoSnapshot(watch, snapshotId.trim()); setProgress("Collecte rattachée. Cliquez sur Récupérer / reprendre le dernier scan."); }
+          catch (error) { if (mounted.current) setErrors([errorText(error)]); }
+          finally { await finish(); }
+        }}>Rattacher</button>
+      </details>
+    </div>}
     <div className="flex flex-wrap gap-3 items-center">
       <label className="text-sm">Afficher <select className="border rounded px-3 py-2" value={status} disabled={running}
         onChange={event => setStatus(event.target.value)}>
@@ -228,6 +264,9 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     </div>
     {content && <section className="border rounded bg-white p-4 space-y-3"><div className="flex justify-between gap-3"><h3 className="font-semibold">{content.title}</h3>
       <button type="button" className={button} onClick={()=>setContent(null)}>Fermer le texte</button></div>
-      <p className="text-sm text-gray-500">Capture : {content.captured_at}</p><pre className="whitespace-pre-wrap text-sm max-h-96 overflow-auto">{content.text}</pre></section>}
+      <p className="text-sm text-gray-500">Capture : {content.captured_at}</p>
+      {content.published_at && <p className="text-sm">Date du post : {new Date(content.published_at).toLocaleString("fr-FR")}</p>}
+      {(content.author_name || content.author_id) && <p className="text-sm">Auteur : {content.author_name || content.author_id}</p>}
+      {content.monitored_account_url && <p className="text-sm">Compte suivi : {content.monitored_account_url}. La date de relais n’est pas établie par cette collecte.</p>}<pre className="whitespace-pre-wrap text-sm max-h-96 overflow-auto">{content.text}</pre></section>}
   </section>;
 }
