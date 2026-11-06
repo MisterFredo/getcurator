@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
@@ -23,6 +24,7 @@ STOCK = f"{BASE}.RATECARD_COMPANY_WATCH_STOCK"
 DOCUMENT = f"{BASE}.RATECARD_SOURCE_DOCUMENT"
 WATCH = f"{BASE}.RATECARD_COMPANY_WATCH"
 COMPANY = f"{BASE}.RATECARD_COMPANY"
+logger = logging.getLogger(__name__)
 
 
 def _p(name, kind, value):
@@ -104,6 +106,43 @@ def _insert_candidate(watch, url, title, change, *, content_hash=None, snapshot=
     return candidate_id
 
 
+def _insert_candidates_batch(watch, items):
+    """One load job for all new listing URLs. Never stream or INSERT per URL."""
+    if not items:
+        return 0
+    now = datetime.now(timezone.utc).isoformat()
+    rows = [{
+        "ID_DISCOVERY": str(uuid.uuid4()),
+        "ID_COMPANY": watch["id_company"],
+        "ID_COMPANY_WATCH": watch["id_company_watch"],
+        "URL": item["url"],
+        "TITLE": item.get("title"),
+        "CHANGE_TYPE": "NEW_URL",
+        "STATUS": "NEW",
+        "CONTENT_SHA256": None,
+        "SNAPSHOT_URI": None,
+        "ID_STOCK": None,
+        "ERROR": None,
+        "DATE_FOUND": now,
+        "LAST_SEEN_AT": now,
+        "UPDATED_AT": now,
+    } for item in items]
+    # Explicit schema: nullable columns are all null before content acquisition.
+    required = {"ID_DISCOVERY", "ID_COMPANY", "ID_COMPANY_WATCH", "URL",
+                "CHANGE_TYPE", "STATUS", "DATE_FOUND"}
+    timestamps = {"DATE_FOUND", "LAST_SEEN_AT", "UPDATED_AT"}
+    schema = [bigquery.SchemaField(
+        column, "TIMESTAMP" if column in timestamps else "STRING",
+        mode="REQUIRED" if column in required else "NULLABLE",
+    ) for column in rows[0]]
+    get_bigquery_client().load_table_from_json(
+        rows, DISCOVERY,
+        job_config=bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_APPEND"),
+    ).result()
+    logger.info("[CORPO SCAN] watch=%s inserted=%d load_jobs=1", watch["id_company_watch"], len(rows))
+    return len(rows)
+
+
 def _touch(candidate_id):
     _query(f"UPDATE `{DISCOVERY}` SET LAST_SEEN_AT=CURRENT_TIMESTAMP() WHERE ID_DISCOVERY=@id",
            [_p("id", "STRING", candidate_id)])
@@ -142,14 +181,15 @@ def scan_watch(company_id, watch_id):
             legacy = _query(f"SELECT SOURCE_URL FROM `{DOCUMENT}` WHERE ID_COMPANY_WATCH=@watch",
                             [_p("watch", "STRING", watch_id)])
             urls = {r["URL"] for r in existing} | {r["SOURCE_URL"] for r in legacy if r["SOURCE_URL"]}
+            pending = []
             for item in result["items"]:
                 target = normalize_url(item["url"])
                 if target in urls:
                     known += 1
                     continue
-                _insert_candidate(watch, target, item.get("title"), "NEW_URL")
+                pending.append({"url": target, "title": item.get("title")})
                 urls.add(target)
-                new += 1
+            new = _insert_candidates_batch(watch, pending)
         return {"status": "ok", "new": new, "known": known, "unchanged": unchanged, "warnings": warnings}
 
 
