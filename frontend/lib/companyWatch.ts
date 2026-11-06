@@ -65,6 +65,7 @@ export type CorpoDiscovery = {
   company_name?: string; watch_label?: string;
   url: string; title?: string; change_type: "NEW_URL" | "NEW_PAGE" | "UPDATED_PAGE";
   status: "NEW" | "STORED" | "DISMISSED"; error?: string; date_found?: string; id_stock?: string;
+  published_at?: string | null; publication_date_note?: string | null;
   watch_active?: boolean; collection_method?: string;
 };
 export type CorpoScanResult = {
