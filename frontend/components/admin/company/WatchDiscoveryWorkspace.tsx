@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listCompanyWatches, scanCorpoSource, listCorpoDiscovery, storeCorpoDiscovery,
+import { listCompanyWatches, scanCorpoSource, listCorpoDiscovery, storeCorpoDiscovery, changeCorpoDiscoveryStatus,
   getCorpoStoredContent } from "@/lib/companyWatch";
 import type { CompanyWatch, CorpoDiscovery } from "@/lib/companyWatch";
 
@@ -136,6 +136,27 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
       if (mounted.current && !stop.current) setProgress(`${stored}/${ids.length} capture(s) stockée(s). Aucun déstockage ni extraction lancé.`);
     } finally { await finish(); }
   }
+  async function changeSelected(action: "dismiss" | "restore") {
+    if (!selected.length || !begin()) return;
+    const ids = [...selected];
+    let updated = 0, skipped = 0;
+    try {
+      for (let index = 0; index < ids.length && mounted.current && !stop.current; index += 500) {
+        const batch = ids.slice(index, index + 500);
+        setProgress(action === "dismiss" ? "Ignorer la sélection…" : "Restaurer la sélection…");
+        const response = await changeCorpoDiscoveryStatus(batch, action);
+        if (!mounted.current) break;
+        updated += response.updated; skipped += response.skipped;
+        setSelected(previous => previous.filter(id => !batch.includes(id)));
+        await reload();
+      }
+      if (mounted.current && !stop.current) {
+        setProgress(`${updated} URL/version(s) ${action === "dismiss" ? "ignorée(s)" : "restaurée(s)"}.${skipped ? ` ${skipped} ligne(s) déjà traitée(s) ou indisponible(s).` : ""}`);
+      }
+    } catch (error) {
+      if (mounted.current) setErrors(previous => [...previous, errorText(error)]);
+    } finally { await finish(); }
+  }
   async function view(row: CorpoDiscovery) {
     const request = ++contentSequence.current;
     setContentLoading(true);
@@ -145,22 +166,12 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     } catch (error) { if (mounted.current) setErrors(previous => [...previous,errorText(error)]); }
     finally { if (mounted.current && request === contentSequence.current) setContentLoading(false); }
   }
-  const eligible = items.filter(row => row.status === "NEW" && row.watch_active && row.collection_method === "HTML");
+  const selectableStatus = status === "DISMISSED" ? "DISMISSED" : "NEW";
+  const eligible = items.filter(row => row.status === selectableStatus);
   const allPageSelected = eligible.length > 0 && eligible.every(row => selected.includes(row.id_discovery));
   function togglePage() {
-    const ids = eligible.map(
-      row => row.id_discovery
-    );
-  
-    setSelected(previous =>
-      allPageSelected
-        ? previous.filter(
-            id => !ids.includes(id)
-          )
-        : Array.from(
-            new Set([...previous, ...ids])
-          )
-    );
+    const ids = eligible.map(row => row.id_discovery);
+    setSelected(previous => allPageSelected ? previous.filter(id => !ids.includes(id)) : Array.from(new Set([...previous,...ids])));
   }
   return <section className="space-y-4" aria-label="Discovery Corpo">
     <div className="flex flex-wrap justify-between gap-3 items-center">
@@ -173,13 +184,20 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     <div className="flex flex-wrap gap-3 items-center">
       <label className="text-sm">Afficher <select className="border rounded px-3 py-2" value={status} disabled={running}
         onChange={event => setStatus(event.target.value)}>
-        <option value="NEW">À stocker</option><option value="STORED">Stockés</option><option value="ALL">Tous</option>
+        <option value="NEW">À stocker</option><option value="STORED">Stockés</option><option value="DISMISSED">Ignorés</option><option value="ALL">Tous</option>
       </select></label>
       <button type="button" className={button} disabled={running || loading} onClick={() => void reload()}>Actualiser</button>
       <button type="button" className={button} disabled={running || !eligible.length} onClick={togglePage}>
         {allPageSelected ? "Désélectionner cette page" : "Tout sélectionner sur cette page"}</button>
-      <button type="button" className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-50"
-        disabled={running || !selected.length} onClick={() => void storeSelected()}>Stocker la sélection ({selected.length})</button>
+      {status === "DISMISSED" ? (
+        <button type="button" className={button} disabled={running || !selected.length}
+          onClick={() => void changeSelected("restore")}>Restaurer la sélection ({selected.length})</button>
+      ) : (<>
+        <button type="button" className={button} disabled={running || !selected.length}
+          onClick={() => void changeSelected("dismiss")}>Ignorer la sélection ({selected.length})</button>
+        <button type="button" className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-50"
+          disabled={running || !selected.length} onClick={() => void storeSelected()}>Stocker la sélection ({selected.length})</button>
+      </>)}
     </div>
     {progress && <p role="status" className="bg-blue-50 p-3 rounded">{progress}</p>}
     {running && <button type="button" className={button} onClick={() => {stop.current=true;setProgress("Arrêt demandé après la requête en cours…");}}>Arrêter après l’étape en cours</button>}
@@ -193,7 +211,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
         <th className="p-3">Société / point</th><th className="p-3">URL / titre</th><th className="p-3">Découverte</th><th className="p-3">Détecté le</th><th className="p-3">État</th><th className="p-3">Capture</th>
       </tr></thead><tbody>{items.map(row=><tr key={row.id_discovery} className="border-t align-top">
         <td className="p-3"><input type="checkbox" aria-label={`Sélectionner ${row.title || row.url}`} checked={selected.includes(row.id_discovery)}
-          disabled={running || row.status !== "NEW" || !row.watch_active || row.collection_method !== "HTML"}
+          disabled={running || row.status !== selectableStatus}
           onChange={()=>setSelected(previous=>previous.includes(row.id_discovery)?previous.filter(id=>id!==row.id_discovery):[...previous,row.id_discovery])}/></td>
         <td className="p-3">{row.company_name}<div className="text-gray-500">{row.watch_label}</div></td>
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title || row.url}</p>
@@ -201,7 +219,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
           {row.error && <p className="text-red-700 break-words">{row.error}</p>}</td>
         <td className="p-3">{labels[row.change_type]}</td>
         <td className="p-3">{row.date_found ? new Date(row.date_found).toLocaleString("fr-FR", {timeZone:"Europe/Paris"}) : "—"}</td>
-        <td className="p-3">{row.status === "STORED" ? "Stocké" : "À stocker"}</td>
+        <td className="p-3">{row.status === "STORED" ? "Stocké" : row.status === "DISMISSED" ? "Ignoré" : "À stocker"}</td>
         <td className="p-3">{row.status === "STORED" && <button type="button" className={button} disabled={running || contentLoading} onClick={()=>void view(row)}>Voir le texte</button>}</td>
       </tr>)}</tbody></table></div>}
     <div className="flex justify-end gap-2">
