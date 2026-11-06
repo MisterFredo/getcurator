@@ -99,7 +99,7 @@ def discover(watch: dict) -> dict:
                 "warnings": ["Périmètre : cette page uniquement."]}
     if mode != "LISTING":
         raise ValueError("collection_config.mode : LISTING ou SINGLE_PAGE attendu")
-    max_urls = config.get("max_urls", 500)
+    max_urls = config.get("max_urls", 100)
     if type(max_urls) is not int or not 1 <= max_urls <= 500:
         raise ValueError("max_urls doit être compris entre 1 et 500")
     prefix = config.get("path_prefix") or urlsplit(source_url).path.rstrip("/") or "/"
