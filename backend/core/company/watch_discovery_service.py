@@ -6,6 +6,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException
@@ -253,6 +254,30 @@ def scan_watch(company_id, watch_id):
         return {"status": "ok", "new": new, "known": known, "unchanged": unchanged, "warnings": warnings}
 
 
+def _candidate_out(row):
+    item = {k.lower(): v for k, v in dict(row).items()}
+    item["published_at"] = None
+    item["publication_date_note"] = None
+    snapshot = item.get("snapshot_uri")
+    if not snapshot:
+        return item
+    try:
+        metadata = json.loads(_read_uri(snapshot))
+        date = metadata.get("published_at")
+        if date:
+            parsed = datetime.fromisoformat(str(date).replace("Z", "+00:00"))
+            # A timestamp without a timezone must not be assigned an invented zone.
+            if parsed.tzinfo is not None:
+                item["published_at"] = parsed.astimezone(timezone.utc).isoformat()
+        if metadata.get("provider") == "BRIGHTDATA":
+            item["publication_date_note"] = "Date du post retournée par LinkedIn ; pour un relais, la date de partage n’est pas établie."
+    except Exception:
+        # Missing/corrupt storage must not hide the selection table or invent a date.
+        logger.warning("[CORPO LIST] publication date unavailable for discovery=%s", item.get("id_discovery"))
+        item["publication_date_note"] = "Date indisponible : les métadonnées de capture n’ont pas pu être lues."
+    return item
+
+
 def list_candidates(company_id=None, watch_id=None, status="NEW", offset=0, limit=50):
     if status not in {"NEW", "STORED", "DISMISSED", "ALL"}:
         raise ValueError("Statut invalide")
@@ -270,8 +295,10 @@ def list_candidates(company_id=None, watch_id=None, status="NEW", offset=0, limi
         FROM `{DISCOVERY}` d LEFT JOIN `{WATCH}` w USING (ID_COMPANY_WATCH, ID_COMPANY)
         LEFT JOIN `{COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY {where}
         ORDER BY d.DATE_FOUND DESC, d.ID_DISCOVERY DESC LIMIT @limit OFFSET @offset""", params)
-    return {"items": [{k.lower(): v for k,v in dict(r).items()} for r in rows[:limit]],
-            "has_more": len(rows)>limit, "offset": offset, "limit": limit}
+    # Only this page's existing GCS metadata; never fetch LinkedIn or query BQ per row.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        items = list(pool.map(_candidate_out, rows[:limit]))
+    return {"items": items, "has_more": len(rows)>limit, "offset": offset, "limit": limit}
 
 
 def get_candidate(candidate_id):
