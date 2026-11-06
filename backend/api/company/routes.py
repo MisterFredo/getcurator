@@ -235,6 +235,11 @@ def create_mention_run(data: MentionRunRequest):
 def get_mention_run(id_run: str):
     return _watch_call(mention_service.read, id_run)
 
+@router.post('/watch/mentions/{id_run}/recheck')
+def recheck_mention_run(id_run: str):
+    return _watch_call(mention_service.recheck, id_run)
+
+
 @router.post('/watch/mentions/{id_run}/step')
 def step_mention_run(id_run: str):
     return _watch_call(mention_service.step, id_run)
