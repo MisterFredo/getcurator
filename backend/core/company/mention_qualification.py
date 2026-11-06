@@ -52,11 +52,36 @@ def _publication_date(values):
     return parsed[0]
 
 
-def editorial_page(html, url, aliases, start, end):
-    soup=BeautifulSoup(html,'html.parser')
-    values=[];author=None
-    meta=soup.find('meta',property='article:published_time')
-    if meta and meta.get('content'):values.append(meta['content'])
+DATE_VERSION='mention-1.2'
+MONTHS={'janvier':1,'février':2,'fevrier':2,'mars':3,'avril':4,'mai':5,'juin':6,'juillet':7,'août':8,'aout':8,'septembre':9,'octobre':10,'novembre':11,'décembre':12,'decembre':12,
+        'january':1,'february':2,'march':3,'april':4,'may':5,'june':6,'july':7,'august':8,'september':9,'october':10,'november':11,'december':12}
+
+
+def _date_value(value):
+    value=str(value or '').strip()
+    # A source timestamp without timezone proves a calendar day, not an instant.
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?',value):return value[:10]
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}(?:T.*)?',value):return value
+    value=value.casefold().replace(',',' ')
+    match=re.search(r'(?<!\d)(\d{1,2})\s+([a-zéûôî]+)\s+(\d{4})(?!\d)',value)
+    if match and match[2] in MONTHS:
+        try:return date(int(match[3]),MONTHS[match[2]],int(match[1])).isoformat()
+        except ValueError:return None
+    match=re.search(r'\b([a-z]+)\s+(\d{1,2})\s+(\d{4})(?!\d)',value)
+    if match and match[1] in MONTHS:
+        try:return date(int(match[3]),MONTHS[match[1]],int(match[2])).isoformat()
+        except ValueError:return None
+    return None
+
+
+def inspect_editorial(html, url, aliases):
+    soup=BeautifulSoup(html,'html.parser');values=[];sources=[];author=None
+    def add(value,locator):
+        parsed=_date_value(value)
+        if parsed:values.append(parsed);sources.append({'locator':locator,'value':str(value),'normalized':parsed})
+    for node in soup.select('meta[property="article:published_time"],meta[itemprop="datePublished"],meta[name="pubdate"],meta[name="publishdate"],meta[name="datePublished"],meta[name="DC.date.issued"],meta[property="og:article:published_time"]'):
+        add(node.get('content'),str(node))
+    article_schema=False;reference_schema=False
     for script in soup.find_all('script',type='application/ld+json'):
         try:payload=json.loads(script.string or script.get_text())
         except (ValueError,TypeError):continue
@@ -64,31 +89,63 @@ def editorial_page(html, url, aliases, start, end):
         while pending:
             item=pending.pop()
             if not isinstance(item,dict):continue
-            pending.extend(item.get('@graph') or [])
+            graph=item.get('@graph');pending.extend(graph if isinstance(graph,list) else [])
             kinds=item.get('@type') or [];kinds=[kinds] if isinstance(kinds,str) else kinds
-            if any(k in {'Article','NewsArticle','BlogPosting','Report','TechArticle'} for k in kinds):
-                if item.get('datePublished'):values.append(item['datePublished'])
+            article=any(k in {'Article','NewsArticle','BlogPosting','Report','TechArticle'} for k in kinds)
+            article_schema=article_schema or article
+            reference_schema=reference_schema or any(k in {'Product','SoftwareApplication','FAQPage','CollectionPage'} for k in kinds)
+            if article:
+                add(item.get('datePublished'),'JSONLD.datePublished')
                 a=item.get('author')
                 if isinstance(a,dict):author=a.get('name')
                 elif isinstance(a,str):author=a
-    stamp,precision=_publication_date(values)
-    day=stamp.astimezone(ZoneInfo('Europe/Paris')).date()
-    if not date.fromisoformat(start)<=day<=date.fromisoformat(end):raise Uncertain('OUTSIDE_PUBLICATION_PERIOD')
     region=soup.find('article') or soup.select_one('[itemprop="articleBody"]') or soup.find('main')
     if not region:raise Uncertain('EDITORIAL_REGION_UNKNOWN')
-    title=soup.find('h1') or soup.title
-    title=title.get_text(' ',strip=True) if title else url
+    title_node=region.find('h1') or soup.find('h1') or soup.title
+    title=title_node.get_text(' ',strip=True) if title_node else url
+    for node in region.select('[itemprop="datePublished"]'):
+        add(node.get('content') or node.get('datetime') or node.get_text(' ',strip=True),'EDITORIAL.itemprop.datePublished')
+    # Generic <time> can describe an event or modification. Require publication semantics.
+    for node in region.find_all('time'):
+        label=' '.join([str(node.get('class') or ''),str(node.get('itemprop') or ''),str(node.parent.get('class') or '')]).casefold()
+        visible=node.parent.get_text(' ',strip=True)[:250].casefold()
+        if re.search(r'updated|modified|mis[ e]à jour|modifi',label+' '+visible):continue
+        if re.search(r'publish|publi[ée]|posted|datepublished',label+' '+visible):
+            add(node.get('datetime') or node.get_text(' ',strip=True),'EDITORIAL.publication_time')
+    # Explicit visible publication labels only: never a date guessed from arbitrary prose.
+    for node in region.select('.published,.published-at,.publication-date,.date-published'):
+        value=node.get_text(' ',strip=True)
+        if not re.search(r'updated|modified|mise? à jour',value,re.I):add(value,'EDITORIAL.publication_label')
+    for node in region.find_all(['p','span','div']):
+        visible=node.get_text(' ',strip=True)
+        if len(visible)<=160 and re.match(r'^(?:publié(?:e)?(?: le)?|published(?: on)?|posted(?: on)?)\s*[:：]?\s+',visible,re.I):
+            if not re.search(r'updated|modified|mise? à jour',visible,re.I):add(visible,'EDITORIAL.explicit_publication_label')
+    reference_path=bool(re.search(r'/(?:tag|tags|category|categories|vendors|outils-cro|docs|documentation|help|support)(?:/|$)',urlsplit(url).path,re.I))
     for node in list(region.select('script,style,noscript,nav,header,footer,form,button,iframe,[role="dialog"],[aria-hidden="true"]')):
         if node.parent is not None:node.decompose()
     for node in list(region.find_all(True)):
         if node.parent is None:continue
         label=' '.join([str(node.get('id') or ''),*node.get('class',[])])
-        if node.parent is not None and re.search(r'axeptio|didomi|onetrust|cookie[-_ ]?(?:banner|notice|modal)|cmp[-_]container',label,re.I):node.decompose()
+        # Do not remove article blocks merely because their CSS class names the company.
+        if re.search(r'didomi|onetrust|cookie[-_ ]?(?:banner|notice|modal)|cmp[-_]container|axeptio[_-](?:widget|overlay|container)',label,re.I):node.decompose()
     text=region.get_text('\n',strip=True)
     if len(text)<100:raise Uncertain('EDITORIAL_TEXT_TOO_SHORT')
     if len(text)>30000:raise Uncertain('EDITORIAL_TEXT_TOO_LONG')
     if not contains_alias(text,aliases):raise Uncertain('NO_EDITORIAL_MENTION')
-    return {'title':title,'text':text,'published_at':stamp.isoformat(),'date_precision':precision,'author':author}
+    if (reference_schema or reference_path) and not article_schema:raise Uncertain('REFERENCE_PAGE_NOT_NEWS')
+    return {'title':title,'text':text,'author':author,'date_values':values,'date_sources':sources,
+            'page_nature':'ARTICLE' if article_schema or region.name=='article' else 'UNDETERMINED'}
+
+
+def apply_publication_date(page,start,end):
+    stamp,precision=_publication_date(page['date_values'])
+    day=stamp.astimezone(ZoneInfo('Europe/Paris')).date()
+    if not date.fromisoformat(start)<=day<=date.fromisoformat(end):raise Uncertain('OUTSIDE_PUBLICATION_PERIOD')
+    return {**page,'published_at':stamp.isoformat(),'date_precision':precision}
+
+
+def editorial_page(html,url,aliases,start,end):
+    return apply_publication_date(inspect_editorial(html,url,aliases),start,end)
 
 
 def validate_assessment(raw, page, aliases):
