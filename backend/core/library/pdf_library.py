@@ -370,7 +370,7 @@ def import_document_library(payload: dict) -> dict:
 
 
 def list_library_documents(limit: int = 100, offset: int = 0) -> dict:
-    """List documents having at least one imported topic."""
+    """List PDF topics and corporate publications, including pending extraction."""
     if not 1 <= limit <= 200 or offset < 0:
         raise ValueError("Pagination invalide.")
 
@@ -386,11 +386,14 @@ def list_library_documents(limit: int = 100, offset: int = 0) -> dict:
             GROUP BY ID_DOCUMENT
         )
         SELECT d.ID_DOCUMENT, d.ID_SOURCE, d.TITLE, d.PAGE_COUNT,
-               d.SHA256, tc.TOPIC_COUNT,
+               d.SHA256, COALESCE(tc.TOPIC_COUNT, 0) AS TOPIC_COUNT,
+               COALESCE(d.DOCUMENT_TYPE, 'PDF') AS DOCUMENT_TYPE,
+               d.ID_COMPANY, d.ID_COMPANY_WATCH, d.EXTRACTION_STATUS, d.SOURCE_URL,
                COALESCE(uc.UNIT_COUNT, 0) AS UNIT_COUNT
         FROM `{DOCUMENT}` d
-        JOIN topic_counts tc ON tc.ID_DOCUMENT = d.ID_DOCUMENT
+        LEFT JOIN topic_counts tc ON tc.ID_DOCUMENT = d.ID_DOCUMENT
         LEFT JOIN unit_counts uc ON uc.ID_DOCUMENT = d.ID_DOCUMENT
+        WHERE COALESCE(tc.TOPIC_COUNT, 0) > 0 OR d.ID_COMPANY_WATCH IS NOT NULL
         ORDER BY d.TITLE, d.ID_DOCUMENT
         LIMIT @limit OFFSET @offset
     """, [
@@ -495,4 +498,3 @@ def get_library_topic(document_id: str, topic_id: str) -> dict:
         "id_document": document_id,
         "evidence": [dict(row.items()) for row in evidence_rows],
     }
-
