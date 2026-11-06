@@ -598,7 +598,6 @@ def scan_source_route(source_id: str):
 
 @router.get(
     "/list",
-    response_model=DiscoveryListOut,
 )
 def list_route():
 
@@ -751,3 +750,39 @@ def manual_route(data: IgnoreRequest):
             400,
             f"Erreur envoi Studio : {e}"
         )
+
+# LinkedIn automated acquisition. Existing Studio endpoints remain available.
+from core.discovery import linkedin_brightdata_service as media_linkedin
+from core.discovery.brightdata_linkedin import ProviderError
+from pydantic import BaseModel, Field
+
+class LinkedInSnapshotAttach(BaseModel):
+    snapshot_id: str = Field(min_length=4,max_length=150)
+    class Config:
+        extra = "forbid"
+
+
+def _media_linkedin_call(function,*args,**kwargs):
+    try:
+        return function(*args,**kwargs)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from None
+    except ProviderError as exc:
+        raise HTTPException(502,str(exc)) from None
+    except Exception:
+        logger.exception("Erreur LinkedIn Discovery Média")
+        raise HTTPException(500,"Erreur LinkedIn Média ; la récupération peut être reprise") from None
+
+@router.post("/linkedin-brightdata/scan/{source_id}")
+def scan_media_linkedin_route(source_id: str):
+    return _media_linkedin_call(media_linkedin.scan,source_id,start=True)
+
+@router.get("/linkedin-brightdata/status/{source_id}")
+def status_media_linkedin_route(source_id: str):
+    return _media_linkedin_call(media_linkedin.scan,source_id)
+
+@router.post("/linkedin-brightdata/attach/{source_id}")
+def attach_media_linkedin_route(source_id: str,data: LinkedInSnapshotAttach):
+    return _media_linkedin_call(media_linkedin.attach,source_id,data.snapshot_id)
