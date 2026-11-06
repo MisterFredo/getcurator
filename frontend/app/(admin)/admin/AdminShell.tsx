@@ -40,7 +40,22 @@ const sections: NavSection[] = [
     { href: "/admin/numbers", label: "Numbers", icon: BarChart3 },
   ] },
   { title: "Intelligence", items: [
-    { href: "/admin/library", label: "Library", icon: Library },
+    {
+      href: "/admin/library",
+      label: "Library",
+      icon: Library,
+      children: [
+        {
+          href: "/admin/library",
+          label: "Documents PDF",
+          exact: true,
+        },
+        {
+          href: "/admin/library/corpo",
+          label: "Corpo",
+        },
+      ],
+    },
     { href: "/admin/knowledge", label: "Knowledge", icon: Brain },
     { href: "/admin/touch", label: "GetCurator Touch", icon: Sparkles },
     { href: "/admin/production", label: "Productions", icon: Presentation },
