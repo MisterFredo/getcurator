@@ -5,7 +5,7 @@ import { listCorpoLibrary, getCorpoLibraryDocument, listWatchCompanies } from "@
 import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, WatchCompany } from "@/lib/companyWatch";
 
 const initialFilters: Required<CorpoLibraryFilters> = {
-  q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+  documentType:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
 };
 const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
@@ -84,6 +84,7 @@ export default function CorpoLibraryPage() {
       }
       setOffset(0);setFilters({...draft,q:draft.q.trim()});
     }}>
+        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value})}><option value="">Tous</option><option value="CORPORATE">Publications corporate</option><option value="MENTION">Mentions externes</option></select></label>
       <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
         <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
           value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
@@ -116,7 +117,7 @@ export default function CorpoLibraryPage() {
       <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
         {['Société / point','Publication','Parution','État','Informations',''].map((label,i)=><th key={i} className="p-3">{label}</th>)}
       </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
-        <td className="p-3">{row.company_name}<div className="text-gray-500">{row.watch_label}</div></td>
+        <td className="p-3">{row.company_name}<div className="text-gray-500">{row.document_type === "MENTION" ? "Mention externe" : row.watch_label}</div></td>
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
