@@ -122,6 +122,20 @@ def scan_watch_route(id_company: str, id_company_watch: str):
     return _watch_call(scan_watch, id_company, id_company_watch)
 
 
+from core.company.watch_brightdata_service import scan_linkedin, attach_snapshot
+from api.company.models import CompanyWatchAttachSnapshot
+
+
+@router.get("/{id_company}/watch/{id_company_watch}/scan/status")
+def watch_scan_status_route(id_company: str, id_company_watch: str):
+    return _watch_call(scan_linkedin, id_company, id_company_watch)
+
+
+@router.post("/{id_company}/watch/{id_company_watch}/scan/attach")
+def watch_scan_attach_route(id_company: str, id_company_watch: str, data: CompanyWatchAttachSnapshot):
+    return _watch_call(attach_snapshot, id_company, id_company_watch, data.snapshot_id)
+
+
 @router.post("/{id_company}/watch/{id_company_watch}/collect")
 def collect_watch_route(id_company: str, id_company_watch: str, data: CompanyWatchCollectRequest):
     return _watch_call(collect_url, id_company, id_company_watch, data.url)
