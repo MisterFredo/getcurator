@@ -194,7 +194,7 @@ def scan_watch(company_id, watch_id):
 
 
 def list_candidates(company_id=None, watch_id=None, status="NEW", offset=0, limit=50):
-    if status not in {"NEW", "STORED", "ALL"}:
+    if status not in {"NEW", "STORED", "DISMISSED", "ALL"}:
         raise ValueError("Statut invalide")
     clauses, params = [], []
     if company_id:
@@ -220,6 +220,27 @@ def get_candidate(candidate_id):
     if not rows:
         raise HTTPException(404, "URL découverte introuvable")
     return dict(rows[0])
+
+
+def change_candidates_status(discovery_ids, action):
+    """One conditional DML job for the selection, never one job per URL."""
+    if not isinstance(discovery_ids, list) or not 1 <= len(discovery_ids) <= 500:
+        raise ValueError("Sélection attendue : entre 1 et 500 identifiants")
+    if any(not isinstance(value, str) or not value.strip() for value in discovery_ids):
+        raise ValueError("Identifiant de découverte invalide")
+    ids = list(dict.fromkeys(value.strip() for value in discovery_ids))
+    transitions = {"DISMISS": ("NEW", "DISMISSED"), "RESTORE": ("DISMISSED", "NEW")}
+    if action not in transitions:
+        raise ValueError("Action invalide")
+    before, after = transitions[action]
+    rows = _query(f"""UPDATE `{DISCOVERY}` SET STATUS=@after,
+        ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP()
+        WHERE ID_DISCOVERY IN UNNEST(@ids) AND STATUS=@before;
+        SELECT @@row_count AS UPDATED_COUNT;""",
+        [bigquery.ArrayQueryParameter("ids", "STRING", ids),
+         _p("before", "STRING", before), _p("after", "STRING", after)])
+    updated = int(rows[0]["UPDATED_COUNT"])
+    return {"status": "ok", "requested": len(ids), "updated": updated, "skipped": len(ids)-updated}
 
 
 def store_candidate(candidate_id):
@@ -254,6 +275,9 @@ def store_candidate(candidate_id):
                 "uri": metadata["storage_uri"], "text_uri": metadata["text_storage_uri"],
                 "metadata": metadata_uri, "captured": metadata["captured_at"]}
             _query(f"""BEGIN TRANSACTION;
+                ASSERT (SELECT COUNT(*) FROM `{DISCOVERY}`
+                  WHERE ID_DISCOVERY=@discovery AND STATUS='NEW') = 1
+                  AS 'Cette URL a changé de statut ; actualiser la liste';
                 MERGE `{STOCK}` T USING (SELECT @id AS ID_STOCK) S ON T.ID_STOCK=S.ID_STOCK
                 WHEN NOT MATCHED THEN INSERT (ID_STOCK, ID_DISCOVERY, ID_COMPANY, ID_COMPANY_WATCH,
                   URL, TITLE, CHANGE_TYPE, PREVIOUS_STOCK_ID, CONTENT_SHA256, ORIGINAL_SHA256,
