@@ -67,6 +67,7 @@ export type CorpoDiscovery = {
   status: "NEW" | "STORED" | "DISMISSED"; error?: string; date_found?: string; id_stock?: string;
   published_at?: string | null; publication_date_note?: string | null;
   watch_active?: boolean; collection_method?: string;
+  library_status?: "PENDING" | "IMPORTING" | "IMPORTED" | "ERROR"; id_document?: string | null;
 };
 export type CorpoScanResult = {
   status: "ok" | "IDLE" | "STARTING" | "RUNNING" | "UNKNOWN" | "COMPLETE" | "FAILED";
@@ -106,3 +107,33 @@ export async function getCorpoStoredContent(id: string): Promise<{
   return api.get(`/company/watch/discovery/${encodeURIComponent(id)}/content`);
 }
 
+
+export type LibraryImportResult = {
+  id_document: string; library_status: "IMPORTING" | "IMPORTED";
+  next_chunk: number; chunk_count: number;
+};
+export async function importCorpoLibraryStep(id: string): Promise<LibraryImportResult> {
+  return api.post(`/company/watch/discovery/${encodeURIComponent(id)}/library-step`, {});
+}
+export type CorpoLibraryDocument = {
+  id_document: string; title: string; source_url: string; published_at?: string;
+  company_name?: string; watch_label?: string; author_name?: string;
+  extraction_status: string; extraction_error?: string; unit_count: number;
+  next_chunk: number; chunk_count: number; id_company: string; id_company_watch: string;
+};
+export type CorpoLibraryUnit = {
+  unit_id: string; fact: string; quote: string; verification_status: string;
+  source_locator?: string; verification_reason?: string; kind?: string;
+};
+export type CorpoLibraryDetail = {
+  id_document: string; title: string; source_url: string; text: string;
+  published_at?: string; author_name?: string; author_id?: string;
+  monitored_account_url?: string; status: string; units: CorpoLibraryUnit[];
+  has_more: boolean; warning: string;
+};
+export async function listCorpoLibrary(offset = 0): Promise<{items: CorpoLibraryDocument[];has_more: boolean}> {
+  return api.get(`/company/watch/library/list?offset=${offset}&limit=50`);
+}
+export async function getCorpoLibraryDocument(id: string, offset = 0): Promise<CorpoLibraryDetail> {
+  return api.get(`/company/watch/library/${encodeURIComponent(id)}?offset=${offset}&limit=100`);
+}
