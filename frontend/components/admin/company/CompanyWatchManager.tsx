@@ -268,7 +268,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             <label className="space-y-1"><span className="text-sm">Méthode de récupération</span>
               <select className={control} value={draft.collection_method}
                 onChange={event => change("collection_method", event.target.value as WatchMethod)}>
-                <option value="MANUAL">Manuel — publication collée</option><option value="STUDIO">Studio — texte collé</option><option value="HTML">HTML — récupération web</option>
+                <option value="MANUAL">Manuel — publication collée</option><option value="STUDIO">Studio — texte collé</option><option value="HTML">HTML — récupération web</option><option value="BRIGHTDATA">Bright Data — posts LinkedIn</option>
               </select></label>
             <label className="flex items-center gap-2 self-end py-2">
               <input type="checkbox" checked={draft.is_active} onChange={event => change("is_active", event.target.checked)} />Suivi actif
@@ -279,6 +279,11 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
                 <option value="SINGLE_PAGE">Page précise — détecter ses mises à jour</option>
               </select>
             </label>
+            {draft.collection_method === "BRIGHTDATA" && <div className="md:col-span-2 border rounded p-3 space-y-2 bg-blue-50">
+              <p className="text-sm">Posts LinkedIn de société ou de profil personnel. Le type est déduit de l’URL.</p>
+              <p className="text-sm">Limite par scan : 100 publications par défaut. Pour l’ajuster, renseignez <code>limit_per_input</code> dans les paramètres avancés (entier, ou <code>null</code> pour demander sans plafond).</p>
+              <p className="text-xs text-gray-600">La clé Bright Data est configurée uniquement dans le backend.</p>
+            </div>}
             <details className="md:col-span-2">
               <summary className="cursor-pointer text-sm text-gray-600">Paramètres avancés</summary>
               <label className="block mt-3 space-y-1"><span className="text-sm">Configuration JSON</span>
@@ -312,7 +317,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
                   target="_blank" rel="noopener noreferrer">{row.source_url}</a> : <span>{row.source_url}</span>}
                 {row.author_name && <div className="text-gray-500">{row.author_name}</div>}</td>
               <td className="px-4 py-3">{row.source_type}<div className="text-gray-500">{row.source_role === 'EMPLOYEE' ? 'Salarié' : 'Corporate'}</div></td>
-              <td className="px-4 py-3">{row.collection_method === 'HTML' ? 'HTML' : row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
+              <td className="px-4 py-3">{row.collection_method === 'BRIGHTDATA' ? 'Bright Data' : row.collection_method === 'HTML' ? 'HTML' : row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
               <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                 {row.is_active ? 'Actif' : 'Suspendu'}</span></td>
               <td className="px-4 py-3"><div className="flex gap-2">
