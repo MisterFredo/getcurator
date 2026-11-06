@@ -116,10 +116,10 @@ export async function importCorpoLibraryStep(id: string): Promise<LibraryImportR
   return api.post(`/company/watch/discovery/${encodeURIComponent(id)}/library-step`, {});
 }
 export type CorpoLibraryDocument = {
-  id_document: string; title: string; source_url: string; published_at?: string;
+  id_document: string; document_type?: string; title: string; source_url: string; published_at?: string;
   company_name?: string; watch_label?: string; author_name?: string;
   extraction_status: string; extraction_error?: string; unit_count: number;
-  next_chunk: number; chunk_count: number; id_company: string; id_company_watch: string;
+  next_chunk: number; chunk_count: number; id_company: string; id_company_watch: string | null;
 };
 export type CorpoLibraryUnit = {
   unit_id: string; fact: string; quote: string; verification_status: string;
@@ -133,12 +133,12 @@ export type CorpoLibraryDetail = {
 };
 export type CorpoLibraryFilters = {
   q?: string; companyId?: string; sort?: string; direction?: string;
-  status?: string; publishedFrom?: string; publishedTo?: string;
+  status?: string; publishedFrom?: string; publishedTo?: string; documentType?: string;
 };
 export async function listCorpoLibrary(offset = 0, filters: CorpoLibraryFilters = {}): Promise<{items: CorpoLibraryDocument[];has_more: boolean}> {
   const params = new URLSearchParams({offset:String(offset),limit:"50"});
   const entries = {q:filters.q, id_company:filters.companyId, sort:filters.sort,
-    direction:filters.direction, status:filters.status, published_from:filters.publishedFrom, published_to:filters.publishedTo};
+    document_type:filters.documentType, direction:filters.direction, status:filters.status, published_from:filters.publishedFrom, published_to:filters.publishedTo};
   Object.entries(entries).forEach(([key,value])=>{if(value)params.set(key,value);});
   return api.get(`/company/watch/library/list?${params.toString()}`);
 }
