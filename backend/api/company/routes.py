@@ -158,7 +158,27 @@ def get_watch_publication_route(
 # ============================================================
 # CORPO — DÉCOUVERTE ET STOCK DISTINCTS DE LA LIBRARY
 # ============================================================
-from core.company.watch_discovery_service import list_candidates, store_candidate, candidate_detail
+from core.company.watch_discovery_service import (
+    list_candidates, store_candidate, candidate_detail, change_candidates_status,
+)
+from pydantic import BaseModel
+
+
+class CompanyWatchDiscoverySelection(BaseModel):
+    discovery_ids: list[str]
+
+    class Config:
+        extra = "forbid"
+
+
+@router.post("/watch/discovery/dismiss")
+def dismiss_watch_discoveries_route(data: CompanyWatchDiscoverySelection):
+    return _watch_call(change_candidates_status, data.discovery_ids, "DISMISS")
+
+
+@router.post("/watch/discovery/restore")
+def restore_watch_discoveries_route(data: CompanyWatchDiscoverySelection):
+    return _watch_call(change_candidates_status, data.discovery_ids, "RESTORE")
 
 
 @router.get("/watch/discovery/list")
