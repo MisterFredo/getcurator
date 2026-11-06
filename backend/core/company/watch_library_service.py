@@ -79,7 +79,7 @@ def import_step(candidate_id):
 
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
-                       published_from=None, published_to=None):
+                       published_from=None, published_to=None, document_type=None):
     if not 1 <= limit <= 200 or offset < 0:
         raise ValueError("Pagination invalide")
     sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
@@ -94,7 +94,10 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
     if start and end and start > end:
         raise ValueError("La date de début doit précéder la date de fin")
     params = [library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)]
-    where = ['d.ID_COMPANY_WATCH IS NOT NULL']
+    where = ["(d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"]
+    if document_type:
+        if document_type not in {'MENTION','CORPORATE'}:raise ValueError('Type invalide')
+        where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
     if company_id:
         where.append('d.ID_COMPANY=@company')
         params.append(library._p('company','STRING',company_id))
@@ -138,11 +141,19 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
 
 
 def corpo_library_detail(document_id, offset=0, limit=100):
-    rows=library._query(f"SELECT * FROM `{library.DOCUMENT}` WHERE ID_DOCUMENT=@id AND ID_COMPANY_WATCH IS NOT NULL LIMIT 1",
+    rows=library._query(f"SELECT * FROM `{library.DOCUMENT}` WHERE ID_DOCUMENT=@id AND (ID_COMPANY_WATCH IS NOT NULL OR DOCUMENT_TYPE='MENTION') LIMIT 1",
         [library._p('id','STRING',document_id)])
     if not rows:
         raise HTTPException(404,'Publication Library Corpo introuvable')
     doc=dict(rows[0])
+    if doc.get('DOCUMENT_TYPE') == 'MENTION':
+        if offset < 0 or not 1 <= limit <= 500:raise ValueError('Pagination invalide')
+        units=library._query(f"SELECT * FROM `{library.UNIT}` WHERE ID_DOCUMENT=@id ORDER BY UNIT_ID LIMIT @limit OFFSET @offset",
+            [library._p('id','STRING',document_id),library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)])
+        return {**library.response_document(doc),'document_type':'MENTION','published_at':doc.get('PUBLISHED_AT'),
+            'author_name':doc.get('AUTHOR_NAME'),'text':library._read_uri(doc['TEXT_STORAGE_URI']),
+            'units':[{k.lower():v for k,v in dict(u).items()} for u in units[:limit]],'has_more':len(units)>limit,
+            'warning':"VERIFIED valide la présence de la citation, pas la vérité du fait."}
     detail=library.publication_detail(doc['ID_COMPANY'],doc['ID_COMPANY_WATCH'],document_id,offset,limit)
     metadata=json.loads(library._read_uri(doc['METADATA_STORAGE_URI']))
     extra=metadata.get('extra') or {}
