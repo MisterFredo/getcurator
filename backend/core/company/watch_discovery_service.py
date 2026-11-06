@@ -14,7 +14,7 @@ from google.cloud import bigquery
 from config import BQ_PROJECT, BQ_DATASET
 from utils.bigquery_utils import get_bigquery_client
 from core.company.watch_service import get_company_watch, _company
-from core.company.watch_http import discover, fetch_html, parse_html, normalize_url, in_scope
+from core.company.watch_http import discover, fetch_html, parse_html, normalize_url, in_scope, url_key
 # Reuse only storage and locking helpers. No register_publication/extract_step call.
 from core.library.company_watch_library import _upload, _read_uri, document_lock
 
@@ -77,20 +77,59 @@ def _capture(watch, url):
     return metadata, uri
 
 
-def _last_observation(watch_id, url):
+def _last_observation(company_id, url):
     rows = _query(f"""SELECT * FROM `{DISCOVERY}`
-        WHERE ID_COMPANY_WATCH=@watch AND URL=@url
-        ORDER BY DATE_FOUND DESC, ID_DISCOVERY DESC LIMIT 1""",
-        [_p("watch", "STRING", watch_id), _p("url", "STRING", url)])
-    return dict(rows[0]) if rows else None
+        WHERE ID_COMPANY=@company
+        ORDER BY DATE_FOUND DESC, ID_DISCOVERY DESC""",
+        [_p("company", "STRING", company_id)])
+    key, pending = url_key(url), None
+    for row in rows:
+        try:
+            matches = url_key(row["URL"]) == key
+        except (ValueError, TypeError):
+            continue
+        if matches:
+            if row.get("CONTENT_SHA256"):
+                return dict(row)
+            if pending is None:
+                pending = dict(row)
+    return pending
 
 
-def _legacy_hash(watch_id, url):
-    rows = _query(f"""SELECT CONTENT_SHA256 FROM `{DOCUMENT}`
-        WHERE ID_COMPANY_WATCH=@watch AND SOURCE_URL=@url
-        ORDER BY COLLECTED_AT DESC LIMIT 1""",
-        [_p("watch", "STRING", watch_id), _p("url", "STRING", url)])
-    return rows[0]["CONTENT_SHA256"] if rows else None
+def _legacy_hash(company_id, url):
+    rows = _query(f"""SELECT SOURCE_URL, CONTENT_SHA256 FROM `{DOCUMENT}`
+        WHERE ID_COMPANY=@company AND ID_COMPANY_WATCH IS NOT NULL
+        ORDER BY COLLECTED_AT DESC""", [_p("company", "STRING", company_id)])
+    key = url_key(url)
+    for row in rows:
+        try:
+            if row.get("SOURCE_URL") and url_key(row["SOURCE_URL"]) == key:
+                return row["CONTENT_SHA256"]
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def _known_keys(rows, column):
+    keys = set()
+    for row in rows:
+        if not row.get(column):
+            continue
+        try:
+            keys.add(url_key(row[column]))
+        except (ValueError, TypeError):
+            logger.warning("[CORPO SCAN] ignored malformed historical URL")
+    return keys
+
+
+def _bind_first_observation(previous, metadata, snapshot):
+    # A URL ignored via a listing stays ignored if later configured as a
+    # monitored page. Attach a baseline without inventing a new pending row.
+    _query(f"""UPDATE `{DISCOVERY}` SET CONTENT_SHA256=@hash, SNAPSHOT_URI=@snapshot,
+        LAST_SEEN_AT=CURRENT_TIMESTAMP(), UPDATED_AT=CURRENT_TIMESTAMP()
+        WHERE ID_DISCOVERY=@id AND CONTENT_SHA256 IS NULL AND STATUS IN ('NEW', 'DISMISSED')""",
+        [_p("hash", "STRING", metadata["content_sha256"]), _p("snapshot", "STRING", snapshot),
+         _p("id", "STRING", previous["ID_DISCOVERY"])])
 
 
 def _insert_candidate(watch, url, title, change, *, content_hash=None, snapshot=None):
@@ -152,8 +191,9 @@ def scan_watch(company_id, watch_id):
     watch = active_watch(company_id, watch_id)
     if watch["collection_method"] != "HTML" or watch["source_type"] == "PDF":
         raise ValueError("Le scan nécessite un point HTML actif")
-    # Un scan par point à la fois, indépendamment des autres sociétés.
-    with document_lock("scan-" + watch_id):
+    # Shared company scope avoids concurrent discoveries of the same URL via
+    # two different entry points. Other companies remain independent.
+    with document_lock("scan-company-" + company_id):
         url = normalize_url(watch["source_url"])
         mode = effective_mode(watch)
         new, known, unchanged, warnings = 0, 0, 0, []
@@ -161,12 +201,18 @@ def scan_watch(company_id, watch_id):
             # Lire est nécessaire pour constater une modification. Cette capture
             # temporaire n'entre dans le stock qu'après sélection explicite.
             metadata, snapshot = _capture(watch, url)
-            previous = _last_observation(watch_id, url)
-            baseline = previous.get("CONTENT_SHA256") if previous else _legacy_hash(watch_id, metadata["url"])
+            previous = _last_observation(company_id, url)
+            baseline = (previous.get("CONTENT_SHA256") if previous else None) or _legacy_hash(company_id, metadata["url"])
             if baseline and baseline == metadata["content_sha256"]:
                 if previous:
-                    _touch(previous["ID_DISCOVERY"])
+                    if previous.get("CONTENT_SHA256"):
+                        _touch(previous["ID_DISCOVERY"])
+                    else:
+                        _bind_first_observation(previous, metadata, snapshot)
                 unchanged = 1
+            elif previous and not baseline:
+                _bind_first_observation(previous, metadata, snapshot)
+                known = 1
             else:
                 _insert_candidate(watch, url, metadata["title"], "UPDATED_PAGE" if baseline else "NEW_PAGE",
                                   content_hash=metadata["content_sha256"], snapshot=snapshot)
@@ -176,19 +222,20 @@ def scan_watch(company_id, watch_id):
             result = discover({**watch, "collection_config": {**(watch.get("collection_config") or {}), "mode": "LISTING"}})
             warnings = result.get("warnings") or []
             # Ne lire ni capturer les articles au stade de la découverte d'URL.
-            existing = _query(f"SELECT URL FROM `{DISCOVERY}` WHERE ID_COMPANY_WATCH=@watch",
-                              [_p("watch", "STRING", watch_id)])
-            legacy = _query(f"SELECT SOURCE_URL FROM `{DOCUMENT}` WHERE ID_COMPANY_WATCH=@watch",
-                            [_p("watch", "STRING", watch_id)])
-            urls = {r["URL"] for r in existing} | {r["SOURCE_URL"] for r in legacy if r["SOURCE_URL"]}
+            existing = _query(f"SELECT URL FROM `{DISCOVERY}` WHERE ID_COMPANY=@company",
+                              [_p("company", "STRING", company_id)])
+            legacy = _query(f"SELECT SOURCE_URL FROM `{DOCUMENT}` WHERE ID_COMPANY=@company AND ID_COMPANY_WATCH IS NOT NULL",
+                            [_p("company", "STRING", company_id)])
+            urls = _known_keys(existing, "URL") | _known_keys(legacy, "SOURCE_URL")
             pending = []
             for item in result["items"]:
                 target = normalize_url(item["url"])
-                if target in urls:
+                key = url_key(target)
+                if key in urls:
                     known += 1
                     continue
                 pending.append({"url": target, "title": item.get("title")})
-                urls.add(target)
+                urls.add(key)
             new = _insert_candidates_batch(watch, pending)
         return {"status": "ok", "new": new, "known": known, "unchanged": unchanged, "warnings": warnings}
 
