@@ -41,6 +41,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const [companyRetry, setCompanyRetry] = useState(0);
   const [selectedCompanyId, setCompanyId] = useState("");
   const companyId = fixedCompany?.id_company || selectedCompanyId;
+  const [sourcesOpen,setSourcesOpen]=useState(!!fixedCompany);
   const [status, setStatus] = useState("all");
   const [offset, setOffset] = useState(0);
   const [rows, setRows] = useState<CompanyWatch[]>([]);
@@ -301,6 +302,11 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       </section>}
       {collectionRow && <WatchCollectionPanel key={collectionRow.id_company_watch}
         watch={collectionRow} onClose={() => setCollectionRow(null)} onBusyChange={setBusy} />}
+      <button type="button" className={button} aria-expanded={sourcesOpen} aria-controls="corpo-source-list"
+        onClick={()=>setSourcesOpen(value=>!value)}>
+        {sourcesOpen ? "Masquer les points de collecte" : "Afficher les points de collecte"}
+      </button>
+      {sourcesOpen && <div id="corpo-source-list">
       <section className="bg-white border rounded overflow-hidden" aria-label="Points de collecte">
         {loading ? <p role="status" className="p-8 text-gray-500">Chargement…</p>
           : loadError ? <div role="alert" className="p-6 text-red-700 whitespace-pre-wrap">{loadError}
@@ -342,6 +348,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           </div>
         </div>
       </section>
+      </div>}
       {!collectionRow && <div className="pt-8 border-t">
         <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} onBusyChange={setBusy}/>
       </div>}
