@@ -1,14 +1,8 @@
-"""Render background worker and optional cron entry points for Mentions.
-
-Run from backend: python -m core.company.mention_worker run
-Trigger one global passage: python -m core.company.mention_worker enqueue-global
-"""
+"""Manually triggered server execution inside the existing API process."""
 from __future__ import annotations
-import argparse
 from datetime import timedelta,datetime
 import json
 import logging
-import signal
 import threading
 import uuid
 from google.api_core.exceptions import NotFound,PreconditionFailed
@@ -111,35 +105,26 @@ def work_once():
     with RunnerLease() as lease:return execute_step(lease) if lease.valid else False
 
 
-def run_forever(stop=None):
-    stop=stop or threading.Event()
-    while not stop.is_set():
+
+def drain_queue():
+    """Run pending work independently of the browser; no scheduler or daemon.
+
+    A second launch can wait for the current lease, closing the enqueue/exit race.
+    After an API restart the persisted queue is resumed by an explicit POST.
+    """
+    pause=threading.Event()
+    while jobs.has_pending():
         try:
             with RunnerLease() as lease:
-                if not lease.valid:stop.wait(5);continue
-                next_schedule_check=jobs.now()
-                while lease.valid and not stop.is_set():
-                    if jobs.now()>=next_schedule_check:
-                        jobs.maybe_schedule();next_schedule_check=jobs.now()+timedelta(seconds=30)
-                    if not execute_step(lease):stop.wait(3)
+                if not lease.valid:
+                    pause.wait(3)
+                    continue
+                while lease.valid:
+                    if execute_step(lease):
+                        continue
+                    if not jobs.has_pending():
+                        return
+                    pause.wait(3)  # delayed company retries; other companies run first
         except Exception:
-            logger.exception('[MENTION WORKER] polling failed; queue preserved')
-            stop.wait(5)
-
-
-def main():
-    parser=argparse.ArgumentParser(description='Mentions server worker')
-    sub=parser.add_subparsers(dest='command',required=True)
-    sub.add_parser('run');sub.add_parser('once');sub.add_parser('enqueue-global')
-    individual=sub.add_parser('enqueue-company');individual.add_argument('id_company')
-    args=parser.parse_args()
-    logging.basicConfig(level=logging.INFO)
-    if args.command=='enqueue-global':print(json.dumps(jobs.launch_global(),ensure_ascii=False));return
-    if args.command=='enqueue-company':print(json.dumps(jobs.launch_company(args.id_company),ensure_ascii=False));return
-    if args.command=='once':work_once();return
-    stop=threading.Event()
-    for sig in (signal.SIGTERM,signal.SIGINT):signal.signal(sig,lambda *_:stop.set())
-    run_forever(stop)
-
-
-if __name__=='__main__':main()
+            logger.exception('[MENTIONS] server execution interrupted; progress preserved')
+            return
