@@ -90,11 +90,17 @@ def _request(url,country,language,offset,*,response_format='raw',parsed_response
     try:
         response=requests.post('https://api.brightdata.com/request',
             headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-            json=request_payload,timeout=(10,60),allow_redirects=False)
+            json=request_payload,timeout=(5,15),allow_redirects=False)
     except requests.ConnectTimeout:fail('SERP_CONNECT_TIMEOUT')
     except requests.ReadTimeout:fail('SERP_READ_TIMEOUT')
     except requests.exceptions.SSLError:fail('SERP_SSL_ERROR')
     except requests.RequestException:fail('SERP_CONNECTION_ERROR')
+    provider_headers=_response_headers(response,token)
+    provider_code=provider_headers.get('x-brd-error-code') or provider_headers.get('x-brd-err-code')
+    if provider_code:
+        if 'captcha' in provider_code.lower() or provider_code=='verifying':fail('SERP_CAPTCHA',stage='provider')
+        if any(part in provider_code.lower() for part in ('rate_limit','query_rejected','10110')):fail('SERP_RATE_LIMIT',stage='provider')
+        fail('SERP_PROVIDER_ERROR',stage='provider')
     if response.status_code!=200:fail(f'SERP_HTTP_{response.status_code}')
     content=getattr(response,'content',None)
     text=getattr(response,'text','')
@@ -113,6 +119,11 @@ def _request(url,country,language,offset,*,response_format='raw',parsed_response
             envelope['upstream_status_code']=result.get('status_code')
             carrier=type('HeadersOnly',(),{'headers':result.get('headers') or {}})()
             envelope['upstream_headers']=_response_headers(carrier,token)
+            inner_code=envelope['upstream_headers'].get('x-brd-error-code') or envelope['upstream_headers'].get('x-brd-err-code')
+            if inner_code:
+                if 'captcha' in inner_code.lower() or inner_code=='verifying':fail('SERP_CAPTCHA',stage='provider_upstream')
+                if any(part in inner_code.lower() for part in ('rate_limit','query_rejected','10110')):fail('SERP_RATE_LIMIT',stage='provider_upstream')
+                fail('SERP_PROVIDER_ERROR',stage='provider_upstream')
             status=result.get('status_code')
             if isinstance(status,int) and status>=400:fail(f'SERP_UPSTREAM_HTTP_{status}',stage='upstream_response')
             result=result['body']
