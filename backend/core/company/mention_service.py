@@ -13,7 +13,8 @@ from google.api_core.exceptions import NotFound, PreconditionFailed
 from fastapi import HTTPException
 from core.company.mention_qualification import POLICY, Uncertain, domain, excluded, google_url, editorial_page, validate_assessment, inspect_editorial, apply_publication_date, DATE_VERSION
 from core.company.mention_serp import search
-from core.company.watch_http import fetch_html, normalize_url, url_key
+from core.company.watch_http import normalize_url, url_key
+from core.company.mention_http import fetch_html, HopCache
 from core.library import company_watch_library as lib
 from utils.gcs import bucket
 from utils.llm import run_llm_json
@@ -31,7 +32,7 @@ MAX_RAW_URLS=5000
 SEARCH_WORKERS=4
 RESOLUTION_WORKERS=4
 QUALIFICATION_WORKERS=4
-RUNTIME_VERSION="MENTIONS_1_8"
+RUNTIME_VERSION="MENTIONS_1_9"
 NEWS_PROFILE='GLOBAL_NEWS_18_SIMPLE_V1'
 NEWS_LOCALES=(
     ('US','en'),('CA','fr'),
@@ -155,13 +156,15 @@ def _load_known(company,seed=False):
     return entries
 
 def _known(state,url):
-    return state.get('known_urls',{}).get(url_key(url))
+    entry=state.get('known_urls',{}).get(url_key(url))
+    if entry and entry.get('status')=='JOURNAL' and entry.get('reason')=='NO_EDITORIAL_MENTION' and entry.get('reason_policy')!='mention-1.9':return None
+    return entry
 
 def _record_known(state,result):
     if result.get('status')!='IMPORTED' and result.get('reason') not in DEFINITIVE_REASONS:return
     now=datetime.now(timezone.utc).isoformat()
     entry={k:result[k] for k in ('status','reason','id_document','resolved_url','title','qualification_reason') if k in result}
-    entry.update(first_seen_at=now,last_seen_at=now)
+    entry.update(first_seen_at=now,last_seen_at=now,reason_policy='mention-1.9')
     entries=state.setdefault('known_urls',{})
     for url in set([result['url'],result.get('resolved_url') or result['url'],*result.get('source_urls',[])]):
         key=url_key(url)
@@ -199,11 +202,11 @@ def _skip_known(state,candidate,url):
         'previous_reason':known.get('reason'),'id_document':known.get('id_document'),'resolved_url':known.get('resolved_url') or key}
 
 
-def _capture(candidate):
+def _capture(candidate,state=None,memo=None):
     key=_hash([candidate['url'],datetime.now(timezone.utc).date().isoformat()])
     path=f'{ROOT}/raw-captures/{key}.json'
     def fetch():
-        fetched=fetch_html(candidate['url']);final=normalize_url(fetched['url'])
+        fetched=fetch_html(candidate['url'],prior_failures=(state or {}).get('resolution_failures',{}),memo=memo);final=normalize_url(fetched['url'])
         return {'url':final,'canonical_url':url_key(final),'html':fetched['html']}
     return path,_cached(path,fetch)
 
@@ -231,7 +234,7 @@ def _resolve_one(state,candidate, prefetched=None, capture_error=None):
         if candidate.get('search_mode')!='NEWS':raise Uncertain('NEWS_ORIGIN_UNVERIFIED')
         if excluded(candidate['url'],state['domains']):raise Uncertain('CORPORATE_DOMAIN')
         if capture_error is not None:raise capture_error
-        path,captured=prefetched if prefetched is not None else _capture(candidate)
+        path,captured=prefetched if prefetched is not None else _capture(candidate,state=state)
         canonical=captured['canonical_url']
         result.update(resolved_url=canonical,publisher=urlsplit(captured['url']).hostname)
         if google_url(captured['url']):raise Uncertain('UNRESOLVED_SEARCH_REDIRECT')
@@ -266,8 +269,36 @@ def _resolve_one(state,candidate, prefetched=None, capture_error=None):
             try:result['resolved_url']=url_key(final)
             except (ValueError,TypeError):pass
         result['reason']='TECHNICAL_'+type(exc).__name__+(f'_HTTP_{code}' if code else '')
+        if getattr(exc,'reason',None) and isinstance(getattr(exc,'details',None),dict):
+            result['reason']=exc.reason;result.update(exc.details)
+    _group_failure(state,result)
     state['resolutions'].append(result)
     _record_known(state,result)
+
+
+
+def _group_failure(state,result):
+    # Group only by a confirmed final URL, never by a similar title. Keep one
+    # resolution entry per raw URL so existing resume cursors stay compatible.
+    if result.get('status')!='JOURNAL' or not str(result.get('reason','')).startswith('TECHNICAL_'):return
+    final=result.get('resolved_url')
+    if not final:return
+    final=url_key(final);failures=state.setdefault('resolution_failures',{})
+    first=next((r for r in state['resolutions'] if r.get('status')=='JOURNAL' and r.get('resolved_url')==final and str(r.get('reason','')).startswith('TECHNICAL_')),None)
+    failures[final]={'reason':result['reason'],'technical_detail':result.get('technical_detail','Échec technique déjà observé')}
+    if first is not None:
+        _origins_merge(first.setdefault('origins',[]),result.get('origins',[]))
+        aliases=first.setdefault('source_urls',[first['url']])
+        if result['url'] not in aliases:aliases.append(result['url'])
+        first.setdefault('failure_count',1);first['failure_count']+=1
+        result.update(status='DUPLICATE',reason='DUPLICATE_FAILURE',previous_reason=failures[final]['reason'])
+
+
+def _seed_run_failures(state):
+    failures=state.setdefault('resolution_failures',{})
+    for result in state['resolutions']:
+        if result.get('status')=='JOURNAL' and result.get('resolved_url') and str(result.get('reason','')).startswith('TECHNICAL_'):
+            failures.setdefault(url_key(result['resolved_url']),{'reason':result['reason'],'technical_detail':result.get('technical_detail','Échec technique déjà observé')})
 
 
 def _qualify(state,candidate):
@@ -467,6 +498,8 @@ def _search_batch(state):
             try:_merge_search_result(state,task,future.result())
             except Exception as exc:
                 coverage['errors']+=1
+                state.setdefault('search_errors',[]).append({'task':dict(task),'reason':str(exc),
+                    'diagnostics':getattr(exc,'details',{})})
                 _warn(state,f"{locale}/{task['precision']}: "+(str(exc) if isinstance(exc,(Uncertain,ValueError,RuntimeError)) else type(exc).__name__))
             # The caller commits the final item, avoiding one redundant write.
             # One durable cursor checkpoint at the end of the bounded lot.
@@ -475,18 +508,20 @@ def _search_batch(state):
         state['status']='RESOLVING'
 
 
-def _prefetch_resolution(state,candidate):
+def _prefetch_resolution(state,candidate,memo=None):
     if (not state.get('force_recheck') and _known(state,candidate['url'])) or candidate.get('search_mode')!='NEWS' or excluded(candidate['url'],state['domains']):return None
     started=perf_counter()
-    try:return _capture(candidate)
+    try:return _capture(candidate,state=state,memo=memo)
     finally:logger.info('[MENTIONS] capture end run=%s seconds=%.2f',state['id_run'],perf_counter()-started)
 
 
 def _resolve_batch(state):
     start=len(state['resolutions'])
     batch=state['candidates'][start:start+RESOLUTION_WORKERS]
+    _seed_run_failures(state)
+    memo=HopCache()
     with ThreadPoolExecutor(max_workers=RESOLUTION_WORKERS) as pool:
-        futures=[pool.submit(_prefetch_resolution,state,candidate) for candidate in batch]
+        futures=[pool.submit(_prefetch_resolution,state,candidate,memo) for candidate in batch]
         # Always apply in fair-queue order: URL quota and duplicate selection
         # must not depend on which HTTP response arrives fastest.
         for index,(candidate,future) in enumerate(zip(batch,futures)):
@@ -550,7 +585,7 @@ def recheck(run):
         lib._upload(f"{ROOT}/runs/{run}/history/{state.get('revision',0)}-{state['storage_generation']}.json",
             json.dumps(state,ensure_ascii=False).encode(),'application/json')
         was_old=state.get('engine_version')!=ENGINE_VERSION
-        state.update(engine_version=ENGINE_VERSION,timings={},start=None,end=None,force_recheck=True,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
+        state.update(engine_version=ENGINE_VERSION,resolution_failures={},timings={},start=None,end=None,force_recheck=True,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
         state['warnings']=[w for w in state['warnings'] if 'couverture documentaire partielle' not in w]
         if was_old:_warn(state,'HISTORICAL_SEARCH_MAY_BE_TRUNCATED: nouvelle collecte nécessaire pour compléter les zones perdues')
         for candidate in state['candidates']:
