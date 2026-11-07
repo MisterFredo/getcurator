@@ -6,7 +6,11 @@ import type { WatchCompany } from "@/lib/companyWatch";
 
 type Origin={country?:string;language?:string;precision?:string;page?:number;search_date_hint?:string};
 type Result = {technical_detail?:string;failure_count?:number;origins?:Origin[]; reader_selector?:string; text_length?:number; qualification_reason?:string; search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
-type Run = {search_errors?:{task:{country:string;language:string;page?:number;offset?:number};reason:string;diagnostics?:{stage?:string;http_status?:number;content_type?:string;body_bytes?:number;elapsed_seconds?:number;response_excerpt?:string}}[];timings?:Record<string,number>; runtime_version?:string;engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
+type SerpDiagnostics={stage?:string;http_status?:number;content_type?:string;body_bytes?:number;elapsed_seconds?:number;response_excerpt?:string;response_headers?:Record<string,string>;provider_request_id?:string;request_payload?:Record<string,unknown>;upstream_status_code?:number;upstream_headers?:Record<string,string>};
+type SearchError={resolved?:boolean;task:{country:string;language:string;page?:number;offset?:number};reason:string;diagnostics?:SerpDiagnostics};
+type ProbeResult={country:string;language:string;target_url:string;ok:boolean;count?:number;reason?:string;diagnostics?:SerpDiagnostics;sample?:{title?:string;link?:string;url?:string}[]};
+type ProbeReport={company_name?:string;mode:string;workers:number;elapsed_seconds:number;results:ProbeResult[]};
+type Run = {search_errors?:SearchError[];timings?:Record<string,number>; runtime_version?:string;engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
@@ -37,6 +41,18 @@ function originsLabel(origins?:Origin[]) {
   return labels.filter((value,index)=>labels.indexOf(value)===index).join(" · ")||"Provenance non enregistrée dans cet historique";
 }
 
+function SerpDetails({details}:{details?:SerpDiagnostics}) {
+  if(!details)return null;
+  return <div className="text-xs space-y-2 mt-2"><p>Étape : {details.stage||"inconnue"} · HTTP : {details.http_status??"inconnu"} · Type : {details.content_type||"absent"} · Corps reçu : {details.body_bytes??"?"} octets · Durée : {details.elapsed_seconds??"?"} s</p>
+    {details.provider_request_id&&<p>Identifiant Bright Data : {details.provider_request_id}</p>}
+    {!!Object.keys(details.response_headers||{}).length&&<pre className="whitespace-pre-wrap break-all">{JSON.stringify(details.response_headers,null,2)}</pre>}
+    {details.upstream_status_code!=null&&<p>HTTP cible dans l’enveloppe : {details.upstream_status_code}</p>}
+    {!!Object.keys(details.upstream_headers||{}).length&&<pre className="whitespace-pre-wrap break-all">{JSON.stringify(details.upstream_headers,null,2)}</pre>}
+    {details.response_excerpt&&<pre className="whitespace-pre-wrap break-all">{details.response_excerpt}</pre>}
+    {details.request_payload&&<details><summary>Requête JSON envoyée — sans clé API</summary><pre className="whitespace-pre-wrap break-all">{JSON.stringify(details.request_payload,null,2)}</pre></details>}
+  </div>;
+}
+
 export default function MentionsPage() {
   const [companies,setCompanies]=useState<WatchCompany[]>([]);
   const [company,setCompany]=useState("");
@@ -50,6 +66,30 @@ export default function MentionsPage() {
   const alive=useRef(true);
   const [busy,setBusy]=useState(false);
   const [journalFilter,setJournalFilter]=useState("Tous");
+  const [retryWorkers,setRetryWorkers]=useState(1);
+  const [probeBusy,setProbeBusy]=useState(false);
+  const [probeUrl,setProbeUrl]=useState("");
+  const [probeFormat,setProbeFormat]=useState("raw");
+  const [probeParsed,setProbeParsed]=useState(true);
+  const [probeReports,setProbeReports]=useState<ProbeReport[]>([]);
+  const [probeReadyAt,setProbeReadyAt]=useState(0);
+  const [clock,setClock]=useState(Date.now());
+  useEffect(()=>{if(!probeReadyAt)return;const timer=window.setInterval(()=>setClock(Date.now()),1000);return()=>window.clearInterval(timer);},[probeReadyAt]);
+  async function testConnector(mode:"SINGLE"|"PARALLEL") {
+    const id=company||run?.id_company;if(!id)return;
+    setProbeBusy(true);setError("");
+    try {
+      const result:ProbeReport=await api.post("/company/watch/mentions/probe",{id_company:id,mode,target_url:probeUrl.trim()||null,response_format:probeFormat,parsed_response:probeParsed});
+      if(alive.current)setProbeReports(previous=>[...previous,result]);
+    }catch(e){if(alive.current)setError(errorText(e));}
+    finally{if(alive.current){setProbeBusy(false);setProbeReadyAt(Date.now()+15000);setClock(Date.now());}}
+  }
+  async function retrySearches() {
+    if(!run)return;
+    setLoading(true);setError("");
+    try{const next:Run=await api.post(`/company/watch/mentions/${encodeURIComponent(run.id_run)}/retry-searches`,{search_workers:retryWorkers});setRun(next);setRunning(true);}
+    catch(e){setError(errorText(e));}finally{setLoading(false);}
+  }
   async function refreshCompanies() {
     const sequence=++companiesSequence.current;
     setCompaniesLoading(true);
@@ -136,13 +176,20 @@ export default function MentionsPage() {
     {!companiesLoading&&companies.length===0&&<p className="text-amber-800">Aucune société éligible. Activez la veille Mentions dans Companies pour lancer une nouvelle collecte. Les historiques restent consultables ci-dessous.</p>}
     <form onSubmit={e=>{e.preventDefault();launch();}} className="bg-white border rounded p-4 space-y-4">
       <div className="grid md:grid-cols-3 gap-4">
-        <label>Société suivie<select required disabled={running||loading||companiesLoading} className={control} value={company} onChange={e=>setCompany(e.target.value)}><option value="">{companiesLoading?"Chargement…":"Choisir une société éligible"}</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
+        <label>Société suivie<select required disabled={running||loading||probeBusy||companiesLoading} className={control} value={company} onChange={e=>setCompany(e.target.value)}><option value="">{companiesLoading?"Chargement…":"Choisir une société éligible"}</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
         <label>Autres domaines à exclure<input disabled={running||loading} className={control} value={domains} placeholder="autre-domaine.com" onChange={e=>setDomains(e.target.value)}/></label>
         <label>Pages par recherche<input disabled={running||loading} className={control} type="number" min={1} max={5} value={pages} onChange={e=>setPages(Number(e.target.value))}/></label>
       </div>
       <p className="text-xs text-gray-500">Une recherche simple par pays / langue, sans filtre de dates : 18 recherches initiales, jusqu’à 54 pages avec le réglage de trois pages. Les domaines corporate sont exclus après collecte. Les URL déjà intégrées ou définitivement exclues sont reconnues avant lecture. Les erreurs temporaires restent réessayables. Plafond de sécurité : 1 000 nouvelles pages distinctes. La collecte avance tant que cette page est ouverte et reprend à sa réouverture. Aucun tri manuel requis.</p>
-      <button disabled={loading||running||busy||companiesLoading||!company} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{loading?"Création…":"Lancer la collecte"}</button>
+      <button disabled={loading||running||busy||probeBusy||companiesLoading||!company} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{loading?"Création…":"Lancer la collecte"}</button>
     </form>
+    <details className="bg-white border rounded p-4"><summary>Tester le connecteur Bright Data</summary><div className="space-y-3 mt-3"><p className="text-sm text-gray-600">Choisissez une société ci-dessus. Le test utilise le même connecteur que la collecte, sans cache ni import Library. Un test isolé effectue un appel ; le test parallèle en effectue quatre sur des pays/langues distincts.</p>
+      <label className="block">URL Google News copiée du Playground (facultatif)<input className={control} value={probeUrl} disabled={probeBusy} onChange={e=>setProbeUrl(e.target.value)} placeholder="Vide : recherche de la société en FR/fr"/></label>
+      <div className="flex flex-wrap gap-4 items-center"><label>Format API <select className="border rounded px-3 py-2" value={probeFormat} disabled={probeBusy} onChange={e=>setProbeFormat(e.target.value)}><option value="raw">raw</option><option value="json">json</option></select></label><label><input type="checkbox" checked={probeParsed} disabled={probeBusy} onChange={e=>setProbeParsed(e.target.checked)}/> Envoyer data_format: parsed</label></div>
+      <div className="flex flex-wrap gap-3"><button type="button" className="border rounded px-3 py-2 disabled:opacity-40" disabled={probeBusy||running||busy||loading||clock<probeReadyAt||!(company||run?.id_company)} onClick={()=>testConnector("SINGLE")}>{probeBusy?"Test en cours…":"Tester un appel isolé"}</button><button type="button" className="border rounded px-3 py-2 disabled:opacity-40" disabled={probeBusy||running||busy||loading||clock<probeReadyAt||!(company||run?.id_company)} onClick={()=>testConnector("PARALLEL")}>Comparer avec quatre appels simultanés</button></div>
+      {clock<probeReadyAt&&<p className="text-xs text-gray-500">Prochain test dans {Math.ceil((probeReadyAt-clock)/1000)} s pour espacer les requêtes répétées.</p>}
+      {probeReports.map((report,i)=><div key={i} className="border-t pt-3 space-y-2"><strong>{report.company_name} · {report.mode==="SINGLE"?"Appel isolé":"Quatre appels simultanés"} · {report.elapsed_seconds} s</strong>{report.results.map((result,j)=><div key={j} className="border rounded p-3"><strong>{result.country}/{result.language} · {result.ok?`${result.count||0} résultats`:result.reason}</strong><SerpDetails details={result.diagnostics}/>{result.sample?.map((row,k)=><p key={k} className="text-sm">{row.title}</p>)}</div>)}</div>)}
+    </div></details>
     {error&&<p role="alert" className="text-red-700">{error}</p>}
     {run&&<section className="space-y-4">
       <div className="bg-white border rounded p-4"><strong>{run.company_name} · {modern ? "Collecte sans filtre de dates" : `${run.start || "?"} → ${run.end || "?"}`}</strong>
@@ -161,8 +208,9 @@ export default function MentionsPage() {
         ].map(([key,label])=><li key={key}>{label} : {duration(run.timings?.[key]||0)}</li>)}</ul><p className="text-xs text-gray-500 mt-2">Durées de traitement des étapes, hors pauses du navigateur et sauvegardes de progression. Les durées des sauvegardes figurent dans les logs. La préparation inclut le cache, la lecture du texte, l’IA et les uploads.</p></details>}
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{warningLabel(w)}</li>)}</ul></details>}
       </div>
-      {run.search_scope==="NEWS"&&["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy||companiesLoading||!companies.some(c=>c.id_company===run.id_company)} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
-      {!!run.search_errors?.length&&<details className="bg-white border rounded p-4"><summary>Diagnostics des recherches ({run.search_errors.length})</summary><p className="text-xs text-gray-500 my-2">Une erreur n’est jamais assimilée à une recherche sans résultat. Les extraits de réponse sont limités et les secrets usuels masqués.</p>{run.search_errors.map((entry,i)=><div key={i} className="border-t py-2 text-sm"><strong>{entry.task.country}/{entry.task.language} · page {entry.task.page||1} · {entry.reason}</strong><p>Étape : {entry.diagnostics?.stage||"non enregistrée"} · HTTP : {entry.diagnostics?.http_status??"inconnu"} · Type : {entry.diagnostics?.content_type||"inconnu"} · Taille du texte : {entry.diagnostics?.body_bytes??"?"} octets · Durée : {entry.diagnostics?.elapsed_seconds??"?"} s</p>{entry.diagnostics?.response_excerpt&&<pre className="whitespace-pre-wrap break-all text-xs mt-2">{entry.diagnostics.response_excerpt}</pre>}</div>)}</details>}
+      {run.search_scope==="NEWS"&&["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy||probeBusy||companiesLoading||!companies.some(c=>c.id_company===run.id_company)} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
+      {["COMPLETE","PARTIAL"].includes(run.status)&&!!run.search_errors?.some(entry=>!entry.resolved)&&<div className="bg-white border rounded p-4 flex flex-wrap gap-3 items-center"><label>Appels simultanés pour la reprise <select className="border rounded px-3 py-2" value={retryWorkers} disabled={loading||busy||probeBusy} onChange={e=>setRetryWorkers(Number(e.target.value))}><option value={1}>1 — diagnostic isolé</option><option value={4}>4 — traitement parallèle</option></select></label><button type="button" className="border rounded px-3 py-2 disabled:opacity-40" disabled={loading||busy||probeBusy||!companies.some(c=>c.id_company===run.id_company)} onClick={retrySearches}>Relancer uniquement les recherches échouées</button><p className="text-xs text-gray-500">Les publications et résultats réussis sont conservés. Les nouvelles URL seront traitées ensuite.</p></div>}
+      {!!run.search_errors?.length&&<details className="bg-white border rounded p-4"><summary>Diagnostics des recherches ({run.search_errors.filter(entry=>!entry.resolved).length} non résolues / {run.search_errors.length} erreurs historiques)</summary><p className="text-xs text-gray-500 my-2">Une réponse vide n’est jamais assimilée à une recherche sans résultat. Les extraits sont limités et les secrets usuels masqués.</p>{run.search_errors.map((entry,i)=><div key={i} className="border-t py-2 text-sm"><strong>{entry.task.country}/{entry.task.language} · page {entry.task.page||1} · {entry.reason} · {entry.resolved?"Résolue après reprise":"Non résolue"}</strong><SerpDetails details={entry.diagnostics}/></div>)}</details>}
       {modern&&<details className="bg-white border rounded p-4"><summary>Apport des recherches par pays / langue</summary>
         <p className="text-xs text-gray-500 my-2">Un article retrouvé dans plusieurs zones figure dans chacune : ces colonnes ne s’additionnent pas. Pays et langue indiquent la recherche effectuée, pas l’origine de l’article.</p>
         <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th className="text-left">Recherche</th><th>Requêtes</th><th>Résultats Google</th><th>Pages retenues</th><th>Vers Library</th><th>Erreurs</th></tr></thead>
