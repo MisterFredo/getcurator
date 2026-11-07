@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, BackgroundTasks
 from typing import Optional
 
 from api.company.models import (
@@ -245,31 +245,38 @@ def import_corpo_library_step_route(id_discovery: str):
 
 from api.company.models import MentionRunRequest, MentionRetrySearchRequest, MentionSerpProbeRequest
 from core.company import mention_service, mention_jobs
-from api.company.models import MentionBatchRequest, MentionScheduleUpdate
+from api.company.models import MentionBatchRequest
+
+def _launch_mentions(background_tasks, function, *args):
+    result = _watch_call(function, *args)
+    from core.company.mention_worker import drain_queue
+    background_tasks.add_task(drain_queue)
+    return result
+
+
+@router.post('/watch/mention-jobs/{id_job}/resume')
+def resume_mention_job_route(id_job: str, background_tasks: BackgroundTasks):
+    result = _watch_call(mention_jobs.read_job, id_job)
+    from core.company.mention_worker import drain_queue
+    background_tasks.add_task(drain_queue)
+    return result
+
 
 @router.get('/watch/mention-jobs')
 def list_mention_jobs_route():
     return _watch_call(mention_jobs.list_jobs)
 
 @router.post('/watch/mention-jobs/global')
-def launch_global_mentions_route(data: MentionBatchRequest):
-    return _watch_call(mention_jobs.launch_global, data)
+def launch_global_mentions_route(data: MentionBatchRequest, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.launch_global, data)
 
 @router.post('/watch/mention-jobs/company/{id_company}')
-def launch_company_mentions_route(id_company: str, data: MentionBatchRequest):
-    return _watch_call(mention_jobs.launch_company, id_company, data)
+def launch_company_mentions_route(id_company: str, data: MentionBatchRequest, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.launch_company, id_company, data)
 
 @router.post('/watch/mention-jobs/continue/{id_run}')
-def continue_mention_run_route(id_run: str):
-    return _watch_call(mention_jobs.enqueue_existing, id_run, 'CONTINUE')
-
-@router.get('/watch/mention-jobs/schedule')
-def get_mention_schedule_route():
-    return _watch_call(mention_jobs.get_schedule)
-
-@router.put('/watch/mention-jobs/schedule')
-def save_mention_schedule_route(data: MentionScheduleUpdate):
-    return _watch_call(mention_jobs.save_schedule, data)
+def continue_mention_run_route(id_run: str, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.enqueue_existing, id_run, 'CONTINUE')
 
 @router.get('/watch/mention-jobs/{id_job}')
 def get_mention_job_route(id_job: str):
@@ -280,20 +287,20 @@ def probe_mention_connector(data: MentionSerpProbeRequest):
     return _watch_call(mention_service.probe_connector, data)
 
 @router.post('/watch/mentions/{id_run}/retry-searches')
-def retry_mention_searches(id_run: str, data: MentionRetrySearchRequest):
-    return _watch_call(mention_jobs.enqueue_existing, id_run, 'RETRY_SEARCHES', data.search_workers)
+def retry_mention_searches(id_run: str, data: MentionRetrySearchRequest, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.enqueue_existing, id_run, 'RETRY_SEARCHES', data.search_workers)
 
 @router.post('/watch/mentions/create')
-def create_mention_run(data: MentionRunRequest):
-    return _watch_call(mention_jobs.launch_company, data.id_company, data)
+def create_mention_run(data: MentionRunRequest, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.launch_company, data.id_company, data)
 
 @router.get('/watch/mentions/{id_run}')
 def get_mention_run(id_run: str):
     return _watch_call(mention_service.read, id_run)
 
 @router.post('/watch/mentions/{id_run}/recheck')
-def recheck_mention_run(id_run: str):
-    return _watch_call(mention_jobs.enqueue_existing, id_run, 'RECHECK')
+def recheck_mention_run(id_run: str, background_tasks: BackgroundTasks):
+    return _launch_mentions(background_tasks, mention_jobs.enqueue_existing, id_run, 'RECHECK')
 
 
 @router.post('/watch/mentions/{id_run}/step')
