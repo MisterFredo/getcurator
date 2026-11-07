@@ -6,7 +6,7 @@ import type { WatchCompany } from "@/lib/companyWatch";
 
 type Origin={country?:string;language?:string;precision?:string;page?:number;search_date_hint?:string};
 type Result = {origins?:Origin[]; reader_selector?:string; text_length?:number; qualification_reason?:string; search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
-type Run = {engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string; end:string; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
+type Run = {engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
@@ -17,7 +17,7 @@ function reasonLabel(reason?:string) {
 }
 
 function warningLabel(value:string) {
-  if(value==="CANDIDATE_LIMIT")return "Plafond de pages distinctes atteint après résolution : couverture partielle. Réduire la période si nécessaire.";
+  if(value==="CANDIDATE_LIMIT")return "Plafond de pages distinctes atteint après résolution : couverture partielle. Augmenter le plafond de sécurité si nécessaire.";
   if(value==="RAW_URL_SAFETY_LIMIT")return "Limite technique de 5 000 liens intermédiaires atteinte : couverture partielle.";
   if(value==="SEARCH_PAGE_LIMIT")return "Limite de pages de recherche atteinte : des résultats supplémentaires peuvent exister.";
   if(value==="PAGINATION_INFERRED")return "Page suivante demandée explicitement car le fournisseur ne précise pas la pagination.";
@@ -42,8 +42,8 @@ export default function MentionsPage() {
   const [company,setCompany]=useState("");
   const [companiesLoading,setCompaniesLoading]=useState(true);
   const companiesSequence=useRef(0);
-  const [start,setStart]=useState("");const [end,setEnd]=useState("");
-  const [domains,setDomains]=useState("");const [pages,setPages]=useState(2);
+  
+  const [domains,setDomains]=useState("");const [pages,setPages]=useState(3);
   const [run,setRun]=useState<Run|null>(null);const [running,setRunning]=useState(false);
   const [error,setError]=useState("");const [loading,setLoading]=useState(false);
   const inFlight=useRef(false);
@@ -75,7 +75,7 @@ export default function MentionsPage() {
     const onFocus=()=>{refreshCompanies();};
     window.addEventListener("focus",onFocus);
     const id=new URLSearchParams(window.location.search).get("run")||localStorage.getItem("corpo_mentions_run");
-    if(id)api.get(`/company/watch/mentions/${encodeURIComponent(id)}`).then((r:Run)=>{if(!stopped){setRun(r);setRunning(r.search_scope==="NEWS"&&r.engine_version==="MENTIONS_1_5"&&!["COMPLETE","PARTIAL"].includes(r.status));}}).catch(e=>{if(!stopped)setError(errorText(e));});
+    if(id)api.get(`/company/watch/mentions/${encodeURIComponent(id)}`).then((r:Run)=>{if(!stopped){setRun(r);setRunning(r.search_scope==="NEWS"&&r.engine_version==="MENTIONS_1_7"&&!["COMPLETE","PARTIAL"].includes(r.status));}}).catch(e=>{if(!stopped)setError(errorText(e));});
     return ()=>{stopped=true;window.removeEventListener("focus",onFocus);};
   },[]);
   useEffect(()=>{
@@ -92,8 +92,8 @@ export default function MentionsPage() {
   },[running,run]);
   async function launch() {
     setLoading(true);setError("");
-    try{const r:Run=await api.post("/company/watch/mentions/create",{id_company:company,period_start:start,period_end:end,
-      excluded_domains:domains.split(/[\s,;]+/).filter(Boolean),max_pages:pages,max_candidates:100});
+    try{const r:Run=await api.post("/company/watch/mentions/create",{id_company:company,
+      excluded_domains:domains.split(/[\s,;]+/).filter(Boolean),max_pages:pages,max_candidates:1000});
       setRun(r);localStorage.setItem("corpo_mentions_run",r.id_run);window.history.replaceState(null,"",`?run=${encodeURIComponent(r.id_run)}`);setRunning(true);
     }catch(e){setError(errorText(e));}finally{setLoading(false);}
   }
@@ -108,8 +108,9 @@ export default function MentionsPage() {
   const journal=[...(run?.results||[]).filter(r=>r.status==="JOURNAL"&&r.reason!=="DUPLICATE_FINAL_URL"),
     ...(run?.resolutions||[]).filter(r=>r.status==="JOURNAL"||r.status==="LIMIT")];
   const filteredJournal=journal.filter(r=>journalFilter==="Tous"||category(r.reason)===journalFilter);
-  const modern=run?.engine_version==="MENTIONS_1_5";
+  const modern=run?.engine_version==="MENTIONS_1_7";
   const locales=run?.search_locales||[];
+  const known=(run?.resolutions||[]).filter(r=>r.status==="KNOWN");
   return <div className="space-y-6">
     <header><Link href="/admin/discovery/corpo" className="underline">← Discovery Corpo</Link><h1 className="text-2xl font-semibold mt-4">Mentions externes → Library</h1>
       <p className="text-sm text-gray-600 mt-2">Google Actualités uniquement · socle commun de 18 couples pays / langue pour les nouvelles collectes · résultats qualifiés automatiquement. La couverture internationale reste non exhaustive.</p></header>
@@ -118,21 +119,19 @@ export default function MentionsPage() {
     <form onSubmit={e=>{e.preventDefault();launch();}} className="bg-white border rounded p-4 space-y-4">
       <div className="grid md:grid-cols-3 gap-4">
         <label>Société suivie<select required disabled={running||loading||companiesLoading} className={control} value={company} onChange={e=>setCompany(e.target.value)}><option value="">{companiesLoading?"Chargement…":"Choisir une société éligible"}</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
-        <label>Du<input required disabled={running||loading} className={control} type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
-        <label>Au (inclus)<input required disabled={running||loading} className={control} type="date" min={start} value={end} onChange={e=>setEnd(e.target.value)}/></label>
-        <label>Autres domaines à exclure<input disabled={running||loading} className={control} value={domains} placeholder="axeptio.eu" onChange={e=>setDomains(e.target.value)}/></label>
+        <label>Autres domaines à exclure<input disabled={running||loading} className={control} value={domains} placeholder="autre-domaine.com" onChange={e=>setDomains(e.target.value)}/></label>
         <label>Pages par recherche<input disabled={running||loading} className={control} type="number" min={1} max={5} value={pages} onChange={e=>setPages(Number(e.target.value))}/></label>
       </div>
-      <p className="text-xs text-gray-500">Le domaine du site de la société est exclu automatiquement. 36 recherches News initiales sur 18 couples pays / langue ; pagination plafonnée. Maximum 100 pages distinctes après résolution des liens Google. Les liens intermédiaires sont dédupliqués séparément. La collecte avance tant que cette page est ouverte et reprend à sa réouverture. Aucun tri manuel requis.</p>
+      <p className="text-xs text-gray-500">Une recherche simple par pays / langue, sans filtre de dates : 18 recherches initiales, jusqu’à 54 pages avec le réglage de trois pages. Les domaines corporate sont exclus après collecte. Les URL déjà intégrées ou définitivement exclues sont reconnues avant lecture. Les erreurs temporaires restent réessayables. Plafond de sécurité : 1 000 nouvelles pages distinctes. La collecte avance tant que cette page est ouverte et reprend à sa réouverture. Aucun tri manuel requis.</p>
       <button disabled={loading||running||busy||companiesLoading||!company} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{loading?"Création…":"Lancer la collecte"}</button>
     </form>
     {error&&<p role="alert" className="text-red-700">{error}</p>}
     {run&&<section className="space-y-4">
-      <div className="bg-white border rounded p-4"><strong>{run.company_name} · {run.start} → {run.end}</strong>
+      <div className="bg-white border rounded p-4"><strong>{run.company_name} · {modern ? "Collecte sans filtre de dates" : `${run.start || "?"} → ${run.end || "?"}`}</strong>
         {!modern&&<p className="text-amber-800 mt-2">Historique du moteur précédent : lancer une nouvelle collecte pour retrouver les résultats éventuellement perdus par l’ancien plafond. Un réexamen améliore la lecture des seules URL déjà conservées.</p>}
         {run.search_scope!=="NEWS"&&<p className="text-amber-800 mt-2">Collecte historique Web + News : résultats conservés. Lancez une nouvelle collecte pour appliquer le périmètre News uniquement.</p>}
         <p className="text-xs text-gray-500 mt-2">Périmètre de cette collecte : {run.search_locales ? `${run.search_locales.length} couples pays / langue` : run.search_scope === "NEWS" ? "historique US / France" : "historique Web + News"}.</p>
-        <p>{run.status} · {run.tasks.length} recherche(s) restante(s) · {modern ? `${run.resolutions?.length||0}/${run.candidates.length} liens résolus · ${run.results.length}/${run.resolved_candidates?.length||0} pages distinctes examinées` : `${run.results.length}/${run.candidates.length} liens traités`} · {imported.length} vers Library · {journal.length} exclusions · {duplicates.length} doublons regroupés</p>
+        <p>{run.status} · {run.tasks.length} recherche(s) restante(s) · {modern ? `${run.resolutions?.length||0}/${run.candidates.length} liens résolus · ${run.results.length}/${run.resolved_candidates?.length||0} pages distinctes examinées` : `${run.results.length}/${run.candidates.length} liens traités`} · {imported.length} vers Library · {journal.length} exclusions · {duplicates.length} doublons regroupés · {known.length} URL déjà traitées</p>
         {modern&&run.search_scope==="NEWS"&&!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{warningLabel(w)}</li>)}</ul></details>}
       </div>
@@ -145,7 +144,8 @@ export default function MentionsPage() {
           const matches=(row:Result)=>(row.origins||[]).some(o=>o.country===locale.country&&o.language===locale.language);
           return <tr key={key} className="border-t"><td>{key}</td><td className="text-center">{stats?.requests??"—"}</td><td className="text-center">{stats?.occurrences??"—"}</td><td className="text-center">{(run.resolved_candidates||[]).filter(matches).length}</td><td className="text-center">{imported.filter(matches).length}</td><td className="text-center">{stats?.errors??"—"}</td></tr>;
         })}</tbody></table></div></details>}
-      <h2 className="font-semibold">Mentions ajoutées</h2>
+      {!!known.length&&<details className="bg-white border rounded p-4"><summary>URL déjà traitées ({known.length})</summary><p className="text-xs text-gray-500 my-2">Reconnues sans nouvelle qualification IA. Les mentions déjà intégrées restent consultables dans la Library.</p>{known.map((r,i)=><p key={i} className="border-t py-2 text-sm break-all">{r.title||r.url}{r.id_document&&<> · <Link className="underline" href={`/admin/library/corpo?document=${encodeURIComponent(r.id_document)}`}>Consulter</Link></>}</p>)}</details>}
+      <h2 className="font-semibold">Nouvelles mentions ajoutées</h2>
       {imported.map((r,i)=><article key={i} className="bg-white border rounded p-4"><strong>{r.title}</strong><p>{r.explanation}</p><p className="text-xs text-gray-500 my-2">Recherches d’origine : {originsLabel(r.origins)}</p><Link className="underline" href={`/admin/library/corpo?document=${encodeURIComponent(r.id_document||"")}`}>Consulter dans la Library</Link></article>)}
       <details className="bg-white border rounded p-4"><summary>Journal des exclusions ({journal.length})</summary><p className="text-sm text-gray-600 my-2">Distinguer les exclusions éditoriales, les dates et les problèmes techniques. Les doublons sont regroupés à part ; aucun tri manuel obligatoire.</p>
         <label className="block mb-3">Afficher <select value={journalFilter} onChange={e=>setJournalFilter(e.target.value)} className="border rounded px-3 py-2">{["Tous","Éditorial","Hors période","Date non vérifiable","Technique / lecture / preuve","Limite"].map(c=><option key={c}>{c}</option>)}</select></label>
