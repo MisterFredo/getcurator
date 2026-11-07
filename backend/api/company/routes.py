@@ -243,8 +243,16 @@ def import_corpo_library_step_route(id_discovery: str):
     return _watch_call(import_step, id_discovery)
 
 
-from api.company.models import MentionRunRequest
+from api.company.models import MentionRunRequest, MentionRetrySearchRequest, MentionSerpProbeRequest
 from core.company import mention_service
+
+@router.post('/watch/mentions/probe')
+def probe_mention_connector(data: MentionSerpProbeRequest):
+    return _watch_call(mention_service.probe_connector, data)
+
+@router.post('/watch/mentions/{id_run}/retry-searches')
+def retry_mention_searches(id_run: str, data: MentionRetrySearchRequest):
+    return _watch_call(mention_service.retry_searches, id_run, data.search_workers)
 
 @router.post('/watch/mentions/create')
 def create_mention_run(data: MentionRunRequest):
