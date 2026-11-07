@@ -6,7 +6,7 @@ import type { WatchCompany } from "@/lib/companyWatch";
 
 type Origin={country?:string;language?:string;precision?:string;page?:number;search_date_hint?:string};
 type Result = {origins?:Origin[]; reader_selector?:string; text_length?:number; qualification_reason?:string; search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
-type Run = {engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
+type Run = {timings?:Record<string,number>; runtime_version?:string;engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
@@ -111,6 +111,8 @@ export default function MentionsPage() {
   const modern=run?.engine_version==="MENTIONS_1_7";
   const locales=run?.search_locales||[];
   const known=(run?.resolutions||[]).filter(r=>r.status==="KNOWN");
+  const requestCount=Object.values(run?.coverage||{}).reduce((sum,stats)=>sum+stats.requests,0);
+  const duration=(seconds:number)=>`${Math.floor(seconds/60)} min ${Math.round(seconds%60)} s`;
   return <div className="space-y-6">
     <header><Link href="/admin/discovery/corpo" className="underline">← Discovery Corpo</Link><h1 className="text-2xl font-semibold mt-4">Mentions externes → Library</h1>
       <p className="text-sm text-gray-600 mt-2">Google Actualités uniquement · socle commun de 18 couples pays / langue pour les nouvelles collectes · résultats qualifiés automatiquement. La couverture internationale reste non exhaustive.</p></header>
@@ -131,8 +133,16 @@ export default function MentionsPage() {
         {!modern&&<p className="text-amber-800 mt-2">Historique du moteur précédent : lancer une nouvelle collecte pour retrouver les résultats éventuellement perdus par l’ancien plafond. Un réexamen améliore la lecture des seules URL déjà conservées.</p>}
         {run.search_scope!=="NEWS"&&<p className="text-amber-800 mt-2">Collecte historique Web + News : résultats conservés. Lancez une nouvelle collecte pour appliquer le périmètre News uniquement.</p>}
         <p className="text-xs text-gray-500 mt-2">Périmètre de cette collecte : {run.search_locales ? `${run.search_locales.length} couples pays / langue` : run.search_scope === "NEWS" ? "historique US / France" : "historique Web + News"}.</p>
-        <p>{run.status} · {run.tasks.length} recherche(s) restante(s) · {modern ? `${run.resolutions?.length||0}/${run.candidates.length} liens résolus · ${run.results.length}/${run.resolved_candidates?.length||0} pages distinctes examinées` : `${run.results.length}/${run.candidates.length} liens traités`} · {imported.length} vers Library · {journal.length} exclusions · {duplicates.length} doublons regroupés · {known.length} URL déjà traitées</p>
+        <p>{run.status} · {requestCount} appel(s) de recherche effectué(s) · {run.tasks.length} en attente · {modern ? `${run.resolutions?.length||0}/${run.candidates.length} liens résolus · ${run.results.length}/${run.resolved_candidates?.length||0} pages distinctes examinées` : `${run.results.length}/${run.candidates.length} liens traités`} · {imported.length} vers Library · {journal.length} exclusions · {duplicates.length} doublons regroupés · {known.length} URL déjà traitées</p>
         {modern&&run.search_scope==="NEWS"&&!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
+        {run.timings&&<details className="mt-3"><summary>Durées mesurées depuis le correctif V1.8</summary><ul className="text-sm space-y-1 mt-2">{[
+          ["search_seconds","Recherche Google / Bright Data"],
+          ["resolution_seconds","Lecture et résolution des liens"],
+          ["qualification_upload_seconds","Qualification et préparation des captures (en parallèle)"],
+          ["bigquery_seconds","Imports BigQuery par lots"],
+          ["registry_seconds","Mise à jour du registre des URL"],
+          ["finalization_seconds","Finalisation"],
+        ].map(([key,label])=><li key={key}>{label} : {duration(run.timings?.[key]||0)}</li>)}</ul><p className="text-xs text-gray-500 mt-2">Durées de traitement des étapes, hors pauses du navigateur et sauvegardes de progression. Les durées des sauvegardes figurent dans les logs. La préparation inclut le cache, la lecture du texte, l’IA et les uploads.</p></details>}
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{warningLabel(w)}</li>)}</ul></details>}
       </div>
       {run.search_scope==="NEWS"&&["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy||companiesLoading||!companies.some(c=>c.id_company===run.id_company)} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
