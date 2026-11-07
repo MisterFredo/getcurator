@@ -5,6 +5,8 @@ import json
 import os
 import logging
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from time import perf_counter
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
 from google.api_core.exceptions import NotFound, PreconditionFailed
@@ -26,6 +28,8 @@ ROOT=f'company-mentions/{lib.BASE}/{POLICY}'
 # One shared profile for every company. Snapshot it in each new run.
 ENGINE_VERSION='MENTIONS_1_5'
 MAX_RAW_URLS=5000
+SEARCH_WORKERS=4
+RESOLUTION_WORKERS=4
 NEWS_PROFILE='GLOBAL_NEWS_18_V1'
 NEWS_LOCALES=(
     ('US','en'),('CA','fr'),
@@ -142,12 +146,14 @@ def _fair_queue(candidates, locales):
     return ordered
 
 
-def _resolve_one(state,candidate):
+def _resolve_one(state,candidate, prefetched=None, capture_error=None):
     result={**candidate,'status':'JOURNAL','reason':None}
     try:
         if candidate.get('search_mode')!='NEWS':raise Uncertain('NEWS_ORIGIN_UNVERIFIED')
         if excluded(candidate['url'],state['domains']):raise Uncertain('CORPORATE_DOMAIN')
-        path,captured=_capture(candidate);canonical=captured['canonical_url']
+        if capture_error is not None:raise capture_error
+        path,captured=prefetched if prefetched is not None else _capture(candidate)
+        canonical=captured['canonical_url']
         result.update(resolved_url=canonical,publisher=urlsplit(captured['url']).hostname)
         if google_url(captured['url']):raise Uncertain('UNRESOLVED_SEARCH_REDIRECT')
         if excluded(captured['url'],state['domains']):raise Uncertain('CORPORATE_DOMAIN')
@@ -241,6 +247,98 @@ def _persist(state,page,evidence):
     return docid
 
 
+def _fetch_search_result(state,task):
+    started=perf_counter()
+    locale=f"{task['country']}/{task['language']}"
+    logger.info('[MENTIONS] SERP start run=%s locale=%s precision=%s page=%s',
+        state['id_run'],locale,task['precision'],task['page'])
+    signature=_hash([task,state['start'],state['end'],state['domains'],datetime.now(timezone.utc).date().isoformat()])
+    def request():
+        payload,rows,nextoffset=search(task['term'],task['precision'],task['mode'],task['country'],task['language'],state['start'],state['end'],task['offset'],state['domains'])
+        return {'payload':payload,'rows':rows,'next':nextoffset}
+    try:return _cached(f'{ROOT}/serp/{signature}.json',request)
+    finally:
+        logger.info('[MENTIONS] SERP end run=%s locale=%s precision=%s page=%s seconds=%.2f',
+            state['id_run'],locale,task['precision'],task['page'],perf_counter()-started)
+
+
+def _merge_search_result(state,task,result):
+    locale=f"{task['country']}/{task['language']}"
+    state['coverage'][locale]['occurrences']+=len(result['rows'])
+    known={x['url']:x for x in state['candidates']}
+    for row in result['rows']:
+        if not isinstance(row,dict):continue
+        raw=row.get('link') or row.get('url')
+        if not isinstance(raw,str):continue
+        try:url=url_key(raw)
+        except Exception:continue
+        origin={key:task[key] for key in ('country','language','precision','page','offset')}
+        origin['search_date_hint']=str(row.get('date') or row.get('published_at') or '')[:200]
+        if url in known:
+            _origins_merge(known[url]['origins'],[origin]);continue
+        if len(state['candidates'])>=MAX_RAW_URLS:
+            _warn(state,'RAW_URL_SAFETY_LIMIT');continue
+        candidate={'url':url,'title':str(row.get('title') or '')[:1000],
+            'search_mode':'NEWS','search_date_hint':origin['search_date_hint'],'origins':[origin]}
+        known[url]=candidate;state['candidates'].append(candidate)
+    nxt=result['next']
+    if nxt is None and len(result['rows'])>=10:
+        nxt=task['offset']+10;_warn(state,'PAGINATION_INFERRED')
+    if nxt is not None:
+        nxt=int(nxt)
+        if nxt>task['offset'] and task['page']<state['max_pages']:state['tasks'].append({**task,'offset':nxt,'page':task['page']+1})
+        else:_warn(state,'SEARCH_PAGE_LIMIT')
+
+
+def _search_batch(state):
+    batch=state['tasks'][:SEARCH_WORKERS]
+    if any(task.get('mode')!='NEWS' for task in batch):raise HTTPException(409,'Seules les recherches News sont autorisées')
+    state['status']='SEARCHING'
+    # Fetch concurrently; state folding is deliberately deterministic in task
+    # order so a fast locale cannot preempt a slow one at the raw safety limit.
+    with ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as pool:
+        futures=[pool.submit(_fetch_search_result,state,task) for task in batch]
+        for index,(task,future) in enumerate(zip(batch,futures)):
+            locale=f"{task['country']}/{task['language']}"
+            coverage=state['coverage'].setdefault(locale,{'requests':0,'occurrences':0,'errors':0})
+            coverage['requests']+=1
+            # Pending/in-flight tasks remain in the durable queue until their
+            # own outcome is folded. Cached responses make retries reusable.
+            state['tasks'].remove(task)
+            try:_merge_search_result(state,task,future.result())
+            except Exception as exc:
+                coverage['errors']+=1
+                _warn(state,f"{locale}/{task['precision']}: "+(str(exc) if isinstance(exc,(Uncertain,ValueError,RuntimeError)) else type(exc).__name__))
+            # The caller commits the final item, avoiding one redundant write.
+            if index<len(batch)-1:_save(state)
+    if not state['tasks']:
+        state['candidates']=_fair_queue(state['candidates'],state.get('search_locales',[]))
+        state['status']='RESOLVING'
+
+
+def _prefetch_resolution(state,candidate):
+    if candidate.get('search_mode')!='NEWS' or excluded(candidate['url'],state['domains']):return None
+    started=perf_counter()
+    try:return _capture(candidate)
+    finally:logger.info('[MENTIONS] capture end run=%s seconds=%.2f',state['id_run'],perf_counter()-started)
+
+
+def _resolve_batch(state):
+    start=len(state['resolutions'])
+    batch=state['candidates'][start:start+RESOLUTION_WORKERS]
+    with ThreadPoolExecutor(max_workers=RESOLUTION_WORKERS) as pool:
+        futures=[pool.submit(_prefetch_resolution,state,candidate) for candidate in batch]
+        # Always apply in fair-queue order: URL quota and duplicate selection
+        # must not depend on which HTTP response arrives fastest.
+        for index,(candidate,future) in enumerate(zip(batch,futures)):
+            prefetched=None;error=None
+            try:prefetched=future.result()
+            except Exception as exc:error=exc
+            _resolve_one(state,candidate,prefetched=prefetched,capture_error=error)
+            if index<len(batch)-1:_save(state)
+    state['status']='QUALIFYING' if len(state['resolutions'])==len(state['candidates']) else 'RESOLVING'
+
+
 def step(run):
     with lib.document_lock('mention-run-'+run):
         state=read(run)
@@ -250,50 +348,9 @@ def step(run):
         logger.info('[MENTIONS] start run=%s revision=%s status=%s tasks=%s raw=%s resolved=%s qualified=%s',
             run,state.get('revision',0),state['status'],len(state['tasks']),len(state['candidates']),len(state['resolutions']),len(state['results']))
         if state['tasks']:
-            task=state['tasks'].pop(0)
-            if task.get('mode')!='NEWS':raise HTTPException(409,'Seules les recherches News sont autorisées')
-            locale=f"{task['country']}/{task['language']}"
-            coverage=state['coverage'].setdefault(locale,{'requests':0,'occurrences':0,'errors':0})
-            coverage['requests']+=1
-            signature=_hash([task,state['start'],state['end'],state['domains'],datetime.now(timezone.utc).date().isoformat()])
-            try:
-                def request():
-                    payload,rows,nextoffset=search(task['term'],task['precision'],task['mode'],task['country'],task['language'],state['start'],state['end'],task['offset'],state['domains'])
-                    return {'payload':payload,'rows':rows,'next':nextoffset}
-                result=_cached(f'{ROOT}/serp/{signature}.json',request)
-                coverage['occurrences']+=len(result['rows'])
-                known={x['url']:x for x in state['candidates']}
-                for row in result['rows']:
-                    if not isinstance(row,dict):continue
-                    raw=row.get('link') or row.get('url')
-                    if not isinstance(raw,str):continue
-                    try:url=url_key(raw)
-                    except Exception:continue
-                    origin={key:task[key] for key in ('country','language','precision','page','offset')}
-                    origin['search_date_hint']=str(row.get('date') or row.get('published_at') or '')[:200]
-                    if url in known:
-                        _origins_merge(known[url]['origins'],[origin]);continue
-                    if len(state['candidates'])>=MAX_RAW_URLS:
-                        _warn(state,'RAW_URL_SAFETY_LIMIT');continue
-                    candidate={'url':url,'title':str(row.get('title') or '')[:1000],
-                        'search_mode':'NEWS','search_date_hint':origin['search_date_hint'],'origins':[origin]}
-                    known[url]=candidate;state['candidates'].append(candidate)
-                nxt=result['next']
-                if nxt is None and len(result['rows'])>=10:
-                    nxt=task['offset']+10;_warn(state,'PAGINATION_INFERRED')
-                if nxt is not None:
-                    nxt=int(nxt)
-                    if nxt>task['offset'] and task['page']<state['max_pages']:state['tasks'].append({**task,'offset':nxt,'page':task['page']+1})
-                    else:_warn(state,'SEARCH_PAGE_LIMIT')
-            except Exception as exc:
-                coverage['errors']+=1
-                _warn(state,f"{locale}/{task['precision']}: "+(str(exc) if isinstance(exc,(Uncertain,ValueError,RuntimeError)) else type(exc).__name__))
-            if not state['tasks']:
-                state['candidates']=_fair_queue(state['candidates'],state.get('search_locales',[]))
-                state['status']='RESOLVING'
+            _search_batch(state)
         elif len(state['resolutions'])<len(state['candidates']):
-            _resolve_one(state,state['candidates'][len(state['resolutions'])]);state['status']='RESOLVING'
-            if len(state['resolutions'])==len(state['candidates']):state['status']='QUALIFYING'
+            _resolve_batch(state)
         elif len(state['results'])<len(state['resolved_candidates']):
             candidate=state['resolved_candidates'][len(state['results'])]
             result={**candidate,'status':'JOURNAL','reason':None}
