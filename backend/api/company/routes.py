@@ -117,6 +117,25 @@ def _watch_call(function, *args, **kwargs):
         raise HTTPException(500, "Erreur traitement Corpo ; consulter les logs et réessayer") from exc
 
 
+# Eligibility is administered on Company; collection remains under Discovery/Corpo.
+from api.company.models import CompanyMentionWatchUpdate, CompanyMentionWatchOut
+from core.company.mention_watch_service import (
+    get_mention_watch_config, set_mention_watch_config, list_mention_watch_companies,
+)
+
+@router.get("/mention-watch/companies")
+def eligible_mention_companies_route():
+    return {"status":"ok", "companies":_watch_call(list_mention_watch_companies)}
+
+@router.get("/{id_company}/mention-watch", response_model=CompanyMentionWatchOut)
+def get_mention_watch_config_route(id_company: str):
+    return _watch_call(get_mention_watch_config, id_company)
+
+@router.put("/{id_company}/mention-watch", response_model=CompanyMentionWatchOut)
+def update_mention_watch_config_route(id_company: str, data: CompanyMentionWatchUpdate):
+    return _watch_call(set_mention_watch_config, id_company, data.is_enabled)
+
+
 @router.post("/{id_company}/watch/{id_company_watch}/scan")
 def scan_watch_route(id_company: str, id_company_watch: str):
     return _watch_call(scan_watch, id_company, id_company_watch)
@@ -450,5 +469,3 @@ def get_route(id_company: str):
     if not company:
         raise HTTPException(404, "Société introuvable")
     return company
-
-
