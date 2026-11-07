@@ -6,12 +6,12 @@ from core.cockpit.operations import (
     continue_all_knowledge, restart_destock, backfill_topics,
 )
 from core.cockpit.quality import get_unmatched_companies, get_unmatched_solutions, get_numbers_structure
-from core.cockpit.duplicates import get_duplicate_urls, delete_duplicate_url
+from core.cockpit.duplicates import get_duplicate_urls, delete_duplicate_url, delete_duplicate_urls
 from core.company.description_service import generate_missing_company_descriptions
 from core.translation.content_translation_service import translate_contents_batch
 from core.translation.backfill_service import reserve_translation_backfill, run_translation_backfill, get_translation_backfill_status
-from pydantic import BaseModel
-from typing import Literal
+from pydantic import BaseModel, Field
+from typing import Literal, List
 router=APIRouter()
 
 @router.get('/monitoring')
@@ -60,6 +60,14 @@ def backup():return backup_prod()
 def sync_dev():return sync_prod_to_dev()
 @router.post('/operations/continue-knowledge')
 def continue_knowledge():return continue_all_knowledge()
+
+class DuplicateBatchRequest(BaseModel):
+    content_ids:List[str]=Field(min_items=1,max_items=10000)
+    class Config:extra='forbid'
+
+@router.post('/quality/duplicate-urls/delete-batch')
+def delete_duplicate_batch(data:DuplicateBatchRequest):
+    return delete_duplicate_urls(data.content_ids)
 
 @router.get('/quality/duplicate-urls')
 @router.get('/quality/duplicate-titles')
