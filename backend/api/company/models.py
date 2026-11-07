@@ -31,6 +31,7 @@ class CompanyUpdate(BaseModel):
 
 
 class CompanyOut(BaseModel):
+    mention_watch_enabled: bool = False
     id_company: str
     name: str
     type: Optional[str] = None
@@ -169,3 +170,22 @@ class MentionRunRequest(BaseModel):
     max_candidates: int = Field(default=100, ge=1, le=300)
     class Config:
         extra = 'forbid'
+
+
+# External mentions eligibility, distinct from corporate collection points.
+from pydantic import StrictBool
+
+class CompanyMentionWatchUpdate(BaseModel):
+    is_enabled: StrictBool
+    class Config:
+        extra = "forbid"
+
+class CompanyMentionWatchOut(BaseModel):
+    id_company: str
+    company_name: str
+    is_active: bool
+    is_enabled: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    class Config:
+        extra = "forbid"
