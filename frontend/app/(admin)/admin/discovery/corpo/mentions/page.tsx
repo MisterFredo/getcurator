@@ -5,8 +5,8 @@ import { api } from "@/lib/api";
 import { listWatchCompanies } from "@/lib/companyWatch";
 import type { WatchCompany } from "@/lib/companyWatch";
 
-type Result = {resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
-type Run = {id_run:string; company_name:string; start:string; end:string; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
+type Result = {search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
+type Run = {search_scope?:string;id_run:string; company_name:string; start:string; end:string; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
@@ -31,7 +31,7 @@ export default function MentionsPage() {
     let stopped=false;
     listWatchCompanies().then(rows=>{if(!stopped)setCompanies(rows);}).catch(e=>{if(!stopped)setError(errorText(e));});
     const id=new URLSearchParams(window.location.search).get("run")||localStorage.getItem("corpo_mentions_run");
-    if(id)api.get(`/company/watch/mentions/${encodeURIComponent(id)}`).then((r:Run)=>{if(!stopped){setRun(r);setRunning(!["COMPLETE","PARTIAL"].includes(r.status));}}).catch(e=>{if(!stopped)setError(errorText(e));});
+    if(id)api.get(`/company/watch/mentions/${encodeURIComponent(id)}`).then((r:Run)=>{if(!stopped){setRun(r);setRunning(r.search_scope==="NEWS"&&!["COMPLETE","PARTIAL"].includes(r.status));}}).catch(e=>{if(!stopped)setError(errorText(e));});
     return ()=>{stopped=true;};
   },[]);
   useEffect(()=>{
@@ -63,7 +63,7 @@ export default function MentionsPage() {
   const journal=run?.results.filter(r=>r.status==="JOURNAL")||[];
   return <div className="space-y-6">
     <header><Link href="/admin/discovery/corpo" className="underline">← Discovery Corpo</Link><h1 className="text-2xl font-semibold mt-4">Mentions externes → Library</h1>
-      <p className="text-sm text-gray-600 mt-2">Web et News · US / anglais et France / français · résultats qualifiés automatiquement. Ces localisations ne garantissent pas une couverture mondiale exhaustive.</p></header>
+      <p className="text-sm text-gray-600 mt-2">Google Actualités uniquement · US / anglais et France / français · résultats qualifiés automatiquement. Ces localisations ne garantissent pas une couverture mondiale exhaustive.</p></header>
     <form onSubmit={e=>{e.preventDefault();launch();}} className="bg-white border rounded p-4 space-y-4">
       <div className="grid md:grid-cols-3 gap-4">
         <label>Société<select required disabled={running||loading} className={control} value={company} onChange={e=>setCompany(e.target.value)}><option value="">Choisir</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
@@ -72,21 +72,22 @@ export default function MentionsPage() {
         <label>Autres domaines à exclure<input disabled={running||loading} className={control} value={domains} placeholder="axeptio.eu" onChange={e=>setDomains(e.target.value)}/></label>
         <label>Pages par recherche<input disabled={running||loading} className={control} type="number" min={1} max={5} value={pages} onChange={e=>setPages(Number(e.target.value))}/></label>
       </div>
-      <p className="text-xs text-gray-500">Le domaine du site de la société est exclu automatiquement. Huit recherches initiales ; pagination plafonnée. La collecte avance tant que cette page est ouverte et reprend à sa réouverture. Aucun tri manuel requis.</p>
+      <p className="text-xs text-gray-500">Le domaine du site de la société est exclu automatiquement. Quatre recherches News initiales ; pagination plafonnée. La collecte avance tant que cette page est ouverte et reprend à sa réouverture. Aucun tri manuel requis.</p>
       <button disabled={loading||running||busy} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{loading?"Création…":"Lancer la collecte"}</button>
     </form>
     {error&&<p role="alert" className="text-red-700">{error}</p>}
     {run&&<section className="space-y-4">
       <div className="bg-white border rounded p-4"><strong>{run.company_name} · {run.start} → {run.end}</strong>
+        {run.search_scope!=="NEWS"&&<p className="text-amber-800 mt-2">Collecte historique Web + News : résultats conservés. Lancez une nouvelle collecte pour appliquer le périmètre News uniquement.</p>}
         <p>{run.status} · {run.tasks.length} recherche(s) restante(s) · {run.results.length}/{run.candidates.length} URL traitée(s) · {imported.length} vers Library · {journal.length} dans le journal</p>
-        {!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
+        {run.search_scope==="NEWS"&&!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>}
       </div>
-      {["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
+      {run.search_scope==="NEWS"&&["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
       <h2 className="font-semibold">Mentions ajoutées</h2>
       {imported.map((r,i)=><article key={i} className="bg-white border rounded p-4"><strong>{r.title}</strong><p>{r.explanation}</p><Link className="underline" href={`/admin/library/corpo?document=${encodeURIComponent(r.id_document||"")}`}>Consulter dans la Library</Link></article>)}
       <details className="bg-white border rounded p-4"><summary>Journal technique ({journal.length}) — éléments exclus</summary><p className="text-sm text-gray-600 my-2">Ce journal explique les exclusions. Il ne constitue pas une liste à valider manuellement.</p>
-        {journal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.resolved_url||r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-xs text-gray-500">{r.resolved_url||r.url}</p><p className="text-sm">{reasonLabel(r.reason)}</p>{!!r.date_sources?.length&&<p className="text-xs">Dates de parution détectées : {r.date_sources.map(d=>`${d.value} (${d.locator})`).join(" · ")}</p>}</div>)}
+        {journal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.resolved_url||r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-xs text-gray-500">{r.resolved_url||r.url}</p>{r.search_date_hint&&<p className="text-xs text-gray-500">Date indiquée par Google News (indice) : {r.search_date_hint}</p>}<p className="text-sm">{reasonLabel(r.reason)}</p>{!!r.date_sources?.length&&<p className="text-xs">Dates de parution détectées : {r.date_sources.map(d=>`${d.value} (${d.locator})`).join(" · ")}</p>}</div>)}
       </details>
     </section>}
   </div>;
