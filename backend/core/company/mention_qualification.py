@@ -172,10 +172,10 @@ def inspect_editorial(html, url, aliases, start=None, end=None):
             'reader_selector':reader_selector,'text_length':len(text),'page_nature':'ARTICLE' if article_schema or region.name=='article' else 'UNDETERMINED'}
 
 
-def apply_publication_date(page,start,end):
+def apply_publication_date(page,start=None,end=None):
     stamp,precision=_publication_date(page['date_values'])
     day=stamp.astimezone(ZoneInfo('Europe/Paris')).date()
-    if not date.fromisoformat(start)<=day<=date.fromisoformat(end):raise Uncertain('OUTSIDE_PUBLICATION_PERIOD')
+    if start and end and not date.fromisoformat(start)<=day<=date.fromisoformat(end):raise Uncertain('OUTSIDE_PUBLICATION_PERIOD')
     return {**page,'published_at':stamp.isoformat(),'date_precision':precision}
 
 
