@@ -217,7 +217,3 @@ class MentionBatchRequest(BaseModel):
     class Config:
         extra = "forbid"
 
-
-class MentionScheduleUpdate(MentionBatchRequest):
-    is_enabled: StrictBool = False
-    interval_hours: int = Field(default=24, ge=1, le=720)
