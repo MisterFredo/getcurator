@@ -166,7 +166,9 @@ def inspect_editorial(html, url, aliases, start=None, end=None):
             if str(exc)!='PUBLICATION_DATE_UNKNOWN':raise Uncertain(str(exc),**diagnostics)
     if len(text)<100:raise Uncertain('EDITORIAL_TEXT_TOO_SHORT',**diagnostics)
     if len(text)>30000:raise Uncertain('EDITORIAL_TEXT_TOO_LONG',**diagnostics)
-    if not contains_alias(text,aliases):raise Uncertain('NO_EDITORIAL_MENTION',**diagnostics)
+    if not contains_alias(text,aliases):
+        if len(text)<600:raise Uncertain('EDITORIAL_TEXT_INSUFFICIENT',**diagnostics)
+        raise Uncertain('NO_EDITORIAL_MENTION',**diagnostics)
     if (reference_schema or reference_path) and not article_schema:raise Uncertain('REFERENCE_PAGE_NOT_NEWS',**diagnostics)
     return {'title':title,'text':text,'author':author,'date_values':values,'date_sources':sources,
             'reader_selector':reader_selector,'text_length':len(text),'page_nature':'ARTICLE' if article_schema or region.name=='article' else 'UNDETERMINED'}
