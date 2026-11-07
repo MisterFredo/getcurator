@@ -40,12 +40,13 @@ class HopCache:
         return value
 
 
-def _hop(url):
+def _hop(url,deadline=None):
     started=perf_counter()
     try:
         _public_url(url)
+        remaining=max(1.0,(deadline-perf_counter()) if deadline is not None else 20.0)
         with requests.Session() as session:
-            with session.get(url,headers=HEADERS,timeout=(10,25),stream=True,allow_redirects=False) as response:
+            with session.get(url,headers=HEADERS,timeout=(min(5.0,remaining),min(12.0,remaining)),stream=True,allow_redirects=False) as response:
                 status=response.status_code
                 if status in {301,302,303,307,308}:
                     location=response.headers.get('Location')
@@ -57,6 +58,7 @@ def _hop(url):
                     raise FetchFailure('TECHNICAL_NON_HTML',url,f'Type de contenu reçu : {mime or "absent"}')
                 chunks=[];size=0
                 for chunk in response.iter_content(65536):
+                    if deadline is not None and perf_counter()>=deadline:raise FetchFailure('TECHNICAL_TIME_BUDGET',url,'Budget de lecture de 20 secondes dépassé')
                     size+=len(chunk)
                     if size>MAX_BYTES:raise FetchFailure('TECHNICAL_HTML_SIZE_LIMIT',url,'Page HTML supérieure à 5 Mo')
                     chunks.append(chunk)
@@ -74,14 +76,15 @@ def _hop(url):
 
 
 def fetch_html(url,*,prior_failures=None,memo=None):
-    url=normalize_url(url);initial_url=url;visited=set();memo=memo or HopCache()
+    url=normalize_url(url);initial_url=url;visited=set();memo=memo or HopCache();deadline=perf_counter()+20
     for _ in range(6):
+        if perf_counter()>=deadline:raise FetchFailure('TECHNICAL_TIME_BUDGET',initial_url,'Budget de lecture de 20 secondes dépassé')
         if url in visited:raise FetchFailure('TECHNICAL_REDIRECT_LOOP',url,'Boucle de redirections HTTP')
         visited.add(url)
         known=(prior_failures or {}).get(url_key(url))
         if known:
             raise FetchFailure(known['reason'],url,known.get('technical_detail','Échec déjà observé dans cette collecte'),reused=True)
-        page=memo.get(url,lambda:_hop(url))
+        page=memo.get(url,lambda:_hop(url,deadline=deadline))
         if 'redirect' not in page:return page
         url=normalize_url(page['redirect'])
     raise FetchFailure('TECHNICAL_REDIRECT_LIMIT',initial_url,'Plus de six étapes de redirection HTTP')
