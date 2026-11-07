@@ -26,11 +26,11 @@ def _hash(value):
 
 ROOT=f'company-mentions/{lib.BASE}/{POLICY}'
 # One shared profile for every company. Snapshot it in each new run.
-ENGINE_VERSION='MENTIONS_1_5'
+ENGINE_VERSION='MENTIONS_1_7'
 MAX_RAW_URLS=5000
 SEARCH_WORKERS=4
 RESOLUTION_WORKERS=4
-NEWS_PROFILE='GLOBAL_NEWS_18_V1'
+NEWS_PROFILE='GLOBAL_NEWS_18_SIMPLE_V1'
 NEWS_LOCALES=(
     ('US','en'),('CA','fr'),
     ('FR','fr'),('GB','en'),('DE','de'),('ES','es'),('IT','it'),('NL','nl'),
@@ -90,21 +90,20 @@ def create(data):
     require_mention_watch_enabled(data.id_company)
     if not os.getenv('BRIGHTDATA_API_KEY') or not os.getenv('BRIGHTDATA_SERP_ZONE'):
         raise ValueError('Configurer BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE dans le backend')
-    start,end=data.period_start,data.period_end
-    if start>end or (end-start).days>366:raise ValueError('Période invalide (maximum 366 jours)')
     rows=lib._query(f'SELECT NAME, WEBSITE_URL FROM `{lib.BASE}.RATECARD_COMPANY` WHERE ID_COMPANY=@id LIMIT 1',[lib._p('id','STRING',data.id_company)])
     if not rows:raise HTTPException(404,'Société introuvable')
     company=dict(rows[0]);name=company['NAME'].strip()
     if not name:raise ValueError('Nom de société manquant')
     domains=sorted(set([domain(v) for v in data.excluded_domains]+([domain(company['WEBSITE_URL'])] if company.get('WEBSITE_URL') else [])))
     tasks=[{'term':name,'precision':precision,'mode':mode,'country':country,'language':language,'page':1,'offset':0}
-        for country,language in NEWS_LOCALES for mode in ['NEWS'] for precision in ['TITLE','BROAD']]
+        for country,language in NEWS_LOCALES for mode in ['NEWS'] for precision in ['SIMPLE']]
     state={'id_run':str(uuid.uuid4()),'id_company':data.id_company,'company_name':name,'aliases':[name],
-        'start':start.isoformat(),'end':end.isoformat(),'domains':domains,'max_pages':data.max_pages,
+        'start':None,'end':None,'collection_mode':'INCREMENTAL','domains':domains,'max_pages':data.max_pages,
         'max_candidates':data.max_candidates,'tasks':tasks,'candidates':[],'results':[],'warnings':[],
         'search_profile':NEWS_PROFILE,'search_locales':[{'country':c,'language':l} for c,l in NEWS_LOCALES],
         'engine_version':ENGINE_VERSION,'coverage':{},'resolved_candidates':[],'resolutions':[],'resolution_index':{},
         'search_scope':'NEWS','status':'SEARCHING','created_at':datetime.now(timezone.utc).isoformat()}
+    state['known_urls']=_load_known(data.id_company,seed=True)
     _save(state);return state
 
 
@@ -121,6 +120,81 @@ def _warn(state, message):
 def _origins_merge(target, origins):
     for origin in origins:
         if origin not in target:target.append(origin)
+
+
+
+# One manifest per company, isolated by dataset and policy. No BigQuery lookup
+# per URL. Imported rows from previous versions are seeded once per new run.
+DEFINITIVE_REASONS={'CORPORATE_DOMAIN','NO_EDITORIAL_MENTION','REFERENCE_PAGE_NOT_NEWS'}
+
+def _known_path(company):return f'{ROOT}/known/{_hash(company)}.json'
+
+def _read_known(company):
+    blob=bucket.blob(_known_path(company))
+    try:
+        blob.reload();generation=int(blob.generation)
+        pinned=bucket.blob(_known_path(company),generation=generation)
+        return json.loads(pinned.download_as_text(if_generation_match=generation))
+    except NotFound:return {}
+
+def _load_known(company,seed=False):
+    entries=_read_known(company)
+    if seed:
+        rows=lib._query(f"SELECT SOURCE_URL, ID_DOCUMENT, CREATED_AT FROM `{lib.DOCUMENT}` WHERE ID_COMPANY=@company AND DOCUMENT_TYPE='MENTION'",
+            [lib._p('company','STRING',company)])
+        rows=list(rows)
+        live_ids={row['ID_DOCUMENT'] for row in rows}
+        entries={key:entry for key,entry in entries.items() if entry.get('status')!='IMPORTED' or entry.get('id_document') in live_ids}
+        for row in rows:
+            if not row['SOURCE_URL']:continue
+            key=url_key(row['SOURCE_URL'])
+            entries[key]={**entries.get(key,{}),'status':'IMPORTED','id_document':row['ID_DOCUMENT'],
+                'first_seen_at':entries.get(key,{}).get('first_seen_at') or str(row.get('CREATED_AT') or '')}
+    return entries
+
+def _known(state,url):
+    return state.get('known_urls',{}).get(url_key(url))
+
+def _record_known(state,result):
+    if result.get('status')!='IMPORTED' and result.get('reason') not in DEFINITIVE_REASONS:return
+    now=datetime.now(timezone.utc).isoformat()
+    entry={k:result[k] for k in ('status','reason','id_document','resolved_url','title','qualification_reason') if k in result}
+    entry.update(first_seen_at=now,last_seen_at=now)
+    entries=state.setdefault('known_urls',{})
+    for url in set([result['url'],result.get('resolved_url') or result['url'],*result.get('source_urls',[])]):
+        key=url_key(url)
+        previous=entries.get(key,{})
+        entries[key]={**entry,'first_seen_at':previous.get('first_seen_at') or now}
+    state['known_dirty']=True
+
+def _flush_known(state):
+    if not state.get('known_dirty'):return
+    company=state['id_company']
+    with lib.document_lock('mention-known-'+_hash(company)):
+        latest=_read_known(company)
+        for key,entry in state.get('known_urls',{}).items():
+            old=latest.get(key,{})
+            # Successful imports must never be overwritten by an older exclusion.
+            if old.get('status')=='IMPORTED' and entry.get('status')!='IMPORTED':continue
+            latest[key]={**entry,'first_seen_at':old.get('first_seen_at') or entry.get('first_seen_at'),
+                'last_seen_at':max(old.get('last_seen_at') or '',entry.get('last_seen_at') or '')}
+        blob=bucket.blob(_known_path(company));blob.cache_control='private, no-store, max-age=0'
+        blob.upload_from_string(json.dumps(latest,ensure_ascii=False),content_type='application/json')
+    state['known_dirty']=False
+
+def _skip_known(state,candidate,url):
+    if state.get('force_recheck'):return None
+    known=_known(state,url)
+    if not known:return None
+    key=url_key(url);now=datetime.now(timezone.utc).isoformat()
+    known['last_seen_at']=now;state['known_dirty']=True
+    # Remember opaque Google aliases too, so future runs need not resolve them.
+    state['known_urls'][url_key(candidate['url'])]={**known,'resolved_url':known.get('resolved_url') or key}
+    state.setdefault('observed_document_ids',[])
+    if known.get('id_document') and known['id_document'] not in state['observed_document_ids']:
+        state['observed_document_ids'].append(known['id_document'])
+    return {**candidate,'status':'KNOWN','reason':'ALREADY_PROCESSED','previous_status':known['status'],
+        'previous_reason':known.get('reason'),'id_document':known.get('id_document'),'resolved_url':known.get('resolved_url') or key}
 
 
 def _capture(candidate):
@@ -147,6 +221,9 @@ def _fair_queue(candidates, locales):
 
 
 def _resolve_one(state,candidate, prefetched=None, capture_error=None):
+    known=_skip_known(state,candidate,candidate['url'])
+    if known is not None:
+        state['resolutions'].append(known);return
     result={**candidate,'status':'JOURNAL','reason':None}
     try:
         if candidate.get('search_mode')!='NEWS':raise Uncertain('NEWS_ORIGIN_UNVERIFIED')
@@ -157,6 +234,9 @@ def _resolve_one(state,candidate, prefetched=None, capture_error=None):
         result.update(resolved_url=canonical,publisher=urlsplit(captured['url']).hostname)
         if google_url(captured['url']):raise Uncertain('UNRESOLVED_SEARCH_REDIRECT')
         if excluded(captured['url'],state['domains']):raise Uncertain('CORPORATE_DOMAIN')
+        known=_skip_known(state,candidate,canonical)
+        if known is not None:
+            state['resolutions'].append(known);return
         index=state['resolution_index'].get(canonical)
         if index is not None:
             if index>=0:
@@ -185,6 +265,7 @@ def _resolve_one(state,candidate, prefetched=None, capture_error=None):
             except (ValueError,TypeError):pass
         result['reason']='TECHNICAL_'+type(exc).__name__+(f'_HTTP_{code}' if code else '')
     state['resolutions'].append(result)
+    _record_known(state,result)
 
 
 def _qualify(state,candidate):
@@ -195,8 +276,8 @@ def _qualify(state,candidate):
     page.update(captured)
     page['search_date_hint']=candidate.get('search_date_hint');page['origins']=candidate.get('origins',[])
     candidate.update({key:page[key] for key in ('page_nature','date_sources','reader_selector','text_length')})
-    # Reject known out-of-period dates before calling the LLM. Unknown dates can
-    # still receive an editorial diagnosis, but never authorize a Library import.
+    # New runs have no period filter. Publication-date proof remains required;
+    # an unknown date is retryable and never becomes a permanent exclusion.
     date_error=None
     try:page=apply_publication_date(page,state['start'],state['end'])
     except Uncertain as exc:
@@ -252,7 +333,7 @@ def _fetch_search_result(state,task):
     locale=f"{task['country']}/{task['language']}"
     logger.info('[MENTIONS] SERP start run=%s locale=%s precision=%s page=%s',
         state['id_run'],locale,task['precision'],task['page'])
-    signature=_hash([task,state['start'],state['end'],state['domains'],datetime.now(timezone.utc).date().isoformat()])
+    signature=_hash([ENGINE_VERSION,state['id_run'],task])
     def request():
         payload,rows,nextoffset=search(task['term'],task['precision'],task['mode'],task['country'],task['language'],state['start'],state['end'],task['offset'],state['domains'])
         return {'payload':payload,'rows':rows,'next':nextoffset}
@@ -317,7 +398,7 @@ def _search_batch(state):
 
 
 def _prefetch_resolution(state,candidate):
-    if candidate.get('search_mode')!='NEWS' or excluded(candidate['url'],state['domains']):return None
+    if (not state.get('force_recheck') and _known(state,candidate['url'])) or candidate.get('search_mode')!='NEWS' or excluded(candidate['url'],state['domains']):return None
     started=perf_counter()
     try:return _capture(candidate)
     finally:logger.info('[MENTIONS] capture end run=%s seconds=%.2f',state['id_run'],perf_counter()-started)
@@ -363,11 +444,18 @@ def step(run):
                 logger.exception('[MENTIONS] qualification failed')
                 result['reason']='TECHNICAL_'+type(exc).__name__
             result.update({k:candidate[k] for k in ('page_nature','date_sources','reader_selector','text_length') if k in candidate})
-            state['results'].append(result);state['status']='QUALIFYING'
+            state['results'].append(result);_record_known(state,result);state['status']='QUALIFYING'
         else:
+            if state.get('observed_document_ids'):
+                # One batch update for all imported documents observed again.
+                ids=state['observed_document_ids']
+                params=[lib._p('company','STRING',state['id_company'])]+[lib._p(f'id{i}','STRING',v) for i,v in enumerate(ids)]
+                slots=','.join(f'@id{i}' for i in range(len(ids)))
+                lib._query(f'UPDATE `{lib.DOCUMENT}` SET LAST_SEEN_AT=CURRENT_TIMESTAMP() WHERE ID_COMPANY=@company AND ID_DOCUMENT IN ({slots})',params)
             technical=sum(str(r.get('reason') or '').startswith(('TECHNICAL_','EDITORIAL_TEXT_','EDITORIAL_REGION_','UNRESOLVED_SEARCH_REDIRECT')) for r in state['resolutions']+state['results'])
             if technical:_warn(state,f'{technical} problème(s) de lecture ou d’accès : couverture documentaire partielle')
             state['status']='PARTIAL' if state['warnings'] else 'COMPLETE'
+        _flush_known(state)
         _save(state)
         logger.info('[MENTIONS] saved run=%s revision=%s status=%s raw=%s resolved_unique=%s qualified=%s',
             run,state.get('revision',0),state['status'],len(state['candidates']),len(state['resolved_candidates']),len(state['results']))
@@ -383,7 +471,7 @@ def recheck(run):
         lib._upload(f"{ROOT}/runs/{run}/history/{state.get('revision',0)}-{state['storage_generation']}.json",
             json.dumps(state,ensure_ascii=False).encode(),'application/json')
         was_old=state.get('engine_version')!=ENGINE_VERSION
-        state.update(engine_version=ENGINE_VERSION,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
+        state.update(engine_version=ENGINE_VERSION,start=None,end=None,force_recheck=True,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
         state['warnings']=[w for w in state['warnings'] if 'couverture documentaire partielle' not in w]
         if was_old:_warn(state,'HISTORICAL_SEARCH_MAY_BE_TRUNCATED: nouvelle collecte nécessaire pour compléter les zones perdues')
         for candidate in state['candidates']:
