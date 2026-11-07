@@ -190,3 +190,19 @@ class CompanyMentionWatchOut(BaseModel):
     updated_at: Optional[datetime] = None
     class Config:
         extra = "forbid"
+
+
+class MentionRetrySearchRequest(BaseModel):
+    search_workers: Literal[1, 4] = 1
+    class Config:
+        extra = "forbid"
+
+
+class MentionSerpProbeRequest(BaseModel):
+    id_company: str = Field(min_length=1, max_length=100)
+    mode: Literal["SINGLE", "PARALLEL"] = "SINGLE"
+    target_url: Optional[str] = Field(default=None, max_length=4096)
+    response_format: Literal["raw", "json"] = "raw"
+    parsed_response: bool = True
+    class Config:
+        extra = "forbid"
