@@ -5,14 +5,14 @@ import { api } from "@/lib/api";
 import type { WatchCompany } from "@/lib/companyWatch";
 
 type Origin={country?:string;language?:string;precision?:string;page?:number;search_date_hint?:string};
-type Result = {origins?:Origin[]; reader_selector?:string; text_length?:number; qualification_reason?:string; search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
-type Run = {timings?:Record<string,number>; runtime_version?:string;engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
+type Result = {technical_detail?:string;failure_count?:number;origins?:Origin[]; reader_selector?:string; text_length?:number; qualification_reason?:string; search_date_hint?:string;resolved_url?:string; publisher?:string; page_nature?:string; date_sources?:{locator:string;value:string}[]; url:string; title:string; status:string; reason?:string; id_document?:string; explanation?:string};
+type Run = {search_errors?:{task:{country:string;language:string;page?:number;offset?:number};reason:string;diagnostics?:{stage?:string;http_status?:number;content_type?:string;body_bytes?:number;elapsed_seconds?:number;response_excerpt?:string}}[];timings?:Record<string,number>; runtime_version?:string;engine_version?:string; max_candidates?:number; coverage?:Record<string,{requests:number;occurrences:number;errors:number}>; resolved_candidates?:Result[]; resolutions?:Result[]; id_company:string;search_profile?:string; search_locales?:{country:string;language:string}[]; search_scope?:string;id_run:string; company_name:string; start:string|null; end:string|null; status:string; tasks:unknown[]; candidates:unknown[]; results:Result[]; warnings:string[]};
 const control="border rounded px-3 py-2 w-full bg-white";
 const errorText=(e:unknown)=>e instanceof Error?e.message:"Erreur de collecte";
 function safeUrl(value:string) {try{const u=new URL(value);return ["http:","https:"].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
 
 function reasonLabel(reason?:string) {
-  const labels:Record<string,string>={PUBLICATION_DATE_UNKNOWN:"Article ou page pertinente, mais date de publication non vérifiable",PUBLICATION_DATE_CONFLICT:"Dates de publication contradictoires",OUTSIDE_PUBLICATION_PERIOD:"Publication hors période",EDITORIAL_REGION_UNKNOWN:"Zone éditoriale introuvable — problème de lecture",EDITORIAL_TEXT_TOO_SHORT:"Texte récupéré trop court — problème de lecture",EDITORIAL_TEXT_TOO_LONG:"Texte récupéré trop long — lecture à adapter",CANDIDATE_LIMIT:"Plafond de pages distinctes atteint",REFERENCE_PAGE_NOT_NEWS:"Page de référence ou fiche outil — pas une publication d’actualité identifiée",NO_EDITORIAL_MENTION:"Aucune mention dans le texte éditorial",EDITORIAL_RELEVANCE_UNCERTAIN:"Pertinence éditoriale non confirmée",CORPORATE_DOMAIN:"Publication corporate exclue des mentions externes",DUPLICATE_FINAL_URL:"Même URL finale déjà examinée",QUOTE_NOT_VERIFIED:"Citation non vérifiée"};
+  const labels:Record<string,string>={EDITORIAL_TEXT_INSUFFICIENT:"Texte trop court pour conclure à l’absence de mention — lecture à réessayer",DUPLICATE_FAILURE:"Même page en échec — tentative regroupée",TECHNICAL_NON_HTML:"La réponse reçue n’est pas une page HTML",TECHNICAL_REDIRECT_LOOP:"Boucle de redirections HTTP",TECHNICAL_REDIRECT_LIMIT:"Limite de redirections HTTP atteinte",TECHNICAL_HTML_SIZE_LIMIT:"Page reçue supérieure à la limite de 5 Mo",TECHNICAL_URL_OR_RESPONSE_INVALID:"URL ou réponse invalide — consulter le détail",TECHNICAL_READ_TIMEOUT:"Délai de lecture dépassé",TECHNICAL_CONNECT_TIMEOUT:"Délai de connexion dépassé",PUBLICATION_DATE_UNKNOWN:"Article ou page pertinente, mais date de publication non vérifiable",PUBLICATION_DATE_CONFLICT:"Dates de publication contradictoires",OUTSIDE_PUBLICATION_PERIOD:"Publication hors période",EDITORIAL_REGION_UNKNOWN:"Zone éditoriale introuvable — problème de lecture",EDITORIAL_TEXT_TOO_SHORT:"Texte récupéré trop court — problème de lecture",EDITORIAL_TEXT_TOO_LONG:"Texte récupéré trop long — lecture à adapter",CANDIDATE_LIMIT:"Plafond de pages distinctes atteint",REFERENCE_PAGE_NOT_NEWS:"Page de référence ou fiche outil — pas une publication d’actualité identifiée",NO_EDITORIAL_MENTION:"Aucune mention dans le texte éditorial",EDITORIAL_RELEVANCE_UNCERTAIN:"Pertinence éditoriale non confirmée",CORPORATE_DOMAIN:"Publication corporate exclue des mentions externes",DUPLICATE_FINAL_URL:"Même URL finale déjà examinée",QUOTE_NOT_VERIFIED:"Citation non vérifiée"};
   return labels[reason||""]||reason;
 }
 
@@ -104,9 +104,25 @@ export default function MentionsPage() {
     catch(e){setError(errorText(e));}finally{setLoading(false);}
   }
   const imported=run?.results.filter(r=>r.status==="IMPORTED")||[];
-  const duplicates=[...(run?.resolutions||[]),...(run?.results||[])].filter(r=>r.reason==="DUPLICATE_FINAL_URL");
-  const journal=[...(run?.results||[]).filter(r=>r.status==="JOURNAL"&&r.reason!=="DUPLICATE_FINAL_URL"),
+  const duplicates=[...(run?.resolutions||[]),...(run?.results||[])].filter(r=>["DUPLICATE_FINAL_URL","DUPLICATE_FAILURE"].includes(r.reason||""));
+  const rawJournal=[...(run?.results||[]).filter(r=>r.status==="JOURNAL"&&!["DUPLICATE_FINAL_URL","DUPLICATE_FAILURE"].includes(r.reason||"")),
     ...(run?.resolutions||[]).filter(r=>r.status==="JOURNAL"||r.status==="LIMIT")];
+  // Also regroup historical failures that already had a confirmed final URL.
+  // Keep unrelated opaque Google URLs separate; a matching title is not proof.
+  const journal:Result[]=[];
+  const failureGroups=new Map<string,Result>();
+  rawJournal.forEach(row=>{
+    if(row.reason?.startsWith("TECHNICAL_")&&row.resolved_url){
+      const first=failureGroups.get(row.resolved_url);
+      if(first){
+        first.failure_count=(first.failure_count||1)+(row.failure_count||1);
+        first.origins=[...(first.origins||[]),...(row.origins||[])];
+        duplicates.push({...row,status:"DUPLICATE",reason:"DUPLICATE_FAILURE"});return;
+      }
+      const copy={...row,origins:[...(row.origins||[])]};
+      failureGroups.set(row.resolved_url,copy);journal.push(copy);
+    }else journal.push(row);
+  });
   const filteredJournal=journal.filter(r=>journalFilter==="Tous"||category(r.reason)===journalFilter);
   const modern=run?.engine_version==="MENTIONS_1_7";
   const locales=run?.search_locales||[];
@@ -135,7 +151,7 @@ export default function MentionsPage() {
         <p className="text-xs text-gray-500 mt-2">Périmètre de cette collecte : {run.search_locales ? `${run.search_locales.length} couples pays / langue` : run.search_scope === "NEWS" ? "historique US / France" : "historique Web + News"}.</p>
         <p>{run.status} · {requestCount} appel(s) de recherche effectué(s) · {run.tasks.length} en attente · {modern ? `${run.resolutions?.length||0}/${run.candidates.length} liens résolus · ${run.results.length}/${run.resolved_candidates?.length||0} pages distinctes examinées` : `${run.results.length}/${run.candidates.length} liens traités`} · {imported.length} vers Library · {journal.length} exclusions · {duplicates.length} doublons regroupés · {known.length} URL déjà traitées</p>
         {modern&&run.search_scope==="NEWS"&&!["COMPLETE","PARTIAL"].includes(run.status)&&<button type="button" className="border rounded px-3 py-2 mt-2" onClick={()=>{setError("");setRunning(v=>!v);}}>{running?"Suspendre après l’étape en cours":"Continuer la collecte"}</button>}
-        {run.timings&&<details className="mt-3"><summary>Durées mesurées depuis le correctif V1.8</summary><ul className="text-sm space-y-1 mt-2">{[
+        {run.timings&&<details className="mt-3"><summary>Durées mesurées depuis V1.8</summary><ul className="text-sm space-y-1 mt-2">{[
           ["search_seconds","Recherche Google / Bright Data"],
           ["resolution_seconds","Lecture et résolution des liens"],
           ["qualification_upload_seconds","Qualification et préparation des captures (en parallèle)"],
@@ -146,6 +162,7 @@ export default function MentionsPage() {
         {!!run.warnings.length&&<details className="mt-3"><summary>Couverture et avertissements ({run.warnings.length})</summary><ul>{run.warnings.map((w,i)=><li key={i}>{warningLabel(w)}</li>)}</ul></details>}
       </div>
       {run.search_scope==="NEWS"&&["COMPLETE","PARTIAL"].includes(run.status)&&<button disabled={loading||busy||companiesLoading||!companies.some(c=>c.id_company===run.id_company)} type="button" className="border rounded px-3 py-2 disabled:opacity-40" onClick={recheck}>Réexaminer les URL (sans nouvelle recherche Google)</button>}
+      {!!run.search_errors?.length&&<details className="bg-white border rounded p-4"><summary>Diagnostics des recherches ({run.search_errors.length})</summary><p className="text-xs text-gray-500 my-2">Une erreur n’est jamais assimilée à une recherche sans résultat. Les extraits de réponse sont limités et les secrets usuels masqués.</p>{run.search_errors.map((entry,i)=><div key={i} className="border-t py-2 text-sm"><strong>{entry.task.country}/{entry.task.language} · page {entry.task.page||1} · {entry.reason}</strong><p>Étape : {entry.diagnostics?.stage||"non enregistrée"} · HTTP : {entry.diagnostics?.http_status??"inconnu"} · Type : {entry.diagnostics?.content_type||"inconnu"} · Taille du texte : {entry.diagnostics?.body_bytes??"?"} octets · Durée : {entry.diagnostics?.elapsed_seconds??"?"} s</p>{entry.diagnostics?.response_excerpt&&<pre className="whitespace-pre-wrap break-all text-xs mt-2">{entry.diagnostics.response_excerpt}</pre>}</div>)}</details>}
       {modern&&<details className="bg-white border rounded p-4"><summary>Apport des recherches par pays / langue</summary>
         <p className="text-xs text-gray-500 my-2">Un article retrouvé dans plusieurs zones figure dans chacune : ces colonnes ne s’additionnent pas. Pays et langue indiquent la recherche effectuée, pas l’origine de l’article.</p>
         <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr><th className="text-left">Recherche</th><th>Requêtes</th><th>Résultats Google</th><th>Pages retenues</th><th>Vers Library</th><th>Erreurs</th></tr></thead>
@@ -159,9 +176,9 @@ export default function MentionsPage() {
       {imported.map((r,i)=><article key={i} className="bg-white border rounded p-4"><strong>{r.title}</strong><p>{r.explanation}</p><p className="text-xs text-gray-500 my-2">Recherches d’origine : {originsLabel(r.origins)}</p><Link className="underline" href={`/admin/library/corpo?document=${encodeURIComponent(r.id_document||"")}`}>Consulter dans la Library</Link></article>)}
       <details className="bg-white border rounded p-4"><summary>Journal des exclusions ({journal.length})</summary><p className="text-sm text-gray-600 my-2">Distinguer les exclusions éditoriales, les dates et les problèmes techniques. Les doublons sont regroupés à part ; aucun tri manuel obligatoire.</p>
         <label className="block mb-3">Afficher <select value={journalFilter} onChange={e=>setJournalFilter(e.target.value)} className="border rounded px-3 py-2">{["Tous","Éditorial","Hors période","Date non vérifiable","Technique / lecture / preuve","Limite"].map(c=><option key={c}>{c}</option>)}</select></label>
-        {filteredJournal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.resolved_url||r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-xs text-gray-500">{r.resolved_url||r.url}</p><p className="text-xs text-gray-500">{category(r.reason)} · Recherches : {originsLabel(r.origins)}</p>{r.search_date_hint&&<p className="text-xs text-gray-500">Date Google News (indice) : {r.search_date_hint}</p>}<p className="text-sm">{reasonLabel(r.reason)}</p>{r.qualification_reason&&<p className="text-sm">Motif proposé par la qualification IA : {r.qualification_reason}</p>}{r.reader_selector&&<p className="text-xs">Lecture : {r.reader_selector} · {r.text_length??0} caractères</p>}{!!r.date_sources?.length&&<p className="text-xs">Dates de parution détectées : {r.date_sources.map(d=>`${d.value} (${d.locator})`).join(" · ")}</p>}</div>)}
+        {filteredJournal.map((r,i)=><div key={i} className="border-t py-2 break-all"><a className="underline" href={safeUrl(r.resolved_url||r.url)} target="_blank" rel="noreferrer">{r.title||r.url}</a><p className="text-xs text-gray-500">{r.resolved_url||r.url}</p><p className="text-xs text-gray-500">{category(r.reason)} · Recherches : {originsLabel(r.origins)}</p>{r.search_date_hint&&<p className="text-xs text-gray-500">Date Google News (indice) : {r.search_date_hint}</p>}<p className="text-sm">{reasonLabel(r.reason)}</p>{r.technical_detail&&<p className="text-sm">Détail technique : {r.technical_detail}</p>}{(r.failure_count||0)>1&&<p className="text-xs text-gray-500">{r.failure_count} liens regroupés vers cette page en échec.</p>}{r.qualification_reason&&<p className="text-sm">Motif proposé par la qualification IA : {r.qualification_reason}</p>}{r.reader_selector&&<p className="text-xs">Lecture : {r.reader_selector} · {r.text_length??0} caractères</p>}{!!r.date_sources?.length&&<p className="text-xs">Dates de parution détectées : {r.date_sources.map(d=>`${d.value} (${d.locator})`).join(" · ")}</p>}</div>)}
       </details>
-      <details className="bg-white border rounded p-4"><summary>Doublons regroupés ({duplicates.length})</summary><p className="text-xs text-gray-500 my-2">Ces liens ne consomment pas le plafond des pages distinctes et ne constituent pas des rejets éditoriaux.</p>{duplicates.map((r,i)=><p key={i} className="border-t py-2 text-sm break-all">{r.resolved_url||r.url} · {originsLabel(r.origins)}</p>)}</details>
+      <details className="bg-white border rounded p-4"><summary>Doublons regroupés ({duplicates.length})</summary><p className="text-xs text-gray-500 my-2">Ces liens ne consomment pas le plafond des pages distinctes et ne constituent pas des rejets éditoriaux. Les répétitions vers une même page en échec sont également regroupées lorsque son URL finale est connue.</p>{duplicates.map((r,i)=><p key={i} className="border-t py-2 text-sm break-all">{r.resolved_url||r.url} · {originsLabel(r.origins)}</p>)}</details>
     </section>}
   </div>;
 }
