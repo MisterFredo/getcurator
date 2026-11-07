@@ -10,10 +10,10 @@ def search(term,precision,mode,country,language,start_date,end_date,offset,domai
     token=os.getenv('BRIGHTDATA_API_KEY','').strip()
     zone=os.getenv('BRIGHTDATA_SERP_ZONE','').strip()
     if not token or not zone:raise ValueError('BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE doivent être configurées dans le backend')
-    from datetime import date,timedelta
-    phrase='"'+term.replace('"','')+'"'
-    q=('intitle:'+phrase if precision=='TITLE' else phrase)+' '+ ' '.join('-site:'+d for d in domains)
-    q+=f" after:{(date.fromisoformat(start_date)-timedelta(days=1)).isoformat()} before:{(date.fromisoformat(end_date)+timedelta(days=1)).isoformat()}"
+    # Keep the successful Playground query: no quotes, TITLE variant, date
+    # operators or domain exclusions. Domains are checked after collection.
+    q=term.strip()
+    if not q:raise ValueError('Nom de société manquant')
     params={'q':q,'gl':country,'hl':language,'brd_json':'1','start':offset}
     params['tbm']='nws'
     url='https://www.google.com/search?'+urlencode(params)
@@ -25,7 +25,12 @@ def search(term,precision,mode,country,language,start_date,end_date,offset,domai
         result=response.json()
         if isinstance(result,dict) and 'body' in result:
             result=json.loads(result['body']) if isinstance(result['body'],str) else result['body']
-    except requests.RequestException:raise RuntimeError('SERP_NETWORK_ERROR') from None
+    except requests.exceptions.JSONDecodeError:raise RuntimeError('SERP_INVALID_JSON') from None
+    except requests.ConnectTimeout:raise RuntimeError('SERP_CONNECT_TIMEOUT') from None
+    except requests.ReadTimeout:raise RuntimeError('SERP_READ_TIMEOUT') from None
+    except requests.exceptions.SSLError:raise RuntimeError('SERP_SSL_ERROR') from None
+    except requests.RequestException:raise RuntimeError('SERP_CONNECTION_ERROR') from None
+    except (ValueError,TypeError):raise RuntimeError('SERP_INVALID_JSON') from None
     if not isinstance(result,dict):raise RuntimeError('SERP_INVALID_JSON')
     general=result.get('general') or {}
     if general.get('search_type') and general['search_type'] != 'news':raise RuntimeError('SERP_WRONG_MODE')
