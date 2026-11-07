@@ -90,7 +90,7 @@ def read(run):
     raise HTTPException(409,'État de collecte momentanément indisponible ; réessayez')
 
 
-def create(data):
+def create(data,*,run_id=None):
     require_mention_watch_enabled(data.id_company)
     if not os.getenv('BRIGHTDATA_API_KEY') or not os.getenv('BRIGHTDATA_SERP_ZONE'):
         raise ValueError('Configurer BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE dans le backend')
@@ -103,7 +103,7 @@ def create(data):
     locales=NEWS_LOCALES[rotation:]+NEWS_LOCALES[:rotation]
     tasks=[{'term':name,'precision':precision,'mode':mode,'country':country,'language':language,'page':1,'offset':0}
         for country,language in locales for mode in ['NEWS'] for precision in ['SIMPLE']]
-    state={'id_run':str(uuid.uuid4()),'id_company':data.id_company,'company_name':name,'aliases':[name],
+    state={'id_run':run_id or str(uuid.uuid4()),'id_company':data.id_company,'company_name':name,'aliases':[name],
         'start':None,'end':None,'collection_mode':'INCREMENTAL','domains':domains,'max_pages':data.max_pages,
         'max_candidates':data.max_candidates,'search_budget_seconds':getattr(data,'search_budget_seconds',90),'profile_rotation':rotation,'tasks':tasks,'candidates':[],'results':[],'warnings':[],
         'search_profile':NEWS_PROFILE,'search_locales':[{'country':c,'language':l} for c,l in NEWS_LOCALES],
@@ -730,3 +730,27 @@ def probe_connector(data):
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:results=list(pool.map(request,jobs))
     return {'id_company':data.id_company,'company_name':rows[0]['NAME'],'mode':data.mode,'workers':len(jobs),'elapsed_seconds':round(perf_counter()-started,3),
         'results':results,'library_imports':0}
+
+
+def create_for_job(data,run_id):
+    # A preallocated run ID prevents two histories after a restart between
+    # creating the engine run and saving the job's progress.
+    with lib.document_lock('mention-run-'+run_id):
+        if bucket.blob(_path(run_id)).exists():
+            state=read(run_id)
+            if state['id_company']!=data.id_company:raise ValueError('Le passage appartient à une autre société')
+            return state
+        return create(data,run_id=run_id)
+
+
+def prepare_server_action(run,operation,action,workers=1):
+    state=read(run)
+    if state.get('server_action_id')==operation:return state
+    if state['status'] in ('COMPLETE','PARTIAL'):
+        if action=='RECHECK':state=recheck(run)
+        elif action=='RETRY_SEARCHES':state=retry_searches(run,workers)
+    with lib.document_lock('mention-run-'+run):
+        state=read(run)
+        state['server_action_id']=operation
+        _save(state)
+    return state
