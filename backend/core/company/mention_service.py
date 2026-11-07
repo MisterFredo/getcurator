@@ -30,6 +30,8 @@ ENGINE_VERSION='MENTIONS_1_7'
 MAX_RAW_URLS=5000
 SEARCH_WORKERS=4
 RESOLUTION_WORKERS=4
+QUALIFICATION_WORKERS=4
+RUNTIME_VERSION="MENTIONS_1_8"
 NEWS_PROFILE='GLOBAL_NEWS_18_SIMPLE_V1'
 NEWS_LOCALES=(
     ('US','en'),('CA','fr'),
@@ -298,7 +300,7 @@ def _qualify(state,candidate):
     return page,evidence
 
 
-def _persist(state,page,evidence):
+def _prepare_document(state,page,evidence):
     docid=str(uuid.uuid5(uuid.NAMESPACE_URL,json.dumps([lib.BASE,state['id_company'],page.get('canonical_url',page['url']),_hash(page['text']),POLICY])))
     prefix=f'{ROOT}/documents/{docid}'
     original=page['html'].encode();sha=hashlib.sha256(original).hexdigest()
@@ -309,23 +311,99 @@ def _persist(state,page,evidence):
     values={'id':docid,'company':state['id_company'],'title':page['title'],'url':page['url'],'sha':sha,'uri':uri,'text':texturi,
         'metadata':metadata,'author':page.get('author') or urlsplit(page['url']).hostname,'precision':page['date_precision'],
         'version':POLICY,'fact':evidence['explanation'],'quote':evidence['quote'],'locator':f'text:chars:{evidence["start"]}-{evidence["end"]}'}
-    params=[lib._p(k,'STRING',v) for k,v in values.items()]+[lib._p('published','TIMESTAMP',datetime.fromisoformat(page['published_at'])),
-        lib._p('bytes','INT64',len(original)),lib._p('start','INT64',evidence['start']),lib._p('end','INT64',evidence['end'])]
-    with lib.document_lock(docid):
-        lib._query(f'''BEGIN TRANSACTION;
-        MERGE `{lib.DOCUMENT}` T USING (SELECT @id ID_DOCUMENT) S ON T.ID_DOCUMENT=S.ID_DOCUMENT
+    values.update(published=datetime.fromisoformat(page['published_at']),bytes=len(original),
+        source_start=evidence['start'],source_end=evidence['end'])
+    return values
+
+
+def _persist_many(state,documents):
+    if not documents:return []
+    # A single BigQuery job and two set-based MERGEs for the entire accepted lot.
+    # The IDs are unchanged from V1.7, including across interrupted retries.
+    fields=list(documents[0])
+    kinds={'published':'TIMESTAMP','bytes':'INT64','source_start':'INT64','source_end':'INT64'}
+    selects=[];params=[]
+    for index,document in enumerate(documents):
+        selects.append('SELECT '+','.join(f'@{key}{index} AS `{key}`' for key in fields))
+        params.extend(lib._p(f'{key}{index}',kinds.get(key,'STRING'),document[key]) for key in fields)
+    source=' UNION ALL '.join(selects)
+    # Serialize only the shared-table transaction across V1.8 mention runs.
+    # Do not hold this lock while making LLM calls or uploading captures.
+    with lib.document_lock('mention-batch-'+_hash(lib.BASE)):
+        lib._query(f'''CREATE TEMP TABLE mention_batch AS {source};
+        BEGIN TRANSACTION;
+        MERGE `{lib.DOCUMENT}` T USING mention_batch S ON T.ID_DOCUMENT=S.id
         WHEN MATCHED THEN UPDATE SET LAST_SEEN_AT=CURRENT_TIMESTAMP()
         WHEN NOT MATCHED THEN INSERT (ID_DOCUMENT,ID_SOURCE,ID_COMPANY,ID_COMPANY_WATCH,DOCUMENT_TYPE,TITLE,SOURCE_URL,SHA256,STORAGE_URI,
             FILE_SIZE_BYTES,TEXT_STORAGE_URI,METADATA_STORAGE_URI,AUTHOR_NAME,SOURCE_ROLE,PUBLISHED_AT,PUBLICATION_DATE_PRECISION,
             EXTRACTION_STATUS,EXTRACTION_VERSION,NEXT_CHUNK,CHUNK_COUNT,CREATED_AT,UPDATED_AT,COLLECTED_AT,LAST_SEEN_AT)
-        VALUES (@id,NULL,@company,NULL,'MENTION',@title,@url,@sha,@uri,@bytes,@text,@metadata,@author,'EXTERNAL',@published,@precision,
-            'COMPLETE',@version,1,1,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
-        MERGE `{lib.UNIT}` T USING (SELECT @id ID_DOCUMENT) S ON T.ID_DOCUMENT=S.ID_DOCUMENT AND T.UNIT_ID='mention'
+        VALUES (S.id,NULL,S.company,NULL,'MENTION',S.title,S.url,S.sha,S.uri,S.bytes,S.text,S.metadata,S.author,'EXTERNAL',S.published,S.precision,
+            'COMPLETE',S.version,1,1,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
+        MERGE `{lib.UNIT}` T USING mention_batch S ON T.ID_DOCUMENT=S.id AND T.UNIT_ID='mention'
         WHEN NOT MATCHED THEN INSERT (ID_DOCUMENT,UNIT_ID,FACT,QUOTE,VERIFICATION_STATUS,KIND,SOURCE_LOCATOR,SOURCE_START,SOURCE_END,
             CHUNK_INDEX,CANDIDATE_INDEX,VERIFICATION_REASON,MATCH_SCORE,CREATED_AT)
-        VALUES (@id,'mention',@fact,@quote,'VERIFIED','STATEMENT',@locator,@start,@end,0,0,'EXACT_TEXT_MATCH',1.0,CURRENT_TIMESTAMP());
+        VALUES (S.id,'mention',S.fact,S.quote,'VERIFIED','STATEMENT',S.locator,S.source_start,S.source_end,0,0,'EXACT_TEXT_MATCH',1.0,CURRENT_TIMESTAMP());
         COMMIT TRANSACTION;''',params)
-    return docid
+    return [document['id'] for document in documents]
+
+
+def _persist(state,page,evidence):
+    # Kept for isolated callers; the runtime uses _persist_many only.
+    return _persist_many(state,[_prepare_document(state,page,evidence)])[0]
+
+
+def _qualification_item(state,candidate):
+    # Each worker owns its candidate. No run cursor or registry mutation here.
+    candidate=dict(candidate)
+    result={**candidate,'status':'JOURNAL','reason':None}
+    started=perf_counter();qualification_seconds=0.0;upload_seconds=0.0
+    prepared=None
+    try:
+        page,evidence=_qualify(state,candidate)
+        qualification_seconds=perf_counter()-started
+        uploaded=perf_counter()
+        prepared=_prepare_document(state,page,evidence)
+        upload_seconds=perf_counter()-uploaded
+        result.update(id_document=prepared['id'],explanation=evidence['explanation'])
+    except Uncertain as exc:
+        result['reason']=str(exc);result.update(exc.details)
+    except Exception as exc:
+        logger.exception('[MENTIONS] qualification/upload failed')
+        result['reason']='TECHNICAL_'+type(exc).__name__
+    finally:
+        logger.info('[MENTIONS] qualification item run=%s seconds=%.2f qualification_seconds=%.2f upload_seconds=%.2f ready=%s',
+            state['id_run'],perf_counter()-started,qualification_seconds,upload_seconds,prepared is not None)
+    result.update({k:candidate[k] for k in ('page_nature','date_sources','reader_selector','text_length') if k in candidate})
+    return result,prepared
+
+
+def _qualification_batch(state):
+    offset=len(state['results'])
+    candidates=state['resolved_candidates'][offset:offset+QUALIFICATION_WORKERS]
+    started=perf_counter()
+    with ThreadPoolExecutor(max_workers=QUALIFICATION_WORKERS) as pool:
+        outcomes=list(pool.map(lambda candidate:_qualification_item(state,candidate),candidates))
+    prepared=[document for _,document in outcomes if document is not None]
+    ready=perf_counter()
+    # On a failed/uncertain commit, propagate the error and keep the cursor.
+    # Cached qualifications and immutable uploads are reused on manual resume.
+    _persist_many(state,prepared)
+    committed=perf_counter()
+    for result,document in outcomes:
+        if document is not None:result['status']='IMPORTED'
+        state['results'].append(result)
+        _record_known(state,result)
+    state['status']='QUALIFYING'
+    logger.info('[MENTIONS] qualification batch run=%s items=%s imports=%s preparation_seconds=%.2f bigquery_seconds=%.2f total_seconds=%.2f',
+        state['id_run'],len(outcomes),len(prepared),ready-started,committed-ready,committed-started)
+    _time_add(state,'qualification_upload_seconds',ready-started)
+    _time_add(state,'bigquery_seconds',committed-ready)
+
+
+def _time_add(state,key,seconds):
+    timings=state.setdefault('timings',{})
+    timings[key]=round(timings.get(key,0.0)+seconds,3)
+
 
 
 def _fetch_search_result(state,task):
@@ -391,7 +469,7 @@ def _search_batch(state):
                 coverage['errors']+=1
                 _warn(state,f"{locale}/{task['precision']}: "+(str(exc) if isinstance(exc,(Uncertain,ValueError,RuntimeError)) else type(exc).__name__))
             # The caller commits the final item, avoiding one redundant write.
-            if index<len(batch)-1:_save(state)
+            # One durable cursor checkpoint at the end of the bounded lot.
     if not state['tasks']:
         state['candidates']=_fair_queue(state['candidates'],state.get('search_locales',[]))
         state['status']='RESOLVING'
@@ -416,7 +494,7 @@ def _resolve_batch(state):
             try:prefetched=future.result()
             except Exception as exc:error=exc
             _resolve_one(state,candidate,prefetched=prefetched,capture_error=error)
-            if index<len(batch)-1:_save(state)
+            # One durable cursor checkpoint at the end of the bounded lot.
     state['status']='QUALIFYING' if len(state['resolutions'])==len(state['candidates']) else 'RESOLVING'
 
 
@@ -428,23 +506,18 @@ def step(run):
         if state['status'] in ('COMPLETE','PARTIAL'):return state
         logger.info('[MENTIONS] start run=%s revision=%s status=%s tasks=%s raw=%s resolved=%s qualified=%s',
             run,state.get('revision',0),state['status'],len(state['tasks']),len(state['candidates']),len(state['resolutions']),len(state['results']))
+        phase_started=perf_counter()
+        phase='finalization_seconds'
+        state['runtime_version']=RUNTIME_VERSION
         if state['tasks']:
+            phase='search_seconds'
             _search_batch(state)
         elif len(state['resolutions'])<len(state['candidates']):
+            phase='resolution_seconds'
             _resolve_batch(state)
         elif len(state['results'])<len(state['resolved_candidates']):
-            candidate=state['resolved_candidates'][len(state['results'])]
-            result={**candidate,'status':'JOURNAL','reason':None}
-            try:
-                page,evidence=_qualify(state,candidate);docid=_persist(state,page,evidence)
-                result.update(status='IMPORTED',id_document=docid,explanation=evidence['explanation'])
-            except Uncertain as exc:
-                result['reason']=str(exc);result.update(exc.details)
-            except Exception as exc:
-                logger.exception('[MENTIONS] qualification failed')
-                result['reason']='TECHNICAL_'+type(exc).__name__
-            result.update({k:candidate[k] for k in ('page_nature','date_sources','reader_selector','text_length') if k in candidate})
-            state['results'].append(result);_record_known(state,result);state['status']='QUALIFYING'
+            phase='qualification_seconds'
+            _qualification_batch(state)
         else:
             if state.get('observed_document_ids'):
                 # One batch update for all imported documents observed again.
@@ -455,8 +528,14 @@ def step(run):
             technical=sum(str(r.get('reason') or '').startswith(('TECHNICAL_','EDITORIAL_TEXT_','EDITORIAL_REGION_','UNRESOLVED_SEARCH_REDIRECT')) for r in state['resolutions']+state['results'])
             if technical:_warn(state,f'{technical} problème(s) de lecture ou d’accès : couverture documentaire partielle')
             state['status']='PARTIAL' if state['warnings'] else 'COMPLETE'
+        _time_add(state,phase,perf_counter()-phase_started)
+        storage_started=perf_counter()
         _flush_known(state)
+        _time_add(state,'registry_seconds',perf_counter()-storage_started)
+        checkpoint_started=perf_counter()
         _save(state)
+        logger.info('[MENTIONS] step timing run=%s phase=%s phase_seconds=%.2f registry_seconds=%.2f checkpoint_seconds=%.2f',
+            run,phase,storage_started-phase_started,checkpoint_started-storage_started,perf_counter()-checkpoint_started)
         logger.info('[MENTIONS] saved run=%s revision=%s status=%s raw=%s resolved_unique=%s qualified=%s',
             run,state.get('revision',0),state['status'],len(state['candidates']),len(state['resolved_candidates']),len(state['results']))
         return state
@@ -471,7 +550,7 @@ def recheck(run):
         lib._upload(f"{ROOT}/runs/{run}/history/{state.get('revision',0)}-{state['storage_generation']}.json",
             json.dumps(state,ensure_ascii=False).encode(),'application/json')
         was_old=state.get('engine_version')!=ENGINE_VERSION
-        state.update(engine_version=ENGINE_VERSION,start=None,end=None,force_recheck=True,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
+        state.update(engine_version=ENGINE_VERSION,timings={},start=None,end=None,force_recheck=True,results=[],tasks=[],resolved_candidates=[],resolutions=[],resolution_index={},status='RESOLVING',qualification_version=DATE_VERSION)
         state['warnings']=[w for w in state['warnings'] if 'couverture documentaire partielle' not in w]
         if was_old:_warn(state,'HISTORICAL_SEARCH_MAY_BE_TRUNCATED: nouvelle collecte nécessaire pour compléter les zones perdues')
         for candidate in state['candidates']:
