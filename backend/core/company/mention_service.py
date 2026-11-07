@@ -4,15 +4,16 @@ import hashlib
 import json
 import os
 import logging
+import re
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from time import perf_counter
 from datetime import date, datetime, timezone
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qsl, urlencode
 from google.api_core.exceptions import NotFound, PreconditionFailed
 from fastapi import HTTPException
 from core.company.mention_qualification import POLICY, Uncertain, domain, excluded, google_url, editorial_page, validate_assessment, inspect_editorial, apply_publication_date, DATE_VERSION
-from core.company.mention_serp import search
+from core.company.mention_serp import search, probe as serp_probe, build_url
 from core.company.watch_http import normalize_url, url_key
 from core.company.mention_http import fetch_html, HopCache
 from core.library import company_watch_library as lib
@@ -32,7 +33,7 @@ MAX_RAW_URLS=5000
 SEARCH_WORKERS=4
 RESOLUTION_WORKERS=4
 QUALIFICATION_WORKERS=4
-RUNTIME_VERSION="MENTIONS_1_9"
+RUNTIME_VERSION="MENTIONS_1_10"
 NEWS_PROFILE='GLOBAL_NEWS_18_SIMPLE_V1'
 NEWS_LOCALES=(
     ('US','en'),('CA','fr'),
@@ -465,7 +466,11 @@ def _merge_search_result(state,task,result):
         origin={key:task[key] for key in ('country','language','precision','page','offset')}
         origin['search_date_hint']=str(row.get('date') or row.get('published_at') or '')[:200]
         if url in known:
-            _origins_merge(known[url]['origins'],[origin]);continue
+            _origins_merge(known[url]['origins'],[origin])
+            for existing in state.get('resolved_candidates',[])+state.get('results',[])+state.get('resolutions',[]):
+                if existing.get('url')==url or url in existing.get('source_urls',[]):
+                    _origins_merge(existing.setdefault('origins',[]),[origin])
+            continue
         if len(state['candidates'])>=MAX_RAW_URLS:
             _warn(state,'RAW_URL_SAFETY_LIMIT');continue
         candidate={'url':url,'title':str(row.get('title') or '')[:1000],
@@ -481,12 +486,14 @@ def _merge_search_result(state,task,result):
 
 
 def _search_batch(state):
-    batch=state['tasks'][:SEARCH_WORKERS]
+    workers=state.get('search_workers',SEARCH_WORKERS)
+    if workers not in (1,4):workers=SEARCH_WORKERS
+    batch=state['tasks'][:workers]
     if any(task.get('mode')!='NEWS' for task in batch):raise HTTPException(409,'Seules les recherches News sont autorisées')
     state['status']='SEARCHING'
     # Fetch concurrently; state folding is deliberately deterministic in task
     # order so a fast locale cannot preempt a slow one at the raw safety limit.
-    with ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as pool:
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures=[pool.submit(_fetch_search_result,state,task) for task in batch]
         for index,(task,future) in enumerate(zip(batch,futures)):
             locale=f"{task['country']}/{task['language']}"
@@ -495,16 +502,20 @@ def _search_batch(state):
             # Pending/in-flight tasks remain in the durable queue until their
             # own outcome is folded. Cached responses make retries reusable.
             state['tasks'].remove(task)
-            try:_merge_search_result(state,task,future.result())
+            try:
+                _merge_search_result(state,task,future.result())
+                _close_search_errors(state,task)
             except Exception as exc:
                 coverage['errors']+=1
                 state.setdefault('search_errors',[]).append({'task':dict(task),'reason':str(exc),
-                    'diagnostics':getattr(exc,'details',{})})
+                    'diagnostics':getattr(exc,'details',{}),'resolved':False})
                 _warn(state,f"{locale}/{task['precision']}: "+(str(exc) if isinstance(exc,(Uncertain,ValueError,RuntimeError)) else type(exc).__name__))
             # The caller commits the final item, avoiding one redundant write.
             # One durable cursor checkpoint at the end of the bounded lot.
     if not state['tasks']:
-        state['candidates']=_fair_queue(state['candidates'],state.get('search_locales',[]))
+        # Never reorder URLs already resolved in this run when retrying SERPs.
+        done=len(state['resolutions'])
+        state['candidates']=state['candidates'][:done]+_fair_queue(state['candidates'][done:],state.get('search_locales',[]))
         state['status']='RESOLVING'
 
 
@@ -594,3 +605,86 @@ def recheck(run):
         state['candidates']=_fair_queue(state['candidates'],state.get('search_locales',[]))
         state.setdefault('coverage',{})
         _save(state);return state
+
+
+# Failed-search retries preserve all candidate/result arrays and their cursors.
+def _task_key(task):
+    return _hash({k:task.get(k) for k in ('term','precision','mode','country','language','page','offset')})
+
+
+def _search_warning(error):
+    task=error['task']
+    return f"{task['country']}/{task['language']}/{task['precision']}: {error['reason']}"
+
+
+def _close_search_errors(state,task):
+    matched=[error for error in state.get('search_errors',[]) if not error.get('resolved') and _task_key(error['task'])==_task_key(task)]
+    for error in matched:error.update(resolved=True,resolved_at=datetime.now(timezone.utc).isoformat())
+    if matched:
+        locale=f"{task['country']}/{task['language']}"
+        state['coverage'][locale]['errors']=max(0,state['coverage'][locale]['errors']-len(matched))
+        pending={_search_warning(error) for error in state['search_errors'] if not error.get('resolved')}
+        closed={_search_warning(error) for error in matched}-pending
+        state['warnings']=[warning for warning in state['warnings'] if warning not in closed]
+
+
+def retry_searches(run,workers=1):
+    if workers not in (1,4):raise ValueError('Choisir 1 ou 4 appels simultanés')
+    with lib.document_lock('mention-run-'+run):
+        state=read(run)
+        if state.get('engine_version')!=ENGINE_VERSION or state.get('search_scope')!='NEWS':
+            raise HTTPException(409,'Lancer une nouvelle collecte V1.7 ou ultérieure')
+        if state['status'] not in ('COMPLETE','PARTIAL') or state['tasks']:
+            raise HTTPException(409,'Terminer la collecte avant de relancer les recherches échouées')
+        require_mention_watch_enabled(state['id_company'])
+        errors=[error for error in state.get('search_errors',[]) if not error.get('resolved')]
+        if not errors:raise HTTPException(409,'Aucune recherche échouée à relancer dans cet historique')
+        tasks=[];seen=set();round_number=state.get('retry_search_round',0)+1
+        for error in errors:
+            key=_task_key(error['task'])
+            if key in seen:continue
+            seen.add(key);tasks.append({**error['task'],'retry_round':round_number})
+        state.update(tasks=tasks,status='SEARCHING',force_recheck=False,search_workers=workers,retry_search_round=round_number,runtime_version=RUNTIME_VERSION)
+        _save(state)
+        return state
+
+
+def _probe_target(value):
+    parts=urlsplit(value.strip())
+    if parts.scheme!='https' or not parts.hostname or parts.username or parts.password or parts.port not in (None,443):
+        raise ValueError('URL Google HTTPS sans identifiants requise')
+    if not re.fullmatch(r'(?:www\.)?google\.(?:com|fr|co\.uk|de)',parts.hostname) or parts.path!='/search':
+        raise ValueError('Coller une URL de recherche Google News (google.com, google.fr, google.co.uk ou google.de)')
+    pairs=parse_qsl(parts.query,keep_blank_values=True);params=dict(pairs)
+    if not pairs or pairs[0][0]!='q' or not params.get('q') or params.get('tbm')!='nws':
+        raise ValueError('URL News requise : q doit être le premier paramètre et tbm=nws')
+    for key in ('q','gl','hl','tbm','start'):
+        if sum(k==key for k,_ in pairs)>1:raise ValueError('Paramètres Google dupliqués')
+    return value.strip().split('#')[0],params
+
+
+def probe_connector(data):
+    require_mention_watch_enabled(data.id_company)
+    rows=lib._query(f'SELECT NAME FROM `{lib.BASE}.RATECARD_COMPANY` WHERE ID_COMPANY=@id LIMIT 1',[lib._p('id','STRING',data.id_company)])
+    if not rows:raise HTTPException(404,'Société introuvable')
+    target=data.target_url or build_url(rows[0]['NAME'].strip(),'FR','fr')
+    target,params=_probe_target(target)
+    try:offset=int(params.get('start',0))
+    except ValueError:raise ValueError('Offset Google invalide') from None
+    if offset<0:raise ValueError('Offset Google invalide')
+    country=params.get('gl','FR');language=params.get('hl','fr')
+    jobs=[(target,country,language)]
+    if data.mode=='PARALLEL':
+        for c,l in [('FR','fr'),('US','en'),('GB','en'),('DE','de')]:
+            if (c,l)==(country,language):continue
+            query=dict(parse_qsl(urlsplit(target).query,keep_blank_values=True));query.update(gl=c,hl=l)
+            jobs.append((urlsplit(target)._replace(query=urlencode(query)).geturl(),c,l))
+            if len(jobs)==4:break
+    def request(job):
+        url,c,l=job
+        result=serp_probe(url,c,l,offset,response_format=getattr(data,'response_format','raw'),parsed_response=getattr(data,'parsed_response',True))
+        return {'country':c,'language':l,'target_url':url,**result}
+    started=perf_counter()
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:results=list(pool.map(request,jobs))
+    return {'id_company':data.id_company,'company_name':rows[0]['NAME'],'mode':data.mode,'workers':len(jobs),'elapsed_seconds':round(perf_counter()-started,3),
+        'results':results,'library_imports':0}
