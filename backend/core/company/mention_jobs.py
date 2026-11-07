@@ -54,7 +54,7 @@ def read_job(job):
 
 def _summary(job):
     rows=job['companies']
-    return {key:job.get(key) for key in ('id_job','kind','status','created_at','updated_at','scheduled_for')}|{
+    return {key:job.get(key) for key in ('id_job','kind','status','created_at','updated_at')}|{
         'total':len(rows),'finished':sum(r['status'] in TERMINAL for r in rows),
         'new_mentions':sum(r.get('progress',{}).get('new_mentions',0) for r in rows),
         'failed':sum(r['status']=='FAILED' for r in rows),
@@ -97,25 +97,17 @@ def _row(company,options,run=None,action='COLLECT',workers=1):
         'options':options,'search_workers':workers,'attempts':0,'progress':{}}
 
 
-def launch_global(data=None,*,schedule_slot=None):
+def launch_global(data=None):
     companies=list_mention_watch_companies()
     if not companies:raise HTTPException(400,'Aucune société active éligible à la veille Mentions')
     with _lock():
         index=_index()
-        config=None
-        if schedule_slot is not None:
-            config=get_schedule()
-            if not config['is_enabled'] or config.get('next_at')!=schedule_slot:return None
-            for summary in index['jobs']:
-                if summary.get('scheduled_for')==schedule_slot:
-                    existing=read_job(summary['id_job']);_advance_schedule(config,existing);return {**_summary(existing),'reused':True}
         for summary in index['jobs']:
             if summary.get('kind')=='GLOBAL' and summary['status'] not in TERMINAL:
                 job=read_job(summary['id_job'])
                 if job['status'] not in TERMINAL:
-                    if config is not None:_advance_schedule(config,job)
                     return {**_summary(job),'reused':True}
-        job={'id_job':str(uuid.uuid4()),'kind':'GLOBAL','status':'QUEUED','created_at':stamp(),'scheduled_for':schedule_slot,'companies':[]}
+        job={'id_job':str(uuid.uuid4()),'kind':'GLOBAL','status':'QUEUED','created_at':stamp(),'companies':[]}
         for company in companies:
             other,_=_reservation(index,company['id_company'])
             row=_row(company,_options(data))
@@ -123,7 +115,6 @@ def launch_global(data=None,*,schedule_slot=None):
             else:index['reservations'][company['id_company']]=job['id_job']
             job['companies'].append(row)
         _save_job(index,job)
-        if config is not None:_advance_schedule(config,job)
         return {**_summary(job),'reused':False}
 
 
@@ -170,7 +161,7 @@ def list_jobs():
     if health.get('at'):
         try:recent=(now()-datetime.fromisoformat(health['at'])).total_seconds()<90
         except ValueError:pass
-    return {'jobs':sorted(index['jobs'],key=lambda j:j['created_at'],reverse=True),'schedule':get_schedule(),
+    return {'jobs':sorted(index['jobs'],key=lambda j:j['created_at'],reverse=True),
         'worker':{'available':recent,'last_seen_at':health.get('at')}}
 
 
@@ -237,43 +228,6 @@ def finish_work(work,token,*,state=None,error=None,skipped=False):
         return True
 
 
-def get_schedule():
-    return _read(f'{ROOT}/schedule.json',{'is_enabled':False,'interval_hours':24,'next_at':None,
-        'options':{'max_pages':3,'search_budget_seconds':90,'max_candidates':1000,'excluded_domains':[]}})
 
-
-def save_schedule(data):
-    with _lock():
-        previous=get_schedule()
-        value={'is_enabled':data.is_enabled,'interval_hours':data.interval_hours,'options':_options(data),
-            'updated_at':stamp(),'last_job_id':previous.get('last_job_id'),'last_enqueued_at':previous.get('last_enqueued_at')}
-        if data.is_enabled:
-            unchanged=previous.get('is_enabled') and previous.get('interval_hours')==data.interval_hours
-            value['next_at']=previous.get('next_at') if unchanged and previous.get('next_at') else (now()+timedelta(hours=data.interval_hours)).isoformat()
-        else:value['next_at']=None
-        _put(f'{ROOT}/schedule.json',value)
-        return value
-
-
-def _advance_schedule(config,job):
-    config.update(next_at=(now()+timedelta(hours=config['interval_hours'])).isoformat(),
-        last_enqueued_at=stamp(),last_job_id=job['id_job'])
-    config.pop('last_error',None);config.pop('retry_after',None)
-    _put(f'{ROOT}/schedule.json',config)
-
-
-def maybe_schedule():
-    config=get_schedule()
-    if not config.get('is_enabled') or not config.get('next_at'):return None
-    if datetime.fromisoformat(config['next_at'])>now():return None
-    if config.get('retry_after') and datetime.fromisoformat(config['retry_after'])>now():return None
-    from types import SimpleNamespace
-    try:return launch_global(SimpleNamespace(**config['options']),schedule_slot=config['next_at'])
-    except Exception as exc:
-        with _lock():
-            latest=get_schedule()
-            if latest.get('next_at')==config['next_at'] and latest.get('is_enabled'):
-                latest.update(last_error=str(exc.detail) if isinstance(exc,HTTPException) else type(exc).__name__,
-                    retry_after=(now()+timedelta(minutes=5)).isoformat())
-                _put(f'{ROOT}/schedule.json',latest)
-        return None
+def has_pending():
+    return any(job['status'] not in TERMINAL for job in _index()['jobs'])
