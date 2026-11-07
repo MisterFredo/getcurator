@@ -218,6 +218,8 @@ export default function DiscoveryPage() {
      SCAN ALL
   ======================================================== */
 
+  const [pickedSourceId,setPickedSourceId]=useState("");
+
   async function collectLinkedIn(sourceId:string,name:string,resume=false) {
     let result=await mediaLinkedInScan(sourceId,resume);
     if(result.status==='UNKNOWN') {
@@ -689,6 +691,25 @@ export default function DiscoveryPage() {
           SOURCES
       ==================================================== */}
 
+      <section className="space-y-3" aria-label="Choix des sources">
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="discovery-source" className="text-sm font-medium">Source</label>
+          <select id="discovery-source" className="border rounded px-3 py-2 max-w-full" disabled={isScanning}
+            value={filteredSources.some(source=>source.source_id===pickedSourceId)?pickedSourceId:""}
+            onChange={event=>setPickedSourceId(event.target.value)}>
+            <option value="">Sélectionner une source</option>
+            {filteredSources.map(source=><option key={source.source_id} value={source.source_id}>{source.name}</option>)}
+          </select>
+          {(() => {
+            const source=filteredSources.find(item=>item.source_id===pickedSourceId);
+            if(!source)return null;
+            const mode=(source.acquisition_mode||"").toUpperCase();
+            if(["MANUAL","PDF_MANUAL","NEWSLETTER_MANUAL","LINKEDIN_PROFILE"].includes(mode))return <span className="text-sm text-gray-500">Studio / manuel</span>;
+            return <><button disabled={isScanning} className="border rounded px-3 py-2 disabled:opacity-50" onClick={()=>void scanSource(source.source_id,source.name)}>Scanner cette source</button>{mode==="LINKEDIN_BRIGHTDATA"&&<button disabled={isScanning} className="border rounded px-3 py-2 disabled:opacity-50" onClick={()=>void scanSource(source.source_id,source.name,true)}>Reprendre le résultat</button>}</>;
+          })()}
+        </div>
+        <details className="rounded border bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Afficher / masquer les sources configurées ({filteredSources.length})</summary>
       <DiscoverySources
         sources={
           filteredSources
@@ -702,6 +723,8 @@ export default function DiscoveryPage() {
           scanningAll
         }
       />
+        </details>
+      </section>
 
 
       {/* ===================================================
