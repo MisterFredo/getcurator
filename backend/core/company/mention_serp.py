@@ -6,6 +6,7 @@ import re
 from time import perf_counter
 from urllib.parse import urlencode
 import requests
+from collections.abc import Mapping
 
 logger=logging.getLogger(__name__)
 
@@ -23,45 +24,97 @@ def _excerpt(value,token):
     return re.sub(r'\s+',' ',text)[:240]
 
 
-def search(term,precision,mode,country,language,start_date,end_date,offset,domains):
-    if mode!='NEWS':raise ValueError('Seul Google News est autorisé pour les mentions externes')
-    token=os.getenv('BRIGHTDATA_API_KEY','').strip();zone=os.getenv('BRIGHTDATA_SERP_ZONE','').strip()
-    if not token or not zone:raise ValueError('BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE doivent être configurées dans le backend')
+SAFE_RESPONSE_HEADERS={
+    'content-type','content-length','content-encoding','date','retry-after',
+    'x-brd-error-code','x-brd-error','x-brd-err-code','x-brd-err-msg',
+    'x-brd-rate-limit','x-brd-rate-limit-period-ms','x-brd-request-id',
+    'x-request-id','x-luminati-request-id',
+}
+
+def _response_headers(response,token):
+    headers=getattr(response,'headers',{}) or {}
+    if not isinstance(headers,Mapping):return {}
+    lowered={str(k).lower():v for k,v in headers.items()}
+    selected={k:_excerpt(str(v),token) for k,v in lowered.items() if k in SAFE_RESPONSE_HEADERS}
+    debug=lowered.get('x-brd-debug','')
+    if isinstance(debug,str):
+        match=re.search(r'(?:^|[; ,])req_id=([^; ,]+)',debug)
+        if match:selected['x-brd-debug-req-id']=_excerpt(match[1],token)[:160]
+    return selected
+
+
+def build_url(term,country,language,offset=0):
     q=term.strip()
     if not q:raise ValueError('Nom de société manquant')
     params={'q':q,'gl':country,'hl':language,'brd_json':'1','start':offset,'tbm':'nws'}
-    url='https://www.google.com/search?'+urlencode(params)
+    return 'https://www.google.com/search?'+urlencode(params)
+
+
+def search(term,precision,mode,country,language,start_date,end_date,offset,domains):
+    if mode!='NEWS':raise ValueError('Seul Google News est autorisé pour les mentions externes')
+    return _request(build_url(term,country,language,offset),country,language,offset)[:3]
+
+
+def probe(url,country='FR',language='fr',offset=0,*,response_format='raw',parsed_response=True):
+    """Same live connector as production, no cache, no Library import."""
+    try:
+        result,rows,_,diagnostics=_request(url,country,language,offset,response_format=response_format,parsed_response=parsed_response)
+        return {'ok':True,'count':len(rows),'diagnostics':diagnostics,
+            'sample':[{k:row.get(k) for k in ('title','link','url','source','date')} for row in rows[:3] if isinstance(row,dict)]}
+    except SerpFailure as exc:return {'ok':False,'reason':str(exc),'diagnostics':exc.details}
+
+
+def _request(url,country,language,offset,*,response_format='raw',parsed_response=True):
+    token=os.getenv('BRIGHTDATA_API_KEY','').strip();zone=os.getenv('BRIGHTDATA_SERP_ZONE','').strip()
+    if not token or not zone:raise ValueError('BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE doivent être configurées dans le backend')
+    request_payload={'zone':zone,'url':url,'format':response_format}
+    if parsed_response:request_payload['data_format']='parsed'
+    envelope={}
     started=perf_counter();response=None
-    def fail(reason,*,body=None,stage='transport'):
+    def diagnostic(stage,body=None):
         text=body if isinstance(body,str) else getattr(response,'text','')
         text=text if isinstance(text,str) else ''
-        headers=getattr(response,'headers',{}) or {}
-        mime=headers.get('Content-Type','')
-        diagnostics={'stage':stage,'http_status':getattr(response,'status_code',None),
-            'content_type':str(mime)[:100] if isinstance(mime,str) else '',
-            'body_bytes':len(text.encode('utf-8',errors='replace')),
-            'elapsed_seconds':round(perf_counter()-started,3),'response_excerpt':_excerpt(text,token)}
+        content=getattr(response,'content',None)
+        raw_size=len(content) if isinstance(content,bytes) else len(text.encode('utf-8',errors='replace'))
+        headers=_response_headers(response,token)
+        return {'stage':stage,'http_status':getattr(response,'status_code',None),
+            'content_type':headers.get('content-type',''),'body_bytes':raw_size,
+            'decoded_text_bytes':len(text.encode('utf-8',errors='replace')),
+            'elapsed_seconds':round(perf_counter()-started,3),'response_excerpt':_excerpt(text,token),
+            'response_headers':headers,'request_payload':dict(request_payload),**envelope}
+    def fail(reason,*,body=None,stage='transport'):
+        diagnostics=diagnostic(stage,body)
         logger.warning('[MENTIONS] SERP failure reason=%s locale=%s/%s offset=%s diagnostics=%s',
             reason,country,language,offset,json.dumps(diagnostics,ensure_ascii=False))
         raise SerpFailure(reason,diagnostics) from None
     try:
         response=requests.post('https://api.brightdata.com/request',
             headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-            json={'zone':zone,'url':url,'format':'raw','data_format':'parsed'},timeout=(10,60),allow_redirects=False)
+            json=request_payload,timeout=(10,60),allow_redirects=False)
     except requests.ConnectTimeout:fail('SERP_CONNECT_TIMEOUT')
     except requests.ReadTimeout:fail('SERP_READ_TIMEOUT')
     except requests.exceptions.SSLError:fail('SERP_SSL_ERROR')
     except requests.RequestException:fail('SERP_CONNECTION_ERROR')
     if response.status_code!=200:fail(f'SERP_HTTP_{response.status_code}')
+    content=getattr(response,'content',None)
+    text=getattr(response,'text','')
+    if isinstance(content,bytes) and not content and (not isinstance(text,str) or not text.strip()):
+        fail('SERP_EMPTY_RESPONSE',stage='response_body')
     try:result=response.json()
     except ValueError:fail('SERP_INVALID_JSON',stage='response_json')
     # Accept a JSON-encoded object or a documented body envelope, but never
     # interpret HTML/error pages as an empty successful search.
     for _ in range(3):
         if isinstance(result,str):
+            if not result.strip():fail('SERP_EMPTY_RESPONSE',body=result,stage='encoded_body')
             try:result=json.loads(result.lstrip('\ufeff'))
             except ValueError:fail('SERP_INVALID_JSON',body=result,stage='encoded_json')
         elif isinstance(result,dict) and 'body' in result:
+            envelope['upstream_status_code']=result.get('status_code')
+            carrier=type('HeadersOnly',(),{'headers':result.get('headers') or {}})()
+            envelope['upstream_headers']=_response_headers(carrier,token)
+            status=result.get('status_code')
+            if isinstance(status,int) and status>=400:fail(f'SERP_UPSTREAM_HTTP_{status}',stage='upstream_response')
             result=result['body']
         else:break
     if not isinstance(result,dict):fail('SERP_INVALID_JSON',stage='object_shape')
@@ -73,4 +126,9 @@ def search(term,precision,mode,country,language,start_date,end_date,offset,domai
     if rows is not None and not isinstance(rows,list):fail('SERP_INVALID_RESULTS',stage='schema')
     pagination=result.get('pagination') or {}
     if not isinstance(pagination,dict):fail('SERP_INVALID_PAGINATION',stage='schema')
-    return result,rows or [],pagination.get('next_page_start')
+    diagnostics=diagnostic('complete')
+    provider_input=result.get('input') or {}
+    if isinstance(provider_input,dict) and isinstance(provider_input.get('request_id'),str):
+        diagnostics['provider_request_id']=provider_input['request_id'][:160]
+    logger.info('[MENTIONS] SERP success locale=%s/%s offset=%s count=%s diagnostics=%s',country,language,offset,len(rows or []),json.dumps({k:v for k,v in diagnostics.items() if k!='response_excerpt'},ensure_ascii=False))
+    return result,rows or [],pagination.get('next_page_start'),diagnostics
