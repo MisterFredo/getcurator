@@ -22,6 +22,15 @@ def _hash(value):
 
 
 ROOT=f'company-mentions/{lib.BASE}/{POLICY}'
+# One shared profile for every company. Snapshot it in each new run.
+NEWS_PROFILE='GLOBAL_NEWS_18_V1'
+NEWS_LOCALES=(
+    ('US','en'),('CA','fr'),
+    ('FR','fr'),('GB','en'),('DE','de'),('ES','es'),('IT','it'),('NL','nl'),
+    ('BR','pt'),('MX','es'),('AR','es'),
+    ('IN','en'),('SG','en'),('JP','ja'),('KR','ko'),
+    ('AU','en'),('ZA','en'),('SN','fr'),
+)
 
 def _path(run):return f'{ROOT}/runs/{run}.json'
 
@@ -81,10 +90,11 @@ def create(data):
     if not name:raise ValueError('Nom de société manquant')
     domains=sorted(set([domain(v) for v in data.excluded_domains]+([domain(company['WEBSITE_URL'])] if company.get('WEBSITE_URL') else [])))
     tasks=[{'term':name,'precision':precision,'mode':mode,'country':country,'language':language,'page':1,'offset':0}
-        for country,language in [('US','en'),('FR','fr')] for mode in ['NEWS'] for precision in ['TITLE','BROAD']]
+        for country,language in NEWS_LOCALES for mode in ['NEWS'] for precision in ['TITLE','BROAD']]
     state={'id_run':str(uuid.uuid4()),'id_company':data.id_company,'company_name':name,'aliases':[name],
         'start':start.isoformat(),'end':end.isoformat(),'domains':domains,'max_pages':data.max_pages,
         'max_candidates':data.max_candidates,'tasks':tasks,'candidates':[],'results':[],'warnings':[],
+        'search_profile':NEWS_PROFILE,'search_locales':[{'country':c,'language':l} for c,l in NEWS_LOCALES],
         'search_scope':'NEWS','status':'SEARCHING','created_at':datetime.now(timezone.utc).isoformat()}
     _save(state);return state
 
@@ -182,7 +192,8 @@ def step(run):
                     except Exception:continue
                     if url in seen:continue
                     if len(state['candidates'])>=state['max_candidates']:
-                        state['warnings'].append('CANDIDATE_LIMIT');break
+                        if 'CANDIDATE_LIMIT' not in state['warnings']:state['warnings'].append('CANDIDATE_LIMIT')
+                        break
                     seen.add(url);state['candidates'].append({'url':url,'title':str(row.get('title') or '')[:1000],
                         'search_mode':'NEWS',
                         'search_date_hint':str(row.get('date') or row.get('published_at') or '')[:200]})
