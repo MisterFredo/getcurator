@@ -9,7 +9,9 @@ from bs4 import BeautifulSoup
 
 POLICY='mention-1.0'
 class Uncertain(ValueError):
-    pass
+    def __init__(self, reason, **details):
+        super().__init__(reason)
+        self.details=details
 
 
 def contains_alias(text, aliases):
@@ -52,7 +54,7 @@ def _publication_date(values):
     return parsed[0]
 
 
-DATE_VERSION='mention-1.2'
+DATE_VERSION='mention-1.5'
 MONTHS={'janvier':1,'février':2,'fevrier':2,'mars':3,'avril':4,'mai':5,'juin':6,'juillet':7,'août':8,'aout':8,'septembre':9,'octobre':10,'novembre':11,'décembre':12,'decembre':12,
         'january':1,'february':2,'march':3,'april':4,'may':5,'june':6,'july':7,'august':8,'september':9,'october':10,'november':11,'december':12}
 
@@ -74,7 +76,38 @@ def _date_value(value):
     return None
 
 
-def inspect_editorial(html, url, aliases):
+CONTENT_SELECTORS=('[itemprop="articleBody"]','.elementor-widget-theme-post-content',
+    '.entry-content','.post-content','.article-content','.article-body','article','main')
+
+
+def _clean_region(node):
+    clone=BeautifulSoup(str(node),'html.parser').find()
+    # Remove entire widgets/cards, not article text mentioning the word cookies.
+    for child in list(clone.select('script,style,noscript,nav,header,footer,form,button,iframe,aside,[role="dialog"],[aria-hidden="true"],.elementor-posts-container,.related-posts,.related-articles')):
+        if child.parent is not None:child.decompose()
+    for child in list(clone.find_all(True)):
+        if child.parent is None:continue
+        label=' '.join([str(child.get('id') or ''),*child.get('class',[])])
+        if re.search(r'didomi|onetrust|cookie[-_ ]?(?:banner|notice|modal)|cmp[-_]container|axeptio[_-](?:widget|overlay|container)',label,re.I):child.decompose()
+    return clone.get_text('\n',strip=True)
+
+
+def _select_region(soup):
+    candidates=[];seen=set()
+    for rank,selector in enumerate(CONTENT_SELECTORS):
+        for node in soup.select(selector):
+            if id(node) in seen:continue
+            seen.add(id(node));text=_clean_region(node)
+            # Explicit body selectors outrank broad wrappers, but a tiny widget
+            # must not beat the actual article. Never score by company occurrence.
+            strong=rank<6 and len(text)>=100
+            candidates.append(((1 if strong else 0,len(text)),node,text,selector))
+    if not candidates:raise Uncertain('EDITORIAL_REGION_UNKNOWN')
+    _,node,text,selector=max(candidates,key=lambda item:item[0])
+    return node,text,selector
+
+
+def inspect_editorial(html, url, aliases, start=None, end=None):
     soup=BeautifulSoup(html,'html.parser');values=[];sources=[];author=None
     def add(value,locator):
         parsed=_date_value(value)
@@ -99,42 +132,44 @@ def inspect_editorial(html, url, aliases):
                 a=item.get('author')
                 if isinstance(a,dict):author=a.get('name')
                 elif isinstance(a,str):author=a
-    region=soup.find('article') or soup.select_one('[itemprop="articleBody"]') or soup.find('main')
-    if not region:raise Uncertain('EDITORIAL_REGION_UNKNOWN')
+    # Known out-of-period metadata is decisive even if the reader later fails.
+    if start and end and values:
+        try:apply_publication_date({'date_values':values},start,end)
+        except Uncertain as exc:
+            if str(exc)!='PUBLICATION_DATE_UNKNOWN':raise Uncertain(str(exc),date_sources=sources)
+    region,text,reader_selector=_select_region(soup)
     title_node=region.find('h1') or soup.find('h1') or soup.title
     title=title_node.get_text(' ',strip=True) if title_node else url
-    for node in region.select('[itemprop="datePublished"]'):
+    date_region=region.find_parent('article') or region.find_parent('main') or region
+    for node in date_region.select('[itemprop="datePublished"]'):
         add(node.get('content') or node.get('datetime') or node.get_text(' ',strip=True),'EDITORIAL.itemprop.datePublished')
     # Generic <time> can describe an event or modification. Require publication semantics.
-    for node in region.find_all('time'):
+    for node in date_region.find_all('time'):
         label=' '.join([str(node.get('class') or ''),str(node.get('itemprop') or ''),str(node.parent.get('class') or '')]).casefold()
         visible=node.parent.get_text(' ',strip=True)[:250].casefold()
         if re.search(r'updated|modified|mis[ e]à jour|modifi',label+' '+visible):continue
         if re.search(r'publish|publi[ée]|posted|datepublished',label+' '+visible):
             add(node.get('datetime') or node.get_text(' ',strip=True),'EDITORIAL.publication_time')
     # Explicit visible publication labels only: never a date guessed from arbitrary prose.
-    for node in region.select('.published,.published-at,.publication-date,.date-published'):
+    for node in date_region.select('.published,.published-at,.publication-date,.date-published'):
         value=node.get_text(' ',strip=True)
         if not re.search(r'updated|modified|mise? à jour',value,re.I):add(value,'EDITORIAL.publication_label')
-    for node in region.find_all(['p','span','div']):
+    for node in date_region.find_all(['p','span','div']):
         visible=node.get_text(' ',strip=True)
         if len(visible)<=160 and re.match(r'^(?:publié(?:e)?(?: le)?|published(?: on)?|posted(?: on)?)\s*[:：]?\s+',visible,re.I):
             if not re.search(r'updated|modified|mise? à jour',visible,re.I):add(visible,'EDITORIAL.explicit_publication_label')
     reference_path=bool(re.search(r'/(?:tag|tags|category|categories|vendors|outils-cro|docs|documentation|help|support)(?:/|$)',urlsplit(url).path,re.I))
-    for node in list(region.select('script,style,noscript,nav,header,footer,form,button,iframe,[role="dialog"],[aria-hidden="true"]')):
-        if node.parent is not None:node.decompose()
-    for node in list(region.find_all(True)):
-        if node.parent is None:continue
-        label=' '.join([str(node.get('id') or ''),*node.get('class',[])])
-        # Do not remove article blocks merely because their CSS class names the company.
-        if re.search(r'didomi|onetrust|cookie[-_ ]?(?:banner|notice|modal)|cmp[-_]container|axeptio[_-](?:widget|overlay|container)',label,re.I):node.decompose()
-    text=region.get_text('\n',strip=True)
-    if len(text)<100:raise Uncertain('EDITORIAL_TEXT_TOO_SHORT')
-    if len(text)>30000:raise Uncertain('EDITORIAL_TEXT_TOO_LONG')
-    if not contains_alias(text,aliases):raise Uncertain('NO_EDITORIAL_MENTION')
-    if (reference_schema or reference_path) and not article_schema:raise Uncertain('REFERENCE_PAGE_NOT_NEWS')
+    diagnostics={'reader_selector':reader_selector,'text_length':len(text),'date_sources':sources}
+    if start and end and values:
+        try:apply_publication_date({'date_values':values},start,end)
+        except Uncertain as exc:
+            if str(exc)!='PUBLICATION_DATE_UNKNOWN':raise Uncertain(str(exc),**diagnostics)
+    if len(text)<100:raise Uncertain('EDITORIAL_TEXT_TOO_SHORT',**diagnostics)
+    if len(text)>30000:raise Uncertain('EDITORIAL_TEXT_TOO_LONG',**diagnostics)
+    if not contains_alias(text,aliases):raise Uncertain('NO_EDITORIAL_MENTION',**diagnostics)
+    if (reference_schema or reference_path) and not article_schema:raise Uncertain('REFERENCE_PAGE_NOT_NEWS',**diagnostics)
     return {'title':title,'text':text,'author':author,'date_values':values,'date_sources':sources,
-            'page_nature':'ARTICLE' if article_schema or region.name=='article' else 'UNDETERMINED'}
+            'reader_selector':reader_selector,'text_length':len(text),'page_nature':'ARTICLE' if article_schema or region.name=='article' else 'UNDETERMINED'}
 
 
 def apply_publication_date(page,start,end):
@@ -145,7 +180,7 @@ def apply_publication_date(page,start,end):
 
 
 def editorial_page(html,url,aliases,start,end):
-    return apply_publication_date(inspect_editorial(html,url,aliases),start,end)
+    return apply_publication_date(inspect_editorial(html,url,aliases,start,end),start,end)
 
 
 def validate_assessment(raw, page, aliases):
