@@ -13,6 +13,8 @@ from api.company.models import (
     CompanyUpdate,
 )
 
+from core.company.mention_watch_service import enabled_company_ids
+
 from core.matching.resolver import normalize
 
 from utils.bigquery_utils import (
@@ -275,8 +277,12 @@ def list_companies(
         params,
     )
 
+    enabled_ids = enabled_company_ids()
+
     return [
         {
+            "mention_watch_enabled": row["ID_COMPANY"] in enabled_ids,
+
             "id_company":
                 row["ID_COMPANY"],
 
@@ -360,6 +366,7 @@ def get_company(
     row = rows[0]
 
     return {
+        "mention_watch_enabled": company_id in enabled_company_ids(),
         "id_company":
             row["ID_COMPANY"],
 
