@@ -10,7 +10,6 @@ type Row={id_company:string;name:string;status:string;id_run:string;error?:strin
 type Summary={id_job:string;kind:string;status:string;created_at:string;updated_at:string;total:number;finished:number;new_mentions:number;failed:number;current_company?:string};
 type Job={id_job:string;kind:string;status:string;created_at:string;updated_at:string;companies:Row[]};
 type Result={url:string;resolved_url?:string;title?:string;status:string;reason?:string;technical_detail?:string;qualification_reason?:string;explanation?:string;id_document?:string};
-type Schedule={is_enabled:boolean;interval_hours:number;next_at?:string;last_error?:string;last_enqueued_at?:string;last_job_id?:string;options?:{max_pages?:number;search_budget_seconds?:number}};
 type Run={id_run:string;id_company:string;company_name:string;status:string;results:Result[];resolutions?:Result[];warnings:string[];timings?:Record<string,number>;search_errors?:unknown[]};
 const terminal=(status:string)=>["COMPLETE","PARTIAL","FAILED","SKIPPED"].includes(status);
 const label=(status:string)=>({QUEUED:"En attente",PENDING:"À traiter",RUNNING:"En cours",WAITING:"En attente de reprise",SEARCHING:"Recherche",RESOLVING:"Lecture",QUALIFYING:"Qualification / Library",COMPLETE:"Terminé",PARTIAL:"Terminé — couverture partielle",FAILED:"Erreur",SKIPPED:"Non traité"} as Record<string,string>)[status]||status;
@@ -37,21 +36,6 @@ export default function MentionsPage(){
   const [pages,setPages]=useState(3);
   const [budget,setBudget]=useState(90);
   const [refresh,setRefresh]=useState(0);
-  const [schedule,setSchedule]=useState<Schedule|null>(null);
-  const [scheduleLoaded,setScheduleLoaded]=useState(false);
-  const [scheduleEnabled,setScheduleEnabled]=useState(false);
-  const [scheduleHours,setScheduleHours]=useState(24);
-  useEffect(()=>{
-    let stopped=false;
-    api.get("/company/watch/mention-jobs/schedule").then((value:Schedule)=>{if(!stopped){setSchedule(value);setScheduleEnabled(value.is_enabled);setScheduleHours(value.interval_hours);setPages(value.options?.max_pages||3);setBudget(value.options?.search_budget_seconds||90);setScheduleLoaded(true);}}).catch(e=>{if(!stopped)setError(errorText(e));});
-    return()=>{stopped=true;};
-  },[]);
-  async function saveSchedule(){
-    setBusy(true);setError("");
-    try{const value:Schedule=await api.put("/company/watch/mention-jobs/schedule",{...options,is_enabled:scheduleEnabled,interval_hours:scheduleHours});setSchedule(value);setNotice(value.is_enabled?"Programmation enregistrée. Le worker déclenchera la collecte à l’échéance affichée.":"Programmation désactivée. Les collectes déjà en file continuent.");}
-    catch(e){setError(errorText(e));}finally{setBusy(false);}
-  }
-
   useEffect(()=>{
     let stopped=false;
     const params=new URLSearchParams(window.location.search);
@@ -76,7 +60,7 @@ export default function MentionsPage(){
         const res=await api.get("/company/watch/mention-jobs");
         if(stopped)return;
         setPollError("");
-        setQueueLoaded(true);setJobs(res.jobs||[]);setWorker(res.worker||{available:false});if(res.schedule)setSchedule(res.schedule);
+        setQueueLoaded(true);setJobs(res.jobs||[]);setWorker(res.worker||{available:false});
         if(!tracked&&res.jobs?.length){setTracked(res.jobs[0].id_job);return;}
         if(tracked){const next:Job=await api.get(`/company/watch/mention-jobs/${encodeURIComponent(tracked)}`);if(!stopped)setJob(next);}
         if(runId){const next:Run=await api.get(`/company/watch/mentions/${encodeURIComponent(runId)}`);if(!stopped)setRun(next);}
@@ -115,8 +99,7 @@ export default function MentionsPage(){
       <p className="text-xs text-gray-500">Un passage par société, avec reconnaissance de l’existant. Une relance globale est possible une fois le lot terminé. Une société déjà prévue est priorisée sans créer de doublon.</p>
       <details><summary>Options de collecte</summary><div className="flex flex-wrap gap-4 mt-3 text-sm"><label>Pages maximum <input className={`${control} w-20`} type="number" min={1} max={5} value={pages} onChange={e=>setPages(Number(e.target.value))}/></label><label>Budget de recherche (secondes) <input className={`${control} w-24`} type="number" min={30} max={300} value={budget} onChange={e=>setBudget(Number(e.target.value))}/></label></div><p className="text-xs text-gray-500 mt-2">Le budget concerne la recherche ; lecture, qualification et enregistrement viennent ensuite.</p></details>
     </section>
-    <section className="bg-white border rounded p-4 space-y-3"><h2 className="font-semibold">Programmation des collectes globales</h2><div className="flex flex-wrap gap-4 items-center"><label><input type="checkbox" checked={scheduleEnabled} disabled={busy||!scheduleLoaded} onChange={e=>setScheduleEnabled(e.target.checked)}/> Activer la programmation</label><label>Intervalle en heures <input className={`${control} w-24`} type="number" min={1} max={720} value={scheduleHours} disabled={busy||!scheduleLoaded} onChange={e=>setScheduleHours(Number(e.target.value))}/></label><button type="button" className="border rounded px-4 py-2 disabled:opacity-40" disabled={busy||!scheduleLoaded} onClick={saveSchedule}>Enregistrer</button></div><p className="text-sm text-gray-600">{schedule?.is_enabled?`Active · prochain déclenchement : ${schedule.next_at?dateText(schedule.next_at):"en attente"}`:"Désactivée — les lancements manuels restent disponibles."}</p>{schedule?.last_error&&<p className="text-sm text-amber-800">Dernier déclenchement : {schedule.last_error}</p>}<p className="text-xs text-gray-500">La programmation utilise les options de collecte ci-dessus au moment de l’enregistrement. La première échéance est calculée après activation ; le bouton global permet de lancer immédiatement. Les échéances manquées ne sont pas rejouées en rafale.</p></section>
-    <p className={`text-sm ${worker.available?"text-green-700":"text-amber-800"}`}>{!queueLoaded?"Vérification du worker serveur…":worker.available?"Worker serveur détecté.":"Worker serveur non détecté : les collectes restent en file tant que le service worker n’est pas démarré."}{worker.last_seen_at&&` Dernier signal : ${dateText(worker.last_seen_at)}.`}</p>
+    {queueLoaded&&job&&!terminal(job.status)&&<div className="text-sm space-y-2"><p>{worker.available?"Traitement côté serveur en cours. Vous pouvez quitter cette page.":"Collecte enregistrée. Après une interruption du serveur, utilisez Reprendre le traitement."}</p><button disabled={busy} className="underline" onClick={()=>enqueue(`/company/watch/mention-jobs/${encodeURIComponent(job.id_job)}/resume`)}>Reprendre le traitement</button></div>}
     {notice&&<p role="status" className="text-blue-800">{notice}</p>}{error&&<p role="alert" className="text-red-700">{error}</p>}{pollError&&<p role="status" className="text-amber-800">Suivi momentanément indisponible : {pollError}. Le traitement serveur continue indépendamment de cet écran.</p>}
     {job&&<section className="bg-white border rounded p-4 space-y-4"><div><h2 className="font-semibold">{job.kind==="GLOBAL"?"Collecte globale":"Collecte individuelle"} · {label(job.status)}</h2><p className="text-sm mt-1">{finished}/{rows.length} société(s) terminée(s) · {added} nouvelle(s) mention(s) · créée le {dateText(job.created_at)}</p></div>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b"><th className="p-2">Société</th><th className="p-2">État / étape</th><th className="p-2">Nouvelles mentions</th><th className="p-2">URL connues</th><th className="p-2">Suivi</th></tr></thead><tbody>{rows.map(row=><tr key={row.id_company} className="border-b"><td className="p-2">{row.name}{row.priority_requested&&row.status==="PENDING"&&<span className="text-xs ml-2">Prioritaire</span>}</td><td className="p-2">{label(row.status)}{row.status==="RUNNING"&&row.progress?.stage&&` · ${label(row.progress.stage)}`}{row.error&&<p className="text-xs text-amber-800 mt-1">{row.error}{row.retry_after&&` · reprise à partir de ${dateText(row.retry_after)}`}</p>}{row.message&&<p className="text-xs text-gray-500">{row.message}</p>}</td><td className="p-2">{row.progress?.new_mentions??"—"}</td><td className="p-2">{row.progress?.known_urls??"—"}</td><td className="p-2"><button disabled={!row.progress?.stage} className="underline disabled:opacity-30" onClick={()=>{setRun(null);setRunId(row.id_run);}}>Consulter le passage</button></td></tr>)}</tbody></table></div>
