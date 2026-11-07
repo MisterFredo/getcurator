@@ -5,6 +5,8 @@ import logging
 import json
 import os
 import uuid
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from google.cloud import bigquery
 from fastapi import HTTPException
@@ -36,11 +38,11 @@ def _save(source,state):
 def _response(state):
     return {'status':state['status'],'snapshot_id':state.get('snapshot_id'),'discovered_urls':state.get('new',0),
         'known':state.get('known',0),'warnings':state.get('warnings',[]),'message':state.get('message'),
-        'scanned_sources':1,'failed_sources':1 if state['status']=='FAILED' else 0}
+        'timings':state.get('timings',{}),'scanned_sources':1,'failed_sources':1 if state['status']=='FAILED' else 0}
 
 
 def scan(source_id,*,start=False):
-    source=get_source(source_id)
+    source=get_source(source_id) if start else None
     with document_lock('media-scan-'+hashlib.sha256((BASE+source_id).encode()).hexdigest()):
         state=_load(source_id)
         if start and (not state or state['status'] not in {'RUNNING','STARTING','UNKNOWN'}):
@@ -63,7 +65,9 @@ def scan(source_id,*,start=False):
         if state['status'] in {'UNKNOWN','STARTING'}:
             return {**_response(state),'status':'UNKNOWN','message':'Lancement incertain : rattacher un snapshot ID depuis Bright Data.'}
         if state['status']!='RUNNING':return _response(state)
+        started=time.perf_counter()
         status=provider.progress(state['snapshot_id'])
+        logger.info('[MEDIA LINKEDIN] progress source=%s status=%s duration=%.3fs',source_id,status,time.perf_counter()-started)
         if status in {'failed','canceled'}:
             state.update(status='FAILED',message='Collecte fournisseur échouée ou annulée.');_save(source_id,state);return _response(state)
         if status!='ready':return _response(state)
@@ -72,7 +76,9 @@ def scan(source_id,*,start=False):
             records=provider.download(state['snapshot_id'])
             state['result_uri']=_upload(f"media-linkedin/results/{state['run_id']}.json",json.dumps(records,ensure_ascii=False).encode(),'application/json')
             _save(source_id,state)
+        started=time.perf_counter()
         _ingest(source_id,state,records)
+        logger.info('[MEDIA LINKEDIN] ingest source=%s posts=%s duration=%.3fs',source_id,len(records),time.perf_counter()-started)
         return _response(state)
 
 
@@ -97,16 +103,23 @@ def _ingest(source_id,state,records):
     hashes|={r['CONTENT_HASH'] for r in known if r.get('CONTENT_HASH')}
     ids|={i for r in known if (i:=provider.post_id(r.get('URL')))}
     pending=[];count_known=0
+    started=time.perf_counter()
     for post in posts:
         h=content_hash(post['text'])
         if post['post_id'] in ids or h in hashes:count_known+=1;continue
-        uri=_upload(f"media-linkedin/captures/{state['run_id']}/{post['post_id']}.json",
-            json.dumps(post,ensure_ascii=False).encode(),'application/json')
         pending.append({'id':str(uuid.uuid5(uuid.NAMESPACE_URL,BASE+source_id+':'+post['post_id'])),
             'url':post['url'],'title':' '.join(post['text'].split())[:200],
-            'published':post['published_at'],'capture':uri,'hash':h})
+            'published':post['published_at'],'hash':h,'post':post})
         ids.add(post['post_id']);hashes.add(h)
+    def upload(item):
+        item['capture']=_upload(f"media-linkedin/captures/{state['run_id']}/{item['post']['post_id']}.json",
+            json.dumps(item['post'],ensure_ascii=False).encode(),'application/json')
+        return {key:value for key,value in item.items() if key!='post'}
     if pending:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            pending=list(pool.map(upload,pending))
+        state.setdefault('timings',{})['dedup_and_captures_seconds']=round(time.perf_counter()-started,3)
+        started=time.perf_counter()
         # One atomic MERGE for all posts, never a per-URL insert.
         query(f"""MERGE `{DISCOVERY}` T USING (
             SELECT JSON_VALUE(p,'$.id') AS ID_DISCOVERY, JSON_VALUE(p,'$.url') AS URL,
@@ -119,6 +132,7 @@ def _ingest(source_id,state,records):
         VALUES (S.ID_DISCOVERY,@source,S.URL,S.TITLE,'NEW',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),
             SAFE_CAST(S.PUBLISHED_AT AS TIMESTAMP),S.CAPTURE_URI,S.CONTENT_HASH)""",
             [param('payload','STRING',json.dumps(pending,ensure_ascii=False)),param('source','STRING',source_id)])
+    if pending:state.setdefault('timings',{})['bigquery_merge_seconds']=round(time.perf_counter()-started,3)
     warnings=['La couverture LinkedIn peut être partielle. Le Studio reste disponible pour compléter.']
     if issues:
         _upload(f"media-linkedin/results/{state['run_id']}-issues.json",json.dumps(issues).encode(),'application/json')
