@@ -15,6 +15,7 @@ from core.company.watch_http import fetch_html, normalize_url, url_key
 from core.library import company_watch_library as lib
 from utils.gcs import bucket
 from utils.llm import run_llm_json
+from core.company.mention_watch_service import require_mention_watch_enabled
 
 
 def _hash(value):
@@ -80,6 +81,7 @@ def read(run):
 
 
 def create(data):
+    require_mention_watch_enabled(data.id_company)
     if not os.getenv('BRIGHTDATA_API_KEY') or not os.getenv('BRIGHTDATA_SERP_ZONE'):
         raise ValueError('Configurer BRIGHTDATA_API_KEY et BRIGHTDATA_SERP_ZONE dans le backend')
     start,end=data.period_start,data.period_end
@@ -249,6 +251,7 @@ def recheck(run):
             raise HTTPException(409,'Ancienne collecte Web + News : créez une nouvelle collecte News. Les résultats historiques restent conservés.')
         if state['status'] not in ('COMPLETE','PARTIAL'):
             raise HTTPException(409,'Cette collecte est encore en cours ; terminez-la avant de réexaminer ses résultats')
+        require_mention_watch_enabled(state['id_company'])
         lib._upload(f"{ROOT}/runs/{run}/history/{state.get('revision',0)}-{state['storage_generation']}.json",
             json.dumps(state,ensure_ascii=False).encode(),'application/json')
         state['results']=[];state['tasks']=[]
