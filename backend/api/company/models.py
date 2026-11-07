@@ -168,6 +168,7 @@ class MentionRunRequest(BaseModel):
     period_end: Optional[date] = None
     excluded_domains: List[str] = Field(default_factory=list, max_items=20)
     max_pages: int = Field(default=3, ge=1, le=5)
+    search_budget_seconds: int = Field(default=90, ge=30, le=300)
     max_candidates: int = Field(default=1000, ge=1, le=1000)
     class Config:
         extra = 'forbid'
