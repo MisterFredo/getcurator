@@ -237,20 +237,29 @@ export default function DiscoveryPage() {
     return result;
   }
 
-  async function scanAll() {
+  async function scanAll(scope: "ALL" | "WEB" | "LINKEDIN" = "ALL") {
     if(isScanning)return;
     stopScan.current=false;setScanningAll(true);setScanWarnings([]);setScanErrors([]);
     try {
+      let found=0;
+      if(scope!=="LINKEDIN"){
       setScanProgress('Scan des sources web…');
       const res=await api.post('/discovery/scan-all',{universe_id:universeId||null});
-      let found=res.discovered_urls||0;
+      found=res.discovered_urls||0;
       if(res.failed_sources)setScanErrors(previous=>[...previous,`${res.failed_sources} source(s) web en échec ; consulter les logs.`]);
-      const linked=Array.from(new Map(sources.filter(source=>source.acquisition_mode==='LINKEDIN_BRIGHTDATA' && (!universeId||source.universe_id===universeId)).map(source=>[source.source_id,source])).values());
-      for(const source of linked){
-        if(!mounted.current||stopScan.current)break;
-        try{const result=await collectLinkedIn(source.source_id,source.name);if(result)found+=result.discovered_urls;}
-        catch(e){if(mounted.current)setScanErrors(previous=>[...previous,`${source.name} : ${e instanceof Error?e.message:'Erreur scan'}`]);}
       }
+      const linked=scope==="WEB"?[]:Array.from(new Map(sources.filter(source=>source.acquisition_mode==='LINKEDIN_BRIGHTDATA' && (!universeId||source.universe_id===universeId)).map(source=>[source.source_id,source])).values());
+      let cursor=0;let completed=0;
+      const worker=async ()=>{
+        while(mounted.current&&!stopScan.current){
+          const source=linked[cursor++];if(!source)return;
+          try{const result=await collectLinkedIn(source.source_id,source.name);if(result)found+=result.discovered_urls;}
+          catch(e){if(mounted.current)setScanErrors(previous=>[...previous,`${source.name} : ${e instanceof Error?e.message:'Erreur scan'}`]);}
+          completed++;
+          if(mounted.current)setScanProgress(`LinkedIn : ${completed}/${linked.length} compte(s) terminé(s).`);
+        }
+      }
+      await Promise.all(Array.from({length:Math.min(3,linked.length)},()=>worker()));
       if(mounted.current){setScanProgress(stopScan.current?'Suivi arrêté. Les collectes déjà lancées continuent chez Bright Data ; utilisez Reprendre le résultat.':`Scan terminé : ${found} nouvelle(s) URL.`);await loadData();}
     }catch(e){if(mounted.current)setScanErrors([e instanceof Error?e.message:'Erreur scan']);}
     finally{if(mounted.current)setScanningAll(false);}
@@ -538,9 +547,7 @@ export default function DiscoveryPage() {
         ================================================ */}
 
         <button
-          onClick={
-            scanAll
-          }
+          onClick={() => void scanAll("ALL")}
           disabled={
             isScanning
           }
@@ -560,6 +567,8 @@ export default function DiscoveryPage() {
             : "SCAN ALL SOURCES"}
 
         </button>
+        <button onClick={()=>void scanAll("WEB")} disabled={isScanning} className="border rounded px-4 py-2 disabled:opacity-50">Scanner hors LinkedIn Bright Data</button>
+        <button onClick={()=>void scanAll("LINKEDIN")} disabled={isScanning} className="border rounded px-4 py-2 disabled:opacity-50">Scanner LinkedIn Bright Data uniquement</button>
 
       </div>
 
