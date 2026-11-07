@@ -207,3 +207,17 @@ class MentionSerpProbeRequest(BaseModel):
     parsed_response: bool = True
     class Config:
         extra = "forbid"
+
+
+class MentionBatchRequest(BaseModel):
+    max_pages: int = Field(default=3, ge=1, le=5)
+    search_budget_seconds: int = Field(default=90, ge=30, le=300)
+    max_candidates: int = Field(default=1000, ge=1, le=1000)
+    excluded_domains: List[str] = Field(default_factory=list, max_items=20)
+    class Config:
+        extra = "forbid"
+
+
+class MentionScheduleUpdate(MentionBatchRequest):
+    is_enabled: StrictBool = False
+    interval_hours: int = Field(default=24, ge=1, le=720)
