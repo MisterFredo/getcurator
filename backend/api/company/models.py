@@ -217,3 +217,10 @@ class MentionBatchRequest(BaseModel):
     class Config:
         extra = "forbid"
 
+
+
+class CompanyLibraryEditorialUpdate(BaseModel):
+    is_withdrawn: StrictBool
+    reason: Optional[str] = Field(default=None,max_length=1000)
+    class Config:
+        extra = 'forbid'
