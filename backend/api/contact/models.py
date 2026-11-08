@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional,List
+from typing import Optional,List,Literal
 from urllib.parse import urlsplit,unquote,urlunsplit
 import re
 from pydantic import BaseModel,Field,StrictBool,validator,root_validator
@@ -77,4 +77,23 @@ class LinkedInContactSelection(BaseModel):
 
 class LinkedInContactImportRequest(BaseModel):
     selections:List[LinkedInContactSelection]=Field(min_items=1,max_items=10000)
+    class Config:extra='forbid'
+
+
+class LinkedInChangeApproval(BaseModel):
+    contact_key:str=Field(min_length=64,max_length=64)
+    id_contact:str=Field(min_length=1,max_length=100)
+    id_company:str=Field(min_length=1,max_length=100)
+    expected_updated_at:datetime
+    fields:List[Literal['company','job_title','email']]=Field(min_items=1,max_items=3)
+    continue_follow:StrictBool=False
+    class Config:extra='forbid'
+
+class LinkedInChangesRequest(BaseModel):
+    request_id:str=Field(min_length=36,max_length=36)
+    approvals:List[LinkedInChangeApproval]=Field(min_items=1,max_items=1000)
+    @validator('request_id')
+    def valid_request_id(cls,value):
+        import uuid
+        return str(uuid.UUID(value))
     class Config:extra='forbid'
