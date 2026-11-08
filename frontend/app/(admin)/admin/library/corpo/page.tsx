@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { listCorpoLibrary, getCorpoLibraryDocument, listWatchCompanies } from "@/lib/companyWatch";
+import { getCorpoLibraryDocument, listWatchCompanies } from "@/lib/companyWatch";
 import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, WatchCompany } from "@/lib/companyWatch";
 
-const initialFilters: Required<CorpoLibraryFilters> = {
-  documentType:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+import {api} from "@/lib/api";
+type EditorialFields={document_type?:string;editorial_status?:string;editorial_reason?:string};
+type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string};
+async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean}>{
+ const params=new URLSearchParams({offset:String(offset),limit:"50",editorial_status:filters.editorialStatus});
+ const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType};
+ Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
+ return api.get(`/company/watch/library/list?${params.toString()}`);
+}
+const initialFilters: Required<EditorialFilters> = {
+  editorialStatus:"ACTIVE",documentType:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
 };
 const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
@@ -27,7 +36,7 @@ export default function CorpoLibraryPage() {
       .catch(e=>{if(!cancelled)setCompanyError(message(e));});
     return ()=>{cancelled=true;};
   },[]);
-  const [rows,setRows] = useState<CorpoLibraryDocument[]>([]);
+  const [rows,setRows] = useState<(CorpoLibraryDocument & EditorialFields)[]>([]);
   const [offset,setOffset] = useState(0);
   const [hasMore,setHasMore] = useState(false);
   const [revision,setRevision] = useState(0);
@@ -35,9 +44,26 @@ export default function CorpoLibraryPage() {
   const [error,setError] = useState("");
   const [documentId,setDocumentId] = useState("");
   const [unitOffset,setUnitOffset] = useState(0);
-  const [detail,setDetail] = useState<CorpoLibraryDetail | null>(null);
+  const [detail,setDetail] = useState<(CorpoLibraryDetail & EditorialFields) | null>(null);
   const [detailLoading,setDetailLoading] = useState(false);
   const [detailError,setDetailError] = useState("");
+  const [editorialBusy,setEditorialBusy]=useState("");
+  const [editorialError,setEditorialError]=useState("");
+  const [editorialNotice,setEditorialNotice]=useState("");
+  const editorialLock=useRef(false);
+  async function changeEditorial(id:string,title:string,withdrawn:boolean){
+    if(editorialLock.current)return;
+    const verb=withdrawn?"Retirer":"Restaurer";
+    if(!window.confirm(`${verb} « ${title} » ${withdrawn?"de":"dans"} la Library active ? ${withdrawn?"La décision sera mémorisée pour cette société et cette URL, preuves comprises. Une restauration restera possible.":"La Mention et ses preuves redeviendront utilisables."}`))return;
+    const reason=window.prompt("Motif éditorial (facultatif) :","");if(reason===null)return;
+    editorialLock.current=true;setEditorialBusy(id);setEditorialError("");setEditorialNotice("");
+    try{
+      const res=await api.post(`/company/watch/library/${encodeURIComponent(id)}/editorial`,{is_withdrawn:withdrawn,reason:reason.trim().slice(0,1000)||null});
+      if(res.status!=="ok")throw new Error(res.message||"Décision non confirmée.");
+      setEditorialNotice(withdrawn?"Mention retirée. Elle ne sera pas réimportée pour cette société et cette URL.":"Mention restaurée.");
+      setRevision(v=>v+1);
+    }catch(e){setEditorialError(message(e));}finally{editorialLock.current=false;setEditorialBusy("");}
+  }
   const sequence=useRef(0);
   const dialogRef=useRef<HTMLDialogElement>(null);
 
@@ -56,7 +82,7 @@ export default function CorpoLibraryPage() {
   useEffect(() => {
     let cancelled=false; setLoading(true); setError(""); setRows([]); setHasMore(false);
     listCorpoLibrary(offset,filters).then(result => {
-      if (!cancelled) {setRows(result.items);setHasMore(result.has_more);}
+      if (!cancelled) {if(!result.items.length&&offset>0){setOffset(Math.max(0,offset-50));return;}setRows(result.items);setHasMore(result.has_more);}
     }).catch(e=>{if(!cancelled)setError(message(e));}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
   },[offset,revision,filters]);
@@ -91,6 +117,7 @@ export default function CorpoLibraryPage() {
         <span className="text-xs text-gray-500">Recherche littérale dans les titres, auteurs, sociétés, points de collecte, URL, informations extraites et citations. Le texte source intégral n’est pas indexé par ce filtre.</span>
       </label>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Mentions retirées</option><option value="ALL">Actives et retirées</option></select></label>
         <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
           <option value="">Toutes les sociétés</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
         </select></label>
@@ -112,6 +139,8 @@ export default function CorpoLibraryPage() {
         <span className="text-sm text-gray-500">Filtres et tri appliqués à l’ensemble de la Library Corpo.</span>
       </div>
     </form>
+    {editorialNotice&&<p role="status" className="text-green-800">{editorialNotice}</p>}
+    {editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}
     {error && <p role="alert" className="text-red-700">{error}</p>}
     {loading ? <p>Chargement…</p> : !rows.length && !error ? <p>Aucune publication ne correspond aux filtres.</p> : <div className="border rounded bg-white overflow-x-auto">
       <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
@@ -121,9 +150,9 @@ export default function CorpoLibraryPage() {
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
-        <td className="p-3">{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':'En cours'}
+        <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':'En cours'}
           {row.extraction_error && <p className="text-red-700">{row.extraction_error}</p>}</td>
-        <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button></td>
+        <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button>{row.document_type==='MENTION'&&<button disabled={!!editorialBusy} className={`${button} ml-2 ${row.editorial_status==='WITHDRAWN'?'':'text-red-700'}`} onClick={()=>void changeEditorial(row.id_document,row.title,row.editorial_status!=='WITHDRAWN')}>{editorialBusy===row.id_document?'Enregistrement…':row.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>}</td>
       </tr>)}</tbody></table>
     </div>}
     <div className="flex justify-end gap-2 items-center"><span className="text-sm text-gray-500">Page {Math.floor(offset/50)+1}</span><button className={button} disabled={loading||!!error||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
@@ -139,6 +168,7 @@ export default function CorpoLibraryPage() {
     {detailError && <div role="alert" className="text-red-700 space-y-3"><p>{detailError}</p>
       <button type="button" className={button} onClick={()=>setRevision(v=>v+1)}>Réessayer</button></div>}
     {detail && <section className="border rounded bg-white p-5 space-y-4">
+      {detail.document_type==='MENTION'&&<div className="border rounded p-3 space-y-2"><p className="text-sm">{detail.editorial_status==='WITHDRAWN'?'Mention retirée : consultation historique, exclue de la Library active.':'Mention active.'}{detail.editorial_reason&&` Motif : ${detail.editorial_reason}`}</p><button disabled={!!editorialBusy} className={button} onClick={()=>void changeEditorial(detail.id_document,detail.title,detail.editorial_status!=='WITHDRAWN')}>{detail.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>{editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}</div>}
       <p className="text-sm">Parution : {date(detail.published_at)} · Auteur : {detail.author_name || detail.author_id || 'Non renseigné'}</p>
       {detail.monitored_account_url && <p className="text-sm">Compte suivi : {detail.monitored_account_url}. La date d’un éventuel relais reste indéterminée.</p>}
       <a className="underline text-ratecard-blue" href={safeUrl(detail.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a>
