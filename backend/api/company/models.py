@@ -129,6 +129,7 @@ class CompanyWatchUpdate(CompanyWatchBase):
 
 
 class CompanyWatchOut(CompanyWatchCreate):
+    id_contact: Optional[str] = None
     id_company_watch: str
     id_company: str
     company_name: Optional[str] = None
