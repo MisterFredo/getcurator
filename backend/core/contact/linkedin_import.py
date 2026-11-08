@@ -19,7 +19,7 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-1.2-state'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-1.3-bq'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -282,10 +282,20 @@ def write_batch(run_id,prepared):
             JSON_VALUE(j,'$.connected_on') CONNECTED_ON
           FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@rows))) j;
           BEGIN TRANSACTION;
-          CREATE TEMP TABLE new_contacts AS SELECT i.* FROM incoming i WHERE NOT EXISTS(
-            SELECT 1 FROM `{contacts.CONTACT}` c WHERE c.ID_CONTACT=i.ID_CONTACT
-              OR LOWER(RTRIM(c.LINKEDIN_URL,'/'))=LOWER(RTRIM(i.LINKEDIN_URL,'/'))
-              OR (i.EMAIL IS NOT NULL AND LOWER(c.EMAIL)=i.EMAIL));
+          CREATE TEMP TABLE new_contacts AS
+            SELECT i.* FROM incoming i
+            WHERE NOT EXISTS (
+              SELECT 1 FROM `{contacts.CONTACT}` c
+              WHERE c.ID_CONTACT=i.ID_CONTACT
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM `{contacts.CONTACT}` c
+              WHERE LOWER(RTRIM(c.LINKEDIN_URL,'/'))=LOWER(RTRIM(i.LINKEDIN_URL,'/'))
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM `{contacts.CONTACT}` c
+              WHERE LOWER(c.EMAIL)=i.EMAIL
+            );
           INSERT INTO `{contacts.CONTACT}`(ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,IS_ACTIVE,CREATED_AT,UPDATED_AT,
             IMPORT_SOURCE,IMPORT_RUN_ID,LINKEDIN_COMPANY_LABEL,LINKEDIN_CONNECTED_ON)
             SELECT ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,TRUE,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),
@@ -322,4 +332,4 @@ def import_selected(run_id):
         except Exception as exc:
             code=str(exc) if isinstance(exc,ValueError) and str(exc).startswith('IMPORT_') else 'IMPORT_WRITE_FAILED'
             run['status']='PARTIAL';run['error']=code;save(run)
-            log.warning('Contact import %s: %s',run_id,code)
+            log.exception('Contact import %s: %s',run_id,code)
