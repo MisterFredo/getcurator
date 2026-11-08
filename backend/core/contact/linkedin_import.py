@@ -19,7 +19,7 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-2.1-triage'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-2.2-network'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -131,6 +131,12 @@ def collect(run_id):
                     rows,next_start=page(response,run['next_start'])
                     if rows is None:
                         if not run['pages']: raise ValueError('LINKEDIN_DATA_NOT_READY')
+                        from core.contact.linkedin_network import publish_complete
+                        try:
+                            run['network_snapshot']=publish_complete({**run,'status':'READY'});run.pop('network_warning',None)
+                        except Exception:
+                            log.exception('LinkedIn network snapshot publication failed: %s',run_id)
+                            run['network_warning']='NETWORK_SNAPSHOT_NOT_PUBLISHED'
                         run['status']='READY';run['error']=None;save(run);return
                     digest=hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
                     if digest in run['fingerprints']: raise ValueError('LINKEDIN_REPEATED_PAGE')
@@ -198,7 +204,7 @@ def preview(run_id):
     run=read(run_id)
     status=run['status']
     if status in ('FETCHING','IMPORTING') and not fresh(run):status='INTERRUPTED'
-    result={k:run.get(k) for k in ['id_run','pages','error','result','created_at']}
+    result={k:run.get(k) for k in ['id_run','pages','error','result','created_at','network_warning','network_snapshot']}
     result.update(implementation_version=IMPLEMENTATION_VERSION,status=status,received=len(run['rows']),phase='IMPORT' if run.get('prepared') else 'FETCH',import_processed=run.get('import_processed',0),import_total=len(run.get('prepared',[])))
     from core.contact import linkedin_changes,linkedin_company_rules
     if run.get('change_job'):result['change_job']=linkedin_changes.summary(run['change_job'])
@@ -300,9 +306,9 @@ def write_batch(run_id,prepared):
               WHERE LOWER(c.EMAIL)=i.EMAIL
             );
           INSERT INTO `{contacts.CONTACT}`(ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,IS_ACTIVE,CREATED_AT,UPDATED_AT,
-            IMPORT_SOURCE,IMPORT_RUN_ID,LINKEDIN_COMPANY_LABEL,LINKEDIN_CONNECTED_ON)
+            IMPORT_SOURCE,IMPORT_RUN_ID,LINKEDIN_COMPANY_LABEL,LINKEDIN_CONNECTED_ON,LINKEDIN_PROFILE_UPDATED_AT)
             SELECT ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,TRUE,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),
-              'LINKEDIN_CONNECTIONS',@run,COMPANY_LABEL,SAFE.PARSE_DATE('%d %b %Y',CONNECTED_ON) FROM new_contacts;
+              'LINKEDIN_CONNECTIONS',@run,COMPANY_LABEL,SAFE.PARSE_DATE('%d %b %Y',CONNECTED_ON),CURRENT_TIMESTAMP() FROM new_contacts;
           INSERT INTO `{contacts.AFFILIATION}`(ID_CONTACT_COMPANY,ID_CONTACT,ID_COMPANY,JOB_TITLE,STARTED_AT,ENDED_AT,CREATED_AT,UPDATED_AT)
             SELECT ID_AFFILIATION,ID_CONTACT,ID_COMPANY,JOB_TITLE,CURRENT_TIMESTAMP(),NULL,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP() FROM new_contacts;
           MERGE `{MAP}` T USING(SELECT COMPANY_KEY,ANY_VALUE(COMPANY_LABEL) AS COMPANY_LABEL,ANY_VALUE(ID_COMPANY) AS ID_COMPANY FROM incoming WHERE TRIM(COMPANY_LABEL)!='' GROUP BY COMPANY_KEY) S ON T.COMPANY_KEY=S.COMPANY_KEY
