@@ -1,9 +1,10 @@
 from typing import Optional
 from fastapi import APIRouter,BackgroundTasks,HTTPException,Query
-from api.contact.models import ContactCreate,ContactUpdate,ContactFollowUpdate,LinkedInContactImportRequest,LinkedInChangesRequest
+from api.contact.models import ContactCreate,ContactUpdate,ContactFollowUpdate,LinkedInContactImportRequest,LinkedInChangesRequest,LinkedInCompanyDecision
 from core.contact import service
 from core.contact import linkedin_import
 from core.contact import linkedin_changes
+from core.contact import linkedin_company_rules
 from core.contact.company_counts import get_company_contact_counts
 import logging
 router=APIRouter()
@@ -32,6 +33,9 @@ def start_linkedin_preview(tasks:BackgroundTasks):
 
 @router.get('/linkedin/preview/{run_id}')
 def get_linkedin_preview(run_id:str):return call(linkedin_import.preview,run_id)
+
+@router.put('/linkedin/preview/{run_id}/company-decision')
+def decide_linkedin_company(run_id:str,payload:LinkedInCompanyDecision):return call(linkedin_company_rules.decide,run_id,payload)
 
 @router.post('/linkedin/preview/{run_id}/changes')
 def start_linkedin_changes(run_id:str,payload:LinkedInChangesRequest,tasks:BackgroundTasks):
