@@ -26,17 +26,17 @@ const ERRORS:Record<string,string>={
  LINKEDIN_TIME_BUDGET:"Le temps de récupération est écoulé. Reprendre pour récupérer la suite.",
 };
 export default function LinkedInContactImport(){
- const [revision,setRevision]=useState(0);const [id,setId]=useState("");const [data,setData]=useState<Preview|null>(null);
+ const [previewLoading,setPreviewLoading]=useState(false);const [revision,setRevision]=useState(0);const [id,setId]=useState("");const [data,setData]=useState<Preview|null>(null);
  const [selected,setSelected]=useState<Set<string>>(new Set());const [companies,setCompanies]=useState<Record<string,string>>({});
  const [open,setOpen]=useState<Record<string,boolean>>({});const [q,setQ]=useState("");const [filter,setFilter]=useState("matched");const [limit,setLimit]=useState(50);
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");
  const mounted=useRef(true);const initialized=useRef("");const busyRef=useRef(false);
  useEffect(()=>{mounted.current=true;setId(saved(LAST)||"");return()=>{mounted.current=false;};},[]);
  useEffect(()=>{
-  if(!id)return;let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;
+  if(!id)return;setPreviewLoading(true);let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;
   async function refresh(){try{
    const result=await api.get(`${BASE}/${encodeURIComponent(id)}`) as Preview;
-   if(stopped)return;setData(result);setError("");
+   if(stopped)return;setPreviewLoading(false);setData(result);setError("");
    if(result.groups&&initialized.current!==id){
     let choice: {selected:string[];companies:Record<string,string>}|null=null;
     try{const raw=saved(`contacts-linkedin-choice-${id}`);if(raw)choice=JSON.parse(raw);}catch{/* Default choices. */}
@@ -46,14 +46,14 @@ export default function LinkedInContactImport(){
    }
    if(result.status==="IMPORTED")window.dispatchEvent(new Event("contacts-updated"));
    if(["FETCHING","IMPORTING"].includes(result.status))timer=setTimeout(()=>void refresh(),3000);
-  }catch(e){if(!stopped){setError(message(e));timer=setTimeout(()=>void refresh(),10000);}}}
+  }catch(e){if(!stopped){setPreviewLoading(false);setError(message(e));timer=setTimeout(()=>void refresh(),10000);}}}
   void refresh();return()=>{stopped=true;if(timer)clearTimeout(timer);};
  },[id,revision]);
  useEffect(()=>{if(id&&initialized.current===id)store(`contacts-linkedin-choice-${id}`,JSON.stringify({selected:Array.from(selected),companies}));},[id,selected,companies]);
  async function start(resume=false){if(busyRef.current)return;busyRef.current=true;setBusy(true);setError("");setNotice("");try{
   const result=await api.post(resume?`${BASE}/${encodeURIComponent(id)}/resume`:BASE,{}) as {id_run:string};
   store(LAST,result.id_run);
-  if(mounted.current){initialized.current="";setData(null);setId("");setTimeout(()=>{if(mounted.current)setId(result.id_run);},0);}
+  if(mounted.current){if(result.id_run!==id){initialized.current="";setData(null);setId(result.id_run);}else{setRevision(v=>v+1);}}
  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
  const groups=data?.groups||[];const available=data?.companies||[];
  const eligible=groups.flatMap(g=>companies[g.key]?g.contacts.filter(c=>!c.existing&&selected.has(c.key)):[]);
@@ -67,7 +67,8 @@ export default function LinkedInContactImport(){
  const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';
  return <section className="border rounded-xl p-5 bg-white space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
-  <button disabled={busy||fetching||importing} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
+  <button disabled={busy||previewLoading||fetching||importing} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
+  {previewLoading&&!data&&<p role="status" className="text-sm text-gray-500">Chargement de l’aperçu sauvegardé et des rapprochements société…</p>}
   {error&&<p role="alert" className="text-red-700">{error}</p>}{notice&&<p role="status" className="text-green-800">{notice}</p>}
   {data&&<p className="text-sm">{importing?'Import en cours':fetching?'Récupération en cours':ready?'Aperçu prêt':done?'Import terminé':'Récupération à reprendre'} · {data.pages} page(s) reçue(s) · {data.received} relation(s) reçue(s)</p>}
   {importing&&<p className="text-sm">{data?.import_processed||0} / {data?.import_total||0} contact(s) traité(s) par lots. Tu peux changer de page.</p>}
