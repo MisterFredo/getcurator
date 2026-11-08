@@ -97,3 +97,19 @@ class LinkedInChangesRequest(BaseModel):
         import uuid
         return str(uuid.UUID(value))
     class Config:extra='forbid'
+
+
+class LinkedInCompanyDecision(BaseModel):
+    group_keys:List[str]=Field(min_items=1,max_items=500)
+    decision:Literal['MATCH','IGNORE','LATER','RESET']
+    id_company:Optional[str]=Field(default=None,max_length=100)
+    @validator('group_keys')
+    def valid_group_keys(cls,value):
+        if any(not re.fullmatch(r'[0-9a-f]{64}',v) for v in value):raise ValueError('Identifiant société invalide')
+        return value
+    @root_validator(skip_on_failure=True)
+    def target_company(cls,values):
+        if values.get('decision')=='MATCH' and not values.get('id_company'):raise ValueError('Société GetCurator obligatoire')
+        if values.get('decision')!='MATCH' and values.get('id_company') is not None:raise ValueError('Société cible réservée au rapprochement')
+        return values
+    class Config:extra='forbid'
