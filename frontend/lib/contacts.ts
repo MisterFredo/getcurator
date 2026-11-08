@@ -1,5 +1,5 @@
 import {api} from "@/lib/api";
-export type Contact={id_contact:string;first_name:string;last_name:string;display_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;company_name:string|null;company_is_active?:boolean;is_active:boolean;linkedin_follow_enabled:boolean;id_company_watch:string|null;created_at:string;updated_at:string};
+export type Contact={id_contact:string;first_name:string;last_name:string;display_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;company_name:string|null;company_is_active?:boolean;is_active:boolean;linkedin_follow_enabled:boolean;id_company_watch:string|null;created_at:string;updated_at:string;import_source?:string|null;contact_origin?:'MANUAL'|'LINKEDIN_IMPORT'|'OTHER';network_status?:'CONFIRMED'|'NOT_VERIFIED'|'NOT_FOUND';network_checked_at?:string|null};
 export type ContactPayload={first_name:string;last_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;is_active:boolean;linkedin_follow_enabled:boolean};
 export type CompanyChoice={id_company:string;name:string;is_active?:boolean};
 const base='/contact';
