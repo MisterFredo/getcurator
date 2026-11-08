@@ -19,7 +19,7 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-1.4-companies'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-2.0-changes'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -200,14 +200,12 @@ def preview(run_id):
     if status in ('FETCHING','IMPORTING') and not fresh(run):status='INTERRUPTED'
     result={k:run.get(k) for k in ['id_run','pages','error','result','created_at']}
     result.update(implementation_version=IMPLEMENTATION_VERSION,status=status,received=len(run['rows']),phase='IMPORT' if run.get('prepared') else 'FETCH',import_processed=run.get('import_processed',0),import_total=len(run.get('prepared',[])))
-    if status not in ('READY','IMPORTED'):return result
+    from core.contact import linkedin_changes
+    if run.get('change_job'):result['change_job']=linkedin_changes.summary(run['change_job'])
+    if status not in ('READY','IMPORTED') or result.get('change_job',{}).get('status')=='RUNNING':return result
     companies,aliases,remembered=directory();names,index,memory=matching(companies,aliases,remembered)
-    rows,stats=candidates(run['rows']);existing=contacts.query(f'SELECT LINKEDIN_URL,EMAIL FROM `{contacts.CONTACT}`')
-    urls=set();emails=set()
-    for r in existing:
-        try:urls.add(linkedin_profile(r.get('LINKEDIN_URL')))
-        except ValueError:pass
-        if r.get('EMAIL'):emails.add(normalized(r['EMAIL']))
+    rows,stats=candidates(run['rows'])
+    urls,emails=linkedin_changes.current_indexes(contacts.query(contacts.READ))
     groups={};suggestion_cache={};suggestion_index={}
     for name in index:
         tokens={t for t in re.findall(r'\w+',name) if len(t)>=3 and t not in {'the','group','groupe','company'}}
@@ -230,7 +228,7 @@ def preview(run_id):
             for score,i in scores:
                 if score<0.65 or len(g['suggestions'])>=3:break
                 if i not in seen:g['suggestions'].append({'id_company':i,'name':names[i]});seen.add(i)
-        row['existing']=row['linkedin_url'] in urls or bool(row['email'] and normalized(row['email']) in emails)
+        linkedin_changes.annotate(row,urls,emails)
         g['contacts'].append(row)
     result.update(groups=sorted(groups.values(),key=lambda g:(g['match']!='MATCHED',normalized(g['label']))),stats=stats,
       companies=[{'id_company':i,'name':name} for i,name in sorted(names.items(),key=lambda x:x[1])])
@@ -242,6 +240,7 @@ def commit(run_id, selections):
         if run['status']=='IMPORTED':return {'id_run':run_id,'status':'IMPORTED','queued':False}
         if run['status']=='IMPORTING':return {'id_run':run_id,'status':'IMPORTING','queued':False}
         if run['status']!='READY':raise HTTPException(409,'Terminer la récupération de toutes les pages avant import')
+        if run.get('change_job',{}).get('status')=='RUNNING':raise HTTPException(409,'Des mises à jour sont en cours ; attendre leur fin avant import')
         rows,stats=candidates(run['rows']);by_key={r['key']:r for r in rows}
         companies,aliases,remembered=directory();names,_,_=matching(companies,aliases,remembered)
         chosen={};maps={};prepared=[]
@@ -340,6 +339,7 @@ def continue_preview(run_id):
     with lock(run_id),lock('start'):
         previous=read(run_id)
         if previous['status']!='IMPORTED':raise HTTPException(409,"Terminer l'import en cours avant de poursuivre le rapprochement")
+        if previous.get('change_job',{}).get('status')=='RUNNING':raise HTTPException(409,'Des mises à jour sont encore en cours')
         # Idempotent response after a lost network response/double click.
         if previous.get('continuation_id'):
             return {'id_run':previous['continuation_id'],'status':'READY'}
