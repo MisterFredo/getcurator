@@ -14,10 +14,12 @@ from urllib.parse import urlsplit, parse_qs
 import requests
 from fastapi import HTTPException
 from google.cloud import bigquery
+from google.api_core.exceptions import NotFound,PreconditionFailed
 from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
+IMPLEMENTATION_VERSION = 'contacts-linkedin-1.2-state'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -35,14 +37,27 @@ def blob(name):
 def lock(name):
     from core.library.company_watch_library import document_lock
     return document_lock('contact-import-'+hashlib.sha256((BASE+name).encode()).hexdigest())
+def read_blob(name):
+    # Public/default object URLs can retain an older response in intermediary caches.
+    # Pin every download to the current GCS generation obtained from metadata.
+    for _ in range(3):
+        b=blob(name)
+        try:
+            b.reload()
+            return json.loads(b.download_as_text(if_generation_match=b.generation))
+        except (NotFound,PreconditionFailed):
+            continue
+    raise HTTPException(404,'Aperçu introuvable ou modifié pendant la lecture ; réessayer')
+
 def read(run_id):
     if not re.fullmatch(r'[0-9a-f-]{36}',run_id): raise HTTPException(400,'Identifiant de collecte invalide')
-    b=blob(run_id)
-    if not b.exists(): raise HTTPException(404,'Aperçu introuvable')
-    return json.loads(b.download_as_text())
+    return read_blob(run_id)
+
 def save(run):
     run['updated_at']=now()
-    blob(run['id_run']).upload_from_string(json.dumps(run,ensure_ascii=False),content_type='application/json')
+    b=blob(run['id_run'])
+    b.cache_control='no-store'
+    b.upload_from_string(json.dumps(run,ensure_ascii=False),content_type='application/json')
 def fresh(run):
     return time.time()-datetime.fromisoformat(run['updated_at']).timestamp()<180
 
@@ -51,11 +66,12 @@ def start():
     with lock('start'):
         latest=blob('latest')
         if latest.exists():
-            old=read(json.loads(latest.download_as_text())['id_run'])
+            old=read(read_blob('latest')['id_run'])
             if old['status'] in ('FETCHING','IMPORTING') and fresh(old): return {'id_run':old['id_run'],'queued':False}
         run={'id_run':str(uuid.uuid4()),'status':'FETCHING','created_at':now(),'updated_at':now(),
              'rows':[],'pages':0,'next_start':0,'fingerprints':[],'error':None,'result':None}
         save(run)
+        latest.cache_control='no-store'
         latest.upload_from_string(json.dumps({'id_run':run['id_run']}),content_type='application/json')
         return {'id_run':run['id_run'],'queued':True}
 
@@ -64,7 +80,12 @@ def page(response, start_value):
     try: data=response.json()
     except ValueError: raise ValueError('LINKEDIN_INVALID_JSON')
     message=str(data.get('message','')) if isinstance(data,dict) else ''
-    if response.status_code in (400,404) and 'no data found for this member' in message.lower(): return None,None
+    terminal_message=' '.join(message.casefold().strip().rstrip('.').split())
+    if response.status_code in (400,404) and terminal_message in {
+        'no data found for this memberid',
+        'no data found for this member',
+        'no data found for this domain and memberid',
+    }: return None,None
     if response.status_code!=200: raise ValueError(f'LINKEDIN_HTTP_{response.status_code}')
     if not isinstance(data,dict): raise ValueError('LINKEDIN_INVALID_SHAPE')
     elements=data.get('elements')
@@ -178,7 +199,7 @@ def preview(run_id):
     status=run['status']
     if status in ('FETCHING','IMPORTING') and not fresh(run):status='INTERRUPTED'
     result={k:run.get(k) for k in ['id_run','pages','error','result','created_at']}
-    result.update(status=status,received=len(run['rows']),phase='IMPORT' if run.get('prepared') else 'FETCH',import_processed=run.get('import_processed',0),import_total=len(run.get('prepared',[])))
+    result.update(implementation_version=IMPLEMENTATION_VERSION,status=status,received=len(run['rows']),phase='IMPORT' if run.get('prepared') else 'FETCH',import_processed=run.get('import_processed',0),import_total=len(run.get('prepared',[])))
     if status not in ('READY','IMPORTED'):return result
     companies,aliases,remembered=directory();names,index,memory=matching(companies,aliases,remembered)
     rows,stats=candidates(run['rows']);existing=contacts.query(f'SELECT LINKEDIN_URL,EMAIL FROM `{contacts.CONTACT}`')
