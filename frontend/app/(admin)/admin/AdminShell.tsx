@@ -34,6 +34,7 @@ const sections: NavSection[] = [
   { title: "Reference Data", items: [
     { href: "/admin/source", label: "Sources", icon: LinkIcon },
     { href: "/admin/company", label: "Companies", icon: Building2 },
+    { href: "/admin/contact", label: "Contacts", icon: Users },
     { href: "/admin/solution", label: "Solutions", icon: Puzzle },
     { href: "/admin/topic", label: "Topics", icon: Tags },
     { href: "/admin/concept", label: "Concepts", icon: BookOpen },
