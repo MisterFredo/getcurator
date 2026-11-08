@@ -94,6 +94,12 @@ def _values(data):
 
 
 def create_company_watch(id_company, data: CompanyWatchCreate):
+    from urllib.parse import urlsplit
+    parts=urlsplit(data.source_url)
+    host=(parts.hostname or '').lower()
+    personal_linkedin=(host=='linkedin.com' or host.endswith('.linkedin.com')) and parts.path.startswith('/in/')
+    if data.source_role == 'EMPLOYEE' or personal_linkedin:
+        raise HTTPException(409,'Créer un Contact pour configurer le suivi LinkedIn d’un salarié')
     _company(id_company, require_active=data.is_active)
     _duplicate(id_company, data.source_type, data.source_url)
     # Inclure les valeurs par défaut lors de la création.
@@ -111,6 +117,14 @@ def create_company_watch(id_company, data: CompanyWatchCreate):
 
 def update_company_watch(id_company, watch_id, data: CompanyWatchUpdate):
     current = get_company_watch(id_company, watch_id)
+    if current.get('id_contact'):
+        changes=data.dict(exclude_unset=True)
+        if set(changes) != {'is_active'}:
+            raise HTTPException(409,'Ce point est lié à un Contact ; modifier sa fiche pour changer son identité ou son profil LinkedIn')
+        from api.contact.models import ContactFollowUpdate
+        from core.contact.service import set_follow
+        set_follow(current['id_contact'],ContactFollowUpdate(is_enabled=changes['is_active'],expected_company_id=id_company),expected_watch_id=watch_id)
+        return get_company_watch(id_company,watch_id)
     changes = data.dict(exclude_unset=True)
     if not changes:
         raise HTTPException(400, "Aucune modification fournie")
