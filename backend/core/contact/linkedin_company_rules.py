@@ -54,3 +54,47 @@ def decide(run_id,payload):
           END IF;
           COMMIT TRANSACTION;''',params)
         return {'status':'ok','decision':payload.decision,'group_keys':keys,'id_company':payload.id_company}
+
+
+def match_batch(run_id,payload):
+    """One explicit approval, one BQ script, distinct target company per label."""
+    from core.contact import linkedin_import as m
+    from google.api_core.exceptions import BadRequest
+    with m.lock(run_id),contacts.scope_lock():
+        run=m.read(run_id)
+        if run['status'] not in ('READY','IMPORTED') or run.get('change_job',{}).get('status')=='RUNNING':
+            raise HTTPException(409,'Terminer le traitement en cours avant de valider les rapprochements')
+        rows,_=m.candidates(run['rows']);labels={r['group_key']:r['company_label'] for r in rows}
+        seen=set();records=[]
+        for mapping in payload.mappings:
+            key=mapping.group_key
+            if key in seen:raise HTTPException(400,'Un libellé société figure plusieurs fois dans le lot')
+            seen.add(key)
+            if key not in labels or not labels[key].strip():raise HTTPException(400,'Libellé société absent ou vide dans cet aperçu')
+            records.append({'key':key,'label':labels[key],'company':mapping.id_company})
+        try:
+            contacts.query(f"""CREATE TEMP TABLE choices AS
+              SELECT JSON_VALUE(j,'$.key') COMPANY_KEY,JSON_VALUE(j,'$.label') LINKEDIN_LABEL,
+                JSON_VALUE(j,'$.company') ID_COMPANY
+              FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@rows))) j;
+              BEGIN TRANSACTION;
+              ASSERT NOT EXISTS (
+                SELECT 1 FROM choices s
+                LEFT JOIN `{contacts.COMPANY}` c ON c.ID_COMPANY=s.ID_COMPANY AND c.IS_ACTIVE=TRUE
+                WHERE c.ID_COMPANY IS NULL
+              ) AS 'MATCH_BATCH_COMPANY_UNAVAILABLE';
+              ASSERT NOT EXISTS (
+                SELECT 1 FROM choices s INNER JOIN `{TABLE}` r ON r.COMPANY_KEY=s.COMPANY_KEY
+                WHERE r.DECISION='IGNORE'
+              ) AS 'MATCH_BATCH_COMPANY_IGNORED';
+              DELETE FROM `{TABLE}` WHERE COMPANY_KEY IN (SELECT COMPANY_KEY FROM choices);
+              MERGE `{m.MAP}` T USING choices S ON T.COMPANY_KEY=S.COMPANY_KEY
+              WHEN MATCHED THEN UPDATE SET ID_COMPANY=S.ID_COMPANY,LINKEDIN_LABEL=S.LINKEDIN_LABEL,UPDATED_AT=CURRENT_TIMESTAMP()
+              WHEN NOT MATCHED THEN INSERT(COMPANY_KEY,LINKEDIN_LABEL,ID_COMPANY,CREATED_AT,UPDATED_AT)
+                VALUES(S.COMPANY_KEY,S.LINKEDIN_LABEL,S.ID_COMPANY,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
+              COMMIT TRANSACTION;""",[contacts.p('rows','STRING',json.dumps(records,ensure_ascii=False))])
+        except BadRequest as exc:
+            if 'MATCH_BATCH_COMPANY_UNAVAILABLE' in str(exc):raise HTTPException(409,'Une société cible est absente ou inactive ; corriger le lot puis réessayer') from exc
+            if 'MATCH_BATCH_COMPANY_IGNORED' in str(exc):raise HTTPException(409,'Une société a été ignorée ; la rétablir avant de valider son rapprochement') from exc
+            raise
+        return {'status':'ok','updated':len(records),'mappings':[{'group_key':r['key'],'id_company':r['company']} for r in records]}
