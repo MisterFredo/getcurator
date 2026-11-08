@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
+import ContactNetworkStatus from "@/components/admin/contact/ContactNetworkStatus";
 import {useRouter} from "next/navigation";
 import {getContact,saveContact,listContactCompanies,errorText} from "@/lib/contacts";
 import type {Contact,ContactPayload,CompanyChoice} from "@/lib/contacts";
@@ -30,7 +31,7 @@ export default function ContactForm({id}:{id?:string}){
  if(loading)return <p>Chargement du contact…</p>;
  if(error&&!companies.length)return <div role="alert"><p className="text-red-700">{error}</p><button className="underline" onClick={()=>setRetry(v=>v+1)}>Réessayer</button></div>;
  const canFollow=!!draft.id_company&&!!draft.linkedin_url&&draft.is_active&&companies.find(c=>c.id_company===draft.id_company)?.is_active!==false;
- return <form onSubmit={save} className="space-y-6"><fieldset disabled={busy} className="border rounded bg-white p-5 grid md:grid-cols-2 gap-4">
+ return <form onSubmit={save} className="space-y-6"><section className="border rounded bg-white p-4"><ContactNetworkStatus contact={saved}/><p className="text-xs text-gray-500 mt-2">L’origine et la présence dans ton réseau sont indépendantes du suivi des publications.</p>{saved&&draft.linkedin_url!==saved.linkedin_url&&<p className="text-xs text-amber-800 mt-2">Le statut affiché concerne le profil enregistré. Il sera réévalué après l’enregistrement de la nouvelle URL.</p>}</section><fieldset disabled={busy} className="border rounded bg-white p-5 grid md:grid-cols-2 gap-4">
  <label>Prénom<input className={field} value={draft.first_name} maxLength={150} onChange={e=>update('first_name',e.target.value)}/></label>
  <label>Nom *<input required className={field} value={draft.last_name} maxLength={150} onChange={e=>update('last_name',e.target.value)}/></label>
  <label>E-mail professionnel<input className={field} type="email" maxLength={320} value={draft.email||''} onChange={e=>update('email',e.target.value||null)}/></label>
