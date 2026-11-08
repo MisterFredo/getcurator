@@ -1,8 +1,9 @@
 from typing import Optional
 from fastapi import APIRouter,BackgroundTasks,HTTPException,Query
-from api.contact.models import ContactCreate,ContactUpdate,ContactFollowUpdate,LinkedInContactImportRequest
+from api.contact.models import ContactCreate,ContactUpdate,ContactFollowUpdate,LinkedInContactImportRequest,LinkedInChangesRequest
 from core.contact import service
 from core.contact import linkedin_import
+from core.contact import linkedin_changes
 from core.contact.company_counts import get_company_contact_counts
 import logging
 router=APIRouter()
@@ -31,6 +32,18 @@ def start_linkedin_preview(tasks:BackgroundTasks):
 
 @router.get('/linkedin/preview/{run_id}')
 def get_linkedin_preview(run_id:str):return call(linkedin_import.preview,run_id)
+
+@router.post('/linkedin/preview/{run_id}/changes')
+def start_linkedin_changes(run_id:str,payload:LinkedInChangesRequest,tasks:BackgroundTasks):
+    result=call(linkedin_changes.reserve,run_id,payload)
+    if result['queued']:tasks.add_task(linkedin_changes.apply,run_id)
+    return result
+
+@router.post('/linkedin/preview/{run_id}/changes/resume')
+def resume_linkedin_changes(run_id:str,tasks:BackgroundTasks):
+    result=call(linkedin_changes.resume,run_id)
+    if result['queued']:tasks.add_task(linkedin_changes.apply,run_id)
+    return result
 
 @router.post('/linkedin/preview/{run_id}/continue')
 def continue_linkedin_preview(run_id:str):return call(linkedin_import.continue_preview,run_id)
