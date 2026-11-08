@@ -2,7 +2,7 @@ import {api} from "@/lib/api";
 export type Contact={id_contact:string;first_name:string;last_name:string;display_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;company_name:string|null;company_is_active?:boolean;is_active:boolean;linkedin_follow_enabled:boolean;id_company_watch:string|null;created_at:string;updated_at:string};
 export type ContactPayload={first_name:string;last_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;is_active:boolean;linkedin_follow_enabled:boolean};
 export type CompanyChoice={id_company:string;name:string;is_active?:boolean};
-const base='/company/contacts';
+const base='/contact';
 export function changed(){if(typeof window!=="undefined")window.dispatchEvent(new Event('contacts-updated'));}
 export async function listContacts(options:{companyId?:string;q?:string;offset?:number}={}):Promise<{contacts:Contact[];total:number;has_more:boolean}>{
  const query=new URLSearchParams({limit:'50',offset:String(options.offset||0)});if(options.companyId)query.set('id_company',options.companyId);if(options.q)query.set('q',options.q);
