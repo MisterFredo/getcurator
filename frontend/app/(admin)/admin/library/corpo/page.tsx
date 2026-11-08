@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getCorpoLibraryDocument, listWatchCompanies } from "@/lib/companyWatch";
+import { getCorpoLibraryDocument } from "@/lib/companyWatch";
 import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, WatchCompany } from "@/lib/companyWatch";
 
 import {api} from "@/lib/api";
 type EditorialFields={document_type?:string;editorial_status?:string;editorial_reason?:string};
 type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string};
-async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean}>{
- const params=new URLSearchParams({offset:String(offset),limit:"50",editorial_status:filters.editorialStatus});
+async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean;total:number;global_total:number;companies:WatchCompany[]}>{
+ const params=new URLSearchParams({offset:String(offset),limit:"50",with_summary:"true",editorial_status:filters.editorialStatus});
  const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType};
  Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
  return api.get(`/company/watch/library/list?${params.toString()}`);
@@ -29,13 +29,7 @@ export default function CorpoLibraryPage() {
   const [draft,setDraft]=useState({...initialFilters});
   const [filters,setFilters]=useState({...initialFilters});
   const [companies,setCompanies]=useState<WatchCompany[]>([]);
-  const [companyError,setCompanyError]=useState("");
-  useEffect(()=>{
-    let cancelled=false;
-    listWatchCompanies().then(items=>{if(!cancelled)setCompanies(items.sort((a,b)=>a.name.localeCompare(b.name)));})
-      .catch(e=>{if(!cancelled)setCompanyError(message(e));});
-    return ()=>{cancelled=true;};
-  },[]);
+  const [counts,setCounts]=useState<{global:number;selected:number}|null>(null);
   const [rows,setRows] = useState<(CorpoLibraryDocument & EditorialFields)[]>([]);
   const [offset,setOffset] = useState(0);
   const [hasMore,setHasMore] = useState(false);
@@ -80,9 +74,11 @@ export default function CorpoLibraryPage() {
 
   useEffect(() => { setDocumentId(new URLSearchParams(window.location.search).get("document") || ""); },[]);
   useEffect(() => {
-    let cancelled=false; setLoading(true); setError(""); setRows([]); setHasMore(false);
+    let cancelled=false; setLoading(true); setError(""); setRows([]); setHasMore(false);setCounts(null);
     listCorpoLibrary(offset,filters).then(result => {
-      if (!cancelled) {if(!result.items.length&&offset>0){setOffset(Math.max(0,offset-50));return;}setRows(result.items);setHasMore(result.has_more);}
+      if(typeof result.total!=="number"||typeof result.global_total!=="number"||!Array.isArray(result.companies))throw new Error("Compteurs indisponibles : vérifier le déploiement du backend.");
+      if(!cancelled){setCompanies(result.companies);setCounts({global:result.global_total,selected:result.total});}
+      if (!cancelled) {if(!result.items.length&&offset>0){setOffset(result.total>0?Math.floor((result.total-1)/50)*50:0);return;}setRows(result.items);setHasMore(result.has_more);}
     }).catch(e=>{if(!cancelled)setError(message(e));}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
   },[offset,revision,filters]);
@@ -110,7 +106,7 @@ export default function CorpoLibraryPage() {
       }
       setOffset(0);setFilters({...draft,q:draft.q.trim()});
     }}>
-        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value})}><option value="">Tous</option><option value="CORPORATE">Publications corporate</option><option value="MENTION">Mentions externes</option></select></label>
+        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value,companyId:""})}><option value="">Tous</option><option value="CORPORATE">Publications corporate</option><option value="MENTION">Mentions externes</option></select></label>
       <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
         <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
           value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
@@ -119,7 +115,7 @@ export default function CorpoLibraryPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Mentions retirées</option><option value="ALL">Actives et retirées</option></select></label>
         <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
-          <option value="">Toutes les sociétés</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
+          <option value="">Toutes les sociétés présentes dans ce périmètre</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
         </select></label>
         <label className="space-y-1"><span className="text-sm">État</span><select className={control} value={draft.status} onChange={e=>setDraft(v=>({...v,status:e.target.value}))}>
           <option value="">Tous</option><option value="COMPLETE">Importé</option><option value="PENDING">En cours</option><option value="ERROR">Erreur</option>
@@ -133,12 +129,16 @@ export default function CorpoLibraryPage() {
           <option value="desc">Décroissant / Z → A</option><option value="asc">Croissant / A → Z</option>
         </select></label>
       </div>
-      {companyError && <p className="text-sm text-red-700" role="alert">Filtre société : {companyError}</p>}
       <div className="flex gap-3 items-center"><button type="submit" className="bg-ratecard-blue text-white rounded px-4 py-2">Rechercher / appliquer</button>
         <button type="button" className={button} onClick={()=>{setDraft({...initialFilters});setFilters({...initialFilters});setOffset(0);}}>Réinitialiser</button>
         <span className="text-sm text-gray-500">Filtres et tri appliqués à l’ensemble de la Library Corpo.</span>
       </div>
     </form>
+    <div role="status" aria-live="polite" className="bg-white border rounded p-4 flex flex-wrap gap-x-8 gap-y-2">
+      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications corporate':''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
+      <p><span className="text-gray-500">Résultats des filtres appliqués : </span><strong>{counts?counts.selected.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
+      <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type et l’état éditorial choisis.</p>
+    </div>
     {editorialNotice&&<p role="status" className="text-green-800">{editorialNotice}</p>}
     {editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}
     {error && <p role="alert" className="text-red-700">{error}</p>}
