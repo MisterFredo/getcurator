@@ -14,6 +14,7 @@ export type WatchPayload = {
   is_active: boolean;
 };
 export type CompanyWatch = WatchPayload & {
+  id_contact?: string | null;
   id_company_watch: string;
   id_company: string;
   company_name?: string | null;
