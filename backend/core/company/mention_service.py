@@ -162,16 +162,20 @@ def _read_known(company):
 def _load_known(company,seed=False):
     entries=_read_known(company)
     if seed:
-        rows=lib._query(f"SELECT SOURCE_URL, ID_DOCUMENT, CREATED_AT FROM `{lib.DOCUMENT}` WHERE ID_COMPANY=@company AND DOCUMENT_TYPE='MENTION'",
+        rows=lib._query(f"SELECT SOURCE_URL, ID_DOCUMENT, CREATED_AT, EDITORIAL_STATUS, EDITORIAL_URL_KEY FROM `{lib.DOCUMENT}` WHERE ID_COMPANY=@company AND DOCUMENT_TYPE='MENTION'",
             [lib._p('company','STRING',company)])
         rows=list(rows)
         live_ids={row['ID_DOCUMENT'] for row in rows}
         entries={key:entry for key,entry in entries.items() if entry.get('status')!='IMPORTED' or entry.get('id_document') in live_ids}
         for row in rows:
             if not row['SOURCE_URL']:continue
-            key=url_key(row['SOURCE_URL'])
-            entries[key]={**entries.get(key,{}),'status':'IMPORTED','id_document':row['ID_DOCUMENT'],
+            key=row.get('EDITORIAL_URL_KEY') or url_key(row['SOURCE_URL'])
+            entries[key]={**entries.get(key,{}),'status':'WITHDRAWN' if row.get('EDITORIAL_STATUS')=='WITHDRAWN' else 'IMPORTED','id_document':row['ID_DOCUMENT'],
                 'first_seen_at':entries.get(key,{}).get('first_seen_at') or str(row.get('CREATED_AT') or '')}
+    if seed:
+        authoritative={row['ID_DOCUMENT']:('WITHDRAWN' if row.get('EDITORIAL_STATUS')=='WITHDRAWN' else 'IMPORTED') for row in rows}
+        for entry in entries.values():
+            if entry.get('id_document') in authoritative:entry['status']=authoritative[entry['id_document']]
     return entries
 
 def _known(state,url):
@@ -207,9 +211,9 @@ def _flush_known(state):
     state['known_dirty']=False
 
 def _skip_known(state,candidate,url):
-    if state.get('force_recheck'):return None
     known=_known(state,url)
     if not known:return None
+    if state.get('force_recheck') and known.get('status')!='WITHDRAWN':return None
     key=url_key(url);now=datetime.now(timezone.utc).isoformat()
     known['last_seen_at']=now;state['known_dirty']=True
     # Remember opaque Google aliases too, so future runs need not resolve them.
@@ -358,7 +362,7 @@ def _prepare_document(state,page,evidence):
     texturi=lib._upload(prefix+'.txt',page['text'].encode(),'text/plain; charset=utf-8')
     metadata=lib._upload(prefix+'.json',json.dumps({'publisher':urlsplit(page['url']).hostname,'target_company':state['company_name'],
         'qualification':evidence,'policy':DATE_VERSION,'discovery_provider':'GOOGLE_NEWS_VIA_BRIGHTDATA','search_date_hint':page.get('search_date_hint'),'search_origins':page.get('origins',[]),'reader_selector':page.get('reader_selector'),'date_sources':page.get('date_sources',[]),'id_run':state['id_run']},ensure_ascii=False).encode(),'application/json')
-    values={'id':docid,'company':state['id_company'],'title':page['title'],'url':page['url'],'sha':sha,'uri':uri,'text':texturi,
+    values={'url_key':url_key(page['url']),'id':docid,'company':state['id_company'],'title':page['title'],'url':page['url'],'sha':sha,'uri':uri,'text':texturi,
         'metadata':metadata,'author':page.get('author') or urlsplit(page['url']).hostname,'precision':page['date_precision'],
         'version':POLICY,'fact':evidence['explanation'],'quote':evidence['quote'],'locator':f'text:chars:{evidence["start"]}-{evidence["end"]}'}
     values.update(published=datetime.fromisoformat(page['published_at']),bytes=len(original),
@@ -380,26 +384,34 @@ def _persist_many(state,documents):
     # Serialize only the shared-table transaction across V1.8 mention runs.
     # Do not hold this lock while making LLM calls or uploading captures.
     with lib.document_lock('mention-batch-'+_hash(lib.BASE)):
-        lib._query(f'''CREATE TEMP TABLE mention_batch AS {source};
+        persisted=lib._query(f'''CREATE TEMP TABLE mention_batch AS {source};
         BEGIN TRANSACTION;
-        MERGE `{lib.DOCUMENT}` T USING mention_batch S ON T.ID_DOCUMENT=S.id
+        CREATE TEMP TABLE mention_allowed AS SELECT S.* FROM mention_batch S
+          WHERE NOT EXISTS (SELECT 1 FROM `{lib.DOCUMENT}` W
+            WHERE W.ID_COMPANY=S.company AND W.DOCUMENT_TYPE='MENTION'
+              AND W.EDITORIAL_STATUS='WITHDRAWN'
+              AND (W.EDITORIAL_URL_KEY=S.url_key OR W.SOURCE_URL=S.url));
+        MERGE `{lib.DOCUMENT}` T USING mention_allowed S ON T.ID_DOCUMENT=S.id
         WHEN MATCHED THEN UPDATE SET LAST_SEEN_AT=CURRENT_TIMESTAMP()
         WHEN NOT MATCHED THEN INSERT (ID_DOCUMENT,ID_SOURCE,ID_COMPANY,ID_COMPANY_WATCH,DOCUMENT_TYPE,TITLE,SOURCE_URL,SHA256,STORAGE_URI,
             FILE_SIZE_BYTES,TEXT_STORAGE_URI,METADATA_STORAGE_URI,AUTHOR_NAME,SOURCE_ROLE,PUBLISHED_AT,PUBLICATION_DATE_PRECISION,
-            EXTRACTION_STATUS,EXTRACTION_VERSION,NEXT_CHUNK,CHUNK_COUNT,CREATED_AT,UPDATED_AT,COLLECTED_AT,LAST_SEEN_AT)
+            EXTRACTION_STATUS,EXTRACTION_VERSION,NEXT_CHUNK,CHUNK_COUNT,CREATED_AT,UPDATED_AT,COLLECTED_AT,LAST_SEEN_AT,EDITORIAL_URL_KEY)
         VALUES (S.id,NULL,S.company,NULL,'MENTION',S.title,S.url,S.sha,S.uri,S.bytes,S.text,S.metadata,S.author,'EXTERNAL',S.published,S.precision,
-            'COMPLETE',S.version,1,1,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
-        MERGE `{lib.UNIT}` T USING mention_batch S ON T.ID_DOCUMENT=S.id AND T.UNIT_ID='mention'
+            'COMPLETE',S.version,1,1,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),S.url_key);
+        MERGE `{lib.UNIT}` T USING mention_allowed S ON T.ID_DOCUMENT=S.id AND T.UNIT_ID='mention'
         WHEN NOT MATCHED THEN INSERT (ID_DOCUMENT,UNIT_ID,FACT,QUOTE,VERIFICATION_STATUS,KIND,SOURCE_LOCATOR,SOURCE_START,SOURCE_END,
             CHUNK_INDEX,CANDIDATE_INDEX,VERIFICATION_REASON,MATCH_SCORE,CREATED_AT)
         VALUES (S.id,'mention',S.fact,S.quote,'VERIFIED','STATEMENT',S.locator,S.source_start,S.source_end,0,0,'EXACT_TEXT_MATCH',1.0,CURRENT_TIMESTAMP());
-        COMMIT TRANSACTION;''',params)
-    return [document['id'] for document in documents]
+        COMMIT TRANSACTION;
+        SELECT id FROM mention_allowed;''',params)
+    return [row['id'] for row in persisted]
 
 
 def _persist(state,page,evidence):
     # Kept for isolated callers; the runtime uses _persist_many only.
-    return _persist_many(state,[_prepare_document(state,page,evidence)])[0]
+    imported=_persist_many(state,[_prepare_document(state,page,evidence)])
+    if not imported:raise HTTPException(409,'Mention retirée de la Library pour cette société')
+    return imported[0]
 
 
 def _qualification_item(state,candidate):
@@ -437,10 +449,12 @@ def _qualification_batch(state):
     ready=perf_counter()
     # On a failed/uncertain commit, propagate the error and keep the cursor.
     # Cached qualifications and immutable uploads are reused on manual resume.
-    _persist_many(state,prepared)
+    imported=set(_persist_many(state,prepared))
     committed=perf_counter()
     for result,document in outcomes:
-        if document is not None:result['status']='IMPORTED'
+        if document is not None:
+            if document['id'] in imported:result['status']='IMPORTED'
+            else:result.update(status='JOURNAL',reason='EDITORIAL_WITHDRAWN')
         state['results'].append(result)
         _record_known(state,result)
     state['status']='QUALIFYING'
