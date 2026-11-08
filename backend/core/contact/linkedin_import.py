@@ -19,7 +19,7 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-2.0-changes'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-2.1-triage'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -200,10 +200,11 @@ def preview(run_id):
     if status in ('FETCHING','IMPORTING') and not fresh(run):status='INTERRUPTED'
     result={k:run.get(k) for k in ['id_run','pages','error','result','created_at']}
     result.update(implementation_version=IMPLEMENTATION_VERSION,status=status,received=len(run['rows']),phase='IMPORT' if run.get('prepared') else 'FETCH',import_processed=run.get('import_processed',0),import_total=len(run.get('prepared',[])))
-    from core.contact import linkedin_changes
+    from core.contact import linkedin_changes,linkedin_company_rules
     if run.get('change_job'):result['change_job']=linkedin_changes.summary(run['change_job'])
     if status not in ('READY','IMPORTED') or result.get('change_job',{}).get('status')=='RUNNING':return result
     companies,aliases,remembered=directory();names,index,memory=matching(companies,aliases,remembered)
+    company_rules=linkedin_company_rules.rules()
     rows,stats=candidates(run['rows'])
     urls,emails=linkedin_changes.current_indexes(contacts.query(contacts.READ))
     groups={};suggestion_cache={};suggestion_index={}
@@ -212,12 +213,12 @@ def preview(run_id):
         for token in tokens|{name[:3]}:suggestion_index.setdefault(token,set()).add(name)
     for row in rows:
         key=row['group_key'];label=row['company_label'];matches=(memory.get(key) or index.get(normalized(label),set())) if normalized(label) else set()
-        options=sorted(matches)
+        options,decision=linkedin_company_rules.effective(sorted(matches),company_rules.get(key))
         g=groups.setdefault(key,{'key':key,'label':label or '(Société non renseignée)',
           'company_id':options[0] if len(options)==1 else '',
-          'match':'MATCHED' if len(options)==1 else 'AMBIGUOUS' if options else 'UNMATCHED',
+          'match':'MATCHED' if len(options)==1 else 'AMBIGUOUS' if options else 'UNMATCHED','decision':decision,
           'suggestions':[{'id_company':i,'name':names[i]} for i in options], 'contacts':[]})
-        if not options and label and not g['suggestions']:
+        if not options and label and decision!='IGNORED' and not g['suggestions']:
             needle=normalized(label)
             if key not in suggestion_cache:
                 tokens={t for t in re.findall(r'\w+',needle) if len(t)>=3 and t not in {'the','group','groupe','company'}}|{needle[:3]}
@@ -226,7 +227,7 @@ def preview(run_id):
             scores=suggestion_cache[key]
             seen=set()
             for score,i in scores:
-                if score<0.65 or len(g['suggestions'])>=3:break
+                if score<0.85 or len(g['suggestions'])>=3:break
                 if i not in seen:g['suggestions'].append({'id_company':i,'name':names[i]});seen.add(i)
         linkedin_changes.annotate(row,urls,emails)
         g['contacts'].append(row)
@@ -241,11 +242,14 @@ def commit(run_id, selections):
         if run['status']=='IMPORTING':return {'id_run':run_id,'status':'IMPORTING','queued':False}
         if run['status']!='READY':raise HTTPException(409,'Terminer la récupération de toutes les pages avant import')
         if run.get('change_job',{}).get('status')=='RUNNING':raise HTTPException(409,'Des mises à jour sont en cours ; attendre leur fin avant import')
+        from core.contact import linkedin_company_rules
+        ignored={key for key,value in linkedin_company_rules.rules().items() if value=='IGNORE'}
         rows,stats=candidates(run['rows']);by_key={r['key']:r for r in rows}
         companies,aliases,remembered=directory();names,_,_=matching(companies,aliases,remembered)
         chosen={};maps={};prepared=[]
         for selection in selections:
             key=selection.group_key;company=selection.id_company
+            if key in ignored:raise HTTPException(409,'Cette société est ignorée ; la rétablir avant import')
             if key in maps:raise HTTPException(400,'Société LinkedIn sélectionnée plusieurs fois')
             if company not in names:raise HTTPException(409,'Société GetCurator absente ou inactive ; actualiser')
             maps[key]=company
@@ -342,7 +346,9 @@ def continue_preview(run_id):
         if previous.get('change_job',{}).get('status')=='RUNNING':raise HTTPException(409,'Des mises à jour sont encore en cours')
         # Idempotent response after a lost network response/double click.
         if previous.get('continuation_id'):
-            return {'id_run':previous['continuation_id'],'status':'READY'}
+            existing=read(previous['continuation_id'])
+            if existing['status']!='IMPORTED' or existing.get('change_job',{}).get('status')=='RUNNING':
+                return {'id_run':existing['id_run'],'status':existing['status']}
         run={'id_run':str(uuid.uuid4()),'status':'READY','created_at':now(),'updated_at':now(),
           'rows':previous['rows'],'pages':previous['pages'],'next_start':previous['next_start'],
           'fingerprints':previous.get('fingerprints',[]),'error':None,'result':None,'parent_run_id':run_id}
