@@ -79,7 +79,7 @@ def import_step(candidate_id):
 
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
-                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE"):
+                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE", with_summary=False):
     if not 1 <= limit <= 200 or offset < 0:
         raise ValueError("Pagination invalide")
     sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
@@ -102,6 +102,9 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
     if document_type:
         if document_type not in {'MENTION','CORPORATE'}:raise ValueError('Type invalide')
         where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
+    # Summary scope ignores company/text/date/extraction filters. Company options
+    # retain withdrawn-only companies, so restoration remains discoverable.
+    global_predicate=' AND '.join(where)
     if company_id:
         where.append('d.ID_COMPANY=@company')
         params.append(library._p('company','STRING',company_id))
@@ -129,7 +132,7 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         params.append(library._p('end','DATE',end+timedelta(days=1)))
     predicate = ' AND '.join(where)
     ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
-    rows = library._query(f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
+    base_sql=f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
         d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
         d.EDITORIAL_STATUS, d.EDITORIAL_UPDATED_AT, d.EDITORIAL_REASON,
         d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
@@ -138,8 +141,30 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         FROM `{library.DOCUMENT}` d
         LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
         LEFT JOIN `{discovery.WATCH}` w ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
-        WHERE {predicate} ORDER BY {ordering}
-        LIMIT @limit OFFSET @offset""", params)
+        WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
+    if document_type:
+        base_sql += " AND d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else " AND d.ID_COMPANY_WATCH IS NOT NULL"
+    if with_summary:
+        # One BigQuery request returns the page, exact counts and company options
+        # from the same query snapshot. No per-company or per-row count queries.
+        scoped=predicate.replace('c.NAME','d.COMPANY_NAME').replace('w.LABEL','d.WATCH_LABEL')
+        order=ordering.replace('c.NAME','d.COMPANY_NAME')
+        response=library._query(f"""WITH library_base AS ({base_sql}),
+          filtered AS (SELECT d.* FROM library_base d WHERE {scoped})
+          SELECT
+            ARRAY(SELECT AS STRUCT d.* FROM filtered d ORDER BY {order} LIMIT @limit OFFSET @offset) AS ITEMS,
+            (SELECT COUNT(*) FROM filtered) AS TOTAL,
+            (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
+            ARRAY(SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
+                  FROM library_base WHERE ID_COMPANY IS NOT NULL ORDER BY name,id_company) AS COMPANIES""",params)
+        result=dict(response[0]) if response else {'ITEMS':[],'TOTAL':0,'GLOBAL_TOTAL':0,'COMPANIES':[]}
+        page=list(result['ITEMS'] or [])
+        return {'items':[{k.lower():v for k,v in dict(row).items()} for row in page[:limit]],
+                'has_more':len(page)>limit,'offset':offset,'limit':limit,
+                'total':int(result['TOTAL']),'global_total':int(result['GLOBAL_TOTAL']),
+                'companies':[dict(company) for company in (result['COMPANIES'] or [])]}
+    rows=library._query(f"""{base_sql} AND {predicate} ORDER BY {ordering}
+        LIMIT @limit OFFSET @offset""",params)
     return {'items':[{k.lower():v for k,v in dict(r).items()} for r in rows[:limit]],
             'has_more':len(rows)>limit, 'offset':offset, 'limit':limit}
 
