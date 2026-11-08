@@ -113,3 +113,17 @@ class LinkedInCompanyDecision(BaseModel):
         if values.get('decision')!='MATCH' and values.get('id_company') is not None:raise ValueError('Société cible réservée au rapprochement')
         return values
     class Config:extra='forbid'
+
+
+class LinkedInCompanyMapping(BaseModel):
+    group_key:str=Field(min_length=64,max_length=64)
+    id_company:str=Field(min_length=1,max_length=100)
+    @validator('group_key')
+    def valid_mapping_key(cls,value):
+        if not re.fullmatch(r'[0-9a-f]{64}',value):raise ValueError('Identifiant société invalide')
+        return value
+    class Config:extra='forbid'
+
+class LinkedInCompanyMappingsRequest(BaseModel):
+    mappings:List[LinkedInCompanyMapping]=Field(min_items=1,max_items=500)
+    class Config:extra='forbid'
