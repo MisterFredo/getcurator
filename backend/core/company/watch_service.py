@@ -1,194 +1,129 @@
-"""Selected Corpo discovery -> Library, one resumable extraction segment per call."""
-from __future__ import annotations
-
+"""Configuration Watch Corpo uniquement. Aucun accès au pipeline RAW."""
 import json
-from datetime import date, timedelta
+import uuid
 from fastapi import HTTPException
-from core.company import watch_discovery_service as discovery
-from core.library import company_watch_library as library
-from utils.gcs import bucket, BUCKET_NAME
+from google.cloud import bigquery
+from config import BQ_PROJECT, BQ_DATASET
+from utils.bigquery_utils import get_bigquery_client
+from api.company.models import CompanyWatchCreate, CompanyWatchUpdate
+
+TABLE = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY_WATCH"
+COMPANY = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY"
+FIELDS = {
+    "label": "STRING", "source_type": "STRING", "source_url": "STRING",
+    "source_role": "STRING", "author_name": "STRING",
+    "collection_method": "STRING", "collection_config": "STRING", "is_active": "BOOL",
+}
 
 
-def _original(uri):
-    prefix = f"gs://{BUCKET_NAME}/"
-    if not uri.startswith(prefix):
-        raise ValueError("Emplacement de capture inattendu")
-    return bucket.blob(uri[len(prefix):]).download_as_bytes()
+def _query(sql, params=()):
+    return list(get_bigquery_client().query(
+        sql, job_config=bigquery.QueryJobConfig(query_parameters=list(params))
+    ).result())
 
 
-def _state(candidate_id, status, document_id=None, error=None):
-    discovery._query(f"""UPDATE `{discovery.DISCOVERY}` SET LIBRARY_STATUS=@status,
-        ID_DOCUMENT=COALESCE(@document, ID_DOCUMENT), ERROR=@error, UPDATED_AT=CURRENT_TIMESTAMP()
-        WHERE ID_DISCOVERY=@id""", [discovery._p('status','STRING',status),
-        discovery._p('document','STRING',document_id), discovery._p('error','STRING',error),
-        discovery._p('id','STRING',candidate_id)])
+def _param(name, kind, value):
+    return bigquery.ScalarQueryParameter(name, kind, value)
 
 
-def import_step(candidate_id):
-    with library.document_lock('library-import-' + candidate_id):
-        candidate = discovery.get_candidate(candidate_id)
-        if candidate['STATUS'] == 'DISMISSED':
-            raise HTTPException(409, "Cette publication est ignorée ; restaurez-la avant de l'importer")
-        watch = discovery.active_watch(candidate['ID_COMPANY'], candidate['ID_COMPANY_WATCH'])
-        document_id = candidate.get('ID_DOCUMENT')
-        if candidate.get('LIBRARY_STATUS') == 'IMPORTED' and document_id:
-            doc = library.get_document(watch['id_company'], watch['id_company_watch'], document_id)
-            if doc.get('EXTRACTION_STATUS') == 'COMPLETE':
-                return {**library.response_document(doc, True), 'library_status':'IMPORTED'}
-        # Atomic claim prevents a concurrent dismiss from racing the import.
-        claimed = discovery._query(f"""UPDATE `{discovery.DISCOVERY}`
-            SET LIBRARY_STATUS='IMPORTING', ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP()
-            WHERE ID_DISCOVERY=@id AND STATUS != 'DISMISSED';
-            SELECT @@row_count AS UPDATED_COUNT;""", [discovery._p('id','STRING',candidate_id)])
-        if not claimed or int(claimed[0]['UPDATED_COUNT']) != 1:
-            raise HTTPException(409, "La publication a changé de statut ; actualisez la liste")
-        try:
-            if not document_id:
-                # Capture only if absent. The stock is an internal technical operation.
-                if not candidate.get('SNAPSHOT_URI'):
-                    discovery.store_candidate(candidate_id)
-                    candidate = discovery.get_candidate(candidate_id)
-                metadata = json.loads(library._read_uri(candidate['SNAPSHOT_URI']))
-                text = library._read_uri(metadata['text_storage_uri'])
-                frozen_watch = {**watch, 'source_role': metadata.get('source_role', watch['source_role']),
-                    'author_name': metadata.get('author_name') or metadata.get('author_id')}
-                if metadata.get('provider') == 'BRIGHTDATA':
-                    frozen_watch['source_type'] = 'LINKEDIN'
-                result = library.register_publication(frozen_watch, source_url=metadata['url'],
-                    original=_original(metadata['storage_uri']), text=text, title=metadata['title'],
-                    mime='application/json' if metadata.get('provider') == 'BRIGHTDATA' else 'text/html',
-                    published_at=metadata.get('published_at'), date_precision=metadata.get('date_precision','UNKNOWN'),
-                    author=frozen_watch['author_name'],
-                    extra={**metadata, 'id_discovery':candidate_id, 'id_stock':candidate.get('ID_STOCK'),
-                           'capture_metadata_uri':candidate['SNAPSHOT_URI']})
-                document_id = result['id_document']
-            # Link before calling the LLM: retries reuse both the document and its cursor.
-            _state(candidate_id, 'IMPORTING', document_id)
-            result = library.extract_step(watch['id_company'], watch['id_company_watch'], document_id)
-            status = 'IMPORTED' if result['status'] == 'COMPLETE' else 'IMPORTING'
-            _state(candidate_id, status, document_id)
-            return {**result, 'library_status': status}
-        except HTTPException as exc:
-            if exc.status_code != 409:
-                _state(candidate_id,'ERROR',document_id,str(exc.detail)[:2000])
-            raise
-        except Exception as exc:
-            _state(candidate_id,'ERROR',document_id,str(exc)[:2000])
-            raise
-
-
-def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
-                       sort="published_at", direction="desc", status=None,
-                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE", with_summary=False):
-    if not 1 <= limit <= 200 or offset < 0:
-        raise ValueError("Pagination invalide")
-    sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
-             "company":"LOWER(COALESCE(c.NAME,''))", "title":"LOWER(COALESCE(d.TITLE,''))",
-             "units":"UNIT_COUNT"}
-    if sort not in sorts or direction not in {"asc","desc"}:
-        raise ValueError("Tri invalide")
-    if status not in {None,"", "COMPLETE", "PENDING", "ERROR"}:
-        raise ValueError("État invalide")
-    start = date.fromisoformat(published_from) if published_from else None
-    end = date.fromisoformat(published_to) if published_to else None
-    if start and end and start > end:
-        raise ValueError("La date de début doit précéder la date de fin")
-    params = [library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)]
-    where = ["(d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"]
-    if editorial_status not in {'ACTIVE','WITHDRAWN','ALL'}:raise ValueError('État éditorial invalide')
-    if editorial_status != 'ALL':
-        where.append("COALESCE(d.EDITORIAL_STATUS,'ACTIVE')=@editorial")
-        params.append(library._p('editorial','STRING',editorial_status))
-    if document_type:
-        if document_type not in {'MENTION','CORPORATE'}:raise ValueError('Type invalide')
-        where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
-    # Summary scope ignores company/text/date/extraction filters. Company options
-    # retain withdrawn-only companies, so restoration remains discoverable.
-    global_predicate=' AND '.join(where)
-    if company_id:
-        where.append('d.ID_COMPANY=@company')
-        params.append(library._p('company','STRING',company_id))
-    if query and query.strip():
-        query = query.strip()
-        if len(query) > 500:
-            raise ValueError("Recherche limitée à 500 caractères")
-        # Literal case-insensitive substring, not SQL LIKE or user-controlled SQL.
-        where.append("""(CONTAINS_SUBSTR(COALESCE(d.TITLE,''),@query)
-            OR CONTAINS_SUBSTR(COALESCE(d.AUTHOR_NAME,''),@query)
-            OR CONTAINS_SUBSTR(COALESCE(d.SOURCE_URL,''),@query)
-            OR CONTAINS_SUBSTR(COALESCE(c.NAME,''),@query)
-            OR CONTAINS_SUBSTR(COALESCE(w.LABEL,''),@query)
-            OR EXISTS (SELECT 1 FROM `{units}` evidence WHERE evidence.ID_DOCUMENT=d.ID_DOCUMENT
-                AND (CONTAINS_SUBSTR(COALESCE(evidence.FACT,''),@query)
-                     OR CONTAINS_SUBSTR(COALESCE(evidence.QUOTE,''),@query))))""".format(units=library.UNIT))
-        params.append(library._p('query','STRING',query))
-    if status:
-        where.append('d.EXTRACTION_STATUS=@status'); params.append(library._p('status','STRING',status))
-    if start:
-        where.append("d.PUBLISHED_AT >= TIMESTAMP(@start,'Europe/Paris')")
-        params.append(library._p('start','DATE',start))
-    if end:
-        where.append("d.PUBLISHED_AT < TIMESTAMP(@end,'Europe/Paris')")
-        params.append(library._p('end','DATE',end+timedelta(days=1)))
-    predicate = ' AND '.join(where)
-    ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
-    base_sql=f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
-        d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
-        d.EDITORIAL_STATUS, d.EDITORIAL_UPDATED_AT, d.EDITORIAL_REASON,
-        d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
-        c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
-        (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
-        FROM `{library.DOCUMENT}` d
-        LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
-        LEFT JOIN `{discovery.WATCH}` w ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
-        WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
-    if document_type:
-        base_sql += " AND d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else " AND d.ID_COMPANY_WATCH IS NOT NULL"
-    if with_summary:
-        # One BigQuery request returns the page, exact counts and company options
-        # from the same query snapshot. No per-company or per-row count queries.
-        scoped=predicate.replace('c.NAME','d.COMPANY_NAME').replace('w.LABEL','d.WATCH_LABEL')
-        order=ordering.replace('c.NAME','d.COMPANY_NAME')
-        response=library._query(f"""WITH library_base AS ({base_sql}),
-          filtered AS (SELECT d.* FROM library_base d WHERE {scoped})
-          SELECT
-            ARRAY(SELECT AS STRUCT d.* FROM filtered d ORDER BY {order} LIMIT @limit OFFSET @offset) AS ITEMS,
-            (SELECT COUNT(*) FROM filtered) AS TOTAL,
-            (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
-            ARRAY(SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
-                  FROM library_base WHERE ID_COMPANY IS NOT NULL ORDER BY name,id_company) AS COMPANIES""",params)
-        result=dict(response[0]) if response else {'ITEMS':[],'TOTAL':0,'GLOBAL_TOTAL':0,'COMPANIES':[]}
-        page=list(result['ITEMS'] or [])
-        return {'items':[{k.lower():v for k,v in dict(row).items()} for row in page[:limit]],
-                'has_more':len(page)>limit,'offset':offset,'limit':limit,
-                'total':int(result['TOTAL']),'global_total':int(result['GLOBAL_TOTAL']),
-                'companies':[dict(company) for company in (result['COMPANIES'] or [])]}
-    rows=library._query(f"""{base_sql} AND {predicate} ORDER BY {ordering}
-        LIMIT @limit OFFSET @offset""",params)
-    return {'items':[{k.lower():v for k,v in dict(r).items()} for r in rows[:limit]],
-            'has_more':len(rows)>limit, 'offset':offset, 'limit':limit}
-
-
-
-def corpo_library_detail(document_id, offset=0, limit=100):
-    rows=library._query(f"SELECT * FROM `{library.DOCUMENT}` WHERE ID_DOCUMENT=@id AND (ID_COMPANY_WATCH IS NOT NULL OR DOCUMENT_TYPE='MENTION') LIMIT 1",
-        [library._p('id','STRING',document_id)])
+def _company(company_id, require_active=False):
+    rows = _query(f"SELECT IS_ACTIVE FROM `{COMPANY}` WHERE ID_COMPANY=@company LIMIT 1",
+                  [_param("company", "STRING", company_id)])
     if not rows:
-        raise HTTPException(404,'Publication Library Corpo introuvable')
-    doc=dict(rows[0])
-    if doc.get('DOCUMENT_TYPE') == 'MENTION':
-        if offset < 0 or not 1 <= limit <= 500:raise ValueError('Pagination invalide')
-        units=library._query(f"SELECT * FROM `{library.UNIT}` WHERE ID_DOCUMENT=@id ORDER BY UNIT_ID LIMIT @limit OFFSET @offset",
-            [library._p('id','STRING',document_id),library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)])
-        return {**library.response_document(doc),'document_type':'MENTION','editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE','editorial_reason':doc.get('EDITORIAL_REASON'),'published_at':doc.get('PUBLISHED_AT'),
-            'author_name':doc.get('AUTHOR_NAME'),'text':library._read_uri(doc['TEXT_STORAGE_URI']),
-            'units':[{k.lower():v for k,v in dict(u).items()} for u in units[:limit]],'has_more':len(units)>limit,
-            'warning':"VERIFIED valide la présence de la citation, pas la vérité du fait."}
-    detail=library.publication_detail(doc['ID_COMPANY'],doc['ID_COMPANY_WATCH'],document_id,offset,limit)
-    metadata=json.loads(library._read_uri(doc['METADATA_STORAGE_URI']))
-    extra=metadata.get('extra') or {}
-    return {**detail,'published_at':doc.get('PUBLISHED_AT'),'author_name':doc.get('AUTHOR_NAME'),
-        'id_company':doc['ID_COMPANY'],'id_company_watch':doc['ID_COMPANY_WATCH'],
-        'monitored_account_url':extra.get('monitored_account_url'), 'author_id':extra.get('author_id'),
-        'repost':extra.get('repost'), 'share_date':extra.get('share_date'),
-        'offset':offset,'limit':limit}
+        raise HTTPException(404, "Société introuvable")
+    if require_active and not rows[0]["IS_ACTIVE"]:
+        raise HTTPException(409, "Le suivi ne peut pas être activé pour une société inactive")
+
+
+def _out(row):
+    result = {key.lower(): value for key, value in dict(row).items()}
+    config = result.get("collection_config")
+    result["collection_config"] = json.loads(config) if isinstance(config, str) else (config or {})
+    return result
+
+
+def list_company_watch(id_company=None, is_active=None, limit=100, offset=0):
+    if not 1 <= limit <= 500 or offset < 0:
+        raise HTTPException(400, "Pagination invalide")
+    clauses, params = [], []
+    if id_company is not None:
+        _company(id_company)
+        clauses.append("w.ID_COMPANY=@company")
+        params.append(_param("company", "STRING", id_company))
+    if is_active is not None:
+        clauses.append("w.IS_ACTIVE=@active")
+        params.append(_param("active", "BOOL", is_active))
+    where = "WHERE " + " AND ".join(clauses) if clauses else ""
+    params += [_param("limit", "INT64", limit + 1), _param("offset", "INT64", offset)]
+    rows = _query(f"""SELECT w.*, c.NAME AS COMPANY_NAME
+        FROM `{TABLE}` w LEFT JOIN `{COMPANY}` c USING (ID_COMPANY)
+        {where} ORDER BY w.CREATED_AT DESC, w.ID_COMPANY_WATCH
+        LIMIT @limit OFFSET @offset""", params)
+    return {"status": "ok", "watches": [_out(r) for r in rows[:limit]],
+            "has_more": len(rows) > limit, "limit": limit, "offset": offset}
+
+
+def get_company_watch(id_company, watch_id):
+    rows = _query(f"""SELECT w.*, c.NAME AS COMPANY_NAME FROM `{TABLE}` w
+        LEFT JOIN `{COMPANY}` c USING (ID_COMPANY)
+        WHERE w.ID_COMPANY=@company AND w.ID_COMPANY_WATCH=@watch LIMIT 1""",
+        [_param("company", "STRING", id_company), _param("watch", "STRING", watch_id)])
+    if not rows:
+        raise HTTPException(404, "Point de collecte introuvable pour cette société")
+    return _out(rows[0])
+
+
+def _duplicate(id_company, source_type, url, exclude=None):
+    rows = _query(f"""SELECT ID_COMPANY_WATCH FROM `{TABLE}`
+        WHERE ID_COMPANY=@company AND SOURCE_TYPE=@type AND SOURCE_URL=@url
+        AND (@exclude IS NULL OR ID_COMPANY_WATCH != @exclude) LIMIT 1""",
+        [_param("company", "STRING", id_company), _param("type", "STRING", source_type),
+         _param("url", "STRING", url), _param("exclude", "STRING", exclude)])
+    if rows:
+        raise HTTPException(409, "Ce point de collecte existe déjà, éventuellement suspendu")
+
+
+def _values(data):
+    values = data.dict(exclude_unset=True)
+    if "collection_config" in values:
+        try:
+            values["collection_config"] = json.dumps(values["collection_config"], allow_nan=False)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "collection_config doit être un objet JSON valide")
+    return values
+
+
+def create_company_watch(id_company, data: CompanyWatchCreate):
+    _company(id_company, require_active=data.is_active)
+    _duplicate(id_company, data.source_type, data.source_url)
+    # Inclure les valeurs par défaut lors de la création.
+    values = _values(CompanyWatchCreate(**data.dict()))
+    watch_id = str(uuid.uuid4())
+    columns = ["ID_COMPANY_WATCH", "ID_COMPANY", *[k.upper() for k in values], "CREATED_AT", "UPDATED_AT"]
+    expressions = ["@watch", "@company", *[
+        "PARSE_JSON(@collection_config)" if k == "collection_config" else f"@{k}" for k in values
+    ], "CURRENT_TIMESTAMP()", "CURRENT_TIMESTAMP()"]
+    params = [_param("watch", "STRING", watch_id), _param("company", "STRING", id_company)]
+    params += [_param(k, FIELDS[k], v) for k, v in values.items()]
+    _query(f"INSERT INTO `{TABLE}` ({', '.join(columns)}) VALUES ({', '.join(expressions)})", params)
+    return get_company_watch(id_company, watch_id)
+
+
+def update_company_watch(id_company, watch_id, data: CompanyWatchUpdate):
+    current = get_company_watch(id_company, watch_id)
+    changes = data.dict(exclude_unset=True)
+    if not changes:
+        raise HTTPException(400, "Aucune modification fournie")
+    merged = {k: current[k] for k in FIELDS}
+    merged.update(changes)
+    # Revalider l'état complet et les contraintes inter-champs futures.
+    validated = CompanyWatchCreate(**merged)
+    _company(id_company, require_active=validated.is_active)
+    _duplicate(id_company, validated.source_type, validated.source_url, watch_id)
+    values = _values(data)
+    assignments = [f"{k.upper()}=" + ("PARSE_JSON(@collection_config)" if k == "collection_config" else f"@{k}") for k in values]
+    params = [_param(k, FIELDS[k], v) for k, v in values.items()]
+    params += [_param("company", "STRING", id_company), _param("watch", "STRING", watch_id)]
+    _query(f"""UPDATE `{TABLE}` SET {', '.join(assignments)}, UPDATED_AT=CURRENT_TIMESTAMP()
+        WHERE ID_COMPANY=@company AND ID_COMPANY_WATCH=@watch""", params)
+    return get_company_watch(id_company, watch_id)
