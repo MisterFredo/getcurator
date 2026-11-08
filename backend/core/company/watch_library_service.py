@@ -79,7 +79,7 @@ def import_step(candidate_id):
 
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
-                       published_from=None, published_to=None, document_type=None):
+                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE"):
     if not 1 <= limit <= 200 or offset < 0:
         raise ValueError("Pagination invalide")
     sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
@@ -95,6 +95,10 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         raise ValueError("La date de début doit précéder la date de fin")
     params = [library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)]
     where = ["(d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"]
+    if editorial_status not in {'ACTIVE','WITHDRAWN','ALL'}:raise ValueError('État éditorial invalide')
+    if editorial_status != 'ALL':
+        where.append("COALESCE(d.EDITORIAL_STATUS,'ACTIVE')=@editorial")
+        params.append(library._p('editorial','STRING',editorial_status))
     if document_type:
         if document_type not in {'MENTION','CORPORATE'}:raise ValueError('Type invalide')
         where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
@@ -127,6 +131,7 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
     ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
     rows = library._query(f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
         d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
+        d.EDITORIAL_STATUS, d.EDITORIAL_UPDATED_AT, d.EDITORIAL_REASON,
         d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
         c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
         (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
@@ -150,7 +155,7 @@ def corpo_library_detail(document_id, offset=0, limit=100):
         if offset < 0 or not 1 <= limit <= 500:raise ValueError('Pagination invalide')
         units=library._query(f"SELECT * FROM `{library.UNIT}` WHERE ID_DOCUMENT=@id ORDER BY UNIT_ID LIMIT @limit OFFSET @offset",
             [library._p('id','STRING',document_id),library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)])
-        return {**library.response_document(doc),'document_type':'MENTION','published_at':doc.get('PUBLISHED_AT'),
+        return {**library.response_document(doc),'document_type':'MENTION','editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE','editorial_reason':doc.get('EDITORIAL_REASON'),'published_at':doc.get('PUBLISHED_AT'),
             'author_name':doc.get('AUTHOR_NAME'),'text':library._read_uri(doc['TEXT_STORAGE_URI']),
             'units':[{k.lower():v for k,v in dict(u).items()} for u in units[:limit]],'has_more':len(units)>limit,
             'warning':"VERIFIED valide la présence de la citation, pas la vérité du fait."}
