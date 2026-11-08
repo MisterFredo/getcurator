@@ -324,9 +324,10 @@ def list_corpo_library_route(
     published_from: Optional[str] = None, published_to: Optional[str] = None,
     document_type: Optional[str] = None,
     editorial_status: str = "ACTIVE",
+    with_summary: bool = False,
 ):
     return _watch_call(list_corpo_library, id_company, offset, limit,
-        q, sort, direction, status, published_from, published_to, document_type, editorial_status)
+        q, sort, direction, status, published_from, published_to, document_type, editorial_status, with_summary)
 
 
 @router.get("/watch/library/{id_document}")
