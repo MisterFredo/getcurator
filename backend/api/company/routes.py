@@ -308,6 +308,13 @@ def step_mention_run(id_run: str):
     return _watch_call(mention_jobs.reject_browser_step, id_run)
 
 
+from api.company.models import CompanyLibraryEditorialUpdate
+from core.company.library_editorial_service import set_mention_editorial
+
+@router.post('/watch/library/{id_document}/editorial')
+def set_library_editorial_route(id_document:str,data:CompanyLibraryEditorialUpdate):
+    return _watch_call(set_mention_editorial,id_document,data.is_withdrawn,data.reason)
+
 @router.get("/watch/library/list")
 def list_corpo_library_route(
     id_company: Optional[str] = None,
@@ -316,9 +323,10 @@ def list_corpo_library_route(
     sort: str = "published_at", direction: str = "desc", status: Optional[str] = None,
     published_from: Optional[str] = None, published_to: Optional[str] = None,
     document_type: Optional[str] = None,
+    editorial_status: str = "ACTIVE",
 ):
     return _watch_call(list_corpo_library, id_company, offset, limit,
-        q, sort, direction, status, published_from, published_to, document_type)
+        q, sort, direction, status, published_from, published_to, document_type, editorial_status)
 
 
 @router.get("/watch/library/{id_document}")
