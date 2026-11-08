@@ -155,8 +155,10 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
             ARRAY(SELECT AS STRUCT d.* FROM filtered d ORDER BY {order} LIMIT @limit OFFSET @offset) AS ITEMS,
             (SELECT COUNT(*) FROM filtered) AS TOTAL,
             (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
-            ARRAY(SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
-                  FROM library_base WHERE ID_COMPANY IS NOT NULL ORDER BY name,id_company) AS COMPANIES""",params)
+            ARRAY(SELECT AS STRUCT company.* FROM (
+                    SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
+                    FROM library_base WHERE ID_COMPANY IS NOT NULL
+                  ) company ORDER BY company.name,company.id_company) AS COMPANIES""",params)
         result=dict(response[0]) if response else {'ITEMS':[],'TOTAL':0,'GLOBAL_TOTAL':0,'COMPANIES':[]}
         page=list(result['ITEMS'] or [])
         return {'items':[{k.lower():v for k,v in dict(row).items()} for row in page[:limit]],
