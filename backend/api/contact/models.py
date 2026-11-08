@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional,List
 from urllib.parse import urlsplit,unquote,urlunsplit
 import re
 from pydantic import BaseModel,Field,StrictBool,validator,root_validator
@@ -66,4 +66,15 @@ class ContactFollowUpdate(BaseModel):
     is_enabled:StrictBool
     expected_company_id:Optional[str]=Field(default=None,max_length=100)
     expected_updated_at:Optional[datetime]=None
+    class Config:extra='forbid'
+
+
+class LinkedInContactSelection(BaseModel):
+    group_key:str=Field(min_length=64,max_length=64)
+    id_company:str=Field(min_length=1,max_length=100)
+    contact_keys:List[str]=Field(min_items=1,max_items=30000)
+    class Config:extra='forbid'
+
+class LinkedInContactImportRequest(BaseModel):
+    selections:List[LinkedInContactSelection]=Field(min_items=1,max_items=10000)
     class Config:extra='forbid'
