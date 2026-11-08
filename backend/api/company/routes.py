@@ -512,12 +512,6 @@ def delete_route(id_company: str):
     except Exception as e:
         raise HTTPException(400, f"Erreur suppression société : {e}")
 
-
-# Contacts use their own models/services; mounted here to reuse the existing API
-# registration without altering main.py or the USER subsystem.
-from api.contact.routes import router as contact_routes
-router.include_router(contact_routes,prefix='/contacts',tags=['CONTACTS'])
-
 # ============================================================
 # GET ONE — conserver en dernier
 # ============================================================
