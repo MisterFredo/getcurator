@@ -6,7 +6,7 @@ import type {LinkedInContactCurrent,LinkedInChangeJob} from "@/components/admin/
 
 type Person={key:string;first_name:string;last_name:string;job_title:string|null;linkedin_url:string;email:string|null;existing:boolean;email_warning:boolean;current?:LinkedInContactCurrent|null;identity_conflict?:string|null};
 type Company={id_company:string;name:string};
-type Group={key:string;label:string;company_id:string;match:string;suggestions:Company[];contacts:Person[]};
+type Group={key:string;label:string;company_id:string;match:string;decision?:'MATCHED'|'UNMATCHED'|'AMBIGUOUS'|'LATER'|'IGNORED';suggestions:Company[];contacts:Person[]};
 type Result={imported:number;skipped:number;email_conflicts:number};
 type Preview={id_run:string;status:string;pages:number;received:number;error:string|null;groups?:Group[];companies?:Company[];stats?:{invalid:number;duplicates:number;conflicting_profiles:number};result?:Result;phase?:string;import_processed?:number;import_total?:number;change_job?:LinkedInChangeJob};
 const BASE="/contact/linkedin/preview";
@@ -30,21 +30,26 @@ const ERRORS:Record<string,string>={
 export default function LinkedInContactImport(){
  const [previewLoading,setPreviewLoading]=useState(false);const [revision,setRevision]=useState(0);const [id,setId]=useState("");const [data,setData]=useState<Preview|null>(null);
  const [selected,setSelected]=useState<Set<string>>(new Set());const [companies,setCompanies]=useState<Record<string,string>>({});
+ const [triaged,setTriaged]=useState<Set<string>>(new Set());
  const [open,setOpen]=useState<Record<string,boolean>>({});const [q,setQ]=useState("");const [filter,setFilter]=useState("matched");const [limit,setLimit]=useState(50);
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");
  const mounted=useRef(true);const initialized=useRef("");const busyRef=useRef(false);
+ useEffect(()=>{const refresh=()=>setRevision(v=>v+1);window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh);},[]);
  useEffect(()=>{mounted.current=true;setId(saved(LAST)||"");return()=>{mounted.current=false;};},[]);
  useEffect(()=>{
   if(!id)return;setPreviewLoading(true);let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;
   async function refresh(){try{
    const result=await api.get(`${BASE}/${encodeURIComponent(id)}`) as Preview;
    if(stopped)return;setPreviewLoading(false);setData(previous=>({...result,groups:result.groups??previous?.groups,companies:result.companies??previous?.companies,stats:result.stats??previous?.stats}));setError("");
-   if(result.groups&&initialized.current!==id){
+   if(result.groups){
     let choice: {selected:string[];companies:Record<string,string>}|null=null;
     try{const raw=saved(`contacts-linkedin-choice-${id}`);if(raw)choice=JSON.parse(raw);}catch{/* Default choices. */}
     const companyMap=Object.fromEntries(result.groups.map(g=>[g.key,g.company_id]));
-    const defaults=result.groups.flatMap(g=>g.company_id?g.contacts.filter(c=>!c.existing).map(c=>c.key):[]);
-    setSelected(new Set(choice?.selected||defaults));setCompanies({...companyMap,...choice?.companies});initialized.current=id;
+    setCompanies(companyMap);
+    if(initialized.current!==id){
+     const validKeys=new Set(result.groups.flatMap(g=>g.decision!=='IGNORED'&&g.company_id?g.contacts.filter(c=>!c.existing).map(c=>c.key):[]));
+     setSelected(new Set((choice?.selected||Array.from(validKeys)).filter(k=>validKeys.has(k))));initialized.current=id;
+    }
    }
    if(result.status==="IMPORTED"||result.change_job?.status==="COMPLETE"||result.change_job?.status==="PARTIAL")window.dispatchEvent(new Event("contacts-updated"));
    if(["FETCHING","IMPORTING"].includes(result.status)||result.change_job?.status==="RUNNING")timer=setTimeout(()=>void refresh(),3000);
@@ -62,16 +67,46 @@ export default function LinkedInContactImport(){
   store(LAST,result.id_run);
   if(mounted.current){initialized.current="";setData(null);setFilter('unmatched');setLimit(50);setId(result.id_run);setNotice("Aperçu rouvert depuis les données sauvegardées. Aucun nouvel appel LinkedIn.");}
  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
- const groups=data?.groups||[];const available=data?.companies||[];
- const eligible=groups.flatMap(g=>companies[g.key]?g.contacts.filter(c=>!c.existing&&selected.has(c.key)):[]);
+ const groups=data?.groups||[];const visibleGroups=groups.filter(g=>g.decision!=='IGNORED');const available=data?.companies||[];
+ const eligible=visibleGroups.flatMap(g=>companies[g.key]?g.contacts.filter(c=>!c.existing&&selected.has(c.key)):[]);
  async function commit(){if(busyRef.current||!eligible.length)return;busyRef.current=true;setBusy(true);setError("");try{
-  const selections=groups.filter(g=>companies[g.key]).map(g=>({group_key:g.key,id_company:companies[g.key],contact_keys:g.contacts.filter(c=>!c.existing&&selected.has(c.key)).map(c=>c.key)})).filter(g=>g.contact_keys.length);
+  const selections=visibleGroups.filter(g=>companies[g.key]).map(g=>({group_key:g.key,id_company:companies[g.key],contact_keys:g.contacts.filter(c=>!c.existing&&selected.has(c.key)).map(c=>c.key)})).filter(g=>g.contact_keys.length);
   const result=await api.post(`${BASE}/${encodeURIComponent(id)}/import`,{selections}) as {status:string};
   if(mounted.current){setData(current=>current?{...current,status:result.status}:current);setNotice("Import lancé côté backend. Tu peux changer de page.");setRevision(v=>v+1);}
  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
  function toggle(keys:string[],checked:boolean){setSelected(prev=>{const next=new Set(prev);keys.forEach(k=>checked?next.add(k):next.delete(k));return next;});}
- const filtered=groups.filter(g=>(filter==='all'||(filter==='matched'?!!companies[g.key]:!companies[g.key]))&&(`${g.label} ${available.find(c=>c.id_company===companies[g.key])?.name||''}`).toLocaleLowerCase().includes(q.toLocaleLowerCase()));
- const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';const updatesRunning=data?.change_job?.status==='RUNNING';
+ const filtered=groups.filter(g=>{
+  const ignored=g.decision==='IGNORED';const later=g.decision==='LATER'&&!companies[g.key];
+  const match=filter==='ignored'?ignored:!ignored&&(filter==='all'||(filter==='matched'?!!companies[g.key]:filter==='later'?later:!companies[g.key]&&!later));
+  return match&&(`${g.label} ${available.find(c=>c.id_company===companies[g.key])?.name||''}`).toLocaleLowerCase().includes(q.toLocaleLowerCase());
+ });
+ async function editableSnapshot(keys:string[],targetFilter?:string){
+  const result=await api.post(`${BASE}/${encodeURIComponent(id)}/continue`,{}) as {id_run:string};
+  store(LAST,result.id_run);store(`contacts-linkedin-choice-${result.id_run}`,JSON.stringify({selected:keys,companies:{}}));
+  if(mounted.current){initialized.current="";setData(null);setTriaged(new Set());if(targetFilter)setFilter(targetFilter);setId(result.id_run);}
+ }
+ async function chooseContacts(g:Group,checked:boolean){
+  const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);
+  if(data?.status!=='IMPORTED'){toggle(keys,checked);return;}
+  if(busyRef.current)return;busyRef.current=true;setBusy(true);setError('');
+  try{await editableSnapshot(checked?keys:[],filter);if(mounted.current)setNotice("Sélection ouverte depuis les relations sauvegardées, sans appel LinkedIn.");}
+  catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}
+ }
+ async function decide(keys:string[],decision:'MATCH'|'IGNORE'|'LATER'|'RESET',companyId?:string){
+  if(busyRef.current||!keys.length)return;if(keys.length>500){setError('Choisir au maximum 500 sociétés par action.');return;}
+  busyRef.current=true;setBusy(true);setError('');
+  try{
+   await api.put(`${BASE}/${encodeURIComponent(id)}/company-decision`,{group_keys:keys,decision,...(companyId?{id_company:companyId}:{})});
+   const affected=groups.filter(g=>keys.includes(g.key));const contactKeys=affected.flatMap(g=>g.contacts.filter(c=>!c.existing).map(c=>c.key));
+   if(mounted.current){setTriaged(new Set());setCompanies(prev=>{const next={...prev};keys.forEach(k=>next[k]=decision==='MATCH'?companyId||'':'');return next;});toggle(contactKeys,decision==='MATCH');}
+   if(decision==='MATCH'&&data?.status==='IMPORTED'){await editableSnapshot(contactKeys,'matched');}
+   else if(mounted.current)setRevision(v=>v+1);
+   if(mounted.current)setNotice(decision==='IGNORE'?'Société(s) ignorée(s) pour les prochains passages.':decision==='LATER'?'Société(s) conservée(s) à créer / à revoir.':decision==='RESET'?'Société(s) rétablie(s) dans le rapprochement.':'Rapprochement mémorisé. Les nouveaux contacts peuvent être sélectionnés.');
+  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}
+ }
+ function triage(keys:string[],checked:boolean){setTriaged(prev=>{const next=new Set(prev);keys.forEach(k=>checked?next.add(k):next.delete(k));return next;});}
+
+ const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';const updatesRunning=data?.change_job?.status==='RUNNING';const canEdit=(ready||done)&&!busy&&!updatesRunning;
  return <section className="border rounded-xl p-5 bg-white space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer et comparer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
   <button disabled={busy||previewLoading||fetching||importing||updatesRunning} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
@@ -82,19 +117,23 @@ export default function LinkedInContactImport(){
   {fetching&&<p className="text-sm text-gray-500">Tu peux changer de page : la récupération continue côté backend. L'aperçu sera retrouvé ici. Un redémarrage du backend peut nécessiter une reprise.</p>}
   {data&&['PARTIAL','FAILED','INTERRUPTED'].includes(data.status)&&<div className="bg-amber-50 p-3 rounded space-y-2"><p>{ERRORS[data.error||'']||'Récupération interrompue. Les pages déjà reçues sont conservées.'}</p><button disabled={busy} onClick={()=>void start(true)} className="underline">Reprendre la récupération</button><p className="text-sm">{data.phase==='IMPORT'?'Les lots déjà importés sont conservés. La reprise poursuit la sélection validée.':"L’import sera disponible une fois la pagination terminée."}</p></div>}
   {(ready||done)&&<>
-   <p className="text-sm">{groups.filter(g=>companies[g.key]).length} libellé(s) société rapproché(s) · {groups.filter(g=>!companies[g.key]).length} sans rapprochement · {eligible.length} contact(s) sélectionné(s)</p>
+   <p className="text-sm">{visibleGroups.filter(g=>companies[g.key]).length} libellé(s) rapproché(s) · {visibleGroups.filter(g=>!companies[g.key]&&g.decision!=='LATER').length} à rapprocher · {visibleGroups.filter(g=>!companies[g.key]&&g.decision==='LATER').length} à créer / à revoir · {groups.filter(g=>g.decision==='IGNORED').length} ignoré(s) · {eligible.length} contact(s) sélectionné(s)</p>
    <p className="text-xs text-gray-500">{data?.stats?.duplicates||0} répétition(s) regroupée(s) · {data?.stats?.invalid||0} ligne(s) invalide(s) · {data?.stats?.conflicting_profiles||0} profil(s) avec sociétés contradictoires, hors import.</p>
    {done&&data?.result&&<p className="text-green-800">{data.result.imported} contact(s) importé(s) · {data.result.skipped} déjà présent(s). {data.result.email_conflicts>0?`${data.result.email_conflicts} adresse(s) partagée(s) omise(s) sur les profils supplémentaires.`:''}</p>}
    {done&&<button disabled={busy||updatesRunning} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
-   <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import</option><option value="all">Toutes</option></select></div>
-   <LinkedInContactChanges runId={id} groups={groups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing} onRefresh={()=>setRevision(v=>v+1)}/>
+   <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import</option><option value="later">À créer / à revoir</option><option value="ignored">Ignorées — rétablir</option><option value="all">Toutes sauf ignorées</option></select></div>
+   <div className="flex flex-wrap items-center gap-3 text-sm border rounded p-3"><span>{triaged.size} société(s) choisie(s) pour le tri</span><button disabled={!canEdit} className="underline" onClick={()=>triage(filtered.slice(0,Math.min(limit,500)).map(g=>g.key),true)}>Choisir les sociétés affichées (max. 500)</button><button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>setTriaged(new Set())}>Décocher le tri</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1" onClick={()=>void decide(Array.from(triaged),'LATER')}>À créer / à revoir</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1 text-red-700" onClick={()=>void decide(Array.from(triaged),'IGNORE')}>Ignorer les sociétés choisies</button>{filter==='ignored'&&<button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>void decide(Array.from(triaged),'RESET')}>Rétablir les sociétés choisies</button>}</div>
+   <LinkedInContactChanges runId={id} groups={visibleGroups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing} onRefresh={()=>setRevision(v=>v+1)}/>
    <div className="space-y-2">{filtered.slice(0,limit).map(g=>{
-    const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const count=keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);
-    return <div key={g.key} className="border rounded p-3"><div className="flex items-center justify-between gap-3"><button className="text-left font-medium" aria-expanded={!!open[g.key]} onClick={()=>setOpen(prev=>({...prev,[g.key]:!prev[g.key]}))}>{open[g.key]?'▾':'▸'} {g.label} → {company?.name||'Hors import'} <span className="font-normal text-gray-500">· {g.contacts.length} relation(s) · {count} sélectionnée(s)</span></button>
-    <input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!ready||!companies[g.key]||!keys.length||busy||updatesRunning} checked={!!keys.length&&count===keys.length} onChange={e=>toggle(keys,e.target.checked)}/></div>
-    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!ready||busy||updatesRunning} value={companies[g.key]||''} onChange={e=>{const value=e.target.value;setCompanies(prev=>({...prev,[g.key]:value}));toggle(keys,!!value);}}><option value="">Ne pas importer</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
-    {!company&&g.suggestions.length>0&&<p className="text-sm text-gray-500">Suggestions à vérifier : {g.suggestions.map(c=>c.name).join(' · ')}</p>}
-    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!ready||!companies[g.key]||c.existing||busy||updatesRunning} checked={!c.existing&&selected.has(c.key)} onChange={e=>toggle([c.key],e.target.checked)}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.identity_conflict?'Identité à vérifier':c.existing?'Déjà présent — comparaison ci-dessus':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
+    const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const ignored=g.decision==='IGNORED';const count=ignored?0:keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);
+    return <div key={g.key} className="border rounded p-3"><div className="flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs"><input type="checkbox" aria-label={`Choisir ${g.label} pour le tri`} disabled={!canEdit} checked={triaged.has(g.key)} onChange={e=>triage([g.key],e.target.checked)}/><span>Tri société</span></label><button className="text-left font-medium flex-1" aria-expanded={!!open[g.key]} onClick={()=>setOpen(prev=>({...prev,[g.key]:!prev[g.key]}))}>{open[g.key]?'▾':'▸'} {g.label} → {ignored?'Ignorée':company?.name||(g.decision==='LATER'?'À créer / à revoir':'À rapprocher')} <span className="font-normal text-gray-500">· {g.contacts.length} relation(s) · {count} sélectionnée(s)</span></button>
+    <label className="flex items-center gap-2 text-xs"><span>Contacts</span><input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!canEdit||ignored||!companies[g.key]||!keys.length} checked={!ignored&&!!keys.length&&count===keys.length} onChange={e=>void chooseContacts(g,e.target.checked)}/></label></div>
+    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!canEdit||ignored} value={companies[g.key]||''} onChange={e=>{const value=e.target.value;if(value)void decide([g.key],'MATCH',value);else void decide([g.key],'RESET');}}><option value="">Choisir une société GetCurator</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
+    <div className="flex flex-wrap gap-3 text-sm">{ignored?<button disabled={!canEdit} className="underline" onClick={()=>void decide([g.key],'RESET')}>Rétablir cette société</button>:<><button disabled={!canEdit} className="underline text-red-700" onClick={()=>void decide([g.key],'IGNORE')}>Ignorer cette société aux prochains passages</button>{!company&&<><button disabled={!canEdit} className="underline" onClick={()=>void decide([g.key],'LATER')}>À créer / à revoir</button><a href="/admin/company/create" target="_blank" rel="noreferrer" className="underline">Créer la société dans GetCurator</a></>}</>}</div>
+    {!company&&!ignored&&<p className="text-sm text-gray-500">Choisis d’abord une société GetCurator pour activer les cases des contacts. Le tri de la société reste disponible sans rapprochement.</p>}
+
+    {!company&&!ignored&&g.suggestions.length>0&&<p className="text-sm text-gray-500">Suggestions à vérifier : {g.suggestions.map(c=>c.name).join(' · ')}</p>}
+    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!canEdit||ignored||!companies[g.key]||c.existing} checked={!ignored&&!c.existing&&selected.has(c.key)} onChange={e=>{if(done){const single={...g,contacts:[c]};void chooseContacts(single,e.target.checked);}else toggle([c.key],e.target.checked);}}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.identity_conflict?'Identité à vérifier':c.existing?'Déjà présent — comparaison ci-dessus':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
     </div>;
    })}</div>
    {!filtered.length&&<p className="text-gray-500">Aucune société dans cette sélection.</p>}{filtered.length>limit&&<button className="underline" onClick={()=>setLimit(v=>v+50)}>Afficher 50 sociétés supplémentaires</button>}
