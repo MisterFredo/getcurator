@@ -19,7 +19,7 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-1.3-bq'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-1.4-companies'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
@@ -333,3 +333,21 @@ def import_selected(run_id):
             code=str(exc) if isinstance(exc,ValueError) and str(exc).startswith('IMPORT_') else 'IMPORT_WRITE_FAILED'
             run['status']='PARTIAL';run['error']=code;save(run)
             log.exception('Contact import %s: %s',run_id,code)
+
+
+def continue_preview(run_id):
+    """Review remaining companies from a completed snapshot; no LinkedIn call."""
+    with lock(run_id),lock('start'):
+        previous=read(run_id)
+        if previous['status']!='IMPORTED':raise HTTPException(409,"Terminer l'import en cours avant de poursuivre le rapprochement")
+        # Idempotent response after a lost network response/double click.
+        if previous.get('continuation_id'):
+            return {'id_run':previous['continuation_id'],'status':'READY'}
+        run={'id_run':str(uuid.uuid4()),'status':'READY','created_at':now(),'updated_at':now(),
+          'rows':previous['rows'],'pages':previous['pages'],'next_start':previous['next_start'],
+          'fingerprints':previous.get('fingerprints',[]),'error':None,'result':None,'parent_run_id':run_id}
+        save(run)
+        latest=blob('latest');latest.cache_control='no-store'
+        latest.upload_from_string(json.dumps({'id_run':run['id_run']}),content_type='application/json')
+        previous['continuation_id']=run['id_run'];save(previous)
+        return {'id_run':run['id_run'],'status':'READY'}
