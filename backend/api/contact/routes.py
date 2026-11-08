@@ -3,6 +3,7 @@ from fastapi import APIRouter,BackgroundTasks,HTTPException,Query
 from api.contact.models import ContactCreate,ContactUpdate,ContactFollowUpdate,LinkedInContactImportRequest
 from core.contact import service
 from core.contact import linkedin_import
+from core.contact.company_counts import get_company_contact_counts
 import logging
 router=APIRouter()
 log=logging.getLogger(__name__)
@@ -16,6 +17,9 @@ def call(function,*args,**kwargs):
 @router.get('/list')
 def list_contacts(id_company:Optional[str]=None,q:Optional[str]=Query(None,max_length=300),offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=200)):
     return call(service.list_contacts,id_company,q,offset,limit)
+@router.get('/company-counts')
+def company_contact_counts():return call(get_company_contact_counts)
+
 @router.post('/create')
 def create_contact(data:ContactCreate):return call(service.create_contact,data)
 # Static paths before the generic contact ID route.
@@ -27,6 +31,9 @@ def start_linkedin_preview(tasks:BackgroundTasks):
 
 @router.get('/linkedin/preview/{run_id}')
 def get_linkedin_preview(run_id:str):return call(linkedin_import.preview,run_id)
+
+@router.post('/linkedin/preview/{run_id}/continue')
+def continue_linkedin_preview(run_id:str):return call(linkedin_import.continue_preview,run_id)
 
 @router.post('/linkedin/preview/{run_id}/resume')
 def resume_linkedin_preview(run_id:str,tasks:BackgroundTasks):
