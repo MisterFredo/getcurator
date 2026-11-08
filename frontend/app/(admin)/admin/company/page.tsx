@@ -23,6 +23,9 @@ const errorText = (e: unknown) => e instanceof Error ? e.message : "Erreur de sa
 
 export default function CompanyList() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [contactCounts,setContactCounts]=useState<Record<string,number>|null>(null);
+  const [countsError,setCountsError]=useState("");
+  const [countsRevision,setCountsRevision]=useState(0);
   const [search, setSearch] = useState("");
   const [mentionFilter, setMentionFilter] = useState<MentionFilter>("all");
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,20 @@ export default function CompanyList() {
     load();
     return () => { alive.current = false; };
   }, []);
+
+  useEffect(()=>{
+    let stopped=false;setCountsError("");
+    void api.get("/contact/company-counts").then((res:{counts:Record<string,number>})=>{
+      if(!stopped)setContactCounts(res.counts);
+    }).catch((e:unknown)=>{if(!stopped){setContactCounts(null);setCountsError(`Compteurs contacts indisponibles : ${errorText(e)}`);}});
+    return()=>{stopped=true;};
+  },[countsRevision]);
+
+  useEffect(()=>{
+    const refresh=()=>setCountsRevision(v=>v+1);
+    window.addEventListener("focus",refresh);window.addEventListener("contacts-updated",refresh);
+    return()=>{window.removeEventListener("focus",refresh);window.removeEventListener("contacts-updated",refresh);};
+  },[]);
 
   async function toggleMentionWatch(company: CompanyRow) {
     if (pending.current[company.id_company]) return;
@@ -113,9 +130,11 @@ export default function CompanyList() {
           <option value="all">Toutes les sociétés</option><option value="enabled">Activée</option><option value="disabled">Désactivée</option>
         </select>
       </label>
+      <button type="button" onClick={()=>setCountsRevision(v=>v+1)} className="underline py-2">Actualiser les compteurs contacts</button>
       <Link href="/admin/discovery/corpo/mentions" className="underline py-2">Ouvrir Discovery / Mentions</Link>
     </div>
     <p className="text-sm text-gray-500">L’activation rend la société éligible aux collectes de mentions Google Actualités. Elle ne déclenche pas encore de collecte automatique.</p>
+    {countsError && <p role="alert" className="text-amber-700">{countsError}</p>}
     {error && <p role="alert" className="text-red-700">{error}</p>}
 
     {loading ? <div>Loading...</div> : filtered.length === 0 ? <div className="text-gray-500 italic">No company found.</div> :
@@ -123,7 +142,7 @@ export default function CompanyList() {
         <thead><tr className="bg-gray-100 border-b">
           <th className="p-2 w-[90px]">Logo</th><th className="p-2 text-left">Name</th><th className="p-2 text-center">Description</th>
           <th className="p-2 text-left">Type</th><th className="p-2 text-left">Universes</th><th className="p-2 text-center">Partner</th>
-          <th className="p-2 text-left">Veille Mentions</th><th className="p-2 text-right">Actions</th>
+          <th className="p-2 text-center">Contacts</th><th className="p-2 text-left">Veille Mentions</th><th className="p-2 text-right">Actions</th>
         </tr></thead>
         <tbody>{filtered.map(c => {
           const logoUrl = c.media_logo_rectangle_id ? `${GCS_BASE_URL}/${COMPANY_MEDIA_PATH}/${c.media_logo_rectangle_id}` : null;
@@ -134,6 +153,7 @@ export default function CompanyList() {
             <td className="p-2">{c.type || "—"}</td>
             <td className="p-2"><div className="flex flex-wrap gap-1">{(c.universes || []).map(u => <span key={u} className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">{u}</span>)}</div></td>
             <td className="text-center">{c.is_partner ? "✓" : "—"}</td>
+            <td className="p-2 text-center">{contactCounts===null?<span className="text-gray-400">{countsError?"—":"…"}</span>:<Link className="underline font-medium" href={`/admin/contact?id_company=${encodeURIComponent(c.id_company)}`} aria-label={`Voir les ${contactCounts[c.id_company]||0} contacts de ${c.name}`}>{contactCounts[c.id_company]||0}</Link>}</td>
             <td className="p-2"><div className="flex flex-col items-start gap-1">
               <span className={enabled ? "text-green-700 font-medium" : "text-gray-500"}>{enabled ? "Activée" : "Désactivée"}</span>
               <button type="button" onClick={() => toggleMentionWatch(c)} disabled={!!saving[c.id_company]} aria-pressed={enabled}
