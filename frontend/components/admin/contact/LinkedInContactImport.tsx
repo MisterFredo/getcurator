@@ -30,12 +30,19 @@ const ERRORS:Record<string,string>={
 export default function LinkedInContactImport(){
  const [previewLoading,setPreviewLoading]=useState(false);const [revision,setRevision]=useState(0);const [id,setId]=useState("");const [data,setData]=useState<Preview|null>(null);
  const [selected,setSelected]=useState<Set<string>>(new Set());const [companies,setCompanies]=useState<Record<string,string>>({});
+ const [draftMappings,setDraftMappings]=useState<Record<string,string>>({});
  const [triaged,setTriaged]=useState<Set<string>>(new Set());
  const [open,setOpen]=useState<Record<string,boolean>>({});const [q,setQ]=useState("");const [filter,setFilter]=useState("matched");const [limit,setLimit]=useState(50);const [sort,setSort]=useState("name");
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");
  const autoTriage=useRef<{context:string;seen:Set<string>}>({context:"",seen:new Set()});
  const mounted=useRef(true);const initialized=useRef("");const busyRef=useRef(false);
  useEffect(()=>{const refresh=()=>setRevision(v=>v+1);window.addEventListener('focus',refresh);return()=>window.removeEventListener('focus',refresh);},[]);
+ useEffect(()=>{if(!id){setDraftMappings({});return;}try{
+  const parsed=JSON.parse(saved(`contacts-linkedin-draft-mappings-${id}`)||'{}');
+  const restored:Record<string,string>={};
+  if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))Object.entries(parsed).forEach(([key,value])=>{if(/^[0-9a-f]{64}$/.test(key)&&typeof value==='string'&&value)restored[key]=value;});
+  setDraftMappings(restored);
+ }catch{setDraftMappings({});}},[id]);
  useEffect(()=>{mounted.current=true;setId(saved(LAST)||"");return()=>{mounted.current=false;};},[]);
  useEffect(()=>{
   if(!id)return;setPreviewLoading(true);let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;
@@ -86,7 +93,7 @@ export default function LinkedInContactImport(){
   return sort==='relations_desc'?(b.contacts.length-a.contacts.length)||byName:sort==='relations_asc'?(a.contacts.length-b.contacts.length)||byName:byName;
  });
  const triageContext=JSON.stringify([id,filter,q,sort]);
- const triageVisibleKeys=JSON.stringify(filtered.slice(0,Math.min(limit,500)).map(g=>g.key));
+ const triageVisibleKeys=JSON.stringify(filtered.slice(0,Math.min(limit,500)).filter(g=>!draftMappings[g.key]).map(g=>g.key));
  useEffect(()=>{
   const keys=JSON.parse(triageVisibleKeys) as string[];
   const changed=autoTriage.current.context!==triageContext;
@@ -99,6 +106,29 @@ export default function LinkedInContactImport(){
    added.forEach(k=>next.add(k));return next;
   });
  },[triageContext,triageVisibleKeys,filter]);
+ const draftCount=Object.keys(draftMappings).length;
+ function saveDrafts(value:Record<string,string>){if(mounted.current)setDraftMappings(value);store(`contacts-linkedin-draft-mappings-${id}`,JSON.stringify(value));}
+ function stageMapping(g:Group,value:string){
+  const next={...draftMappings};
+  if(value&&value!==companies[g.key]){
+   if(!next[g.key]&&Object.keys(next).length>=500){setError('Valider ce lot de 500 rapprochements avant d’en préparer davantage.');return;}
+   next[g.key]=value;triage([g.key],false);
+  }else delete next[g.key];
+  saveDrafts(next);setError('');
+ }
+ async function validateMappings(){
+  if(busyRef.current||!draftCount)return;busyRef.current=true;setBusy(true);setError('');
+  const mappings=Object.entries(draftMappings).map(([group_key,id_company])=>({group_key,id_company}));
+  try{
+   await api.put(`${BASE}/${encodeURIComponent(id)}/company-mappings`,{mappings});
+   const keys=mappings.map(v=>v.group_key);const contactKeys=groups.filter(g=>keys.includes(g.key)).flatMap(g=>g.contacts.filter(c=>!c.existing).map(c=>c.key));
+   saveDrafts({});
+   if(mounted.current){setCompanies(prev=>({...prev,...Object.fromEntries(mappings.map(v=>[v.group_key,v.id_company]))}));toggle(contactKeys,true);}
+   if(data?.status==='IMPORTED')await editableSnapshot(contactKeys,'matched');
+   else if(mounted.current)setRevision(v=>v+1);
+   if(mounted.current)setNotice(`${mappings.length} rapprochement(s) validé(s) en lot. Les contacts ne sont pas encore importés.`);
+  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}
+ }
  async function editableSnapshot(keys:string[],targetFilter?:string){
   const result=await api.post(`${BASE}/${encodeURIComponent(id)}/continue`,{}) as {id_run:string};
   store(LAST,result.id_run);store(`contacts-linkedin-choice-${result.id_run}`,JSON.stringify({selected:keys,companies:{}}));
@@ -116,6 +146,7 @@ export default function LinkedInContactImport(){
   busyRef.current=true;setBusy(true);setError('');
   try{
    await api.put(`${BASE}/${encodeURIComponent(id)}/company-decision`,{group_keys:keys,decision,...(companyId?{id_company:companyId}:{})});
+   const remainingDrafts={...draftMappings};keys.forEach(k=>delete remainingDrafts[k]);saveDrafts(remainingDrafts);
    const affected=groups.filter(g=>keys.includes(g.key));const contactKeys=affected.flatMap(g=>g.contacts.filter(c=>!c.existing).map(c=>c.key));
    if(mounted.current){setTriaged(new Set());setCompanies(prev=>{const next={...prev};keys.forEach(k=>next[k]=decision==='MATCH'?companyId||'':'');return next;});toggle(contactKeys,decision==='MATCH');}
    if(decision==='MATCH'&&data?.status==='IMPORTED'){await editableSnapshot(contactKeys,'matched');}
@@ -128,7 +159,7 @@ export default function LinkedInContactImport(){
  const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';const updatesRunning=data?.change_job?.status==='RUNNING';const canEdit=(ready||done)&&!busy&&!updatesRunning;
  return <section className="border rounded-xl p-5 bg-white space-y-4">
   <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer et comparer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
-  <button disabled={busy||previewLoading||fetching||importing||updatesRunning} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
+  <button disabled={busy||previewLoading||fetching||importing||updatesRunning||draftCount>0} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
   {previewLoading&&!data&&<p role="status" className="text-sm text-gray-500">Chargement de l’aperçu sauvegardé et des rapprochements société…</p>}
   {error&&<p role="alert" className="text-red-700">{error}</p>}{notice&&<p role="status" className="text-green-800">{notice}</p>}
   {data&&<p className="text-sm">{importing?'Import en cours':fetching?'Récupération en cours':ready?'Aperçu prêt':done?'Import terminé':'Récupération à reprendre'} · {data.pages} page(s) reçue(s) · {data.received} relation(s) reçue(s)</p>}
@@ -139,25 +170,27 @@ export default function LinkedInContactImport(){
    <p className="text-sm">{visibleGroups.filter(g=>companies[g.key]).length} libellé(s) rapproché(s) · {visibleGroups.filter(g=>!companies[g.key]&&g.decision!=='LATER').length} à rapprocher · {visibleGroups.filter(g=>!companies[g.key]&&g.decision==='LATER').length} à créer / à revoir · {groups.filter(g=>g.decision==='IGNORED').length} ignoré(s) · {eligible.length} contact(s) sélectionné(s)</p>
    <p className="text-xs text-gray-500">{data?.stats?.duplicates||0} répétition(s) regroupée(s) · {data?.stats?.invalid||0} ligne(s) invalide(s) · {data?.stats?.conflicting_profiles||0} profil(s) avec sociétés contradictoires, hors import.</p>
    {done&&data?.result&&<p className="text-green-800">{data.result.imported} contact(s) importé(s) · {data.result.skipped} déjà présent(s). {data.result.email_conflicts>0?`${data.result.email_conflicts} adresse(s) partagée(s) omise(s) sur les profils supplémentaires.`:''}</p>}
-   {done&&<button disabled={busy||updatesRunning} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
+   {done&&<button disabled={busy||updatesRunning||draftCount>0} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
+   {draftCount>0&&<div className="sticky top-0 z-10 rounded border border-blue-200 bg-blue-50 p-3 space-y-2"><div className="flex flex-wrap gap-3 items-center"><strong>{draftCount} rapprochement(s) préparé(s), non enregistré(s)</strong><button disabled={!canEdit} onClick={()=>void validateMappings()} className="bg-ratecard-blue text-white px-4 py-2 rounded disabled:opacity-40">Valider les {draftCount} rapprochement(s)</button><button disabled={!canEdit} onClick={()=>saveDrafts({})} className="underline">Annuler les choix préparés</button></div><p className="text-sm">Les lignes restent dans leur liste jusqu’à validation du lot. Aucun contact n’est créé à cette étape.</p><details className="text-sm"><summary className="cursor-pointer">Vérifier le lot préparé</summary><ul className="mt-2 space-y-1">{Object.entries(draftMappings).map(([key,target])=><li key={key}>{groups.find(g=>g.key===key)?.label||key} → {available.find(c=>c.id_company===target)?.name||target}</li>)}</ul></details></div>}
    <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import ({unmatchedCount})</option><option value="later">À créer / à revoir</option><option value="ignored">Ignorées — rétablir</option><option value="all">Toutes sauf ignorées</option></select><label className="flex items-center gap-2 text-sm">Trier par<select className="border rounded p-2" value={sort} onChange={e=>{setSort(e.target.value);setLimit(50);}}><option value="name">Nom de société</option><option value="relations_desc">Relations — plus nombreuses d’abord</option><option value="relations_asc">Relations — moins nombreuses d’abord</option></select></label></div>
    {filter==='unmatched'&&<p className="text-sm text-gray-600">{filtered.length} société(s) dans cette liste{q?` · ${unmatchedCount} au total`:''} · {Math.min(filtered.length,limit)} affichée(s). Les sociétés affichées sont présélectionnées pour le tri (maximum 500) ; tu peux les décocher.</p>}
    <div className="flex flex-wrap items-center gap-3 text-sm border rounded p-3"><span>{triaged.size} société(s) choisie(s) pour le tri</span><button disabled={!canEdit} className="underline" onClick={()=>triage(filtered.slice(0,Math.min(limit,500)).map(g=>g.key),true)}>Choisir les sociétés affichées (max. 500)</button><button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>setTriaged(new Set())}>Décocher le tri</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1" onClick={()=>void decide(Array.from(triaged),'LATER')}>À créer / à revoir</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1 text-red-700" onClick={()=>void decide(Array.from(triaged),'IGNORE')}>Ignorer les sociétés choisies</button>{filter==='ignored'&&<button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>void decide(Array.from(triaged),'RESET')}>Rétablir les sociétés choisies</button>}</div>
-   <LinkedInContactChanges runId={id} groups={visibleGroups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing} onRefresh={()=>setRevision(v=>v+1)}/>
+   <LinkedInContactChanges runId={id} groups={visibleGroups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing||draftCount>0} onRefresh={()=>setRevision(v=>v+1)}/>
    <div className="space-y-2">{filtered.slice(0,limit).map(g=>{
-    const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const ignored=g.decision==='IGNORED';const count=ignored?0:keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);
+    const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const ignored=g.decision==='IGNORED';const count=ignored?0:keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);const pendingTarget=draftMappings[g.key];
     return <div key={g.key} className="border rounded p-3"><div className="flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs"><input type="checkbox" aria-label={`Choisir ${g.label} pour le tri`} disabled={!canEdit} checked={triaged.has(g.key)} onChange={e=>triage([g.key],e.target.checked)}/><span>Tri société</span></label><button className="text-left font-medium flex-1" aria-expanded={!!open[g.key]} onClick={()=>setOpen(prev=>({...prev,[g.key]:!prev[g.key]}))}>{open[g.key]?'▾':'▸'} {g.label} → {ignored?'Ignorée':company?.name||(g.decision==='LATER'?'À créer / à revoir':'À rapprocher')} <span className="font-normal text-gray-500">· {g.contacts.length} relation(s) · {count} sélectionnée(s)</span></button>
-    <label className="flex items-center gap-2 text-xs"><span>Contacts</span><input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!canEdit||ignored||!companies[g.key]||!keys.length} checked={!ignored&&!!keys.length&&count===keys.length} onChange={e=>void chooseContacts(g,e.target.checked)}/></label></div>
-    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!canEdit||ignored} value={companies[g.key]||''} onChange={e=>{const value=e.target.value;if(value)void decide([g.key],'MATCH',value);else void decide([g.key],'RESET');}}><option value="">Choisir une société GetCurator</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
+    <label className="flex items-center gap-2 text-xs"><span>Contacts</span><input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!canEdit||ignored||!companies[g.key]||!keys.length||(done&&draftCount>0)} checked={!ignored&&!!keys.length&&count===keys.length} onChange={e=>void chooseContacts(g,e.target.checked)}/></label></div>
+    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!canEdit||ignored} value={pendingTarget??companies[g.key]??''} onChange={e=>stageMapping(g,e.target.value)}><option value="">Choisir une société GetCurator</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
+    {pendingTarget&&<p className="text-sm text-blue-800">Rapprochement préparé : {available.find(c=>c.id_company===pendingTarget)?.name||pendingTarget}. À valider avec le lot.</p>}
     <div className="flex flex-wrap gap-3 text-sm">{ignored?<button disabled={!canEdit} className="underline" onClick={()=>void decide([g.key],'RESET')}>Rétablir cette société</button>:<><button disabled={!canEdit} className="underline text-red-700" onClick={()=>void decide([g.key],'IGNORE')}>Ignorer cette société aux prochains passages</button>{!company&&<><button disabled={!canEdit} className="underline" onClick={()=>void decide([g.key],'LATER')}>À créer / à revoir</button><a href="/admin/company/create" target="_blank" rel="noreferrer" className="underline">Créer la société dans GetCurator</a></>}</>}</div>
     {!company&&!ignored&&<p className="text-sm text-gray-500">Choisis d’abord une société GetCurator pour activer les cases des contacts. Le tri de la société reste disponible sans rapprochement.</p>}
 
     {!company&&!ignored&&g.suggestions.length>0&&<p className="text-sm text-gray-500">Suggestions à vérifier : {g.suggestions.map(c=>c.name).join(' · ')}</p>}
-    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!canEdit||ignored||!companies[g.key]||c.existing} checked={!ignored&&!c.existing&&selected.has(c.key)} onChange={e=>{if(done){const single={...g,contacts:[c]};void chooseContacts(single,e.target.checked);}else toggle([c.key],e.target.checked);}}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.identity_conflict?'Identité à vérifier':c.existing?'Déjà présent — comparaison ci-dessus':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
+    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!canEdit||ignored||!companies[g.key]||c.existing||(done&&draftCount>0)} checked={!ignored&&!c.existing&&selected.has(c.key)} onChange={e=>{if(done){const single={...g,contacts:[c]};void chooseContacts(single,e.target.checked);}else toggle([c.key],e.target.checked);}}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.identity_conflict?'Identité à vérifier':c.existing?'Déjà présent — comparaison ci-dessus':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
     </div>;
    })}</div>
    {!filtered.length&&<p className="text-gray-500">Aucune société dans cette sélection.</p>}{filtered.length>limit&&<button className="underline" onClick={()=>setLimit(v=>v+50)}>Afficher 50 sociétés supplémentaires</button>}
-   {ready&&<div className="sticky bottom-0 bg-white border-t py-3 flex flex-wrap justify-between items-center gap-3"><p className="text-sm">Les sociétés non rapprochées et les contacts décochés restent hors import.</p><button disabled={busy||updatesRunning||!eligible.length} onClick={()=>void commit()} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{busy?'Import en cours…':`Importer ${eligible.length} contact(s)`}</button></div>}
+   {ready&&<div className="sticky bottom-0 bg-white border-t py-3 flex flex-wrap justify-between items-center gap-3"><p className="text-sm">Les sociétés non rapprochées et les contacts décochés restent hors import.{draftCount>0?" Valide ou annule les rapprochements préparés avant d’importer.":""}</p><button disabled={busy||updatesRunning||draftCount>0||!eligible.length} onClick={()=>void commit()} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{busy?'Import en cours…':`Importer ${eligible.length} contact(s)`}</button></div>}
   </>}
  </section>;
 }
