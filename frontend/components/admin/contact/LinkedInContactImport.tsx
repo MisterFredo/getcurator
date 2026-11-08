@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import LinkedInContactChanges from "@/components/admin/contact/LinkedInContactChanges";
+import type {LinkedInContactCurrent,LinkedInChangeJob} from "@/components/admin/contact/LinkedInContactChanges";
 
-type Person={key:string;first_name:string;last_name:string;job_title:string|null;linkedin_url:string;email:string|null;existing:boolean;email_warning:boolean};
+type Person={key:string;first_name:string;last_name:string;job_title:string|null;linkedin_url:string;email:string|null;existing:boolean;email_warning:boolean;current?:LinkedInContactCurrent|null;identity_conflict?:string|null};
 type Company={id_company:string;name:string};
 type Group={key:string;label:string;company_id:string;match:string;suggestions:Company[];contacts:Person[]};
 type Result={imported:number;skipped:number;email_conflicts:number};
-type Preview={id_run:string;status:string;pages:number;received:number;error:string|null;groups?:Group[];companies?:Company[];stats?:{invalid:number;duplicates:number;conflicting_profiles:number};result?:Result;phase?:string;import_processed?:number;import_total?:number};
+type Preview={id_run:string;status:string;pages:number;received:number;error:string|null;groups?:Group[];companies?:Company[];stats?:{invalid:number;duplicates:number;conflicting_profiles:number};result?:Result;phase?:string;import_processed?:number;import_total?:number;change_job?:LinkedInChangeJob};
 const BASE="/contact/linkedin/preview";
 const LAST="contacts-linkedin-last-run-v1";
 const message=(e:unknown)=>e instanceof Error?e.message:"Opération impossible.";
@@ -36,7 +38,7 @@ export default function LinkedInContactImport(){
   if(!id)return;setPreviewLoading(true);let stopped=false;let timer:ReturnType<typeof setTimeout>|undefined;
   async function refresh(){try{
    const result=await api.get(`${BASE}/${encodeURIComponent(id)}`) as Preview;
-   if(stopped)return;setPreviewLoading(false);setData(result);setError("");
+   if(stopped)return;setPreviewLoading(false);setData(previous=>({...result,groups:result.groups??previous?.groups,companies:result.companies??previous?.companies,stats:result.stats??previous?.stats}));setError("");
    if(result.groups&&initialized.current!==id){
     let choice: {selected:string[];companies:Record<string,string>}|null=null;
     try{const raw=saved(`contacts-linkedin-choice-${id}`);if(raw)choice=JSON.parse(raw);}catch{/* Default choices. */}
@@ -44,8 +46,8 @@ export default function LinkedInContactImport(){
     const defaults=result.groups.flatMap(g=>g.company_id?g.contacts.filter(c=>!c.existing).map(c=>c.key):[]);
     setSelected(new Set(choice?.selected||defaults));setCompanies({...companyMap,...choice?.companies});initialized.current=id;
    }
-   if(result.status==="IMPORTED")window.dispatchEvent(new Event("contacts-updated"));
-   if(["FETCHING","IMPORTING"].includes(result.status))timer=setTimeout(()=>void refresh(),3000);
+   if(result.status==="IMPORTED"||result.change_job?.status==="COMPLETE"||result.change_job?.status==="PARTIAL")window.dispatchEvent(new Event("contacts-updated"));
+   if(["FETCHING","IMPORTING"].includes(result.status)||result.change_job?.status==="RUNNING")timer=setTimeout(()=>void refresh(),3000);
   }catch(e){if(!stopped){setPreviewLoading(false);setError(message(e));timer=setTimeout(()=>void refresh(),10000);}}}
   void refresh();return()=>{stopped=true;if(timer)clearTimeout(timer);};
  },[id,revision]);
@@ -69,10 +71,10 @@ export default function LinkedInContactImport(){
  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
  function toggle(keys:string[],checked:boolean){setSelected(prev=>{const next=new Set(prev);keys.forEach(k=>checked?next.add(k):next.delete(k));return next;});}
  const filtered=groups.filter(g=>(filter==='all'||(filter==='matched'?!!companies[g.key]:!companies[g.key]))&&(`${g.label} ${available.find(c=>c.id_company===companies[g.key])?.name||''}`).toLocaleLowerCase().includes(q.toLocaleLowerCase()));
- const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';
+ const fetching=data?.status==='FETCHING';const importing=data?.status==='IMPORTING';const ready=data?.status==='READY';const done=data?.status==='IMPORTED';const updatesRunning=data?.change_job?.status==='RUNNING';
  return <section className="border rounded-xl p-5 bg-white space-y-4">
-  <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
-  <button disabled={busy||previewLoading||fetching||importing} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
+  <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer et comparer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
+  <button disabled={busy||previewLoading||fetching||importing||updatesRunning} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
   {previewLoading&&!data&&<p role="status" className="text-sm text-gray-500">Chargement de l’aperçu sauvegardé et des rapprochements société…</p>}
   {error&&<p role="alert" className="text-red-700">{error}</p>}{notice&&<p role="status" className="text-green-800">{notice}</p>}
   {data&&<p className="text-sm">{importing?'Import en cours':fetching?'Récupération en cours':ready?'Aperçu prêt':done?'Import terminé':'Récupération à reprendre'} · {data.pages} page(s) reçue(s) · {data.received} relation(s) reçue(s)</p>}
@@ -83,19 +85,20 @@ export default function LinkedInContactImport(){
    <p className="text-sm">{groups.filter(g=>companies[g.key]).length} libellé(s) société rapproché(s) · {groups.filter(g=>!companies[g.key]).length} sans rapprochement · {eligible.length} contact(s) sélectionné(s)</p>
    <p className="text-xs text-gray-500">{data?.stats?.duplicates||0} répétition(s) regroupée(s) · {data?.stats?.invalid||0} ligne(s) invalide(s) · {data?.stats?.conflicting_profiles||0} profil(s) avec sociétés contradictoires, hors import.</p>
    {done&&data?.result&&<p className="text-green-800">{data.result.imported} contact(s) importé(s) · {data.result.skipped} déjà présent(s). {data.result.email_conflicts>0?`${data.result.email_conflicts} adresse(s) partagée(s) omise(s) sur les profils supplémentaires.`:''}</p>}
-   {done&&<button disabled={busy} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
+   {done&&<button disabled={busy||updatesRunning} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
    <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import</option><option value="all">Toutes</option></select></div>
+   <LinkedInContactChanges runId={id} groups={groups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing} onRefresh={()=>setRevision(v=>v+1)}/>
    <div className="space-y-2">{filtered.slice(0,limit).map(g=>{
     const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const count=keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);
     return <div key={g.key} className="border rounded p-3"><div className="flex items-center justify-between gap-3"><button className="text-left font-medium" aria-expanded={!!open[g.key]} onClick={()=>setOpen(prev=>({...prev,[g.key]:!prev[g.key]}))}>{open[g.key]?'▾':'▸'} {g.label} → {company?.name||'Hors import'} <span className="font-normal text-gray-500">· {g.contacts.length} relation(s) · {count} sélectionnée(s)</span></button>
-    <input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!ready||!companies[g.key]||!keys.length||busy} checked={!!keys.length&&count===keys.length} onChange={e=>toggle(keys,e.target.checked)}/></div>
-    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!ready||busy} value={companies[g.key]||''} onChange={e=>{const value=e.target.value;setCompanies(prev=>({...prev,[g.key]:value}));toggle(keys,!!value);}}><option value="">Ne pas importer</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
+    <input aria-label={`Sélectionner les contacts de ${g.label}`} type="checkbox" disabled={!ready||!companies[g.key]||!keys.length||busy||updatesRunning} checked={!!keys.length&&count===keys.length} onChange={e=>toggle(keys,e.target.checked)}/></div>
+    {open[g.key]&&<div className="mt-3 space-y-3"><label className="block text-sm">Société GetCurator<select className="border rounded p-2 ml-2 max-w-full" disabled={!ready||busy||updatesRunning} value={companies[g.key]||''} onChange={e=>{const value=e.target.value;setCompanies(prev=>({...prev,[g.key]:value}));toggle(keys,!!value);}}><option value="">Ne pas importer</option>{available.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}</select></label>
     {!company&&g.suggestions.length>0&&<p className="text-sm text-gray-500">Suggestions à vérifier : {g.suggestions.map(c=>c.name).join(' · ')}</p>}
-    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!ready||!companies[g.key]||c.existing||busy} checked={!c.existing&&selected.has(c.key)} onChange={e=>toggle([c.key],e.target.checked)}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.existing?'Déjà présent — conservé':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
+    <div className="overflow-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Sélection</th><th>Contact</th><th>Fonction</th><th>E-mail</th><th>État</th></tr></thead><tbody>{g.contacts.map(c=><tr key={c.key} className="border-t"><td className="py-2"><input type="checkbox" aria-label={`Importer ${c.first_name} ${c.last_name}`} disabled={!ready||!companies[g.key]||c.existing||busy||updatesRunning} checked={!c.existing&&selected.has(c.key)} onChange={e=>toggle([c.key],e.target.checked)}/></td><td><a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline">{c.first_name} {c.last_name}</a></td><td>{c.job_title||'—'}</td><td>{c.email||'—'}</td><td>{c.identity_conflict?'Identité à vérifier':c.existing?'Déjà présent — comparaison ci-dessus':c.email_warning?'Nouveau — e-mail invalide omis':'Nouveau'}</td></tr>)}</tbody></table></div></div>}
     </div>;
    })}</div>
    {!filtered.length&&<p className="text-gray-500">Aucune société dans cette sélection.</p>}{filtered.length>limit&&<button className="underline" onClick={()=>setLimit(v=>v+50)}>Afficher 50 sociétés supplémentaires</button>}
-   {ready&&<div className="sticky bottom-0 bg-white border-t py-3 flex flex-wrap justify-between items-center gap-3"><p className="text-sm">Les sociétés non rapprochées et les contacts décochés restent hors import.</p><button disabled={busy||!eligible.length} onClick={()=>void commit()} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{busy?'Import en cours…':`Importer ${eligible.length} contact(s)`}</button></div>}
+   {ready&&<div className="sticky bottom-0 bg-white border-t py-3 flex flex-wrap justify-between items-center gap-3"><p className="text-sm">Les sociétés non rapprochées et les contacts décochés restent hors import.</p><button disabled={busy||updatesRunning||!eligible.length} onClick={()=>void commit()} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-40">{busy?'Import en cours…':`Importer ${eligible.length} contact(s)`}</button></div>}
   </>}
  </section>;
 }
