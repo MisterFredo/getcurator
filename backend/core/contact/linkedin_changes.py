@@ -83,10 +83,13 @@ def reserve(run_id,payload):
         raw_rows,_=m.candidates(run['rows']);by_key={r['key']:r for r in raw_rows}
         urls,emails=current_indexes(contacts.query(contacts.READ))
         companies,_,_=m.directory();active={c['ID_COMPANY'] for c in companies}
+        from core.contact import linkedin_company_rules
+        ignored={key for key,value in linkedin_company_rules.rules().items() if value=='IGNORE'}
         seen=set();groups={};items=[]
         for approval in payload.approvals:
             row=by_key.get(approval.contact_key)
             if not row:raise HTTPException(400,'Contact absent de cet aperçu')
+            if row['group_key'] in ignored:raise HTTPException(409,'Société ignorée ; la rétablir avant de valider ses évolutions')
             annotate(row,urls,emails);current=row['current']
             if row['identity_conflict'] or not current or current['id_contact']!=approval.id_contact:
                 raise HTTPException(409,'Identité du contact ambiguë ; actualiser et vérifier sa fiche')
