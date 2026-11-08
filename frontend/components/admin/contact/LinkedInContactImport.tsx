@@ -8,7 +8,7 @@ type Person={key:string;first_name:string;last_name:string;job_title:string|null
 type Company={id_company:string;name:string};
 type Group={key:string;label:string;company_id:string;match:string;decision?:'MATCHED'|'UNMATCHED'|'AMBIGUOUS'|'LATER'|'IGNORED';suggestions:Company[];contacts:Person[]};
 type Result={imported:number;skipped:number;email_conflicts:number};
-type Preview={id_run:string;status:string;pages:number;received:number;error:string|null;groups?:Group[];companies?:Company[];stats?:{invalid:number;duplicates:number;conflicting_profiles:number};result?:Result;phase?:string;import_processed?:number;import_total?:number;change_job?:LinkedInChangeJob};
+type Preview={id_run:string;status:string;pages:number;received:number;error:string|null;groups?:Group[];companies?:Company[];stats?:{invalid:number;duplicates:number;conflicting_profiles:number};result?:Result;phase?:string;import_processed?:number;import_total?:number;change_job?:LinkedInChangeJob;network_warning?:string|null;network_snapshot?:{snapshot_id:string;collected_at:string;profile_count:number}};
 const BASE="/contact/linkedin/preview";
 const LAST="contacts-linkedin-last-run-v1";
 const message=(e:unknown)=>e instanceof Error?e.message:"Opération impossible.";
@@ -59,7 +59,7 @@ export default function LinkedInContactImport(){
      setSelected(new Set((choice?.selected||Array.from(validKeys)).filter(k=>validKeys.has(k))));initialized.current=id;
     }
    }
-   if(result.status==="IMPORTED"||result.change_job?.status==="COMPLETE"||result.change_job?.status==="PARTIAL")window.dispatchEvent(new Event("contacts-updated"));
+   if(result.status==="IMPORTED"||(result.status==="READY"&&!!result.network_snapshot)||result.change_job?.status==="COMPLETE"||result.change_job?.status==="PARTIAL")window.dispatchEvent(new Event("contacts-updated"));
    if(["FETCHING","IMPORTING"].includes(result.status)||result.change_job?.status==="RUNNING")timer=setTimeout(()=>void refresh(),3000);
   }catch(e){if(!stopped){setPreviewLoading(false);setError(message(e));timer=setTimeout(()=>void refresh(),10000);}}}
   void refresh();return()=>{stopped=true;if(timer)clearTimeout(timer);};
@@ -161,6 +161,7 @@ export default function LinkedInContactImport(){
   <div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-xl font-semibold">Importer et comparer mes relations LinkedIn</h2><p className="text-sm text-gray-500 mt-1">Rapprochement par société GetCurator. Les majuscules et les espaces sont ignorés. Aucun suivi activé à l'import.</p></div>
   <button disabled={busy||previewLoading||fetching||importing||updatesRunning||draftCount>0} onClick={()=>void start()} className="border rounded px-4 py-2 disabled:opacity-40">{busy?'Démarrage…':previewLoading&&!data?'Chargement de l’aperçu…':data?'Nouvelle récupération LinkedIn':'Récupérer mes relations'}</button></div>
   {previewLoading&&!data&&<p role="status" className="text-sm text-gray-500">Chargement de l’aperçu sauvegardé et des rapprochements société…</p>}
+  {data?.network_warning&&<p role="alert" className="text-amber-800">La récupération est complète, mais les statuts de présence dans le réseau n’ont pas pu être actualisés. Les contacts restent importables ; les anciennes dates de vérification sont conservées.</p>}
   {error&&<p role="alert" className="text-red-700">{error}</p>}{notice&&<p role="status" className="text-green-800">{notice}</p>}
   {data&&<p className="text-sm">{importing?'Import en cours':fetching?'Récupération en cours':ready?'Aperçu prêt':done?'Import terminé':'Récupération à reprendre'} · {data.pages} page(s) reçue(s) · {data.received} relation(s) reçue(s)</p>}
   {importing&&<p className="text-sm">{data?.import_processed||0} / {data?.import_total||0} contact(s) traité(s) par lots. Tu peux changer de page.</p>}
