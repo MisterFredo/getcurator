@@ -10,6 +10,7 @@ import CompanyKnowledge from "./CompanyKnowledge";
 import CompanyAliases from "./CompanyAliases";
 import CompanyVisuals from "./CompanyVisuals";
 import CompanyWatchManager from "./CompanyWatchManager";
+import ContactList from "@/components/admin/contact/ContactList";
 
 type Props = {
   mode: "create" | "edit";
@@ -251,12 +252,13 @@ export default function CompanyForm({ mode, companyId: initialCompanyId }: Props
       </div>
       {companyId && savedWatchCompany ? (
         <section className="pt-8 border-t">
-          <CompanyWatchManager key={companyId} company={savedWatchCompany} />
+          <ContactList key={`contacts-${companyId}`} companyId={companyId} companyName={savedWatchCompany.name} />
+          <div className="mt-8"><CompanyWatchManager key={companyId} company={savedWatchCompany} /></div>
         </section>
       ) : (
         <section className="border rounded bg-white p-5 space-y-2">
           <h2 className="text-xl font-semibold text-ratecard-blue">Veille Corpo</h2>
-          <p className="text-gray-500">Enregistrez la société pour ajouter ses pages, comptes et newsletters à suivre.</p>
+          <p className="text-gray-500">Enregistrez la société pour ajouter ses contacts et ses points de collecte.</p>
         </section>
       )}
     </div>
