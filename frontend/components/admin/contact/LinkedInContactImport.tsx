@@ -31,7 +31,7 @@ export default function LinkedInContactImport(){
  const [previewLoading,setPreviewLoading]=useState(false);const [revision,setRevision]=useState(0);const [id,setId]=useState("");const [data,setData]=useState<Preview|null>(null);
  const [selected,setSelected]=useState<Set<string>>(new Set());const [companies,setCompanies]=useState<Record<string,string>>({});
  const [triaged,setTriaged]=useState<Set<string>>(new Set());
- const [open,setOpen]=useState<Record<string,boolean>>({});const [q,setQ]=useState("");const [filter,setFilter]=useState("matched");const [limit,setLimit]=useState(50);
+ const [open,setOpen]=useState<Record<string,boolean>>({});const [q,setQ]=useState("");const [filter,setFilter]=useState("matched");const [limit,setLimit]=useState(50);const [sort,setSort]=useState("name");
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");
  const autoTriage=useRef<{context:string;seen:Set<string>}>({context:"",seen:new Set()});
  const mounted=useRef(true);const initialized=useRef("");const busyRef=useRef(false);
@@ -81,8 +81,11 @@ export default function LinkedInContactImport(){
   const ignored=g.decision==='IGNORED';const later=g.decision==='LATER'&&!companies[g.key];
   const match=filter==='ignored'?ignored:!ignored&&(filter==='all'||(filter==='matched'?!!companies[g.key]:filter==='later'?later:!companies[g.key]&&!later));
   return match&&(`${g.label} ${available.find(c=>c.id_company===companies[g.key])?.name||''}`).toLocaleLowerCase().includes(q.toLocaleLowerCase());
+ }).sort((a,b)=>{
+  const byName=a.label.localeCompare(b.label,'fr',{sensitivity:'base'})||a.key.localeCompare(b.key);
+  return sort==='relations_desc'?(b.contacts.length-a.contacts.length)||byName:sort==='relations_asc'?(a.contacts.length-b.contacts.length)||byName:byName;
  });
- const triageContext=JSON.stringify([id,filter,q]);
+ const triageContext=JSON.stringify([id,filter,q,sort]);
  const triageVisibleKeys=JSON.stringify(filtered.slice(0,Math.min(limit,500)).map(g=>g.key));
  useEffect(()=>{
   const keys=JSON.parse(triageVisibleKeys) as string[];
@@ -137,7 +140,7 @@ export default function LinkedInContactImport(){
    <p className="text-xs text-gray-500">{data?.stats?.duplicates||0} répétition(s) regroupée(s) · {data?.stats?.invalid||0} ligne(s) invalide(s) · {data?.stats?.conflicting_profiles||0} profil(s) avec sociétés contradictoires, hors import.</p>
    {done&&data?.result&&<p className="text-green-800">{data.result.imported} contact(s) importé(s) · {data.result.skipped} déjà présent(s). {data.result.email_conflicts>0?`${data.result.email_conflicts} adresse(s) partagée(s) omise(s) sur les profils supplémentaires.`:''}</p>}
    {done&&<button disabled={busy||updatesRunning} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
-   <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import ({unmatchedCount})</option><option value="later">À créer / à revoir</option><option value="ignored">Ignorées — rétablir</option><option value="all">Toutes sauf ignorées</option></select></div>
+   <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import ({unmatchedCount})</option><option value="later">À créer / à revoir</option><option value="ignored">Ignorées — rétablir</option><option value="all">Toutes sauf ignorées</option></select><label className="flex items-center gap-2 text-sm">Trier par<select className="border rounded p-2" value={sort} onChange={e=>{setSort(e.target.value);setLimit(50);}}><option value="name">Nom de société</option><option value="relations_desc">Relations — plus nombreuses d’abord</option><option value="relations_asc">Relations — moins nombreuses d’abord</option></select></label></div>
    {filter==='unmatched'&&<p className="text-sm text-gray-600">{filtered.length} société(s) dans cette liste{q?` · ${unmatchedCount} au total`:''} · {Math.min(filtered.length,limit)} affichée(s). Les sociétés affichées sont présélectionnées pour le tri (maximum 500) ; tu peux les décocher.</p>}
    <div className="flex flex-wrap items-center gap-3 text-sm border rounded p-3"><span>{triaged.size} société(s) choisie(s) pour le tri</span><button disabled={!canEdit} className="underline" onClick={()=>triage(filtered.slice(0,Math.min(limit,500)).map(g=>g.key),true)}>Choisir les sociétés affichées (max. 500)</button><button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>setTriaged(new Set())}>Décocher le tri</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1" onClick={()=>void decide(Array.from(triaged),'LATER')}>À créer / à revoir</button><button disabled={!canEdit||!triaged.size} className="border rounded px-3 py-1 text-red-700" onClick={()=>void decide(Array.from(triaged),'IGNORE')}>Ignorer les sociétés choisies</button>{filter==='ignored'&&<button disabled={!canEdit||!triaged.size} className="underline" onClick={()=>void decide(Array.from(triaged),'RESET')}>Rétablir les sociétés choisies</button>}</div>
    <LinkedInContactChanges runId={id} groups={visibleGroups} companies={companies} companyNames={available} job={data?.change_job} locked={busy||importing} onRefresh={()=>setRevision(v=>v+1)}/>
