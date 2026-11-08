@@ -55,6 +55,11 @@ export default function LinkedInContactImport(){
   store(LAST,result.id_run);
   if(mounted.current){if(result.id_run!==id){initialized.current="";setData(null);setId(result.id_run);}else{setRevision(v=>v+1);}}
  }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
+ async function continuePreview(){if(busyRef.current)return;busyRef.current=true;setBusy(true);setError("");try{
+  const result=await api.post(`${BASE}/${encodeURIComponent(id)}/continue`,{}) as {id_run:string};
+  store(LAST,result.id_run);
+  if(mounted.current){initialized.current="";setData(null);setFilter('unmatched');setLimit(50);setId(result.id_run);setNotice("Aperçu rouvert depuis les données sauvegardées. Aucun nouvel appel LinkedIn.");}
+ }catch(e){if(mounted.current)setError(message(e));}finally{busyRef.current=false;if(mounted.current)setBusy(false);}}
  const groups=data?.groups||[];const available=data?.companies||[];
  const eligible=groups.flatMap(g=>companies[g.key]?g.contacts.filter(c=>!c.existing&&selected.has(c.key)):[]);
  async function commit(){if(busyRef.current||!eligible.length)return;busyRef.current=true;setBusy(true);setError("");try{
@@ -78,6 +83,7 @@ export default function LinkedInContactImport(){
    <p className="text-sm">{groups.filter(g=>companies[g.key]).length} libellé(s) société rapproché(s) · {groups.filter(g=>!companies[g.key]).length} sans rapprochement · {eligible.length} contact(s) sélectionné(s)</p>
    <p className="text-xs text-gray-500">{data?.stats?.duplicates||0} répétition(s) regroupée(s) · {data?.stats?.invalid||0} ligne(s) invalide(s) · {data?.stats?.conflicting_profiles||0} profil(s) avec sociétés contradictoires, hors import.</p>
    {done&&data?.result&&<p className="text-green-800">{data.result.imported} contact(s) importé(s) · {data.result.skipped} déjà présent(s). {data.result.email_conflicts>0?`${data.result.email_conflicts} adresse(s) partagée(s) omise(s) sur les profils supplémentaires.`:''}</p>}
+   {done&&<button disabled={busy} onClick={()=>void continuePreview()} className="border rounded px-4 py-2 disabled:opacity-40">Rapprocher et importer d’autres contacts</button>}
    <div className="flex flex-wrap gap-3"><input className="border rounded p-2" placeholder="Rechercher une société…" value={q} onChange={e=>{setQ(e.target.value);setLimit(50);}}/><select className="border rounded p-2" value={filter} onChange={e=>{setFilter(e.target.value);setLimit(50);}}><option value="matched">Sociétés rapprochées</option><option value="unmatched">À rapprocher / hors import</option><option value="all">Toutes</option></select></div>
    <div className="space-y-2">{filtered.slice(0,limit).map(g=>{
     const keys=g.contacts.filter(c=>!c.existing).map(c=>c.key);const count=keys.filter(k=>selected.has(k)).length;const company=available.find(c=>c.id_company===companies[g.key]);
