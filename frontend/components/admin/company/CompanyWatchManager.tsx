@@ -61,6 +61,11 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const mutation = useRef(false);
   const mounted = useRef(true);
 
+  useEffect(()=>{
+    const refresh=()=>setRevision(value=>value+1);
+    window.addEventListener('contacts-updated',refresh);window.addEventListener('focus',refresh);
+    return()=>{window.removeEventListener('contacts-updated',refresh);window.removeEventListener('focus',refresh);};
+  },[]);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -128,6 +133,8 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     setDraft(emptyPayload()); setConfigText("{}"); setMonitorMode("LISTING"); setDirty(false); setNotice(""); setActionError("");
   }
   function startEdit(row: CompanyWatch) {
+    if(row.id_contact){if(!discardAllowed())return;window.location.assign(`/admin/contact/edit/${encodeURIComponent(row.id_contact)}`);return;}
+
     if (!discardAllowed()) return;
     setEditor({ companyId: row.id_company, watchId: row.id_company_watch,
       companyName: row.company_name || row.id_company });
@@ -184,6 +191,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       if (!mounted.current) return;
       setNotice(row.is_active ? "Suivi suspendu." : "Suivi activé.");
       setRevision(value => value + 1);
+      if(row.id_contact)window.dispatchEvent(new Event('contacts-updated'));
     } catch (error) { if (mounted.current) setActionError(message(error)); }
     finally { mutation.current = false; if (mounted.current) setBusy(false); }
   }
@@ -191,6 +199,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   return (
     <div className="space-y-6">
       <a href="/admin/discovery/corpo/mentions" className="inline-block border rounded px-3 py-2 underline">Mentions externes → Library</a>
+      <div className="text-sm"><a href="/admin/contact" className="underline">Gérer les contacts et leur suivi LinkedIn</a></div>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           {fixedCompany ? (
@@ -262,7 +271,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             <label className="space-y-1"><span className="text-sm">Origine</span>
               <select className={control} value={draft.source_role}
                 onChange={event => change("source_role", event.target.value as WatchSourceRole)}>
-                <option value="CORPORATE">Corporate</option><option value="EMPLOYEE">Salarié</option>
+                <option value="CORPORATE">Corporate</option><option value="EMPLOYEE" disabled>Salarié — gérer via Contacts</option>
               </select></label>
             <label className="space-y-1"><span className="text-sm">Auteur / personne suivie</span>
               <input maxLength={250} className={control} value={draft.author_name || ""}
@@ -332,7 +341,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
                   onClick={() => { setCollectionRow(row); setActionError(""); setNotice(""); }}>
                   Scan / URL
                 </button>
-                <button type="button" className={button} disabled={busy || !!collectionRow} onClick={() => startEdit(row)}>Modifier</button>
+                <button type="button" className={button} disabled={busy || !!collectionRow} onClick={() => startEdit(row)}>{row.id_contact?"Fiche contact":"Modifier"}</button>
                 <button type="button" className={button} disabled={busy || !!editor || !!collectionRow} onClick={() => toggle(row)}>
                   {row.is_active ? 'Suspendre' : 'Activer'}</button>
               </div></td>
@@ -355,5 +364,3 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     </div>
   );
 }
-
-
