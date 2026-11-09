@@ -68,6 +68,28 @@ def import_linkedin_preview(run_id:str,payload:LinkedInContactImportRequest,task
     if result.get('queued'):tasks.add_task(linkedin_import.import_selected,run_id)
     return result
 
+# CSV staging is separate from the LinkedIn network snapshot.
+from api.contact.models import CsvContactPreviewRequest,CsvContactCommitRequest
+from core.contact import csv_import
+
+@router.post('/csv/preview')
+def csv_preview(payload:CsvContactPreviewRequest):return call(csv_import.preview,payload.csv_text)
+
+@router.get('/csv/imports/{run_id}')
+def csv_status(run_id:str):return call(csv_import.status,run_id)
+
+@router.post('/csv/imports/{run_id}/commit')
+def csv_commit(run_id:str,payload:CsvContactCommitRequest,tasks:BackgroundTasks):
+    result=call(csv_import.reserve,run_id,payload.selections)
+    if result['queued']:tasks.add_task(csv_import.apply,run_id)
+    return result
+
+@router.post('/csv/imports/{run_id}/resume')
+def csv_resume(run_id:str,tasks:BackgroundTasks):
+    result=call(csv_import.resume,run_id)
+    if result['queued']:tasks.add_task(csv_import.apply,run_id)
+    return result
+
 @router.get('/{id_contact}/companies')
 def contact_companies(id_contact:str):return call(service.company_history,id_contact)
 @router.put('/{id_contact}/follow')
