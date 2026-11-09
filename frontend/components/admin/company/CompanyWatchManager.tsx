@@ -198,21 +198,20 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const editorCompany = fixedCompany || companies.find(c => c.id_company === editor?.companyId);
   return (
     <div className="space-y-6">
-      <a href="/admin/discovery/corpo/mentions" className="inline-block border rounded px-3 py-2 underline">Mentions externes → Library</a>
       <div className="text-sm"><a href="/admin/contact" className="underline">Gérer les contacts et leur suivi LinkedIn</a></div>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           {fixedCompany ? (
-            <h2 className="text-xl font-semibold text-ratecard-blue">Veille Corpo</h2>
+            <h2 className="text-xl font-semibold text-ratecard-blue">Veille</h2>
           ) : (
             <>
-              <p className="text-sm text-gray-500">Discovery / Corpo</p>
-              <h1 className="text-3xl font-semibold text-ratecard-blue">Veille sociétés</h1>
+              <p className="text-sm text-gray-500">Discovery / Veille</p>
+              <h1 className="text-3xl font-semibold text-ratecard-blue">Veille</h1>
             </>
           )}
           <p className="text-gray-500 mt-1">{fixedCompany
             ? `Gérez les points de collecte de ${fixedCompany.name}.`
-            : "Configurez les pages, comptes et newsletters à suivre pour chaque société."}</p>
+            : "Suivez les sites et comptes LinkedIn des sociétés et contacts, puis retrouvez les publications découvertes."}</p>
         </div>
         <button type="button" onClick={startCreate} disabled={!companyId || companiesLoading || busy || !!collectionRow}
           className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
