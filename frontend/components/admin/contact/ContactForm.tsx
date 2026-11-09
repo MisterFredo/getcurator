@@ -5,7 +5,7 @@ import ContactNetworkStatus from "@/components/admin/contact/ContactNetworkStatu
 import {useRouter} from "next/navigation";
 import {getContact,saveContact,listContactCompanies,errorText} from "@/lib/contacts";
 import type {Contact,ContactPayload,CompanyChoice} from "@/lib/contacts";
-const empty:ContactPayload={first_name:'',last_name:'',email:null,linkedin_url:null,job_title:null,id_company:null,is_active:true,linkedin_follow_enabled:false};
+const empty:ContactPayload={first_name:'',last_name:'',email:null,linkedin_url:null,job_title:null,sales_navigator_url:null,id_company:null,is_active:true,linkedin_follow_enabled:false};
 const field='border rounded px-3 py-2 w-full';
 export default function ContactForm({id}:{id?:string}){
  const router=useRouter();const [draft,setDraft]=useState<ContactPayload>({...empty});const [saved,setSaved]=useState<Contact|null>(null);
@@ -18,7 +18,7 @@ export default function ContactForm({id}:{id?:string}){
   async function load(){try{
    const [choices,contact]=await Promise.all([listContactCompanies(),id?getContact(id):Promise.resolve(null)]);
    if(stopped)return;setCompanies(choices);setSaved(contact);
-   if(contact)setDraft({first_name:contact.first_name||'',last_name:contact.last_name||'',email:contact.email,linkedin_url:contact.linkedin_url,job_title:contact.job_title,id_company:contact.id_company,is_active:contact.is_active,linkedin_follow_enabled:contact.linkedin_follow_enabled});
+   if(contact)setDraft({first_name:contact.first_name||'',last_name:contact.last_name||'',email:contact.email,linkedin_url:contact.linkedin_url,job_title:contact.job_title,sales_navigator_url:contact.sales_navigator_url||null,id_company:contact.id_company,is_active:contact.is_active,linkedin_follow_enabled:contact.linkedin_follow_enabled});
    else setDraft({...empty,id_company:new URLSearchParams(window.location.search).get('id_company')||null});
   }catch(e){if(!stopped)setError(errorText(e));}finally{if(!stopped)setLoading(false);}}
   void load();return()=>{stopped=true;};
@@ -38,7 +38,7 @@ export default function ContactForm({id}:{id?:string}){
  }
  async function save(event:React.FormEvent){
   event.preventDefault();if(running.current)return;running.current=true;setBusy(true);setError('');setNotice('');
-  try{const contact=await saveContact(draft,id||saved?.id_contact,saved?.updated_at,!id&&!saved&&!followTouched.current);if(!mounted.current)return;setSaved(contact);setDraft({first_name:contact.first_name,last_name:contact.last_name,email:contact.email,linkedin_url:contact.linkedin_url,job_title:contact.job_title,id_company:contact.id_company,is_active:contact.is_active,linkedin_follow_enabled:contact.linkedin_follow_enabled});setNotice('Contact enregistré. Aucun scan n’a été déclenché.');if(!id)router.replace(`/admin/contact/edit/${encodeURIComponent(contact.id_contact)}`);}
+  try{const contact=await saveContact(draft,id||saved?.id_contact,saved?.updated_at,!id&&!saved&&!followTouched.current);if(!mounted.current)return;setSaved(contact);setDraft({first_name:contact.first_name,last_name:contact.last_name,email:contact.email,linkedin_url:contact.linkedin_url,job_title:contact.job_title,sales_navigator_url:contact.sales_navigator_url||null,id_company:contact.id_company,is_active:contact.is_active,linkedin_follow_enabled:contact.linkedin_follow_enabled});setNotice('Contact enregistré. Aucun scan n’a été déclenché.');if(!id)router.replace(`/admin/contact/edit/${encodeURIComponent(contact.id_contact)}`);}
   catch(e){if(mounted.current)setError(errorText(e));}finally{running.current=false;if(mounted.current)setBusy(false);}
  }
  if(loading)return <p>Chargement du contact…</p>;
@@ -51,6 +51,7 @@ export default function ContactForm({id}:{id?:string}){
  <label>Fonction<input className={field} maxLength={250} value={draft.job_title||''} onChange={e=>update('job_title',e.target.value||null)}/></label>
  <label>Société<select className={field} value={draft.id_company||''} onChange={e=>update('id_company',e.target.value||null)}><option value="">Sans rattachement</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}{c.is_active===false?' — inactive':''}</option>)}</select></label>
  <label>Profil LinkedIn personnel<input className={field} type="url" maxLength={4096} placeholder="https://www.linkedin.com/in/…" value={draft.linkedin_url||''} onChange={e=>update('linkedin_url',e.target.value||null)}/></label>
+ <label>Lien Sales Navigator (facultatif)<input className={field} type="url" value={draft.sales_navigator_url||''} maxLength={4096} onChange={e=>update('sales_navigator_url',e.target.value||null)}/></label>
  <label className="flex gap-2 items-center"><input type="checkbox" checked={draft.is_active} onChange={e=>update('is_active',e.target.checked)}/>Contact actif</label>
  <div className="md:col-span-2 border-t pt-4 space-y-2"><label className="flex gap-2 items-center"><input type="checkbox" disabled={!canFollow&&!draft.linkedin_follow_enabled} checked={draft.linkedin_follow_enabled} onChange={e=>update('linkedin_follow_enabled',e.target.checked)}/>Suivi automatique LinkedIn</label><p className="text-sm text-gray-500">Par défaut, les nouveaux contacts reprennent le suivi de leur société. Vous pouvez ajuster ce choix. Nécessite une société, un profil LinkedIn et un contact actif. Le réglage est aussi modifiable depuis la fiche société. L’enregistrement ne lance pas de scan.</p><p className="text-sm text-gray-500">Un changement de société ou de profil suspend l’ancien point et conserve ses publications. Si le suivi reste activé, le nouveau point devient disponible pour les prochaines collectes.</p></div>
  </fieldset>
