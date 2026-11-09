@@ -34,20 +34,25 @@ def set_mention_watch_config(company_id, is_enabled):
     from core.library.company_watch_library import document_lock
     import hashlib
     lock_key = 'mention-config-' + hashlib.sha256((COMPANY+':'+company_id).encode()).hexdigest()
-    with document_lock(lock_key):
+    from core.contact import service as contacts
+    from core.contact.company_follow import sync_sql
+    with contacts.scope_lock(), document_lock(lock_key):
         current = get_mention_watch_config(company_id)
         if is_enabled and not current['is_active']:
             raise HTTPException(409,'Impossible d’activer la veille d’une société inactive')
         if current['is_enabled'] == is_enabled:
             return current
         enabled_sql = 'TRUE' if is_enabled else 'FALSE'  # fixed literals, never user text
-        query_bq(f'''MERGE `{CONFIG}` T
+        query_bq(f'''BEGIN TRANSACTION;
+            MERGE `{CONFIG}` T
             USING (SELECT ID_COMPANY FROM `{COMPANY}`
                    WHERE ID_COMPANY=@company AND (IS_ACTIVE=TRUE OR {enabled_sql}=FALSE)) S
             ON T.ID_COMPANY=S.ID_COMPANY
             WHEN MATCHED THEN UPDATE SET IS_ENABLED={enabled_sql}, UPDATED_AT=CURRENT_TIMESTAMP()
             WHEN NOT MATCHED THEN INSERT (ID_COMPANY,IS_ENABLED,CREATED_AT,UPDATED_AT)
-                VALUES (S.ID_COMPANY,{enabled_sql},CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP())''',
+                VALUES (S.ID_COMPANY,{enabled_sql},CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
+            {sync_sql('a.ID_COMPANY=@company')}
+            COMMIT TRANSACTION;''',
             {'company':company_id})
         saved = get_mention_watch_config(company_id)
         if saved['is_enabled'] != is_enabled or (is_enabled and not saved['is_active']):
