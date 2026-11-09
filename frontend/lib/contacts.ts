@@ -1,7 +1,7 @@
 import {api} from "@/lib/api";
 export type Contact={id_contact:string;first_name:string;last_name:string;display_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;company_name:string|null;company_is_active?:boolean;is_active:boolean;linkedin_follow_enabled:boolean;id_company_watch:string|null;created_at:string;updated_at:string;import_source?:string|null;contact_origin?:'MANUAL'|'LINKEDIN_IMPORT'|'OTHER';network_status?:'CONFIRMED'|'NOT_VERIFIED'|'NOT_FOUND';network_checked_at?:string|null};
 export type ContactPayload={first_name:string;last_name:string;email:string|null;linkedin_url:string|null;job_title:string|null;id_company:string|null;is_active:boolean;linkedin_follow_enabled:boolean};
-export type CompanyChoice={id_company:string;name:string;is_active?:boolean};
+export type CompanyChoice={id_company:string;name:string;is_active?:boolean;mention_watch_enabled?:boolean};
 const base='/contact';
 export function changed(){if(typeof window!=="undefined")window.dispatchEvent(new Event('contacts-updated'));}
 export async function listContacts(options:{companyId?:string;q?:string;offset?:number}={}):Promise<{contacts:Contact[];total:number;has_more:boolean}>{
@@ -9,8 +9,10 @@ export async function listContacts(options:{companyId?:string;q?:string;offset?:
  return api.get(`${base}/list?${query.toString()}`);
 }
 export async function getContact(id:string):Promise<Contact>{return api.get(`${base}/${encodeURIComponent(id)}`);}
-export async function saveContact(data:ContactPayload,id?:string,expected?:string):Promise<Contact>{
- const res=id?await api.put(`${base}/${encodeURIComponent(id)}`,{...data,expected_updated_at:expected}):await api.post(`${base}/create`,data);
+export async function saveContact(data:ContactPayload,id?:string,expected?:string,inheritFollow=false):Promise<Contact>{
+ const {linkedin_follow_enabled:follow,...identity}=data;
+ const createPayload=inheritFollow?identity:{...identity,linkedin_follow_enabled:follow};
+ const res=id?await api.put(`${base}/${encodeURIComponent(id)}`,{...data,expected_updated_at:expected}):await api.post(`${base}/create`,createPayload);
  if(res.status!=="ok"||!res.contact?.id_contact)throw new Error('Enregistrement non confirmé.');changed();return res.contact;
 }
 export async function followContact(contact:Contact,enabled:boolean):Promise<Contact>{
