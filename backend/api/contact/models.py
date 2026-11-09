@@ -17,7 +17,19 @@ def linkedin_profile(value):
     if not re.fullmatch(r'/in/[^/\s?#\\]+',unquote(path)):raise ValueError('Un profil personnel LinkedIn /in/ est requis')
     return urlunsplit(('https','www.linkedin.com',path.casefold(),'',''))
 
+def sales_navigator_profile(value):
+    if value is None or isinstance(value,str) and not value.strip():return None
+    if not isinstance(value,str):raise ValueError('URL Sales Navigator attendue')
+    parts=urlsplit(value.strip())
+    if parts.scheme.lower() not in {'http','https'} or (parts.hostname or '').lower() not in {'linkedin.com','www.linkedin.com'} or parts.username or parts.password or parts.port not in (None,80,443):
+        raise ValueError('URL Sales Navigator invalide')
+    match=re.fullmatch(r'/sales/lead/([A-Za-z0-9_-]+)(?:,[^/?#]*)?/?',parts.path)
+    if not match:raise ValueError('Un lien Sales Navigator /sales/lead/ est requis')
+    return 'https://www.linkedin.com/sales/lead/'+match.group(1)
+
 class ContactBase(BaseModel):
+    @validator('sales_navigator_url',check_fields=False,pre=True)
+    def sales_clean(cls,value):return sales_navigator_profile(value)
     @validator('first_name','last_name','job_title',check_fields=False,pre=True)
     def trim(cls,value):return value.strip() if isinstance(value,str) else value
     @validator('id_company',check_fields=False,pre=True)
@@ -36,6 +48,7 @@ class ContactCreate(ContactBase):
     last_name:str=Field(min_length=1,max_length=150)
     email:Optional[str]=Field(default=None,max_length=320)
     linkedin_url:Optional[str]=Field(default=None,max_length=4096)
+    sales_navigator_url:Optional[str]=Field(default=None,max_length=4096)
     id_company:Optional[str]=Field(default=None,max_length=100)
     job_title:Optional[str]=Field(default=None,max_length=250)
     is_active:StrictBool=True
@@ -51,6 +64,7 @@ class ContactUpdate(ContactBase):
     last_name:Optional[str]=Field(default=None,min_length=1,max_length=150)
     email:Optional[str]=Field(default=None,max_length=320)
     linkedin_url:Optional[str]=Field(default=None,max_length=4096)
+    sales_navigator_url:Optional[str]=Field(default=None,max_length=4096)
     id_company:Optional[str]=Field(default=None,max_length=100)
     job_title:Optional[str]=Field(default=None,max_length=250)
     is_active:Optional[StrictBool]=None
@@ -126,4 +140,18 @@ class LinkedInCompanyMapping(BaseModel):
 
 class LinkedInCompanyMappingsRequest(BaseModel):
     mappings:List[LinkedInCompanyMapping]=Field(min_items=1,max_items=500)
+    class Config:extra='forbid'
+
+
+class CsvContactPreviewRequest(BaseModel):
+    csv_text:str=Field(min_length=1,max_length=3000000)
+    class Config:extra='forbid'
+
+class CsvContactChoice(BaseModel):
+    line:int=Field(ge=2,le=2001)
+    id_company:str=Field(min_length=1,max_length=100)
+    class Config:extra='forbid'
+
+class CsvContactCommitRequest(BaseModel):
+    selections:List[CsvContactChoice]=Field(min_items=1,max_items=2000)
     class Config:extra='forbid'
