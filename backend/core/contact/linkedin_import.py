@@ -281,6 +281,7 @@ def commit(run_id, selections):
         return {'id_run':run_id,'status':'IMPORTING','queued':True}
 
 def write_batch(run_id,prepared):
+    from core.contact.company_follow import sync_sql
     params=[contacts.p('rows','STRING',json.dumps(prepared,ensure_ascii=False)),contacts.p('run','STRING',run_id)]
     output=contacts.query(f"""CREATE TEMP TABLE incoming AS
           SELECT JSON_VALUE(j,'$.id_contact') ID_CONTACT,JSON_VALUE(j,'$.id_affiliation') ID_AFFILIATION,
@@ -315,6 +316,7 @@ def write_batch(run_id,prepared):
             WHEN MATCHED THEN UPDATE SET ID_COMPANY=S.ID_COMPANY,LINKEDIN_LABEL=S.COMPANY_LABEL,UPDATED_AT=CURRENT_TIMESTAMP()
             WHEN NOT MATCHED THEN INSERT(COMPANY_KEY,LINKEDIN_LABEL,ID_COMPANY,CREATED_AT,UPDATED_AT)
               VALUES(S.COMPANY_KEY,S.COMPANY_LABEL,S.ID_COMPANY,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP());
+          {sync_sql('c.ID_CONTACT IN (SELECT ID_CONTACT FROM new_contacts)')}
           COMMIT TRANSACTION;
           SELECT (SELECT COUNT(*) FROM `{contacts.CONTACT}` WHERE IMPORT_RUN_ID=@run AND ID_CONTACT IN (SELECT ID_CONTACT FROM incoming)) AS IMPORTED,(SELECT COUNT(*) FROM incoming)-(SELECT COUNT(*) FROM `{contacts.CONTACT}` WHERE IMPORT_RUN_ID=@run AND ID_CONTACT IN (SELECT ID_CONTACT FROM incoming)) AS SKIPPED;""",params)
     return {'imported':int(output[0]['IMPORTED']),'skipped':int(output[0]['SKIPPED'])}
