@@ -145,7 +145,11 @@ def _write(contact_id,data,watch_id):
 def create_contact(payload):
     contact_id=str(uuid.uuid4())
     with scope_lock():
-        data,watch_id=plan(None,payload.dict(),contact_id);_check(data,contact_id);_write(contact_id,data,watch_id)
+        changes=payload.dict(exclude_unset=True)
+        if 'linkedin_follow_enabled' not in changes:
+            from core.contact.company_follow import default_follow
+            changes['linkedin_follow_enabled']=default_follow(changes.get('id_company'),changes.get('linkedin_url'),changes.get('is_active',True))
+        data,watch_id=plan(None,changes,contact_id);_check(data,contact_id);_write(contact_id,data,watch_id)
         return {'status':'ok','contact':get_contact(contact_id)}
 
 def update_contact(contact_id,payload):
