@@ -155,3 +155,12 @@ class CsvContactChoice(BaseModel):
 class CsvContactCommitRequest(BaseModel):
     selections:List[CsvContactChoice]=Field(min_items=1,max_items=2000)
     class Config:extra='forbid'
+
+
+class EmployerCheckRequest(BaseModel):
+    include_network:StrictBool=False
+    class Config:extra='forbid'
+
+class EmployerCheckResumeRequest(BaseModel):
+    snapshot_id:Optional[str]=Field(default=None,min_length=4,max_length=150)
+    class Config:extra='forbid'
