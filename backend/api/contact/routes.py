@@ -90,6 +90,40 @@ def csv_resume(run_id:str,tasks:BackgroundTasks):
     if result['queued']:tasks.add_task(csv_import.apply,run_id)
     return result
 
+# Employer checks are manual jobs; no recurrence is encoded here.
+from api.contact.models import EmployerCheckRequest,EmployerCheckResumeRequest
+from core.contact import employer_check
+
+@router.get('/employer-check/latest')
+def employer_check_latest():return call(employer_check.status)
+
+@router.get('/employer-check/pending')
+def employer_check_pending():return call(employer_check.pending)
+
+@router.post('/employer-check/start')
+def start_employer_check(payload:EmployerCheckRequest,tasks:BackgroundTasks):
+    result=call(employer_check.start,payload.include_network)
+    if result['queued']:tasks.add_task(employer_check.collect,result['id_run'])
+    return result
+
+@router.post('/employer-check/mappings')
+def apply_employer_mappings(payload:LinkedInCompanyMappingsRequest,tasks:BackgroundTasks):
+    result=call(employer_check.reserve_mappings,payload)
+    if result['queued']:tasks.add_task(employer_check.collect,result['id_run'])
+    return result
+
+@router.post('/employer-check/{run_id}/resume')
+def resume_employer_check(run_id:str,payload:EmployerCheckResumeRequest,tasks:BackgroundTasks):
+    result=call(employer_check.resume,run_id,payload.snapshot_id)
+    if result['queued']:tasks.add_task(employer_check.collect,result['id_run'])
+    return result
+
+@router.post('/employer-check/{run_id}/finish')
+def finish_employer_check(run_id:str):return call(employer_check.finish,run_id)
+
+@router.get('/employer-check/{run_id}')
+def get_employer_check(run_id:str):return call(employer_check.status,run_id)
+
 @router.get('/{id_contact}/companies')
 def contact_companies(id_contact:str):return call(service.company_history,id_contact)
 @router.put('/{id_contact}/follow')
