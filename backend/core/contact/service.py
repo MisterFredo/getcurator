@@ -82,7 +82,7 @@ def company_history(contact_id):
     return {'status':'ok','companies':[{k.lower():v for k,v in dict(row).items()} for row in rows]}
 
 def plan(existing,changes,contact_id):
-    keys=['first_name','last_name','email','linkedin_url','id_company','job_title','is_active','linkedin_follow_enabled']
+    keys=['first_name','last_name','email','linkedin_url','sales_navigator_url','id_company','job_title','is_active','linkedin_follow_enabled']
     values={k:existing.get(k) for k in keys} if existing else {}
     values.update({k:v for k,v in changes.items() if k in keys})
     if values.get('is_active') is False:
@@ -115,14 +115,14 @@ def _check(data,contact_id):
 def _write(contact_id,data,watch_id):
     display=' '.join(x for x in [data['first_name'],data['last_name']] if x)
     params=[p('id','STRING',contact_id),p('first','STRING',data['first_name']),p('last','STRING',data['last_name']),
-      p('email','STRING',data['email']),p('linkedin','STRING',data['linkedin_url']),p('company','STRING',data['id_company']),
+      p('email','STRING',data['email']),p('linkedin','STRING',data['linkedin_url']),p('sales','STRING',data.get('sales_navigator_url')),p('company','STRING',data['id_company']),
       p('job','STRING',data['job_title']),p('active','BOOL',data['is_active']),p('watch','STRING',watch_id),
       p('label','STRING',f'LinkedIn — {display}'),p('author','STRING',display),p('affiliation','STRING',str(uuid.uuid4()))]
     query(f"""BEGIN TRANSACTION;
     MERGE `{CONTACT}` T USING(SELECT @id AS ID_CONTACT) S ON T.ID_CONTACT=S.ID_CONTACT
-      WHEN MATCHED THEN UPDATE SET FIRST_NAME=@first,LAST_NAME=@last,EMAIL=@email,LINKEDIN_PROFILE_UPDATED_AT=IF(LINKEDIN_URL IS DISTINCT FROM @linkedin,CURRENT_TIMESTAMP(),LINKEDIN_PROFILE_UPDATED_AT),LINKEDIN_URL=@linkedin,JOB_TITLE=@job,IS_ACTIVE=@active,UPDATED_AT=CURRENT_TIMESTAMP()
-      WHEN NOT MATCHED THEN INSERT(ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,IS_ACTIVE,CREATED_AT,UPDATED_AT,IMPORT_SOURCE,LINKEDIN_PROFILE_UPDATED_AT)
-        VALUES(@id,@first,@last,@email,@linkedin,@job,@active,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),'MANUAL',IF(@linkedin IS NULL,NULL,CURRENT_TIMESTAMP()));
+      WHEN MATCHED THEN UPDATE SET FIRST_NAME=@first,LAST_NAME=@last,EMAIL=@email,LINKEDIN_PROFILE_UPDATED_AT=IF(LINKEDIN_URL IS DISTINCT FROM @linkedin,CURRENT_TIMESTAMP(),LINKEDIN_PROFILE_UPDATED_AT),LINKEDIN_URL=@linkedin,SALES_NAVIGATOR_URL=@sales,JOB_TITLE=@job,IS_ACTIVE=@active,UPDATED_AT=CURRENT_TIMESTAMP()
+      WHEN NOT MATCHED THEN INSERT(ID_CONTACT,FIRST_NAME,LAST_NAME,EMAIL,LINKEDIN_URL,JOB_TITLE,IS_ACTIVE,CREATED_AT,UPDATED_AT,IMPORT_SOURCE,LINKEDIN_PROFILE_UPDATED_AT,SALES_NAVIGATOR_URL)
+        VALUES(@id,@first,@last,@email,@linkedin,@job,@active,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),'MANUAL',IF(@linkedin IS NULL,NULL,CURRENT_TIMESTAMP()),@sales);
     UPDATE `{AFFILIATION}` SET ENDED_AT=CURRENT_TIMESTAMP(),UPDATED_AT=CURRENT_TIMESTAMP()
       WHERE ID_CONTACT=@id AND ENDED_AT IS NULL AND (@company IS NULL OR ID_COMPANY!=@company);
     IF @company IS NOT NULL THEN
