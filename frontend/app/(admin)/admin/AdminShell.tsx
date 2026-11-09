@@ -25,7 +25,8 @@ const sections: NavSection[] = [
   { title: "Production", items: [
     { href: "/admin/discovery", label: "Discovery", icon: Globe, children: [
       { href: "/admin/discovery", label: "Médias", exact: true },
-      { href: "/admin/discovery/corpo", label: "Corpo" },
+      { href: "/admin/discovery/corpo", label: "Veille", exact: true },
+      { href: "/admin/discovery/corpo/mentions", label: "Mentions" },
     ] },
     { href: "/admin/content/stock", label: "Stock", icon: Archive },
     { href: "/admin/translation", label: "Translation", icon: Languages },
@@ -41,22 +42,10 @@ const sections: NavSection[] = [
     { href: "/admin/numbers", label: "Numbers", icon: BarChart3 },
   ] },
   { title: "Intelligence", items: [
-    {
-      href: "/admin/library",
-      label: "Library",
-      icon: Library,
-      children: [
-        {
-          href: "/admin/library",
-          label: "Documents PDF",
-          exact: true,
-        },
-        {
-          href: "/admin/library/corpo",
-          label: "Corpo",
-        },
-      ],
-    },
+    { href: "/admin/library", label: "Library", icon: Library, children: [
+      { href: "/admin/library", label: "Documents PDF", exact: true },
+      { href: "/admin/library/corpo", label: "Corpo" },
+    ] },
     { href: "/admin/knowledge", label: "Knowledge", icon: Brain },
     { href: "/admin/touch", label: "GetCurator Touch", icon: Sparkles },
     { href: "/admin/production", label: "Productions", icon: Presentation },
