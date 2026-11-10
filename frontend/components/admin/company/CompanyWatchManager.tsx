@@ -5,12 +5,15 @@ import type { FormEvent } from "react";
 import WatchCollectionPanel from "./WatchCollectionPanel";
 import WatchDiscoveryWorkspace from "./WatchDiscoveryWorkspace";
 import {
-  listWatchCompanies, listCompanyWatches, createCompanyWatch, updateCompanyWatch,
+  listWatchCompanies, createCompanyWatch, updateCompanyWatch,
 } from "@/lib/companyWatch";
 import type {
   WatchCompany, CompanyWatch, WatchPayload, WatchSourceType, WatchSourceRole, WatchMethod,
 } from "@/lib/companyWatch";
 
+import {listMonitoredWatches} from '@/lib/watchOperations';
+import type {MonitoredWatch, WatchChannel, WatchKind} from '@/lib/watchOperations';
+const dateText=(value?:string)=>value?new Date(value).toLocaleString('fr-FR',{timeZone:'Europe/Paris'}):'—';
 const PAGE_SIZE = 50;
 const control = "w-full border rounded px-3 py-2 bg-white disabled:opacity-50";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed";
@@ -43,8 +46,10 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const companyId = fixedCompany?.id_company || selectedCompanyId;
   const [sourcesOpen,setSourcesOpen]=useState(!!fixedCompany);
   const [status, setStatus] = useState("all");
+  const [channel,setChannel]=useState<WatchChannel>('ALL');
+  const [kind,setKind]=useState<WatchKind>('ALL');
   const [offset, setOffset] = useState(0);
-  const [rows, setRows] = useState<CompanyWatch[]>([]);
+  const [rows, setRows] = useState<MonitoredWatch[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -63,8 +68,8 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
 
   useEffect(()=>{
     const refresh=()=>setRevision(value=>value+1);
-    window.addEventListener('contacts-updated',refresh);window.addEventListener('focus',refresh);
-    return()=>{window.removeEventListener('contacts-updated',refresh);window.removeEventListener('focus',refresh);};
+    window.addEventListener('watch-scan-updated',refresh);window.addEventListener('contacts-updated',refresh);window.addEventListener('focus',refresh);
+    return()=>{window.removeEventListener('watch-scan-updated',refresh);window.removeEventListener('contacts-updated',refresh);window.removeEventListener('focus',refresh);};
   },[]);
   useEffect(() => {
     mounted.current = true;
@@ -95,7 +100,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     setLoadError("");
     setRows([]);
     setHasMore(false);
-    listCompanyWatches({ id_company: companyId || undefined,
+    listMonitoredWatches({ channel,kind,id_company: companyId || undefined,
       is_active: status === "all" ? undefined : status === "active", offset, limit: PAGE_SIZE,
     }).then(result => {
       if (cancelled) return;
@@ -110,7 +115,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       if (!cancelled) setLoadError(message(error));
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [companyId, status, offset, revision]);
+  }, [companyId, status, channel,kind,offset, revision]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -234,6 +239,10 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             <option value="all">Tous</option><option value="active">Actifs</option><option value="inactive">Suspendus</option>
           </select>
         </label>
+        <label className="space-y-1"><span className="text-sm font-medium">Canal</span>
+          <select className={control} value={channel} onChange={e=>{setChannel(e.target.value as WatchChannel);setOffset(0);}}><option value="ALL">Sites et LinkedIn</option><option value="WEB">Sites</option><option value="LINKEDIN">LinkedIn</option></select></label>
+        <label className="space-y-1"><span className="text-sm font-medium">Type de relevé</span>
+          <select className={control} value={kind} onChange={e=>{setKind(e.target.value as WatchKind);setOffset(0);}}><option value="ALL">Tous les relevés</option><option value="PUBLICATIONS">Publications / URL</option><option value="SINGLE_PAGE">Pages uniques</option></select></label>
         <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow}
           onClick={() => setRevision(value => value + 1)}>Actualiser</button>
       </div>
@@ -322,7 +331,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           : !rows.length ? <p className="p-8 text-center text-gray-500">Aucun point de collecte pour ces filtres.</p>
           : <div className="overflow-x-auto"><table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600"><tr>
-              {['Société', 'Point de collecte', 'Format / origine', 'Récupération', 'État', 'Actions'].map(label =>
+              {['Société', 'Point de collecte', 'Format / origine', 'Récupération', 'État', 'Dernier relevé / diagnostics', 'Actions'].map(label =>
                 <th scope="col" key={label} className="px-4 py-3 font-medium">{label}</th>)}
             </tr></thead>
             <tbody>{rows.map(row => <tr key={row.id_company_watch} className="border-t align-top">
@@ -335,6 +344,14 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
               <td className="px-4 py-3">{row.collection_method === 'BRIGHTDATA' ? 'Bright Data' : row.collection_method === 'HTML' ? 'HTML' : row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
               <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                 {row.is_active ? 'Actif' : 'Suspendu'}</span></td>
+              <td className="px-4 py-3 min-w-72"><p>{row.watch_channel==='LINKEDIN'?'LinkedIn':'Site'} · {row.watch_kind==='SINGLE_PAGE'?'Page unique':'Publications / URL'}</p>
+                {row.diagnostic?<div className="mt-2 space-y-1 text-xs"><strong>{row.diagnostic.status==='FAILED'?'Échec':row.diagnostic.status==='RUNNING'?'En cours':row.diagnostic.warnings?.length?'Réussi avec avertissements':'Réussi'}</strong>
+                  <p>Dernière tentative : {dateText(row.diagnostic.last_attempt_at)}</p><p>Dernier succès : {dateText(row.diagnostic.last_success_at)}</p>
+                  {row.diagnostic.new!==undefined&&<p>Dernier succès : {row.diagnostic.new} nouveautés · {row.diagnostic.known||0} connues · {row.diagnostic.unchanged||0} inchangées</p>}
+                  {row.diagnostic.error&&<p className="text-red-700 whitespace-pre-wrap">{row.diagnostic.error}</p>}
+                  {!!row.diagnostic.warnings?.length&&<details><summary className="cursor-pointer text-amber-800">Remarques ({row.diagnostic.warnings.length})</summary>{row.diagnostic.warnings.map((w,i)=><p className="text-amber-800 mt-1" key={i}>{w}</p>)}</details>}
+                </div>:<p className="mt-2 text-xs text-gray-500">Aucun relevé enregistré. Les anciens diagnostics HTML ne sont pas disponibles.</p>}
+              </td>
               <td className="px-4 py-3"><div className="flex gap-2">
                 <button type="button" className={button} disabled={busy || !!editor || !!collectionRow}
                   onClick={() => { setCollectionRow(row); setActionError(""); setNotice(""); }}>
@@ -358,7 +375,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       </section>
       </div>}
       {!collectionRow && <div className="pt-8 border-t">
-        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} onBusyChange={setBusy}/>
+        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} channel={channel} kind={kind} onBusyChange={setBusy}/>
       </div>}
     </div>
   );
