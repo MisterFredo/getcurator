@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime, date
+
 
 
 class CompanyCreate(BaseModel):
@@ -225,3 +226,15 @@ class CompanyLibraryEditorialUpdate(BaseModel):
     reason: Optional[str] = Field(default=None,max_length=1000)
     class Config:
         extra = 'forbid'
+
+
+class WatchOperationRequest(BaseModel):
+    kind: Literal["ALL", "PUBLICATIONS", "SINGLE_PAGE"] = "PUBLICATIONS"
+    channel: Literal["ALL", "WEB", "LINKEDIN"] = "ALL"
+    company_id: Optional[str] = None
+    watch_id: Optional[str] = None
+    failed_only: bool = False
+    recover_only: bool = False
+
+    class Config:
+        extra = "forbid"
