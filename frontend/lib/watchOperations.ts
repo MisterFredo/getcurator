@@ -1,5 +1,5 @@
 import {api} from '@/lib/api';
-import type {CompanyWatch, CorpoDiscovery} from '@/lib/companyWatch';
+import type {CompanyWatch, CorpoDiscovery, WatchCompany} from '@/lib/companyWatch';
 export type WatchChannel = 'ALL'|'WEB'|'LINKEDIN';
 export type WatchKind = 'ALL'|'PUBLICATIONS'|'SINGLE_PAGE';
 export type SourceDiagnostic = {status:string;last_attempt_at?:string;last_success_at?:string;error?:string|null;warnings?:string[];new?:number;known?:number;unchanged?:number;legacy?:boolean};
@@ -26,3 +26,7 @@ export function launchWatchJob(options:{kind:WatchKind;channel:WatchChannel;comp
 export function resumeWatchJob(id:string):Promise<WatchJob>{return api.post(`/company/watch/operations/jobs/${encodeURIComponent(id)}/resume`,{});}
 
 export function pauseWatchJob(id:string):Promise<WatchJob>{return api.post(`/company/watch/operations/jobs/${encodeURIComponent(id)}/pause`,{});}
+
+export async function listActiveWatchCompanies():Promise<WatchCompany[]>{
+ const result=await api.get('/company/watch/operations/companies');return result.companies||[];
+}
