@@ -175,6 +175,7 @@ def _ingest(company_id, watch_id, state, records):
         _save(company_id, watch_id, state)
         return
     posts, issues = provider.normalize_records(valid_records)
+    issues, excluded_reposts = provider.split_repost_issues(issues)
     existing = discovery._query(f"SELECT URL FROM `{discovery.DISCOVERY}` WHERE ID_COMPANY=@company",
         [discovery._p("company", "STRING", company_id)])
     legacy = discovery._query(f"SELECT SOURCE_URL FROM `{discovery.DOCUMENT}` WHERE ID_COMPANY=@company AND ID_COMPANY_WATCH IS NOT NULL",
@@ -191,6 +192,12 @@ def _ingest(company_id, watch_id, state, records):
         known_ids.add(post["post_id"])
     count = discovery._insert_candidates_batch(watch, items, batch_id=state["run_id"])
     warnings = ["La collecte ne garantit pas l'exhaustivité. Pour les contenus relayés, la date reçue peut être celle du post original ; elle ne prouve pas la date du relais."]
+    if excluded_reposts:
+        state["repost_audit_uri"] = _upload(f"company-watch/brightdata/results/{state['run_id']}-reposts.json",
+            json.dumps(excluded_reposts).encode(), "application/json")
+        simple=sum(i["reason"]=="REPOST_WITHOUT_COMMENT" for i in excluded_reposts)
+        uncertain=len(excluded_reposts)-simple
+        warnings.append(f"{simple} repost(s) sans commentaire exclus ; {uncertain} repost(s) au commentaire non vérifiable mis de côté.")
     if failures:
         warnings.append(f"{len(failures)} ligne(s) d’erreur fournisseur isolée(s) ; les publications valides ont été conservées.")
     if issues:
@@ -202,9 +209,11 @@ def _ingest(company_id, watch_id, state, records):
     if limit is not None and len(records) >= limit:
         warnings.append(f"Plafond de {limit} résultats atteint : la couverture peut être partielle.")
     # Empty/error-only output must not masquerade as a successful scan.
-    state.update(status="COMPLETE" if posts or not records else "FAILED", new=count, known=known,
+    complete=bool(posts) or not records or (bool(excluded_reposts) and not issues and not failures)
+    state.update(status="COMPLETE" if complete else "FAILED", new=count, known=known,
+        excluded_reposts=len(excluded_reposts),
         received=len(records), warnings=warnings,
-        message=None if posts or not records else "Aucune publication exploitable dans la réponse ; consulter l'audit Bright Data.")
+        message=None if complete else "Aucune publication exploitable dans la réponse ; consulter l'audit Bright Data.")
     _save(company_id, watch_id, state)
 
 
