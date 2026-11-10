@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import os
 import logging
+import html
+import unicodedata
+from html.parser import HTMLParser
 import re
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
@@ -186,6 +189,53 @@ def post_id(value):
         return None
 
 
+class _PlainText(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+    def handle_data(self, data):
+        self.parts.append(data)
+    def handle_starttag(self, tag, attrs):
+        if tag in {"br","p","div","li"}: self.parts.append(" ")
+    def handle_endtag(self, tag):
+        if tag in {"p","div","li"}: self.parts.append(" ")
+
+
+def _comparable_text(value):
+    if not isinstance(value,str): return ""
+    parser=_PlainText()
+    parser.feed(html.unescape(value))
+    text=unicodedata.normalize("NFKC", "".join(parser.parts))
+    text="".join(c for c in text if unicodedata.category(c)!="Cf")
+    return " ".join(text.split())
+
+
+def repost_kind(raw):
+    """Only outer commentary counts as the monitored account's contribution.
+
+    Bright Data often supplies an all-null repost object for original posts.
+    post_text/original_post_text are outer text; repost.repost_text is the
+    embedded publication. original_post_text alone is NOT embedded text.
+    """
+    nested=raw.get("repost")
+    nested=nested if isinstance(nested,dict) else {}
+    marked=(str(raw.get("post_type") or "").strip().casefold() in {"repost","reshare"}
+            or raw.get("is_repost") is True
+            or any(nested.get(k) for k in ("repost_id","repost_url","repost_text")))
+    if not marked: return "ORIGINAL"
+    outer=_comparable_text(raw.get("post_text"))
+    embedded=_comparable_text(nested.get("repost_text"))
+    if not outer: return "SIMPLE"
+    if not embedded: return "UNVERIFIABLE"
+    return "SIMPLE" if outer==embedded else "COMMENTED"
+
+
+def split_repost_issues(issues):
+    excluded=[i for i in issues if i.get("reason") in {"REPOST_WITHOUT_COMMENT","REPOST_COMMENT_UNVERIFIABLE"}]
+    technical=[i for i in issues if i.get("reason") not in {"REPOST_WITHOUT_COMMENT","REPOST_COMMENT_UNVERIFIABLE"}]
+    return technical, excluded
+
+
 def normalize_records(records):
     posts, issues, seen = [], [], set()
     for index, raw in enumerate(records):
@@ -195,6 +245,12 @@ def normalize_records(records):
         identifier = str(identifier or "")
         if raw.get("error") or raw.get("error_code"):
             issues.append({"index": index, "reason": "PROVIDER_ERROR"}); continue
+        if identifier.isdigit() and post_id(url)==identifier:
+            kind=repost_kind(raw)
+            if kind in {"SIMPLE","UNVERIFIABLE"}:
+                issues.append({"index":index,"post_id":identifier,"reason":
+                    "REPOST_WITHOUT_COMMENT" if kind=="SIMPLE" else "REPOST_COMMENT_UNVERIFIABLE"})
+                continue
         if not identifier.isdigit() or post_id(url) != identifier or not isinstance(text, str) or not text.strip():
             issues.append({"index": index, "reason": "MISSING_OR_INVALID_POST"}); continue
         if identifier in seen:
