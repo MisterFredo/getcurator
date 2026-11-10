@@ -49,7 +49,7 @@ export default function ContactCsvImport(){
  return <details className="border rounded bg-white p-5" open={!!run}>
   <summary className="font-semibold cursor-pointer">Importer des contacts depuis Sheets / CSV</summary>
   <div className="space-y-4 mt-4">
-   <p className="text-sm text-gray-600">Charge l’onglet Export CSV préparé dans Sheets. Les sociétés et doublons sont vérifiés avant validation. Les nouveaux contacts héritent du suivi de leur société ; aucun scan n’est lancé. Les fiches déjà présentes ne sont pas modifiées.</p>
+   <p className="text-sm text-gray-600">Charge l’onglet Export CSV préparé dans Sheets. Les sociétés et doublons sont vérifiés avant validation. Les nouveaux contacts ne sont pas suivis par défaut ; aucun scan n’est lancé. Les fiches déjà présentes ne sont pas modifiées.</p>
    <input type="file" accept=".csv,text/csv" disabled={busy||!!active} aria-label="Choisir le CSV des contacts" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f);e.target.value='';}}/>
    <p className="text-xs text-gray-500">Colonnes : first_name, last_name, company_name, job_title, email, linkedin_url, sales_navigator_url. URL de profil /in/ obligatoire ; e-mail et lien Sales Navigator facultatifs. Maximum 2 000 contacts.</p>
    {busy&&<p role="status">Enregistrement…</p>}{error&&<p role="alert" className="text-red-700">{error}</p>}
