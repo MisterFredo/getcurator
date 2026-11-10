@@ -7,7 +7,7 @@ import type { CompanyWatch, CorpoDiscovery } from "@/lib/companyWatch";
 
 import WatchScanControls from './WatchScanControls';
 import {listWatchItems} from '@/lib/watchOperations';
-import type {WatchChannel,WatchKind} from '@/lib/watchOperations';
+import type {WatchChannel,WatchKind,WatchRole} from '@/lib/watchOperations';
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed";
 const labels = { NEW_URL: "Nouvelle URL", NEW_PAGE: "Nouvelle page", UPDATED_PAGE: "Mise à jour" };
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Erreur de traitement";
@@ -16,8 +16,8 @@ function safeUrl(value: string) {
   catch { return undefined; }
 }
 
-export default function WatchDiscoveryWorkspace({ companyId, watch, channel="ALL", kind="ALL", onBusyChange }: {
-  companyId?: string; watch?: CompanyWatch; channel?:WatchChannel;kind?:WatchKind;onBusyChange?: (busy: boolean) => void;
+export default function WatchDiscoveryWorkspace({ companyId, watch, role="ALL", channel="ALL", kind="ALL", onBusyChange }: {
+  companyId?: string; watch?: CompanyWatch;role?:WatchRole; channel?:WatchChannel;kind?:WatchKind;onBusyChange?: (busy: boolean) => void;
 }) {
   const [items, setItems] = useState<CorpoDiscovery[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -50,7 +50,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, channel="ALL
     const request = ++sequence.current;
     setLoading(true); setLoadError("");
     try {
-      const response = await listWatchItems({ companyId: scopeCompany, watchId: scopeWatch, status, channel,kind,offset });
+      const response = await listWatchItems({ companyId: scopeCompany, watchId: scopeWatch, status, role,channel,kind,offset });
       if (!mounted.current || sequence.current !== request) return;
       if (!response.items.length && offset > 0) { setOffset(value => Math.max(0, value - 50)); return; }
       setItems(response.items); setHasMore(response.has_more);
@@ -59,9 +59,9 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, channel="ALL
     } finally {
       if (mounted.current && sequence.current === request) setLoading(false);
     }
-  }, [scopeCompany, scopeWatch, status, channel,kind,offset]);
+  }, [scopeCompany, scopeWatch, status, role,channel,kind,offset]);
   useEffect(() => { setItems([]); void reload(); }, [reload]);
-  useEffect(() => { setSelected([]); setContent(null); setOffset(0); }, [scopeCompany, scopeWatch, status,channel,kind]);
+  useEffect(() => { setSelected([]); setContent(null); setOffset(0); }, [scopeCompany, scopeWatch, status,role,channel,kind]);
   useEffect(() => {
     if (!running) return;
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -151,7 +151,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, channel="ALL
       <div><a className="underline text-sm text-ratecard-blue" href="/admin/library/corpo">Ouvrir Library / Corpo →</a><h2 className="text-xl font-semibold text-ratecard-blue">{watch ? watch.label : "URL découvertes — Corpo"}</h2>
         <p className="text-sm text-gray-500">Scanner → sélectionner → envoyer vers la Library.</p></div>
     </div>
-    <WatchScanControls companyId={scopeCompany} watch={watch} channel={channel} kind={kind} onComplete={()=>void reload()}/>
+    <WatchScanControls companyId={scopeCompany} watch={watch} role={role} channel={channel} kind={kind} onComplete={()=>void reload()}/>
     {watch && !["HTML", "BRIGHTDATA"].includes(watch.collection_method) && <p className="text-sm text-gray-500">Le scan est disponible pour les points configurés en HTML ou Bright Data. L’entrée Manuel / Studio sera raccordée séparément.</p>}
     {watch?.collection_method === "BRIGHTDATA" && <div className="border rounded p-3 space-y-3 bg-blue-50">
       <p className="text-sm">Le suivi côté serveur récupère les collectes déjà lancées. Un lancement incertain doit être rattaché avec son identifiant avant toute nouvelle demande.</p>
