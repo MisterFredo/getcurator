@@ -2,10 +2,10 @@
 import {useEffect,useRef,useState} from 'react';
 import type {CompanyWatch} from '@/lib/companyWatch';
 import {launchWatchJob,listWatchJobs,resumeWatchJob,pauseWatchJob,watchClass} from '@/lib/watchOperations';
-import type {WatchJob,WatchKind,WatchChannel} from '@/lib/watchOperations';
+import type {WatchJob,WatchKind,WatchChannel,WatchRole} from '@/lib/watchOperations';
 const btn='border rounded px-3 py-2 text-sm disabled:opacity-50';
 const errorText=(e:unknown)=>e instanceof Error?e.message:'Opération impossible';
-export default function WatchScanControls({companyId,watch,channel='ALL',kind='ALL',onComplete}:{companyId?:string;watch?:CompanyWatch;channel?:WatchChannel;kind?:WatchKind;onComplete?:()=>void}){
+export default function WatchScanControls({companyId,watch,role='ALL',channel='ALL',kind='ALL',onComplete}:{companyId?:string;watch?:CompanyWatch;role?:WatchRole;channel?:WatchChannel;kind?:WatchKind;onComplete?:()=>void}){
  const [job,setJob]=useState<WatchJob|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[pollError,setPollError]=useState('');
  const [refresh,setRefresh]=useState(0);const complete=useRef(onComplete);complete.current=onComplete;
  const scopeCompany=watch?.id_company||companyId;const scopeWatch=watch?.id_company_watch;
@@ -25,7 +25,7 @@ export default function WatchScanControls({companyId,watch,channel='ALL',kind='A
  },[scopeCompany,scopeWatch,refresh]);
  async function start(target:WatchKind,failed=false,recover=false){
   if(busy)return;setBusy(true);setError('');
-  try{const result=await launchWatchJob({kind:watch?watchClass(watch).kind:target,channel:watch?watchClass(watch).channel:channel,
+  try{const result=await launchWatchJob({role:watch?(watch.id_contact||watch.source_role==='EMPLOYEE'?'EMPLOYEE':'CORPORATE'):role,kind:watch?watchClass(watch).kind:target,channel:watch?watchClass(watch).channel:channel,
    company_id:scopeCompany,watch_id:scopeWatch,failed_only:failed,recover_only:recover});setJob(result);setRefresh(v=>v+1);window.dispatchEvent(new Event('watch-scan-updated'));}
   catch(e){setError(errorText(e));}finally{setBusy(false);}
  }
