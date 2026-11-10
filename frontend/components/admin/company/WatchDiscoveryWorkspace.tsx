@@ -1,21 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listCompanyWatches, scanCorpoSource, listCorpoDiscovery, changeCorpoDiscoveryStatus,
-  getCorpoStoredContent, getCorpoScanStatus, attachCorpoSnapshot, importCorpoLibraryStep } from "@/lib/companyWatch";
-import type { CompanyWatch, CorpoDiscovery, CorpoScanResult } from "@/lib/companyWatch";
+import { changeCorpoDiscoveryStatus,
+  getCorpoStoredContent, attachCorpoSnapshot, importCorpoLibraryStep } from "@/lib/companyWatch";
+import type { CompanyWatch, CorpoDiscovery } from "@/lib/companyWatch";
 
+import WatchScanControls from './WatchScanControls';
+import {listWatchItems} from '@/lib/watchOperations';
+import type {WatchChannel,WatchKind} from '@/lib/watchOperations';
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed";
 const labels = { NEW_URL: "Nouvelle URL", NEW_PAGE: "Nouvelle page", UPDATED_PAGE: "Mise à jour" };
-const canScan = (source: CompanyWatch) => ["HTML", "BRIGHTDATA"].includes(source.collection_method) && source.source_type !== "PDF" && source.is_active;
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Erreur de traitement";
 function safeUrl(value: string) {
   try { const u = new URL(value); return ["http:", "https:"].includes(u.protocol) ? u.href : undefined; }
   catch { return undefined; }
 }
 
-export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange }: {
-  companyId?: string; watch?: CompanyWatch; onBusyChange?: (busy: boolean) => void;
+export default function WatchDiscoveryWorkspace({ companyId, watch, channel="ALL", kind="ALL", onBusyChange }: {
+  companyId?: string; watch?: CompanyWatch; channel?:WatchChannel;kind?:WatchKind;onBusyChange?: (busy: boolean) => void;
 }) {
   const [items, setItems] = useState<CorpoDiscovery[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -48,7 +50,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     const request = ++sequence.current;
     setLoading(true); setLoadError("");
     try {
-      const response = await listCorpoDiscovery({ companyId: scopeCompany, watchId: scopeWatch, status, offset });
+      const response = await listWatchItems({ companyId: scopeCompany, watchId: scopeWatch, status, channel,kind,offset });
       if (!mounted.current || sequence.current !== request) return;
       if (!response.items.length && offset > 0) { setOffset(value => Math.max(0, value - 50)); return; }
       setItems(response.items); setHasMore(response.has_more);
@@ -57,9 +59,9 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     } finally {
       if (mounted.current && sequence.current === request) setLoading(false);
     }
-  }, [scopeCompany, scopeWatch, status, offset]);
+  }, [scopeCompany, scopeWatch, status, channel,kind,offset]);
   useEffect(() => { setItems([]); void reload(); }, [reload]);
-  useEffect(() => { setSelected([]); setContent(null); setOffset(0); }, [scopeCompany, scopeWatch, status]);
+  useEffect(() => { setSelected([]); setContent(null); setOffset(0); }, [scopeCompany, scopeWatch, status,channel,kind]);
   useEffect(() => {
     if (!running) return;
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -79,65 +81,6 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     setRunning(false); onBusyChange?.(false);
     if (stop.current) setProgress("Arrêt après l’étape en cours. Les captures et segments extraits sont conservés ; reprenez les imports dans le filtre En cours. Une collecte Bright Data déjà lancée continue.");
     await reload();
-  }
-  async function sourcesToScan(): Promise<CompanyWatch[]> {
-    if (watch) return canScan(watch) ? [watch] : [];
-    const result: CompanyWatch[] = [];
-    let pageOffset = 0;
-    while (mounted.current && !stop.current) {
-      const response = await listCompanyWatches({id_company:scopeCompany,is_active:true,limit:500,offset:pageOffset});
-      result.push(...response.watches.filter(source => canScan(source)));
-      if (!response.has_more) break;
-      pageOffset += 500;
-    }
-    return result;
-  }
-  async function waitForScan(source: CompanyWatch, response: CorpoScanResult) {
-    let result = response;
-    while (["RUNNING", "STARTING"].includes(result.status) && mounted.current && !stop.current) {
-      setProgress(`${source.label} : collecte LinkedIn en cours. Vous pourrez reprendre la récupération si vous quittez la page.`);
-      // Short sleeps allow stop/unmount without leaving a pending long timer.
-      for (let tick = 0; tick < 20 && mounted.current && !stop.current; tick++) {
-        await new Promise<void>(resolve => setTimeout(resolve, 500));
-      }
-      if (!mounted.current || stop.current) return null;
-      result = await getCorpoScanStatus(source);
-    }
-    if (!mounted.current || stop.current) return null;
-    if (["FAILED", "UNKNOWN", "IDLE"].includes(result.status)) {
-      throw new Error(result.message || (result.status === "IDLE" ? "Aucune collecte à reprendre. Lancez un scan." : "Collecte indisponible."));
-    }
-    return result;
-  }
-  async function scan(resume = false) {
-    if (!begin()) return;
-    let found = 0, known = 0, unchanged = 0;
-    try {
-      setProgress("Chargement des points de collecte automatiques actifs…");
-      const sources = await sourcesToScan();
-      if (!sources.length && mounted.current && !stop.current) {
-        setProgress("Aucun point automatique actif dans ce périmètre. Modifier sa méthode de récupération si nécessaire.");
-      }
-      for (let index=0;index<sources.length && mounted.current && !stop.current;index++) {
-        const source = sources[index];
-        setProgress(`Scan ${index+1}/${sources.length} — ${source.company_name || ""} / ${source.label}`);
-        try {
-          const initial = resume && source.collection_method === "BRIGHTDATA"
-            ? await getCorpoScanStatus(source) : await scanCorpoSource(source);
-          const response = await waitForScan(source, initial);
-          if (!response) break;
-          if (!mounted.current) break;
-          found += response.new;
-          known += response.known; unchanged += response.unchanged;
-          setWarnings(previous => [...previous,...response.warnings.map(w => `${source.label} : ${w}`)]);
-          await reload();
-        } catch (error) {
-          if (mounted.current) setErrors(previous => [...previous,`${source.label} : ${errorText(error)}`]);
-        }
-      }
-      if (sources.length && mounted.current && !stop.current) setProgress(`Scan terminé : ${found} nouvelle(s) URL ou version(s), ${known} URL connues, ${unchanged} page(s) inchangée(s). Sélectionnez les publications à envoyer vers la Library.`);
-    } catch (error) { if (mounted.current) setErrors(previous => [...previous,errorText(error)]); }
-    finally { await finish(); }
   }
   async function importSelected() {
     if (!selected.length || !begin()) return;
@@ -207,19 +150,17 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
     <div className="flex flex-wrap justify-between gap-3 items-center">
       <div><a className="underline text-sm text-ratecard-blue" href="/admin/library/corpo">Ouvrir Library / Corpo →</a><h2 className="text-xl font-semibold text-ratecard-blue">{watch ? watch.label : "URL découvertes — Corpo"}</h2>
         <p className="text-sm text-gray-500">Scanner → sélectionner → envoyer vers la Library.</p></div>
-      <button type="button" className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50" disabled={running || !!(watch && (!watch.is_active || !["HTML", "BRIGHTDATA"].includes(watch.collection_method) || watch.source_type === "PDF"))}
-        onClick={() => void scan()}>{watch ? "Scanner ce point" : "SCAN ALL — points de collecte automatiques actifs"}</button>
     </div>
+    <WatchScanControls companyId={scopeCompany} watch={watch} channel={channel} kind={kind} onComplete={()=>void reload()}/>
     {watch && !["HTML", "BRIGHTDATA"].includes(watch.collection_method) && <p className="text-sm text-gray-500">Le scan est disponible pour les points configurés en HTML ou Bright Data. L’entrée Manuel / Studio sera raccordée séparément.</p>}
     {watch?.collection_method === "BRIGHTDATA" && <div className="border rounded p-3 space-y-3 bg-blue-50">
-      <p className="text-sm">La collecte continue chez Bright Data après fermeture de cette page. La récupération reprend le dernier scan sans en acheter un nouveau.</p>
-      <button type="button" className={button} disabled={running} onClick={() => void scan(true)}>Récupérer / reprendre le dernier scan</button>
+      <p className="text-sm">Le suivi côté serveur récupère les collectes déjà lancées. Un lancement incertain doit être rattaché avec son identifiant avant toute nouvelle demande.</p>
       <details><summary className="text-sm cursor-pointer">Rattacher un lancement incertain</summary>
         <p className="text-sm mt-2">Uniquement si le lancement a été interrompu avant réception de son identifiant : recopiez le snapshot ID depuis Bright Data.</p>
         <input className="border rounded px-3 py-2 mt-2" value={snapshotId} placeholder="sd_…" onChange={event => setSnapshotId(event.target.value)} disabled={running}/>
         <button type="button" className={`${button} ml-2`} disabled={running || !snapshotId.trim()} onClick={async () => {
           if (!begin()) return;
-          try { await attachCorpoSnapshot(watch, snapshotId.trim()); setProgress("Collecte rattachée. Cliquez sur Récupérer / reprendre le dernier scan."); }
+          try { await attachCorpoSnapshot(watch, snapshotId.trim()); setProgress("Collecte rattachée. Cliquez sur Récupérer le dernier scan LinkedIn."); }
           catch (error) { if (mounted.current) setErrors([errorText(error)]); }
           finally { await finish(); }
         }}>Rattacher</button>
@@ -257,7 +198,7 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, onBusyChange
         <td className="p-3"><input type="checkbox" aria-label={`Sélectionner ${row.title || row.url}`} checked={selected.includes(row.id_discovery)}
           disabled={running || !eligible.some(item => item.id_discovery === row.id_discovery)}
           onChange={()=>setSelected(previous=>previous.includes(row.id_discovery)?previous.filter(id=>id!==row.id_discovery):[...previous,row.id_discovery])}/></td>
-        <td className="p-3">{row.company_name}<div className="text-gray-500">{row.watch_label}</div></td>
+        <td className="p-3">{row.company_name}<div className="text-gray-500">{row.watch_label}</div><div className="text-xs text-gray-500">{(()=>{try{return new URL(row.url).hostname.endsWith("linkedin.com")?"LinkedIn":"Site";}catch{return "Site";}})()} · {row.change_type==="NEW_URL"?"Publication / URL":"Page unique"}</div></td>
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title || row.url}</p>
           <a href={safeUrl(row.url)} target="_blank" rel="noopener noreferrer" className="underline text-ratecard-blue break-all">{row.url}</a>
           {row.error && <p className="text-red-700 break-words">{row.error}</p>}</td>
