@@ -65,3 +65,13 @@ def list_items(company_id=None, watch_id=None, status='NEW', channel='ALL', kind
         ORDER BY d.DATE_FOUND DESC,d.ID_DISCOVERY DESC LIMIT @limit OFFSET @offset''', params)
     with ThreadPoolExecutor(max_workers=8) as pool: items = list(pool.map(service._candidate_out, rows[:limit]))
     return {'items':items,'has_more':len(rows)>limit,'offset':offset,'limit':limit}
+
+
+def list_active_companies():
+    from core.company import watch_service as service
+    rows = service._query(f"""SELECT c.ID_COMPANY,c.NAME,c.WEBSITE_URL,c.LINKEDIN_URL
+        FROM `{service.COMPANY}` c WHERE c.IS_ACTIVE=TRUE AND EXISTS (
+            SELECT 1 FROM `{service.TABLE}` w
+            WHERE w.ID_COMPANY=c.ID_COMPANY AND w.IS_ACTIVE=TRUE)
+        ORDER BY c.NAME,c.ID_COMPANY""")
+    return {'companies': [{k.lower(): v for k,v in dict(row).items()} for row in rows]}
