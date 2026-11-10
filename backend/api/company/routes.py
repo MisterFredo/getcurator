@@ -344,8 +344,8 @@ def corpo_library_detail_route(
 # VEILLE — COLLECTES, REPRISE ET DIAGNOSTICS
 # ============================================================
 @router.post('/watch/operations/start')
-def start_watch_operation(data: WatchOperationRequest, background_tasks: BackgroundTasks):
-    result = _watch_call(watch_ops.launch, **data.dict())
+def start_watch_operation(data: WatchOperationRequest, background_tasks: BackgroundTasks, role: str = "ALL"):
+    result = _watch_call(watch_ops.launch, **data.dict(), role=role)
     background_tasks.add_task(watch_ops.drain)
     return result
 
@@ -374,15 +374,15 @@ def watch_operations_companies():
 
 @router.get('/watch/operations/sources')
 def watch_operations_sources(company_id: Optional[str] = None, is_active: Optional[bool] = None,
-    channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50):
-    return _watch_call(watch_ops_query.list_sources, company_id, is_active, channel, kind, offset, limit)
+    channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50, role: str = 'ALL'):
+    return _watch_call(watch_ops_query.list_sources, company_id, is_active, channel, kind, offset, limit, role)
 
 @router.get('/watch/operations/items')
 def watch_operations_items(company_id: Optional[str] = None, watch_id: Optional[str] = None,
-    status: str = 'NEW', channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50):
+    status: str = 'NEW', channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50, role: str = 'ALL'):
     if offset < 0 or not 1 <= limit <= 200:
         raise HTTPException(400, 'Pagination invalide')
-    return _watch_call(watch_ops_query.list_items, company_id, watch_id, status, channel, kind, offset, limit)
+    return _watch_call(watch_ops_query.list_items, company_id, watch_id, status, channel, kind, offset, limit, role)
 
 
 # ============================================================
