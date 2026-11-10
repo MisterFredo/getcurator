@@ -103,6 +103,7 @@ def _ingest(source_id,state,records):
         origin=(record.get('discovery_input') or {}).get('url') if isinstance(record,dict) else None
         if not origin or provider.account_url(origin)[0]!=expected:raise ValueError('La collecte ne correspond pas au compte suivi')
     posts,issues=provider.normalize_records(records)
+    issues,excluded_reposts=provider.split_repost_issues(issues)
     hashes,ids=existing(source_id)
     known=query(f'SELECT URL, CONTENT_HASH FROM `{DISCOVERY}` WHERE SOURCE_ID=@source',[param('source','STRING',source_id)])
     hashes|={r['CONTENT_HASH'] for r in known if r.get('CONTENT_HASH')}
@@ -146,11 +147,16 @@ def _ingest(source_id,state,records):
             raise RuntimeError('Compteur BigQuery incohérent')
     if pending:state.setdefault('timings',{})['bigquery_merge_seconds']=round(time.perf_counter()-started,3)
     warnings=['La couverture LinkedIn peut être partielle. Le Studio reste disponible pour compléter.']
+    if excluded_reposts:
+        _upload(f"media-linkedin/results/{state['run_id']}-reposts.json",json.dumps(excluded_reposts).encode(),'application/json')
+        simple=sum(i['reason']=='REPOST_WITHOUT_COMMENT' for i in excluded_reposts)
+        warnings.append(f"{simple} repost(s) sans commentaire exclus ; {len(excluded_reposts)-simple} repost(s) au commentaire non vérifiable mis de côté.")
     if issues:
         _upload(f"media-linkedin/results/{state['run_id']}-issues.json",json.dumps(issues).encode(),'application/json')
         warnings.append(f'{len(issues)} anomalie(s) conservée(s) dans l’audit fournisseur.')
     if len(records)>=state['limit']:warnings.append(f"Plafond de {state['limit']} résultats atteint : collecte potentiellement partielle.")
-    state.update(status='COMPLETE' if posts or not records else 'FAILED',new=inserted,known=count_known,warnings=warnings,received=len(records),valid_posts=len(posts),
+    complete=bool(posts) or not records or (bool(excluded_reposts) and not issues)
+    state.update(status='COMPLETE' if complete else 'FAILED',excluded_reposts=len(excluded_reposts),new=inserted,known=count_known,warnings=warnings,received=len(records),valid_posts=len(posts),
         candidates=len(pending),merge_skipped=len(pending)-inserted,issue_count=len(issues),count_method='BIGQUERY_ROW_COUNT')
     _save(source_id,state)
 
