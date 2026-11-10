@@ -8,6 +8,7 @@ from api.company.models import (
     CompanyWatchCreate,
     CompanyWatchUpdate,
     CompanyWatchOut,
+    WatchOperationRequest,
 )
 from core.company.service import (
     create_company,
@@ -33,6 +34,8 @@ from core.company.watch_service import (
     update_company_watch,
 )
 from utils.auth import get_user_id_from_request
+from core.company import watch_operations as watch_ops
+from core.company import watch_operations_query as watch_ops_query
 
 router = APIRouter()
 
@@ -335,6 +338,46 @@ def corpo_library_detail_route(
     id_document: str, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
 ):
     return _watch_call(corpo_library_detail, id_document, offset, limit)
+
+
+# ============================================================
+# VEILLE — COLLECTES, REPRISE ET DIAGNOSTICS
+# ============================================================
+@router.post('/watch/operations/start')
+def start_watch_operation(data: WatchOperationRequest, background_tasks: BackgroundTasks):
+    result = _watch_call(watch_ops.launch, **data.dict())
+    background_tasks.add_task(watch_ops.drain)
+    return result
+
+@router.get('/watch/operations/jobs')
+def watch_operations_list(company_id: Optional[str] = None, watch_id: Optional[str] = None):
+    return _watch_call(watch_ops.list_jobs, company_id, watch_id)
+
+@router.get('/watch/operations/jobs/{job_id}')
+def watch_operations_get(job_id: str):
+    return _watch_call(watch_ops.get_job, job_id)
+
+@router.post('/watch/operations/jobs/{job_id}/resume')
+def watch_operations_resume(job_id: str, background_tasks: BackgroundTasks):
+    result = _watch_call(watch_ops.resume, job_id)
+    if result['status'] == 'RUNNING': background_tasks.add_task(watch_ops.drain)
+    return result
+
+@router.post('/watch/operations/jobs/{job_id}/pause')
+def watch_operations_pause(job_id: str):
+    return _watch_call(watch_ops.pause, job_id)
+
+@router.get('/watch/operations/sources')
+def watch_operations_sources(company_id: Optional[str] = None, is_active: Optional[bool] = None,
+    channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50):
+    return _watch_call(watch_ops_query.list_sources, company_id, is_active, channel, kind, offset, limit)
+
+@router.get('/watch/operations/items')
+def watch_operations_items(company_id: Optional[str] = None, watch_id: Optional[str] = None,
+    status: str = 'NEW', channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50):
+    if offset < 0 or not 1 <= limit <= 200:
+        raise HTTPException(400, 'Pagination invalide')
+    return _watch_call(watch_ops_query.list_items, company_id, watch_id, status, channel, kind, offset, limit)
 
 
 # ============================================================
