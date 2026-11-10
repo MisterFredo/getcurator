@@ -367,6 +367,11 @@ def watch_operations_resume(job_id: str, background_tasks: BackgroundTasks):
 def watch_operations_pause(job_id: str):
     return _watch_call(watch_ops.pause, job_id)
 
+@router.get('/watch/operations/companies')
+def watch_operations_companies():
+    return _watch_call(watch_ops_query.list_active_companies)
+
+
 @router.get('/watch/operations/sources')
 def watch_operations_sources(company_id: Optional[str] = None, is_active: Optional[bool] = None,
     channel: str = 'ALL', kind: str = 'ALL', offset: int = 0, limit: int = 50):
