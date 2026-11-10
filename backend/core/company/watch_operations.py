@@ -53,10 +53,11 @@ def all_sources(company_id=None, watch_id=None):
         if not response['has_more']: return result
         offset += 500
 
-def launch(kind='PUBLICATIONS', channel='ALL', company_id=None, watch_id=None, failed_only=False, recover_only=False):
+def launch(kind='PUBLICATIONS', channel='ALL', company_id=None, watch_id=None, failed_only=False, recover_only=False, role='ALL'):
     if kind not in {'ALL', 'SINGLE_PAGE', 'PUBLICATIONS'} or channel not in {'ALL', 'WEB', 'LINKEDIN'}:
         raise HTTPException(400, 'Périmètre invalide')
-    scope = dict(kind=kind, channel=channel, id_company=company_id, id_company_watch=watch_id,
+    if role not in {'ALL','CORPORATE','EMPLOYEE'}: raise HTTPException(400, 'Origine invalide')
+    scope = dict(role=role, kind=kind, channel=channel, id_company=company_id, id_company_watch=watch_id,
                  failed_only=failed_only, recover_only=recover_only)
     with lock():
         index = load('index.json', {'jobs': []})
@@ -71,6 +72,8 @@ def launch(kind='PUBLICATIONS', channel='ALL', company_id=None, watch_id=None, f
         eligible = []
         for watch in all_sources(company_id, watch_id):
             ch, ty = monitoring.classify(watch)
+            source_role = 'EMPLOYEE' if watch.get('id_contact') or watch.get('source_role')=='EMPLOYEE' else 'CORPORATE'
+            if role!='ALL' and source_role!=role: continue
             if not watch.get('is_active') or watch['collection_method'] not in {'HTML', 'BRIGHTDATA'} or watch['source_type'] == 'PDF': continue
             if channel != 'ALL' and ch != channel or kind != 'ALL' and ty != kind: continue
             if recover_only and watch['collection_method'] != 'BRIGHTDATA': continue
@@ -82,6 +85,7 @@ def launch(kind='PUBLICATIONS', channel='ALL', company_id=None, watch_id=None, f
         for watch in eligible:
             ch, ty = monitoring.classify(watch)
             sources.append({'id_company': watch['id_company'], 'id_company_watch': watch['id_company_watch'],
+                'source_role': 'EMPLOYEE' if watch.get('id_contact') or watch.get('source_role')=='EMPLOYEE' else 'CORPORATE',
                 'label': watch['label'], 'company_name': watch.get('company_name'), 'channel': ch, 'kind': ty,
                 'method': watch['collection_method'], 'signature': source_signature(watch),
                 'status': 'PENDING', 'new': 0, 'known': 0, 'unchanged': 0,
