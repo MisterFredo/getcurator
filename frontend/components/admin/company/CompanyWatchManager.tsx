@@ -12,7 +12,7 @@ import type {
 } from "@/lib/companyWatch";
 
 import {listMonitoredWatches,listActiveWatchCompanies} from '@/lib/watchOperations';
-import type {MonitoredWatch, WatchChannel, WatchKind} from '@/lib/watchOperations';
+import type {MonitoredWatch, WatchChannel, WatchKind, WatchRole} from '@/lib/watchOperations';
 const dateText=(value?:string)=>value?new Date(value).toLocaleString('fr-FR',{timeZone:'Europe/Paris'}):'—';
 const PAGE_SIZE = 50;
 const control = "w-full border rounded px-3 py-2 bg-white disabled:opacity-50";
@@ -47,6 +47,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const [sourcesOpen,setSourcesOpen]=useState(!!fixedCompany);
   const [status, setStatus] = useState("all");
   const [channel,setChannel]=useState<WatchChannel>('ALL');
+  const [role,setRole]=useState<WatchRole>('CORPORATE');
   const [kind,setKind]=useState<WatchKind>('ALL');
   const [offset, setOffset] = useState(0);
   const [rows, setRows] = useState<MonitoredWatch[]>([]);
@@ -100,7 +101,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     setLoadError("");
     setRows([]);
     setHasMore(false);
-    listMonitoredWatches({ channel,kind,id_company: companyId || undefined,
+    listMonitoredWatches({ role,channel,kind,id_company: companyId || undefined,
       is_active: status === "all" ? undefined : status === "active", offset, limit: PAGE_SIZE,
     }).then(result => {
       if (cancelled) return;
@@ -115,7 +116,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       if (!cancelled) setLoadError(message(error));
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [companyId, status, channel,kind,offset, revision]);
+  }, [companyId, status, role,channel,kind,offset, revision]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -223,6 +224,11 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
           Ajouter un point de collecte
         </button>
       </header>
+      <div className="flex gap-2" role="group" aria-label="Origine des points de collecte">
+        {(['CORPORATE','EMPLOYEE','ALL'] as const).map(value=><button key={value} type="button" disabled={busy||!!collectionRow||!!editor}
+          className={`${button} ${role===value?'bg-ratecard-blue text-white':'bg-white'}`} onClick={()=>{setRole(value);setOffset(0);}}>
+          {value==='CORPORATE'?'Corporate':value==='EMPLOYEE'?'Salariés':'Tous'}</button>)}
+      </div>
       <div className="bg-white border rounded p-4 flex flex-wrap items-end gap-4">
         {!fixedCompany && <label className="flex-1 min-w-64 space-y-1">
           <span className="text-sm font-medium">Société</span>
@@ -375,7 +381,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       </section>
       </div>}
       {!collectionRow && <div className="pt-8 border-t">
-        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} channel={channel} kind={kind} onBusyChange={setBusy}/>
+        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} role={role} channel={channel} kind={kind} onBusyChange={setBusy}/>
       </div>}
     </div>
   );
