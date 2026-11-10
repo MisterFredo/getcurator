@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import logging
 import re
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
@@ -12,8 +13,59 @@ API = "https://api.brightdata.com/datasets/v3"
 DATASET = "gd_lyy3tktm25m4avu764"
 
 
+logger = logging.getLogger(__name__)
+
+
+def safe_error_text(value, limit=1200):
+    text = str(value)
+    token = os.getenv("BRIGHTDATA_API_KEY", "").strip()
+    if token:
+        text = text.replace(token, "[masqué]")
+    text = re.sub(r"(?i)bearer\s+[^\s\"'<>]+", "Bearer [masqué]", text)
+    text = re.sub(r"(?i)((?:api[_-]?key|access[_-]?token|token|password|authorization)[\"']?\s*[:=]\s*)[^\s,;<>]+", r"\1[masqué]", text)
+    return " ".join(text.split())[:limit]
+
+
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, message, *, diagnostic=None):
+        super().__init__(safe_error_text(message))
+        self.diagnostic = diagnostic or {}
+
+
+def error_diagnostic(error):
+    # No URL, account input, request body or Authorization header is stored.
+    return {**getattr(error, "diagnostic", {}), "message": safe_error_text(error)}
+
+
+def response_diagnostic(response, phase):
+    headers = {str(k).lower(): v for k, v in (response.headers or {}).items()}
+    diagnostic = {"phase": phase, "http_status": response.status_code}
+    for name in ("x-request-id", "x-brd-request-id", "retry-after"):
+        value = headers.get(name)
+        if value:
+            diagnostic[name.replace("-", "_")] = safe_error_text(value, 150)
+    try:
+        data = response.json()
+    except ValueError:
+        data = None
+    fields = ("error", "message", "code", "error_code", "detail", "details", "errors", "description")
+    def messages(value, depth=0):
+        if depth > 3:
+            return []
+        if isinstance(value, dict):
+            return [text for key in fields if key in value for text in messages(value[key], depth+1)]
+        if isinstance(value, list):
+            return [text for item in value[:5] for text in messages(item, depth+1)]
+        if isinstance(value, (str, int, float)):
+            return [safe_error_text(value, 500)]
+        return []
+    excerpts = messages(data) if isinstance(data, dict) else []
+    if excerpts:
+        diagnostic["provider_message"] = safe_error_text(" | ".join(dict.fromkeys(excerpts)))
+    elif data is None:
+        diagnostic["provider_message"] = safe_error_text(response.text, 700)
+    return diagnostic
+
 
 
 class AmbiguousTrigger(ProviderError):
@@ -51,22 +103,34 @@ def _token():
 
 
 def _request(method, path, **kwargs):
-    # Fixed API origin, no credential-bearing redirects, no automatic POST retry.
+    # One request only. In particular, no retry of paid POSTs.
+    method = method.upper()
+    phase = "trigger" if method == "POST" else "read"
     try:
         response = requests.request(method, API + path,
             headers={"Authorization": "Bearer " + _token(), "Content-Type": "application/json"},
             timeout=(10, 60), allow_redirects=False, **kwargs)
-    except requests.RequestException:
+    except requests.RequestException as exc:
         error = AmbiguousTrigger if method == "POST" else ProviderError
-        raise error("Bright Data : réponse réseau indisponible. Réessayer la récupération du résultat.") from None
+        diagnostic = {"phase": phase, "transport_error": type(exc).__name__}
+        raise error("Bright Data : réponse réseau indisponible (" + type(exc).__name__ + ").",
+                    diagnostic=diagnostic) from None
     if not 200 <= response.status_code < 300:
-        error = AmbiguousTrigger if method == "POST" and response.status_code >= 500 else ProviderError
-        raise error(f"Bright Data HTTP {response.status_code} : vérifier le compte, la clé et les paramètres.")
+        diagnostic = response_diagnostic(response, phase)
+        error = AmbiguousTrigger if method == "POST" and (response.status_code >= 500 or response.status_code == 408) else ProviderError
+        message = "Bright Data HTTP " + str(response.status_code)
+        if diagnostic.get("provider_message"):
+            message += " : " + diagnostic["provider_message"]
+        if diagnostic.get("retry_after"):
+            message += " ; Retry-After : " + diagnostic["retry_after"]
+        logger.warning("[BRIGHTDATA] %s", safe_error_text(message))
+        raise error(message, diagnostic=diagnostic)
     try:
         return response.json()
     except ValueError:
         error = AmbiguousTrigger if method == "POST" else ProviderError
-        raise error("Bright Data : réponse JSON invalide") from None
+        raise error("Bright Data HTTP " + str(response.status_code) + " : réponse JSON invalide",
+                    diagnostic={"phase": phase, "http_status": response.status_code}) from None
 
 
 def _snapshot(value):
@@ -85,7 +149,14 @@ def trigger(url, config):
     try:
         return _snapshot(result["snapshot_id"])
     except (KeyError, TypeError, ValueError):
-        raise AmbiguousTrigger("Bright Data : lancement sans identifiant ; vérifier la console avant une nouvelle collecte") from None
+        detail = " | ".join(safe_error_text(result[key], 350)
+            for key in ("error", "message", "code", "error_code", "detail")
+            if isinstance(result, dict) and isinstance(result.get(key), (str, int)))
+        message = "Bright Data : lancement sans identifiant"
+        if detail:
+            message += " : " + detail
+        raise AmbiguousTrigger(message + " ; vérifier la console avant une nouvelle collecte",
+            diagnostic={"phase": "trigger", "provider_message": detail}) from None
 
 
 def progress(snapshot):
