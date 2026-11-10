@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +12,13 @@ from google.api_core.exceptions import NotFound
 from utils.gcs import bucket
 from core.discovery import brightdata_linkedin as provider
 from core.library.company_watch_library import _upload, _read_uri, document_lock
+
+
+logger = logging.getLogger(__name__)
+
+def _provider_failure(state, exc):
+    state["provider_error"] = provider.error_diagnostic(exc)
+    logger.warning("[CORPO BRIGHTDATA] %s", provider.safe_error_text(exc))
 
 
 def _state_path(company, watch):
@@ -37,7 +45,7 @@ def _response(state):
     return {"status": state["status"], "snapshot_id": state.get("snapshot_id"),
         "new": state.get("new", 0), "known": state.get("known", 0), "unchanged": 0,
         "warnings": state.get("warnings", []), "received": state.get("received", 0),
-        "message": state.get("message"), "retry_after_seconds": 10}
+        "message": state.get("message"), "provider_error": state.get("provider_error"), "retry_after_seconds": 10}
 
 
 def scan_linkedin(company_id, watch_id, *, start=False):
@@ -62,12 +70,14 @@ def scan_linkedin(company_id, watch_id, *, start=False):
             _save(company_id, watch_id, state)  # Save intent before external side effect.
             try:
                 state["snapshot_id"] = provider.trigger(watch["source_url"], watch.get("collection_config") or {})
-            except provider.AmbiguousTrigger:
-                state.update(status="UNKNOWN", message="Lancement incertain : vérifier la collecte dans Bright Data avant de la rattacher ici. Aucun nouveau lancement automatique.")
+            except provider.AmbiguousTrigger as exc:
+                _provider_failure(state, exc)
+                state.update(status="UNKNOWN", message="Lancement incertain — " + str(exc) + ". Vérifier la collecte dans Bright Data avant de la rattacher ici. Aucun nouveau lancement automatique.")
                 _save(company_id, watch_id, state)
                 return _response(state)
-            except provider.ProviderError:
-                state.update(status="FAILED", message="Échec du lancement : vérifier le compte et la clé Bright Data.")
+            except provider.ProviderError as exc:
+                _provider_failure(state, exc)
+                state.update(status="FAILED", message="Échec du lancement — " + str(exc))
                 _save(company_id, watch_id, state)
                 raise HTTPException(502, state["message"]) from None
             state["status"] = "RUNNING"
@@ -78,11 +88,15 @@ def scan_linkedin(company_id, watch_id, *, start=False):
         if state["status"] in {"STARTING", "UNKNOWN"}:
             # Includes backend crash after trigger but before snapshot ID write.
             return {**_response(state), "status": "UNKNOWN",
-                "message": "Lancement incertain. Rattacher l'identifiant de collecte depuis la console Bright Data pour reprendre sans nouvel achat."}
+                "message": state.get("message") or "Lancement incertain. Rattacher l'identifiant de collecte depuis la console Bright Data pour reprendre sans nouvel achat."}
         if state["status"] != "RUNNING":
             return _response(state)
         try:
             status = provider.progress(state["snapshot_id"])
+            # Clear a prior temporary read error after a successful provider reply.
+            if state.get("provider_error"):
+                state.update(provider_error=None, message=None)
+                _save(company_id, watch_id, state)
             if status in {"failed", "canceled"}:
                 state.update(status="FAILED", message="La collecte Bright Data a échoué ou a été annulée ; vérifier sa console.")
                 _save(company_id, watch_id, state)
@@ -98,8 +112,11 @@ def scan_linkedin(company_id, watch_id, *, start=False):
                 _save(company_id, watch_id, state)
             _ingest(company_id, watch_id, state, records)
         except provider.ProviderError as exc:
-            # Keep the snapshot ID for retries; never trigger again here.
-            raise HTTPException(502, str(exc)) from None
+            # Keep RUNNING and the snapshot ID: subsequent calls only recover it.
+            _provider_failure(state, exc)
+            state["message"] = "Échec de récupération — " + str(exc)
+            _save(company_id, watch_id, state)
+            raise HTTPException(502, state["message"]) from None
         return _response(state)
 
 
@@ -117,7 +134,7 @@ def attach_snapshot(company_id, watch_id, snapshot_id):
             provider.progress(snapshot_id)
         except provider.ProviderError as exc:
             raise HTTPException(502, str(exc)) from None
-        state.update(snapshot_id=snapshot_id, status="RUNNING", message=None)
+        state.update(snapshot_id=snapshot_id, status="RUNNING", message=None, provider_error=None)
         _save(company_id, watch_id, state)
         return _response(state)
 
