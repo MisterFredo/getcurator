@@ -141,18 +141,40 @@ def attach_snapshot(company_id, watch_id, snapshot_id):
 
 def _ingest(company_id, watch_id, state, records):
     from core.company import watch_discovery_service as discovery
-    posts, issues = provider.normalize_records(records)
-    watch = state["watch"]  # provenance frozen when this scan was started
+    watch = state["watch"]
     expected = provider.account_url(watch["source_url"])[0]
-    # Do not accept a manually attached job belonging to another tracked account.
+    valid_records, failures = [], []
     for record in records:
-        origin = (record.get("discovery_input") or {}).get("url") if isinstance(record, dict) else None
+        if isinstance(record, dict) and (record.get("error") or record.get("error_code")):
+            failures.append({key: provider.safe_error_text(record[key]) for key in ("error", "error_code")
+                             if record.get(key) is not None})
+            continue
+        # Actual publications still require matching provenance. Do not accept an
+        # input URL as proof for a publication belonging to another account.
+        origin = (record.get("discovery_input") or {}) if isinstance(record, dict) else {}
+        origin = origin.get("url") if isinstance(origin, dict) else None
         try:
             matches = origin and provider.account_url(origin)[0] == expected
         except ValueError:
             matches = False
         if not matches:
-            raise ValueError("Résultat Bright Data sans origine correspondante ; aucun post importé")
+            state.update(status="FAILED", message="Origine d’une publication non correspondante : aucun post importé.",
+                         provider_error={"phase":"provenance","message":"Origine d’une publication non correspondante"})
+            _save(company_id, watch_id, state)
+            return
+        valid_records.append(record)
+    if failures:
+        state["record_errors"] = failures
+        state["record_errors_uri"] = _upload(f"company-watch/brightdata/results/{state['run_id']}-provider-errors.json",
+            json.dumps(failures, ensure_ascii=False).encode(), "application/json")
+    if records and not valid_records:
+        detail = " | ".join(dict.fromkeys((row.get("error_code", "") + " : " + row.get("error", "")).strip(" :") for row in failures))
+        state.update(status="FAILED", received=len(records), new=0, known=0,
+                     message="Aucune publication récupérée — Bright Data : " + provider.safe_error_text(detail),
+                     provider_error={"phase":"result_records","message":provider.safe_error_text(detail)})
+        _save(company_id, watch_id, state)
+        return
+    posts, issues = provider.normalize_records(valid_records)
     existing = discovery._query(f"SELECT URL FROM `{discovery.DISCOVERY}` WHERE ID_COMPANY=@company",
         [discovery._p("company", "STRING", company_id)])
     legacy = discovery._query(f"SELECT SOURCE_URL FROM `{discovery.DOCUMENT}` WHERE ID_COMPANY=@company AND ID_COMPANY_WATCH IS NOT NULL",
@@ -169,6 +191,8 @@ def _ingest(company_id, watch_id, state, records):
         known_ids.add(post["post_id"])
     count = discovery._insert_candidates_batch(watch, items, batch_id=state["run_id"])
     warnings = ["La collecte ne garantit pas l'exhaustivité. Pour les contenus relayés, la date reçue peut être celle du post original ; elle ne prouve pas la date du relais."]
+    if failures:
+        warnings.append(f"{len(failures)} ligne(s) d’erreur fournisseur isolée(s) ; les publications valides ont été conservées.")
     if issues:
         issues_uri = _upload(f"company-watch/brightdata/results/{state['run_id']}-issues.json",
             json.dumps(issues).encode(), "application/json")
