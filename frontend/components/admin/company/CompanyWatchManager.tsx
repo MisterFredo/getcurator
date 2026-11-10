@@ -1,261 +1,382 @@
-"""Manually triggered backend queue for company watch. No cron or external worker."""
-from __future__ import annotations
-import hashlib
-import json
-import logging
-import threading
-import uuid
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone, timedelta
-from fastapi import HTTPException
-from google.api_core.exceptions import NotFound, PreconditionFailed
-from core.company import watch_monitoring as monitoring
-from core.library.company_watch_library import document_lock
-from utils.gcs import bucket
+"use client";
 
-log = logging.getLogger(__name__)
-TERMINAL = {'COMPLETE', 'FAILED', 'SKIPPED'}
-ROOT = monitoring.ROOT
-load, save, stamp = monitoring.load, monitoring.save, monitoring.stamp
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import WatchCollectionPanel from "./WatchCollectionPanel";
+import WatchDiscoveryWorkspace from "./WatchDiscoveryWorkspace";
+import {
+  createCompanyWatch, updateCompanyWatch,
+} from "@/lib/companyWatch";
+import type {
+  WatchCompany, CompanyWatch, WatchPayload, WatchSourceType, WatchSourceRole, WatchMethod,
+} from "@/lib/companyWatch";
 
-def now(): return datetime.now(timezone.utc)
-def lock(): return document_lock('watch-operations-' + hashlib.sha256(ROOT.encode()).hexdigest())
-def path(job_id):
-    try: uuid.UUID(job_id)
-    except (TypeError, ValueError): raise HTTPException(400, 'Identifiant de collecte invalide')
-    return 'jobs/' + job_id + '.json'
-def get_job(job_id):
-    value = load(path(job_id))
-    if value is None: raise HTTPException(404, 'Collecte introuvable')
-    return value
+import {listMonitoredWatches,listActiveWatchCompanies} from '@/lib/watchOperations';
+import type {MonitoredWatch, WatchChannel, WatchKind} from '@/lib/watchOperations';
+const dateText=(value?:string)=>value?new Date(value).toLocaleString('fr-FR',{timeZone:'Europe/Paris'}):'—';
+const PAGE_SIZE = 50;
+const control = "w-full border rounded px-3 py-2 bg-white disabled:opacity-50";
+const button = "border rounded px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed";
+const types: WatchSourceType[] = ["HTML", "LINKEDIN", "NEWSLETTER", "PDF"];
+function message(error: unknown) {
+  return error instanceof Error ? error.message : "Une erreur est survenue.";
+}
+function safeUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
+  } catch { return undefined; }
+}
+function emptyPayload(): WatchPayload {
+  return { label: "", source_type: "HTML", source_url: "", source_role: "CORPORATE",
+    author_name: null, collection_method: "MANUAL", collection_config: {}, is_active: true };
+}
 
-def list_jobs(company_id=None, watch_id=None):
-    for job_id in load('index.json', {'jobs': []})['jobs']:
-        job = get_job(job_id)
-        if company_id and not (job.get('id_company') == company_id or any(s['id_company'] == company_id for s in job['sources'])): continue
-        if watch_id and not any(s['id_company_watch'] == watch_id for s in job['sources']): continue
-        return {'jobs': [job]}
-    return {'jobs': []}
+type Props = {
+  // En mode fiche Company, le parent remonte le composant avec key=id_company.
+  company?: WatchCompany;
+};
 
-def source_signature(watch):
-    return hashlib.sha256(json.dumps({k: watch.get(k) for k in
-        ('source_url', 'collection_method', 'collection_config')}, sort_keys=True, default=str).encode()).hexdigest()
+export default function CompanyWatchManager({ company: fixedCompany }: Props) {
+  const [companies, setCompanies] = useState<WatchCompany[]>(fixedCompany ? [fixedCompany] : []);
+  const [companiesLoading, setCompaniesLoading] = useState(!fixedCompany);
+  const [companiesError, setCompaniesError] = useState("");
+  const [companyRetry, setCompanyRetry] = useState(0);
+  const [selectedCompanyId, setCompanyId] = useState("");
+  const companyId = fixedCompany?.id_company || selectedCompanyId;
+  const [sourcesOpen,setSourcesOpen]=useState(!!fixedCompany);
+  const [status, setStatus] = useState("all");
+  const [channel,setChannel]=useState<WatchChannel>('ALL');
+  const [kind,setKind]=useState<WatchKind>('ALL');
+  const [offset, setOffset] = useState(0);
+  const [rows, setRows] = useState<MonitoredWatch[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [editor, setEditor] = useState<{ companyId: string; watchId?: string; companyName: string } | null>(null);
+  const [draft, setDraft] = useState<WatchPayload>(emptyPayload);
+  const [configText, setConfigText] = useState("{}");
+  const [monitorMode, setMonitorMode] = useState<"LISTING" | "SINGLE_PAGE">("LISTING");
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [collectionRow, setCollectionRow] = useState<CompanyWatch | null>(null);
+  const mutation = useRef(false);
+  const mounted = useRef(true);
 
-def all_sources(company_id=None, watch_id=None):
-    from core.company import watch_service
-    if watch_id:
-        if not company_id: raise HTTPException(400, 'Société obligatoire pour un point individuel')
-        return [watch_service.get_company_watch(company_id, watch_id)]
-    result, offset = [], 0
-    while True:
-        response = watch_service.list_company_watch(id_company=company_id, is_active=True, limit=500, offset=offset)
-        result.extend(response['watches'])
-        if not response['has_more']: return result
-        offset += 500
+  useEffect(()=>{
+    const refresh=()=>setRevision(value=>value+1);
+    window.addEventListener('watch-scan-updated',refresh);window.addEventListener('contacts-updated',refresh);window.addEventListener('focus',refresh);
+    return()=>{window.removeEventListener('watch-scan-updated',refresh);window.removeEventListener('contacts-updated',refresh);window.removeEventListener('focus',refresh);};
+  },[]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
-def launch(kind='PUBLICATIONS', channel='ALL', company_id=None, watch_id=None, failed_only=False, recover_only=False):
-    if kind not in {'ALL', 'SINGLE_PAGE', 'PUBLICATIONS'} or channel not in {'ALL', 'WEB', 'LINKEDIN'}:
-        raise HTTPException(400, 'Périmètre invalide')
-    scope = dict(kind=kind, channel=channel, id_company=company_id, id_company_watch=watch_id,
-                 failed_only=failed_only, recover_only=recover_only)
-    with lock():
-        index = load('index.json', {'jobs': []})
-        for old_id in index['jobs'][:1]:
-            old = get_job(old_id)
-            if old['status'] == 'PAUSED':
-                raise HTTPException(409, 'Une collecte Veille est suspendue ; reprendre son suivi avant un autre lancement')
-            if old['status'] == 'RUNNING':
-                if all(old.get(k) == v for k, v in scope.items()): return {**old, 'reused': True}
-                raise HTTPException(409, 'Une collecte Veille est déjà active ; consulter ou reprendre son suivi avant un autre lancement')
-        sources = []
-        eligible = []
-        for watch in all_sources(company_id, watch_id):
-            ch, ty = monitoring.classify(watch)
-            if not watch.get('is_active') or watch['collection_method'] not in {'HTML', 'BRIGHTDATA'} or watch['source_type'] == 'PDF': continue
-            if channel != 'ALL' and ch != channel or kind != 'ALL' and ty != kind: continue
-            if recover_only and watch['collection_method'] != 'BRIGHTDATA': continue
-            eligible.append(watch)
-        if failed_only:
-            # GCS reads only; no BigQuery request or provider call per contact.
-            with ThreadPoolExecutor(max_workers=8) as pool: checks = list(pool.map(monitoring.diagnostic, eligible))
-            eligible = [w for w, state in zip(eligible, checks) if state and state.get('status') == 'FAILED']
-        for watch in eligible:
-            ch, ty = monitoring.classify(watch)
-            sources.append({'id_company': watch['id_company'], 'id_company_watch': watch['id_company_watch'],
-                'label': watch['label'], 'company_name': watch.get('company_name'), 'channel': ch, 'kind': ty,
-                'method': watch['collection_method'], 'signature': source_signature(watch),
-                'status': 'PENDING', 'new': 0, 'known': 0, 'unchanged': 0,
-                'retry': failed_only, 'recover_only': recover_only})
-        if not sources: raise HTTPException(400, 'Aucune source active correspondante' + (' en échec connu' if failed_only else ''))
-        job = {**scope, 'id_job': str(uuid.uuid4()), 'status': 'RUNNING', 'created_at': stamp(),
-               'updated_at': stamp(), 'sources': sources}
-        save(path(job['id_job']), job)
-        index['jobs'] = ([job['id_job']] + index['jobs'])[:30]
-        save('index.json', index)
-        return {**job, 'reused': False}
+  useEffect(() => {
+    let cancelled = false;
+    if (fixedCompany) {
+      setCompanies([fixedCompany]);
+      setCompaniesLoading(false);
+      setCompaniesError("");
+      return;
+    }
+    setCompaniesLoading(true);
+    setCompaniesError("");
+    listActiveWatchCompanies().then(data => {
+      if (!cancelled) setCompanies([...data].sort((a, b) => a.name.localeCompare(b.name)));
+    }).catch(error => {
+      if (!cancelled) setCompaniesError(message(error));
+    }).finally(() => { if (!cancelled) setCompaniesLoading(false); });
+    return () => { cancelled = true; };
+  }, [companyRetry, fixedCompany]);
 
-def pause(job_id):
-    with lock():
-        job = get_job(job_id)
-        if job['status'] == 'RUNNING':
-            job.update(status='PAUSED', updated_at=stamp())
-            save(path(job_id), job)
-        return job
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError("");
+    setRows([]);
+    setHasMore(false);
+    listMonitoredWatches({ channel,kind,id_company: companyId || undefined,
+      is_active: status === "all" ? undefined : status === "active", offset, limit: PAGE_SIZE,
+    }).then(result => {
+      if (cancelled) return;
+      // Une suspension peut vider la dernière page du filtre « Actifs ».
+      if (!result.watches.length && offset > 0) {
+        setOffset(Math.max(0, offset - PAGE_SIZE));
+        return;
+      }
+      setRows(result.watches);
+      setHasMore(result.has_more);
+    }).catch(error => {
+      if (!cancelled) setLoadError(message(error));
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [companyId, status, channel,kind,offset, revision]);
 
-def resume(job_id):
-    with lock():
-        job = get_job(job_id)
-        if job['status'] == 'PAUSED':
-            job.update(status='RUNNING', updated_at=stamp())
-            save(path(job_id), job)
-        return job
+  useEffect(() => {
+    if (!dirty) return;
+    function preventLoss(event: BeforeUnloadEvent) { event.preventDefault(); event.returnValue = ""; }
+    window.addEventListener("beforeunload", preventLoss);
+    return () => window.removeEventListener("beforeunload", preventLoss);
+  }, [dirty]);
 
-class Lease:
-    def __init__(self):
-        self.token = str(uuid.uuid4()); self.generation = None; self.expiry = now()
-        self.stop = threading.Event(); self.lost = False; self.thread = None
-    @property
-    def valid(self): return self.generation is not None and not self.lost and now() < self.expiry
-    def write(self, generation):
-        expiry = now() + timedelta(minutes=5)
-        b = bucket.blob(ROOT + '/lease.json')
-        b.upload_from_string(json.dumps({'owner': self.token, 'expires': expiry.isoformat()}),
-            content_type='application/json', if_generation_match=generation)
-        self.generation = int(b.generation); self.expiry = expiry
-    def renew(self):
-        while not self.stop.wait(30):
-            try: self.write(self.generation)
-            except Exception: self.lost = True; log.exception('Watch lease lost'); return
-    def __enter__(self):
-        b = bucket.blob(ROOT + '/lease.json'); generation = 0
-        try:
-            b.reload(); generation = int(b.generation)
-            value = json.loads(bucket.blob(b.name, generation=generation).download_as_text(if_generation_match=generation))
-            if datetime.fromisoformat(value['expires']) > now(): return self
-        except NotFound: pass
-        except PreconditionFailed: return self
-        try: self.write(generation)
-        except PreconditionFailed: return self
-        self.thread = threading.Thread(target=self.renew, daemon=True); self.thread.start(); return self
-    def __exit__(self, *args):
-        self.stop.set()
-        if self.thread: self.thread.join(timeout=2)
-        if self.generation is not None:
-            try: bucket.blob(ROOT + '/lease.json').delete(if_generation_match=self.generation)
-            except (NotFound, PreconditionFailed): pass
+  function discardAllowed() {
+    return !dirty || window.confirm("Abandonner les modifications non enregistrées ?");
+  }
+  function closeEditor() {
+    if (busy || !discardAllowed()) return;
+    setEditor(null); setDirty(false); setActionError("");
+  }
+  function startCreate() {
+    const company = fixedCompany || companies.find(c => c.id_company === companyId);
+    if (!company || !discardAllowed()) return;
+    setEditor({ companyId: company.id_company, companyName: company.name });
+    setDraft(emptyPayload()); setConfigText("{}"); setMonitorMode("LISTING"); setDirty(false); setNotice(""); setActionError("");
+  }
+  function startEdit(row: CompanyWatch) {
+    if(row.id_contact){if(!discardAllowed())return;window.location.assign(`/admin/contact/edit/${encodeURIComponent(row.id_contact)}`);return;}
 
-def retry_linkedin(company, watch):
-    """Recover an existing snapshot first. Only explicit retry may buy a replacement."""
-    from core.company import watch_brightdata_service as service
-    state = service._load(company, watch)
-    if not state or not state.get('snapshot_id'):
-        return service.scan_linkedin(company, watch, start=True)  # UNKNOWN remains protected in service.
-    if state['status'] != 'FAILED': return service.scan_linkedin(company, watch, start=False)
-    provider_status = service.provider.progress(state['snapshot_id'])
-    if provider_status in {'failed', 'canceled'}:
-        return service.scan_linkedin(company, watch, start=True)
-    with service.document_lock('scan-company-' + company):
-        latest = service._load(company, watch)
-        if latest and latest.get('snapshot_id') == state['snapshot_id'] and latest['status'] == 'FAILED':
-            latest.update(status='RUNNING', message=None)
-            service._save(company, watch, latest)
-    return service.scan_linkedin(company, watch, start=False)
-
-def step_source(source):
-    from core.company import watch_discovery_service as discovery
-    row = dict(source); c, w = row['id_company'], row['id_company_watch']
-    try:
-        current = discovery.active_watch(c, w)
-        if source_signature(current) != row['signature']:
-            return {**row, 'status': 'SKIPPED', 'error': 'Paramètres modifiés pendant la collecte ; lancer un nouveau passage'}
-        if row['method'] == 'BRIGHTDATA':
-            from core.company import watch_brightdata_service as service
-            if row['status'] == 'PENDING' and row['retry']:
-                response = retry_linkedin(c, w)
-            else:
-                response = service.scan_linkedin(c, w, start=row['status'] == 'PENDING' and not row['recover_only'])
-        else: response = discovery.scan_watch(c, w)
-        monitoring.record(c, w, result=response)
-        status = response['status']
-        row['warnings'] = response.get('warnings') or []
-        if status in {'ok', 'COMPLETE'}:
-            row.update(status='COMPLETE', error=None, **{k: response.get(k, 0) for k in ('new', 'known', 'unchanged')})
-        elif status in {'STARTING', 'RUNNING'}:
-            row.setdefault('started_at', stamp())
-            row.update(status='RUNNING', next_poll=(now() + timedelta(seconds=10)).isoformat())
-            if now() - datetime.fromisoformat(row['started_at']) > timedelta(minutes=30):
-                row.update(status='FAILED', error='Attente fournisseur supérieure à 30 minutes ; le snapshot reste récupérable')
-                monitoring.record(c, w, error=row['error'])
-        else:
-            row.update(status='FAILED', error=response.get('message') or 'Aucune collecte à reprendre' if status == 'IDLE' else response.get('message') or status)
-    except Exception as exc:
-        excluded = getattr(exc, 'status_code', None) == 404 or (getattr(exc, 'status_code', None) == 409 and any(term in str(getattr(exc, 'detail', '')).lower() for term in ('suspendu', 'inactive')))
-        row.update(status='SKIPPED' if excluded else 'FAILED', error=monitoring.safe_message(getattr(exc, 'detail', str(exc))))
-        if not excluded: monitoring.record(c, w, error=row['error'])
-        log.exception('Watch source failed watch=%s', w)
-    return row
-
-def due_sources(pending):
-    running = [r for r in pending if r['status'] == 'RUNNING']
-    candidates = [r for r in running if not r.get('next_poll') or datetime.fromisoformat(r['next_poll']) <= now()]
-    candidates += [r for r in pending if r['status'] == 'PENDING'][:max(0, 3 - len(running))]
-    # Existing provider service uses a company-wide lease, not a source lease.
-    # Never call two accounts of the same company simultaneously.
-    chosen, companies = [], set()
-    for source in candidates:
-        if source['id_company'] in companies: continue
-        chosen.append(source); companies.add(source['id_company'])
-        if len(chosen) == 3: break
-    return chosen
-
-_drain_lock = threading.Lock()
-
-def drain():
-    if not _drain_lock.acquire(blocking=False): return
-    try: _drain_queue()
-    finally: _drain_lock.release()
-
-def _drain_queue():
-    pause = threading.Event()
-    try:
-        while True:
-            jobs = list_jobs()['jobs']
-            if not jobs or jobs[0]['status'] != 'RUNNING': return
-            with Lease() as lease:
-                # After an API restart, wait for the former lease to expire.
-                if not lease.valid:
-                    pause.wait(3)
-                    continue
-                while lease.valid:
-                    jobs = list_jobs()['jobs']
-                    if not jobs or jobs[0]['status'] != 'RUNNING': return
-                    job = jobs[0]
-                    pending = [r for r in job['sources'] if r['status'] not in TERMINAL]
-                    due = due_sources(pending)
-                    if pending and not due:
-                        pause.wait(1)
-                        continue
-                    due = due[:3]
-                    # Persist dispatch intent BEFORE provider calls. After a crash,
-                    # RUNNING rows poll their snapshot; they never repurchase a job.
-                    launching = {r['id_company_watch'] for r in due if r['status'] == 'PENDING'}
-                    if launching:
-                        with lock():
-                            dispatch = get_job(job['id_job'])
-                            for source in dispatch['sources']:
-                                if source['id_company_watch'] in launching:
-                                    source.update(status='RUNNING', started_at=stamp())
-                            dispatch['updated_at'] = stamp()
-                            save(path(job['id_job']), dispatch)
-                    with ThreadPoolExecutor(max_workers=3) as pool: updates = list(pool.map(step_source, due))
-                    if not lease.valid: return
-                    with lock():
-                        latest = get_job(job['id_job'])
-                        mapped = {r['id_company_watch']: r for r in updates}
-                        latest['sources'] = [mapped.get(r['id_company_watch'], r) for r in latest['sources']]
-                        latest['updated_at'] = stamp()
-                        if all(r['status'] in TERMINAL for r in latest['sources']):
-                            latest['status'] = 'PARTIAL' if any(r['status'] != 'COMPLETE' for r in latest['sources']) else 'COMPLETE'
-                        save(path(job['id_job']), latest)
-                    if latest['status'] != 'RUNNING': return
-    except Exception: log.exception('Watch interrupted; persisted progress can be resumed')
+    if (!discardAllowed()) return;
+    setEditor({ companyId: row.id_company, watchId: row.id_company_watch,
+      companyName: row.company_name || row.id_company });
+    setDraft({ label: row.label, source_type: row.source_type, source_url: row.source_url,
+      source_role: row.source_role, author_name: row.author_name,
+      collection_method: row.collection_method, collection_config: row.collection_config, is_active: row.is_active });
+    setConfigText(JSON.stringify(row.collection_config || {}, null, 2));
+    setMonitorMode(row.collection_config?.mode === "SINGLE_PAGE" || (!row.collection_config?.mode && row.source_url.includes("linkedin.com")) ? "SINGLE_PAGE" : "LISTING");
+    setDirty(false); setNotice(""); setActionError("");
+  }
+  function change<K extends keyof WatchPayload>(key: K, value: WatchPayload[K]) {
+    setDraft(previous => ({ ...previous, [key]: value })); setDirty(true);
+  }
+  function prefill(kind: "website" | "linkedin") {
+    const company = fixedCompany || companies.find(c => c.id_company === editor?.companyId);
+    const url = kind === "website" ? company?.website_url : company?.linkedin_url;
+    if (!url) return;
+    change("source_url", url);
+    change("source_type", kind === "website" ? "HTML" : "LINKEDIN");
+  }
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editor || mutation.current) return;
+    setActionError(""); setNotice("");
+    let config: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(configText);
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("La configuration doit être un objet JSON.");
+      }
+      config = { ...(parsed as Record<string, unknown>), mode: monitorMode };
+    } catch (error) { setActionError(message(error)); return; }
+    const url = safeUrl(draft.source_url.trim());
+    if (!url) { setActionError("Saisissez une URL HTTP(S) valide."); return; }
+    if (!draft.label.trim()) { setActionError("Le libellé est obligatoire."); return; }
+    const payload: WatchPayload = { ...draft, label: draft.label.trim(), source_url: draft.source_url.trim(),
+      author_name: draft.author_name?.trim() || null, collection_config: config };
+    mutation.current = true; setBusy(true);
+    try {
+      if (editor.watchId) await updateCompanyWatch(editor.companyId, editor.watchId, payload);
+      else await createCompanyWatch(editor.companyId, payload);
+      if (!mounted.current) return;
+      setEditor(null); setDirty(false);
+      setNotice(editor.watchId ? "Point de collecte mis à jour." : "Point de collecte créé.");
+      setRevision(value => value + 1);
+    } catch (error) { if (mounted.current) setActionError(message(error)); }
+    finally { mutation.current = false; if (mounted.current) setBusy(false); }
+  }
+  async function toggle(row: CompanyWatch) {
+    if (mutation.current) return;
+    mutation.current = true; setBusy(true); setActionError(""); setNotice("");
+    try {
+      await updateCompanyWatch(row.id_company, row.id_company_watch, { is_active: !row.is_active });
+      if (!mounted.current) return;
+      setNotice(row.is_active ? "Suivi suspendu." : "Suivi activé.");
+      setRevision(value => value + 1);
+      if(row.id_contact)window.dispatchEvent(new Event('contacts-updated'));
+    } catch (error) { if (mounted.current) setActionError(message(error)); }
+    finally { mutation.current = false; if (mounted.current) setBusy(false); }
+  }
+  const editorCompany = fixedCompany || companies.find(c => c.id_company === editor?.companyId);
+  return (
+    <div className="space-y-6">
+      <div className="text-sm"><a href="/admin/contact" className="underline">Gérer les contacts et leur suivi LinkedIn</a></div>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          {fixedCompany ? (
+            <h2 className="text-xl font-semibold text-ratecard-blue">Veille</h2>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500">Discovery / Veille</p>
+              <h1 className="text-3xl font-semibold text-ratecard-blue">Veille</h1>
+            </>
+          )}
+          <p className="text-gray-500 mt-1">{fixedCompany
+            ? `Gérez les points de collecte de ${fixedCompany.name}.`
+            : "Suivez les sites et comptes LinkedIn des sociétés et contacts, puis retrouvez les publications découvertes."}</p>
+        </div>
+        <button type="button" onClick={startCreate} disabled={!companyId || companiesLoading || busy || !!collectionRow}
+          className="bg-ratecard-green text-white rounded px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          Ajouter un point de collecte
+        </button>
+      </header>
+      <div className="bg-white border rounded p-4 flex flex-wrap items-end gap-4">
+        {!fixedCompany && <label className="flex-1 min-w-64 space-y-1">
+          <span className="text-sm font-medium">Société</span>
+          <select className={control} value={companyId} disabled={busy || !!editor || !!collectionRow || companiesLoading}
+            onChange={event => { setCompanyId(event.target.value); setOffset(0); setNotice(""); setActionError(""); }}>
+            <option value="">Toutes les sociétés actives suivies</option>
+            {companies.map(company => <option key={company.id_company} value={company.id_company}>{company.name}</option>)}
+          </select>
+        </label>}
+        <label className="space-y-1">
+          <span className="text-sm font-medium">État</span>
+          <select className={control} value={status} disabled={busy || !!editor || !!collectionRow}
+            onChange={event => { setStatus(event.target.value); setOffset(0); }}>
+            <option value="all">Tous</option><option value="active">Actifs</option><option value="inactive">Suspendus</option>
+          </select>
+        </label>
+        <label className="space-y-1"><span className="text-sm font-medium">Canal</span>
+          <select className={control} value={channel} onChange={e=>{setChannel(e.target.value as WatchChannel);setOffset(0);}}><option value="ALL">Sites et LinkedIn</option><option value="WEB">Sites</option><option value="LINKEDIN">LinkedIn</option></select></label>
+        <label className="space-y-1"><span className="text-sm font-medium">Type de relevé</span>
+          <select className={control} value={kind} onChange={e=>{setKind(e.target.value as WatchKind);setOffset(0);}}><option value="ALL">Tous les relevés</option><option value="PUBLICATIONS">Publications / URL</option><option value="SINGLE_PAGE">Pages uniques</option></select></label>
+        <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow}
+          onClick={() => setRevision(value => value + 1)}>Actualiser</button>
+      </div>
+      {!companyId && <p className="text-sm text-gray-500">Sélectionnez une société pour ajouter un point de collecte.</p>}
+      {companiesError && <div role="alert" className="text-red-700 bg-red-50 border rounded p-3">
+        Chargement des sociétés : {companiesError} <button type="button" className="underline ml-2"
+          onClick={() => setCompanyRetry(value => value + 1)}>Réessayer</button>
+      </div>}
+      {notice && <p role="status" className="bg-green-50 text-green-800 border rounded p-3">{notice}</p>}
+      {actionError && <p role="alert" className="bg-red-50 text-red-700 border rounded p-3 whitespace-pre-wrap">{actionError}</p>}
+      {editor && <section className="bg-white border rounded p-5 space-y-4" aria-labelledby="editor-title">
+        <h2 id="editor-title" className="text-lg font-semibold text-ratecard-blue">
+          {editor.watchId ? "Modifier" : "Ajouter"} un point de collecte — {editor.companyName}
+        </h2>
+        <form onSubmit={save} className="space-y-4">
+          <fieldset disabled={busy} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1"><span className="text-sm">Libellé *</span>
+              <input required maxLength={250} className={control} value={draft.label}
+                onChange={event => change("label", event.target.value)} /></label>
+            <label className="space-y-1"><span className="text-sm">Format *</span>
+              <select className={control} value={draft.source_type}
+                onChange={event => change("source_type", event.target.value as WatchSourceType)}>
+                {types.map(type => <option key={type}>{type}</option>)}
+              </select></label>
+            <label className="space-y-1 md:col-span-2"><span className="text-sm">URL de la page ou du compte *</span>
+              <input required type="url" maxLength={4096} className={control} value={draft.source_url}
+                placeholder="https://…" onChange={event => change("source_url", event.target.value)} />
+              <span className="block text-xs text-gray-500">Pour une newsletter : page d’inscription ou d’archives.</span>
+            </label>
+            <div className="md:col-span-2 flex flex-wrap gap-2">
+              <button type="button" className={button} disabled={!editorCompany?.website_url} onClick={() => prefill("website")}>Reprendre le site de la société</button>
+              <button type="button" className={button} disabled={!editorCompany?.linkedin_url} onClick={() => prefill("linkedin")}>Reprendre le LinkedIn de la société</button>
+            </div>
+            <label className="space-y-1"><span className="text-sm">Origine</span>
+              <select className={control} value={draft.source_role}
+                onChange={event => change("source_role", event.target.value as WatchSourceRole)}>
+                <option value="CORPORATE">Corporate</option><option value="EMPLOYEE" disabled>Salarié — gérer via Contacts</option>
+              </select></label>
+            <label className="space-y-1"><span className="text-sm">Auteur / personne suivie</span>
+              <input maxLength={250} className={control} value={draft.author_name || ""}
+                onChange={event => change("author_name", event.target.value || null)} /></label>
+            <label className="space-y-1"><span className="text-sm">Méthode de récupération</span>
+              <select className={control} value={draft.collection_method}
+                onChange={event => change("collection_method", event.target.value as WatchMethod)}>
+                <option value="MANUAL">Manuel — publication collée</option><option value="STUDIO">Studio — texte collé</option><option value="HTML">HTML — récupération web</option><option value="BRIGHTDATA">Bright Data — posts LinkedIn</option>
+              </select></label>
+            <label className="flex items-center gap-2 self-end py-2">
+              <input type="checkbox" checked={draft.is_active} onChange={event => change("is_active", event.target.checked)} />Suivi actif
+            </label>
+            <label className="space-y-1 md:col-span-2"><span className="text-sm">Comportement du scan HTML</span>
+              <select className={control} value={monitorMode} onChange={event => { setMonitorMode(event.target.value as "LISTING" | "SINGLE_PAGE"); setDirty(true); }}>
+                <option value="LISTING">Liste de publications — découvrir de nouvelles URL</option>
+                <option value="SINGLE_PAGE">Page précise — détecter ses mises à jour</option>
+              </select>
+            </label>
+            {draft.collection_method === "BRIGHTDATA" && <div className="md:col-span-2 border rounded p-3 space-y-2 bg-blue-50">
+              <p className="text-sm">Posts LinkedIn de société ou de profil personnel. Le type est déduit de l’URL.</p>
+              <p className="text-sm">Limite par scan : 100 publications par défaut. Pour l’ajuster, renseignez <code>limit_per_input</code> dans les paramètres avancés (entier, ou <code>null</code> pour demander sans plafond).</p>
+              <p className="text-xs text-gray-600">La clé Bright Data est configurée uniquement dans le backend.</p>
+            </div>}
+            <details className="md:col-span-2">
+              <summary className="cursor-pointer text-sm text-gray-600">Paramètres avancés</summary>
+              <label className="block mt-3 space-y-1"><span className="text-sm">Configuration JSON</span>
+                <textarea rows={5} className={`${control} font-mono text-sm`} value={configText}
+                  onChange={event => { setConfigText(event.target.value); setDirty(true); }} /></label>
+            </details>
+          </fieldset>
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy} className="bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-50">
+              {busy ? "Enregistrement…" : "Enregistrer"}</button>
+            <button type="button" disabled={busy} className={button} onClick={closeEditor}>Annuler</button>
+          </div>
+        </form>
+      </section>}
+      {collectionRow && <WatchCollectionPanel key={collectionRow.id_company_watch}
+        watch={collectionRow} onClose={() => setCollectionRow(null)} onBusyChange={setBusy} />}
+      <button type="button" className={button} aria-expanded={sourcesOpen} aria-controls="corpo-source-list"
+        onClick={()=>setSourcesOpen(value=>!value)}>
+        {sourcesOpen ? "Masquer les points de collecte" : "Afficher les points de collecte"}
+      </button>
+      {sourcesOpen && <div id="corpo-source-list">
+      <section className="bg-white border rounded overflow-hidden" aria-label="Points de collecte">
+        {loading ? <p role="status" className="p-8 text-gray-500">Chargement…</p>
+          : loadError ? <div role="alert" className="p-6 text-red-700 whitespace-pre-wrap">{loadError}
+            <button type="button" className={`${button} ml-3`} onClick={() => setRevision(value => value + 1)}>Réessayer</button></div>
+          : !rows.length ? <p className="p-8 text-center text-gray-500">Aucun point de collecte pour ces filtres.</p>
+          : <div className="overflow-x-auto"><table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-600"><tr>
+              {['Société', 'Point de collecte', 'Format / origine', 'Récupération', 'État', 'Dernier relevé / diagnostics', 'Actions'].map(label =>
+                <th scope="col" key={label} className="px-4 py-3 font-medium">{label}</th>)}
+            </tr></thead>
+            <tbody>{rows.map(row => <tr key={row.id_company_watch} className="border-t align-top">
+              <td className="px-4 py-3">{row.company_name || row.id_company}</td>
+              <td className="px-4 py-3"><div className="font-medium">{row.label}</div>
+                {safeUrl(row.source_url) ? <a className="text-ratecard-blue underline break-all" href={safeUrl(row.source_url)}
+                  target="_blank" rel="noopener noreferrer">{row.source_url}</a> : <span>{row.source_url}</span>}
+                {row.author_name && <div className="text-gray-500">{row.author_name}</div>}</td>
+              <td className="px-4 py-3">{row.source_type}<div className="text-gray-500">{row.source_role === 'EMPLOYEE' ? 'Salarié' : 'Corporate'}</div></td>
+              <td className="px-4 py-3">{row.collection_method === 'BRIGHTDATA' ? 'Bright Data' : row.collection_method === 'HTML' ? 'HTML' : row.collection_method === 'STUDIO' ? 'Studio' : 'Manuel'}</td>
+              <td className="px-4 py-3"><span className={`rounded px-2 py-1 text-xs ${row.is_active ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                {row.is_active ? 'Actif' : 'Suspendu'}</span></td>
+              <td className="px-4 py-3 min-w-72"><p>{row.watch_channel==='LINKEDIN'?'LinkedIn':'Site'} · {row.watch_kind==='SINGLE_PAGE'?'Page unique':'Publications / URL'}</p>
+                {row.diagnostic?<div className="mt-2 space-y-1 text-xs"><strong>{row.diagnostic.status==='FAILED'?'Échec':row.diagnostic.status==='RUNNING'?'En cours':row.diagnostic.warnings?.length?'Réussi avec avertissements':'Réussi'}</strong>
+                  <p>Dernière tentative : {dateText(row.diagnostic.last_attempt_at)}</p><p>Dernier succès : {dateText(row.diagnostic.last_success_at)}</p>
+                  {row.diagnostic.new!==undefined&&<p>Dernier succès : {row.diagnostic.new} nouveautés · {row.diagnostic.known||0} connues · {row.diagnostic.unchanged||0} inchangées</p>}
+                  {row.diagnostic.error&&<p className="text-red-700 whitespace-pre-wrap">{row.diagnostic.error}</p>}
+                  {!!row.diagnostic.warnings?.length&&<details><summary className="cursor-pointer text-amber-800">Remarques ({row.diagnostic.warnings.length})</summary>{row.diagnostic.warnings.map((w,i)=><p className="text-amber-800 mt-1" key={i}>{w}</p>)}</details>}
+                </div>:<p className="mt-2 text-xs text-gray-500">Aucun relevé enregistré. Les anciens diagnostics HTML ne sont pas disponibles.</p>}
+              </td>
+              <td className="px-4 py-3"><div className="flex gap-2">
+                <button type="button" className={button} disabled={busy || !!editor || !!collectionRow}
+                  onClick={() => { setCollectionRow(row); setActionError(""); setNotice(""); }}>
+                  Scan / URL
+                </button>
+                <button type="button" className={button} disabled={busy || !!collectionRow} onClick={() => startEdit(row)}>{row.id_contact?"Fiche contact":"Modifier"}</button>
+                <button type="button" className={button} disabled={busy || !!editor || !!collectionRow} onClick={() => toggle(row)}>
+                  {row.is_active ? 'Suspendre' : 'Activer'}</button>
+              </div></td>
+            </tr>)}</tbody>
+          </table></div>}
+        <div className="border-t px-4 py-3 flex items-center justify-between gap-3 text-sm">
+          <span>{!loading && !loadError && rows.length ? `Lignes ${offset + 1}–${offset + rows.length}` : ' '}</span>
+          <div className="flex gap-2">
+            <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow || offset === 0 || !!loadError}
+              onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>Précédent</button>
+            <button type="button" className={button} disabled={loading || busy || !!editor || !!collectionRow || !hasMore || !!loadError}
+              onClick={() => setOffset(value => value + PAGE_SIZE)}>Suivant</button>
+          </div>
+        </div>
+      </section>
+      </div>}
+      {!collectionRow && <div className="pt-8 border-t">
+        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} channel={channel} kind={kind} onBusyChange={setBusy}/>
+      </div>}
+    </div>
+  );
+}
