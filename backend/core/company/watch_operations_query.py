@@ -11,13 +11,16 @@ KIND = f"""CASE WHEN w.COLLECTION_METHOD='BRIGHTDATA' THEN 'PUBLICATIONS'
 ITEM_CHANNEL = r"CASE WHEN REGEXP_CONTAINS(LOWER(d.URL), r'^https?://([a-z0-9-]+\.)*linkedin\.com(?:/|$)') THEN 'LINKEDIN' ELSE 'WEB' END"
 ITEM_KIND = "CASE WHEN d.CHANGE_TYPE IN ('NEW_PAGE','UPDATED_PAGE') THEN 'SINGLE_PAGE' ELSE 'PUBLICATIONS' END"
 
-def filters(channel, kind):
+ROLE = "CASE WHEN w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL THEN 'EMPLOYEE' ELSE 'CORPORATE' END"
+
+def filters(channel, kind, role='ALL'):
+    if role not in {'ALL','CORPORATE','EMPLOYEE'}: raise HTTPException(400,'Origine invalide')
     if channel not in {'ALL', 'WEB', 'LINKEDIN'} or kind not in {'ALL', 'PUBLICATIONS', 'SINGLE_PAGE'}:
         raise HTTPException(400, 'Filtre invalide')
 
-def list_sources(company_id=None, is_active=None, channel='ALL', kind='ALL', offset=0, limit=50):
+def list_sources(company_id=None, is_active=None, channel='ALL', kind='ALL', offset=0, limit=50, role='ALL'):
     from core.company import watch_service as service
-    filters(channel, kind)
+    filters(channel, kind, role)
     if offset < 0 or not 1 <= limit <= 500: raise HTTPException(400, 'Pagination invalide')
     clauses, params = [], []
     for value, sql, name, type_ in ((company_id, 'w.ID_COMPANY', 'company', 'STRING'),
@@ -26,6 +29,8 @@ def list_sources(company_id=None, is_active=None, channel='ALL', kind='ALL', off
         (kind if kind != 'ALL' else None, f'({KIND})', 'kind', 'STRING')):
         if value is not None:
             clauses.append(sql + '=@' + name); params.append(service._param(name, type_, value))
+    if role!='ALL':
+        clauses.append(f'({ROLE})=@role'); params.append(service._param('role','STRING',role))
     where = 'WHERE ' + ' AND '.join(clauses) if clauses else ''
     params += [service._param('limit','INT64',limit+1), service._param('offset','INT64',offset)]
     rows = service._query(f'''SELECT w.*, c.NAME AS COMPANY_NAME,
@@ -37,9 +42,9 @@ def list_sources(company_id=None, is_active=None, channel='ALL', kind='ALL', off
     for watch, diagnostic in zip(watches, diagnostics): watch['diagnostic'] = diagnostic
     return {'status':'ok','watches':watches,'has_more':len(rows)>limit,'offset':offset,'limit':limit}
 
-def list_items(company_id=None, watch_id=None, status='NEW', channel='ALL', kind='ALL', offset=0, limit=50):
+def list_items(company_id=None, watch_id=None, status='NEW', channel='ALL', kind='ALL', offset=0, limit=50, role='ALL'):
     from core.company import watch_discovery_service as service
-    filters(channel, kind)
+    filters(channel, kind, role)
     if status not in {'NEW','STORED','DISMISSED','ALL','IMPORTING','IMPORTED','ERROR'}:
         raise HTTPException(400, 'Statut invalide')
     clauses, params = [], []
@@ -55,6 +60,8 @@ def list_items(company_id=None, watch_id=None, status='NEW', channel='ALL', kind
         params.append(service._p('status','STRING',status))
     elif status != 'ALL':
         clauses.append('d.STATUS=@status'); params.append(service._p('status','STRING',status))
+    if role!='ALL':
+        clauses.append(f'({ROLE})=@role'); params.append(service._p('role','STRING',role))
     where = 'WHERE '+' AND '.join(clauses) if clauses else ''
     params += [service._p('limit','INT64',limit+1), service._p('offset','INT64',offset)]
     rows = service._query(f'''SELECT d.*, w.LABEL AS WATCH_LABEL, c.NAME AS COMPANY_NAME,
