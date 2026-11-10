@@ -35,8 +35,13 @@ def _load(source):
 def _save(source,state):
     bucket.blob(_path(source)).upload_from_string(json.dumps(state,ensure_ascii=False),content_type='application/json')
 
-def _response(state):
-    return {'status':state['status'],'snapshot_id':state.get('snapshot_id'),'discovered_urls':state.get('new',0),
+def _response(state, *, added_this_call=0, reused_result=False):
+    return {'status':state['status'],'snapshot_id':state.get('snapshot_id'),'run_id':state.get('run_id'),
+        'discovered_urls':state.get('new',0), 'added_this_call':added_this_call,
+        'reused_result':reused_result, 'count_method':state.get('count_method'),
+        'received':state.get('received'), 'valid_posts':state.get('valid_posts'),
+        'candidates':state.get('candidates'), 'merge_skipped':state.get('merge_skipped'),
+        'issue_count':state.get('issue_count'),
         'known':state.get('known',0),'warnings':state.get('warnings',[]),'message':state.get('message'),
         'timings':state.get('timings',{}),'scanned_sources':1,'failed_sources':1 if state['status']=='FAILED' else 0}
 
@@ -61,10 +66,10 @@ def scan(source_id,*,start=False):
                 state.update(status='FAILED',message='Échec Bright Data : vérifier le compte et la clé.')
                 _save(source_id,state);raise
             state['status']='RUNNING';_save(source_id,state);return _response(state)
-        if not state:return {'status':'IDLE','discovered_urls':0,'known':0,'warnings':[]}
+        if not state:return {'status':'IDLE','discovered_urls':0,'added_this_call':0,'known':0,'warnings':[]}
         if state['status'] in {'UNKNOWN','STARTING'}:
             return {**_response(state),'status':'UNKNOWN','message':'Lancement incertain : rattacher un snapshot ID depuis Bright Data.'}
-        if state['status']!='RUNNING':return _response(state)
+        if state['status']!='RUNNING':return _response(state,reused_result=state['status']=='COMPLETE')
         started=time.perf_counter()
         status=provider.progress(state['snapshot_id'])
         logger.info('[MEDIA LINKEDIN] progress source=%s status=%s duration=%.3fs',source_id,status,time.perf_counter()-started)
@@ -79,7 +84,7 @@ def scan(source_id,*,start=False):
         started=time.perf_counter()
         _ingest(source_id,state,records)
         logger.info('[MEDIA LINKEDIN] ingest source=%s posts=%s duration=%.3fs',source_id,len(records),time.perf_counter()-started)
-        return _response(state)
+        return _response(state,added_this_call=state.get('new',0))
 
 
 def attach(source_id,snapshot_id):
@@ -115,13 +120,14 @@ def _ingest(source_id,state,records):
         item['capture']=_upload(f"media-linkedin/captures/{state['run_id']}/{item['post']['post_id']}.json",
             json.dumps(item['post'],ensure_ascii=False).encode(),'application/json')
         return {key:value for key,value in item.items() if key!='post'}
+    inserted=0
     if pending:
         with ThreadPoolExecutor(max_workers=4) as pool:
             pending=list(pool.map(upload,pending))
         state.setdefault('timings',{})['dedup_and_captures_seconds']=round(time.perf_counter()-started,3)
         started=time.perf_counter()
         # One atomic MERGE for all posts, never a per-URL insert.
-        query(f"""MERGE `{DISCOVERY}` T USING (
+        merge_result=query(f"""MERGE `{DISCOVERY}` T USING (
             SELECT JSON_VALUE(p,'$.id') AS ID_DISCOVERY, JSON_VALUE(p,'$.url') AS URL,
               JSON_VALUE(p,'$.title') AS TITLE, JSON_VALUE(p,'$.published') AS PUBLISHED_AT,
               JSON_VALUE(p,'$.capture') AS CAPTURE_URI, JSON_VALUE(p,'$.hash') AS CONTENT_HASH
@@ -130,15 +136,22 @@ def _ingest(source_id,state,records):
         WHEN NOT MATCHED THEN INSERT (ID_DISCOVERY,SOURCE_ID,URL,TITLE,STATUS,DATE_FOUND,CREATED_AT,
             PUBLISHED_AT,CAPTURE_URI,CONTENT_HASH)
         VALUES (S.ID_DISCOVERY,@source,S.URL,S.TITLE,'NEW',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),
-            SAFE_CAST(S.PUBLISHED_AT AS TIMESTAMP),S.CAPTURE_URI,S.CONTENT_HASH)""",
+            SAFE_CAST(S.PUBLISHED_AT AS TIMESTAMP),S.CAPTURE_URI,S.CONTENT_HASH);
+        SELECT @@row_count AS INSERTED_COUNT;""",
             [param('payload','STRING',json.dumps(pending,ensure_ascii=False)),param('source','STRING',source_id)])
+        if not merge_result or 'INSERTED_COUNT' not in merge_result[0]:
+            raise RuntimeError('Compteur BigQuery INSERTED_COUNT absent ; aucune estimation affichée')
+        inserted=int(merge_result[0]['INSERTED_COUNT'])
+        if not 0 <= inserted <= len(pending):
+            raise RuntimeError('Compteur BigQuery incohérent')
     if pending:state.setdefault('timings',{})['bigquery_merge_seconds']=round(time.perf_counter()-started,3)
     warnings=['La couverture LinkedIn peut être partielle. Le Studio reste disponible pour compléter.']
     if issues:
         _upload(f"media-linkedin/results/{state['run_id']}-issues.json",json.dumps(issues).encode(),'application/json')
         warnings.append(f'{len(issues)} anomalie(s) conservée(s) dans l’audit fournisseur.')
     if len(records)>=state['limit']:warnings.append(f"Plafond de {state['limit']} résultats atteint : collecte potentiellement partielle.")
-    state.update(status='COMPLETE' if posts or not records else 'FAILED',new=len(pending),known=count_known,warnings=warnings)
+    state.update(status='COMPLETE' if posts or not records else 'FAILED',new=inserted,known=count_known,warnings=warnings,received=len(records),valid_posts=len(posts),
+        candidates=len(pending),merge_skipped=len(pending)-inserted,issue_count=len(issues),count_method='BIGQUERY_ROW_COUNT')
     _save(source_id,state)
 
 
