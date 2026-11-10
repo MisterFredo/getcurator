@@ -45,7 +45,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
   const [selectedCompanyId, setCompanyId] = useState("");
   const companyId = fixedCompany?.id_company || selectedCompanyId;
   const [sourcesOpen,setSourcesOpen]=useState(!!fixedCompany);
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState("active");
   const [channel,setChannel]=useState<WatchChannel>('ALL');
   const [role,setRole]=useState<WatchRole>('CORPORATE');
   const [kind,setKind]=useState<WatchKind>('ALL');
@@ -102,7 +102,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
     setRows([]);
     setHasMore(false);
     listMonitoredWatches({ role,channel,kind,id_company: companyId || undefined,
-      is_active: status === "all" ? undefined : status === "active", offset, limit: PAGE_SIZE,
+      is_active: role === "EMPLOYEE" ? true : status === "all" ? undefined : status === "active", offset, limit: PAGE_SIZE,
     }).then(result => {
       if (cancelled) return;
       // Une suspension peut vider la dernière page du filtre « Actifs ».
@@ -238,13 +238,14 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
             {companies.map(company => <option key={company.id_company} value={company.id_company}>{company.name}</option>)}
           </select>
         </label>}
-        <label className="space-y-1">
+        {role !== "EMPLOYEE" && (<label className="space-y-1">
           <span className="text-sm font-medium">État</span>
           <select className={control} value={status} disabled={busy || !!editor || !!collectionRow}
             onChange={event => { setStatus(event.target.value); setOffset(0); }}>
             <option value="all">Tous</option><option value="active">Actifs</option><option value="inactive">Suspendus</option>
           </select>
         </label>
+        )}
         <label className="space-y-1"><span className="text-sm font-medium">Canal</span>
           <select className={control} value={channel} onChange={e=>{setChannel(e.target.value as WatchChannel);setOffset(0);}}><option value="ALL">Sites et LinkedIn</option><option value="WEB">Sites</option><option value="LINKEDIN">LinkedIn</option></select></label>
         <label className="space-y-1"><span className="text-sm font-medium">Type de relevé</span>
@@ -334,7 +335,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
         {loading ? <p role="status" className="p-8 text-gray-500">Chargement…</p>
           : loadError ? <div role="alert" className="p-6 text-red-700 whitespace-pre-wrap">{loadError}
             <button type="button" className={`${button} ml-3`} onClick={() => setRevision(value => value + 1)}>Réessayer</button></div>
-          : !rows.length ? <p className="p-8 text-center text-gray-500">Aucun point de collecte pour ces filtres.</p>
+          : !rows.length ? <p className="p-8 text-center text-gray-500">{role === "EMPLOYEE" ? "Aucun salarié suivi pour ces filtres. Activez les contacts retenus depuis leur fiche ou la fiche société." : "Aucun point de collecte pour ces filtres."}</p>
           : <div className="overflow-x-auto"><table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600"><tr>
               {['Société', 'Point de collecte', 'Format / origine', 'Récupération', 'État', 'Dernier relevé / diagnostics', 'Actions'].map(label =>
