@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 PATH = "library-post-backlog.json"
 LOCK = "library-post-backlog-" + hashlib.sha256(state.ROOT.encode()).hexdigest()
 BATCH_SIZE = 20
+IMPORT_BATCH_SIZE = 100
 
 
 def status():
@@ -37,7 +38,7 @@ def launch():
 
 def run(id_job):
     from core.company.library_post_worker import _eligible, qualify_batch
-    from core.company.watch_library_service import register_employee_backlog
+    from core.company.library_post_bulk_import import register_batch
 
     while True:
         try:
@@ -49,15 +50,14 @@ def run(id_job):
                     return
                 try:
                     if job["phase"] == "LIBRARY":
-                        result = register_employee_backlog(
-                            limit=BATCH_SIZE, excluded_ids=job["failed_ids"],
-                            qualify_on_arrival=False,
+                        result = register_batch(
+                            limit=IMPORT_BATCH_SIZE, excluded_ids=job["failed_ids"],
                         )
                         for key in ("registered", "withdrawn"):
                             job[key] += result[key]
                         job["failed_ids"].extend(result["failed_ids"])
                         job["registration_failed"] = len(job["failed_ids"])
-                        if result["registered"] + result["withdrawn"] + result["failed"] < BATCH_SIZE:
+                        if result["registered"] + result["withdrawn"] + result["failed"] < IMPORT_BATCH_SIZE:
                             job["phase"] = "QUALIFICATION"
                     else:
                         result = qualify_batch(historical=True, limit=BATCH_SIZE)
