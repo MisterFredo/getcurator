@@ -77,6 +77,14 @@ def import_step(candidate_id, *, register_only=False):
                 document_id = result['id_document']
             if register_only:
                 _state(candidate_id, 'IMPORTED', document_id)
+                try:
+                    from core.company.library_post_worker import wake_post_worker
+
+                    wake_post_worker()
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "Réveil de la qualification impossible pour %s", document_id
+                    )
                 return {'id_document': document_id, 'library_status': 'IMPORTED'}
             # Link before calling the LLM: retries reuse both the document and its cursor.
             _state(candidate_id, 'IMPORTING', document_id)
