@@ -19,12 +19,13 @@ from api.contact.models import ContactCreate, linkedin_profile
 from core.contact import service as contacts
 
 log = logging.getLogger(__name__)
-IMPLEMENTATION_VERSION = 'contacts-linkedin-2.2-network'
+IMPLEMENTATION_VERSION = 'contacts-linkedin-2.3-pagination'
 BASE = contacts.BASE
 MAP = f'{BASE}.RATECARD_CONTACT_LINKEDIN_COMPANY_MAP'
 ENDPOINT = 'https://api.linkedin.com/rest/memberSnapshotData'
 PREFIX = 'contact-imports/v1/' + hashlib.sha256(BASE.encode()).hexdigest()[:20]
-MAX_ROWS, MAX_PAGES, MAX_SECONDS = 30000, 500, 600
+MAX_PROFILES, MAX_PAGES, MAX_SECONDS = 30000, 500, 600
+MAX_STORED_ROWS = 60000
 
 def now(): return datetime.now(timezone.utc).isoformat()
 def normalized(value):
@@ -113,6 +114,26 @@ def page(response, start_value):
             if next_start<=start_value: raise ValueError('LINKEDIN_PAGINATION_LOOP')
     return rows,next_start
 
+def compact_rows(rows, seen, profiles):
+    """Preserve distinct records for company conflict detection."""
+    unique = []
+    for row in rows:
+        try:
+            profile = linkedin_profile(row.get('URL'))
+        except (ValueError, TypeError):
+            profile = None
+        if profile:
+            profiles.add(profile)
+        comparable = {**row, 'URL': profile} if profile else row
+        key = hashlib.sha256(
+            json.dumps(comparable, sort_keys=True, ensure_ascii=False).encode()
+        ).digest()
+        if key not in seen:
+            seen.add(key)
+            unique.append(row)
+    return unique
+
+
 def collect(run_id):
     with lock(run_id):
         run=read(run_id)
@@ -121,10 +142,13 @@ def collect(run_id):
         try:
             token=os.environ.get('LINKEDIN_ACCESS_TOKEN','').strip()
             if not token: raise ValueError('LINKEDIN_TOKEN_MISSING')
+            seen, profiles = set(), set()
+            run['rows'] = compact_rows(run['rows'], seen, profiles)
+            save(run)
             with requests.Session() as session:
                 while True:
                     if time.monotonic()-began>MAX_SECONDS: raise ValueError('LINKEDIN_TIME_BUDGET')
-                    if run['pages']>=MAX_PAGES or len(run['rows'])>=MAX_ROWS: raise ValueError('LINKEDIN_SAFETY_LIMIT')
+                    if run['pages']>=MAX_PAGES: raise ValueError('LINKEDIN_SAFETY_LIMIT')
                     response=session.get(ENDPOINT,params={'q':'criteria','domain':'CONNECTIONS','start':run['next_start']},
                        headers={'Authorization':f'Bearer {token}','Linkedin-Version':'202312','Accept':'application/json'},
                        timeout=(10,60),allow_redirects=False)
@@ -140,8 +164,10 @@ def collect(run_id):
                         run['status']='READY';run['error']=None;save(run);return
                     digest=hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
                     if digest in run['fingerprints']: raise ValueError('LINKEDIN_REPEATED_PAGE')
-                    if len(run['rows'])+len(rows)>MAX_ROWS: raise ValueError('LINKEDIN_SAFETY_LIMIT')
-                    run['rows'].extend(rows);run['fingerprints'].append(digest);run['pages']+=1;run['next_start']=next_start
+                    new_rows = compact_rows(rows, seen, profiles)
+                    if len(profiles) > MAX_PROFILES or len(run['rows']) + len(new_rows) > MAX_STORED_ROWS:
+                        raise ValueError('LINKEDIN_SAFETY_LIMIT')
+                    run['rows'].extend(new_rows);run['fingerprints'].append(digest);run['pages']+=1;run['next_start']=next_start
                     save(run)
         except Exception as exc:
             code=str(exc) if isinstance(exc,ValueError) and str(exc).startswith('LINKEDIN_') else 'LINKEDIN_REQUEST_FAILED'
