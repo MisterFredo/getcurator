@@ -12,6 +12,11 @@ type EditorialFields = {
   qualification_verdict?: string | null;
   qualification_type?: string | null;
   qualification_motif?: string | null;
+  qualification_role?: "EMPLOYEE" | "CORPORATE" | null;
+  automatic_qualification_verdict?: string | null;
+  automatic_qualification_type?: string | null;
+  automatic_qualification_motif?: string | null;
+  review_id?: string | null;
 };
 
 type QualificationCount = {
@@ -119,7 +124,7 @@ function QualificationSummary({ rows }: { rows: QualificationCount[] }) {
     <section className="space-y-4 rounded border bg-white p-4" aria-label="Bilan des qualifications LinkedIn">
       <div>
         <h2 className="font-semibold">Qualifications LinkedIn</h2>
-        <p className="text-sm text-gray-500">Bilan de la sélection avant les filtres Verdict et Type principal.</p>
+        <p className="text-sm text-gray-500">Bilan de la sélection avant les filtres Verdict, Type principal et État de revue.</p>
       </div>
       {employeeSection}
       {corporateSection}
@@ -127,15 +132,15 @@ function QualificationSummary({ rows }: { rows: QualificationCount[] }) {
   );
 }
 
-type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string};
+type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string; reviewState:string};
 async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean;total:number;global_total:number;companies:WatchCompany[];qualification_summary?:QualificationCount[]}>{
  const params=new URLSearchParams({offset:String(offset),limit:"50",with_summary:"true",editorial_status:filters.editorialStatus});
- const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType};
+ const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType,review_state:filters.reviewState};
  Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
  return api.get(`/company/watch/library/list?${params.toString()}`);
 }
 const initialFilters: Required<EditorialFilters> = {
-  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"",reviewState:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
 };
 const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
@@ -144,6 +149,73 @@ const date = (value?: string) => value ? new Date(value).toLocaleString("fr-FR",
 function safeUrl(value?: string) {
   try { const url = new URL(value || ""); return ["http:","https:"].includes(url.protocol) ? url.href : undefined; }
   catch { return undefined; }
+}
+
+function ReviewForm({ post, onSaved }: {
+  post: CorpoLibraryDetail & EditorialFields;
+  onSaved: () => void;
+}) {
+  const corporate = post.qualification_role === "CORPORATE";
+  const allowed = ["SIGNAL_SOCIETE", "PRISE_DE_PAROLE_METIER", "BRUIT"];
+  const current = post.qualification_verdict ?? "";
+  const [verdict, setVerdict] = useState(corporate ? "CORPORATE" : allowed.includes(current) ? current : "");
+  const [postType, setPostType] = useState(post.qualification_type ?? "");
+  const [reason, setReason] = useState(post.review_id ? post.qualification_motif ?? "" : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const automatic = {
+    qualification_verdict: post.automatic_qualification_verdict,
+    qualification_type: post.automatic_qualification_type,
+  };
+  const confirms = !post.review_id && current === verdict && post.qualification_type === postType;
+
+  async function save() {
+    if (busy || !verdict || !postType) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await api.post(`/company/watch/library/${encodeURIComponent(post.id_document)}/review`, {
+        verdict, post_type: postType, reason: reason.trim() || null,
+      });
+      if (response.status !== "ok") throw new Error("Décision non confirmée.");
+      onSaved();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="space-y-3 rounded border p-3" onSubmit={event => { event.preventDefault(); void save(); }}>
+      <h3 className="font-semibold">{post.review_id ? "Modifier la décision manuelle" : "Valider ou corriger"}</h3>
+      <div className="rounded bg-gray-50 p-2 text-sm">
+        <p>Proposition automatique · {qualificationLabel(automatic)}</p>
+        {post.automatic_qualification_motif && <p>{post.automatic_qualification_motif}</p>}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {!corporate && <label className="block text-sm">Verdict
+          <select className={control} required value={verdict} onChange={event => setVerdict(event.target.value)}>
+            <option value="">Choisir un verdict</option>
+            {allowed.map(value => <option key={value} value={value}>{verdictLabels[value]}</option>)}
+          </select>
+        </label>}
+        <label className="block text-sm">Type principal
+          <select className={control} required value={postType} onChange={event => setPostType(event.target.value)}>
+            <option value="">Choisir un type</option>
+            {Object.entries(postTypes).map(([value,label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="block text-sm">Motif de la décision (facultatif)
+        <textarea className={control} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} />
+      </label>
+      <button className={button} type="submit" disabled={busy || !verdict || !postType}>
+        {busy ? "Enregistrement…" : confirms ? "Confirmer la proposition" : "Enregistrer la décision"}
+      </button>
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    </form>
+  );
 }
 
 export default function CorpoLibraryPage() {
@@ -230,7 +302,7 @@ export default function CorpoLibraryPage() {
     }}>
         <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({
           ...draft,documentType:e.target.value,companyId:"",
-          ...(e.target.value === "MENTION" ? {qualification:"",postType:""} : {}),
+          ...(e.target.value === "MENTION" ? {qualification:"",postType:"",reviewState:""} : {}),
         })}><option value="">Tous</option><option value="CORPORATE">Publications de veille</option><option value="MENTION">Mentions externes</option></select></label>
       <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
         <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
@@ -254,7 +326,7 @@ export default function CorpoLibraryPage() {
           <option value="desc">Décroissant / Z → A</option><option value="asc">Croissant / A → Z</option>
         </select></label>
       </div>
-      {draft.documentType !== "MENTION" && <div className="grid gap-3 sm:grid-cols-2">
+      {draft.documentType !== "MENTION" && <div className="grid gap-3 sm:grid-cols-3">
         <label className="block text-sm">Verdict
           <select className={control} value={draft.qualification} onChange={e=>setDraft(v=>({...v,qualification:e.target.value}))}>
             <option value="">Tous</option>
@@ -268,6 +340,13 @@ export default function CorpoLibraryPage() {
           <select className={control} value={draft.postType} onChange={e=>setDraft(v=>({...v,postType:e.target.value}))}>
             <option value="">Tous</option>
             {Object.entries(postTypes).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm">État de revue
+          <select className={control} value={draft.reviewState} onChange={e=>setDraft(v=>({...v,reviewState:e.target.value}))}>
+            <option value="">Tous</option>
+            <option value="TO_REVIEW">À relire</option>
+            <option value="REVIEWED">Revu manuellement</option>
           </select>
         </label>
       </div>}
@@ -291,7 +370,7 @@ export default function CorpoLibraryPage() {
       </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
         <td className="p-3">{row.company_name}<div className="text-gray-500">{row.document_type === "MENTION" ? "Mention externe" : row.watch_label}</div></td>
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
-          {row.document_type === "LINKEDIN" && <p className="mt-1 text-sm font-medium text-ratecard-blue">{qualificationLabel(row)}</p>}
+          {row.document_type === "LINKEDIN" && <p className="mt-1 text-sm font-medium text-ratecard-blue">{qualificationLabel(row)}{row.review_id ? " · Revu manuellement" : ""}</p>}
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
         <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':row.extraction_status==='PENDING'?'Disponible · à analyser':'En cours'}
@@ -314,13 +393,17 @@ export default function CorpoLibraryPage() {
     {detail && <section className="border rounded bg-white p-5 space-y-4">
       {(detail.document_type==='MENTION'||detail.document_type==='LINKEDIN')&&<div className="border rounded p-3 space-y-2"><p className="text-sm">{detail.editorial_status==='WITHDRAWN'?'Publication retirée de la Library active.':'Publication active.'}{detail.editorial_reason&&` Motif : ${detail.editorial_reason}`}</p><button disabled={!!editorialBusy} className={button} onClick={()=>void changeEditorial(detail.id_document,detail.title,detail.editorial_status!=='WITHDRAWN')}>{detail.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>{editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}</div>}
       {detail.document_type === "LINKEDIN" && <div className="rounded border p-3">
-        <p className="font-medium">{qualificationLabel(detail)}</p>
+        <p className="font-medium">{qualificationLabel(detail)}{detail.review_id ? " · Revu manuellement" : ""}</p>
         {detail.qualification_motif && <p className="mt-1 text-sm text-gray-700">{detail.qualification_motif}</p>}
       </div>}
       <p className="text-sm">Parution : {date(detail.published_at)} · Auteur : {detail.author_name || detail.author_id || 'Non renseigné'}</p>
       {detail.monitored_account_url && <p className="text-sm">Compte suivi : {detail.monitored_account_url}. La date d’un éventuel relais reste indéterminée.</p>}
       <a className="underline text-ratecard-blue" href={safeUrl(detail.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a>
       <details><summary className="cursor-pointer font-medium">Texte capturé</summary><pre className="whitespace-pre-wrap text-sm mt-3 max-h-96 overflow-auto">{detail.text}</pre></details>
+      {detail.qualification_role && detail.editorial_status !== "WITHDRAWN" && (
+        <ReviewForm key={detail.id_document + (detail.review_id ?? "")} post={detail}
+          onSaved={() => { setEditorialNotice("Décision enregistrée."); setRevision(value => value + 1); }} />
+      )}
       <h3 className="font-semibold">Informations et preuves</h3><p className="text-sm text-amber-800">{detail.warning}</p>
       {!detail.units.length && <p>Aucune information sur cette page. L’extraction peut être en cours ou ne contenir aucune unité.</p>}
       {detail.units.map(unit=><article key={unit.unit_id} className="border-t pt-3 space-y-2">
