@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, timedelta
 from fastapi import HTTPException
 from core.company import watch_discovery_service as discovery
@@ -24,7 +25,7 @@ def _state(candidate_id, status, document_id=None, error=None):
         discovery._p('id','STRING',candidate_id)])
 
 
-def import_step(candidate_id):
+def import_step(candidate_id, *, register_only=False):
     with library.document_lock('library-import-' + candidate_id):
         candidate = discovery.get_candidate(candidate_id)
         if candidate['STATUS'] == 'DISMISSED':
@@ -33,8 +34,20 @@ def import_step(candidate_id):
         document_id = candidate.get('ID_DOCUMENT')
         if candidate.get('LIBRARY_STATUS') == 'IMPORTED' and document_id:
             doc = library.get_document(watch['id_company'], watch['id_company_watch'], document_id)
-            if doc.get('EXTRACTION_STATUS') == 'COMPLETE':
+            if register_only or doc.get('EXTRACTION_STATUS') == 'COMPLETE':
                 return {**library.response_document(doc, True), 'library_status':'IMPORTED'}
+        if register_only and not document_id:
+            withdrawn = library._query(f"""
+                SELECT ID_DOCUMENT FROM `{library.DOCUMENT}`
+                WHERE ID_COMPANY=@company AND SOURCE_URL=@url
+                  AND DOCUMENT_TYPE='LINKEDIN' AND EDITORIAL_STATUS='WITHDRAWN'
+                ORDER BY ID_DOCUMENT LIMIT 1
+            """, [library._p('company', 'STRING', candidate['ID_COMPANY']),
+                   library._p('url', 'STRING', candidate['URL'])])
+            if withdrawn:
+                _state(candidate_id, 'IMPORTED', withdrawn[0]['ID_DOCUMENT'])
+                return {'id_document': withdrawn[0]['ID_DOCUMENT'],
+                        'library_status': 'IMPORTED', 'withdrawn': True}
         # Atomic claim prevents a concurrent dismiss from racing the import.
         claimed = discovery._query(f"""UPDATE `{discovery.DISCOVERY}`
             SET LIBRARY_STATUS='IMPORTING', ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP()
@@ -62,6 +75,9 @@ def import_step(candidate_id):
                     extra={**metadata, 'id_discovery':candidate_id, 'id_stock':candidate.get('ID_STOCK'),
                            'capture_metadata_uri':candidate['SNAPSHOT_URI']})
                 document_id = result['id_document']
+            if register_only:
+                _state(candidate_id, 'IMPORTED', document_id)
+                return {'id_document': document_id, 'library_status': 'IMPORTED'}
             # Link before calling the LLM: retries reuse both the document and its cursor.
             _state(candidate_id, 'IMPORTING', document_id)
             result = library.extract_step(watch['id_company'], watch['id_company_watch'], document_id)
@@ -75,6 +91,40 @@ def import_step(candidate_id):
         except Exception as exc:
             _state(candidate_id,'ERROR',document_id,str(exc)[:2000])
             raise
+
+
+def register_employee_backlog(watch_id=None):
+    """Register captured employee posts, including previous collections."""
+    params = []
+    scope = ""
+    if watch_id is not None:
+        scope = "AND d.ID_COMPANY_WATCH=@watch"
+        params.append(discovery._p('watch', 'STRING', watch_id))
+    rows = discovery._query(f"""
+        SELECT DISTINCT d.ID_DISCOVERY
+        FROM `{discovery.DISCOVERY}` d
+        JOIN `{discovery.WATCH}` w USING (ID_COMPANY_WATCH)
+        WHERE (w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL)
+          AND w.SOURCE_TYPE='LINKEDIN'
+          AND w.IS_ACTIVE=TRUE
+          AND d.STATUS IN ('NEW', 'STORED')
+          AND d.SNAPSHOT_URI IS NOT NULL
+          AND COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTED'
+          {scope}
+    """, params)
+    result = {'registered': 0, 'withdrawn': 0, 'failed': 0}
+    for row in rows:
+        candidate_id = row['ID_DISCOVERY']
+        try:
+            outcome = import_step(candidate_id, register_only=True)
+        except Exception:
+            result['failed'] += 1
+            logging.getLogger(__name__).exception(
+                "Employee Library registration failed for %s", candidate_id
+            )
+        else:
+            result['withdrawn' if outcome.get('withdrawn') else 'registered'] += 1
+    return result
 
 
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
@@ -189,7 +239,10 @@ def corpo_library_detail(document_id, offset=0, limit=100):
     detail=library.publication_detail(doc['ID_COMPANY'],doc['ID_COMPANY_WATCH'],document_id,offset,limit)
     metadata=json.loads(library._read_uri(doc['METADATA_STORAGE_URI']))
     extra=metadata.get('extra') or {}
-    return {**detail,'published_at':doc.get('PUBLISHED_AT'),'author_name':doc.get('AUTHOR_NAME'),
+    return {**detail,'published_at':doc.get('PUBLISHED_AT'),
+        'document_type':doc.get('DOCUMENT_TYPE'),
+        'editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE',
+        'editorial_reason':doc.get('EDITORIAL_REASON'),'author_name':doc.get('AUTHOR_NAME'),
         'id_company':doc['ID_COMPANY'],'id_company_watch':doc['ID_COMPANY_WATCH'],
         'monitored_account_url':extra.get('monitored_account_url'), 'author_id':extra.get('author_id'),
         'repost':extra.get('repost'), 'share_date':extra.get('share_date'),
