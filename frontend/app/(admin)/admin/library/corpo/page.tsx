@@ -1,187 +1,317 @@
-"use client";
+"""Selected Corpo discovery -> Library, one resumable extraction segment per call."""
+from __future__ import annotations
 
-import { useEffect, useRef, useState } from "react";
-import { getCorpoLibraryDocument } from "@/lib/companyWatch";
-import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, WatchCompany } from "@/lib/companyWatch";
+import json
+import logging
+from datetime import date, timedelta
+from fastapi import HTTPException
+from core.company import watch_discovery_service as discovery
+from core.library import company_watch_library as library
+from utils.gcs import bucket, BUCKET_NAME
 
-import {api} from "@/lib/api";
-type EditorialFields={document_type?:string;editorial_status?:string;editorial_reason?:string};
-type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string};
-async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean;total:number;global_total:number;companies:WatchCompany[]}>{
- const params=new URLSearchParams({offset:String(offset),limit:"50",with_summary:"true",editorial_status:filters.editorialStatus});
- const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType};
- Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
- return api.get(`/company/watch/library/list?${params.toString()}`);
-}
-const initialFilters: Required<EditorialFilters> = {
-  editorialStatus:"ACTIVE",documentType:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
-};
-const control="border rounded px-3 py-2 bg-white w-full";
-const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
-const message = (error: unknown) => error instanceof Error ? error.message : "Erreur de chargement";
-const date = (value?: string) => value ? new Date(value).toLocaleString("fr-FR", {timeZone:"Europe/Paris"}) : "—";
-function safeUrl(value?: string) {
-  try { const url = new URL(value || ""); return ["http:","https:"].includes(url.protocol) ? url.href : undefined; }
-  catch { return undefined; }
-}
 
-export default function CorpoLibraryPage() {
-  const [draft,setDraft]=useState({...initialFilters});
-  const [filters,setFilters]=useState({...initialFilters});
-  const [companies,setCompanies]=useState<WatchCompany[]>([]);
-  const [counts,setCounts]=useState<{global:number;selected:number}|null>(null);
-  const [rows,setRows] = useState<(CorpoLibraryDocument & EditorialFields)[]>([]);
-  const [offset,setOffset] = useState(0);
-  const [hasMore,setHasMore] = useState(false);
-  const [revision,setRevision] = useState(0);
-  const [loading,setLoading] = useState(true);
-  const [error,setError] = useState("");
-  const [documentId,setDocumentId] = useState("");
-  const [unitOffset,setUnitOffset] = useState(0);
-  const [detail,setDetail] = useState<(CorpoLibraryDetail & EditorialFields) | null>(null);
-  const [detailLoading,setDetailLoading] = useState(false);
-  const [detailError,setDetailError] = useState("");
-  const [editorialBusy,setEditorialBusy]=useState("");
-  const [editorialError,setEditorialError]=useState("");
-  const [editorialNotice,setEditorialNotice]=useState("");
-  const editorialLock=useRef(false);
-  async function changeEditorial(id:string,title:string,withdrawn:boolean){
-    if(editorialLock.current)return;
-    const verb=withdrawn?"Retirer":"Restaurer";
-    if(!window.confirm(`${verb} « ${title} » ${withdrawn?"de":"dans"} la Library active ? ${withdrawn?"La décision sera mémorisée pour cette société et cette URL, preuves comprises. Une restauration restera possible.":"La publication et ses preuves redeviendront utilisables."}`))return;
-    const reason=window.prompt("Motif éditorial (facultatif) :","");if(reason===null)return;
-    editorialLock.current=true;setEditorialBusy(id);setEditorialError("");setEditorialNotice("");
-    try{
-      const res=await api.post(`/company/watch/library/${encodeURIComponent(id)}/editorial`,{is_withdrawn:withdrawn,reason:reason.trim().slice(0,1000)||null});
-      if(res.status!=="ok")throw new Error(res.message||"Décision non confirmée.");
-      setEditorialNotice(withdrawn?"Publication retirée de la Library active.":"Publication restaurée.");
-      setRevision(v=>v+1);
-    }catch(e){setEditorialError(message(e));}finally{editorialLock.current=false;setEditorialBusy("");}
-  }
-  const sequence=useRef(0);
-  const dialogRef=useRef<HTMLDialogElement>(null);
+def _original(uri):
+    prefix = f"gs://{BUCKET_NAME}/"
+    if not uri.startswith(prefix):
+        raise ValueError("Emplacement de capture inattendu")
+    return bucket.blob(uri[len(prefix):]).download_as_bytes()
 
-  useEffect(() => {
-    const dialog=dialogRef.current;
-    if (!dialog) return;
-    if (documentId && !dialog.open) dialog.showModal();
-    if (!documentId && dialog.open) dialog.close();
-    if (!documentId) return;
-    const previousOverflow=document.body.style.overflow;
-    document.body.style.overflow="hidden";
-    return () => { document.body.style.overflow=previousOverflow; };
-  }, [documentId]);
 
-  useEffect(() => { setDocumentId(new URLSearchParams(window.location.search).get("document") || ""); },[]);
-  useEffect(() => {
-    let cancelled=false; setLoading(true); setError(""); setRows([]); setHasMore(false);setCounts(null);
-    listCorpoLibrary(offset,filters).then(result => {
-      if(typeof result.total!=="number"||typeof result.global_total!=="number"||!Array.isArray(result.companies))throw new Error("Compteurs indisponibles : vérifier le déploiement du backend.");
-      if(!cancelled){setCompanies(result.companies);setCounts({global:result.global_total,selected:result.total});}
-      if (!cancelled) {if(!result.items.length&&offset>0){setOffset(result.total>0?Math.floor((result.total-1)/50)*50:0);return;}setRows(result.items);setHasMore(result.has_more);}
-    }).catch(e=>{if(!cancelled)setError(message(e));}).finally(()=>{if(!cancelled)setLoading(false);});
-    return ()=>{cancelled=true;};
-  },[offset,revision,filters]);
-  useEffect(()=>{
-    const request=++sequence.current;
-    if (!documentId) {setDetail(null);setDetailLoading(false);return;}
-    setDetailLoading(true);setDetailError("");setDetail(null);
-    getCorpoLibraryDocument(documentId,unitOffset).then(result=>{
-      if(sequence.current===request)setDetail(result);
-    }).catch(e=>{if(sequence.current===request)setDetailError(message(e));})
-      .finally(()=>{if(sequence.current===request)setDetailLoading(false);});
-    return ()=>{sequence.current++;};
-  },[documentId,unitOffset,revision]);
+def _state(candidate_id, status, document_id=None, error=None):
+    discovery._query(f"""UPDATE `{discovery.DISCOVERY}` SET LIBRARY_STATUS=@status,
+        ID_DOCUMENT=COALESCE(@document, ID_DOCUMENT), ERROR=@error, UPDATED_AT=CURRENT_TIMESTAMP()
+        WHERE ID_DISCOVERY=@id""", [discovery._p('status','STRING',status),
+        discovery._p('document','STRING',document_id), discovery._p('error','STRING',error),
+        discovery._p('id','STRING',candidate_id)])
 
-  return <div className="space-y-6">
-    <header className="flex justify-between items-start gap-4"><div>
-      <p className="text-sm text-gray-500">Library / Corpo</p><h1 className="text-3xl font-semibold text-ratecard-blue">Publications documentaires</h1>
-      <p className="text-gray-500 mt-2">Publications, informations atomiques et preuves. Aucun sujet documentaire.</p>
-    </div><div className="space-x-3"><a className="underline" href="/admin/library">Library</a><a className="underline" href="/admin/discovery/corpo">Discovery Corpo</a>
-      <button className={button} onClick={()=>setRevision(v=>v+1)}>Actualiser</button></div></header>
-    <form className="bg-white border rounded p-4 space-y-4" onSubmit={event=>{
-      event.preventDefault();
-      if (draft.publishedFrom && draft.publishedTo && draft.publishedFrom>draft.publishedTo) {
-        setError("La date de début doit précéder la date de fin.");return;
-      }
-      setOffset(0);setFilters({...draft,q:draft.q.trim()});
-    }}>
-        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value,companyId:""})}><option value="">Tous</option><option value="CORPORATE">Publications de veille</option><option value="MENTION">Mentions externes</option></select></label>
-      <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
-        <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
-          value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
-        <span className="text-xs text-gray-500">Recherche littérale dans les titres, auteurs, sociétés, points de collecte, URL, informations extraites et citations. Le texte source intégral n’est pas indexé par ce filtre.</span>
-      </label>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Publications retirées</option><option value="ALL">Actives et retirées</option></select></label>
-        <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
-          <option value="">Toutes les sociétés présentes dans ce périmètre</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
-        </select></label>
-        <label className="space-y-1"><span className="text-sm">État</span><select className={control} value={draft.status} onChange={e=>setDraft(v=>({...v,status:e.target.value}))}>
-          <option value="">Tous</option><option value="COMPLETE">Importé</option><option value="PENDING">En cours</option><option value="ERROR">Erreur</option>
-        </select></label>
-        <label className="space-y-1"><span className="text-sm">Trier par</span><select className={control} value={draft.sort} onChange={e=>setDraft(v=>({...v,sort:e.target.value}))}>
-          <option value="published_at">Date de parution</option><option value="imported_at">Date d’import</option><option value="company">Société</option><option value="title">Titre</option><option value="units">Nombre d’informations</option>
-        </select></label>
-        <label className="space-y-1"><span className="text-sm">Parution à partir du</span><input className={control} type="date" value={draft.publishedFrom} onChange={e=>setDraft(v=>({...v,publishedFrom:e.target.value}))}/></label>
-        <label className="space-y-1"><span className="text-sm">Parution jusqu’au</span><input className={control} type="date" value={draft.publishedTo} onChange={e=>setDraft(v=>({...v,publishedTo:e.target.value}))}/></label>
-        <label className="space-y-1"><span className="text-sm">Ordre</span><select className={control} value={draft.direction} onChange={e=>setDraft(v=>({...v,direction:e.target.value}))}>
-          <option value="desc">Décroissant / Z → A</option><option value="asc">Croissant / A → Z</option>
-        </select></label>
-      </div>
-      <div className="flex gap-3 items-center"><button type="submit" className="bg-ratecard-blue text-white rounded px-4 py-2">Rechercher / appliquer</button>
-        <button type="button" className={button} onClick={()=>{setDraft({...initialFilters});setFilters({...initialFilters});setOffset(0);}}>Réinitialiser</button>
-        <span className="text-sm text-gray-500">Filtres et tri appliqués à l’ensemble de la Library Corpo.</span>
-      </div>
-    </form>
-    <div role="status" aria-live="polite" className="bg-white border rounded p-4 flex flex-wrap gap-x-8 gap-y-2">
-      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications de veille':''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
-      <p><span className="text-gray-500">Résultats des filtres appliqués : </span><strong>{counts?counts.selected.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
-      <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type et l’état éditorial choisis.</p>
-    </div>
-    {editorialNotice&&<p role="status" className="text-green-800">{editorialNotice}</p>}
-    {editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}
-    {error && <p role="alert" className="text-red-700">{error}</p>}
-    {loading ? <p>Chargement…</p> : !rows.length && !error ? <p>Aucune publication ne correspond aux filtres.</p> : <div className="border rounded bg-white overflow-x-auto">
-      <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
-        {['Société / point','Publication','Parution','État','Informations',''].map((label,i)=><th key={i} className="p-3">{label}</th>)}
-      </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
-        <td className="p-3">{row.company_name}<div className="text-gray-500">{row.document_type === "MENTION" ? "Mention externe" : row.watch_label}</div></td>
-        <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
-          <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
-        <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
-        <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':row.extraction_status==='PENDING'?'Disponible · à analyser':'En cours'}
-          {row.extraction_error && <p className="text-red-700">{row.extraction_error}</p>}</td>
-        <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button>{(row.document_type==='MENTION'||row.document_type==='LINKEDIN')&&<button disabled={!!editorialBusy} className={`${button} ml-2 ${row.editorial_status==='WITHDRAWN'?'':'text-red-700'}`} onClick={()=>void changeEditorial(row.id_document,row.title,row.editorial_status!=='WITHDRAWN')}>{editorialBusy===row.id_document?'Enregistrement…':row.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>}</td>
-      </tr>)}</tbody></table>
-    </div>}
-    <div className="flex justify-end gap-2 items-center"><span className="text-sm text-gray-500">Page {Math.floor(offset/50)+1}</span><button className={button} disabled={loading||!!error||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
-      <button className={button} disabled={loading||!!error||!hasMore} onClick={()=>setOffset(v=>v+50)}>Suivant</button></div>
-    <dialog ref={dialogRef} aria-labelledby="corpo-document-title"
-      onClose={()=>setDocumentId("")}
-      className="w-[calc(100%-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg border bg-white p-6 shadow-xl backdrop:bg-black/40">
-      <header className="flex justify-between items-start gap-4 border-b pb-4 mb-4">
-        <h2 id="corpo-document-title" className="text-xl font-semibold text-ratecard-blue">{detail?.title || "Publication Library"}</h2>
-        <button type="button" className={button} onClick={()=>setDocumentId("")}>Fermer</button>
-      </header>
-    {detailLoading && <p role="status">Chargement de la publication…</p>}
-    {detailError && <div role="alert" className="text-red-700 space-y-3"><p>{detailError}</p>
-      <button type="button" className={button} onClick={()=>setRevision(v=>v+1)}>Réessayer</button></div>}
-    {detail && <section className="border rounded bg-white p-5 space-y-4">
-      {(detail.document_type==='MENTION'||detail.document_type==='LINKEDIN')&&<div className="border rounded p-3 space-y-2"><p className="text-sm">{detail.editorial_status==='WITHDRAWN'?'Publication retirée de la Library active.':'Publication active.'}{detail.editorial_reason&&` Motif : ${detail.editorial_reason}`}</p><button disabled={!!editorialBusy} className={button} onClick={()=>void changeEditorial(detail.id_document,detail.title,detail.editorial_status!=='WITHDRAWN')}>{detail.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>{editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}</div>}
-      <p className="text-sm">Parution : {date(detail.published_at)} · Auteur : {detail.author_name || detail.author_id || 'Non renseigné'}</p>
-      {detail.monitored_account_url && <p className="text-sm">Compte suivi : {detail.monitored_account_url}. La date d’un éventuel relais reste indéterminée.</p>}
-      <a className="underline text-ratecard-blue" href={safeUrl(detail.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a>
-      <details><summary className="cursor-pointer font-medium">Texte capturé</summary><pre className="whitespace-pre-wrap text-sm mt-3 max-h-96 overflow-auto">{detail.text}</pre></details>
-      <h3 className="font-semibold">Informations et preuves</h3><p className="text-sm text-amber-800">{detail.warning}</p>
-      {!detail.units.length && <p>Aucune information sur cette page. L’extraction peut être en cours ou ne contenir aucune unité.</p>}
-      {detail.units.map(unit=><article key={unit.unit_id} className="border-t pt-3 space-y-2">
-        <p>{unit.fact || 'Candidat sans fait exploitable'}</p><blockquote className="border-l-4 pl-3 text-gray-600 whitespace-pre-wrap">{unit.quote || 'Citation absente'}</blockquote>
-        <p className="text-xs text-gray-500">{unit.verification_status} · {unit.kind} · {unit.source_locator} · {unit.verification_reason}</p>
-      </article>)}
-      <div className="flex gap-2"><button className={button} disabled={detailLoading||unitOffset===0} onClick={()=>setUnitOffset(v=>Math.max(0,v-100))}>Informations précédentes</button>
-        <button className={button} disabled={detailLoading||!detail.has_more} onClick={()=>setUnitOffset(v=>v+100)}>Informations suivantes</button></div>
-    </section>}
-    </dialog>
-  </div>;
-}
+
+def import_step(candidate_id, *, register_only=False, qualify_on_arrival=True):
+    with library.document_lock('library-import-' + candidate_id):
+        candidate = discovery.get_candidate(candidate_id)
+        if candidate['STATUS'] == 'DISMISSED':
+            raise HTTPException(409, "Cette publication est ignorée ; restaurez-la avant de l'importer")
+        watch = discovery.active_watch(candidate['ID_COMPANY'], candidate['ID_COMPANY_WATCH'])
+        document_id = candidate.get('ID_DOCUMENT')
+        if candidate.get('LIBRARY_STATUS') == 'IMPORTED' and document_id:
+            doc = library.get_document(watch['id_company'], watch['id_company_watch'], document_id)
+            if register_only or doc.get('EXTRACTION_STATUS') == 'COMPLETE':
+                return {**library.response_document(doc, True), 'library_status':'IMPORTED'}
+        if register_only and not document_id:
+            withdrawn = library._query(f"""
+                SELECT ID_DOCUMENT FROM `{library.DOCUMENT}`
+                WHERE ID_COMPANY=@company AND SOURCE_URL=@url
+                  AND DOCUMENT_TYPE='LINKEDIN' AND EDITORIAL_STATUS='WITHDRAWN'
+                ORDER BY ID_DOCUMENT LIMIT 1
+            """, [library._p('company', 'STRING', candidate['ID_COMPANY']),
+                   library._p('url', 'STRING', candidate['URL'])])
+            if withdrawn:
+                _state(candidate_id, 'IMPORTED', withdrawn[0]['ID_DOCUMENT'])
+                return {'id_document': withdrawn[0]['ID_DOCUMENT'],
+                        'library_status': 'IMPORTED', 'withdrawn': True}
+        # Atomic claim prevents a concurrent dismiss from racing the import.
+        claimed = discovery._query(f"""UPDATE `{discovery.DISCOVERY}`
+            SET LIBRARY_STATUS='IMPORTING', ERROR=NULL, UPDATED_AT=CURRENT_TIMESTAMP()
+            WHERE ID_DISCOVERY=@id AND STATUS != 'DISMISSED';
+            SELECT @@row_count AS UPDATED_COUNT;""", [discovery._p('id','STRING',candidate_id)])
+        if not claimed or int(claimed[0]['UPDATED_COUNT']) != 1:
+            raise HTTPException(409, "La publication a changé de statut ; actualisez la liste")
+        try:
+            if not document_id:
+                # Capture only if absent. The stock is an internal technical operation.
+                if not candidate.get('SNAPSHOT_URI'):
+                    discovery.store_candidate(candidate_id)
+                    candidate = discovery.get_candidate(candidate_id)
+                metadata = json.loads(library._read_uri(candidate['SNAPSHOT_URI']))
+                text = library._read_uri(metadata['text_storage_uri'])
+                frozen_watch = {**watch, 'source_role': metadata.get('source_role', watch['source_role']),
+                    'author_name': metadata.get('author_name') or metadata.get('author_id')}
+                if metadata.get('provider') == 'BRIGHTDATA':
+                    frozen_watch['source_type'] = 'LINKEDIN'
+                result = library.register_publication(frozen_watch, source_url=metadata['url'],
+                    original=_original(metadata['storage_uri']), text=text, title=metadata['title'],
+                    mime='application/json' if metadata.get('provider') == 'BRIGHTDATA' else 'text/html',
+                    published_at=metadata.get('published_at'), date_precision=metadata.get('date_precision','UNKNOWN'),
+                    author=frozen_watch['author_name'], qualify_on_arrival=qualify_on_arrival,
+                    extra={**metadata, 'id_discovery':candidate_id, 'id_stock':candidate.get('ID_STOCK'),
+                           'capture_metadata_uri':candidate['SNAPSHOT_URI']})
+                document_id = result['id_document']
+            if register_only:
+                _state(candidate_id, 'IMPORTED', document_id)
+                return {'id_document': document_id, 'library_status': 'IMPORTED'}
+            # Link before calling the LLM: retries reuse both the document and its cursor.
+            _state(candidate_id, 'IMPORTING', document_id)
+            result = library.extract_step(watch['id_company'], watch['id_company_watch'], document_id)
+            status = 'IMPORTED' if result['status'] == 'COMPLETE' else 'IMPORTING'
+            _state(candidate_id, status, document_id)
+            return {**result, 'library_status': status}
+        except HTTPException as exc:
+            if exc.status_code != 409:
+                _state(candidate_id,'ERROR',document_id,str(exc.detail)[:2000])
+            raise
+        except Exception as exc:
+            _state(candidate_id,'ERROR',document_id,str(exc)[:2000])
+            raise
+
+
+def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qualify_on_arrival=True):
+    """Register captured employee posts, including previous collections."""
+    params = []
+    scope = ""
+    if watch_id is not None:
+        scope = "AND d.ID_COMPANY_WATCH=@watch"
+        params.append(discovery._p('watch', 'STRING', watch_id))
+    if excluded_ids:
+        from google.cloud import bigquery
+
+        scope += " AND d.ID_DISCOVERY NOT IN UNNEST(@excluded)"
+        params.append(bigquery.ArrayQueryParameter('excluded', 'STRING', list(excluded_ids)))
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = "LIMIT @limit"
+        params.append(discovery._p('limit', 'INT64', limit))
+    rows = discovery._query(f"""
+        SELECT DISTINCT d.ID_DISCOVERY
+        FROM `{discovery.DISCOVERY}` d
+        JOIN `{discovery.WATCH}` w USING (ID_COMPANY_WATCH)
+        WHERE (w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL)
+          AND w.SOURCE_TYPE='LINKEDIN'
+          AND w.IS_ACTIVE=TRUE
+          AND d.STATUS IN ('NEW', 'STORED')
+          AND d.SNAPSHOT_URI IS NOT NULL
+          AND COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTED'
+          {scope}
+        ORDER BY d.ID_DISCOVERY
+        {limit_clause}
+    """, params)
+    result = {'registered': 0, 'withdrawn': 0, 'failed': 0, 'failed_ids': []}
+    for row in rows:
+        candidate_id = row['ID_DISCOVERY']
+        try:
+            outcome = import_step(candidate_id, register_only=True, qualify_on_arrival=qualify_on_arrival)
+        except Exception:
+            result['failed'] += 1
+            result['failed_ids'].append(candidate_id)
+            logging.getLogger(__name__).exception(
+                "Employee Library registration failed for %s", candidate_id
+            )
+        else:
+            result['withdrawn' if outcome.get('withdrawn') else 'registered'] += 1
+    return result
+
+
+def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
+                       sort="published_at", direction="desc", status=None,
+                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE",
+                       with_summary=False, qualification=None, post_type=None):
+    from core.company.library_post_funnel import POST_TYPES, TABLE, VERSION
+
+    qualification_filters = {
+        "GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT IN ('SIGNAL_SOCIETE','PRISE_DE_PAROLE_METIER')",
+        "NO_GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT='BRUIT'",
+        "REVIEW": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT='A_VERIFIER'",
+        "PENDING": "d.QUALIFICATION_ROLE IS NOT NULL AND d.QUALIFICATION_VERDICT IS NULL",
+    }
+    if qualification and qualification not in qualification_filters:
+        raise ValueError("Filtre de qualification invalide")
+    if post_type and post_type not in POST_TYPES:
+        raise ValueError("Type principal invalide")
+    if not 1 <= limit <= 200 or offset < 0:
+        raise ValueError("Pagination invalide")
+    sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
+             "company":"LOWER(COALESCE(c.NAME,''))", "title":"LOWER(COALESCE(d.TITLE,''))",
+             "units":"UNIT_COUNT"}
+    if sort not in sorts or direction not in {"asc","desc"}:
+        raise ValueError("Tri invalide")
+    if status not in {None,"", "COMPLETE", "PENDING", "ERROR"}:
+        raise ValueError("État invalide")
+    start = date.fromisoformat(published_from) if published_from else None
+    end = date.fromisoformat(published_to) if published_to else None
+    if start and end and start > end:
+        raise ValueError("La date de début doit précéder la date de fin")
+    params = [library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)]
+    where = ["(d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"]
+    if editorial_status not in {'ACTIVE','WITHDRAWN','ALL'}:raise ValueError('État éditorial invalide')
+    if editorial_status != 'ALL':
+        where.append("COALESCE(d.EDITORIAL_STATUS,'ACTIVE')=@editorial")
+        params.append(library._p('editorial','STRING',editorial_status))
+    if document_type:
+        if document_type not in {'MENTION','CORPORATE'}:raise ValueError('Type invalide')
+        where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
+    # Summary scope ignores company/text/date/extraction filters. Company options
+    # retain withdrawn-only companies, so restoration remains discoverable.
+    global_predicate=' AND '.join(where)
+    if company_id:
+        where.append('d.ID_COMPANY=@company')
+        params.append(library._p('company','STRING',company_id))
+    if query and query.strip():
+        query = query.strip()
+        if len(query) > 500:
+            raise ValueError("Recherche limitée à 500 caractères")
+        # Literal case-insensitive substring, not SQL LIKE or user-controlled SQL.
+        where.append("""(CONTAINS_SUBSTR(COALESCE(d.TITLE,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(d.AUTHOR_NAME,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(d.SOURCE_URL,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(c.NAME,''),@query)
+            OR CONTAINS_SUBSTR(COALESCE(w.LABEL,''),@query)
+            OR EXISTS (SELECT 1 FROM `{units}` evidence WHERE evidence.ID_DOCUMENT=d.ID_DOCUMENT
+                AND (CONTAINS_SUBSTR(COALESCE(evidence.FACT,''),@query)
+                     OR CONTAINS_SUBSTR(COALESCE(evidence.QUOTE,''),@query))))""".format(units=library.UNIT))
+        params.append(library._p('query','STRING',query))
+    if status:
+        where.append('d.EXTRACTION_STATUS=@status'); params.append(library._p('status','STRING',status))
+    if start:
+        where.append("d.PUBLISHED_AT >= TIMESTAMP(@start,'Europe/Paris')")
+        params.append(library._p('start','DATE',start))
+    if end:
+        where.append("d.PUBLISHED_AT < TIMESTAMP(@end,'Europe/Paris')")
+        params.append(library._p('end','DATE',end+timedelta(days=1)))
+    predicate = ' AND '.join(where)
+    scoped = predicate.replace('c.NAME','d.COMPANY_NAME').replace('w.LABEL','d.WATCH_LABEL')
+    selection = []
+    if qualification:
+        selection.append(qualification_filters[qualification])
+    if post_type:
+        selection.append('d.QUALIFICATION_TYPE=@post_type')
+        params.append(library._p('post_type','STRING',post_type))
+    selection = ' AND '.join(selection) or 'TRUE'
+    params.append(library._p('qualification_version','STRING',VERSION))
+
+    ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
+    base_sql=f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
+        d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
+        d.EDITORIAL_STATUS, d.EDITORIAL_UPDATED_AT, d.EDITORIAL_REASON,
+        d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
+        c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
+        CASE WHEN d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL THEN
+          CASE WHEN d.SOURCE_ROLE='EMPLOYEE' OR w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL
+               THEN 'EMPLOYEE' ELSE 'CORPORATE' END
+        END AS QUALIFICATION_ROLE,
+        v.VERDICT AS QUALIFICATION_VERDICT, v.TYPE_PRINCIPAL AS QUALIFICATION_TYPE,
+        (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
+        FROM `{library.DOCUMENT}` d
+        LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
+        LEFT JOIN `{discovery.WATCH}` w ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
+        LEFT JOIN (
+          SELECT ID_COMPANY, ID_DOCUMENT, VERDICT, TYPE_PRINCIPAL
+          FROM `{TABLE}` WHERE VERSION=@qualification_version
+          QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY ID_COMPANY, ID_DOCUMENT ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL
+          )=1
+        ) v ON v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
+           AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
+        WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
+    if document_type:
+        base_sql += " AND d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else " AND d.ID_COMPANY_WATCH IS NOT NULL"
+    order=ordering.replace('c.NAME','d.COMPANY_NAME')
+    if with_summary:
+        # One BigQuery request returns the page, exact counts and company options
+        # from the same query snapshot. No per-company or per-row count queries.
+        response=library._query(f"""WITH library_base AS ({base_sql}),
+          scope AS (SELECT d.* FROM library_base d WHERE {scoped}),
+          filtered AS (SELECT d.* FROM scope d WHERE {selection})
+          SELECT
+            ARRAY(SELECT AS STRUCT d.* FROM filtered d ORDER BY {order} LIMIT @limit OFFSET @offset) AS ITEMS,
+            (SELECT COUNT(*) FROM filtered) AS TOTAL,
+            ARRAY(SELECT AS STRUCT QUALIFICATION_ROLE AS role,
+                    QUALIFICATION_VERDICT AS verdict, QUALIFICATION_TYPE AS post_type, COUNT(*) AS total
+                  FROM scope WHERE QUALIFICATION_ROLE IS NOT NULL
+                  GROUP BY role, verdict, post_type) AS QUALIFICATION_SUMMARY,
+            (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
+            ARRAY(SELECT AS STRUCT company.* FROM (
+                    SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
+                    FROM library_base WHERE ID_COMPANY IS NOT NULL
+                  ) company ORDER BY company.name,company.id_company) AS COMPANIES""",params)
+        result=dict(response[0]) if response else {'ITEMS':[],'TOTAL':0,'GLOBAL_TOTAL':0,'COMPANIES':[]}
+        page=list(result['ITEMS'] or [])
+        return {'items':[{k.lower():v for k,v in dict(row).items()} for row in page[:limit]],
+                'has_more':len(page)>limit,'offset':offset,'limit':limit,
+                'total':int(result['TOTAL']),'global_total':int(result['GLOBAL_TOTAL']),
+                'qualification_summary':[dict(item) for item in (result.get('QUALIFICATION_SUMMARY') or [])],
+                'companies':[dict(company) for company in (result['COMPANIES'] or [])]}
+    rows=library._query(f"""WITH library_base AS ({base_sql})
+        SELECT d.* FROM library_base d WHERE ({scoped}) AND ({selection})
+        ORDER BY {order} LIMIT @limit OFFSET @offset""",params)
+    return {'items':[{k.lower():v for k,v in dict(r).items()} for r in rows[:limit]],
+            'has_more':len(rows)>limit, 'offset':offset, 'limit':limit}
+
+
+
+def corpo_library_detail(document_id, offset=0, limit=100):
+    rows=library._query(f"SELECT * FROM `{library.DOCUMENT}` WHERE ID_DOCUMENT=@id AND (ID_COMPANY_WATCH IS NOT NULL OR DOCUMENT_TYPE='MENTION') LIMIT 1",
+        [library._p('id','STRING',document_id)])
+    if not rows:
+        raise HTTPException(404,'Publication Library Corpo introuvable')
+    doc=dict(rows[0])
+    if doc.get('DOCUMENT_TYPE') == 'MENTION':
+        if offset < 0 or not 1 <= limit <= 500:raise ValueError('Pagination invalide')
+        units=library._query(f"SELECT * FROM `{library.UNIT}` WHERE ID_DOCUMENT=@id ORDER BY UNIT_ID LIMIT @limit OFFSET @offset",
+            [library._p('id','STRING',document_id),library._p('limit','INT64',limit+1),library._p('offset','INT64',offset)])
+        return {**library.response_document(doc),'document_type':'MENTION','editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE','editorial_reason':doc.get('EDITORIAL_REASON'),'published_at':doc.get('PUBLISHED_AT'),
+            'author_name':doc.get('AUTHOR_NAME'),'text':library._read_uri(doc['TEXT_STORAGE_URI']),
+            'units':[{k.lower():v for k,v in dict(u).items()} for u in units[:limit]],'has_more':len(units)>limit,
+            'warning':"VERIFIED valide la présence de la citation, pas la vérité du fait."}
+    detail=library.publication_detail(doc['ID_COMPANY'],doc['ID_COMPANY_WATCH'],document_id,offset,limit)
+    metadata=json.loads(library._read_uri(doc['METADATA_STORAGE_URI']))
+    extra=metadata.get('extra') or {}
+    qualification = {}
+    if doc.get('DOCUMENT_TYPE') == 'LINKEDIN':
+        from core.company.library_post_funnel import TABLE, VERSION
+
+        verdicts = library._query(f"""
+            SELECT VERDICT AS qualification_verdict, TYPE_PRINCIPAL AS qualification_type,
+                   MOTIF AS qualification_motif
+            FROM `{TABLE}`
+            WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id AND VERSION=@version
+            ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL LIMIT 1
+        """, [library._p('company','STRING',doc['ID_COMPANY']),
+               library._p('id','STRING',document_id), library._p('version','STRING',VERSION)])
+        if verdicts:
+            qualification = dict(verdicts[0])
+    return {**detail,**qualification,'published_at':doc.get('PUBLISHED_AT'),
+        'document_type':doc.get('DOCUMENT_TYPE'),
+        'editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE',
+        'editorial_reason':doc.get('EDITORIAL_REASON'),'author_name':doc.get('AUTHOR_NAME'),
+        'id_company':doc['ID_COMPANY'],'id_company_watch':doc['ID_COMPANY_WATCH'],
+        'monitored_account_url':extra.get('monitored_account_url'), 'author_id':extra.get('author_id'),
+        'repost':extra.get('repost'), 'share_date':extra.get('share_date'),
+        'offset':offset,'limit':limit}
