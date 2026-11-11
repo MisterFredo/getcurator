@@ -1,4 +1,4 @@
-"""Reversible editorial withdrawal of a Mention, scoped to company + source URL."""
+"""Reversible editorial withdrawal of a Mention or LinkedIn post, scoped to company + source URL."""
 import hashlib
 import json
 import uuid
@@ -12,19 +12,22 @@ def set_mention_editorial(document_id,is_withdrawn,reason=None):
     # Same lock as mention imports: rejection and import cannot commit together.
     scope=hashlib.sha256(json.dumps(lib.BASE,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
     with lib.document_lock('mention-batch-'+scope):
-        rows=lib._query(f'SELECT ID_COMPANY,SOURCE_URL,DOCUMENT_TYPE FROM `{lib.DOCUMENT}` WHERE ID_DOCUMENT=@id LIMIT 1',[lib._p('id','STRING',document_id)])
+        rows=lib._query(f'SELECT ID_COMPANY,SOURCE_URL,DOCUMENT_TYPE,ID_COMPANY_WATCH FROM `{lib.DOCUMENT}` WHERE ID_DOCUMENT=@id LIMIT 1',[lib._p('id','STRING',document_id)])
         if not rows:raise HTTPException(404,'Mention introuvable')
         doc=dict(rows[0])
-        if doc.get('DOCUMENT_TYPE')!='MENTION':raise HTTPException(409,'Ce retrait éditorial concerne uniquement les Mentions')
+        kind = doc.get('DOCUMENT_TYPE')
+        if kind != 'MENTION' and (kind != 'LINKEDIN' or not doc.get('ID_COMPANY_WATCH')):
+            raise HTTPException(409, 'Ce retrait concerne les mentions et les publications LinkedIn de Veille')
+        kind_param = lib._p('kind', 'STRING', kind)
         key=url_key(doc['SOURCE_URL'])
-        versions=lib._query(f"SELECT ID_DOCUMENT,SOURCE_URL FROM `{lib.DOCUMENT}` WHERE ID_COMPANY=@company AND DOCUMENT_TYPE='MENTION'",[lib._p('company','STRING',doc['ID_COMPANY'])])
+        versions=lib._query(f"SELECT ID_DOCUMENT,SOURCE_URL FROM `{lib.DOCUMENT}` WHERE ID_COMPANY=@company AND DOCUMENT_TYPE=@kind",[lib._p('company','STRING',doc['ID_COMPANY']), kind_param])
         ids={document_id}
         for version in versions:
             try:
                 if version.get('SOURCE_URL') and url_key(version['SOURCE_URL'])==key:ids.add(version['ID_DOCUMENT'])
             except (ValueError,TypeError):continue
         from google.cloud import bigquery
-        params=[lib._p('id','STRING',document_id),lib._p('company','STRING',doc['ID_COMPANY']),
+        params=[kind_param,lib._p('id','STRING',document_id),lib._p('company','STRING',doc['ID_COMPANY']),
             lib._p('url','STRING',doc['SOURCE_URL']),lib._p('key','STRING',key),
             lib._p('status','STRING',status),lib._p('reason','STRING',(reason or '').strip()[:1000] or None),
             lib._p('event','STRING',str(uuid.uuid4())),bigquery.ArrayQueryParameter('ids','STRING',sorted(ids))]
@@ -33,7 +36,7 @@ def set_mention_editorial(document_id,is_withdrawn,reason=None):
         UPDATE `{lib.DOCUMENT}`
           SET EDITORIAL_STATUS=@status, EDITORIAL_UPDATED_AT=CURRENT_TIMESTAMP(),
               EDITORIAL_REASON=@reason, EDITORIAL_URL_KEY=@key
-          WHERE ID_COMPANY=@company AND DOCUMENT_TYPE='MENTION'
+          WHERE ID_COMPANY=@company AND DOCUMENT_TYPE=@kind
             AND (ID_DOCUMENT IN UNNEST(@ids) OR EDITORIAL_URL_KEY=@key)
             AND COALESCE(EDITORIAL_STATUS,'ACTIVE') != @status;
         SET changed=@@row_count;
