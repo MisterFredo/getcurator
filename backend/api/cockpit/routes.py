@@ -107,3 +107,19 @@ def resume_media(id_job:str,background_tasks:BackgroundTasks):
     if result['status'] not in {'COMPLETE','PARTIAL'}:background_tasks.add_task(media_jobs.drain)
     return result
 # Corpo uses the existing company launch endpoint and persisted mention-job UI.
+
+
+@router.get("/operations/library-post-backlog/status")
+def library_post_backlog_status():
+    from core.company import library_post_backlog
+
+    return library_post_backlog.status()
+
+
+@router.post("/operations/library-post-backlog/start")
+def start_library_post_backlog(background_tasks: BackgroundTasks):
+    from core.company import library_post_backlog
+
+    job = library_post_backlog.launch()
+    background_tasks.add_task(library_post_backlog.run, job["id_job"])
+    return job
