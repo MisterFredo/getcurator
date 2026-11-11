@@ -142,9 +142,17 @@ def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qua
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
                        published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE",
-                       with_summary=False, qualification=None, post_type=None):
+                       with_summary=False, qualification=None, post_type=None, review_state=None):
     from core.company.library_post_funnel import POST_TYPES, TABLE, VERSION
 
+    from core.company.library_post_review import EMPLOYEE_ROLE, LATEST
+
+    review_filters = {
+        "TO_REVIEW": "d.QUALIFICATION_ROLE IS NOT NULL AND d.QUALIFICATION_VERDICT IS NOT NULL AND d.REVIEW_ID IS NULL",
+        "REVIEWED": "d.REVIEW_ID IS NOT NULL",
+    }
+    if review_state and review_state not in review_filters:
+        raise ValueError("État de revue invalide")
     qualification_filters = {
         "GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT IN ('SIGNAL_SOCIETE','PRISE_DE_PAROLE_METIER')",
         "NO_GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT='BRUIT'",
@@ -213,6 +221,8 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
     if post_type:
         selection.append('d.QUALIFICATION_TYPE=@post_type')
         params.append(library._p('post_type','STRING',post_type))
+    if review_state:
+        selection.append(review_filters[review_state])
     selection = ' AND '.join(selection) or 'TRUE'
     params.append(library._p('qualification_version','STRING',VERSION))
 
@@ -223,10 +233,12 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
         c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
         CASE WHEN d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL THEN
-          CASE WHEN d.SOURCE_ROLE='EMPLOYEE' OR w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL
+          CASE WHEN {EMPLOYEE_ROLE}
                THEN 'EMPLOYEE' ELSE 'CORPORATE' END
         END AS QUALIFICATION_ROLE,
-        v.VERDICT AS QUALIFICATION_VERDICT, v.TYPE_PRINCIPAL AS QUALIFICATION_TYPE,
+        COALESCE(r.VERDICT, v.VERDICT) AS QUALIFICATION_VERDICT,
+        COALESCE(r.TYPE_PRINCIPAL, v.TYPE_PRINCIPAL) AS QUALIFICATION_TYPE,
+        r.ID_REVIEW AS REVIEW_ID,
         (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
         FROM `{library.DOCUMENT}` d
         LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
@@ -238,6 +250,8 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
             PARTITION BY ID_COMPANY, ID_DOCUMENT ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL
           )=1
         ) v ON v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
+           AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
+        LEFT JOIN ({LATEST}) r ON r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
            AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
         WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
     if document_type:
@@ -277,7 +291,12 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
 
 
 def corpo_library_detail(document_id, offset=0, limit=100):
-    rows=library._query(f"SELECT * FROM `{library.DOCUMENT}` WHERE ID_DOCUMENT=@id AND (ID_COMPANY_WATCH IS NOT NULL OR DOCUMENT_TYPE='MENTION') LIMIT 1",
+    from core.company.library_post_review import EMPLOYEE_ROLE, TABLE as REVIEW_TABLE
+
+    rows=library._query(f"""SELECT d.*, CASE WHEN {EMPLOYEE_ROLE} THEN 'EMPLOYEE' ELSE 'CORPORATE' END AS QUALIFICATION_ROLE
+        FROM `{library.DOCUMENT}` d LEFT JOIN `{discovery.WATCH}` w
+            ON w.ID_COMPANY=d.ID_COMPANY AND w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH
+        WHERE d.ID_DOCUMENT=@id AND (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION') LIMIT 1""",
         [library._p('id','STRING',document_id)])
     if not rows:
         raise HTTPException(404,'Publication Library Corpo introuvable')
@@ -307,6 +326,17 @@ def corpo_library_detail(document_id, offset=0, limit=100):
                library._p('id','STRING',document_id), library._p('version','STRING',VERSION)])
         if verdicts:
             qualification = dict(verdicts[0])
+            qualification.update({f"automatic_{key}": value for key, value in verdicts[0].items()})
+        reviews = library._query(f"""
+            SELECT ID_REVIEW AS review_id, VERDICT AS qualification_verdict,
+                   TYPE_PRINCIPAL AS qualification_type, MOTIF AS qualification_motif
+            FROM `{REVIEW_TABLE}` WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id
+            ORDER BY CREATED_AT DESC, ID_REVIEW DESC LIMIT 1
+        """, [library._p('company','STRING',doc['ID_COMPANY']),
+               library._p('id','STRING',document_id)])
+        if reviews:
+            qualification.update(dict(reviews[0]))
+        qualification['qualification_role'] = doc['QUALIFICATION_ROLE']
     return {**detail,**qualification,'published_at':doc.get('PUBLISHED_AT'),
         'document_type':doc.get('DOCUMENT_TYPE'),
         'editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE',
