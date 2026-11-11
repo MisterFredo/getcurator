@@ -64,7 +64,7 @@ def scan_linkedin(company_id, watch_id, *, start=False):
             except provider.ProviderError as exc:
                 raise HTTPException(503, str(exc)) from None
             frozen = {key: watch.get(key) for key in ("id_company", "id_company_watch", "company_name",
-                "label", "source_url", "source_type", "source_role", "author_name", "collection_method", "collection_config")}
+                "label", "source_url", "source_type", "source_role", "id_contact", "author_name", "collection_method", "collection_config")}
             state = {"status": "STARTING", "watch": frozen,
                 "run_id": uuid.uuid4().hex, "started_at": datetime.now(timezone.utc).isoformat()}
             _save(company_id, watch_id, state)  # Save intent before external side effect.
@@ -215,6 +215,19 @@ def _ingest(company_id, watch_id, state, records):
         received=len(records), warnings=warnings,
         message=None if complete else "Aucune publication exploitable dans la réponse ; consulter l'audit Bright Data.")
     _save(company_id, watch_id, state)
+    if complete and (watch.get('source_role') == 'EMPLOYEE' or watch.get('id_contact')):
+        from core.company.watch_library_service import register_employee_backlog
+
+        try:
+            result = register_employee_backlog(watch_id)
+            state["warnings"].append(
+                f"{result['registered']} publication(s) enregistrée(s) en Library, "
+                f"{result['failed']} en échec d’enregistrement."
+            )
+        except Exception:
+            logger.exception("Employee Library registration failed for watch %s", watch_id)
+            state["warnings"].append("Enregistrement Library à reprendre.")
+        _save(company_id, watch_id, state)
 
 
 def _cache_post(watch, post, state):
