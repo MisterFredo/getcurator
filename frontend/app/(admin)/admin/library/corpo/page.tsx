@@ -1,4 +1,3 @@
-"""Selected Corpo discovery -> Library, one resumable extraction segment per call."""
 from __future__ import annotations
 
 import json
