@@ -197,7 +197,7 @@ def get_watch_publication_route(
 from core.company.watch_discovery_service import (
     list_candidates, store_candidate, candidate_detail, change_candidates_status,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CompanyWatchDiscoverySelection(BaseModel):
@@ -318,6 +318,19 @@ from core.company.library_editorial_service import set_mention_editorial
 def set_library_editorial_route(id_document:str,data:CompanyLibraryEditorialUpdate):
     return _watch_call(set_mention_editorial,id_document,data.is_withdrawn,data.reason)
 
+class CompanyPostReview(BaseModel):
+    verdict: str
+    post_type: str
+    reason: Optional[str] = Field(None, max_length=1000)
+
+
+@router.post("/watch/library/{id_document}/review")
+def save_library_post_review(id_document: str, data: CompanyPostReview):
+    from core.company.library_post_review import save_review
+
+    return _watch_call(save_review, id_document, data.verdict, data.post_type, data.reason)
+
+
 @router.get("/watch/library/list")
 def list_corpo_library_route(
     id_company: Optional[str] = None,
@@ -330,10 +343,11 @@ def list_corpo_library_route(
     with_summary: bool = False,
     qualification: Optional[str] = None,
     post_type: Optional[str] = None,
+    review_state: Optional[str] = None,
 ):
     return _watch_call(list_corpo_library, id_company, offset, limit,
         q, sort, direction, status, published_from, published_to, document_type,
-        editorial_status, with_summary, qualification, post_type)
+        editorial_status, with_summary, qualification, post_type, review_state)
 
 
 @router.get("/watch/library/{id_document}")
