@@ -25,7 +25,7 @@ def _state(candidate_id, status, document_id=None, error=None):
         discovery._p('id','STRING',candidate_id)])
 
 
-def import_step(candidate_id, *, register_only=False):
+def import_step(candidate_id, *, register_only=False, qualify_on_arrival=True):
     with library.document_lock('library-import-' + candidate_id):
         candidate = discovery.get_candidate(candidate_id)
         if candidate['STATUS'] == 'DISMISSED':
@@ -71,20 +71,12 @@ def import_step(candidate_id, *, register_only=False):
                     original=_original(metadata['storage_uri']), text=text, title=metadata['title'],
                     mime='application/json' if metadata.get('provider') == 'BRIGHTDATA' else 'text/html',
                     published_at=metadata.get('published_at'), date_precision=metadata.get('date_precision','UNKNOWN'),
-                    author=frozen_watch['author_name'],
+                    author=frozen_watch['author_name'], qualify_on_arrival=qualify_on_arrival,
                     extra={**metadata, 'id_discovery':candidate_id, 'id_stock':candidate.get('ID_STOCK'),
                            'capture_metadata_uri':candidate['SNAPSHOT_URI']})
                 document_id = result['id_document']
             if register_only:
                 _state(candidate_id, 'IMPORTED', document_id)
-                try:
-                    from core.company.library_post_worker import wake_post_worker
-
-                    wake_post_worker()
-                except Exception:
-                    logging.getLogger(__name__).exception(
-                        "Réveil de la qualification impossible pour %s", document_id
-                    )
                 return {'id_document': document_id, 'library_status': 'IMPORTED'}
             # Link before calling the LLM: retries reuse both the document and its cursor.
             _state(candidate_id, 'IMPORTING', document_id)
@@ -101,13 +93,22 @@ def import_step(candidate_id, *, register_only=False):
             raise
 
 
-def register_employee_backlog(watch_id=None):
+def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qualify_on_arrival=True):
     """Register captured employee posts, including previous collections."""
     params = []
     scope = ""
     if watch_id is not None:
         scope = "AND d.ID_COMPANY_WATCH=@watch"
         params.append(discovery._p('watch', 'STRING', watch_id))
+    if excluded_ids:
+        from google.cloud import bigquery
+
+        scope += " AND d.ID_DISCOVERY NOT IN UNNEST(@excluded)"
+        params.append(bigquery.ArrayQueryParameter('excluded', 'STRING', list(excluded_ids)))
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = "LIMIT @limit"
+        params.append(discovery._p('limit', 'INT64', limit))
     rows = discovery._query(f"""
         SELECT DISTINCT d.ID_DISCOVERY
         FROM `{discovery.DISCOVERY}` d
@@ -119,14 +120,17 @@ def register_employee_backlog(watch_id=None):
           AND d.SNAPSHOT_URI IS NOT NULL
           AND COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTED'
           {scope}
+        ORDER BY d.ID_DISCOVERY
+        {limit_clause}
     """, params)
-    result = {'registered': 0, 'withdrawn': 0, 'failed': 0}
+    result = {'registered': 0, 'withdrawn': 0, 'failed': 0, 'failed_ids': []}
     for row in rows:
         candidate_id = row['ID_DISCOVERY']
         try:
-            outcome = import_step(candidate_id, register_only=True)
+            outcome = import_step(candidate_id, register_only=True, qualify_on_arrival=qualify_on_arrival)
         except Exception:
             result['failed'] += 1
+            result['failed_ids'].append(candidate_id)
             logging.getLogger(__name__).exception(
                 "Employee Library registration failed for %s", candidate_id
             )
