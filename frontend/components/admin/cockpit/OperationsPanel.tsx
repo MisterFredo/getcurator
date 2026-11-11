@@ -27,10 +27,14 @@ const groups:{title:string;operations:Operation[]}[]=[
   {id:"sync-dev",label:"Sync Development",description:"Copier PROD vers DEV."},
  ]},
 ];
-export default function OperationsPanel(){
+export default function OperationsPanel({ section }: { section?: "production" | "maintenance" }) {
+ const selected = groups.filter(group => {
+  const maintenance = group.title === "Maintenance" || group.title === "Environment";
+  return !section || (section === "maintenance" ? maintenance : !maintenance);
+ });
  const {loading,success,error,run}=useCockpitOperations();
- return <section className="rounded-xl border bg-white p-6 space-y-5"><h2 className="text-xl font-semibold">Operations</h2>
+ return <section className="rounded-xl border bg-white p-6 space-y-5"><h2 className="text-xl font-semibold">{section === "production" ? "Production" : section === "maintenance" ? "Maintenance" : "Opérations"}</h2>
  {success&&<p role="status" className="text-green-700">{success}</p>}{error&&<p role="alert" className="text-red-700">{error}</p>}
- {groups.map(group=><div key={group.title}><h3 className="font-semibold mb-3">{group.title}</h3><div className="space-y-3">{group.operations.map(op=><div key={op.id} className="flex flex-wrap justify-between gap-3 items-center rounded border p-4"><div><strong>{op.label}</strong><p className="text-sm text-gray-500">{op.description}</p></div><button disabled={loading} onClick={()=>{void run(op.id).catch(()=>{});}} className="inline-flex items-center gap-2 bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-50"><Play size={16}/>Run</button></div>)}</div></div>)}
+ {selected.map(group=><div key={group.title}><h3 className="font-semibold mb-3">{group.title}</h3><div className="space-y-3">{group.operations.map(op=><div key={op.id} className="flex flex-wrap justify-between gap-3 items-center rounded border p-4"><div><strong>{op.label}</strong><p className="text-sm text-gray-500">{op.description}</p></div><button disabled={loading} onClick={()=>{void run(op.id).catch(()=>{});}} className="inline-flex items-center gap-2 bg-ratecard-blue text-white rounded px-4 py-2 disabled:opacity-50"><Play size={16}/>Run</button></div>)}</div></div>)}
  </section>;
 }
