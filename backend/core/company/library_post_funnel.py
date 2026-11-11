@@ -140,6 +140,8 @@ def _verdict(row):
 
 def prepare_publication_corpus(company_ids, start, end, *, employee_limit=None):
     """Use inclusive publication dates in Europe/Paris. Return JSON-ready records."""
+    from core.company.library_post_review import EMPLOYEE_ROLE, LATEST
+
     if not company_ids or end < start or (employee_limit is not None and employee_limit < 1):
         raise ValueError("Périmètre de corpus invalide")
 
@@ -154,12 +156,13 @@ def prepare_publication_corpus(company_ids, start, end, *, employee_limit=None):
         WITH publications AS (
             SELECT d.ID_DOCUMENT, d.ID_COMPANY, c.NAME AS COMPANY_NAME, d.TITLE,
                 d.AUTHOR_NAME, d.SOURCE_URL, d.PUBLISHED_AT, d.TEXT_STORAGE_URI, d.DOCUMENT_TYPE,
-                COALESCE(d.SOURCE_ROLE, w.SOURCE_ROLE,
-                    IF(w.ID_CONTACT IS NOT NULL, 'EMPLOYEE', 'CORPORATE')) AS SOURCE_ROLE
+                r.VERDICT AS REVIEW_VERDICT, r.TYPE_PRINCIPAL AS REVIEW_TYPE, r.MOTIF AS REVIEW_MOTIF,
+                CASE WHEN {EMPLOYEE_ROLE} THEN 'EMPLOYEE' ELSE 'CORPORATE' END AS SOURCE_ROLE
             FROM `{library.DOCUMENT}` d
             JOIN `{library.BASE}.RATECARD_COMPANY` c USING (ID_COMPANY)
             LEFT JOIN `{library.BASE}.RATECARD_COMPANY_WATCH` w
                 ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
+            LEFT JOIN ({LATEST}) r ON r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
             WHERE d.ID_COMPANY IN UNNEST(@companies)
               AND d.ID_COMPANY_WATCH IS NOT NULL
               AND d.DOCUMENT_TYPE IS DISTINCT FROM 'MENTION'
@@ -192,16 +195,20 @@ def prepare_publication_corpus(company_ids, start, end, *, employee_limit=None):
             "publie_le": row["PUBLISHED_AT"].isoformat(),
             "origine": row["SOURCE_ROLE"],
         }
+        manual_review = None
+        if row["REVIEW_VERDICT"]:
+            manual_review = {"verdict": row["REVIEW_VERDICT"], "type_principal": row["REVIEW_TYPE"],
+                             "motif": row["REVIEW_MOTIF"], "reutilise": True, "source": "MANUEL"}
         if row["SOURCE_ROLE"] != "EMPLOYEE":
             if row["DOCUMENT_TYPE"] == "LINKEDIN":
                 try:
-                    item.update(_verdict(row))
+                    item.update(manual_review or _verdict(row))
                 except Exception:
                     logger.exception("Type corporate indisponible pour %s", row["ID_DOCUMENT"])
             corpus.append(item)
             continue
         try:
-            review = _verdict(row)
+            review = manual_review or _verdict(row)
         except Exception:
             logger.exception("Échec du tri Library pour %s", row["ID_DOCUMENT"])
             reviews.append({**item, "verdict": "ERREUR_TECHNIQUE"})
