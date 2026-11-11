@@ -48,13 +48,13 @@ export default function CorpoLibraryPage() {
   async function changeEditorial(id:string,title:string,withdrawn:boolean){
     if(editorialLock.current)return;
     const verb=withdrawn?"Retirer":"Restaurer";
-    if(!window.confirm(`${verb} « ${title} » ${withdrawn?"de":"dans"} la Library active ? ${withdrawn?"La décision sera mémorisée pour cette société et cette URL, preuves comprises. Une restauration restera possible.":"La Mention et ses preuves redeviendront utilisables."}`))return;
+    if(!window.confirm(`${verb} « ${title} » ${withdrawn?"de":"dans"} la Library active ? ${withdrawn?"La décision sera mémorisée pour cette société et cette URL, preuves comprises. Une restauration restera possible.":"La publication et ses preuves redeviendront utilisables."}`))return;
     const reason=window.prompt("Motif éditorial (facultatif) :","");if(reason===null)return;
     editorialLock.current=true;setEditorialBusy(id);setEditorialError("");setEditorialNotice("");
     try{
       const res=await api.post(`/company/watch/library/${encodeURIComponent(id)}/editorial`,{is_withdrawn:withdrawn,reason:reason.trim().slice(0,1000)||null});
       if(res.status!=="ok")throw new Error(res.message||"Décision non confirmée.");
-      setEditorialNotice(withdrawn?"Mention retirée. Elle ne sera pas réimportée pour cette société et cette URL.":"Mention restaurée.");
+      setEditorialNotice(withdrawn?"Publication retirée de la Library active.":"Publication restaurée.");
       setRevision(v=>v+1);
     }catch(e){setEditorialError(message(e));}finally{editorialLock.current=false;setEditorialBusy("");}
   }
@@ -106,14 +106,14 @@ export default function CorpoLibraryPage() {
       }
       setOffset(0);setFilters({...draft,q:draft.q.trim()});
     }}>
-        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value,companyId:""})}><option value="">Tous</option><option value="CORPORATE">Publications corporate</option><option value="MENTION">Mentions externes</option></select></label>
+        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({...draft,documentType:e.target.value,companyId:""})}><option value="">Tous</option><option value="CORPORATE">Publications de veille</option><option value="MENTION">Mentions externes</option></select></label>
       <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
         <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
           value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
         <span className="text-xs text-gray-500">Recherche littérale dans les titres, auteurs, sociétés, points de collecte, URL, informations extraites et citations. Le texte source intégral n’est pas indexé par ce filtre.</span>
       </label>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Mentions retirées</option><option value="ALL">Actives et retirées</option></select></label>
+        <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Publications retirées</option><option value="ALL">Actives et retirées</option></select></label>
         <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
           <option value="">Toutes les sociétés présentes dans ce périmètre</option>{companies.map(c=><option key={c.id_company} value={c.id_company}>{c.name}</option>)}
         </select></label>
@@ -135,7 +135,7 @@ export default function CorpoLibraryPage() {
       </div>
     </form>
     <div role="status" aria-live="polite" className="bg-white border rounded p-4 flex flex-wrap gap-x-8 gap-y-2">
-      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications corporate':''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
+      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications de veille':''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
       <p><span className="text-gray-500">Résultats des filtres appliqués : </span><strong>{counts?counts.selected.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
       <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type et l’état éditorial choisis.</p>
     </div>
@@ -150,9 +150,9 @@ export default function CorpoLibraryPage() {
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
-        <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':'En cours'}
+        <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':row.extraction_status==='PENDING'?'Disponible · à analyser':'En cours'}
           {row.extraction_error && <p className="text-red-700">{row.extraction_error}</p>}</td>
-        <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button>{row.document_type==='MENTION'&&<button disabled={!!editorialBusy} className={`${button} ml-2 ${row.editorial_status==='WITHDRAWN'?'':'text-red-700'}`} onClick={()=>void changeEditorial(row.id_document,row.title,row.editorial_status!=='WITHDRAWN')}>{editorialBusy===row.id_document?'Enregistrement…':row.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>}</td>
+        <td className="p-3">{row.unit_count}</td><td className="p-3"><button className={button} onClick={()=>{setUnitOffset(0);setDocumentId(row.id_document);}}>Consulter</button>{(row.document_type==='MENTION'||row.document_type==='LINKEDIN')&&<button disabled={!!editorialBusy} className={`${button} ml-2 ${row.editorial_status==='WITHDRAWN'?'':'text-red-700'}`} onClick={()=>void changeEditorial(row.id_document,row.title,row.editorial_status!=='WITHDRAWN')}>{editorialBusy===row.id_document?'Enregistrement…':row.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>}</td>
       </tr>)}</tbody></table>
     </div>}
     <div className="flex justify-end gap-2 items-center"><span className="text-sm text-gray-500">Page {Math.floor(offset/50)+1}</span><button className={button} disabled={loading||!!error||offset===0} onClick={()=>setOffset(v=>Math.max(0,v-50))}>Précédent</button>
@@ -168,7 +168,7 @@ export default function CorpoLibraryPage() {
     {detailError && <div role="alert" className="text-red-700 space-y-3"><p>{detailError}</p>
       <button type="button" className={button} onClick={()=>setRevision(v=>v+1)}>Réessayer</button></div>}
     {detail && <section className="border rounded bg-white p-5 space-y-4">
-      {detail.document_type==='MENTION'&&<div className="border rounded p-3 space-y-2"><p className="text-sm">{detail.editorial_status==='WITHDRAWN'?'Mention retirée : consultation historique, exclue de la Library active.':'Mention active.'}{detail.editorial_reason&&` Motif : ${detail.editorial_reason}`}</p><button disabled={!!editorialBusy} className={button} onClick={()=>void changeEditorial(detail.id_document,detail.title,detail.editorial_status!=='WITHDRAWN')}>{detail.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>{editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}</div>}
+      {(detail.document_type==='MENTION'||detail.document_type==='LINKEDIN')&&<div className="border rounded p-3 space-y-2"><p className="text-sm">{detail.editorial_status==='WITHDRAWN'?'Publication retirée de la Library active.':'Publication active.'}{detail.editorial_reason&&` Motif : ${detail.editorial_reason}`}</p><button disabled={!!editorialBusy} className={button} onClick={()=>void changeEditorial(detail.id_document,detail.title,detail.editorial_status!=='WITHDRAWN')}>{detail.editorial_status==='WITHDRAWN'?'Restaurer':'Retirer de la Library'}</button>{editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}</div>}
       <p className="text-sm">Parution : {date(detail.published_at)} · Auteur : {detail.author_name || detail.author_id || 'Non renseigné'}</p>
       {detail.monitored_account_url && <p className="text-sm">Compte suivi : {detail.monitored_account_url}. La date d’un éventuel relais reste indéterminée.</p>}
       <a className="underline text-ratecard-blue" href={safeUrl(detail.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a>
