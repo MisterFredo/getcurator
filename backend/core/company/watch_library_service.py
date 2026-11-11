@@ -141,7 +141,20 @@ def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qua
 
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
-                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE", with_summary=False):
+                       published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE",
+                       with_summary=False, qualification=None, post_type=None):
+    from core.company.library_post_funnel import POST_TYPES, TABLE, VERSION
+
+    qualification_filters = {
+        "GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT IN ('SIGNAL_SOCIETE','PRISE_DE_PAROLE_METIER')",
+        "NO_GO": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT='BRUIT'",
+        "REVIEW": "d.QUALIFICATION_ROLE='EMPLOYEE' AND d.QUALIFICATION_VERDICT='A_VERIFIER'",
+        "PENDING": "d.QUALIFICATION_ROLE IS NOT NULL AND d.QUALIFICATION_VERDICT IS NULL",
+    }
+    if qualification and qualification not in qualification_filters:
+        raise ValueError("Filtre de qualification invalide")
+    if post_type and post_type not in POST_TYPES:
+        raise ValueError("Type principal invalide")
     if not 1 <= limit <= 200 or offset < 0:
         raise ValueError("Pagination invalide")
     sorts = {"published_at":"d.PUBLISHED_AT", "imported_at":"d.CREATED_AT",
@@ -193,29 +206,56 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         where.append("d.PUBLISHED_AT < TIMESTAMP(@end,'Europe/Paris')")
         params.append(library._p('end','DATE',end+timedelta(days=1)))
     predicate = ' AND '.join(where)
+    scoped = predicate.replace('c.NAME','d.COMPANY_NAME').replace('w.LABEL','d.WATCH_LABEL')
+    selection = []
+    if qualification:
+        selection.append(qualification_filters[qualification])
+    if post_type:
+        selection.append('d.QUALIFICATION_TYPE=@post_type')
+        params.append(library._p('post_type','STRING',post_type))
+    selection = ' AND '.join(selection) or 'TRUE'
+    params.append(library._p('qualification_version','STRING',VERSION))
+
     ordering = sorts[sort] + ' ' + direction.upper() + ' NULLS LAST, d.ID_DOCUMENT ASC'
     base_sql=f"""SELECT d.ID_DOCUMENT, d.TITLE, d.SOURCE_URL, d.PUBLISHED_AT,
         d.CREATED_AT AS IMPORTED_AT, d.COLLECTED_AT, d.AUTHOR_NAME, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.DOCUMENT_TYPE,
         d.EDITORIAL_STATUS, d.EDITORIAL_UPDATED_AT, d.EDITORIAL_REASON,
         d.EXTRACTION_STATUS, d.EXTRACTION_ERROR, d.NEXT_CHUNK, d.CHUNK_COUNT,
         c.NAME AS COMPANY_NAME, w.LABEL AS WATCH_LABEL,
+        CASE WHEN d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL THEN
+          CASE WHEN d.SOURCE_ROLE='EMPLOYEE' OR w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL
+               THEN 'EMPLOYEE' ELSE 'CORPORATE' END
+        END AS QUALIFICATION_ROLE,
+        v.VERDICT AS QUALIFICATION_VERDICT, v.TYPE_PRINCIPAL AS QUALIFICATION_TYPE,
         (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
         FROM `{library.DOCUMENT}` d
         LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
         LEFT JOIN `{discovery.WATCH}` w ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
+        LEFT JOIN (
+          SELECT ID_COMPANY, ID_DOCUMENT, VERDICT, TYPE_PRINCIPAL
+          FROM `{TABLE}` WHERE VERSION=@qualification_version
+          QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY ID_COMPANY, ID_DOCUMENT ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL
+          )=1
+        ) v ON v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
+           AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
         WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
     if document_type:
         base_sql += " AND d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else " AND d.ID_COMPANY_WATCH IS NOT NULL"
+    order=ordering.replace('c.NAME','d.COMPANY_NAME')
     if with_summary:
         # One BigQuery request returns the page, exact counts and company options
         # from the same query snapshot. No per-company or per-row count queries.
-        scoped=predicate.replace('c.NAME','d.COMPANY_NAME').replace('w.LABEL','d.WATCH_LABEL')
-        order=ordering.replace('c.NAME','d.COMPANY_NAME')
         response=library._query(f"""WITH library_base AS ({base_sql}),
-          filtered AS (SELECT d.* FROM library_base d WHERE {scoped})
+          scope AS (SELECT d.* FROM library_base d WHERE {scoped}),
+          filtered AS (SELECT d.* FROM scope d WHERE {selection})
           SELECT
             ARRAY(SELECT AS STRUCT d.* FROM filtered d ORDER BY {order} LIMIT @limit OFFSET @offset) AS ITEMS,
             (SELECT COUNT(*) FROM filtered) AS TOTAL,
+            ARRAY(SELECT AS STRUCT QUALIFICATION_ROLE AS role,
+                    QUALIFICATION_VERDICT AS verdict, QUALIFICATION_TYPE AS post_type, COUNT(*) AS total
+                  FROM scope WHERE QUALIFICATION_ROLE IS NOT NULL
+                  GROUP BY role, verdict, post_type) AS QUALIFICATION_SUMMARY,
             (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
             ARRAY(SELECT AS STRUCT company.* FROM (
                     SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
@@ -226,9 +266,11 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         return {'items':[{k.lower():v for k,v in dict(row).items()} for row in page[:limit]],
                 'has_more':len(page)>limit,'offset':offset,'limit':limit,
                 'total':int(result['TOTAL']),'global_total':int(result['GLOBAL_TOTAL']),
+                'qualification_summary':[dict(item) for item in (result.get('QUALIFICATION_SUMMARY') or [])],
                 'companies':[dict(company) for company in (result['COMPANIES'] or [])]}
-    rows=library._query(f"""{base_sql} AND {predicate} ORDER BY {ordering}
-        LIMIT @limit OFFSET @offset""",params)
+    rows=library._query(f"""WITH library_base AS ({base_sql})
+        SELECT d.* FROM library_base d WHERE ({scoped}) AND ({selection})
+        ORDER BY {order} LIMIT @limit OFFSET @offset""",params)
     return {'items':[{k.lower():v for k,v in dict(r).items()} for r in rows[:limit]],
             'has_more':len(rows)>limit, 'offset':offset, 'limit':limit}
 
@@ -251,7 +293,21 @@ def corpo_library_detail(document_id, offset=0, limit=100):
     detail=library.publication_detail(doc['ID_COMPANY'],doc['ID_COMPANY_WATCH'],document_id,offset,limit)
     metadata=json.loads(library._read_uri(doc['METADATA_STORAGE_URI']))
     extra=metadata.get('extra') or {}
-    return {**detail,'published_at':doc.get('PUBLISHED_AT'),
+    qualification = {}
+    if doc.get('DOCUMENT_TYPE') == 'LINKEDIN':
+        from core.company.library_post_funnel import TABLE, VERSION
+
+        verdicts = library._query(f"""
+            SELECT VERDICT AS qualification_verdict, TYPE_PRINCIPAL AS qualification_type,
+                   MOTIF AS qualification_motif
+            FROM `{TABLE}`
+            WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id AND VERSION=@version
+            ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL LIMIT 1
+        """, [library._p('company','STRING',doc['ID_COMPANY']),
+               library._p('id','STRING',document_id), library._p('version','STRING',VERSION)])
+        if verdicts:
+            qualification = dict(verdicts[0])
+    return {**detail,**qualification,'published_at':doc.get('PUBLISHED_AT'),
         'document_type':doc.get('DOCUMENT_TYPE'),
         'editorial_status':doc.get('EDITORIAL_STATUS') or 'ACTIVE',
         'editorial_reason':doc.get('EDITORIAL_REASON'),'author_name':doc.get('AUTHOR_NAME'),
