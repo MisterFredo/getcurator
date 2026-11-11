@@ -56,7 +56,7 @@ Retourne un objet JSON avec verdict, type_principal et motif (une phrase courte 
 """
 
 
-def classify(company, text, *, full_text):
+def classify(company, text, *, full_text, corporate=False):
     raw = run_llm_json(
         prompt=json.dumps(
             {"societe_suivie": company, "texte_integral": full_text, "texte": text},
@@ -64,7 +64,11 @@ def classify(company, text, *, full_text):
         ),
         model=os.getenv("COMPANY_POST_TRIAGE_MODEL") or None,
         temperature=0.0,
-        system_prompt=PROMPT,
+        system_prompt=PROMPT + (
+            "\nCette publication est corporate. Classe son type. Pour le champ verdict, "
+            "retourne SIGNAL_SOCIETE comme valeur conventionnelle."
+            if corporate else ""
+        ),
         profile="smart",
         operation="company_post_triage",
     )
@@ -78,24 +82,24 @@ def classify(company, text, *, full_text):
     if not isinstance(reason, str) or not reason.strip():
         raise ValueError("Motif de tri manquant")
     return {
-        "verdict": result["verdict"],
+        "verdict": "CORPORATE" if corporate else result["verdict"],
         "type_principal": post_type,
         "motif": reason.strip()[:500],
     }
 
 
-def classify_post(company, text):
+def classify_post(company, text, *, corporate=False):
     text = text.strip()
     if not text:
         raise ValueError("Texte Library vide")
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     excerpt = "\n".join(lines[:2])[:500]
     complete = " ".join(excerpt.split()) == " ".join(text.split())
-    result = classify(company, excerpt, full_text=complete)
+    result = classify(company, excerpt, full_text=complete, corporate=corporate)
     if not complete and (
         result["verdict"] == "A_VERIFIER" or result["type_principal"] == "INDETERMINE"
     ):
-        result = classify(company, text, full_text=True)
+        result = classify(company, text, full_text=True, corporate=corporate)
     return result
 
 
@@ -118,7 +122,10 @@ def _verdict(row):
                 "reutilise": True,
             }
 
-        result = classify_post(row["COMPANY_NAME"], library._read_uri(row["TEXT_STORAGE_URI"]))
+        result = classify_post(
+            row["COMPANY_NAME"], library._read_uri(row["TEXT_STORAGE_URI"]),
+            corporate=row.get("SOURCE_ROLE") == "CORPORATE",
+        )
         library._query(
             f"""INSERT INTO `{TABLE}` (ID_COMPANY, ID_DOCUMENT, VERSION, VERDICT, TYPE_PRINCIPAL, MOTIF, CREATED_AT)
                 VALUES (@company, @document, @version, @verdict, @type_principal, @motif, CURRENT_TIMESTAMP())""",
@@ -146,7 +153,7 @@ def prepare_publication_corpus(company_ids, start, end, *, employee_limit=None):
         f"""
         WITH publications AS (
             SELECT d.ID_DOCUMENT, d.ID_COMPANY, c.NAME AS COMPANY_NAME, d.TITLE,
-                d.AUTHOR_NAME, d.SOURCE_URL, d.PUBLISHED_AT, d.TEXT_STORAGE_URI,
+                d.AUTHOR_NAME, d.SOURCE_URL, d.PUBLISHED_AT, d.TEXT_STORAGE_URI, d.DOCUMENT_TYPE,
                 COALESCE(d.SOURCE_ROLE, w.SOURCE_ROLE,
                     IF(w.ID_CONTACT IS NOT NULL, 'EMPLOYEE', 'CORPORATE')) AS SOURCE_ROLE
             FROM `{library.DOCUMENT}` d
@@ -186,6 +193,11 @@ def prepare_publication_corpus(company_ids, start, end, *, employee_limit=None):
             "origine": row["SOURCE_ROLE"],
         }
         if row["SOURCE_ROLE"] != "EMPLOYEE":
+            if row["DOCUMENT_TYPE"] == "LINKEDIN":
+                try:
+                    item.update(_verdict(row))
+                except Exception:
+                    logger.exception("Type corporate indisponible pour %s", row["ID_DOCUMENT"])
             corpus.append(item)
             continue
         try:
