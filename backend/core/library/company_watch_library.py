@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -96,7 +97,7 @@ def response_document(document: dict, already_exists=False) -> dict:
 
 def register_publication(watch: dict, *, source_url: str, original: bytes, text: str,
                          title: str, mime: str, published_at=None, date_precision="UNKNOWN",
-                         author=None, extra=None) -> dict:
+                         author=None, extra=None, qualify_on_arrival=True) -> dict:
     if not text.strip():
         raise ValueError("Publication sans texte")
     chunks = split_text(text)
@@ -141,6 +142,15 @@ def register_publication(watch: dict, *, source_url: str, original: bytes, text:
               @watch, @author, @role, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
               SAFE_CAST(@published AS TIMESTAMP), @precision, @text_uri, @metadata_uri,
               @content_hash, 'PENDING', @version, 0, @chunks, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())""", params)
+        if qualify_on_arrival and watch.get("source_type") == "LINKEDIN":
+            try:
+                from core.company.library_post_worker import wake_post_worker
+
+                wake_post_worker()
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "Démarrage de la qualification impossible pour %s", document_id
+                )
         return {"id_document": document_id, "title": title, "source_url": source_url,
                 "status": "PENDING", "next_chunk": 0, "chunk_count": len(chunks), "already_exists": False}
 
