@@ -75,6 +75,10 @@ def import_step(candidate_id, *, register_only=False, qualify_on_arrival=True):
                     extra={**metadata, 'id_discovery':candidate_id, 'id_stock':candidate.get('ID_STOCK'),
                            'capture_metadata_uri':candidate['SNAPSHOT_URI']})
                 document_id = result['id_document']
+                if metadata.get('provider') == 'BRIGHTDATA':
+                    from core.company.library_post_media import index_arrivals
+
+                    index_arrivals([document_id])
             if register_only:
                 _state(candidate_id, 'IMPORTED', document_id)
                 return {'id_document': document_id, 'library_status': 'IMPORTED'}
@@ -156,8 +160,9 @@ def _register_linkedin_backlog(watch_id, *, employees_only, limit=None,
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
                        published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE",
-                       with_summary=False, qualification=None, post_type=None, review_state=None, origin=None):
+                       with_summary=False, qualification=None, post_type=None, review_state=None, origin=None, media_format=None):
     from core.company.library_post_funnel import POST_TYPES, TABLE, VERSION
+    from core.company.library_post_media import TABLE as MEDIA_TABLE
 
     from core.company.library_post_review import EMPLOYEE_ROLE, LATEST
 
@@ -208,6 +213,12 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         where.append("d.QUALIFICATION_ROLE=@origin")
         params.append(library._p('origin','STRING',origin))
     global_predicate=' AND '.join(where)
+    media_filters = {"DOCUMENT": "d.HAS_DOCUMENT", "VIDEO": "d.HAS_VIDEO",
+                     "ANY": "(d.HAS_DOCUMENT OR d.HAS_VIDEO)"}
+    if media_format:
+        if media_format not in media_filters:
+            raise ValueError("Format média invalide")
+        where.append(media_filters[media_format])
     if company_id:
         where.append('d.ID_COMPANY=@company')
         params.append(library._p('company','STRING',company_id))
@@ -259,6 +270,9 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         COALESCE(r.VERDICT, v.VERDICT) AS QUALIFICATION_VERDICT,
         COALESCE(r.TYPE_PRINCIPAL, v.TYPE_PRINCIPAL) AS QUALIFICATION_TYPE,
         r.ID_REVIEW AS REVIEW_ID,
+        COALESCE(m.HAS_VIDEO, FALSE) AS HAS_VIDEO,
+        COALESCE(m.HAS_DOCUMENT, FALSE) AS HAS_DOCUMENT,
+        m.DOCUMENT_PAGE_COUNT, m.VIDEO_DURATION,
         (SELECT COUNT(*) FROM `{library.UNIT}` u WHERE u.ID_DOCUMENT=d.ID_DOCUMENT) AS UNIT_COUNT
         FROM `{library.DOCUMENT}` d
         LEFT JOIN `{discovery.COMPANY}` c ON c.ID_COMPANY=d.ID_COMPANY
@@ -271,6 +285,13 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
           )=1
         ) v ON v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
            AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
+        LEFT JOIN (
+          SELECT ID_DOCUMENT, STORAGE_URI, LOGICAL_OR(HAS_VIDEO) AS HAS_VIDEO,
+                 LOGICAL_OR(HAS_DOCUMENT) AS HAS_DOCUMENT,
+                 MAX(DOCUMENT_PAGE_COUNT) AS DOCUMENT_PAGE_COUNT, MAX(VIDEO_DURATION) AS VIDEO_DURATION
+          FROM `{MEDIA_TABLE}` GROUP BY ID_DOCUMENT, STORAGE_URI
+        ) m ON d.DOCUMENT_TYPE='LINKEDIN' AND m.ID_DOCUMENT=d.ID_DOCUMENT
+           AND m.STORAGE_URI=d.STORAGE_URI
         LEFT JOIN ({LATEST}) r ON r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
            AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
         WHERE (d.ID_COMPANY_WATCH IS NOT NULL OR d.DOCUMENT_TYPE='MENTION')"""
