@@ -405,6 +405,20 @@ def generate_company_report_notebook_route(data: CompanyReportNotebookRequest):
     return _watch_call(generate_notebook, data.company_id, data.month, data.revision)
 
 
+@router.get("/watch/library/company-report")
+def company_report_route(company_id: str, month: str, revision: str):
+    from core.company.company_report import get_report
+
+    return _watch_call(get_report, company_id, month, revision)
+
+
+@router.post("/watch/library/company-report")
+def generate_company_report_route(data: CompanyReportNotebookRequest):
+    from core.company.company_report import generate_report
+
+    return _watch_call(generate_report, data.company_id, data.month, data.revision)
+
+
 @router.get("/watch/library/{id_document}")
 def corpo_library_detail_route(
     id_document: str, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
