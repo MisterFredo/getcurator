@@ -38,8 +38,21 @@ type Notebook = {
   facts: {
     title: string; theme: string; summary: string; primary_id: string;
     support_ids: string[]; relay_ids: string[]; contribution_ids: string[]; contribution: string;
+    reference_date?: string; date_kind?: Candidate["date_kind"];
   }[];
 };
+
+type CompanyReport = {
+  company_name: string;
+  month: string;
+  revision: string;
+  coverage: Partial<Record<Candidate["source_kind"], number>>;
+  limited_sources: number;
+  sections: Record<"facts" | "site_changes" | "mentions", Notebook["facts"]>;
+  sources: Notebook["sources"];
+};
+
+const reportEndpoint = "/company/watch/library/company-report";
 
 const notebookEndpoint = "/company/watch/library/report-notebook";
 
@@ -66,7 +79,9 @@ function safeUrl(value: string | null) {
   }
 }
 
-function NotebookView({ notebook }: { notebook: Notebook }) {
+function NotebookView({ notebook, heading = "Notebook", showCoverage = true }: {
+  notebook: Notebook; heading?: string; showCoverage?: boolean;
+}) {
   const sources = new Map(notebook.sources.map(source => [source.id, source]));
   const limited = notebook.sources.filter(source => source.text_status !== "FULL").length;
 
@@ -80,14 +95,18 @@ function NotebookView({ notebook }: { notebook: Notebook }) {
     });
   }
 
-  return <section aria-label="Notebook du rapport" className="space-y-3">
-    <h2 className="text-lg font-semibold">Notebook · {notebook.facts.length} fait(s)</h2>
-    {limited > 0 && <p className="text-sm text-gray-600">
+  return <section aria-label={heading} className="space-y-3">
+    <h2 className="text-lg font-semibold">{heading} · {notebook.facts.length} fait(s)</h2>
+    {showCoverage && limited > 0 && <p className="text-sm text-gray-600">
       {limited} source(s) ont été analysées à partir d’un extrait ou du titre.
     </p>}
-    {notebook.facts.length === 0 && <p className="text-sm">Aucun fait retenu dans ce corpus.</p>}
+    {notebook.facts.length === 0 && <p className="text-sm">Aucun fait dans cette rubrique.</p>}
     {notebook.facts.map((fact, index) => <article key={index} className="space-y-2 rounded border bg-white p-3">
-      <p className="text-xs text-gray-600">{fact.theme}</p>
+      <p className="text-xs text-gray-600">{fact.theme}
+        {fact.reference_date && fact.date_kind
+          ? ` · ${dateLabels[fact.date_kind]} le ${formatter.format(new Date(fact.reference_date))}`
+          : ""}
+      </p>
       <h3 className="font-semibold">{fact.title}</h3>
       <p className="text-sm">{fact.summary}</p>
       <div className="text-sm">
@@ -110,6 +129,46 @@ function NotebookView({ notebook }: { notebook: Notebook }) {
   </section>;
 }
 
+function CompanyReportView({ report }: { report: CompanyReport }) {
+  const blocks = [
+    { id: "facts", title: "Faits du mois" },
+    { id: "site_changes", title: "Évolutions observées sur le site" },
+    { id: "mentions", title: "Mentions externes" },
+  ] as const;
+
+  function download() {
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `rapport-societe-${report.month}.json`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  return <section className="space-y-4 rounded border bg-white p-4" aria-label="Rapport société">
+    <header className="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h2 className="text-xl font-semibold">{report.company_name} · {report.month}</h2>
+        <p className="text-sm text-gray-600">{report.sources.length} sources dans le corpus</p>
+      </div>
+      <button type="button" className={button} onClick={download}>Télécharger le JSON</button>
+    </header>
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-700">
+      {sections.filter(item => report.coverage[item.id]).map(item =>
+        <li key={item.id}>{item.label} · {report.coverage[item.id]}</li>
+      )}
+    </ul>
+    {!!report.limited_sources && <p className="text-sm text-gray-600">
+      {report.limited_sources} source(s) analysées à partir d’un extrait ou du titre.
+    </p>}
+    {blocks.filter(block => block.id === "facts" || report.sections[block.id].length).map(block =>
+      <NotebookView key={block.id} heading={block.title} showCoverage={false}
+        notebook={{ revision: report.revision, facts: report.sections[block.id], sources: report.sources }}/>
+    )}
+  </section>;
+}
+
 export default function CompanyReportCorpusPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [company, setCompany] = useState("");
@@ -117,6 +176,7 @@ export default function CompanyReportCorpusPage() {
   const [scope, setScope] = useState<{ company: string; month: string } | null>(null);
   const [corpus, setCorpus] = useState<Corpus | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [report, setReport] = useState<CompanyReport | null>(null);
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -145,6 +205,7 @@ export default function CompanyReportCorpusPage() {
     try {
       const params = new URLSearchParams({ company_id: company, month });
       const next: Corpus = await api.get(`${endpoint}?${params}`);
+      setReport(null);
       setNotebook(null);
       setCorpus(next);
       setSelected(next.selected_ids);
@@ -153,6 +214,10 @@ export default function CompanyReportCorpusPage() {
         params.set("revision", next.revision);
         const result: { notebook: Notebook | null } = await api.get(`${notebookEndpoint}?${params}`);
         setNotebook(result.notebook);
+        if (result.notebook) {
+          const saved: { report: CompanyReport | null } = await api.get(`${reportEndpoint}?${params}`);
+          setReport(saved.report);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de charger le corpus.");
@@ -171,6 +236,7 @@ export default function CompanyReportCorpusPage() {
         company_id: scope.company, month: scope.month, selected_ids: selected, revision: corpus.revision,
       });
       setCorpus({ ...corpus, revision: result.revision, selected_ids: selected, unavailable_count: 0 });
+      setReport(null);
       setNotebook(null);
       setNotice("Sélection enregistrée.");
     } catch (err) {
@@ -195,6 +261,25 @@ export default function CompanyReportCorpusPage() {
       setError(err instanceof Error ? err.message : "Impossible de générer le Notebook.");
     } finally {
       setGenerating(false);
+      setBusy(false);
+    }
+  }
+
+  async function generateReport() {
+    if (busy || !scope || !corpus || dirty || !notebook || notebook.revision !== corpus.revision ||
+        corpus.unavailable_count) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result: { report: CompanyReport } = await api.post(reportEndpoint, {
+        company_id: scope.company, month: scope.month, revision: corpus.revision,
+      });
+      setReport(result.report);
+      setNotice("Rapport enregistré.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d’enregistrer le rapport.");
+    } finally {
       setBusy(false);
     }
   }
@@ -278,7 +363,15 @@ export default function CompanyReportCorpusPage() {
           Enregistrez la sélection pour générer le Notebook.
         </span>}
       </div>
-      {notebook && !dirty && <NotebookView notebook={notebook}/>}
+      {notebook && !dirty && <>
+        {report ? <CompanyReportView report={report}/> : <>
+          <NotebookView notebook={notebook}/>
+          <button type="button" className={`${button} bg-ratecard-blue text-white`}
+            disabled={busy || !!corpus.unavailable_count} onClick={generateReport}>
+            Enregistrer le rapport société
+          </button>
+        </>}
+      </>}
     </>}
   </main>;
 }
