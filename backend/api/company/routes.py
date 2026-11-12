@@ -385,6 +385,26 @@ def save_company_report_corpus_route(data: CompanyReportCorpusUpdate):
     return _watch_call(save_corpus, data.company_id, data.month, data.selected_ids, data.revision)
 
 
+class CompanyReportNotebookRequest(BaseModel):
+    company_id: str
+    month: str
+    revision: str
+
+
+@router.get("/watch/library/report-notebook")
+def company_report_notebook_route(company_id: str, month: str, revision: str):
+    from core.company.company_report_notebook import get_notebook
+
+    return _watch_call(get_notebook, company_id, month, revision)
+
+
+@router.post("/watch/library/report-notebook")
+def generate_company_report_notebook_route(data: CompanyReportNotebookRequest):
+    from core.company.company_report_notebook import generate_notebook
+
+    return _watch_call(generate_notebook, data.company_id, data.month, data.revision)
+
+
 @router.get("/watch/library/{id_document}")
 def corpo_library_detail_route(
     id_document: str, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
