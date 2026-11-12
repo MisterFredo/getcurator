@@ -22,7 +22,7 @@ export function listMonitoredWatches(options:{id_company?:string;is_active?:bool
 export function listWatchItems(options:{companyId?:string;watchId?:string;status?:string;role?:WatchRole;channel?:WatchChannel;kind?:WatchKind;offset?:number}):Promise<{items:CorpoDiscovery[];has_more:boolean}>{
  const {companyId,watchId,...rest}=options;return api.get(`/company/watch/operations/items?${query({company_id:companyId,watch_id:watchId,limit:50,...rest})}`);
 }
-export function listWatchJobs(company_id?:string,watch_id?:string):Promise<{jobs:WatchJob[]}>{return api.get(`/company/watch/operations/jobs?${query({company_id,watch_id})}`);}
+export function listWatchJobs(company_id?:string,watch_id?:string,role:WatchRole='ALL'):Promise<{jobs:WatchJob[]}>{return api.get(`/company/watch/operations/jobs?${query({company_id,watch_id,role})}`);}
 export function launchWatchJob(options:{role?:WatchRole;kind:WatchKind;channel:WatchChannel;company_id?:string;watch_id?:string;failed_only?:boolean;recover_only?:boolean}):Promise<WatchJob>{const {role='ALL',...body}=options;return api.post(`/company/watch/operations/start?role=${role}`,body);}
 export function resumeWatchJob(id:string):Promise<WatchJob>{return api.post(`/company/watch/operations/jobs/${encodeURIComponent(id)}/resume`,{});}
 
