@@ -32,6 +32,17 @@ type Corpus = {
   unavailable_count: number;
 };
 
+type Notebook = {
+  revision: string;
+  sources: { id: string; title: string | null; url: string | null; text_status: string }[];
+  facts: {
+    title: string; theme: string; summary: string; primary_id: string;
+    support_ids: string[]; relay_ids: string[]; contribution_ids: string[]; contribution: string;
+  }[];
+};
+
+const notebookEndpoint = "/company/watch/library/report-notebook";
+
 const endpoint = "/company/watch/library/report-corpus";
 const button = "rounded border px-3 py-2 text-sm disabled:opacity-50";
 const dateLabels = { PUBLICATION: "Publié", OBSERVATION: "Observé", COLLECTION: "Collecté" };
@@ -55,6 +66,50 @@ function safeUrl(value: string | null) {
   }
 }
 
+function NotebookView({ notebook }: { notebook: Notebook }) {
+  const sources = new Map(notebook.sources.map(source => [source.id, source]));
+  const limited = notebook.sources.filter(source => source.text_status !== "FULL").length;
+
+  function sourceLinks(ids: string[]) {
+    return ids.map(id => {
+      const source = sources.get(id);
+      const url = safeUrl(source?.url ?? null);
+      return <li key={id}>{url
+        ? <a className="underline" href={url} target="_blank" rel="noopener noreferrer">{source?.title || id}</a>
+        : source?.title || id}</li>;
+    });
+  }
+
+  return <section aria-label="Notebook du rapport" className="space-y-3">
+    <h2 className="text-lg font-semibold">Notebook · {notebook.facts.length} fait(s)</h2>
+    {limited > 0 && <p className="text-sm text-gray-600">
+      {limited} source(s) ont été analysées à partir d’un extrait ou du titre.
+    </p>}
+    {notebook.facts.length === 0 && <p className="text-sm">Aucun fait retenu dans ce corpus.</p>}
+    {notebook.facts.map((fact, index) => <article key={index} className="space-y-2 rounded border bg-white p-3">
+      <p className="text-xs text-gray-600">{fact.theme}</p>
+      <h3 className="font-semibold">{fact.title}</h3>
+      <p className="text-sm">{fact.summary}</p>
+      <div className="text-sm">
+        <p className="font-medium">Source principale</p><ul>{sourceLinks([fact.primary_id])}</ul>
+      </div>
+      {!!fact.support_ids.length && <details className="text-sm">
+        <summary className="cursor-pointer">Sources complémentaires · {fact.support_ids.length}</summary>
+        <ul>{sourceLinks(fact.support_ids)}</ul>
+      </details>}
+      {!!fact.relay_ids.length && <details className="text-sm">
+        <summary className="cursor-pointer">Relais observés · {fact.relay_ids.length}</summary>
+        <ul>{sourceLinks(fact.relay_ids)}</ul>
+      </details>}
+      {fact.contribution && <div className="text-sm">
+        <p className="font-medium">Éclairage salarié</p>
+        <p>{fact.contribution}</p>
+        <ul>{sourceLinks(fact.contribution_ids)}</ul>
+      </div>}
+    </article>)}
+  </section>;
+}
+
 export default function CompanyReportCorpusPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [company, setCompany] = useState("");
@@ -62,6 +117,8 @@ export default function CompanyReportCorpusPage() {
   const [scope, setScope] = useState<{ company: string; month: string } | null>(null);
   const [corpus, setCorpus] = useState<Corpus | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [notebook, setNotebook] = useState<Notebook | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -88,9 +145,15 @@ export default function CompanyReportCorpusPage() {
     try {
       const params = new URLSearchParams({ company_id: company, month });
       const next: Corpus = await api.get(`${endpoint}?${params}`);
+      setNotebook(null);
       setCorpus(next);
       setSelected(next.selected_ids);
       setScope({ company, month });
+      if (next.revision !== "0") {
+        params.set("revision", next.revision);
+        const result: { notebook: Notebook | null } = await api.get(`${notebookEndpoint}?${params}`);
+        setNotebook(result.notebook);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de charger le corpus.");
     } finally {
@@ -108,10 +171,30 @@ export default function CompanyReportCorpusPage() {
         company_id: scope.company, month: scope.month, selected_ids: selected, revision: corpus.revision,
       });
       setCorpus({ ...corpus, revision: result.revision, selected_ids: selected, unavailable_count: 0 });
+      setNotebook(null);
       setNotice("Sélection enregistrée.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible d’enregistrer la sélection.");
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateNotebook() {
+    if (busy || !scope || !corpus || dirty || corpus.revision === "0" || corpus.unavailable_count) return;
+    setGenerating(true);
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result: { notebook: Notebook } = await api.post(notebookEndpoint, {
+        company_id: scope.company, month: scope.month, revision: corpus.revision,
+      });
+      setNotebook(result.notebook);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de générer le Notebook.");
+    } finally {
+      setGenerating(false);
       setBusy(false);
     }
   }
@@ -186,6 +269,16 @@ export default function CompanyReportCorpusPage() {
             </ul>}
         </details>;
       })}
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" className={button} onClick={generateNotebook}
+          disabled={busy || dirty || corpus.revision === "0" || !selected.length || !!corpus.unavailable_count || !!notebook}>
+          {generating ? "Génération en cours…" : "Générer le Notebook"}
+        </button>
+        {(dirty || corpus.revision === "0") && <span className="text-sm text-gray-600">
+          Enregistrez la sélection pour générer le Notebook.
+        </span>}
+      </div>
+      {notebook && !dirty && <NotebookView notebook={notebook}/>}
     </>}
   </main>;
 }
