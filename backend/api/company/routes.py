@@ -364,6 +364,27 @@ def list_corpo_library_route(
         editorial_status, with_summary, qualification, post_type, review_state, origin=origin, media_format=media_format)
 
 
+class CompanyReportCorpusUpdate(BaseModel):
+    company_id: str
+    month: str
+    selected_ids: list[str]
+    revision: str
+
+
+@router.get("/watch/library/report-corpus")
+def company_report_corpus_route(company_id: str, month: str):
+    from core.company.company_report_corpus import get_corpus
+
+    return _watch_call(get_corpus, company_id, month)
+
+
+@router.put("/watch/library/report-corpus")
+def save_company_report_corpus_route(data: CompanyReportCorpusUpdate):
+    from core.company.company_report_corpus import save_corpus
+
+    return _watch_call(save_corpus, data.company_id, data.month, data.selected_ids, data.revision)
+
+
 @router.get("/watch/library/{id_document}")
 def corpo_library_detail_route(
     id_document: str, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
