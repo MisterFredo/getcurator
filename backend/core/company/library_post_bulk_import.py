@@ -1,4 +1,4 @@
-"""Import employee captures by batch using their existing immutable storage objects."""
+"""Import LinkedIn captures by batch using their existing immutable storage objects."""
 
 import hashlib
 import json
@@ -14,7 +14,7 @@ from core.library import company_watch_library as library
 from utils.gcs import BUCKET_NAME, bucket
 
 logger = logging.getLogger(__name__)
-WORKERS = 12
+WORKERS = 4
 
 
 def _capture_blob(uri):
@@ -58,7 +58,7 @@ def _prepare(row):
         "company_name": row["COMPANY_NAME"],
         "source_url": capture["url"],
         "author_name": author,
-        "source_role": "EMPLOYEE",
+        "source_role": row["SOURCE_ROLE"],
         "collected_at": capture.get("captured_at") or datetime.now(timezone.utc).isoformat(),
         "chunks": chunks,
         "extraction_version": library.VERSION,
@@ -75,6 +75,7 @@ def _prepare(row):
     )
     return {
         "candidate": row["ID_DISCOVERY"], "document": document_id, "snapshot": snapshot,
+        "source_role": row["SOURCE_ROLE"],
         "url": capture["url"], "title": capture["title"], "author": author,
         "sha": original_hash, "original": original_uri, "size": original.size,
         "text": text_uri, "metadata": meta_uri, "hash": content_hash,
@@ -106,7 +107,8 @@ def _commit(prepared):
               AND d.URL=JSON_VALUE(p.j, '$.url')
               AND w.IS_ACTIVE=TRUE AND c.IS_ACTIVE=TRUE
               AND w.SOURCE_TYPE='LINKEDIN'
-              AND (w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL)
+              AND IF(w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL, 'EMPLOYEE', 'CORPORATE')
+                  = JSON_VALUE(p.j, '$.source_role')
               AND d.STATUS IN ('NEW', 'STORED')
               AND COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTED'
               AND (COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTING'
@@ -142,7 +144,7 @@ def _commit(prepared):
             s.target_document, NULL, JSON_VALUE(s.j, '$.title'), 'original.json',
             JSON_VALUE(s.j, '$.sha'), JSON_VALUE(s.j, '$.original'),
             CAST(JSON_VALUE(s.j, '$.size') AS INT64), s.source_url, 'LINKEDIN',
-            s.ID_COMPANY, s.ID_COMPANY_WATCH, JSON_VALUE(s.j, '$.author'), 'EMPLOYEE',
+            s.ID_COMPANY, s.ID_COMPANY_WATCH, JSON_VALUE(s.j, '$.author'), JSON_VALUE(s.j, '$.source_role'),
             COALESCE(SAFE_CAST(JSON_VALUE(s.j, '$.captured') AS TIMESTAMP), CURRENT_TIMESTAMP()),
             CURRENT_TIMESTAMP(), SAFE_CAST(JSON_VALUE(s.j, '$.published') AS TIMESTAMP),
             JSON_VALUE(s.j, '$.precision'), JSON_VALUE(s.j, '$.text'), JSON_VALUE(s.j, '$.metadata'),
@@ -166,15 +168,17 @@ def _commit(prepared):
 def register_batch(*, limit, excluded_ids):
     rows = discovery._query(f"""
         SELECT DISTINCT d.ID_DISCOVERY, d.ID_COMPANY, d.ID_COMPANY_WATCH, d.ID_STOCK,
-               d.URL, d.SNAPSHOT_URI, c.NAME AS COMPANY_NAME, w.AUTHOR_NAME AS WATCH_AUTHOR
+               d.URL, d.SNAPSHOT_URI, c.NAME AS COMPANY_NAME, w.AUTHOR_NAME AS WATCH_AUTHOR,
+               IF(w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL, 'EMPLOYEE', 'CORPORATE') AS SOURCE_ROLE
         FROM `{discovery.DISCOVERY}` d
         JOIN `{discovery.WATCH}` w
           ON w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH AND w.ID_COMPANY=d.ID_COMPANY
         JOIN `{library.BASE}.RATECARD_COMPANY` c ON c.ID_COMPANY=d.ID_COMPANY
-        WHERE (w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL)
-          AND w.SOURCE_TYPE='LINKEDIN' AND w.IS_ACTIVE=TRUE AND c.IS_ACTIVE=TRUE
+        WHERE w.SOURCE_TYPE='LINKEDIN' AND w.IS_ACTIVE=TRUE AND c.IS_ACTIVE=TRUE
           AND d.STATUS IN ('NEW', 'STORED') AND d.SNAPSHOT_URI IS NOT NULL
           AND COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTED'
+          AND (COALESCE(d.LIBRARY_STATUS, 'PENDING') != 'IMPORTING'
+               OR d.UPDATED_AT < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE))
           AND d.ID_DISCOVERY NOT IN UNNEST(@excluded)
         ORDER BY d.ID_DISCOVERY
         LIMIT @limit
