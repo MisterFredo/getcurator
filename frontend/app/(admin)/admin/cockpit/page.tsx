@@ -11,6 +11,7 @@ import NumbersOperationsPanel from "@/components/admin/cockpit/NumbersOperations
 import QualityPanel from "@/components/admin/cockpit/QualityPanel";
 import ResultsPanel from "@/components/admin/cockpit/ResultsPanel";
 import TranslationBackfillOperation from "@/components/admin/cockpit/TranslationBackfillOperation";
+import CompanyReportBatch from "@/components/admin/company/CompanyReportBatch";
 
 const tabs = [
   { id: "ensemble", label: "Vue d’ensemble" },
