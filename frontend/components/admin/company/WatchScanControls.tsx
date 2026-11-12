@@ -9,11 +9,12 @@ export default function WatchScanControls({companyId,watch,role='ALL',channel='A
  const [job,setJob]=useState<WatchJob|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[pollError,setPollError]=useState('');
  const [refresh,setRefresh]=useState(0);const complete=useRef(onComplete);complete.current=onComplete;
  const scopeCompany=watch?.id_company||companyId;const scopeWatch=watch?.id_company_watch;
+ const scopeRole=watch ? (watch.id_contact || watch.source_role==='EMPLOYEE' ? 'EMPLOYEE' : 'CORPORATE') : role;
  const running=job?.status==='RUNNING';const paused=job?.status==='PAUSED';const blocked=running||paused;const lastCompletion=useRef('');
  useEffect(()=>{
   let cancelled=false;let timer:ReturnType<typeof setTimeout>|undefined;
   async function poll(){
-   try{const result=await listWatchJobs(scopeCompany,scopeWatch);if(cancelled)return;
+   try{const result=await listWatchJobs(scopeCompany,scopeWatch,scopeRole);if(cancelled)return;
     const value=result.jobs[0]||null;setJob(value);setPollError('');
     if(value&&['COMPLETE','PARTIAL','FAILED'].includes(value.status)&&lastCompletion.current!==value.id_job+value.updated_at){
      lastCompletion.current=value.id_job+value.updated_at;complete.current?.();window.dispatchEvent(new Event('watch-scan-updated'));
@@ -22,10 +23,10 @@ export default function WatchScanControls({companyId,watch,role='ALL',channel='A
    }catch(e){if(cancelled)return;setPollError(errorText(e));timer=setTimeout(poll,15000);}
   }
   void poll();return()=>{cancelled=true;if(timer)clearTimeout(timer);};
- },[scopeCompany,scopeWatch,refresh]);
+ },[scopeCompany,scopeWatch,scopeRole,refresh]);
  async function start(target:WatchKind,failed=false,recover=false){
   if(busy)return;setBusy(true);setError('');
-  try{const result=await launchWatchJob({role:watch?(watch.id_contact||watch.source_role==='EMPLOYEE'?'EMPLOYEE':'CORPORATE'):role,kind:watch?watchClass(watch).kind:target,channel:watch?watchClass(watch).channel:channel,
+  try{const result=await launchWatchJob({role:scopeRole,kind:watch?watchClass(watch).kind:target,channel:watch?watchClass(watch).channel:channel,
    company_id:scopeCompany,watch_id:scopeWatch,failed_only:failed,recover_only:recover});setJob(result);setRefresh(v=>v+1);window.dispatchEvent(new Event('watch-scan-updated'));}
   catch(e){setError(errorText(e));}finally{setBusy(false);}
  }
@@ -43,7 +44,7 @@ export default function WatchScanControls({companyId,watch,role='ALL',channel='A
  {watch?.collection_method==='BRIGHTDATA'&&<button className={btn} disabled={busy||blocked||!available} onClick={()=>void start('PUBLICATIONS',false,true)}>Récupérer le dernier scan LinkedIn</button>}
  <button className={btn} disabled={busy} onClick={()=>setRefresh(v=>v+1)}>Actualiser le suivi</button>
  </div>
- <p className="text-xs text-gray-500">Les publications incluent les listes d’URL des sites et les posts LinkedIn. Les pages uniques ont leur propre contrôle. Les filtres de canal et de type et la société sélectionnée définissent le périmètre du lancement. Vous pouvez quitter cette page après le lancement ; le backend poursuit la collecte. Aucun calendrier automatique.</p>
+ <p className="text-xs text-gray-500">Les publications incluent les listes d’URL des sites et les posts LinkedIn. Les pages uniques ont leur propre contrôle. L’onglet actif, les filtres de canal et de type et la société sélectionnée définissent le périmètre du lancement. Vous pouvez quitter cette page après le lancement ; le backend poursuit la collecte. Aucun calendrier automatique.</p>
  {job&&<div className="text-sm space-y-2"><strong>{job.failed_only?'Reprise des échecs':job.kind==='SINGLE_PAGE'?'Contrôle des pages uniques':'Collecte des publications'} · {job.status}</strong>
  <p>{finished}/{job.sources.length} sources terminées · {job.sources.reduce((n,s)=>n+s.new,0)} nouveautés · {job.sources.reduce((n,s)=>n+s.known,0)} connues · {job.sources.reduce((n,s)=>n+s.unchanged,0)} inchangées · {job.sources.filter(s=>s.status==='FAILED').length} échecs</p>
  {running&&<button className="underline mr-4" disabled={busy} onClick={()=>void pause()}>Suspendre après l’étape en cours</button>}
