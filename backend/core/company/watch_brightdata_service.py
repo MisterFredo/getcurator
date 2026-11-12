@@ -215,17 +215,20 @@ def _ingest(company_id, watch_id, state, records):
         received=len(records), warnings=warnings,
         message=None if complete else "Aucune publication exploitable dans la réponse ; consulter l'audit Bright Data.")
     _save(company_id, watch_id, state)
-    if complete and (watch.get('source_role') == 'EMPLOYEE' or watch.get('id_contact')):
-        from core.company.watch_library_service import register_employee_backlog
+    if complete:
+        from core.company.watch_library_service import register_corporate_posts, register_employee_backlog
 
+        register = (register_employee_backlog
+                    if watch.get('source_role') == 'EMPLOYEE' or watch.get('id_contact')
+                    else register_corporate_posts)
         try:
-            result = register_employee_backlog(watch_id)
+            result = register(watch_id)
             state["warnings"].append(
                 f"{result['registered']} publication(s) enregistrée(s) en Library, "
                 f"{result['failed']} en échec d’enregistrement."
             )
         except Exception:
-            logger.exception("Employee Library registration failed for watch %s", watch_id)
+            logger.exception("LinkedIn Library registration failed for watch %s", watch_id)
             state["warnings"].append("Enregistrement Library à reprendre.")
         _save(company_id, watch_id, state)
 
