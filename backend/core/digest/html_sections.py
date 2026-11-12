@@ -201,107 +201,43 @@ def render_sections(
 def render_front_sections(
     document: DigestDocument,
 ) -> str:
-    """
-    Render Digest sections for the public front.
-
-    Article cards remain intentionally hidden
-    from this reduced rendering.
-    """
+    """Render the analysis and selected articles in the Digest archive."""
 
     html = ""
 
     for section in document.sections:
-
-        # ====================================================
-        # ARTICLE CARDS — NOT DISPLAYED ON REDUCED FRONT
-        # ====================================================
-
-        if section.cards:
-
-            continue
-
         display_title = DISPLAY_TITLES.get(
             section.title,
             section.title,
         )
-
-        display_section = (
-            _build_display_section(
-                section=section,
-                display_title=display_title,
-            )
+        display_section = _build_display_section(
+            section=section,
+            display_title=display_title,
         )
 
-        # ====================================================
-        # EXECUTIVE SUMMARY
-        # ====================================================
-
-        if (
-            section.title
-            == "Executive Summary"
-        ):
-
+        if section.title == "Executive Summary":
             html += f"""
 <tr>
-
 <td class="section">
-
-<h2>
-
-{display_title}
-
-</h2>
-
+<h2>{display_title}</h2>
 </td>
-
 </tr>
 """
+            html += render_summary_section(display_section)
 
-            html += render_summary_section(
-                display_section,
-            )
+        elif section.title == "Key Points":
+            html += render_key_points_section(display_section)
 
-        # ====================================================
-        # KEY POINTS
-        # ====================================================
+        elif section.title == "Strategic Implications":
+            html += render_implications_section(display_section)
 
-        elif (
-            section.title
-            == "Key Points"
-        ):
-
-            html += render_key_points_section(
-                display_section,
-            )
-
-        # ====================================================
-        # STRATEGIC IMPLICATIONS
-        # ====================================================
-
-        elif (
-            section.title
-            == "Strategic Implications"
-        ):
-
-            html += (
-                render_implications_section(
-                    display_section
-                )
-            )
-
-        # ====================================================
-        # DEFAULT
-        # ====================================================
+        elif section.cards:
+            html += render_articles_section(display_section)
 
         else:
-
-            html += render_default_section(
-                display_section,
-            )
+            html += render_default_section(display_section)
 
     return html
-
-
 # ============================================================
 # DEFAULT SECTION
 # ============================================================
