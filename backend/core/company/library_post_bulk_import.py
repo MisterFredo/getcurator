@@ -158,7 +158,7 @@ def _commit(prepared):
         FROM linked s WHERE d.ID_DISCOVERY=s.candidate;
         COMMIT TRANSACTION;
 
-        SELECT candidate, withdrawn FROM linked;
+        SELECT candidate, withdrawn, target_document FROM linked;
     """, [
         library._p("payload", "STRING", json.dumps(prepared, ensure_ascii=False)),
         library._p("version", "STRING", library.VERSION),
@@ -197,6 +197,10 @@ def register_batch(*, limit, excluded_ids):
                 logger.exception("Capture non préparée : %s", candidate_id)
 
     committed = _commit(prepared)
+    if committed:
+        from core.company.library_post_media import index_arrivals
+
+        index_arrivals(sorted({row["target_document"] for row in committed if not row["withdrawn"]}))
     confirmed = {row["candidate"] for row in committed}
     failures.extend(item["candidate"] for item in prepared if item["candidate"] not in confirmed)
     withdrawn = sum(row["withdrawn"] for row in committed)
