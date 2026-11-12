@@ -333,13 +333,14 @@ def save_library_post_review(id_document: str, data: CompanyPostReview):
 
 class CompanyPostReviewConfirmation(BaseModel):
     document_ids: list[str]
+    pending_verdict: Optional[str] = None
 
 
 @router.post("/watch/library/reviews/confirm")
 def confirm_library_post_reviews(data: CompanyPostReviewConfirmation):
     from core.company.library_post_review import confirm_reviews
 
-    return _watch_call(confirm_reviews, data.document_ids)
+    return _watch_call(confirm_reviews, data.document_ids, data.pending_verdict)
 
 
 @router.get("/watch/library/list")
