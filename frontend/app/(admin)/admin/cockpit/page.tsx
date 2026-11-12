@@ -77,6 +77,7 @@ export default function CockpitPage() {
       {tab === "collecte" && <DiscoveryOperationsPanel key="collection" />}
       {tab === "production" && (
         <div className="space-y-5">
+          <CompanyReportBatch />
           <OperationsPanel section="production" />
           <NumbersOperationsPanel />
         </div>
