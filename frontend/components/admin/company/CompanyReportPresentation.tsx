@@ -75,7 +75,13 @@ function safeUrl(value: string | null) {
   }
 }
 
-function makePresentation(report: Report) {
+function makePresentation(report: Report): {
+  html: string;
+  filename: string;
+  language: Report["language"];
+  pageClasses: Record<string, string>;
+  urls: { marker: string; url: string }[];
+} {
   const language = report.language === "en" ? "en" : "fr";
   const fr = language === "fr";
   const column = fr ? 0 : 1;
