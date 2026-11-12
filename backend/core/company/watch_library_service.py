@@ -95,6 +95,20 @@ def import_step(candidate_id, *, register_only=False, qualify_on_arrival=True):
 
 def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qualify_on_arrival=True):
     """Register captured employee posts, including previous collections."""
+    return _register_linkedin_backlog(
+        watch_id, employees_only=True, limit=limit, excluded_ids=excluded_ids,
+        qualify_on_arrival=qualify_on_arrival,
+    )
+
+
+def register_corporate_posts(watch_id):
+    return _register_linkedin_backlog(watch_id, employees_only=False)
+
+
+def _register_linkedin_backlog(watch_id, *, employees_only, limit=None,
+                               excluded_ids=(), qualify_on_arrival=True):
+    role_filter = ("w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL" if employees_only
+                   else "COALESCE(w.SOURCE_ROLE, 'CORPORATE')='CORPORATE' AND w.ID_CONTACT IS NULL")
     params = []
     scope = ""
     if watch_id is not None:
@@ -113,7 +127,7 @@ def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qua
         SELECT DISTINCT d.ID_DISCOVERY
         FROM `{discovery.DISCOVERY}` d
         JOIN `{discovery.WATCH}` w USING (ID_COMPANY_WATCH)
-        WHERE (w.SOURCE_ROLE='EMPLOYEE' OR w.ID_CONTACT IS NOT NULL)
+        WHERE ({role_filter})
           AND w.SOURCE_TYPE='LINKEDIN'
           AND w.IS_ACTIVE=TRUE
           AND d.STATUS IN ('NEW', 'STORED')
@@ -132,7 +146,7 @@ def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qua
             result['failed'] += 1
             result['failed_ids'].append(candidate_id)
             logging.getLogger(__name__).exception(
-                "Employee Library registration failed for %s", candidate_id
+                "LinkedIn Library registration failed for %s", candidate_id
             )
         else:
             result['withdrawn' if outcome.get('withdrawn') else 'registered'] += 1
