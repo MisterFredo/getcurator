@@ -1,107 +1,135 @@
-"""Cockpit job for the existing employee-post requalification rules."""
+"""Requalify only unresolved automatic employee verdicts."""
 
-import hashlib
+import argparse
+import json
 import logging
-import time
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 
-from fastapi import HTTPException
+from google.cloud.bigquery import ArrayQueryParameter
 
-from core.company import library_post_requalify as requalify
-from core.company import watch_monitoring as state
-from core.library.company_watch_library import document_lock
+from core.company import library_post_funnel as funnel
+from core.company.library_post_review import EMPLOYEE_ROLE, TABLE as REVIEW_TABLE
+from core.library import company_watch_library as library
 
 logger = logging.getLogger(__name__)
-PATH = "library-post-requalification.json"
-LOCK = "post-requalification-" + hashlib.sha256(state.ROOT.encode()).hexdigest()
-BATCH_SIZE = 5
-STALE_AFTER = timedelta(minutes=15)
 
 
-def _public(job):
-    result = {key: value for key, value in job.items() if key != "deferred_ids"}
-    if result["status"] == "RUNNING":
-        age = datetime.now(timezone.utc) - datetime.fromisoformat(job["updated_at"])
-        if age >= STALE_AFTER:
-            result.update(status="PARTIAL", error="Traitement interrompu. Vous pouvez reprendre.")
-    return result
+def _candidates(limit, *, excluded_ids=(), count=False):
+    limit_sql = "LIMIT @limit" if limit is not None else ""
+    params = [library._p("version", "STRING", funnel.VERSION),
+              library._p("revision", "STRING", funnel.RULE_REVISION)]
+    if limit is not None:
+        params.append(library._p("limit", "INT64", limit))
+    params.append(ArrayQueryParameter("excluded_ids", "STRING", list(excluded_ids)))
+    projection = "COUNT(*) AS REMAINING" if count else """
+        d.ID_COMPANY, d.ID_DOCUMENT, d.AUTHOR_NAME, d.TITLE, d.SOURCE_URL,
+        c.NAME AS COMPANY_NAME, w.AUTHOR_NAME AS WATCH_AUTHOR,
+        d.TEXT_STORAGE_URI, d.METADATA_STORAGE_URI, 'EMPLOYEE' AS SOURCE_ROLE,
+        v.TYPE_PRINCIPAL AS OLD_TYPE, v.MOTIF AS OLD_MOTIF
+    """
+    ordering = "" if count else """
+        ORDER BY ROW_NUMBER() OVER (
+            PARTITION BY v.TYPE_PRINCIPAL ORDER BY d.PUBLISHED_AT DESC NULLS LAST, d.ID_DOCUMENT
+        ), v.TYPE_PRINCIPAL, d.ID_DOCUMENT
+    """
+    return library._query(f"""
+        WITH latest AS (
+            SELECT ID_COMPANY, ID_DOCUMENT, VERDICT, TYPE_PRINCIPAL, MOTIF, RULE_REVISION
+            FROM `{funnel.TABLE}` WHERE VERSION=@version
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY ID_COMPANY, ID_DOCUMENT
+                ORDER BY CREATED_AT DESC, RULE_REVISION DESC, VERDICT, TYPE_PRINCIPAL
+            )=1
+        )
+        SELECT {projection}
+        FROM latest v
+        JOIN `{library.DOCUMENT}` d ON d.ID_COMPANY=v.ID_COMPANY AND d.ID_DOCUMENT=v.ID_DOCUMENT
+        JOIN `{library.BASE}.RATECARD_COMPANY` c ON c.ID_COMPANY=d.ID_COMPANY
+        LEFT JOIN `{library.BASE}.RATECARD_COMPANY_WATCH` w
+          ON w.ID_COMPANY=d.ID_COMPANY AND w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH
+        WHERE v.VERDICT='A_VERIFIER' AND v.RULE_REVISION IS DISTINCT FROM @revision
+          AND d.ID_DOCUMENT NOT IN UNNEST(@excluded_ids)
+          AND d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
+          AND COALESCE(d.EDITORIAL_STATUS,'ACTIVE')='ACTIVE'
+          AND d.TEXT_STORAGE_URI IS NOT NULL AND {EMPLOYEE_ROLE}
+          AND NOT EXISTS (
+              SELECT 1 FROM `{REVIEW_TABLE}` r
+              WHERE r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
+          )
+        {ordering}
+        {limit_sql}
+    """, params)
 
 
-def _save(job):
-    job["updated_at"] = state.stamp()
-    state.save(PATH, job)
+def count_candidates():
+    return _candidates(None, count=True)[0]["REMAINING"]
 
 
-def status():
-    job = state.load(PATH)
-    if job is None:
-        return {"status": "IDLE", "remaining": requalify.count_candidates()}
-    return _public(job)
+def apply_candidate(row):
+    with library.document_lock("post-verdict-" + row["ID_DOCUMENT"]):
+        decision = funnel._classify_row(row)
+        return decision, _record(row, decision)
 
 
-def launch(background_tasks):
-    with document_lock(LOCK + "-start"):
-        previous = state.load(PATH)
-        if previous and _public(previous)["status"] == "RUNNING":
-            return _public(previous)
+def _record(row, decision):
+    params = [
+        library._p("company", "STRING", row["ID_COMPANY"]),
+        library._p("id", "STRING", row["ID_DOCUMENT"]),
+        library._p("version", "STRING", funnel.VERSION),
+        library._p("revision", "STRING", funnel.RULE_REVISION),
+        library._p("verdict", "STRING", decision["verdict"]),
+        library._p("type", "STRING", decision["type_principal"]),
+        library._p("motif", "STRING", decision["motif"]),
+    ]
+    result = library._query(f"""
+        INSERT INTO `{funnel.TABLE}`
+            (ID_COMPANY, ID_DOCUMENT, VERSION, VERDICT, TYPE_PRINCIPAL, MOTIF, CREATED_AT, RULE_REVISION)
+        WITH current_verdict AS (
+            SELECT VERDICT, RULE_REVISION
+            FROM `{funnel.TABLE}`
+            WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id AND VERSION=@version
+            ORDER BY CREATED_AT DESC, RULE_REVISION DESC, VERDICT, TYPE_PRINCIPAL LIMIT 1
+        )
+        SELECT @company, @id, @version, @verdict, @type, @motif, CURRENT_TIMESTAMP(), @revision
+        FROM current_verdict
+        WHERE VERDICT='A_VERIFIER' AND RULE_REVISION IS DISTINCT FROM @revision
+          AND NOT EXISTS (
+              SELECT 1 FROM `{REVIEW_TABLE}` WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id
+          )
+          AND EXISTS (
+              SELECT 1 FROM `{library.DOCUMENT}` WHERE ID_COMPANY=@company AND ID_DOCUMENT=@id
+                  AND COALESCE(EDITORIAL_STATUS,'ACTIVE')='ACTIVE'
+          );
+        SELECT @@row_count AS WRITTEN;
+    """, params)
+    return bool(result and result[0]["WRITTEN"] == 1)
 
-        with document_lock(LOCK + "-batch"):
-            remaining = requalify.count_candidates()
-            job = {
-                "id_job": str(uuid4()),
-                "status": "RUNNING" if remaining else "COMPLETE",
-                "remaining": remaining,
-                "written": 0,
-                "skipped": 0,
-                "failed": 0,
-                "deferred_ids": [],
-            }
-            _save(job)
-            if remaining:
-                background_tasks.add_task(run, job["id_job"])
-            return _public(job)
 
-
-def run(job_id):
-    while True:
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--limit", type=int, default=20)
+    scope.add_argument("--all", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    args = parser.parse_args()
+    if args.limit < 1:
+        parser.error("--limit doit être positif")
+    if args.all and not args.apply:
+        parser.error("--all nécessite --apply")
+    failures = 0
+    for row in _candidates(None if args.all else args.limit):
         try:
-            with document_lock(LOCK + "-batch"):
-                job = state.load(PATH)
-                if not job or job["id_job"] != job_id or job["status"] != "RUNNING":
-                    return
-
-                try:
-                    rows = requalify._candidates(BATCH_SIZE, excluded_ids=job["deferred_ids"])
-                    if not rows:
-                        job["remaining"] = requalify.count_candidates()
-                        job["status"] = "PARTIAL" if job["remaining"] else "COMPLETE"
-                    for row in rows:
-                        _process(job, row)
-                        _save(job)
-                except Exception:
-                    logger.exception("Requalification Cockpit interrompue")
-                    job.update(status="PARTIAL", error="Traitement interrompu. Consultez les logs backend.")
-                _save(job)
-
-                if job["status"] != "RUNNING":
-                    return
-        except HTTPException as exc:
-            if exc.status_code != 409:
-                raise
-            return
-        time.sleep(1)
-
-
-def _process(job, row):
-    try:
-        _, written = requalify.apply_candidate(row)
-    except Exception:
-        logger.exception("Requalification impossible pour %s", row["ID_DOCUMENT"])
-        job["deferred_ids"].append(row["ID_DOCUMENT"])
-        job["failed"] += 1
-    else:
-        job["written" if written else "skipped"] += 1
-        if not written:
-            job["deferred_ids"].append(row["ID_DOCUMENT"])
-        job["remaining"] = max(0, job["remaining"] - 1)
+            if args.apply:
+                decision, written = apply_candidate(row)
+            else:
+                decision = funnel._classify_row(row)
+                written = False
+            print(json.dumps({
+                "id_document": row["ID_DOCUMENT"], "societe": row["COMPANY_NAME"],
+                "titre": row["TITLE"], "url": row["SOURCE_URL"],
+                "ancien_type": row["OLD_TYPE"], "ancien_motif": row["OLD_MOTIF"],
+                "nouvelle_proposition": decision, "enregistre": written,
+            }, ensure_ascii=False), flush=True)
+        except Exception:
+            failures += 1
+            logger.exception("Requalification impossible pour %s", row["ID_DOCUMENT"])
+    return int(bool(failures))
