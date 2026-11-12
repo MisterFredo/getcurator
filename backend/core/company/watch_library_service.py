@@ -142,10 +142,13 @@ def register_employee_backlog(watch_id=None, *, limit=None, excluded_ids=(), qua
 def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
                        sort="published_at", direction="desc", status=None,
                        published_from=None, published_to=None, document_type=None, editorial_status="ACTIVE",
-                       with_summary=False, qualification=None, post_type=None, review_state=None):
+                       with_summary=False, qualification=None, post_type=None, review_state=None, origin=None):
     from core.company.library_post_funnel import POST_TYPES, TABLE, VERSION
 
     from core.company.library_post_review import EMPLOYEE_ROLE, LATEST
+
+    if origin not in {None, "", "CORPORATE", "EMPLOYEE"}:
+        raise ValueError("Origine invalide")
 
     review_filters = {
         "TO_REVIEW": "d.QUALIFICATION_ROLE IS NOT NULL AND d.QUALIFICATION_VERDICT IS NOT NULL AND d.REVIEW_ID IS NULL",
@@ -187,6 +190,9 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
         where.append("d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else "d.ID_COMPANY_WATCH IS NOT NULL")
     # Summary scope ignores company/text/date/extraction filters. Company options
     # retain withdrawn-only companies, so restoration remains discoverable.
+    if origin:
+        where.append("d.QUALIFICATION_ROLE=@origin")
+        params.append(library._p('origin','STRING',origin))
     global_predicate=' AND '.join(where)
     if company_id:
         where.append('d.ID_COMPANY=@company')
@@ -257,6 +263,7 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
     if document_type:
         base_sql += " AND d.DOCUMENT_TYPE='MENTION'" if document_type=='MENTION' else " AND d.ID_COMPANY_WATCH IS NOT NULL"
     order=ordering.replace('c.NAME','d.COMPANY_NAME')
+    company_origin = 'AND QUALIFICATION_ROLE=@origin' if origin else ''
     if with_summary:
         # One BigQuery request returns the page, exact counts and company options
         # from the same query snapshot. No per-company or per-row count queries.
@@ -273,7 +280,7 @@ def list_corpo_library(company_id=None, offset=0, limit=50, query=None,
             (SELECT COUNT(*) FROM library_base d WHERE {global_predicate}) AS GLOBAL_TOTAL,
             ARRAY(SELECT AS STRUCT company.* FROM (
                     SELECT DISTINCT ID_COMPANY AS id_company, COALESCE(COMPANY_NAME,ID_COMPANY) AS name
-                    FROM library_base WHERE ID_COMPANY IS NOT NULL
+                    FROM library_base WHERE ID_COMPANY IS NOT NULL {company_origin}
                   ) company ORDER BY company.name,company.id_company) AS COMPANIES""",params)
         result=dict(response[0]) if response else {'ITEMS':[],'TOTAL':0,'GLOBAL_TOTAL':0,'COMPANIES':[]}
         page=list(result['ITEMS'] or [])
