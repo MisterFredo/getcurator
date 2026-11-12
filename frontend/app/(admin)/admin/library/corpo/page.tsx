@@ -218,6 +218,14 @@ function ReviewForm({ post, onSaved }: {
   );
 }
 
+const pendingVerdicts = ["SIGNAL_SOCIETE", "PRISE_DE_PAROLE_METIER", "BRUIT"] as const;
+type PendingVerdict = (typeof pendingVerdicts)[number];
+
+function canReviewPending(row: EditorialFields) {
+  return row.qualification_role === "EMPLOYEE" && row.qualification_verdict === "A_VERIFIER"
+    && !!row.qualification_type && !row.review_id && row.editorial_status !== "WITHDRAWN";
+}
+
 function canConfirm(row: EditorialFields) {
   const verdict = row.qualification_verdict ?? "";
   const finalVerdict = row.qualification_role === "EMPLOYEE"
@@ -251,7 +259,10 @@ export default function CorpoLibraryPage() {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState("");
   const reviewLock = useRef(false);
-  const eligibleReviews = rows.filter(canConfirm).map(row => row.id_document);
+  const [pendingVerdict, setPendingVerdict] = useState<PendingVerdict | "">("");
+  const pendingMode = filters.qualification === "REVIEW";
+  const eligibleReviews = rows.filter(pendingMode ? canReviewPending : canConfirm)
+    .map(row => row.id_document);
   const selectedOnPage = eligibleReviews.filter(id => selectedReviews.includes(id));
   const allSelected = eligibleReviews.length > 0 && selectedOnPage.length === eligibleReviews.length;
 
@@ -259,15 +270,17 @@ export default function CorpoLibraryPage() {
     setSelectedReviews(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);
   }
 
-  async function applySuggestions(ids: string[]) {
+  async function applySuggestions(ids: string[], verdict?: PendingVerdict) {
     if (reviewLock.current || !ids.length) return;
-    if (ids.length > 1 && !window.confirm(`Valider les ${ids.length} suggestions sélectionnées ?`)) return;
+    if (ids.length > 1 && !window.confirm(verdict
+      ? `Appliquer « ${verdictLabels[verdict]} » aux ${ids.length} posts sélectionnés en gardant leurs types ?`
+      : `Valider les ${ids.length} suggestions sélectionnées ?`)) return;
     reviewLock.current = true;
     setReviewBusy(true);
     setReviewFeedback("");
     try {
       const result = await api.post("/company/watch/library/reviews/confirm", {
-        document_ids: ids,
+        document_ids: ids, pending_verdict: verdict ?? null,
       });
       if (result.status !== "ok") throw new Error("Validation non confirmée.");
       setReviewFeedback(`${result.updated} décision(s) enregistrée(s).${result.skipped
@@ -321,7 +334,7 @@ export default function CorpoLibraryPage() {
     }).catch(e=>{if(!cancelled)setError(message(e));}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
   },[offset,revision,filters]);
-  useEffect(() => { setSelectedReviews([]); }, [offset, filters]);
+  useEffect(() => { setSelectedReviews([]); setPendingVerdict(""); }, [offset, filters]);
   useEffect(()=>{
     const request=++sequence.current;
     if (!documentId) {setDetail(null);setDetailLoading(false);return;}
@@ -431,9 +444,20 @@ export default function CorpoLibraryPage() {
         onClick={() => setSelectedReviews(allSelected ? [] : eligibleReviews)}>
         {allSelected ? "Désélectionner la page" : "Sélectionner les suggestions de la page"}
       </button>
-      <button type="button" className={button} disabled={reviewBusy || !selectedOnPage.length}
-        onClick={() => void applySuggestions(selectedOnPage)}>
-        Valider les suggestions ({selectedOnPage.length})
+      {pendingMode && <label className="text-sm">
+        Verdict pour la sélection
+        <select className={control} value={pendingVerdict} disabled={reviewBusy}
+          onChange={event => setPendingVerdict(event.target.value as PendingVerdict | "")}>
+          <option value="">Choisir un verdict</option>
+          {pendingVerdicts.map(verdict =>
+            <option key={verdict} value={verdict}>{verdictLabels[verdict]}</option>
+          )}
+        </select>
+      </label>}
+      <button type="button" className={button}
+        disabled={reviewBusy || !selectedOnPage.length || (pendingMode && !pendingVerdict)}
+        onClick={() => void applySuggestions(selectedOnPage, pendingMode && pendingVerdict ? pendingVerdict : undefined)}>
+        {pendingMode ? "Valider la sélection" : "Valider les suggestions"} ({selectedOnPage.length})
       </button>
       <span className="text-sm text-gray-600">{selectedOnPage.length} sélectionné(s)</span>
       {reviewBusy && <span role="status" className="text-sm">Traitement en cours…</span>}
@@ -442,7 +466,7 @@ export default function CorpoLibraryPage() {
       <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
         {['Société / point','Publication','Parution','État','Informations',''].map((label,i)=><th key={i} className="p-3">{label}</th>)}
       </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
-        <td className="p-3">{canConfirm(row) && <input type="checkbox" className="mr-2"
+        <td className="p-3">{eligibleReviews.includes(row.id_document) && <input type="checkbox" className="mr-2"
           aria-label={`Sélectionner ${row.title}`} checked={selectedOnPage.includes(row.id_document)}
           disabled={reviewBusy} onChange={() => toggleReview(row.id_document)} />}
           {row.company_name}<div className="text-gray-500">{row.document_type === "MENTION" ? "Mention externe" : row.watch_label}</div></td>
