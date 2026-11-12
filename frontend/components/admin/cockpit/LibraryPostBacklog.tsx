@@ -8,6 +8,8 @@ type Job = {
   status: "IDLE" | "RUNNING" | "PARTIAL" | "COMPLETE";
   phase?: "LIBRARY" | "QUALIFICATION";
   registered?: number;
+  withdrawn?: number;
+  corporate_requalified?: number;
   qualified?: number;
   registration_failed?: number;
   qualification_failed?: number;
@@ -70,7 +72,7 @@ export default function LibraryPostBacklog() {
       <section className="border-t pt-4 space-y-2">
         <h3 className="font-semibold">Rattrapage des posts LinkedIn</h3>
         <p className="text-sm text-gray-600">
-          Importe les captures salariés en Library et qualifie les posts salariés et corporate.
+          Importe et qualifie les posts LinkedIn corporate et salariés. Reprend les anciens « Autre » corporate.
         </p>
         <button className="border rounded px-4 py-2 disabled:opacity-50" disabled={busy} onClick={() => void start()}>
           {job?.status === "RUNNING" || job?.status === "PARTIAL" ? "Reprendre le rattrapage" : "Lancer le rattrapage"}
@@ -78,7 +80,9 @@ export default function LibraryPostBacklog() {
         {job && job.status !== "IDLE" && (
           <p role="status" className="text-sm">
             {labels[job.status]} · {job.phase === "LIBRARY" ? "Import Library" : "Qualification"} ·{" "}
-            {job.registered ?? 0} importés · {job.qualified ?? 0} qualifiés ·{" "}
+            {job.registered ?? 0} importés · {job.qualified ?? 0} qualifiés
+            {" "}dont {job.corporate_requalified ?? 0} corporate requalifiés ·{" "}
+            {job.withdrawn ?? 0} déjà retirés ·{" "}
             {(job.registration_failed ?? 0) + (job.qualification_failed ?? 0)} échecs sur ce passage
           </p>
         )}
