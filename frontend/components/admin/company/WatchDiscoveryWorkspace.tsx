@@ -146,9 +146,14 @@ export default function WatchDiscoveryWorkspace({ companyId, watch, role="ALL", 
     const ids = eligible.map(row => row.id_discovery);
     setSelected(previous => allPageSelected ? previous.filter(id => !ids.includes(id)) : Array.from(new Set([...previous,...ids])));
   }
-  return <section className="space-y-4" aria-label="Discovery Corpo">
+  const heading = watch?.label ?? {
+    EMPLOYEE: "Publications découvertes — Salariés",
+    CORPORATE: "Publications découvertes — Corporate",
+    ALL: "Publications découvertes — Toutes les sources",
+  }[role];
+  return <section className="space-y-4" aria-label={heading}>
     <div className="flex flex-wrap justify-between gap-3 items-center">
-      <div><a className="underline text-sm text-ratecard-blue" href="/admin/library/corpo">Ouvrir Library / Corpo →</a><h2 className="text-xl font-semibold text-ratecard-blue">{watch ? watch.label : "URL découvertes — Corpo"}</h2>
+      <div><a className="underline text-sm text-ratecard-blue" href="/admin/library/corpo">Ouvrir la Library →</a><h2 className="text-xl font-semibold text-ratecard-blue">{heading}</h2>
         <p className="text-sm text-gray-500">Scanner → sélectionner → envoyer vers la Library.</p></div>
     </div>
     <WatchScanControls companyId={scopeCompany} watch={watch} role={role} channel={channel} kind={kind} onComplete={()=>void reload()}/>
