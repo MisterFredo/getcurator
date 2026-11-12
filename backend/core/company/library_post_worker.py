@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from google.cloud import bigquery
 
 from core.company import library_post_funnel as funnel
+from core.company.library_post_review import EMPLOYEE_ROLE, TABLE as REVIEW_TABLE
 from core.library import company_watch_library as library
 
 logger = logging.getLogger(__name__)
@@ -48,24 +49,41 @@ def _eligible(*, company_ids=None, start=None, end=None, limit=BATCH_SIZE, histo
                 AND r.VERSION=@version AND r.NEXT_ATTEMPT_AT > CURRENT_TIMESTAMP()
           )
     """
+    # A historical pass can upgrade a previous automatic corporate AUTRE.
+    upgrade = "FALSE"
+    if historical:
+        params.append(library._p("corporate_revision", "STRING", funnel.CORPORATE_RULE_REVISION))
+        upgrade = f"""NOT COALESCE({EMPLOYEE_ROLE}, FALSE)
+          AND v.VERDICT='CORPORATE' AND v.TYPE_PRINCIPAL='AUTRE'
+          AND v.RULE_REVISION IS DISTINCT FROM @corporate_revision
+          AND NOT EXISTS (
+              SELECT 1 FROM `{REVIEW_TABLE}` r
+              WHERE r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
+          )"""
     return library._query(f"""
+        WITH latest AS (
+            SELECT ID_COMPANY, ID_DOCUMENT, VERDICT, TYPE_PRINCIPAL, RULE_REVISION
+            FROM `{funnel.TABLE}` WHERE VERSION=@version
+            QUALIFY ROW_NUMBER() OVER (
+                PARTITION BY ID_COMPANY, ID_DOCUMENT
+                ORDER BY CREATED_AT DESC, RULE_REVISION DESC, VERDICT, TYPE_PRINCIPAL
+            )=1
+        )
         SELECT d.ID_COMPANY, d.ID_DOCUMENT, c.NAME AS COMPANY_NAME, d.TEXT_STORAGE_URI,
             d.METADATA_STORAGE_URI, d.AUTHOR_NAME, w.AUTHOR_NAME AS WATCH_AUTHOR,
             CASE WHEN d.SOURCE_ROLE='EMPLOYEE' OR w.SOURCE_ROLE='EMPLOYEE'
-                   OR w.ID_CONTACT IS NOT NULL THEN 'EMPLOYEE' ELSE 'CORPORATE' END AS SOURCE_ROLE
+                   OR w.ID_CONTACT IS NOT NULL THEN 'EMPLOYEE' ELSE 'CORPORATE' END AS SOURCE_ROLE,
+            COALESCE(({upgrade}), FALSE) AS REQUALIFY_CORPORATE
         FROM `{library.DOCUMENT}` d
         JOIN `{library.BASE}.RATECARD_COMPANY` c USING (ID_COMPANY)
         LEFT JOIN `{library.BASE}.RATECARD_COMPANY_WATCH` w
             ON w.ID_COMPANY=d.ID_COMPANY AND w.ID_COMPANY_WATCH=d.ID_COMPANY_WATCH
+        LEFT JOIN latest v ON v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
         WHERE d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
           AND COALESCE(d.EDITORIAL_STATUS, 'ACTIVE')='ACTIVE'
           AND d.TEXT_STORAGE_URI IS NOT NULL
           AND {scope}
-          AND NOT EXISTS (
-              SELECT 1 FROM `{funnel.TABLE}` v
-              WHERE v.ID_COMPANY=d.ID_COMPANY AND v.ID_DOCUMENT=d.ID_DOCUMENT
-                AND v.VERSION=@version
-          )
+          AND (v.ID_DOCUMENT IS NULL OR ({upgrade}))
           {retry_filter}
         ORDER BY d.CREATED_AT, d.ID_DOCUMENT
         LIMIT @limit
@@ -76,7 +94,7 @@ def _eligible(*, company_ids=None, start=None, end=None, limit=BATCH_SIZE, histo
 def qualify_batch(**scope):
     rows = _eligible(**scope)
     result = {"selectionnes": len(rows), "qualifies": 0, "reutilises": 0,
-              "occupes": 0, "a_reprendre": 0}
+              "occupes": 0, "a_reprendre": 0, "corporate_requalifies": 0}
     for row in rows:
         try:
             verdict = funnel._verdict(row)
@@ -91,6 +109,7 @@ def qualify_batch(**scope):
             result["a_reprendre"] += 1
         else:
             result["reutilises" if verdict["reutilise"] else "qualifies"] += 1
+            result["corporate_requalifies"] += int(verdict.get("requalifie", False))
     return result
 
 
