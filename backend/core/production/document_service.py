@@ -9,7 +9,11 @@ from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261024-written-scale-v6"
+NUMERIC_VALIDATOR_REVISION = "20261113-watch-coverage-v7"
+WATCH_COVERAGE_LABELS = {
+    "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
+    "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
+}
 
 INSTRUCTIONS = """
 Tu rédiges un rapport autonome GetCurator à partir d'un plan relu et des
@@ -48,6 +52,11 @@ Utilise les références du fait vers /sources pour attribuer le constat.
 Distingue les dates de publication, observation et collecte.
 Un relais ne constitue pas une confirmation indépendante.
 Pour les citations de veille, content_id vaut null.
+Pour les seuls volumes LinkedIn observés, tu peux aussi citer
+/coverage/LINKEDIN_EMPLOYEE ou /coverage/LINKEDIN_CORPORATE.
+quote doit être le compteur entier complet, sous forme de chaîne.
+Ces compteurs décrivent le corpus observé, pas l’audience, la performance
+ni un recensement exhaustif des publications.
 Chaque source a un identifiant S1, S2... et un json_pointer RFC 6901
 vers une valeur scalaire EXACTE du rapport sauvegardé, par exemple
 /notebook/notes/4/statement. quote est une sous-chaîne verbatim non vide
@@ -359,6 +368,17 @@ def validate_against_corpus(document, corpus):
         if report.get("source_type") == "COMPANY_WATCH":
             if source.content_id is not None:
                 raise ValueError(f"Source {source.id} : content_id doit être nul pour la veille.")
+            coverage_label = WATCH_COVERAGE_LABELS.get(source.json_pointer)
+            if coverage_label is not None:
+                coverage_key = source.json_pointer.rsplit("/", 1)[1]
+                count = report["coverage"][coverage_key]
+                if type(count) is not int or count < 0 or source.quote != str(count):
+                    raise ValueError(
+                        f"Source {source.id} : citer le compteur de couverture entier exact."
+                    )
+                source.label = f"{source.label} · {coverage_label}"
+                continue
+
             match = re.fullmatch(r"/sections/(facts|site_changes|mentions)/([0-9]+)/(title|summary|contribution)",
                                  source.json_pointer)
             if match is None:
