@@ -44,7 +44,13 @@ type Notebook = {
   }[];
 };
 
+type ReportLanguage = "fr" | "en";
+
 type CompanyReport = {
+  language: ReportLanguage;
+  media_logo_rectangle_id: string | null;
+  editorial: { cover_line: string; headline: string;
+    highlights: { fact_id: string; label: string; text: string }[] };
   company_name: string;
   month: string;
   revision: string;
@@ -144,7 +150,7 @@ function CompanyReportView({ report }: { report: CompanyReport }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `rapport-societe-${report.month}.json`;
+    link.download = `rapport-societe-${report.month}-${report.language}.json`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -185,6 +191,7 @@ export default function CompanyReportCorpusPage() {
   const [scope, setScope] = useState<{ company: string; month: string } | null>(null);
   const [corpus, setCorpus] = useState<Corpus | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [language, setLanguage] = useState<ReportLanguage>("fr");
   const [report, setReport] = useState<CompanyReport | null>(null);
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -224,6 +231,7 @@ export default function CompanyReportCorpusPage() {
         const result: { notebook: Notebook | null } = await api.get(`${notebookEndpoint}?${params}`);
         setNotebook(result.notebook);
         if (result.notebook) {
+          params.set("language", language);
           const saved: { report: CompanyReport | null } = await api.get(`${reportEndpoint}?${params}`);
           setReport(saved.report);
         }
@@ -274,6 +282,27 @@ export default function CompanyReportCorpusPage() {
     }
   }
 
+  async function changeLanguage(next: ReportLanguage) {
+    if (busy || language === next) return;
+    setLanguage(next);
+    setReport(null);
+    setNotice("");
+    setError("");
+    if (!scope || !corpus || !notebook) return;
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({
+        company_id: scope.company, month: scope.month, revision: corpus.revision, language: next,
+      });
+      const result: { report: CompanyReport | null } = await api.get(`${reportEndpoint}?${params}`);
+      setReport(result.report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de charger cette version du rapport.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function generateReport() {
     if (busy || !scope || !corpus || dirty || !notebook || notebook.revision !== corpus.revision ||
         corpus.unavailable_count) return;
@@ -282,7 +311,7 @@ export default function CompanyReportCorpusPage() {
     setNotice("");
     try {
       const result: { report: CompanyReport } = await api.post(reportEndpoint, {
-        company_id: scope.company, month: scope.month, revision: corpus.revision,
+        company_id: scope.company, month: scope.month, revision: corpus.revision, language,
       });
       setReport(result.report);
       setNotice("Rapport enregistré.");
@@ -373,11 +402,19 @@ export default function CompanyReportCorpusPage() {
         </span>}
       </div>
       {notebook && !dirty && <>
-        {report ? <CompanyReportView report={report}/> : <>
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          Langue du rapport
+          <select className="rounded border px-3 py-2" value={language} disabled={busy}
+            onChange={event => void changeLanguage(event.target.value === "en" ? "en" : "fr")}>
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        {report ? <CompanyReportView key={report.language} report={report}/> : <>
           <NotebookView notebook={notebook}/>
           <button type="button" className={`${button} bg-ratecard-blue text-white`}
             disabled={busy || !!corpus.unavailable_count} onClick={generateReport}>
-            Enregistrer le rapport société
+            Générer et enregistrer le rapport
           </button>
         </>}
       </>}
