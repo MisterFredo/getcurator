@@ -21,6 +21,22 @@ type SourceReport = {
   report_id: string; subject: string; output_language: string;
   period_start?: string | null; period_end?: string | null;
 };
+type WatchReport = {
+  id_company: string;
+  name: string;
+  month: string;
+  revision: string;
+  languages: ("fr" | "en")[];
+};
+type WatchReportRef = {
+  company_id: string;
+  month: string;
+  revision: string;
+  language: "fr" | "en";
+};
+const watchReportKey = (report: WatchReportRef) =>
+  JSON.stringify([report.company_id, report.month, report.revision, report.language]);
+
 type LegacyPlanSummary = { plan_version: number; plan_id: string };
 type LegacyPlan = { title: string; editorial_angle: string; pages: {
   title: string; layout: string; key_message: string; explanation_outline: string[];
@@ -66,11 +82,16 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
   const [productionOffset, setProductionOffset] = useState(0);
   const [moreProductions, setMoreProductions] = useState(false);
   const [reports, setReports] = useState<SourceReport[]>([]);
+  const [watchReports, setWatchReports] = useState<WatchReport[]>([]);
+  const [watchReportError, setWatchReportError] = useState("");
+  const [watchReportSearch, setWatchReportSearch] = useState("");
+  const [selectedWatch, setSelectedWatch] = useState<WatchReportRef[]>([]);
   const [reportOffset, setReportOffset] = useState(0);
   const [moreReports, setMoreReports] = useState(false);
   const [reportSearch, setReportSearch] = useState("");
   const [productionSearch, setProductionSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const sourceCount = selected.length + selectedWatch.length;
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
   const [audience, setAudience] = useState("Décideurs médias et marketing");
@@ -144,6 +165,7 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
       const results = await Promise.allSettled([
         mode === "create" ? api.get("/touch/reports?archive=active&limit=100&offset=0") : Promise.resolve({ reports: [] }),
         mode === "list" ? browseProductions() : Promise.resolve([]),
+        mode === "create" ? api.get("/company/watch/reports/history") : Promise.resolve({ reports: [] }),
       ]);
       if (!alive) return;
       if (results[0].status === "fulfilled") {
@@ -154,7 +176,13 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
         const rows = results[1].value;
         setProductions(rows); setProductionOffset(rows.length); setMoreProductions(rows.length === 100);
       }
-      const failures = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (results[2].status === "fulfilled") {
+        const rows: WatchReport[] = results[2].value.reports;
+        setWatchReports(rows.filter(report => report.languages.length > 0 && !!report.revision));
+      } else {
+        setWatchReportError(message(results[2].reason));
+      }
+      const failures = results.slice(0, 2).filter((r): r is PromiseRejectedResult => r.status === "rejected");
       if (failures.length) setError(failures.map(r => message(r.reason)).join(" · "));
       setLoading(false);
       const id = new URLSearchParams(window.location.search).get("production");
@@ -213,6 +241,7 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
   async function create() {
     const res = await api.post("/production/", {
       title: title.trim(), report_ids: selected, objective: objective.trim(),
+      ...(selectedWatch.length ? { watch_reports: selectedWatch } : {}),
       target_audience: audience.trim(), output_language: language,
       output_format: "AUTONOMOUS_REPORT", target_page_count: pages,
     });
@@ -334,11 +363,11 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
             </select></label>
           </div>
           <p className="text-xs text-slate-500">Format disponible : rapport autonome GetCurator. Le format avec speaker sera intégré ultérieurement.</p>
-          <div className="border-t pt-3"><h3 className="mb-2 text-sm font-medium">Rapports Touch · {selected.length}/20</h3>
+          <div className="border-t pt-3"><h3 className="mb-2 text-sm font-medium">Rapports Touch · {selected.length}</h3>
             <input className={INPUT} placeholder="Filtrer les rapports chargés" value={reportSearch} onChange={e => setReportSearch(e.target.value)} />
             <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
               {reports.filter(r => (r.subject || "").toLocaleLowerCase().includes(reportSearch.toLocaleLowerCase())).map(r => <label key={r.report_id} className="flex gap-2 rounded border p-3 text-sm">
-                <input type="checkbox" checked={selected.includes(r.report_id)} disabled={busy || (!selected.includes(r.report_id) && selected.length >= 20)}
+                <input type="checkbox" checked={selected.includes(r.report_id)} disabled={busy || (!selected.includes(r.report_id) && sourceCount >= 20)}
                   onChange={() => setSelected(values => values.includes(r.report_id) ? values.filter(v => v !== r.report_id) : [...values, r.report_id])} />
                 <span>{r.subject}<span className="mt-1 block text-xs text-slate-500">{r.output_language?.toUpperCase()} · {r.period_start} / {r.period_end}</span></span>
               </label>)}
@@ -350,7 +379,31 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
               setReportOffset(reportOffset + rows.length); setMoreReports(rows.length === 100);
             })}>Charger plus de rapports</button>}
           </div>
-          <button className={`${PRIMARY} w-full`} disabled={busy || !title.trim() || !selected.length} onClick={() => void act(create)}>Créer la production</button>
+          <div className="border-t pt-3">
+            <h3 className="mb-2 text-sm font-medium">Rapports de veille · {selectedWatch.length}</h3>
+            {watchReportError && <p role="alert" className="text-sm text-red-800">{watchReportError}</p>}
+            <input className={INPUT} placeholder="Filtrer par société ou par mois"
+              value={watchReportSearch} onChange={event => setWatchReportSearch(event.target.value)} />
+            {!watchReports.length && !watchReportError && <p className="mt-3 text-sm text-slate-600">Aucun rapport de veille disponible.</p>}
+            <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+              {watchReports.filter(report => `${report.name} ${report.month}`.toLocaleLowerCase()
+                .includes(watchReportSearch.trim().toLocaleLowerCase())).flatMap(report =>
+                report.languages.map(language => {
+                  const ref = { company_id: report.id_company, month: report.month, revision: report.revision, language };
+                  const key = watchReportKey(ref);
+                  const checked = selectedWatch.some(value => watchReportKey(value) === key);
+                  return <label key={key} className="flex gap-2 rounded border p-3 text-sm">
+                    <input type="checkbox" checked={checked} disabled={busy || (!checked && sourceCount >= 20)}
+                      onChange={() => setSelectedWatch(values => checked
+                        ? values.filter(value => watchReportKey(value) !== key)
+                        : [...values, ref])} />
+                    <span>{report.name} · {report.month} · {language.toUpperCase()}</span>
+                  </label>;
+                }))}
+            </div>
+          </div>
+          <p className="text-xs text-slate-600">{sourceCount} / 20 rapports sources</p>
+          <button className={`${PRIMARY} w-full`} disabled={busy || !title.trim() || !sourceCount} onClick={() => void act(create)}>Créer la production</button>
         </details>}
         {mode === "list" && <section className={PANEL}>
           <h2 className="font-semibold">Productions enregistrées</h2>
