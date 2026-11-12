@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "@/lib/api";
+import CompanyReportPresentation from "@/components/admin/company/CompanyReportPresentation";
 
 const sections = [
   { id: "LINKEDIN_CORPORATE", label: "LinkedIn · Corporate" },
@@ -34,7 +35,8 @@ type Corpus = {
 
 type Notebook = {
   revision: string;
-  sources: { id: string; title: string | null; url: string | null; text_status: string }[];
+  sources: { id: string; title: string | null; url: string | null; text_status: string;
+    source_at: string; source_kind: string; date_kind: string }[];
   facts: {
     title: string; theme: string; summary: string; primary_id: string;
     support_ids: string[]; relay_ids: string[]; contribution_ids: string[]; contribution: string;
@@ -130,6 +132,7 @@ function NotebookView({ notebook, heading = "Notebook", showCoverage = true }: {
 }
 
 function CompanyReportView({ report }: { report: CompanyReport }) {
+  const [showPresentation, setShowPresentation] = useState(false);
   const blocks = [
     { id: "facts", title: "Faits du mois" },
     { id: "site_changes", title: "Évolutions observées sur le site" },
@@ -152,7 +155,12 @@ function CompanyReportView({ report }: { report: CompanyReport }) {
         <h2 className="text-xl font-semibold">{report.company_name} · {report.month}</h2>
         <p className="text-sm text-gray-600">{report.sources.length} sources dans le corpus</p>
       </div>
-      <button type="button" className={button} onClick={download}>Télécharger le JSON</button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={button} onClick={() => setShowPresentation(value => !value)}>
+          {showPresentation ? "Masquer la présentation" : "Prévisualiser la présentation"}
+        </button>
+        <button type="button" className={button} onClick={download}>Télécharger le JSON</button>
+      </div>
     </header>
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-700">
       {sections.filter(item => report.coverage[item.id]).map(item =>
@@ -162,6 +170,7 @@ function CompanyReportView({ report }: { report: CompanyReport }) {
     {!!report.limited_sources && <p className="text-sm text-gray-600">
       {report.limited_sources} source(s) analysées à partir d’un extrait ou du titre.
     </p>}
+    {showPresentation && <CompanyReportPresentation report={report}/>}
     {blocks.filter(block => block.id === "facts" || report.sections[block.id].length).map(block =>
       <NotebookView key={block.id} heading={block.title} showCoverage={false}
         notebook={{ revision: report.revision, facts: report.sections[block.id], sources: report.sources }}/>
