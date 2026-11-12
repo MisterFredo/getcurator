@@ -97,11 +97,11 @@ function makePresentation(report: Report) {
   for (const { id, title: sectionTitle } of blocks) {
     const bullets: string[] = [];
     const pageRefs: string[] = [];
-    function addBullet(text: string, ids: string[], pointer: string, quote: string) {
+    const addBullet = (text: string, ids: string[], pointer: string, quote: string) => {
       const cited = refs(ids, pointer, quote);
       pageRefs.push(...cited);
       bullets.push(text + (cited.length ? ` [${cited.join(", ")}]` : ""));
-    }
+    };
     report.sections[id].forEach((fact, index) => {
       const pointer = `/sections/${id}/${index}`;
       addBullet(`${fact.title}\n${fact.summary}`,
@@ -126,7 +126,7 @@ function makePresentation(report: Report) {
   };
   const filename = productionPdfFilename({ subject: title, language: "fr", periodStart: start, periodEnd: end })
     ?.replace(/_Report\.pdf$/i, "_Presentation.pdf") || `GetCurator_${report.month}_FR_Presentation.pdf`;
-  return { html: buildTouchPresentationHtml(document, filename, "fr"), filename, urls: [...urls.values()] };
+  return { html: buildTouchPresentationHtml(document, filename, "fr"), filename, urls: Array.from(urls.values()) };
 }
 
 export default function CompanyReportPresentation({ report }: { report: Report }) {
