@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_validator,
+    model_validator,
 )
 
 
@@ -17,13 +18,28 @@ class ProductionModel(BaseModel):
 # REQUEST
 # ============================================================
 
+class ProductionWatchReportRef(ProductionModel):
+    company_id: str = Field(min_length=1, max_length=200)
+    month: str = Field(pattern=r"^[0-9]{4}-(0[1-9]|1[0-2])$")
+    language: Literal["fr", "en"]
+    revision: str = Field(pattern=r"^[1-9][0-9]{0,23}$")
+
+
 class ProductionPrepareRequest(ProductionModel):
     title: str = Field(min_length=1, max_length=250)
 
-    report_ids: list[str] = Field(
-        min_length=1,
-        max_length=20,
-    )
+    report_ids: list[str] = Field(default_factory=list, max_length=20)
+    watch_reports: list[ProductionWatchReportRef] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_sources(self):
+        count = len(self.report_ids) + len(self.watch_reports)
+        if not 1 <= count <= 20:
+            raise ValueError("Sélectionnez de 1 à 20 rapports sources.")
+        keys = {(ref.company_id, ref.month, ref.language, ref.revision) for ref in self.watch_reports}
+        if len(keys) != len(self.watch_reports):
+            raise ValueError("Un rapport de veille a été sélectionné plusieurs fois.")
+        return self
 
     objective: str = Field(
         default="",
@@ -99,8 +115,7 @@ class ProductionReportSnapshot(ProductionModel):
 
     snapshot_sha256: str
 
-    # Exact JSON-compatible response returned by
-    # get_touch_report(), including the saved notebook.
+    # Frozen JSON from the saved source, with production metadata for watch reports.
     payload: dict[str, Any]
 
 
@@ -115,6 +130,7 @@ ProductionEvidenceKind = Literal[
     "SECTION",
     "SUMMARY",
     "CROSS_READING",
+    "WATCH_FACT",
 ]
 
 
@@ -168,7 +184,8 @@ class ProductionPreparedCorpus(ProductionModel):
     )
 
     data_policy: Literal[
-        "SAVED_TOUCH_REPORTS_ONLY"
+        "SAVED_TOUCH_REPORTS_ONLY",
+        "SAVED_TOUCH_AND_WATCH_REPORTS",
     ] = "SAVED_TOUCH_REPORTS_ONLY"
 
     request: ProductionPrepareRequest
