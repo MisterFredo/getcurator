@@ -331,6 +331,28 @@ def save_library_post_review(id_document: str, data: CompanyPostReview):
     return _watch_call(save_review, id_document, data.verdict, data.post_type, data.reason)
 
 
+class CompanyPostReviewItem(CompanyPostReview):
+    document_id: str = Field(..., min_length=1, max_length=200)
+
+
+class CompanyPostReviewBatch(BaseModel):
+    decisions: list[CompanyPostReviewItem]
+
+
+@router.post("/watch/library/reviews/batch")
+def save_library_post_reviews(data: CompanyPostReviewBatch):
+    from core.company.library_post_review import save_reviews
+
+    return _watch_call(save_reviews, [decision.dict() for decision in data.decisions])
+
+
+@router.post("/watch/library/{id_document}/review-suggestion")
+def suggest_library_post_review(id_document: str):
+    from core.company.library_post_review import suggest_review
+
+    return _watch_call(suggest_review, id_document)
+
+
 @router.get("/watch/library/list")
 def list_corpo_library_route(
     id_company: Optional[str] = None,
