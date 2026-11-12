@@ -660,3 +660,44 @@ def get_route(id_company: str):
     if not company:
         raise HTTPException(404, "Société introuvable")
     return company
+
+# Rapports mensuels de veille
+class CompanyReportBatchRequest(BaseModel):
+    month: str
+    company_ids: list[str]
+    language: Literal["fr", "en"] = "fr"
+
+
+@router.get("/watch/reports/history")
+def company_report_history_route():
+    from core.company import company_report_batch
+    return _watch_call(company_report_batch.history)
+
+
+@router.get("/watch/reports/batch/options")
+def company_report_batch_options_route():
+    from core.company import company_report_batch
+    return _watch_call(company_report_batch.options)
+
+
+@router.get("/watch/reports/batch")
+def company_report_batch_status_route():
+    from core.company import company_report_batch
+    return _watch_call(company_report_batch.status)
+
+
+@router.post("/watch/reports/batch")
+def company_report_batch_start_route(data: CompanyReportBatchRequest, background_tasks: BackgroundTasks):
+    from core.company import company_report_batch
+    revision = _watch_call(company_report_batch.start, data.month, data.company_ids, data.language)
+    background_tasks.add_task(company_report_batch.drain, revision)
+    return {"status": "RUNNING"}
+
+
+@router.post("/watch/reports/batch/resume")
+def company_report_batch_resume_route(background_tasks: BackgroundTasks):
+    from core.company import company_report_batch
+    revision = _watch_call(company_report_batch.resume)
+    background_tasks.add_task(company_report_batch.drain, revision)
+    return {"status": "RUNNING"}
+
