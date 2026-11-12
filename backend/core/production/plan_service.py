@@ -420,6 +420,11 @@ def generate_production_plan(
         )
     )
 
+    if corpus.request.watch_reports:
+        raise ValueError(
+            "Pour un corpus contenant de la veille, utilisez Générer le plan dans le workflow Productions."
+        )
+
     # Separate configuration for Production.
     # Does not change the shared LLM default.
     selected_model = (
