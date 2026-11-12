@@ -5,7 +5,8 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from google.api_core.exceptions import PreconditionFailed
+from google.api_core.exceptions import NotFound, PreconditionFailed
+from google.cloud.bigquery import ArrayQueryParameter
 
 from core.company import company_report_corpus as corpus
 from core.company import company_report_notebook as notebooks
@@ -19,7 +20,7 @@ def _report_path(company_id, month, revision, language):
     if language not in ("fr", "en"):
         raise ValueError("La langue du rapport doit être fr ou en.")
     _, _, _, path = notebooks._saved_corpus(company_id, month, revision)
-    return path.removesuffix(".json") + f"/report-{language}-signature-v1.json", path
+    return path.removesuffix(".json") + f"/report-{language}-signature-v2.json", path
 
 
 def get_report(company_id, month, revision, language="fr"):
@@ -128,6 +129,79 @@ Les éventuels passages entre guillemets attribués à une source restent dans l
         raise HTTPException(502, "La synthèse ou la traduction reçue est incomplète. Réessayez.") from exc
 
 
+CHAPTER_BY_TYPE = {
+    "PRODUIT_OU_PARTENARIAT": "PRODUCT",
+    "CAS_CLIENT_OU_RETOUR_EXPERIENCE": "CUSTOMERS",
+    "EVENEMENT": "EVENTS",
+    "THOUGHT_LEADERSHIP": "EXPERTISE",
+    "VIE_ENTREPRISE": "COMPANY",
+    "OFFRE_EMPLOI": "COMPANY",
+}
+
+
+def _add_coverage_and_chapters(report):
+    from core.company.library_post_funnel import TABLE as VERDICTS, VERSION
+    from core.company.library_post_review import LATEST
+
+    sources = {source["id"]: source for source in report["sources"]}
+    ids = sorted({source["document_id"] for source in sources.values() if source.get("document_id")})
+    rows = {}
+    if ids:
+        rows = {row["ID_DOCUMENT"]: dict(row) for row in library._query(f"""
+            WITH automatic AS (
+                SELECT ID_COMPANY, ID_DOCUMENT, TYPE_PRINCIPAL
+                FROM `{VERDICTS}`
+                WHERE ID_COMPANY=@company AND VERSION=@version AND ID_DOCUMENT IN UNNEST(@ids)
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY ID_COMPANY, ID_DOCUMENT
+                    ORDER BY CREATED_AT DESC, VERDICT, TYPE_PRINCIPAL
+                )=1
+            )
+            SELECT d.ID_DOCUMENT, d.METADATA_STORAGE_URI,
+                   COALESCE(r.TYPE_PRINCIPAL,v.TYPE_PRINCIPAL) AS post_type
+            FROM `{library.DOCUMENT}` d
+            LEFT JOIN automatic v USING (ID_COMPANY, ID_DOCUMENT)
+            LEFT JOIN ({LATEST}) r USING (ID_COMPANY, ID_DOCUMENT)
+            WHERE d.ID_COMPANY=@company AND d.ID_DOCUMENT IN UNNEST(@ids)
+        """, [
+            library._p("company", "STRING", report["company_id"]),
+            library._p("version", "STRING", VERSION),
+            ArrayQueryParameter("ids", "STRING", ids),
+        ])}
+
+    def post_chapter(ref):
+        source = sources[ref]
+        if not source["source_kind"].startswith("LINKEDIN_"):
+            return None
+        return CHAPTER_BY_TYPE.get(rows.get(source.get("document_id"), {}).get("post_type"))
+
+    for section, facts in report["sections"].items():
+        for fact in facts:
+            if section in ("site_changes", "mentions"):
+                fact["chapter"] = section.upper()
+                continue
+            refs = [fact["primary_id"], *fact["support_ids"], *fact["contribution_ids"]]
+            fact["chapter"] = next((chapter for ref in refs if (chapter := post_chapter(ref))), "OTHER")
+
+    countries = set()
+    for document_id in {source.get("document_id") for source in sources.values()
+                        if source["source_kind"] == "MENTION"}:
+        uri = rows.get(document_id, {}).get("METADATA_STORAGE_URI")
+        if not uri:
+            continue
+        try:
+            metadata = json.loads(library._read_uri(uri))
+        except (ValueError, OSError, NotFound):
+            continue
+        if not isinstance(metadata, dict) or metadata.get("discovery_provider") != "GOOGLE_NEWS_VIA_BRIGHTDATA":
+            continue
+        for origin in metadata.get("search_origins") or []:
+            code = origin.get("country") if isinstance(origin, dict) else None
+            if isinstance(code, str) and len(code) == 2 and code.isascii() and code.isalpha():
+                countries.add(code.upper())
+    report["google_news_countries_observed"] = sorted(countries)
+
+
 def generate_report(company_id, month, revision, language="fr"):
     path, notebook_path = _report_path(company_id, month, revision, language)
     existing, _ = corpus._read_draft(path)
@@ -144,9 +218,12 @@ def generate_report(company_id, month, revision, language="fr"):
             f"SELECT NAME, MEDIA_LOGO_RECTANGLE_ID FROM `{discovery.COMPANY}` WHERE ID_COMPANY=@company LIMIT 1",
             [library._p("company", "STRING", company_id)],
         )
-        report = build_report(notebook, rows[0]["NAME"] if rows else company_id)
+        previous, _ = corpus._read_draft(path.replace("-signature-v2.json", "-signature-v1.json"))
+        report = previous if previous is not None else build_report(notebook, rows[0]["NAME"] if rows else company_id)
         report.update(language=language, media_logo_rectangle_id=rows[0]["MEDIA_LOGO_RECTANGLE_ID"] if rows else None)
-        report["editorial"] = _editorialize(report, language)
+        if previous is None:
+            report["editorial"] = _editorialize(report, language)
+        _add_coverage_and_chapters(report)
         _report_path(company_id, month, revision, language)
         try:
             bucket.blob(path).upload_from_string(
