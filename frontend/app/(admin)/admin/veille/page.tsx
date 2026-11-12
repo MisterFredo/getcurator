@@ -28,7 +28,7 @@ export default function WatchReportsPage() {
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-2xl font-semibold text-ratecard-blue">Veille</h1>
         <p className="text-sm text-gray-600">Rapports mensuels de veille par société</p></div>
-      <Link href="/admin/veille/nouveau" className="rounded bg-ratecard-blue px-4 py-2 text-sm text-white">Nouveau rapport</Link>
+      <Link href="/admin/veille/nouveau" className="rounded bg-ratecard-blue px-4 py-2 text-sm text-white">Générer un nouveau rapport</Link>
     </header>
     <CompanyReportBatch />
     <section className="space-y-3 rounded-xl border bg-white p-4">
