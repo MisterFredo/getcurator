@@ -46,6 +46,7 @@ const sections: NavSection[] = [
       { href: "/admin/library", label: "Documents PDF", exact: true },
       { href: "/admin/library/corpo", label: "Corpo" },
     ] },
+    { href: "/admin/veille", label: "Veille", icon: Globe },
     { href: "/admin/knowledge", label: "Knowledge", icon: Brain },
     { href: "/admin/touch", label: "GetCurator Touch", icon: Sparkles },
     { href: "/admin/production", label: "Productions", icon: Presentation },
