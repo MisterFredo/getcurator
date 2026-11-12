@@ -218,11 +218,12 @@ function ReviewForm({ post, onSaved }: {
   );
 }
 
-type ReviewSuggestion = { verdict: string; post_type: string; reason: string };
-
-function canSuggest(row: EditorialFields) {
-  return row.qualification_role === "EMPLOYEE" &&
-    row.qualification_verdict === "A_VERIFIER" && !row.review_id &&
+function canConfirm(row: EditorialFields) {
+  const verdict = row.qualification_verdict ?? "";
+  const finalVerdict = row.qualification_role === "EMPLOYEE"
+    ? ["SIGNAL_SOCIETE", "PRISE_DE_PAROLE_METIER", "BRUIT"].includes(verdict)
+    : row.qualification_role === "CORPORATE" && verdict === "CORPORATE";
+  return finalVerdict && !!row.qualification_type && !row.review_id &&
     row.editorial_status !== "WITHDRAWN";
 }
 
@@ -247,59 +248,30 @@ export default function CorpoLibraryPage() {
   const [editorialError,setEditorialError]=useState("");
   const [editorialNotice,setEditorialNotice]=useState("");
   const [selectedReviews, setSelectedReviews] = useState<string[]>([]);
-  const [suggestions, setSuggestions] = useState<Record<string, ReviewSuggestion>>({});
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState("");
-  const [suggestionErrors, setSuggestionErrors] = useState<Record<string, string>>({});
   const reviewLock = useRef(false);
-  const eligibleReviews = rows.filter(canSuggest).map(row => row.id_document);
+  const eligibleReviews = rows.filter(canConfirm).map(row => row.id_document);
   const selectedOnPage = eligibleReviews.filter(id => selectedReviews.includes(id));
-  const readyReviews = selectedOnPage.filter(id => suggestions[id]);
   const allSelected = eligibleReviews.length > 0 && selectedOnPage.length === eligibleReviews.length;
 
   function toggleReview(id: string) {
     setSelectedReviews(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);
   }
 
-  async function requestSuggestions(ids: string[]) {
-    if (reviewLock.current) return;
-    reviewLock.current = true;
-    setReviewBusy(true);
-    setReviewFeedback("");
-    try {
-      for (const id of ids) {
-        setSuggestionErrors(current => ({ ...current, [id]: "" }));
-        try {
-          const result: ReviewSuggestion = await api.post(
-            `/company/watch/library/${encodeURIComponent(id)}/review-suggestion`, {},
-          );
-          if (!result.verdict || !result.post_type || !result.reason) {
-            throw new Error("Suggestion indisponible.");
-          }
-          setSuggestions(current => ({ ...current, [id]: result }));
-        } catch (err) {
-          setSuggestionErrors(current => ({ ...current, [id]: message(err) }));
-        }
-      }
-    } finally {
-      reviewLock.current = false;
-      setReviewBusy(false);
-    }
-  }
-
   async function applySuggestions(ids: string[]) {
-    if (reviewLock.current || !ids.length || ids.some(id => !suggestions[id])) return;
+    if (reviewLock.current || !ids.length) return;
     if (ids.length > 1 && !window.confirm(`Valider les ${ids.length} suggestions sélectionnées ?`)) return;
     reviewLock.current = true;
     setReviewBusy(true);
     setReviewFeedback("");
     try {
-      const result = await api.post("/company/watch/library/reviews/batch", {
-        decisions: ids.map(id => ({ document_id: id, ...suggestions[id] })),
+      const result = await api.post("/company/watch/library/reviews/confirm", {
+        document_ids: ids,
       });
       if (result.status !== "ok") throw new Error("Validation non confirmée.");
       setReviewFeedback(`${result.updated} décision(s) enregistrée(s).${result.skipped
-        ? ` ${result.skipped} publication(s) n’étaient plus à vérifier.` : ""}`);
+        ? ` ${result.skipped} publication(s) n’étaient plus éligibles.` : ""}`);
       setSelectedReviews([]);
       if (filters.qualification === "REVIEW") setOffset(0);
       setRevision(value => value + 1);
@@ -457,17 +429,11 @@ export default function CorpoLibraryPage() {
     {eligibleReviews.length > 0 && <div className="flex flex-wrap items-center gap-2">
       <button type="button" className={button} disabled={reviewBusy}
         onClick={() => setSelectedReviews(allSelected ? [] : eligibleReviews)}>
-        {allSelected ? "Désélectionner la page" : "Sélectionner les posts à vérifier de la page"}
+        {allSelected ? "Désélectionner la page" : "Sélectionner les suggestions de la page"}
       </button>
-      <button type="button" className={button}
-        disabled={reviewBusy || selectedOnPage.length === readyReviews.length}
-        onClick={() => void requestSuggestions(selectedOnPage.filter(id => !suggestions[id]))}>
-        Suggérer pour la sélection
-      </button>
-      <button type="button" className={button}
-        disabled={reviewBusy || !readyReviews.length || readyReviews.length !== selectedOnPage.length}
-        onClick={() => void applySuggestions(readyReviews)}>
-        Valider la sélection ({readyReviews.length})
+      <button type="button" className={button} disabled={reviewBusy || !selectedOnPage.length}
+        onClick={() => void applySuggestions(selectedOnPage)}>
+        Valider les suggestions ({selectedOnPage.length})
       </button>
       <span className="text-sm text-gray-600">{selectedOnPage.length} sélectionné(s)</span>
       {reviewBusy && <span role="status" className="text-sm">Traitement en cours…</span>}
@@ -476,26 +442,14 @@ export default function CorpoLibraryPage() {
       <table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
         {['Société / point','Publication','Parution','État','Informations',''].map((label,i)=><th key={i} className="p-3">{label}</th>)}
       </tr></thead><tbody>{rows.map(row=><tr key={row.id_document} className="border-t align-top">
-        <td className="p-3">{canSuggest(row) && <input type="checkbox" className="mr-2"
+        <td className="p-3">{canConfirm(row) && <input type="checkbox" className="mr-2"
           aria-label={`Sélectionner ${row.title}`} checked={selectedOnPage.includes(row.id_document)}
           disabled={reviewBusy} onChange={() => toggleReview(row.id_document)} />}
           {row.company_name}<div className="text-gray-500">{row.document_type === "MENTION" ? "Mention externe" : row.watch_label}</div></td>
         <td className="p-3 max-w-xl"><p className="font-medium">{row.title}</p><p>{row.author_name}</p>
           {row.document_type === "LINKEDIN" && <p className="mt-1 text-sm font-medium text-ratecard-blue">{qualificationLabel(row)}{row.review_id ? " · Revu manuellement" : ""}</p>}
-          {canSuggest(row) && <div className="my-2 space-y-1">
-            {suggestions[row.id_document] ? <>
-              <p className="font-medium">Suggestion · {qualificationLabel({
-                qualification_verdict: suggestions[row.id_document].verdict,
-                qualification_type: suggestions[row.id_document].post_type,
-              })}</p>
-              <p>{suggestions[row.id_document].reason}</p>
-              <button type="button" className={button} disabled={reviewBusy}
-                onClick={() => void applySuggestions([row.id_document])}>Valider la suggestion</button>
-            </> : <button type="button" className={button} disabled={reviewBusy}
-              onClick={() => void requestSuggestions([row.id_document])}>Suggérer une décision</button>}
-            {suggestionErrors[row.id_document] &&
-              <p role="alert" className="text-red-700">{suggestionErrors[row.id_document]}</p>}
-          </div>}
+          {canConfirm(row) && <button type="button" className={button} disabled={reviewBusy}
+            onClick={() => void applySuggestions([row.id_document])}>Valider la suggestion</button>}
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
         <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':row.extraction_status==='PENDING'?'Disponible · à analyser':'En cours'}
