@@ -1,3 +1,4 @@
+from typing import Literal
 from fastapi import APIRouter, HTTPException, Request, Query, BackgroundTasks
 from typing import Optional
 
@@ -405,18 +406,22 @@ def generate_company_report_notebook_route(data: CompanyReportNotebookRequest):
     return _watch_call(generate_notebook, data.company_id, data.month, data.revision)
 
 
+class CompanyReportRequest(CompanyReportNotebookRequest):
+    language: Literal["fr", "en"] = "fr"
+
+
 @router.get("/watch/library/company-report")
-def company_report_route(company_id: str, month: str, revision: str):
+def company_report_route(company_id: str, month: str, revision: str, language: Literal["fr", "en"] = "fr"):
     from core.company.company_report import get_report
 
-    return _watch_call(get_report, company_id, month, revision)
+    return _watch_call(get_report, company_id, month, revision, language)
 
 
 @router.post("/watch/library/company-report")
-def generate_company_report_route(data: CompanyReportNotebookRequest):
+def generate_company_report_route(data: CompanyReportRequest):
     from core.company.company_report import generate_report
 
-    return _watch_call(generate_report, data.company_id, data.month, data.revision)
+    return _watch_call(generate_report, data.company_id, data.month, data.revision, data.language)
 
 
 @router.get("/watch/library/{id_document}")
