@@ -353,7 +353,7 @@ export default function CorpoLibraryPage() {
   return <div className="space-y-4">
     <header className="flex justify-between items-start gap-4"><div>
       <p className="text-sm text-gray-500">Library / Corpo</p><h1 className="text-3xl font-semibold text-ratecard-blue">Publications documentaires</h1>
-    </div><div className="space-x-3"><a className="underline" href="/admin/library">Library</a><a className="underline" href="/admin/discovery/corpo">Discovery Corpo</a>
+    </div><div className="space-x-3"><a className="underline" href="/admin/library/corpo/rapport">Rapport société</a><a className="underline" href="/admin/library">Library</a><a className="underline" href="/admin/discovery/corpo">Discovery Corpo</a>
       <button className={button} onClick={()=>setRevision(v=>v+1)}>Actualiser</button></div></header>
     <form className="bg-white border rounded p-4 space-y-4" onSubmit={event=>{
       event.preventDefault();
