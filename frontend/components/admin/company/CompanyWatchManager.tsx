@@ -382,7 +382,7 @@ export default function CompanyWatchManager({ company: fixedCompany }: Props) {
       </section>
       </div>}
       {!collectionRow && <div className="pt-8 border-t">
-        <WatchDiscoveryWorkspace key={companyId || "all"} companyId={companyId || undefined} role={role} channel={channel} kind={kind} onBusyChange={setBusy}/>
+        <WatchDiscoveryWorkspace key={`${companyId || "all"}:${role}`} companyId={companyId || undefined} role={role} channel={channel} kind={kind} onBusyChange={setBusy}/>
       </div>}
     </div>
   );
