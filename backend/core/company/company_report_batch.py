@@ -134,7 +134,7 @@ def history():
         languages = [lang for lang in ("fr", "en") if
                      notebook.removesuffix(".json") + f"/report-{lang}-signature-v2.json" in paths]
         entries.append({"id_company": row["ID_COMPANY"], "name": row["NAME"], "month": match[2],
-                        "languages": languages, "has_notebook": notebook in paths})
+                        "revision": str(revision), "languages": languages, "has_notebook": notebook in paths})
     entries.sort(key=lambda row: row["name"].casefold())
     entries.sort(key=lambda row: row["month"], reverse=True)
     return {"reports": entries}
