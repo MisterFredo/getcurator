@@ -14,6 +14,7 @@ type Source = {
   date_kind: string;
 };
 type Fact = {
+  chapter?: string;
   title: string;
   summary: string;
   primary_id: string;
@@ -30,14 +31,21 @@ type Report = {
     highlights: { fact_id: string; label: string; text: string }[] };
   month: string;
   limited_sources: number;
+  google_news_countries_observed?: string[];
   sections: Record<"facts" | "site_changes" | "mentions", Fact[]>;
   sources: Source[];
 };
 
-const blocks = [
-  { id: "facts", fr: "Faits du mois", en: "Key developments" },
-  { id: "site_changes", fr: "Évolutions du site", en: "Website changes" },
-  { id: "mentions", fr: "Mentions externes", en: "External coverage" },
+const sections = ["facts", "site_changes", "mentions"] as const;
+const chapters = [
+  { id: "PRODUCT", fr: "Produits et partenariats", en: "Products and partnerships" },
+  { id: "CUSTOMERS", fr: "Cas clients et déploiements", en: "Customer stories and deployments" },
+  { id: "EXPERTISE", fr: "Expertise et réglementation", en: "Expertise and regulation" },
+  { id: "EVENTS", fr: "Événements et prises de parole", en: "Events and speaking engagements" },
+  { id: "COMPANY", fr: "Vie de l’entreprise", en: "Company updates" },
+  { id: "OTHER", fr: "Autres signaux", en: "Other developments" },
+  { id: "SITE_CHANGES", fr: "Évolutions du site", en: "Website changes" },
+  { id: "MENTIONS", fr: "Mentions externes", en: "External coverage" },
 ] as const;
 const sourceKinds: Record<string, [string, string]> = {
   LINKEDIN_CORPORATE: ["LinkedIn corporate", "Company LinkedIn"],
@@ -51,18 +59,19 @@ const dateKinds: Record<string, [string, string]> = {
   COLLECTION: ["Collecté", "Collected"],
 };
 const styles = `
-.sheet.cover h1{font-size:58px;line-height:1.03;color:#10283b}
-.sheet.cover .cover-introduction{border-left:4px solid #007d71;background:transparent;padding:2mm 0 2mm 6mm}
-.sheet.cover .cover-introduction p{font-size:24px;line-height:1.4}
-.company-zoom .touch-body>ul:not(.bibliography),
+.sheet.cover h1{font-size:49px;line-height:1.05;color:#10283b}
+.sheet.cover .cover-introduction{border-left:4px solid #007d71;background:transparent;padding:2mm 0 2mm 5mm}
+.sheet.cover .cover-introduction p{font-size:20px;line-height:1.35}
+.company-method{border-top:1px solid #cbd9dc;margin-top:5mm;padding-top:3mm;color:#10283b}
+.company-method h2{font-size:15px;margin:0 0 2mm}
+.company-method ul{margin:0;padding-left:4mm;display:grid;grid-template-columns:1fr 1fr;gap:2mm 7mm}
+.company-method li,.company-method p{font-size:12px;line-height:1.35;margin:0}
+.company-method p{margin-top:2mm}
 .company-summary .touch-body>ul:not(.bibliography),
 .company-detail .touch-body>ul:not(.bibliography){display:block}
 .company-summary .touch-body>ul:not(.bibliography)>li,
 .company-detail .touch-body>ul:not(.bibliography)>li{background:transparent;border-top:1px solid #cbd9dc;padding:4mm 0;margin:0}
 .company-summary .touch-body>ul>li::first-line,.company-detail .touch-body>ul>li::first-line{font-weight:700}
-.company-zoom .touch-body>ul:not(.bibliography)>li{background:transparent;border:0;padding:3mm 0;font-size:19px}
-.company-zoom .touch-body>ul:not(.bibliography)>li:first-child{font-size:21px;border-left:4px solid #007d71;padding-left:5mm}
-.company-zoom .touch-body>ul:not(.bibliography)>li+li{border-top:1px solid #cbd9dc}
 .company-logo{max-width:30mm;max-height:9mm;width:auto;height:auto;object-fit:contain;vertical-align:middle}
 `;
 
@@ -81,6 +90,7 @@ function makePresentation(report: Report): {
   language: Report["language"];
   pageClasses: Record<string, string>;
   urls: { marker: string; url: string }[];
+  method: { title: string; channels: string[]; limits: string };
 } {
   const language = report.language === "en" ? "en" : "fr";
   const fr = language === "fr";
@@ -123,12 +133,12 @@ function makePresentation(report: Report): {
   const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
   const title = `${report.company_name} · ${fr ? "Veille mensuelle" : "Monthly watch"}`;
   const pageClasses: Record<string, string> = {};
-  const lookup = new Map<string, { fact: Fact; pointer: string }>();
-  for (const block of blocks) {
-    report.sections[block.id].forEach((fact, index) => {
-      lookup.set(`${block.id}:${index}`, { fact, pointer: `/sections/${block.id}/${index}` });
-    });
-  }
+  const entries: { fact: Fact; key: string; pointer: string; chapter: string }[] = [];
+  sections.forEach(section => report.sections[section].forEach((fact, index) => entries.push({
+    fact, key: `${section}:${index}`, pointer: `/sections/${section}/${index}`,
+    chapter: fact.chapter ?? (section === "facts" ? "OTHER" : section.toUpperCase()),
+  })));
+  const lookup = new Map(entries.map(entry => [entry.key, entry]));
   const citation = (ids: string[]) => ids.length ? ` [${ids.join(", ")}]` : "";
   addPage("COVER", title, [report.editorial.cover_line].filter(Boolean), [], []);
   if (report.editorial.highlights.length) {
@@ -148,28 +158,12 @@ ${highlight.text}${citation(ids)}`;
   }
 
   const focusId = report.editorial.highlights[0]?.fact_id;
-  const focus = focusId ? lookup.get(focusId) : undefined;
-  if (focus) {
-    const { fact, pointer } = focus;
-    const primary = refs([fact.primary_id, ...fact.support_ids], `${pointer}/summary`, fact.summary);
-    const contribution = refs(fact.contribution_ids, `${pointer}/contribution`, fact.contribution);
-    const relays = refs(fact.relay_ids, `${pointer}/title`, fact.title);
-    const paragraphs = [fact.summary + citation(primary)];
-    if (fact.contribution) paragraphs.push(
-      `${fr ? "Éclairage" : "Additional context"} — ${fact.contribution}${citation(contribution)}`,
-    );
-    if (relays.length) paragraphs.push(`${fr ? "Relais observés" : "Observed reshares"} · ${relays.length}${citation(relays)}`);
-    addPage("ANALYSIS", fact.title, [], paragraphs, [...primary, ...contribution, ...relays]);
-    pages[pages.length - 1].eyebrow = fr ? "Le fait à retenir" : "In focus";
-    pageClasses[String(pages.length)] = "company-zoom";
-  }
-
-  for (const block of blocks) {
+  for (const chapter of chapters) {
     const bullets: string[] = [];
     const pageRefs: string[] = [];
-    report.sections[block.id].forEach((fact, index) => {
-      if (`${block.id}:${index}` === focusId) return;
-      const pointer = `/sections/${block.id}/${index}`;
+    const chapterEntries = entries.filter(entry => entry.chapter === chapter.id)
+      .sort((a, b) => Number(b.key === focusId) - Number(a.key === focusId));
+    chapterEntries.forEach(({ fact, pointer }) => {
       const primary = refs([fact.primary_id, ...fact.support_ids], `${pointer}/summary`, fact.summary);
       const contribution = refs(fact.contribution_ids, `${pointer}/contribution`, fact.contribution);
       const relays = refs(fact.relay_ids, `${pointer}/title`, fact.title);
@@ -182,15 +176,33 @@ ${highlight.text}${citation(ids)}`;
       ].filter(Boolean).join("\n"));
     });
     if (bullets.length) {
-      addPage("ANALYSIS", block[language], [], bullets, pageRefs);
+      addPage("ANALYSIS", chapter[language], [], bullets, pageRefs);
       pageClasses[String(pages.length)] = "company-detail";
     }
   }
-  const scope = [`${report.sources.length} ${fr ? "sources dans le corpus" : "sources in scope"}.`];
-  if (report.limited_sources) scope.push(fr
-    ? `${report.limited_sources} source(s) analysées à partir d’un extrait ou du titre.`
-    : `${report.limited_sources} source(s) analyzed from an excerpt or title.`);
-  addPage("ANALYSIS", fr ? "Périmètre et limites" : "Scope and limitations", scope, [], []);
+  const count = (kind: string) => report.sources.filter(source => source.source_kind === kind).length;
+  const markets = report.google_news_countries_observed?.length ?? 0;
+  const marketNames = (report.google_news_countries_observed ?? []).join(", ");
+  const google = markets
+    ? fr ? `Marchés de recherche Google Actualités ayant remonté les mentions retenues : ${markets} (${marketNames}).`
+      : `Google News market origins for retained results: ${markets} (${marketNames}).`
+    : fr ? "Aucun pays de recherche Google documenté dans le corpus retenu."
+      : "No Google search markets documented in the selected corpus.";
+  const method = {
+    title: fr ? "Objectif et méthode de veille" : "Watch scope and method",
+    channels: fr ? [
+      `LinkedIn : publications des pages officielles et d’une sélection de comptes salariés (${count("LINKEDIN_CORPORATE")} corporate, ${count("LINKEDIN_EMPLOYEE")} via les comptes salariés).`,
+      `Site corporate : nouvelles publications et changements sur les pages surveillées (${count("SITE_PUBLICATION")} publications, ${count("SITE_CHANGE")} observations).`,
+      `Mentions externes : recherches Google Actualités, puis sélection des résultats pertinents (${count("MENTION")} mentions retenues). ${google}`,
+    ] : [
+      `LinkedIn: official company pages and selected employee accounts (${count("LINKEDIN_CORPORATE")} company posts, ${count("LINKEDIN_EMPLOYEE")} via employee watch).`,
+      `Company website: new publications and updates to monitored pages (${count("SITE_PUBLICATION")} publications, ${count("SITE_CHANGE")} observations).`,
+      `External coverage: Google News searches followed by relevance screening (${count("MENTION")} mentions retained). ${google}`,
+    ],
+    limits: fr
+      ? `Objectif : identifier les évolutions significatives du mois et les documenter par leurs sources. La veille couvre une sélection de sources publiques.${report.limited_sources ? ` ${report.limited_sources} source(s) analysée(s) à partir d’un extrait ou du titre.` : ""}`
+      : `Objective: identify the month’s significant developments and link them to evidence. Coverage reflects a selection of public sources.${report.limited_sources ? ` ${report.limited_sources} source(s) analyzed from an excerpt or title.` : ""}`,
+  };
   const document: RenderableDocument = {
     schema_version: "1.0", template: "GETCURATOR_AUTONOMOUS_V1", title,
     subtitle: `${start} – ${end}`, pages, sources, review_notes: [],
@@ -199,11 +211,11 @@ ${highlight.text}${citation(ids)}`;
     ?.replace(/_Report\.pdf$/i, "_Presentation.pdf") || `GetCurator_${report.month}_${language.toUpperCase()}_Presentation.pdf`;
   const html = buildTouchPresentationHtml(document, filename, language)
     .replace("</style>", styles + "</style>");
-  return { html, filename, language, pageClasses, urls: Array.from(urls.values()) };
+  return { html, filename, language, pageClasses, urls: Array.from(urls.values()), method };
 }
 
 export default function CompanyReportPresentation({ report }: { report: Report }) {
-  const { html, filename, language, pageClasses, urls } = useMemo(() => makePresentation(report), [report]);
+  const { html, filename, language, pageClasses, urls, method } = useMemo(() => makePresentation(report), [report]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [checked, setChecked] = useState("");
   const [overflow, setOverflow] = useState<number[]>([]);
@@ -238,6 +250,24 @@ export default function CompanyReportPresentation({ report }: { report: Report }
         if (frame.current?.contentDocument !== doc) return;
         if (loaded) sheets.forEach(sheet => sheet.querySelector(".header .tagline")?.replaceChildren(logo.cloneNode()));
       }
+    }
+    const cover = doc.querySelector(".sheet.cover");
+    const footer = cover?.querySelector(".footer");
+    if (cover && footer && !cover.querySelector(".company-method")) {
+      const section = doc.createElement("section");
+      section.className = "company-method";
+      const heading = doc.createElement("h2");
+      heading.textContent = method.title;
+      const list = doc.createElement("ul");
+      method.channels.forEach(channel => {
+        const item = doc.createElement("li");
+        item.textContent = channel;
+        list.appendChild(item);
+      });
+      const limits = doc.createElement("p");
+      limits.textContent = method.limits;
+      section.append(heading, list, limits);
+      cover.insertBefore(section, footer);
     }
     let missing = false;
     for (const { marker, url } of urls) {
