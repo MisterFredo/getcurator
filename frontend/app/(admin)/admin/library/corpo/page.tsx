@@ -132,15 +132,15 @@ function QualificationSummary({ rows }: { rows: QualificationCount[] }) {
   );
 }
 
-type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string; reviewState:string};
+type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string; reviewState:string; origin:string};
 async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean;total:number;global_total:number;companies:WatchCompany[];qualification_summary?:QualificationCount[]}>{
  const params=new URLSearchParams({offset:String(offset),limit:"50",with_summary:"true",editorial_status:filters.editorialStatus});
- const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType,review_state:filters.reviewState};
+ const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType,review_state:filters.reviewState,origin:filters.origin};
  Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
  return api.get(`/company/watch/library/list?${params.toString()}`);
 }
 const initialFilters: Required<EditorialFilters> = {
-  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"",reviewState:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"",reviewState:"",origin:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
 };
 const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
@@ -302,7 +302,7 @@ export default function CorpoLibraryPage() {
     }}>
         <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({
           ...draft,documentType:e.target.value,companyId:"",
-          ...(e.target.value === "MENTION" ? {qualification:"",postType:"",reviewState:""} : {}),
+          ...(e.target.value === "MENTION" ? {qualification:"",postType:"",reviewState:"",origin:""} : {}),
         })}><option value="">Tous</option><option value="CORPORATE">Publications de veille</option><option value="MENTION">Mentions externes</option></select></label>
       <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
         <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
@@ -326,13 +326,28 @@ export default function CorpoLibraryPage() {
           <option value="desc">Décroissant / Z → A</option><option value="asc">Croissant / A → Z</option>
         </select></label>
       </div>
-      {draft.documentType !== "MENTION" && <div className="grid gap-3 sm:grid-cols-3">
+      {draft.documentType !== "MENTION" && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="block text-sm">Origine LinkedIn
+          <select className={control} value={draft.origin} onChange={event => {
+            const origin = event.target.value;
+            setDraft(previous => ({
+              ...previous,
+              origin,
+              qualification: origin === "CORPORATE" && previous.qualification !== "PENDING"
+                ? "" : previous.qualification,
+            }));
+          }}>
+            <option value="">Toutes les origines</option>
+            <option value="CORPORATE">Corporate</option>
+            <option value="EMPLOYEE">Salariés</option>
+          </select>
+        </label>
         <label className="block text-sm">Verdict
           <select className={control} value={draft.qualification} onChange={e=>setDraft(v=>({...v,qualification:e.target.value}))}>
             <option value="">Tous</option>
-            <option value="GO">Go · Salariés</option>
-            <option value="NO_GO">No go · Salariés</option>
-            <option value="REVIEW">À vérifier · Salariés</option>
+            {draft.origin !== "CORPORATE" && <option value="GO">Go · Salariés</option>}
+            {draft.origin !== "CORPORATE" && <option value="NO_GO">No go · Salariés</option>}
+            {draft.origin !== "CORPORATE" && <option value="REVIEW">À vérifier · Salariés</option>}
             <option value="PENDING">En attente de qualification</option>
           </select>
         </label>
@@ -356,9 +371,9 @@ export default function CorpoLibraryPage() {
       </div>
     </form>
     <div role="status" aria-live="polite" className="bg-white border rounded p-4 flex flex-wrap gap-x-8 gap-y-2">
-      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications de veille':''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
+      <p><span className="text-gray-500">Total global{filters.documentType==='MENTION'?' des Mentions':filters.documentType==='CORPORATE'?' des publications de veille':''} {filters.origin === 'CORPORATE' ? 'LinkedIn corporate' : filters.origin === 'EMPLOYEE' ? 'LinkedIn salariés' : ''} {filters.editorialStatus==='ACTIVE'?'actives':filters.editorialStatus==='WITHDRAWN'?'retirées':'(actives et retirées)'} : </span><strong>{counts?counts.global.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
       <p><span className="text-gray-500">Résultats des filtres appliqués : </span><strong>{counts?counts.selected.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
-      <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type et l’état éditorial choisis.</p>
+      <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type, l’origine et l’état éditorial choisis.</p>
     </div>
     <QualificationSummary rows={qualificationCounts} />
     {editorialNotice&&<p role="status" className="text-green-800">{editorialNotice}</p>}
