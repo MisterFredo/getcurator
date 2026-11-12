@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import LibraryPostRequalification from "./LibraryPostRequalification";
 
 type Job = {
   status: "IDLE" | "RUNNING" | "PARTIAL" | "COMPLETE";
@@ -65,22 +66,25 @@ export default function LibraryPostBacklog() {
   }
 
   return (
-    <section className="border-t pt-4 space-y-2">
-      <h3 className="font-semibold">Rattrapage des posts LinkedIn</h3>
-      <p className="text-sm text-gray-600">
-        Importe les captures salariés en Library et qualifie les posts salariés et corporate.
-      </p>
-      <button className="border rounded px-4 py-2 disabled:opacity-50" disabled={busy} onClick={() => void start()}>
-        {job?.status === "RUNNING" || job?.status === "PARTIAL" ? "Reprendre le rattrapage" : "Lancer le rattrapage"}
-      </button>
-      {job && job.status !== "IDLE" && (
-        <p role="status" className="text-sm">
-          {labels[job.status]} · {job.phase === "LIBRARY" ? "Import Library" : "Qualification"} ·{" "}
-          {job.registered ?? 0} importés · {job.qualified ?? 0} qualifiés ·{" "}
-          {(job.registration_failed ?? 0) + (job.qualification_failed ?? 0)} échecs sur ce passage
+    <>
+      <section className="border-t pt-4 space-y-2">
+        <h3 className="font-semibold">Rattrapage des posts LinkedIn</h3>
+        <p className="text-sm text-gray-600">
+          Importe les captures salariés en Library et qualifie les posts salariés et corporate.
         </p>
-      )}
-      {(error || job?.error) && <p role="alert" className="text-sm text-red-700">{error || job?.error}</p>}
-    </section>
+        <button className="border rounded px-4 py-2 disabled:opacity-50" disabled={busy} onClick={() => void start()}>
+          {job?.status === "RUNNING" || job?.status === "PARTIAL" ? "Reprendre le rattrapage" : "Lancer le rattrapage"}
+        </button>
+        {job && job.status !== "IDLE" && (
+          <p role="status" className="text-sm">
+            {labels[job.status]} · {job.phase === "LIBRARY" ? "Import Library" : "Qualification"} ·{" "}
+            {job.registered ?? 0} importés · {job.qualified ?? 0} qualifiés ·{" "}
+            {(job.registration_failed ?? 0) + (job.qualification_failed ?? 0)} échecs sur ce passage
+          </p>
+        )}
+        {(error || job?.error) && <p role="alert" className="text-sm text-red-700">{error || job?.error}</p>}
+      </section>
+      <LibraryPostRequalification />
+    </>
   );
 }
