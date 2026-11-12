@@ -12,8 +12,8 @@ from core.library.company_watch_library import document_lock
 logger = logging.getLogger(__name__)
 PATH = "library-post-backlog.json"
 LOCK = "library-post-backlog-" + hashlib.sha256(state.ROOT.encode()).hexdigest()
-BATCH_SIZE = 20
-IMPORT_BATCH_SIZE = 100
+BATCH_SIZE = 5
+IMPORT_BATCH_SIZE = 40
 
 
 def status():
@@ -29,7 +29,7 @@ def launch():
         job = {
             "id_job": str(uuid4()), "status": "RUNNING", "phase": "LIBRARY",
             "registered": 0, "withdrawn": 0, "failed_ids": [],
-            "registration_failed": 0, "qualified": 0, "qualification_failed": 0,
+            "registration_failed": 0, "qualified": 0, "corporate_requalified": 0, "qualification_failed": 0,
             "updated_at": state.stamp(),
         }
         state.save(PATH, job)
@@ -62,6 +62,9 @@ def run(id_job):
                     else:
                         result = qualify_batch(historical=True, limit=BATCH_SIZE)
                         job["qualified"] += result["qualifies"]
+                        job["corporate_requalified"] = (
+                            job.get("corporate_requalified", 0) + result["corporate_requalifies"]
+                        )
                         job["qualification_failed"] += result["a_reprendre"]
                         if result["selectionnes"] == 0 or result["occupes"]:
                             remaining = bool(_eligible(historical=True, include_deferred=True, limit=1))
