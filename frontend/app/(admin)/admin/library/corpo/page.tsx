@@ -6,6 +6,10 @@ import type { CorpoLibraryDocument, CorpoLibraryDetail, CorpoLibraryFilters, Wat
 
 import {api} from "@/lib/api";
 type EditorialFields = {
+  has_video?: boolean;
+  has_document?: boolean;
+  document_page_count?: number | null;
+  video_duration?: number | null;
   document_type?: string;
   editorial_status?: string;
   editorial_reason?: string;
@@ -132,15 +136,15 @@ function QualificationSummary({ rows }: { rows: QualificationCount[] }) {
   );
 }
 
-type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string; reviewState:string; origin:string};
+type EditorialFilters=CorpoLibraryFilters & {editorialStatus:string; qualification:string; postType:string; reviewState:string; origin:string; mediaFormat:string};
 async function listCorpoLibrary(offset:number,filters:EditorialFilters):Promise<{items:(CorpoLibraryDocument & EditorialFields)[];has_more:boolean;total:number;global_total:number;companies:WatchCompany[];qualification_summary?:QualificationCount[]}>{
  const params=new URLSearchParams({offset:String(offset),limit:"50",with_summary:"true",editorial_status:filters.editorialStatus});
- const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType,review_state:filters.reviewState,origin:filters.origin};
+ const values={q:filters.q,id_company:filters.companyId,sort:filters.sort,direction:filters.direction,status:filters.status,published_from:filters.publishedFrom,published_to:filters.publishedTo,document_type:filters.documentType,qualification:filters.qualification,post_type:filters.postType,review_state:filters.reviewState,origin:filters.origin,media_format:filters.mediaFormat};
  Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value);});
  return api.get(`/company/watch/library/list?${params.toString()}`);
 }
 const initialFilters: Required<EditorialFilters> = {
-  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"",reviewState:"",origin:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
+  editorialStatus:"ACTIVE",documentType:"",qualification:"",postType:"",reviewState:"",origin:"",mediaFormat:"", q:"", companyId:"", sort:"published_at", direction:"desc", status:"", publishedFrom:"", publishedTo:"",
 };
 const control="border rounded px-3 py-2 bg-white w-full";
 const button = "border rounded px-3 py-2 text-sm disabled:opacity-50";
@@ -346,10 +350,9 @@ export default function CorpoLibraryPage() {
     return ()=>{sequence.current++;};
   },[documentId,unitOffset,revision]);
 
-  return <div className="space-y-6">
+  return <div className="space-y-4">
     <header className="flex justify-between items-start gap-4"><div>
       <p className="text-sm text-gray-500">Library / Corpo</p><h1 className="text-3xl font-semibold text-ratecard-blue">Publications documentaires</h1>
-      <p className="text-gray-500 mt-2">Publications, informations atomiques et preuves. Aucun sujet documentaire.</p>
     </div><div className="space-x-3"><a className="underline" href="/admin/library">Library</a><a className="underline" href="/admin/discovery/corpo">Discovery Corpo</a>
       <button className={button} onClick={()=>setRevision(v=>v+1)}>Actualiser</button></div></header>
     <form className="bg-white border rounded p-4 space-y-4" onSubmit={event=>{
@@ -359,15 +362,34 @@ export default function CorpoLibraryPage() {
       }
       setOffset(0);setFilters({...draft,q:draft.q.trim()});
     }}>
-        <label className="block text-sm">Type<select className={control} value={draft.documentType} onChange={e=>setDraft({
-          ...draft,documentType:e.target.value,companyId:"",
-          ...(e.target.value === "MENTION" ? {qualification:"",postType:"",reviewState:"",origin:""} : {}),
-        })}><option value="">Tous</option><option value="CORPORATE">Publications de veille</option><option value="MENTION">Mentions externes</option></select></label>
-      <label className="block space-y-1"><span className="text-sm font-medium">Rechercher</span>
-        <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
-          value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
-        <span className="text-xs text-gray-500">Recherche littérale dans les titres, auteurs, sociétés, points de collecte, URL, informations extraites et citations. Le texte source intégral n’est pas indexé par ce filtre.</span>
-      </label>
+      <div className="grid items-end gap-3 lg:grid-cols-[2fr_1fr_1fr]">
+        <label className="block text-sm">Rechercher
+          <input className={control} type="search" maxLength={500} placeholder="Titre, auteur, société, information ou citation…"
+            value={draft.q} onChange={e=>setDraft(v=>({...v,q:e.target.value}))}/>
+        </label>
+        <label className="block text-sm">Type
+          <select className={control} value={draft.documentType} onChange={e=>setDraft({
+            ...draft,documentType:e.target.value,companyId:"",
+            ...(e.target.value === "MENTION" ? {qualification:"",postType:"",reviewState:"",origin:"",mediaFormat:""} : {}),
+          })}>
+            <option value="">Tous</option>
+            <option value="CORPORATE">Publications de veille</option>
+            <option value="MENTION">Mentions externes</option>
+          </select>
+        </label>
+        {draft.documentType !== "MENTION" && <label className="block text-sm">Format LinkedIn
+          <select className={control} value={draft.mediaFormat}
+            onChange={e=>setDraft(v=>({...v,mediaFormat:e.target.value}))}>
+            <option value="">Tous les formats</option>
+            <option value="DOCUMENT">Carrousel / document</option>
+            <option value="VIDEO">Vidéo</option>
+            <option value="ANY">Carrousel ou vidéo</option>
+          </select>
+        </label>}
+      </div>
+      <details className="rounded border px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium">Filtres avancés</summary>
+        <div className="mt-3 space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <label className="space-y-1"><span className="text-sm">État éditorial</span><select className={control} value={draft.editorialStatus} onChange={e=>setDraft(v=>({...v,editorialStatus:e.target.value}))}><option value="ACTIVE">Publications actives</option><option value="WITHDRAWN">Publications retirées</option><option value="ALL">Actives et retirées</option></select></label>
         <label className="space-y-1"><span className="text-sm">Société</span><select className={control} value={draft.companyId} onChange={e=>setDraft(v=>({...v,companyId:e.target.value}))}>
@@ -424,9 +446,13 @@ export default function CorpoLibraryPage() {
           </select>
         </label>
       </div>}
+        </div>
+      </details>
       <div className="flex gap-3 items-center"><button type="submit" className="bg-ratecard-blue text-white rounded px-4 py-2">Rechercher / appliquer</button>
         <button type="button" className={button} onClick={()=>{setDraft({...initialFilters});setFilters({...initialFilters});setOffset(0);}}>Réinitialiser</button>
-        <span className="text-sm text-gray-500">Filtres et tri appliqués à l’ensemble de la Library Corpo.</span>
+        {filters.mediaFormat && <span className="text-sm text-gray-600">
+          {filters.mediaFormat === "DOCUMENT" ? "Carrousel / document" : filters.mediaFormat === "VIDEO" ? "Vidéo" : "Carrousel ou vidéo"}
+        </span>}
       </div>
     </form>
     <div role="status" aria-live="polite" className="bg-white border rounded p-4 flex flex-wrap gap-x-8 gap-y-2">
@@ -434,7 +460,10 @@ export default function CorpoLibraryPage() {
       <p><span className="text-gray-500">Résultats des filtres appliqués : </span><strong>{counts?counts.selected.toLocaleString('fr-FR'):loading?'…':'—'}</strong></p>
       <p className="w-full text-xs text-gray-500">Comptages sur l’ensemble des résultats, pas seulement les 50 lignes de la page. Le total global conserve le type, l’origine et l’état éditorial choisis.</p>
     </div>
-    <QualificationSummary rows={qualificationCounts} />
+    {qualificationCounts.length > 0 && <details className="rounded border bg-white px-3 py-2">
+      <summary className="cursor-pointer text-sm font-medium">Bilan des qualifications LinkedIn</summary>
+      <div className="mt-2"><QualificationSummary rows={qualificationCounts} /></div>
+    </details>}
     {editorialNotice&&<p role="status" className="text-green-800">{editorialNotice}</p>}
     {editorialError&&<p role="alert" className="text-red-700">{editorialError}</p>}
     {error && <p role="alert" className="text-red-700">{error}</p>}
@@ -474,6 +503,14 @@ export default function CorpoLibraryPage() {
           {row.document_type === "LINKEDIN" && <p className="mt-1 text-sm font-medium text-ratecard-blue">{qualificationLabel(row)}{row.review_id ? " · Revu manuellement" : ""}</p>}
           {canConfirm(row) && <button type="button" className={button} disabled={reviewBusy}
             onClick={() => void applySuggestions([row.id_document])}>Valider la suggestion</button>}
+          {(row.has_document || row.has_video) && <p className="my-1 flex flex-wrap gap-2 text-xs text-gray-700">
+            {row.has_document && <span className="rounded bg-gray-100 px-2 py-1">
+              Carrousel / document{row.document_page_count ? ` · ${row.document_page_count} pages` : ""}
+            </span>}
+            {row.has_video && <span className="rounded bg-gray-100 px-2 py-1">
+              Vidéo{row.video_duration ? ` · ${Math.floor(row.video_duration / 60)} min ${row.video_duration % 60} s` : ""}
+            </span>}
+          </p>}
           <a className="underline break-all text-ratecard-blue" href={safeUrl(row.source_url)} target="_blank" rel="noopener noreferrer">Source originale</a></td>
         <td className="p-3 whitespace-nowrap">{date(row.published_at)}</td>
         <td className="p-3">{row.editorial_status==='WITHDRAWN'?'Retirée · ':''}{row.extraction_status==='COMPLETE'?'Importé':row.extraction_status==='ERROR'?'Erreur':row.extraction_status==='PENDING'?'Disponible · à analyser':'En cours'}
