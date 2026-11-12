@@ -346,7 +346,6 @@ export default function CompanyReportCorpusPage() {
 
   return <main className="space-y-4">
     <header className="space-y-1">
-      <Link className="text-sm underline" href="/admin/veille">Retour à la veille</Link>
       <h1 className="text-2xl font-semibold text-ratecard-blue">Rapport mensuel de veille</h1>
       {scope && <p className="text-sm text-gray-600">{companies.find(item => item.id_company === scope.company)?.name ?? scope.company} · {scope.month}</p>}
     </header>
