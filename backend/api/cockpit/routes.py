@@ -123,3 +123,17 @@ def start_library_post_backlog(background_tasks: BackgroundTasks):
     job = library_post_backlog.launch()
     background_tasks.add_task(library_post_backlog.run, job["id_job"])
     return job
+
+
+@router.get("/operations/library-post-requalification/status")
+def library_post_requalification_status():
+    from core.company import library_post_requalify_job
+
+    return library_post_requalify_job.status()
+
+
+@router.post("/operations/library-post-requalification/start")
+def start_library_post_requalification(background_tasks: BackgroundTasks):
+    from core.company import library_post_requalify_job
+
+    return library_post_requalify_job.launch(background_tasks)
