@@ -53,13 +53,15 @@ def save_review(document_id, verdict, post_type, reason=None):
     return {"status": "ok"}
 
 
-def confirm_reviews(document_ids):
+def confirm_reviews(document_ids, pending_verdict=None):
     from google.cloud.bigquery import ArrayQueryParameter
 
     from core.company import library_post_funnel as funnel
 
     if not 1 <= len(document_ids) <= 50 or len(set(document_ids)) != len(document_ids):
         raise ValueError("Sélectionnez entre 1 et 50 publications distinctes.")
+    if pending_verdict not in (None, "SIGNAL_SOCIETE", "PRISE_DE_PAROLE_METIER", "BRUIT"):
+        raise ValueError("Verdict de revue invalide.")
     rows = library._query(f"""
         INSERT INTO `{TABLE}` (ID_REVIEW, ID_COMPANY, ID_DOCUMENT, VERDICT, TYPE_PRINCIPAL, MOTIF, CREATED_AT)
         WITH automatic AS (
@@ -71,7 +73,8 @@ def confirm_reviews(document_ids):
             )=1
         )
         SELECT GENERATE_UUID(), d.ID_COMPANY, d.ID_DOCUMENT,
-               v.VERDICT, v.TYPE_PRINCIPAL, v.MOTIF, CURRENT_TIMESTAMP()
+               COALESCE(@pending_verdict, v.VERDICT), v.TYPE_PRINCIPAL,
+               IF(@pending_verdict IS NULL, v.MOTIF, NULL), CURRENT_TIMESTAMP()
         FROM automatic v
         JOIN `{library.DOCUMENT}` d ON d.ID_COMPANY=v.ID_COMPANY AND d.ID_DOCUMENT=v.ID_DOCUMENT
         LEFT JOIN `{library.BASE}.RATECARD_COMPANY_WATCH` w
@@ -79,12 +82,15 @@ def confirm_reviews(document_ids):
         LEFT JOIN ({LATEST}) r ON r.ID_COMPANY=d.ID_COMPANY AND r.ID_DOCUMENT=d.ID_DOCUMENT
         WHERE d.DOCUMENT_TYPE='LINKEDIN' AND d.ID_COMPANY_WATCH IS NOT NULL
           AND COALESCE(d.EDITORIAL_STATUS,'ACTIVE')='ACTIVE' AND r.ID_REVIEW IS NULL
-          AND IF({EMPLOYEE_ROLE}, v.VERDICT IN ('SIGNAL_SOCIETE','PRISE_DE_PAROLE_METIER','BRUIT'),
-                 v.VERDICT='CORPORATE')
+          AND IF(@pending_verdict IS NOT NULL,
+                 COALESCE({EMPLOYEE_ROLE}, FALSE) AND v.VERDICT='A_VERIFIER',
+                 IF({EMPLOYEE_ROLE}, v.VERDICT IN ('SIGNAL_SOCIETE','PRISE_DE_PAROLE_METIER','BRUIT'),
+                    v.VERDICT='CORPORATE'))
           AND v.TYPE_PRINCIPAL IN UNNEST(@types)
         QUALIFY ROW_NUMBER() OVER (PARTITION BY d.ID_DOCUMENT ORDER BY d.ID_COMPANY)=1;
         SELECT @@row_count AS UPDATED_COUNT;
     """, [library._p("version", "STRING", funnel.VERSION),
+           library._p("pending_verdict", "STRING", pending_verdict),
            ArrayQueryParameter("ids", "STRING", document_ids),
            ArrayQueryParameter("types", "STRING", sorted(funnel.POST_TYPES))])
     updated = int(rows[0]["UPDATED_COUNT"])
