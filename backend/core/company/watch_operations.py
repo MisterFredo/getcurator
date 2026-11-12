@@ -29,10 +29,18 @@ def get_job(job_id):
     if value is None: raise HTTPException(404, 'Collecte introuvable')
     return value
 
-def list_jobs(company_id=None, watch_id=None):
+def list_jobs(company_id=None, watch_id=None, role='ALL'):
+    if role not in {'ALL', 'CORPORATE', 'EMPLOYEE'}:
+        raise HTTPException(400, 'Origine invalide')
     for job_id in load('index.json', {'jobs': []})['jobs']:
         job = get_job(job_id)
         if company_id and not (job.get('id_company') == company_id or any(s['id_company'] == company_id for s in job['sources'])): continue
+        if role != 'ALL' and job.get('role') != role:
+            # Older jobs can lack a role. Only show them in a role tab if
+            # every source has that known role. Mixed jobs remain in Tous.
+            source_roles = {source.get('source_role') for source in job['sources']}
+            if source_roles != {role}:
+                continue
         if watch_id and not any(s['id_company_watch'] == watch_id for s in job['sources']): continue
         return {'jobs': [job]}
     return {'jobs': []}
