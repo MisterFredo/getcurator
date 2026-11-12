@@ -50,6 +50,7 @@ def _eligible(*, company_ids=None, start=None, end=None, limit=BATCH_SIZE, histo
     """
     return library._query(f"""
         SELECT d.ID_COMPANY, d.ID_DOCUMENT, c.NAME AS COMPANY_NAME, d.TEXT_STORAGE_URI,
+            d.METADATA_STORAGE_URI, d.AUTHOR_NAME, w.AUTHOR_NAME AS WATCH_AUTHOR,
             CASE WHEN d.SOURCE_ROLE='EMPLOYEE' OR w.SOURCE_ROLE='EMPLOYEE'
                    OR w.ID_CONTACT IS NOT NULL THEN 'EMPLOYEE' ELSE 'CORPORATE' END AS SOURCE_ROLE
         FROM `{library.DOCUMENT}` d
