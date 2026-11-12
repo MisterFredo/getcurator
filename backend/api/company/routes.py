@@ -381,8 +381,8 @@ def start_watch_operation(data: WatchOperationRequest, background_tasks: Backgro
     return result
 
 @router.get('/watch/operations/jobs')
-def watch_operations_list(company_id: Optional[str] = None, watch_id: Optional[str] = None):
-    return _watch_call(watch_ops.list_jobs, company_id, watch_id)
+def watch_operations_list(company_id: Optional[str] = None, watch_id: Optional[str] = None, role: str = "ALL"):
+    return _watch_call(watch_ops.list_jobs, company_id, watch_id, role=role)
 
 @router.get('/watch/operations/jobs/{job_id}')
 def watch_operations_get(job_id: str):
