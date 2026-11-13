@@ -49,7 +49,7 @@ const chapters = [
 ] as const;
 const sourceKinds: Record<string, [string, string]> = {
   LINKEDIN_CORPORATE: ["LinkedIn corporate", "Company LinkedIn"],
-  LINKEDIN_EMPLOYEE: ["LinkedIn · veille salariés", "Employee LinkedIn watch"],
+  LINKEDIN_EMPLOYEE: ["LinkedIn · comptes salariés", "Employee LinkedIn"],
   SITE_PUBLICATION: ["Publication du site corporate", "Company website"],
   SITE_CHANGE: ["Page surveillée", "Monitored page"],
   MENTION: ["Mention externe", "External coverage"],
@@ -123,7 +123,7 @@ function makePresentation(report: Report): {
     paragraphs: string[], bullets: string[], sourceIds: string[]) {
     pages.push({
       page_id: `company-report-${pages.length + 1}`, layout, title,
-      eyebrow: fr ? "Rapport mensuel de veille" : "Monthly company watch", paragraphs, bullets, source_ids: sourceIds,
+      eyebrow: fr ? "Bilan mensuel" : "Monthly Review", paragraphs, bullets, source_ids: sourceIds,
       metrics: [], chart: null, takeaway: "", cautions: [],
     });
   }
@@ -131,7 +131,7 @@ function makePresentation(report: Report): {
   const [year, month] = report.month.split("-").map(Number);
   const start = `${report.month}-01`;
   const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-  const title = `${report.company_name} · ${fr ? "Veille mensuelle" : "Monthly watch"}`;
+  const title = `${report.company_name} · ${fr ? "Bilan mensuel" : "Monthly Review"}`;
   const pageClasses: Record<string, string> = {};
   const entries: { fact: Fact; key: string; pointer: string; chapter: string }[] = [];
   sections.forEach(section => report.sections[section].forEach((fact, index) => entries.push({
@@ -189,18 +189,18 @@ ${highlight.text}${citation(ids)}`;
     : fr ? "Aucun pays de recherche Google documenté dans le corpus retenu."
       : "No Google search markets documented in the selected corpus.";
   const method = {
-    title: fr ? "Objectif et méthode de veille" : "Watch scope and method",
+    title: fr ? "Périmètre, sources et méthode" : "Scope, sources and method",
     channels: fr ? [
       `LinkedIn : publications des pages officielles et d’une sélection de comptes salariés (${count("LINKEDIN_CORPORATE")} corporate, ${count("LINKEDIN_EMPLOYEE")} via les comptes salariés).`,
       `Site corporate : nouvelles publications et changements sur les pages surveillées (${count("SITE_PUBLICATION")} publications, ${count("SITE_CHANGE")} observations).`,
       `Mentions externes : recherches Google Actualités, puis sélection des résultats pertinents (${count("MENTION")} mentions retenues). ${google}`,
     ] : [
-      `LinkedIn: official company pages and selected employee accounts (${count("LINKEDIN_CORPORATE")} company posts, ${count("LINKEDIN_EMPLOYEE")} via employee watch).`,
+      `LinkedIn: official company pages and selected employee accounts (${count("LINKEDIN_CORPORATE")} company posts, ${count("LINKEDIN_EMPLOYEE")} from employee accounts).`,
       `Company website: new publications and updates to monitored pages (${count("SITE_PUBLICATION")} publications, ${count("SITE_CHANGE")} observations).`,
       `External coverage: Google News searches followed by relevance screening (${count("MENTION")} mentions retained). ${google}`,
     ],
     limits: fr
-      ? `Objectif : identifier les évolutions significatives du mois et les documenter par leurs sources. La veille couvre une sélection de sources publiques.${report.limited_sources ? ` ${report.limited_sources} source(s) analysée(s) à partir d’un extrait ou du titre.` : ""}`
+      ? `Objectif : identifier les évolutions significatives du mois et les documenter par leurs sources. Ce bilan s’appuie sur une sélection de sources publiques.${report.limited_sources ? ` ${report.limited_sources} source(s) analysée(s) à partir d’un extrait ou du titre.` : ""}`
       : `Objective: identify the month’s significant developments and link them to evidence. Coverage reflects a selection of public sources.${report.limited_sources ? ` ${report.limited_sources} source(s) analyzed from an excerpt or title.` : ""}`,
   };
   const document: RenderableDocument = {
