@@ -1,4 +1,8 @@
 import json
+from random import uniform
+from time import sleep
+
+from google.api_core.exceptions import BadRequest
 
 from config import BQ_DATASET, BQ_PROJECT
 from utils.bigquery_utils import query_bq
@@ -110,9 +114,20 @@ def read_edition(edition_id):
     return edition
 
 
+def _write_edition(sql, parameters):
+    """Retry edition writes rejected by BigQuery due to concurrent DML."""
+    for attempt in range(5):
+        try:
+            return query_bq(sql, parameters)
+        except BadRequest as exc:
+            if attempt == 4 or "could not serialize access to table" not in str(exc).lower():
+                raise
+            sleep(0.25 * 2 ** attempt + uniform(0, 0.25))
+
+
 def claim(edition_id, claim_id):
     # Use a unique claim token until the provider response ID replaces it.
-    query_bq(f"""
+    _write_edition(f"""
         UPDATE `{EDITION}` SET STATUS='starting', RESPONSE_ID=@claim,
           UPDATED_AT=CURRENT_TIMESTAMP()
         WHERE EDITION_ID=@id AND STATUS='pending'
@@ -122,7 +137,7 @@ def claim(edition_id, claim_id):
 
 
 def save(edition_id, expected_id, status, *, response_id="", result=None, error=""):
-    query_bq(f"""
+    _write_edition(f"""
         UPDATE `{EDITION}` SET STATUS=@status,
           RESPONSE_ID=COALESCE(NULLIF(@response_id,''), RESPONSE_ID),
           RESULT_JSON=PARSE_JSON(@result), ERROR=NULLIF(@error,''),
