@@ -40,13 +40,13 @@ def job_header(job_id):
     return {key.lower(): value for key, value in rows[0].items()} if rows else None
 
 
-def reserve(job_id, day, editions):
+def reserve(job_id, day, editions, *, missing_only=False):
     query_bq(f"""
         BEGIN TRANSACTION;
         UPDATE `{LOCK}` SET UPDATED_AT=CURRENT_TIMESTAMP() WHERE LOCK_ID='DAILY';
         ASSERT @@row_count=1 AS 'EDITORIAL_LOCK_INVALID';
         IF NOT EXISTS (SELECT 1 FROM `{JOB}` WHERE JOB_ID=@id) THEN
-          ASSERT NOT EXISTS (
+          ASSERT @missing_only OR NOT EXISTS (
             SELECT 1 FROM `{EDITION}`
             WHERE EDITION_DATE=DATE(@day)
               AND STATUS IN ('pending','starting','queued','in_progress','submission_unknown')
@@ -59,10 +59,16 @@ def reserve(job_id, day, editions):
             JSON_VALUE(item, '$.universe_id'), JSON_VALUE(item, '$.universe_label'),
             ARRAY_LENGTH(JSON_QUERY_ARRAY(item, '$.contents')), 'pending',
             JSON_QUERY(item, '$.contents'), CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()
-          FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@editions))) AS item;
+          FROM UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@editions))) AS item
+          WHERE NOT @missing_only OR NOT EXISTS (
+            SELECT 1 FROM `{EDITION}` e
+            WHERE e.EDITION_DATE=DATE(@day)
+              AND e.UNIVERSE_ID=JSON_VALUE(item, '$.universe_id')
+              AND e.STATUS IN ('completed','pending','starting','queued','in_progress','submission_unknown')
+          );
         END IF;
         COMMIT TRANSACTION;
-    """, {"id": job_id, "day": day, "editions": json.dumps(editions, ensure_ascii=False)})
+    """, {"id": job_id, "day": day, "editions": json.dumps(editions, ensure_ascii=False), "missing_only": missing_only})
 
 
 def _rows(sql, params):
@@ -127,3 +133,15 @@ def save(edition_id, expected_id, status, *, response_id="", result=None, error=
     """, {"id": edition_id, "expected": expected_id, "status": status,
           "response_id": response_id, "result": json.dumps(result, ensure_ascii=False),
           "error": error})
+
+
+def coverage(day):
+    return _rows(f"""
+        SELECT UNIVERSE_ID, STATUS FROM `{EDITION}`
+        WHERE EDITION_DATE=DATE(@day)
+          AND STATUS IN ('completed','pending','starting','queued','in_progress','submission_unknown')
+        QUALIFY ROW_NUMBER() OVER (
+          PARTITION BY UNIVERSE_ID
+          ORDER BY IF(STATUS='completed', 0, 1), CREATED_AT DESC, EDITION_ID DESC
+        )=1
+    """, {"day": day})
