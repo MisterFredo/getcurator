@@ -192,15 +192,15 @@ export default function EditorialPage() {
   function renderArticle(id: string) {
     const article = articles.get(id);
     const url = safeSourceUrl(article?.source_url);
+    const title = article?.title?.trim() || article?.source_title?.trim() || "Contenu sans titre";
     return (
       <li key={id}>
         <Link href={`/admin/content/edit/${encodeURIComponent(id)}`}
           className="text-ratecard-blue underline" target="_blank" rel="noopener noreferrer">
-          {article?.title || id}
+          {title}
         </Link>
         {url && <a href={url} target="_blank" rel="noopener noreferrer"
           className="ml-2 text-ratecard-blue underline">Voir la source</a>}
-        {article?.source_title && <span className="ml-2 text-slate-600">{article.source_title}</span>}
       </li>
     );
   }
