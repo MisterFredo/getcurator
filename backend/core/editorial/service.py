@@ -25,9 +25,9 @@ Plusieurs reprises d'une annonce ne constituent pas plusieurs faits.
 Note la pertinence de 0 à 100 : 80–100 pour un développement important pour
 le lectorat, 60–79 pour une mention utile, 0–59 pour le relevé complet.
 Considère l'impact, la nouveauté, la qualité de la matière et la pertinence
-pour l'univers. La note ne dépend pas du seul volume. Les articles anciens
-peuvent être entrés aujourd'hui : ne présente pas leur publication comme
-une actualité du jour.
+pour l'univers. La note ne dépend pas du seul volume. La date de l'édition
+est celle de la publication des articles. Distingue cette date de celle des
+événements rapportés dans les articles.
 """.strip()
 
 
