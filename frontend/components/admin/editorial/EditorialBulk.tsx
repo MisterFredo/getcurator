@@ -8,6 +8,10 @@ import type { BulkDay } from "@/lib/editorial";
 const storageKey = "editorial-bulk-results";
 const button = "rounded border border-slate-300 px-3 py-2 text-sm disabled:opacity-50";
 
+function rowKey(row: BulkDay) {
+  return `${row.date}:${row.job?.job_id ?? "summary"}`;
+}
+
 export default function EditorialBulk({ dates = [], onUpdate }: {
   dates?: string[];
   onUpdate?: () => void;
@@ -37,7 +41,7 @@ export default function EditorialBulk({ dates = [], onUpdate }: {
           ...row, job: await refreshDailyJob(row.job!.job_id),
         })));
         if (stopped) return;
-        setResults(results.map(row => next.find(item => item.date === row.date) ?? row));
+        setResults(results.map(row => next.find(item => rowKey(item) === rowKey(row)) ?? row));
         if (next.some(row => row.job.status !== "in_progress")) update.current?.();
       } catch {
         if (!stopped) setError("Suivi interrompu. Actualisez le lot pour reprendre.");
@@ -57,7 +61,17 @@ export default function EditorialBulk({ dates = [], onUpdate }: {
       if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() };
       const rows = await startDailyBulk(mode, selection, request.current.id);
       if (!rows.some(row => row.error)) request.current = undefined;
-      setResults(rows);
+      setResults(previous => {
+        const rowsByKey = new Map(rows.map(row => [rowKey(row), row]));
+        const ongoing = (previous ?? []).filter(row =>
+          row.job?.status === "in_progress" || row.job?.status === "submission_unknown"
+        );
+        for (const row of ongoing) {
+          if (!rowsByKey.has(rowKey(row))) rowsByKey.set(rowKey(row), row);
+        }
+        if (!rows.length) return previous ?? rows;
+        return Array.from(rowsByKey.values()).sort((a, b) => a.date.localeCompare(b.date));
+      });
       update.current?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Le lancement du lot a échoué.");
@@ -71,10 +85,10 @@ export default function EditorialBulk({ dates = [], onUpdate }: {
   return (
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap gap-2">
-        <button className={button} disabled={busy || active} onClick={() => void launch("current_month")}>
+        <button className={button} disabled={busy} onClick={() => void launch("current_month")}>
           Compléter le mois en cours
         </button>
-        {onUpdate && <button className={button} disabled={busy || active || !dates.length || dates.length > 31}
+        {onUpdate && <button className={button} disabled={busy || !dates.length || dates.length > 31}
           onClick={() => void launch("selected_dates")}>Compléter les dates sélectionnées ({dates.length})</button>}
         {active && <button className={button} disabled={busy} onClick={() => {
           setError("");
@@ -86,7 +100,7 @@ export default function EditorialBulk({ dates = [], onUpdate }: {
       {results && <div className="text-sm">
         {results.length === 0 && <p>Aucune journée terminée ce mois-ci.</p>}
         <ul className="space-y-1">
-          {results.map(row => <li key={row.date}>
+          {results.map(row => <li key={rowKey(row)}>
             <span className="font-medium">{row.date}</span>
             {row.error ? ` · ${row.error}` : row.no_content ? " · Sans contenu" : <>
               {row.job && <> · <Link className="underline" href={`/admin/editorial?job=${encodeURIComponent(row.job.job_id)}`}>
