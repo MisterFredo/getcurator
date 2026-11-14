@@ -25,6 +25,7 @@ export type Edition = EditionSummary & {
 
 export type DailyJob = {
   job_id: string;
+  date?: string;
   status: string;
   universes: { universe_id: string; universe_label: string; status: string; error?: string }[];
 };
@@ -50,4 +51,21 @@ export async function listDailyEditions(offset = 0): Promise<EditionSummary[]> {
 
 export async function readDailyEdition(id: string): Promise<Edition> {
   return (await api.get(`${root}/daily-editions/${encodeURIComponent(id)}`)).edition;
+}
+
+export type BulkDay = {
+  date: string;
+  job?: DailyJob | null;
+  already_done?: number;
+  in_progress?: number;
+  no_content?: boolean;
+  error?: string;
+};
+
+export async function startDailyBulk(
+  mode: "selected_dates" | "current_month",
+  dates: string[],
+  request_id: string,
+): Promise<BulkDay[]> {
+  return (await api.post(`${root}/daily-bulk-jobs`, { mode, dates, request_id })).results;
 }
