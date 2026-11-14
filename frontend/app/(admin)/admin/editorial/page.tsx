@@ -43,7 +43,10 @@ function Calendar({ history, date, onSelect }: {
     editions.push(item);
     days.set(item.date, editions);
   }
-  const months = [...new Set([date, ...days.keys()].filter(Boolean).map(day => day.slice(0, 7)))].sort().reverse();
+  const monthKeys = new Set<string>();
+  if (date) monthKeys.add(date.slice(0, 7));
+  days.forEach((_, day) => monthKeys.add(day.slice(0, 7)));
+  const months = Array.from(monthKeys).sort().reverse();
 
   return months.map(month => {
     const first = new Date(`${month}-01T00:00:00Z`);
@@ -104,8 +107,11 @@ export default function EditorialPage() {
     const offsets = Array.from({ length: pages }, (_, index) => index * 100);
     void Promise.all(offsets.map(listDailyEditions)).then(results => {
       if (stopped) return;
-      const items = new Map(results.flat().map(item => [item.edition_id, item]));
-      setHistory([...items.values()]);
+      const items = new Map<string, EditionSummary>();
+      for (const page of results) {
+        for (const item of page) items.set(item.edition_id, item);
+      }
+      setHistory(Array.from(items.values()));
       setHasMore(results[results.length - 1].length === 100);
     }).catch(err => {
       if (!stopped) setError(errorMessage(err));
@@ -180,8 +186,26 @@ export default function EditorialPage() {
     }
   }
 
+  const articles = new Map(edition?.contents.map(item => [item.id_content, item]));
+  const unassigned = edition?.unassigned_content_ids ?? [];
+
+  function renderArticle(id: string) {
+    const article = articles.get(id);
+    const url = safeSourceUrl(article?.source_url);
+    return (
+      <li key={id}>
+        <Link href={`/admin/content/edit/${encodeURIComponent(id)}`}
+          className="text-ratecard-blue underline" target="_blank" rel="noopener noreferrer">
+          {article?.title || id}
+        </Link>
+        {url && <a href={url} target="_blank" rel="noopener noreferrer"
+          className="ml-2 text-ratecard-blue underline">Voir la source</a>}
+        {article?.source_title && <span className="ml-2 text-slate-600">{article.source_title}</span>}
+      </li>
+    );
+  }
+
   function renderTopic(topic: Topic, rank: number) {
-    const articles = new Map(edition?.contents.map(item => [item.id_content, item]));
     return (
       <li key={rank} className="space-y-1 py-3">
         <h4 className="font-semibold">{rank + 1}. {topic.title}</h4>
@@ -190,29 +214,7 @@ export default function EditorialPage() {
         <details className="text-sm">
           <summary className="cursor-pointer">{topic.id_contents.length} contenus associés</summary>
           <ul className="list-disc pl-5">
-            {topic.id_contents.map(id => {
-              const article = articles.get(id);
-              const url = safeSourceUrl(article?.source_url);
-              return (
-                <li key={id}>
-                  <Link
-                    href={`/admin/content/edit/${encodeURIComponent(id)}`}
-                    className="text-ratecard-blue underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {article?.title || id}
-                  </Link>
-                  {url && (
-                    <a href={url} target="_blank" rel="noopener noreferrer"
-                      className="ml-2 text-ratecard-blue underline">Voir la source</a>
-                  )}
-                  {article?.source_title && (
-                    <span className="ml-2 text-slate-600">{article.source_title}</span>
-                  )}
-                </li>
-              );
-            })}
+            {topic.id_contents.map(renderArticle)}
           </ul>
         </details>
       </li>
@@ -261,6 +263,12 @@ export default function EditorialPage() {
         <section className={panel}>
           <h2 className="font-semibold">Relevé de pertinence · {edition.universe_label} · {edition.date}</h2>
           <p className="text-sm">{edition.content_count} contenus traités</p>
+          {unassigned.length > 0 && <details className="mt-3 rounded border border-amber-200 bg-amber-50 p-3">
+            <summary className="cursor-pointer font-medium">
+              {unassigned.length} contenus à classer sur {edition.content_count}
+            </summary>
+            <ul className="mt-2 list-disc pl-5">{unassigned.map(renderArticle)}</ul>
+          </details>}
           <ol className="divide-y">{edition.topics.slice(0, 3).map(renderTopic)}</ol>
           {edition.topics.length > 3 && <details>
             <summary className="cursor-pointer text-sm">Voir les {edition.topics.length - 3} autres sujets</summary>
@@ -269,7 +277,9 @@ export default function EditorialPage() {
         </section>
         <section className={panel}>
           <h2 className="font-semibold">Aperçu public</h2>
-          {(["a_retenir", "by_the_way"] as const).map(key => <div className="mt-4" key={key}>
+          {edition.preview_blocked ? <p className="mt-2 text-sm text-amber-800">
+            Aperçu suspendu. Des contenus restent à classer dans le relevé.
+          </p> : (["a_retenir", "by_the_way"] as const).map(key => <div className="mt-4" key={key}>
             <h3 className="font-semibold">{key === "a_retenir" ? "À retenir" : "By the way"}</h3>
             {edition.preview[key].length === 0 ? <p className="text-sm text-slate-600">Aucun sujet sélectionné.</p> :
               <ul className="space-y-2">{edition.preview[key].map((topic, index) => <li key={index}><strong>{topic.title}</strong><p>{topic.summary}</p></li>)}</ul>}
