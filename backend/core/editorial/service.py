@@ -1,7 +1,9 @@
 import json
 import logging
 import os
-from uuid import uuid4
+from datetime import datetime, timedelta
+from uuid import NAMESPACE_URL, uuid4, uuid5
+from zoneinfo import ZoneInfo
 
 from openai import APIStatusError, OpenAI
 from pydantic import BaseModel, ConfigDict, Field
@@ -213,15 +215,16 @@ def read_job(job_id):
     ]}
 
 
-def start(day, job_id):
+def start(day, job_id, *, missing_only=False, lots=None):
     existing = repo.job_header(job_id)
     if not existing:
-        lots = _lots(day)
+        if lots is None:
+            lots = _lots(day)
         if lots:
             with OpenAI(max_retries=0):
                 pass
         try:
-            repo.reserve(job_id, day, lots)
+            repo.reserve(job_id, day, lots, missing_only=missing_only)
         except Exception as exc:
             if not any(token in str(exc) for token in (
                 "EDITORIAL_BUSY", "concurrent update", "Could not serialize", "Transaction is aborted",
@@ -233,6 +236,44 @@ def start(day, job_id):
     if existing["date"] != day:
         raise Conflict("Cette clé de requête est déjà associée à une autre date.")
     return read_job(job_id)
+
+
+
+def bulk_dates(mode, selected_dates, today):
+    if mode == "current_month":
+        return [(today.replace(day=1) + timedelta(days=offset)).isoformat()
+                for offset in range(today.day - 1)]
+    if not selected_dates or any(day >= today for day in selected_dates):
+        raise ValueError("Sélectionnez uniquement des dates antérieures à aujourd’hui.")
+    return [day.isoformat() for day in sorted(set(selected_dates))]
+
+
+def start_bulk(mode, selected_dates, request_id):
+    today = datetime.now(ZoneInfo("Europe/Paris")).date()
+    dates = bulk_dates(mode, selected_dates, today)
+    results = []
+    for day in dates:
+        job_id = str(uuid5(NAMESPACE_URL, f"getcurator:editorial:bulk:{request_id}:{day}"))
+        try:
+            lots = _lots(day)
+            job = start(day, job_id, missing_only=True, lots=lots)
+            launched = {item["universe_id"] for item in job["universes"]}
+            covered = {
+                item["universe_id"]: item["status"] for item in repo.coverage(day)
+            } if len(launched) < len(lots) else {}
+            results.append({
+                "date": day,
+                "job": job if launched else None,
+                "already_done": sum(covered.get(lot["universe_id"]) == "completed"
+                                    for lot in lots if lot["universe_id"] not in launched),
+                "in_progress": sum(covered.get(lot["universe_id"]) in repo.ACTIVE
+                                   for lot in lots if lot["universe_id"] not in launched),
+                "no_content": not lots and not launched,
+            })
+        except Exception:
+            logger.exception("Réservation Editorial bulk interrompue pour %s", day)
+            results.append({"date": day, "error": "Réservation indisponible. Réessayez le lot."})
+    return results
 
 
 def refresh(job_id):
