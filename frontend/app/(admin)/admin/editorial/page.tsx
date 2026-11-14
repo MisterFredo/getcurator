@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import EditorialBulk from "@/components/admin/editorial/EditorialBulk";
 import { useEffect, useRef, useState } from "react";
 import {
   listDailyEditions, readDailyEdition, readDailyJob, refreshDailyJob, startDailyJob,
@@ -32,10 +33,13 @@ function safeSourceUrl(value?: string | null) {
   }
 }
 
-function Calendar({ history, date, onSelect }: {
+function Calendar({ history, date, onSelect, selected, toggle, lastDay }: {
   history: EditionSummary[];
   date: string;
   onSelect: (day: string) => void;
+  selected: string[];
+  toggle: (day: string) => void;
+  lastDay: string;
 }) {
   const days = new Map<string, EditionSummary[]>();
   for (const item of history) {
@@ -64,13 +68,19 @@ function Calendar({ history, date, onSelect }: {
             const day = `${month}-${String(index + 1).padStart(2, "0")}`;
             const count = days.get(day)?.length ?? 0;
             return (
-              <button key={day} type="button" aria-pressed={date === day}
+              <div key={day} className="relative">
+              <button type="button" aria-pressed={date === day}
                 aria-label={`${day} · ${count} éditions chargées`}
                 onClick={() => onSelect(day)}
-                className={`flex min-h-12 flex-col items-center rounded border py-1 text-sm ${count ? "bg-blue-50 font-semibold text-ratecard-blue" : "text-slate-500"} ${date === day ? "border-ratecard-blue" : "border-slate-200"}`}>
+                className={`flex w-full min-h-12 flex-col items-center rounded border py-1 text-sm ${count ? "bg-blue-50 font-semibold text-ratecard-blue" : "text-slate-500"} ${date === day ? "border-ratecard-blue" : "border-slate-200"}`}>
                 {index + 1}
                 {count > 0 && <span className="text-xs">{count} éd.</span>}
               </button>
+              {lastDay && day <= lastDay && <input type="checkbox"
+                className="absolute right-1 top-1"
+                aria-label={`Inclure le ${day} dans le lot`}
+                checked={selected.includes(day)} onChange={() => toggle(day)} />}
+              </div>
             );
           })}
         </div>
@@ -81,6 +91,8 @@ function Calendar({ history, date, onSelect }: {
 
 export default function EditorialPage() {
   const [date, setDate] = useState("");
+  const [lastDay, setLastDay] = useState("");
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [job, setJob] = useState<DailyJob>();
   const [history, setHistory] = useState<EditionSummary[]>([]);
   const [pages, setPages] = useState(1);
@@ -96,9 +108,14 @@ export default function EditorialPage() {
   const active = activeStatuses.has(job?.status.toLowerCase() ?? "");
 
   useEffect(() => {
-    setDate(yesterdayInParis());
+    const yesterday = yesterdayInParis();
+    setLastDay(yesterday);
+    setDate(yesterday);
     const id = new URLSearchParams(window.location.search).get("job");
-    if (id) void readDailyJob(id).then(setJob).catch(err => setError(errorMessage(err)));
+    if (id) void readDailyJob(id).then(item => {
+      setJob(item);
+      if (item.date) setDate(item.date);
+    }).catch(err => setError(errorMessage(err)));
   }, []);
 
   useEffect(() => {
@@ -246,7 +263,14 @@ export default function EditorialPage() {
       <section className={panel}>
         <h2 className="mb-3 font-semibold">Productions quotidiennes</h2>
         <div className="space-y-5">
-          <Calendar history={history} date={date} onSelect={selectDate} />
+          <EditorialBulk dates={selectedDates} onUpdate={() => setRevision(value => value + 1)} />
+          <Calendar history={history} date={date} onSelect={selectDate} selected={selectedDates}
+            lastDay={lastDay} toggle={day => setSelectedDates(current =>
+              current.includes(day) ? current.filter(item => item !== day) : [...current, day]
+            )} />
+          {selectedDates.length > 0 && <button className={button} onClick={() => setSelectedDates([])}>
+            Effacer la sélection
+          </button>}
           {historyLoading && <p role="status" className="text-sm">Chargement du calendrier…</p>}
           {hasMore && <button className={button} disabled={historyLoading}
             onClick={() => setPages(value => value + 1)}>Charger les éditions plus anciennes</button>}
