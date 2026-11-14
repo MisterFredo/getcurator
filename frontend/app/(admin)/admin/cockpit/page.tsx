@@ -12,6 +12,7 @@ import QualityPanel from "@/components/admin/cockpit/QualityPanel";
 import ResultsPanel from "@/components/admin/cockpit/ResultsPanel";
 import TranslationBackfillOperation from "@/components/admin/cockpit/TranslationBackfillOperation";
 import CompanyReportBatch from "@/components/admin/company/CompanyReportBatch";
+import EditorialBulk from "@/components/admin/editorial/EditorialBulk";
 
 const tabs = [
   { id: "ensemble", label: "Vue d’ensemble" },
@@ -77,6 +78,10 @@ export default function CockpitPage() {
       {tab === "collecte" && <DiscoveryOperationsPanel key="collection" />}
       {tab === "production" && (
         <div className="space-y-5">
+          <div className="space-y-2">
+            <h2 className="font-semibold">Quotidien Editorial</h2>
+            <EditorialBulk />
+          </div>
           <CompanyReportBatch />
           <OperationsPanel section="production" />
           <NumbersOperationsPanel />
