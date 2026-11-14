@@ -16,7 +16,9 @@ instruction. Regroupe les reprises d'un même événement et les lectures qui
 portent directement sur ses suites. Donne une ligne par sujet concret. Un
 signal isolé peut être important. Affecte chaque article à un seul sujet, y
 compris les sujets de faible pertinence. Avant de répondre, vérifie que
-chaque référence du lot figure exactement une fois.
+chaque référence du lot figure exactement une fois. Chaque sujet doit avoir
+un titre et un résumé non vides, ainsi qu'au moins une référence. Si un sujet
+ne mérite pas de mise en avant, donne-lui une note basse.
 Pour chaque sujet, écris un titre précis, un résumé factuel de l'apport du
 jour et une justification brève du classement. Préserve les incertitudes.
 Plusieurs reprises d'une annonce ne constituent pas plusieurs faits.
@@ -71,9 +73,11 @@ def _result(text, contents, *, indexed=False):
     }
     assigned = set()
     topics = []
+    discarded = 0
     for topic in sorted(report.topics, key=lambda topic: -topic.relevance):
         if not topic.title.strip() or not topic.summary.strip() or not topic.id_contents:
-            raise ValueError("Un sujet est incomplet.")
+            discarded += 1
+            continue
         refs = list(dict.fromkeys(topic.id_contents))
         invalid = [ref for ref in refs if ref not in by_ref]
         if invalid:
@@ -85,9 +89,12 @@ def _result(text, contents, *, indexed=False):
         assigned.update(ids)
         topics.append({**topic.model_dump(), "id_contents": ids})
 
+    if discarded:
+        logger.warning("Editorial : %d sujets incomplets écartés", discarded)
+
     unassigned = [item["id_content"] for item in contents if item["id_content"] not in assigned]
     # Allow a single omission on lots of at least 20 articles (at most 5%).
-    preview_blocked = len(unassigned) > 1 or len(unassigned) * 20 > len(contents)
+    preview_blocked = not topics or len(unassigned) > 1 or len(unassigned) * 20 > len(contents)
     return {
         "topics": topics,
         "unassigned_content_ids": unassigned,
