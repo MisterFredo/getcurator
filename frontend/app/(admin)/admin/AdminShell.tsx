@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Archive, BarChart3, BookOpen, Brain, Building2, Database, Gauge,
   Globe, Languages, Layers, LayoutTemplate, Link as LinkIcon,
-  Library, Presentation, Link2, Puzzle, Sparkles, Tags, Users,
+  Library, Newspaper, Presentation, Link2, Puzzle, Sparkles, Tags, Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -50,6 +50,7 @@ const sections: NavSection[] = [
     { href: "/admin/knowledge", label: "Knowledge", icon: Brain },
     { href: "/admin/touch", label: "GetCurator Touch", icon: Sparkles },
     { href: "/admin/production", label: "Productions", icon: Presentation },
+    { href: "/admin/editorial", label: "Editorial", icon: Newspaper },
     { href: "/admin/digest", label: "Digest", icon: LayoutTemplate },
   ] },
   { title: "Administration", items: [
