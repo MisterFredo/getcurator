@@ -1,5 +1,6 @@
 import logging
 from datetime import date as CalendarDate
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -29,6 +30,13 @@ class StartRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     date: CalendarDate
     request_id: UUID
+
+
+class BulkRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+    mode: Literal["selected_dates", "current_month"]
+    dates: list[CalendarDate] = Field(default_factory=list, max_length=31)
 
 
 class RecoverRequest(BaseModel):
@@ -63,6 +71,16 @@ def start_daily_job(payload: StartRequest, background_tasks: BackgroundTasks):
     if job["status"] == "in_progress":
         background_tasks.add_task(submit_background, job["job_id"])
     return {"job": job}
+
+
+@router.post("/daily-bulk-jobs", status_code=202)
+def start_daily_bulk(payload: BulkRequest, background_tasks: BackgroundTasks):
+    results = action(service.start_bulk, payload.mode, payload.dates, str(payload.request_id))
+    for result in results:
+        job = result.get("job")
+        if job and job["status"] == "in_progress":
+            background_tasks.add_task(submit_background, job["job_id"])
+    return {"results": results}
 
 
 @router.get("/daily-jobs/{job_id}")
