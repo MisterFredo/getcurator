@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   listDailyEditions, readDailyEdition, readDailyJob, refreshDailyJob, startDailyJob,
@@ -16,15 +17,6 @@ function yesterdayInParis() {
   const date = new Date(`${today}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() - 1);
   return date.toISOString().slice(0, 10);
-}
-
-function sourceLink(value?: string) {
-  try {
-    const url = new URL(value ?? "");
-    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export default function EditorialPage() {
@@ -132,8 +124,21 @@ export default function EditorialPage() {
           <ul className="list-disc pl-5">
             {topic.id_contents.map(id => {
               const article = articles.get(id);
-              const url = sourceLink(article?.source_url);
-              return <li key={id}>{url ? <a className="underline" href={url} target="_blank" rel="noreferrer">{article?.title}</a> : article?.title ?? id}</li>;
+              return (
+                <li key={id}>
+                  <Link
+                    href={`/admin/content/edit/${encodeURIComponent(id)}`}
+                    className="text-ratecard-blue underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {article?.title || id}
+                  </Link>
+                  {article?.source_title && (
+                    <span className="ml-2 text-slate-600">{article.source_title}</span>
+                  )}
+                </li>
+              );
             })}
           </ul>
         </details>
