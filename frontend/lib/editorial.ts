@@ -42,8 +42,8 @@ export async function refreshDailyJob(id: string): Promise<DailyJob> {
   return (await api.post(`${jobPath(id)}/refresh`, {})).job;
 }
 
-export async function listDailyEditions(date: string): Promise<EditionSummary[]> {
-  return (await api.get(`${root}/daily-editions?date=${encodeURIComponent(date)}`)).editions;
+export async function listDailyEditions(offset = 0): Promise<EditionSummary[]> {
+  return (await api.get(`${root}/daily-editions?limit=100&offset=${offset}`)).editions;
 }
 
 export async function readDailyEdition(id: string): Promise<Edition> {
