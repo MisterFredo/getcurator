@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from collections import Counter
 from datetime import datetime, timedelta
 from uuid import NAMESPACE_URL, uuid4, uuid5
 from zoneinfo import ZoneInfo
@@ -73,8 +74,8 @@ def _result(text, contents, *, indexed=False):
         index if indexed else item["id_content"]: item["id_content"]
         for index, item in enumerate(contents, start=1)
     }
-    assigned = set()
-    topics = []
+    candidates = []
+    assignments = Counter()
     discarded = 0
     for topic in sorted(report.topics, key=lambda topic: -topic.relevance):
         if not topic.title.strip() or not topic.summary.strip() or not topic.id_contents:
@@ -85,11 +86,20 @@ def _result(text, contents, *, indexed=False):
         if invalid:
             raise ValueError(f"Références hors lot : {invalid[:10]}")
         ids = [by_ref[ref] for ref in refs]
-        overlap = assigned.intersection(ids)
-        if overlap:
-            raise ValueError(f"{len(overlap)} contenus associés à plusieurs sujets.")
-        assigned.update(ids)
-        topics.append({**topic.model_dump(), "id_contents": ids})
+        assignments.update(ids)
+        candidates.append({**topic.model_dump(), "id_contents": ids})
+
+    ambiguous = {content_id for content_id, count in assignments.items() if count > 1}
+    topics = []
+    assigned = set()
+    for topic in candidates:
+        ids = [content_id for content_id in topic["id_contents"] if content_id not in ambiguous]
+        if ids:
+            assigned.update(ids)
+            topics.append({**topic, "id_contents": ids})
+
+    if ambiguous:
+        logger.warning("Editorial : %d contenus associés à plusieurs sujets, à classer", len(ambiguous))
 
     if discarded:
         logger.warning("Editorial : %d sujets incomplets écartés", discarded)
