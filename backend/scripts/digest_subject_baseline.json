@@ -1,0 +1,50 @@
+{
+  "Marion": {
+    "MUST": [
+      "a5807ef4-6212-45f1-9ccc-cd2e8a493645",
+      "6c4889f5-3960-42ed-84a2-f1c7016c771a",
+      "e722b0de-9738-44bc-8fa1-57ba7b136c3f",
+      "f5e94ce8-fe9f-4f4b-8178-86ba7830fc26",
+      "0136b949-78ba-4e9f-abbc-e4ea46739837",
+      "9d83a480-d623-4606-9ab2-a6c1bbb09864",
+      "34c3fb6b-344e-4071-abbf-16d54d851ec4"
+    ],
+    "NICE": [
+      "53041186-467c-4ea1-bc8e-43533842fa0d",
+      "e7d37c71-8007-437d-8320-5c3653b99164",
+      "62c8b008-ecde-4edc-8515-9acc424b7e0f",
+      "624deac8-2d24-4f39-9bf9-312641b48e12",
+      "b31b2c1a-b9c8-4dfa-94bc-7bf346857400"
+    ]
+  },
+  "Agathe": {
+    "MUST": [
+      "f5e94ce8-fe9f-4f4b-8178-86ba7830fc26",
+      "95f6dfa7-eadf-47a8-99b6-a4d39cc5b42a",
+      "e3ae957f-b44d-4fb2-a6cf-b8c86432af5c",
+      "5f99ca92-06cd-4736-a26f-2240e07d2ed0"
+    ],
+    "NICE": [
+      "b8e5f570-72d8-41a8-a904-0866d90741b2",
+      "7df64a23-ba70-4ed9-bd59-5ea3cc13cc2d",
+      "5fad8562-cd43-4409-adfb-43b7bb27e7b6",
+      "62c8b008-ecde-4edc-8515-9acc424b7e0f",
+      "b31b2c1a-b9c8-4dfa-94bc-7bf346857400"
+    ]
+  },
+  "Adrien": {
+    "MUST": [
+      "0cb4b675-1fd3-477e-9d0b-5602ec20f4bb",
+      "ede21f9c-61d3-4595-9691-7fb47b268de2",
+      "1315b0bc-a4fc-4c82-9aae-f5ab6ad7bd1f",
+      "73206bd3-8582-45af-b4bd-c0e4eecbc9b1"
+    ],
+    "NICE": [
+      "a5807ef4-6212-45f1-9ccc-cd2e8a493645",
+      "6fa952d1-f795-4689-afc5-95ec75c15f4e",
+      "c09c00bb-2cf3-40a7-b901-382d78c7b353",
+      "5fad8562-cd43-4409-adfb-43b7bb27e7b6",
+      "7f7b3ced-14e2-4a7a-a661-47318e193dc2"
+    ]
+  }
+}
