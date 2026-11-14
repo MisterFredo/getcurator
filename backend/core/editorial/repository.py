@@ -19,15 +19,16 @@ UNIVERSE_LABEL, CONTENT_COUNT, STATUS, RESPONSE_ID, ERROR
 def load_contents(day):
     return query_bq(f"""
         SELECT c.id_content, c.title, c.excerpt, c.source_url, c.source_title,
-          c.signal_analytique, CAST(c.published_at AS STRING) AS published_at,
+          c.signal_analytique,
+          CAST(COALESCE(c.source_date, DATE(c.published_at, 'Europe/Paris')) AS STRING)
+            AS publication_date,
           s.universe_id, s.universe_label
         FROM `{CONTENT}` c
         LEFT JOIN `{SOURCE_UNIVERSE}` s
           ON s.source_id = CAST(c.source_id AS STRING)
         WHERE c.status = 'PUBLISHED' AND c.is_active IS TRUE
-          AND c.created_at >= TIMESTAMP(DATE(@day), 'Europe/Paris')
-          AND c.created_at < TIMESTAMP(DATE_ADD(DATE(@day), INTERVAL 1 DAY), 'Europe/Paris')
-        ORDER BY c.created_at, c.id_content, s.universe_id
+          AND COALESCE(c.source_date, DATE(c.published_at, 'Europe/Paris')) = DATE(@day)
+        ORDER BY c.id_content, s.universe_id
     """, {"day": day}) or []
 
 
