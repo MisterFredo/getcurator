@@ -14,7 +14,7 @@ export type Topic = {
   id_contents: string[];
 };
 
-export type Article = { id_content: string; title: string; source_url?: string };
+export type Article = { id_content: string; title: string; source_title?: string | null; source_url?: string | null };
 export type Edition = EditionSummary & {
   topics: Topic[];
   contents: Article[];
