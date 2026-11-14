@@ -18,6 +18,8 @@ export type Article = { id_content: string; title: string; source_title?: string
 export type Edition = EditionSummary & {
   topics: Topic[];
   contents: Article[];
+  unassigned_content_ids?: string[];
+  preview_blocked?: boolean;
   preview: { a_retenir: Topic[]; by_the_way: Topic[] };
 };
 
