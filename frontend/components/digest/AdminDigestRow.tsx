@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 import {
   useState,
@@ -28,6 +29,7 @@ import type {
 
 type DigestAction =
   | "generate"
+  | "generate-subjects"
   | "send"
   | "delete";
 
@@ -51,6 +53,8 @@ export default function AdminDigestRow({
   onChanged,
 
 }: Props) {
+
+  const router = useRouter();
 
   const {
     openRightDrawer,
@@ -179,6 +183,27 @@ export default function AdminDigestRow({
   /* =====================================================
      PREVIEW
   ===================================================== */
+
+  async function handleGenerateSubjects() {
+    if (loading) return;
+    setLoadingAction("generate-subjects");
+    try {
+      const periodStart = digest.period_start.slice(0, 10);
+      const result = await api.post("/digest/admin/subject-digests", {
+        user_id: digest.user_id,
+        period_start: periodStart,
+      });
+      const params = new URLSearchParams({
+        period_start: periodStart,
+        digest_id: result.document.id,
+      });
+      router.push("/admin/digest/subjects?" + params.toString());
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Impossible de générer le Digest par sujets.");
+    } finally {
+      setLoadingAction(null);
+    }
+  }
 
   function handlePreview() {
 
@@ -531,7 +556,7 @@ export default function AdminDigestRow({
             >
               {loadingAction === "generate"
                 ? "Generating..."
-                : "Generate"}
+                : "Générer le standard"}
             </button>
 
           )}
@@ -567,14 +592,14 @@ export default function AdminDigestRow({
 
           )}
 
-          {canPreview && (
-            <Link
-              href={`/admin/digest/digests/${encodeURIComponent(digest.id)}`}
-              className="whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
-            >
-              Aperçu par sujets
-            </Link>
-          )}
+          <button
+            type="button"
+            disabled={loading}
+            onClick={handleGenerateSubjects}
+            className="whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
+          >
+            {loadingAction === "generate-subjects" ? "Génération…" : "Générer par sujets"}
+          </button>
 
           {canSend && (
 
