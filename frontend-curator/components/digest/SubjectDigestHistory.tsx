@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Badge, sourceLink } from "./SubjectDigestDetails";
 
 type Choice = -1 | 0 | 1;
 type DigestItem = {
@@ -19,8 +20,8 @@ type Card = {
   title: string;
   development: string;
   reason: string;
-  badges?: string[];
-  contents: { id: string; title: string }[];
+  badges?: Badge[];
+  contents: { id: string; title: string; source_title?: string; source_url?: string }[];
 };
 type Document = {
   profile: { name: string; company?: string; role?: string };
@@ -81,10 +82,12 @@ function SubjectCard({ card, digestId }: { card: Card; digestId: string }) {
         </div>
       </div>
       {!!card.badges?.length && <div className="flex flex-wrap gap-1.5">
-        {card.badges.map(badge => <span key={badge} className="rounded-full bg-slate-100 px-2 py-1 text-xs">{badge}</span>)}
+        {card.badges.map((badge, index) => <Badge key={index} badge={badge} />)}
       </div>}
       <p className="text-sm leading-relaxed">{card.development}</p>
-      <p className="border-l-2 border-emerald-600 pl-3 text-sm leading-relaxed text-slate-700">{card.reason}</p>
+      <p className="border-l-2 border-emerald-600 pl-3 text-sm leading-relaxed text-slate-700">
+        <strong>Why it matters</strong><br />{card.reason}
+      </p>
       <details className="text-sm">
         <summary className="cursor-pointer font-medium text-emerald-700">Supporting content ({card.contents.length})</summary>
         <ul className="mt-2 divide-y">
@@ -92,8 +95,16 @@ function SubjectCard({ card, digestId }: { card: Card; digestId: string }) {
             <li key={content.id} className="py-2">
               <Link href={"/feed?analysis_id=" + encodeURIComponent(content.id)}
                 target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">
-                {content.title} ↗
+                {content.title} · Read on GetCurator ↗
               </Link>
+              {(content.source_title || sourceLink(content.source_url)) && (
+                <div className="text-slate-600">
+                  Source: {sourceLink(content.source_url) ? (
+                    <a href={sourceLink(content.source_url)} target="_blank" rel="noopener noreferrer"
+                      className="underline">{content.source_title || "Original source"} ↗</a>
+                  ) : content.source_title}
+                </div>
+              )}
             </li>
           ))}
         </ul>
