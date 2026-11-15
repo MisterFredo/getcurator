@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import DigestPreview from "@/components/digest/DigestPreview";
+import { api } from "@/lib/api";
 import { getDigest } from "@/lib/digest";
 import type { Digest } from "@/types/digest";
 
@@ -24,12 +25,7 @@ type SubjectPreview = {
   cards: SubjectCard[];
 };
 
-const baseUrl = (
-  process.env.NEXT_PUBLIC_API_URL || "https://ratecard.onrender.com/api"
-).replace(/\/+$/, "");
-
 function SubjectPreviewPanel({ digestId }: { digestId: string }) {
-  const [key, setKey] = useState("");
   const [preview, setPreview] = useState<SubjectPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,16 +35,11 @@ function SubjectPreviewPanel({ digestId }: { digestId: string }) {
     setError("");
     setPreview(null);
     try {
-      const response = await fetch(
-        baseUrl + "/digest/admin/digests/" + encodeURIComponent(digestId) + "/subject-preview",
-        { method: "POST", headers: { "x-digest-pilot-key": key }, cache: "no-store" },
+      const data = await api.post(
+        "/digest/admin/digests/" + encodeURIComponent(digestId) + "/subject-preview",
+        {},
       );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(typeof data.detail === "string" ? data.detail : "Aperçu indisponible.");
-      }
       setPreview(data);
-      setKey("");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Aperçu indisponible.");
     } finally {
@@ -59,25 +50,10 @@ function SubjectPreviewPanel({ digestId }: { digestId: string }) {
   return (
     <section className="space-y-4 rounded-lg border bg-white p-5">
       <h2 className="text-lg font-semibold">Digest par sujets</h2>
-      <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
-        event.preventDefault();
-        if (key && !loading) void generate();
-      }}>
-        <label className="grid gap-1 text-sm">
-          Clé du pilote
-          <input
-            type="password"
-            autoComplete="off"
-            value={key}
-            onChange={event => setKey(event.target.value)}
-            className="rounded border px-3 py-2"
-          />
-        </label>
-        <button type="submit" disabled={!key || loading}
-          className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50">
-          {loading ? "Sélection en cours…" : "Générer l’aperçu par sujets"}
-        </button>
-      </form>
+      <button type="button" disabled={loading} onClick={generate}
+        className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50">
+        {loading ? "Sélection en cours…" : "Générer l’aperçu par sujets"}
+      </button>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {preview && (
         <div className="space-y-4">
