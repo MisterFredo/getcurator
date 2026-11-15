@@ -29,15 +29,33 @@ def list_subject_recipients(audience):
     """, params={"ids": ids}) or []
 
 
-def list_subject_digests(start):
+def list_subject_digests(start=None, limit=200, offset=0):
     return query_bq(sql=f"""
         SELECT ID AS id, USER_ID AS user_id,
                JSON_VALUE(DOCUMENT_JSON, '$.profile.name') AS name,
-               CAST(GENERATED_AT AS STRING) AS generated_at
+               CAST(GENERATED_AT AS STRING) AS generated_at,
+               CAST(PERIOD_START AS STRING) AS period_start,
+               CAST(DATE_SUB(PERIOD_END, INTERVAL 1 DAY) AS STRING) AS period_end
         FROM `{TABLE}`
-        WHERE PERIOD_START = DATE(@start)
-        ORDER BY name, user_id
-    """, params={"start": start.isoformat()}) or []
+        WHERE (@start = '' OR PERIOD_START = SAFE_CAST(@start AS DATE))
+        ORDER BY PERIOD_START DESC, name, user_id
+        LIMIT @limit OFFSET @offset
+    """, params={
+        "start": start.isoformat() if start else "", "limit": limit, "offset": offset,
+    }) or []
+
+
+def list_subject_digest_status(pairs):
+    if not pairs:
+        return []
+    return query_bq(sql=f"""
+        SELECT DISTINCT t.ID AS id, t.USER_ID AS user_id,
+               CAST(t.PERIOD_START AS STRING) AS period_start
+        FROM `{TABLE}` t
+        JOIN UNNEST(JSON_QUERY_ARRAY(PARSE_JSON(@pairs))) p
+          ON t.USER_ID = JSON_VALUE(p, '$.user_id')
+         AND t.PERIOD_START = SAFE_CAST(JSON_VALUE(p, '$.period_start') AS DATE)
+    """, params={"pairs": json.dumps(pairs)}) or []
 
 
 def read_subject_digest(digest_id):
