@@ -148,13 +148,17 @@ def build_subject_preview(digest):
         raise PreviewUnavailable("Campagne introuvable.")
     start = campaign.period_start.date() if hasattr(campaign.period_start, "date") else campaign.period_start
     end = campaign.period_end.date() if hasattr(campaign.period_end, "date") else campaign.period_end
+    return build_subject_selection(digest.user_id, start, end)
+
+
+def build_subject_selection(user_id, start, end):
     editions = _editions(start.isoformat(), end.isoformat())
     if not editions:
         raise PreviewUnavailable("Aucun Édito terminé sur cette période.")
 
-    profile = load_profile(user_id=digest.user_id)
+    profile = load_profile(user_id=user_id)
     context = build_digest_candidate_context(
-        profile, get_user_preferences_detailed(digest.user_id) or {},
+        profile, get_user_preferences_detailed(user_id) or {},
     )
     subjects = _subjects(editions)
     ids = list(dict.fromkeys(content_id for subject in subjects for content_id in subject["ids"]))
@@ -170,7 +174,7 @@ def build_subject_preview(digest):
         candidates[ref] = {**subject, "ids": valid_ids}
 
     try:
-        feedback = build_user_feedback_context(user_id=digest.user_id, language=profile.language)
+        feedback = build_user_feedback_context(user_id=user_id, language=profile.language)
     except Exception:
         logger.exception("Impossible de charger le feedback du pilote Digest.")
         feedback = None
@@ -220,6 +224,9 @@ def build_subject_preview(digest):
             "title": decision.title,
             "development": decision.development,
             "reason": decision.reason,
+            "badges": list(dict.fromkeys(
+                label for content_id in card_ids for label in evidence[content_id]["favorites"]
+            ))[:6],
             "contents": [
                 {"id": content_id, "title": evidence[content_id]["title"]}
                 for content_id in card_ids
@@ -228,5 +235,6 @@ def build_subject_preview(digest):
     return {
         "edition_count": len(editions), "candidate_count": len(candidates),
         "unavailable_content_count": len(set(ids) - by_id.keys()),
+        "language": profile.language,
         "cards": cards,
     }
