@@ -438,6 +438,12 @@ export default function DigestPage() {
                   )}
         
                   <Link
+                    href="/admin/digest/subjects"
+                    className="rounded-md bg-ratecard-blue px-4 py-2 text-sm font-medium text-white"
+                  >
+                    Digests par sujets
+                  </Link>
+                  <Link
                     href="/admin/digest/campaigns"
                     className="
                       rounded-md
