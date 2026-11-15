@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { api } from "@/lib/api";
 import {
   useCallback,
   useEffect,
@@ -42,6 +43,29 @@ export default function DigestPage() {
   ] = useState<
     DigestHistoryItem[]
   >([]);
+  const [subjectStatuses, setSubjectStatuses] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    setSubjectStatuses({});
+    if (!digests.length) return;
+    api.post("/digest/admin/subject-digests/status", {
+      pairs: digests.map(digest => ({
+        user_id: digest.user_id,
+        period_start: digest.period_start.slice(0, 10),
+      })),
+    })
+      .then(result => {
+        if (!active) return;
+        const statuses: Record<string, string> = {};
+        for (const entry of result.digests) {
+          statuses[entry.user_id + "/" + entry.period_start] = entry.id;
+        }
+        setSubjectStatuses(statuses);
+      })
+      .catch(error => console.error("Statuts des Digests par sujets indisponibles", error));
+    return () => { active = false; };
+  }, [digests]);
 
   const [
     total,
@@ -443,6 +467,10 @@ export default function DigestPage() {
                   >
                     Digests par sujets
                   </Link>
+                  <Link href="/admin/digest/subjects/history"
+                    className="rounded-md border bg-white px-4 py-2 text-sm font-medium text-gray-700">
+                    Historique par sujets
+                  </Link>
                   <Link
                     href="/admin/digest/campaigns"
                     className="
@@ -547,7 +575,10 @@ export default function DigestPage() {
       <AdminDigestList
 
         digests={
-          digests
+          digests.map(digest => ({
+            ...digest,
+            subjectDigestId: subjectStatuses[digest.user_id + "/" + digest.period_start.slice(0, 10)],
+          }))
         }
 
         loading={
