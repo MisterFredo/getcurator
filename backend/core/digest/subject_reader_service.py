@@ -2,6 +2,7 @@ import hashlib
 import json
 
 from core.digest.subject_production_service import LOCK, TABLE
+from core.digest.subject_sources import add_subject_source_names
 from utils.bigquery_utils import query_bq
 
 FEEDBACK = f"{TABLE}_FEEDBACK"
@@ -32,7 +33,7 @@ def read_reader_subject_digest(user_id, digest_id):
     """, params={"id": digest_id, "user_id": user_id}) or []
     if not rows:
         return None
-    document = json.loads(rows[0]["document"])
+    document = add_subject_source_names(json.loads(rows[0]["document"]))
     feedback = query_bq(sql=f"""
         SELECT SUBJECT_KEY AS subject_key, VALUE AS value
         FROM `{FEEDBACK}`
