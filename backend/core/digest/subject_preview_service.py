@@ -88,11 +88,28 @@ def _evidence(content, context):
     candidate = _build_candidate(content, context)
     return {
         "title": candidate.title or candidate.source_title or "Sans titre",
+        "source_title": candidate.source_title,
         "types": candidate.selection_sources,
         "favorites": candidate.matched_favorites,
         "watch": candidate.matched_watch_instructions,
         "terms": candidate.matched_profile_terms,
     }
+
+
+def _subject_badges(card_ids, contents, context):
+    badges = {}
+    for content_id in card_ids:
+        content = contents[content_id]
+        for kind, entities, favorites in (
+            ("company", content.companies, context.favorite_company_ids | context.profile_company_ids),
+            ("solution", content.solutions, context.favorite_solution_ids | context.profile_solution_ids),
+            ("topic", content.topics, context.favorite_topic_ids | context.profile_topic_ids),
+        ):
+            for entity in entities or []:
+                label = entity.get("name") or entity.get("label") or entity.get("canonical_label")
+                if entity.get(f"id_{kind}") in favorites and label:
+                    badges[(kind, label)] = {"type": kind, "label": label}
+    return list(badges.values())[:6]
 
 
 def _select(payload):
@@ -155,6 +172,10 @@ def build_subject_selection(user_id, start, end):
     editions = _editions(start.isoformat(), end.isoformat())
     if not editions:
         raise PreviewUnavailable("Aucun Édito terminé sur cette période.")
+    source_metadata = {
+        item["id_content"]: item
+        for edition in editions for item in json.loads(edition["contents"])
+    }
 
     profile = load_profile(user_id=user_id)
     context = build_digest_candidate_context(
@@ -224,11 +245,14 @@ def build_subject_selection(user_id, start, end):
             "title": decision.title,
             "development": decision.development,
             "reason": decision.reason,
-            "badges": list(dict.fromkeys(
-                label for content_id in card_ids for label in evidence[content_id]["favorites"]
-            ))[:6],
+            "badges": _subject_badges(card_ids, by_id, context),
             "contents": [
-                {"id": content_id, "title": evidence[content_id]["title"]}
+                {
+                    "id": content_id,
+                    "title": evidence[content_id]["title"],
+                    "source_title": source_metadata[content_id].get("source_title") or evidence[content_id]["source_title"],
+                    "source_url": source_metadata[content_id].get("source_url") or getattr(by_id[content_id], "source_url", None),
+                }
                 for content_id in card_ids
             ],
         })
