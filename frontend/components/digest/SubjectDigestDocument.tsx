@@ -10,7 +10,7 @@ type SubjectCard = {
   development: string;
   reason: string;
   badges?: Badge[];
-  contents: { id: string; title: string; source_title?: string; source_url?: string }[];
+  contents: { id: string; title: string; source_name?: string; source_title?: string; source_url?: string }[];
 };
 export type SubjectDigest = {
   id: string;
@@ -114,12 +114,12 @@ export default function SubjectDigestDocument({ digest }: { digest: SubjectDiges
                             target="_blank" rel="noopener noreferrer">
                             {content.title} · Read on GetCurator ↗
                           </a>
-                          {(content.source_title || sourceLink(content.source_url)) && (
+                          {(content.source_name || content.source_title || sourceLink(content.source_url)) && (
                             <div className="text-sm text-slate-600">
                               Source: {sourceLink(content.source_url) ? (
                                 <a href={sourceLink(content.source_url)} target="_blank" rel="noopener noreferrer"
-                                  className="underline">{content.source_title || "Original source"} ↗</a>
-                              ) : content.source_title}
+                                  className="underline">{content.source_name || content.source_title || "Original source"} ↗</a>
+                              ) : (content.source_name || content.source_title)}
                             </div>
                           )}
                         </li>
