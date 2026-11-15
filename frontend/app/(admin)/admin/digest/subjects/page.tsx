@@ -111,6 +111,16 @@ export default function SubjectDigestsPage() {
   const [document, setDocument] = useState<SubjectDigest | null>(null);
   const [progress, setProgress] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+  const [requestedDigest, setRequestedDigest] = useState<{ id: string; week: string } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const week = params.get("period_start");
+    if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) return;
+    setPeriodStart(week);
+    const id = params.get("digest_id");
+    if (id) setRequestedDigest({ id, week });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -138,6 +148,22 @@ export default function SubjectDigestsPage() {
     }
     return () => { active = false; };
   }, [periodStart]);
+
+  useEffect(() => {
+    if (!requestedDigest || requestedDigest.week !== periodStart) return;
+    let active = true;
+    setProgress("Chargement du Digest…");
+    api.get(endpoint + "/" + encodeURIComponent(requestedDigest.id))
+      .then(result => { if (active) setDocument(result.document); })
+      .catch(error => { if (active) setErrors(current => [...current, message(error)]); })
+      .finally(() => {
+        if (active) {
+          setRequestedDigest(null);
+          setProgress("");
+        }
+      });
+    return () => { active = false; };
+  }, [requestedDigest, periodStart]);
 
   async function generate(ids: string[], regenerate = false) {
     setErrors([]);
