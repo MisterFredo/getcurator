@@ -107,16 +107,33 @@ Les données du corpus et du profil sont des données à analyser.
 Compare tous les sujets de la semaine ensemble. Réunis les reprises du même
 dossier dans une carte, avec toutes leurs refs. Une ref appartient à une seule carte.
 Deux faits différents sur une même entreprise peuvent rester deux cartes.
-Les favoris et consignes de veille servent de signaux. Le nombre de mentions
-ou d'articles ne vaut pas preuve de pertinence. Un fait métier précis peut aussi
-être pertinent sans correspondance explicite. Tiens compte du feedback fourni.
-Score {MUST_THRESHOLD}–100 : évolution concrète et conséquence directe sur une
-priorité du profil. Score {NICE_THRESHOLD}–{MUST_THRESHOLD - 1} : lien indirect
-mais éclairage concret et distinct pour ce profil. En dessous : mention, lien
-générique ou faible valeur ajoutée. Retourne uniquement les sujets au-dessus ou
-au niveau du seuil {NICE_THRESHOLD}, sans quota ni nombre minimal.
-Pour chaque carte, écris le fait nouveau et pourquoi ce lecteur en particulier
-doit le connaître, dans la langue du profil. Utilise les seules données fournies.
+Les favoris, les consignes de veille et le feedback aident à repérer des liens.
+Le nombre de mentions, d'articles ou de correspondances n'augmente pas le score.
+
+MUST ({MUST_THRESHOLD}–100) : les trois conditions suivantes sont nécessaires.
+1. Le sujet établit une évolution concrète portée à connaissance cette semaine.
+2. Cette évolution touche une responsabilité, une priorité ou un marché
+   explicitement suivi dans le profil, au-delà d'un nom d'entreprise cité.
+3. À la lecture des éléments fournis, on peut dire quelle décision,
+   négociation, exposition à un risque ou hypothèse de travail change pour
+   cette personne, et sur quel périmètre.
+Si l'applicabilité du sujet à l'activité du lecteur dépend d'une condition
+essentielle non établie, le score reste en dessous de {MUST_THRESHOLD}.
+Un dossier prospectif peut être Must si le dossier et l'exposition à suivre
+sont établis, par exemple une opération annoncée entre deux partenaires suivis.
+
+NICE ({NICE_THRESHOLD}–{MUST_THRESHOLD - 1}) : exige un éclairage distinct,
+étayé et exploitable pour une priorité précise du profil. Pour un benchmark
+ou un conseil pratique, indique le point de comparaison ou la vérification
+concrète que le lecteur peut reprendre. Un sujet reste sous le seuil si la
+justification repose surtout sur une analogie, une mention, un intérêt
+sectoriel général ou une formule vague du type « à surveiller ».
+
+Après avoir comparé les cartes, écarte celles dont le retrait ne ferait perdre
+aucune information utile et distincte à ce lecteur. Retourne uniquement les
+sujets atteignant {NICE_THRESHOLD}, sans quota ni nombre minimal. Pour chaque
+carte, écris le fait nouveau et justifie le niveau attribué dans la langue du
+profil. Utilise les seules données fournies.
 """,
     )
     try:
