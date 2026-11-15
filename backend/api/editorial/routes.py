@@ -23,7 +23,7 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Accès administrateur requis.")
 
 
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter()
 
 
 class StartRequest(BaseModel):
