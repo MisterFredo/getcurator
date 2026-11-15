@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/lib/api";
 
 import {
@@ -35,7 +36,7 @@ type DigestAction =
 
 type Props = {
 
-  digest: DigestHistoryItem;
+  digest: DigestHistoryItem & { subjectDigestId?: string };
 
   onChanged: () => void;
 
@@ -592,14 +593,23 @@ export default function AdminDigestRow({
 
           )}
 
-          <button
+          {digest.subjectDigestId ? (
+            <Link
+              href={"/admin/digest/subjects?" + new URLSearchParams({
+                period_start: digest.period_start.slice(0, 10), digest_id: digest.subjectDigestId,
+              }).toString()}
+              className="whitespace-nowrap rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800"
+            >
+              Digest sujets généré ↗
+            </Link>
+          ) : <button
             type="button"
             disabled={loading}
             onClick={handleGenerateSubjects}
             className="whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
           >
             {loadingAction === "generate-subjects" ? "Génération…" : "Générer par sujets"}
-          </button>
+          </button>}
 
           {canSend && (
 
