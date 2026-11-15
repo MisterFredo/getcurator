@@ -8,6 +8,7 @@ from config import BQ_DATASET, BQ_PROJECT
 from core.digest.digest_profile_service import build_digest_profile
 from core.digest.profile_service import get_digest_recipients
 from core.digest.subject_preview_service import build_subject_selection
+from core.digest.subject_sources import add_subject_source_names
 from utils.bigquery_utils import query_bq
 from utils.llm import run_llm
 
@@ -64,7 +65,7 @@ def read_subject_digest(digest_id):
         FROM `{TABLE}` WHERE ID = @id
         ORDER BY GENERATED_AT DESC LIMIT 1
     """, params={"id": digest_id}) or []
-    return json.loads(rows[0]["document"]) if rows else None
+    return add_subject_source_names(json.loads(rows[0]["document"])) if rows else None
 
 
 def _executive_brief(selection):
@@ -108,6 +109,7 @@ def generate_subject_digest(user_id, start, regenerate=False):
         "profile": jsonable_encoder(profile),
         "executive_brief": _executive_brief(selection),
     }
+    add_subject_source_names(document)
     query_bq(sql=f"""
         BEGIN TRANSACTION;
         UPDATE `{LOCK}` SET UPDATED_AT = CURRENT_TIMESTAMP() WHERE ID = 'WRITE';
