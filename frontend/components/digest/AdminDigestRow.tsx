@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useState,
 } from "react";
@@ -563,6 +565,15 @@ export default function AdminDigestRow({
               Preview
             </button>
 
+          )}
+
+          {canPreview && (
+            <Link
+              href={`/admin/digest/digests/${encodeURIComponent(digest.id)}`}
+              className="whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+            >
+              Aperçu par sujets
+            </Link>
           )}
 
           {canSend && (
