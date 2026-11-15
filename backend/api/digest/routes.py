@@ -702,10 +702,28 @@ def subject_recipients_route(audience: Literal["user", "expert"] = "user"):
 
 
 @router.get("/admin/subject-digests")
-def list_subject_digests_route(period_start: date):
+def list_subject_digests_route(
+    period_start: date | None = None,
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
     from core.digest.subject_production_service import list_subject_digests
 
-    return {"digests": list_subject_digests(period_start)}
+    return {"digests": list_subject_digests(period_start, limit, offset)}
+
+
+class SubjectDigestStatusRequest(BaseModel):
+    pairs: list[SubjectDigestRequest] = Field(max_length=200)
+
+
+@router.post("/admin/subject-digests/status")
+def subject_digest_status_route(payload: SubjectDigestStatusRequest):
+    from core.digest.subject_production_service import list_subject_digest_status
+
+    return {"digests": list_subject_digest_status([
+        {"user_id": str(pair.user_id), "period_start": pair.period_start.isoformat()}
+        for pair in payload.pairs
+    ])}
 
 
 @router.get("/admin/subject-digests/{digest_id}")
