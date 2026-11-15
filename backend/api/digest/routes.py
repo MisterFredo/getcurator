@@ -666,3 +666,27 @@ def front_preview_digest_route(
         "status": "ok",
         "html": html,
     }
+
+
+@router.post("/admin/digests/{digest_id}/subject-preview")
+def subject_preview_route(digest_id: str, request: Request):
+    from hmac import compare_digest
+    from os import getenv
+
+    from core.digest.subject_preview_service import PreviewUnavailable, build_subject_preview
+
+    expected = getenv("DIGEST_SUBJECT_PILOT_KEY")
+    if not expected:
+        raise HTTPException(503, "Pilote Digest non configuré.")
+    supplied = request.headers.get("x-digest-pilot-key", "")
+    if not compare_digest(supplied.encode(), expected.encode()):
+        raise HTTPException(403, "Clé du pilote invalide.")
+
+    try:
+        digest = get_digest(digest_id)
+    except ValueError as exc:
+        raise HTTPException(404, "Digest introuvable.") from exc
+    try:
+        return build_subject_preview(digest)
+    except PreviewUnavailable as exc:
+        raise HTTPException(409, str(exc)) from exc
