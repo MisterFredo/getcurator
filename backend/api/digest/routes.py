@@ -669,11 +669,8 @@ def front_preview_digest_route(
 
 
 @router.post("/admin/digests/{digest_id}/subject-preview")
-def subject_preview_route(digest_id: str, request: Request):
+def subject_preview_route(digest_id: str):
     from core.digest.subject_preview_service import PreviewUnavailable, build_subject_preview
-
-    if request.cookies.get("ratecard_admin_session") != "ok":
-        raise HTTPException(401, "Reconnecte-toi à l’admin pour générer l’aperçu.")
 
     try:
         digest = get_digest(digest_id)
