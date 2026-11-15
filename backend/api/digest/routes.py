@@ -1,5 +1,11 @@
 # backend/api/digest/routes.py
 
+from datetime import date
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -680,3 +686,82 @@ def subject_preview_route(digest_id: str):
         return build_subject_preview(digest)
     except PreviewUnavailable as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+class SubjectDigestRequest(BaseModel):
+    user_id: UUID
+    period_start: date
+    regenerate: bool = False
+
+
+@router.get("/admin/subject-digests/recipients")
+def subject_recipients_route(audience: Literal["user", "expert"] = "user"):
+    from core.digest.subject_production_service import list_subject_recipients
+
+    return {"recipients": list_subject_recipients(audience)}
+
+
+@router.get("/admin/subject-digests")
+def list_subject_digests_route(period_start: date):
+    from core.digest.subject_production_service import list_subject_digests
+
+    return {"digests": list_subject_digests(period_start)}
+
+
+@router.get("/admin/subject-digests/{digest_id}")
+def read_subject_digest_route(digest_id: UUID):
+    from core.digest.subject_production_service import read_subject_digest
+
+    document = read_subject_digest(str(digest_id))
+    if document is None:
+        raise HTTPException(404, "Digest par sujets introuvable.")
+    return {"document": document}
+
+
+@router.post("/admin/subject-digests")
+def generate_subject_digest_route(payload: SubjectDigestRequest):
+    from core.digest.subject_preview_service import PreviewUnavailable
+    from core.digest.subject_production_service import generate_subject_digest
+
+    if payload.period_start.weekday() != 0:
+        raise HTTPException(422, "La période doit commencer un lundi.")
+    try:
+        document = generate_subject_digest(
+            str(payload.user_id), payload.period_start, payload.regenerate,
+        )
+    except PreviewUnavailable as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"document": document}
+
+
+class SubjectFeedbackRequest(BaseModel):
+    subject_key: str = Field(pattern=r"^[0-9a-f]{64}$")
+    value: Literal[-1, 0, 1]
+
+
+@router.get("/subject-digests/me")
+def list_reader_subject_digests_route(request: Request):
+    from core.digest.subject_reader_service import list_reader_subject_digests
+
+    return {"digests": list_reader_subject_digests(get_user_id_from_request(request))}
+
+
+@router.get("/subject-digests/{digest_id}")
+def read_reader_subject_digest_route(digest_id: UUID, request: Request):
+    from core.digest.subject_reader_service import read_reader_subject_digest
+
+    document = read_reader_subject_digest(get_user_id_from_request(request), str(digest_id))
+    if document is None:
+        raise HTTPException(404, "Digest par sujets introuvable.")
+    return {"document": document}
+
+
+@router.post("/subject-digests/{digest_id}/feedback")
+def save_subject_feedback_route(digest_id: UUID, payload: SubjectFeedbackRequest, request: Request):
+    from core.digest.subject_reader_service import save_subject_feedback
+
+    if not save_subject_feedback(
+        get_user_id_from_request(request), str(digest_id), payload.subject_key, payload.value,
+    ):
+        raise HTTPException(404, "Sujet introuvable dans ce Digest.")
+    return {"feedback": payload.value}
