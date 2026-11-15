@@ -21,9 +21,10 @@ def list_subject_recipients(audience):
     if not ids:
         return []
     return query_bq(sql=f"""
-        SELECT ID AS id, COALESCE(NULLIF(DISPLAY_NAME, ''), NULLIF(NAME, ''), ID) AS name,
+        SELECT ID_USER AS id,
+               COALESCE(NULLIF(DISPLAY_NAME, ''), NULLIF(NAME, ''), ID_USER) AS name,
                COMPANY AS company
-        FROM `{USER_TABLE}` WHERE ID IN UNNEST(@ids)
+        FROM `{USER_TABLE}` WHERE ID_USER IN UNNEST(@ids)
         ORDER BY name, id
     """, params={"ids": ids}) or []
 
