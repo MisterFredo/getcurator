@@ -3,28 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import SubjectDigestDocument, { type SubjectDigest } from "@/components/digest/SubjectDigestDocument";
 
 const endpoint = "/digest/admin/subject-digests";
 
 type Recipient = { id: string; name: string; company?: string };
 type SavedDigest = { id: string; name: string; user_id: string; generated_at: string };
-type SubjectCard = {
-  id: number;
-  tier: "MUST" | "NICE";
-  title: string;
-  development: string;
-  reason: string;
-  badges?: string[];
-  contents: { id: string; title: string }[];
-};
-type SubjectDigest = {
-  id: string;
-  profile: { name: string; company?: string; role?: string };
-  period_start: string;
-  period_end: string;
-  executive_brief: string;
-  cards: SubjectCard[];
-};
 
 function previousMonday() {
   const now = new Date();
@@ -37,69 +21,6 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "Action indisponible.";
 }
 
-function DigestDocument({ digest }: { digest: SubjectDigest }) {
-  return (
-    <article className="overflow-hidden rounded-xl border bg-white">
-      <header className="space-y-2 bg-ratecard-blue p-7 text-white">
-        <p className="text-xs uppercase tracking-wider">
-          Weekly User Digest · {digest.period_start} – {digest.period_end}
-        </p>
-        <h2 className="text-2xl font-semibold">Your Intelligence Briefing by GetCurator</h2>
-        <p className="text-sm">{[digest.profile.name, digest.profile.role, digest.profile.company].filter(Boolean).join(" · ")}</p>
-      </header>
-      <div className="space-y-8 p-7">
-        {digest.executive_brief && (
-          <section className="rounded-lg bg-slate-50 p-5">
-            <h3 className="mb-2 text-lg font-semibold text-ratecard-blue">Your Executive Brief</h3>
-            <p className="whitespace-pre-line text-sm leading-relaxed">{digest.executive_brief}</p>
-          </section>
-        )}
-        {!digest.cards.length && <p>Aucun sujet n’atteint le seuil de pertinence.</p>}
-        {(["MUST", "NICE"] as const).map(tier => {
-          const cards = digest.cards.filter(card => card.tier === tier);
-          if (!cards.length) return null;
-          return (
-            <section key={tier} className="space-y-3">
-              <h3 className="text-xl font-semibold text-ratecard-blue">
-                {tier === "MUST" ? "Selected for You" : "Also on Your Radar"}
-              </h3>
-              {cards.map(card => (
-                <article key={card.id} className="space-y-3 rounded-lg border p-5">
-                  <h4 className="font-semibold">{card.title}</h4>
-                  {!!card.badges?.length && (
-                    <div className="flex flex-wrap gap-2">
-                      {card.badges.map(badge => (
-                        <span key={badge} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">{badge}</span>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-sm leading-relaxed">{card.development}</p>
-                  <p className="border-l-2 border-ratecard-blue pl-3 text-sm leading-relaxed text-slate-700">{card.reason}</p>
-                  <details className="text-sm">
-                    <summary className="cursor-pointer font-medium text-ratecard-blue">
-                      Supporting content ({card.contents.length})
-                    </summary>
-                    <ul className="mt-2 divide-y">
-                      {card.contents.map(content => (
-                        <li key={content.id} className="py-2">
-                          <a className="text-ratecard-blue underline"
-                            href={"https://www.getcurator.ai/feed?analysis_id=" + encodeURIComponent(content.id)}
-                            target="_blank" rel="noopener noreferrer">
-                            {content.title} ↗
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                </article>
-              ))}
-            </section>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
 
 export default function SubjectDigestsPage() {
   const [periodStart, setPeriodStart] = useState(previousMonday);
@@ -189,19 +110,6 @@ export default function SubjectDigestsPage() {
     }
   }
 
-  async function open(id: string) {
-    setErrors([]);
-    setProgress("Chargement du Digest…");
-    try {
-      const result = await api.get(endpoint + "/" + encodeURIComponent(id));
-      setDocument(result.document);
-    } catch (error) {
-      setErrors([message(error)]);
-    } finally {
-      setProgress("");
-    }
-  }
-
   const filtered = recipients.filter(person =>
     (person.name + " " + (person.company ?? "")).toLowerCase().includes(search.toLowerCase()));
   const selectedSaved = saved.find(item => item.id === document?.id);
@@ -209,6 +117,7 @@ export default function SubjectDigestsPage() {
   return (
     <div className="space-y-6">
       <Link href="/admin/digest" className="text-sm text-ratecard-blue underline">Retour aux Digests</Link>
+      <Link href="/admin/digest/subjects/history" className="ml-4 text-sm text-ratecard-blue underline">Historique des Digests par sujets</Link>
       <h1 className="text-3xl font-semibold">Digests par sujets</h1>
       <fieldset disabled={!!progress} className="space-y-4 rounded-xl border bg-white p-5">
         <div className="flex flex-wrap gap-4">
@@ -248,24 +157,13 @@ export default function SubjectDigestsPage() {
       {!!errors.length && <ul role="alert" className="space-y-1 text-sm text-red-700">
         {errors.map((error, index) => <li key={index}>{error}</li>)}
       </ul>}
-      {!!saved.length && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Digests enregistrés cette semaine</h2>
-          <div className="flex flex-wrap gap-2">
-            {saved.map(item => (
-              <button key={item.id} type="button" disabled={!!progress} onClick={() => void open(item.id)}
-                className="rounded border bg-white px-3 py-2 text-sm text-ratecard-blue">{item.name}</button>
-            ))}
-          </div>
-        </section>
-      )}
       {document && (
         <>
           {selectedSaved && (
             <button type="button" disabled={!!progress} className="rounded border bg-white px-3 py-2 text-sm"
               onClick={() => void generate([selectedSaved.user_id], true)}>Régénérer ce Digest</button>
           )}
-          <DigestDocument digest={document} />
+          <SubjectDigestDocument digest={document} />
         </>
       )}
     </div>
