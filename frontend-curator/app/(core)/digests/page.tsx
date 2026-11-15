@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 
 import DigestList
   from "@/components/digest/DigestList";
+import SubjectDigestHistory from "@/components/digest/SubjectDigestHistory";
 
 import {
   useDrawer,
@@ -658,6 +659,10 @@ export default function DigestsPage() {
       {/* =====================================================
           RESULTS
       ===================================================== */}
+
+      {currentUserId && (!activeUserId || activeUserId === currentUserId) && (
+        <SubjectDigestHistory key={currentUserId} query={search} />
+      )}
 
       {loading ? (
 
