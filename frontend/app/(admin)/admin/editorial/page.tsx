@@ -240,7 +240,10 @@ export default function EditorialPage() {
 
   return (
     <div className="space-y-5 text-slate-900">
-      <h1 className="text-2xl font-semibold">Editorial</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Editorial</h1>
+        <Link href="/admin/editorial/weekly-review" className={button}>Sujets à approfondir</Link>
+      </div>
       <section className={panel}>
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1 text-sm">Date de l’édition
