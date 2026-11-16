@@ -24,13 +24,13 @@ def _subject_key(card):
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def read_reader_subject_digest(user_id, digest_id):
+def read_reader_subject_digest(user_id, digest_id, owner_id=None):
     rows = query_bq(sql=f"""
         SELECT TO_JSON_STRING(DOCUMENT_JSON) AS document
         FROM `{TABLE}`
         WHERE ID = @id AND USER_ID = @user_id
         ORDER BY GENERATED_AT DESC LIMIT 1
-    """, params={"id": digest_id, "user_id": user_id}) or []
+    """, params={"id": digest_id, "user_id": owner_id or user_id}) or []
     if not rows:
         return None
     document = add_subject_source_names(json.loads(rows[0]["document"]))
@@ -51,8 +51,8 @@ def read_reader_subject_digest(user_id, digest_id):
     }
 
 
-def save_subject_feedback(user_id, digest_id, subject_key, value):
-    document = read_reader_subject_digest(user_id, digest_id)
+def save_subject_feedback(user_id, digest_id, subject_key, value, owner_id=None):
+    document = read_reader_subject_digest(user_id, digest_id, owner_id)
     card = next((
         card for card in (document or {}).get("cards", [])
         if card["subject_key"] == subject_key
