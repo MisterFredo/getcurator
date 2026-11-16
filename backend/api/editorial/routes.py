@@ -1,26 +1,18 @@
 import logging
 from datetime import date as CalendarDate
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from openai import APIError
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.editorial import repository, service
-from core.user.user_service import get_user_by_id
-from utils.auth import get_user_id_from_request
+from core.editorial.weekly_review import ReviewUnavailable, build_weekly_review
 
 logger = logging.getLogger(__name__)
-
-
-def require_admin(request: Request):
-    user_id = get_user_id_from_request(request)
-    user = get_user_by_id(user_id) if user_id else None
-    if not user:
-        raise HTTPException(status_code=401, detail="Authentification requise.")
-    if str(user.get("ROLE") or "").strip().lower() != "admin":
-        raise HTTPException(status_code=403, detail="Accès administrateur requis.")
 
 
 router = APIRouter()
@@ -42,6 +34,12 @@ class BulkRequest(BaseModel):
 class RecoverRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     response_id: str = Field(pattern=r"^resp_[a-zA-Z0-9_]+$", max_length=200)
+
+
+class WeeklyReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    week_end: CalendarDate
+    available_from: CalendarDate
 
 
 def action(call, *args):
@@ -108,3 +106,17 @@ def read_daily_edition(edition_id: UUID):
 @router.post("/daily-editions/{edition_id}/recover")
 def recover_daily_edition(edition_id: UUID, payload: RecoverRequest):
     return {"job": action(service.recover, str(edition_id), payload.response_id)}
+
+
+@router.post("/weekly-reviews")
+def weekly_review(request: WeeklyReviewRequest):
+    if request.week_end.weekday() != 6 or request.available_from.weekday() != 0:
+        raise HTTPException(422, "Choisis un dimanche de clôture et un lundi de début de couverture.")
+    if request.available_from > request.week_end:
+        raise HTTPException(422, "Le début de couverture doit précéder la fin de semaine.")
+    if request.week_end >= datetime.now(ZoneInfo("Europe/Paris")).date():
+        raise HTTPException(422, "La semaine sélectionnée n’est pas terminée.")
+    try:
+        return build_weekly_review(request.week_end, request.available_from)
+    except ReviewUnavailable as exc:
+        raise HTTPException(502, str(exc)) from exc
