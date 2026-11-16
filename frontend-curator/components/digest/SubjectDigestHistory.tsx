@@ -33,6 +33,10 @@ type Document = {
 
 const endpoint = "/digest/subject-digests";
 
+function readerPath(path: string, expertId?: string) {
+  return endpoint + path + (expertId ? "?target_user_id=" + encodeURIComponent(expertId) : "");
+}
+
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
@@ -43,7 +47,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
 
-function SubjectCard({ card, digestId }: { card: Card; digestId: string }) {
+function SubjectCard({ card, digestId, expertId }: { card: Card; digestId: string; expertId?: string }) {
   const [choice, setChoice] = useState(card.feedback);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -52,7 +56,7 @@ function SubjectCard({ card, digestId }: { card: Card; digestId: string }) {
     setBusy(true);
     setError("");
     try {
-      const response = await api.post(endpoint + "/" + encodeURIComponent(digestId) + "/feedback", {
+      const response = await api.post(readerPath("/" + encodeURIComponent(digestId) + "/feedback", expertId), {
         subject_key: card.subject_key,
         value: choice === next ? 0 : next,
       });
@@ -114,7 +118,7 @@ function SubjectCard({ card, digestId }: { card: Card; digestId: string }) {
   );
 }
 
-function SubjectDigestDrawer({ id, onClose }: { id: string; onClose: () => void }) {
+function SubjectDigestDrawer({ id, expertId, onClose }: { id: string; expertId?: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [document, setDocument] = useState<Document | null>(null);
   const [error, setError] = useState("");
@@ -127,11 +131,11 @@ function SubjectDigestDrawer({ id, onClose }: { id: string; onClose: () => void 
 
   useEffect(() => {
     let active = true;
-    api.get(endpoint + "/" + encodeURIComponent(id))
+    api.get(readerPath("/" + encodeURIComponent(id), expertId))
       .then(result => { if (active) setDocument(result.document); })
       .catch(failure => { if (active) setError(errorMessage(failure)); });
     return () => { active = false; };
-  }, [id]);
+  }, [id, expertId]);
 
   return (
     <dialog ref={dialog} onCancel={event => { event.preventDefault(); onClose(); }}
@@ -161,7 +165,7 @@ function SubjectDigestDrawer({ id, onClose }: { id: string; onClose: () => void 
               return cards.length > 0 && (
                 <section key={tier} className="space-y-3">
                   <h3 className="text-lg font-semibold">{tier === "MUST" ? "Selected for You" : "Also on Your Radar"}</h3>
-                  {cards.map(card => <SubjectCard key={card.id} card={card} digestId={id} />)}
+                  {cards.map(card => <SubjectCard key={card.id} card={card} digestId={id} expertId={expertId} />)}
                 </section>
               );
             })}
@@ -172,25 +176,25 @@ function SubjectDigestDrawer({ id, onClose }: { id: string; onClose: () => void 
   );
 }
 
-export default function SubjectDigestHistory({ query }: { query: string }) {
+export default function SubjectDigestHistory({ query, expertId }: { query: string; expertId?: string }) {
   const [digests, setDigests] = useState<DigestItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    api.get(endpoint + "/me")
+    api.get(readerPath("/me", expertId))
       .then(result => { if (active) setDigests(result.digests); })
       .catch(failure => { if (active) setError(errorMessage(failure)); });
     return () => { active = false; };
-  }, []);
+  }, [expertId]);
 
   if (query.trim()) return null;
   if (error) return <p role="alert" className="text-sm text-red-700">Digests by topic: {error}</p>;
   if (!digests.length) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Your Digests by Topic</h2>
+      <h2 className="text-lg font-semibold">{expertId ? "Expert Digests by Topic" : "Your Digests by Topic"}</h2>
       {digests.map(digest => (
         <button key={digest.id} type="button"
           className="flex w-full flex-wrap justify-between gap-2 rounded-lg border bg-white px-4 py-3 text-left text-sm hover:bg-slate-50"
@@ -199,7 +203,7 @@ export default function SubjectDigestHistory({ query }: { query: string }) {
           <span className="font-medium text-emerald-700">{digest.card_count} topics · Open</span>
         </button>
       ))}
-      {activeId && <SubjectDigestDrawer key={activeId} id={activeId} onClose={() => setActiveId(null)} />}
+      {activeId && <SubjectDigestDrawer key={activeId} id={activeId} expertId={expertId} onClose={() => setActiveId(null)} />}
     </section>
   );
 }
