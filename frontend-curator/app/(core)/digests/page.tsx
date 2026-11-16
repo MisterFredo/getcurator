@@ -660,8 +660,12 @@ export default function DigestsPage() {
           RESULTS
       ===================================================== */}
 
-      {currentUserId && (!activeUserId || activeUserId === currentUserId) && (
-        <SubjectDigestHistory key={currentUserId} query={search} />
+      {currentUserId && (
+        <SubjectDigestHistory
+          key={activeUserId || currentUserId}
+          query={search}
+          expertId={activeUserId && activeUserId !== currentUserId ? activeUserId : undefined}
+        />
       )}
 
       {loading ? (
