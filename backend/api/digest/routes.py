@@ -757,29 +757,43 @@ class SubjectFeedbackRequest(BaseModel):
     value: Literal[-1, 0, 1]
 
 
+def _subject_reader_scope(request: Request, target_user_id: str | None):
+    user_id = get_user_id_from_request(request)
+    owner_id = target_user_id or user_id
+    if owner_id != user_id and not any(
+        expert.get("ID_USER") == owner_id and expert.get("IS_SELECTED")
+        for expert in get_user_experts(user_id) or []
+    ):
+        raise HTTPException(403, "User not available")
+    return user_id, owner_id
+
+
 @router.get("/subject-digests/me")
-def list_reader_subject_digests_route(request: Request):
+def list_reader_subject_digests_route(request: Request, target_user_id: str | None = None):
     from core.digest.subject_reader_service import list_reader_subject_digests
 
-    return {"digests": list_reader_subject_digests(get_user_id_from_request(request))}
+    _, owner_id = _subject_reader_scope(request, target_user_id)
+    return {"digests": list_reader_subject_digests(owner_id)}
 
 
 @router.get("/subject-digests/{digest_id}")
-def read_reader_subject_digest_route(digest_id: UUID, request: Request):
+def read_reader_subject_digest_route(digest_id: UUID, request: Request, target_user_id: str | None = None):
     from core.digest.subject_reader_service import read_reader_subject_digest
 
-    document = read_reader_subject_digest(get_user_id_from_request(request), str(digest_id))
+    user_id, owner_id = _subject_reader_scope(request, target_user_id)
+    document = read_reader_subject_digest(user_id, str(digest_id), owner_id)
     if document is None:
         raise HTTPException(404, "Digest par sujets introuvable.")
     return {"document": document}
 
 
 @router.post("/subject-digests/{digest_id}/feedback")
-def save_subject_feedback_route(digest_id: UUID, payload: SubjectFeedbackRequest, request: Request):
+def save_subject_feedback_route(
+    digest_id: UUID, payload: SubjectFeedbackRequest, request: Request, target_user_id: str | None = None,
+):
     from core.digest.subject_reader_service import save_subject_feedback
 
-    if not save_subject_feedback(
-        get_user_id_from_request(request), str(digest_id), payload.subject_key, payload.value,
-    ):
+    user_id, owner_id = _subject_reader_scope(request, target_user_id)
+    if not save_subject_feedback(user_id, str(digest_id), payload.subject_key, payload.value, owner_id):
         raise HTTPException(404, "Sujet introuvable dans ce Digest.")
     return {"feedback": payload.value}
