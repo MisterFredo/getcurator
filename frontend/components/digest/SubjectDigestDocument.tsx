@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Badge, sourceLink } from "./SubjectDigestDetails";
-import { printSubjectDigest } from "./subjectDigestPrint";
+import { printSubjectDigest, subjectReportBasename } from "./subjectDigestPrint";
 
 type SubjectCard = {
   id: number;
@@ -18,6 +18,7 @@ export type SubjectDigest = {
   profile: { name: string; company?: string; role?: string };
   period_start: string;
   period_end: string;
+  language?: string;
   executive_brief: string;
   cards: SubjectCard[];
 };
@@ -26,6 +27,10 @@ export default function SubjectDigestDocument({ digest }: { digest: SubjectDiges
   const body = useRef<HTMLElement>(null);
   const [copyStatus, setCopyStatus] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [showPdfName, setShowPdfName] = useState(false);
+  const pdfBasename = subjectReportBasename(
+    digest.profile.name, digest.period_start, digest.period_end, digest.language,
+  );
 
   async function copyForGmail() {
     if (!body.current) return;
@@ -72,11 +77,16 @@ export default function SubjectDigestDocument({ digest }: { digest: SubjectDiges
           Copier pour Gmail
         </button>
         <button type="button" className="rounded border bg-white px-3 py-2 text-sm text-ratecard-blue" onClick={() => {
-          if (body.current) printSubjectDigest(body.current, `GetCurator - ${digest.profile.name} - ${digest.period_start}`);
+          if (!body.current) return;
+          setShowPdfName(true);
+          printSubjectDigest(body.current, pdfBasename);
         }}>
           Exporter en PDF
         </button>
         <span role="status" className="text-sm text-gray-600">{copyStatus}</span>
+        {showPdfName && <p className="w-full break-all text-xs text-gray-600">
+          Nom pour Ratecard : <code>{pdfBasename}.pdf</code>
+        </p>}
       </div>
     <article ref={body} className="mx-auto max-w-4xl overflow-hidden rounded-xl border bg-white">
       <header className="space-y-2 bg-ratecard-blue p-7 text-white">
