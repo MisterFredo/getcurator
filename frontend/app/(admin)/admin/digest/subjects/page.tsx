@@ -8,6 +8,12 @@ import SubjectDigestDocument, { type SubjectDigest } from "@/components/digest/S
 const endpoint = "/digest/admin/subject-digests";
 
 type Recipient = { id: string; name: string; company?: string };
+const audiences = [
+  { id: "user", label: "Utilisateurs" },
+  { id: "expert", label: "Experts" },
+] as const;
+type Audience = (typeof audiences)[number]["id"];
+type RecipientList = { items: Recipient[]; loading: boolean; error?: string };
 type SavedDigest = { id: string; name: string; user_id: string; generated_at: string };
 
 function previousMonday() {
@@ -24,8 +30,10 @@ function message(error: unknown) {
 
 export default function SubjectDigestsPage() {
   const [periodStart, setPeriodStart] = useState(previousMonday);
-  const [audience, setAudience] = useState<"user" | "expert">("user");
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [lists, setLists] = useState<Record<Audience, RecipientList>>({
+    user: { items: [], loading: true },
+    expert: { items: [], loading: true },
+  });
   const [selection, setSelection] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [saved, setSaved] = useState<SavedDigest[]>([]);
@@ -45,13 +53,21 @@ export default function SubjectDigestsPage() {
 
   useEffect(() => {
     let active = true;
-    setRecipients([]);
-    setSelection([]);
-    api.get(endpoint + "/recipients?audience=" + audience)
-      .then(result => { if (active) setRecipients(result.recipients); })
-      .catch(error => { if (active) setErrors(current => [...current, message(error)]); });
+    for (const { id } of audiences) {
+      api.get(endpoint + "/recipients?audience=" + id)
+        .then(result => {
+          if (active) setLists(current => ({
+            ...current, [id]: { items: result.recipients, loading: false },
+          }));
+        })
+        .catch(error => {
+          if (active) setLists(current => ({
+            ...current, [id]: { items: [], loading: false, error: message(error) },
+          }));
+        });
+    }
     return () => { active = false; };
-  }, [audience]);
+  }, []);
 
   async function readWeek(start: string): Promise<SavedDigest[]> {
     const result = await api.get(endpoint + "?period_start=" + encodeURIComponent(start));
@@ -91,7 +107,8 @@ export default function SubjectDigestsPage() {
     const failures: string[] = [];
     for (let index = 0; index < ids.length; index += 1) {
       const userId = ids[index];
-      const name = recipients.find(item => item.id === userId)?.name ?? document?.profile.name ?? userId;
+      const name = (lists.user.items.find(item => item.id === userId)
+        ?? lists.expert.items.find(item => item.id === userId))?.name ?? document?.profile.name ?? userId;
       setProgress(`${index + 1}/${ids.length} · ${name}`);
       try {
         const result = await api.post(endpoint, { user_id: userId, period_start: periodStart, regenerate });
@@ -110,8 +127,7 @@ export default function SubjectDigestsPage() {
     }
   }
 
-  const filtered = recipients.filter(person =>
-    (person.name + " " + (person.company ?? "")).toLowerCase().includes(search.toLowerCase()));
+  const searchTerm = search.trim().toLowerCase();
   const selectedSaved = saved.find(item => item.id === document?.id);
 
   return (
@@ -125,27 +141,42 @@ export default function SubjectDigestsPage() {
             <input className="rounded border px-3 py-2" type="date" value={periodStart}
               onChange={event => setPeriodStart(event.target.value)} />
           </label>
-          <label className="grid gap-1 text-sm">Audience
-            <select className="rounded border px-3 py-2" value={audience}
-              onChange={event => setAudience(event.target.value === "expert" ? "expert" : "user")}>
-              <option value="user">Utilisateurs</option>
-              <option value="expert">Experts</option>
-            </select>
-          </label>
         </div>
         <label className="grid gap-1 text-sm">Rechercher un profil
           <input className="rounded border px-3 py-2" value={search} onChange={event => setSearch(event.target.value)} />
         </label>
-        <div className="max-h-52 space-y-1 overflow-auto rounded border p-3">
-          {filtered.map(person => (
-            <label key={person.id} className="flex gap-2 text-sm">
-              <input type="checkbox" checked={selection.includes(person.id)} onChange={event => {
-                const checked = event.target.checked;
-                setSelection(current => checked ? [...current, person.id] : current.filter(id => id !== person.id));
-              }} />
-              {[person.name, person.company].filter(Boolean).join(" · ")}
-            </label>
-          ))}
+        <div className="grid gap-4 md:grid-cols-2">
+          {audiences.map(({ id, label }) => {
+            const list = lists[id];
+            const filtered = list.items.filter(person =>
+              (person.name + " " + (person.company ?? "")).toLowerCase().includes(searchTerm));
+            const count = list.items.filter(person => selection.includes(person.id)).length;
+            return (
+              <section key={id} aria-labelledby={id + "-recipients"} className="rounded border">
+                <h2 id={id + "-recipients"} className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
+                  {label}{count > 0 && " · " + count + " sélectionné(s)"}
+                </h2>
+                <div className="max-h-56 space-y-1 overflow-auto p-3">
+                  {list.loading && <p role="status" className="text-sm text-gray-500">Chargement…</p>}
+                  {list.error && <p role="alert" className="text-sm text-red-700">{list.error}</p>}
+                  {!list.loading && !list.error && !filtered.length && (
+                    <p className="text-sm text-gray-500">{searchTerm ? "Aucun profil trouvé." : "Aucun profil éligible."}</p>
+                  )}
+                  {filtered.map(person => (
+                    <label key={person.id} className="flex gap-2 text-sm">
+                      <input type="checkbox" checked={selection.includes(person.id)} onChange={event => {
+                        const checked = event.target.checked;
+                        setSelection(current => checked
+                          ? Array.from(new Set([...current, person.id]))
+                          : current.filter(selectedId => selectedId !== person.id));
+                      }} />
+                      {[person.name, person.company].filter(Boolean).join(" · ")}
+                    </label>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
         <button type="button" disabled={!periodStart || !selection.length}
           className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50"
