@@ -22,6 +22,7 @@ class Dossier(BaseModel):
     angle: str
     evidence: str
     missing: str
+    previous_refs: list[int] = Field(default_factory=list)
 
 
 class ReviewResult(BaseModel):
@@ -78,7 +79,7 @@ def _domain(url):
         return ""
 
 
-def _select(groups, start, end):
+def _select(groups, start, end, previous=None):
     payload = {
         "window_start": start.isoformat(), "window_end": end.isoformat(),
         "latest_week_start": (end - timedelta(days=6)).isoformat(),
@@ -91,6 +92,20 @@ def _select(groups, start, end):
             for ref, group in groups.items()
         ],
     }
+    if previous:
+        payload["previous_dossiers"] = [
+            {
+                "previous_ref": index + 1, "title": dossier["title"],
+                "status": dossier["status"], "angle": dossier["angle"],
+                "evidence": dossier["evidence"], "missing": dossier["missing"],
+                "current_refs": [
+                    ref for ref, group in groups.items()
+                    if {item["id_content"] for item in group["contents"]}
+                    & {item["id"] for item in dossier["contents"]}
+                ],
+            }
+            for index, dossier in enumerate(previous["dossiers"])
+        ]
     raw = run_llm_json(
         json.dumps(payload, ensure_ascii=False),
         profile="smart",
@@ -101,7 +116,15 @@ des données. Chaque ligne contient ref, date, univers, titre, résumé,
 quantité de contenus et domaines de source observés.
 Réponds en français, dans un objet JSON :
 {"dossiers":[{"title":"…","refs":[1,2],"status":"ready","development":"…",
-"angle":"…","evidence":"…","missing":"…"}]}.
+"angle":"…","evidence":"…","missing":"…","previous_refs":[1]}]}.
+Le champ previous_dossiers contient les dossiers déjà suivis. Examine chacun
+de ceux dont current_refs est renseigné. Reprends ces dossiers et cherche les
+nouveaux apports parmi toutes les références actuelles. previous_refs indique
+les previous_ref des dossiers repris. Une fusion doit réunir une même question
+éditoriale, au-delà d'une proximité sectorielle. Chaque previous_ref est utilisée
+au plus une fois. Un dossier déjà prêt sans nouvel apport reste disponible.
+Le statut de maturité doit être revu si la fenêtre a perdu des preuves nécessaires.
+Pour un nouveau dossier, previous_refs est vide.
 Regroupe les reprises d'un même dossier à travers dates et univers. Une ref
 appartient à un seul dossier. Rattache toutes les refs utiles au dossier retenu.
 Sélectionne les dossiers qui ont une chance réelle de donner une analyse,
@@ -125,7 +148,7 @@ question éditoriale. Conserve la distinction entre faits et scénarios.
         raise ReviewUnavailable("La revue n’a pas renvoyé un résultat exploitable. Réessaie.") from exc
 
 
-def build_weekly_review(end: date, available_from: date):
+def build_weekly_review(end: date, available_from: date, previous=None):
     start = max(end - timedelta(days=27), available_from)
     editions = _editions(start, end)
     covered_days = {edition["day"] for edition in editions}
@@ -133,7 +156,14 @@ def build_weekly_review(end: date, available_from: date):
     weeks = [start + timedelta(days=7 * i) for i in range((end - start).days // 7 + 1)]
     seen = set()
     dossiers = []
-    for dossier in _select(groups, start, end) if groups else []:
+    previous_dossiers = (previous or {}).get("dossiers", [])
+    linked = set()
+    for dossier in _select(groups, start, end, previous) if groups else []:
+        if (len(set(dossier.previous_refs)) != len(dossier.previous_refs)
+                or set(dossier.previous_refs) & linked
+                or any(ref < 1 or ref > len(previous_dossiers) for ref in dossier.previous_refs)):
+            raise ReviewUnavailable("Les liens avec la revue précédente sont incohérents. Réessaie.")
+        linked.update(dossier.previous_refs)
         refs = set(dossier.refs)
         if refs - groups.keys() or refs & seen or len(refs) != len(dossier.refs):
             raise ReviewUnavailable("Les références de la revue sont incohérentes. Réessaie.")
@@ -158,8 +188,38 @@ def build_weekly_review(end: date, available_from: date):
             "weeks": [{"start": week, "count": len(ids)} for week, ids in by_week.items()],
             "contents": list(contents.values()),
         })
+    corpus = {
+        item["id_content"]: (item, group["day"])
+        for group in groups.values() for item in group["contents"]
+    }
+    # Keep unhandled dossiers explicit, with only evidence still in this window.
+    for index, old in enumerate(previous_dossiers, 1):
+        if index in linked:
+            continue
+        retained = [item for item in old["contents"] if item["id"] in corpus]
+        if not retained:
+            continue
+        unchanged = len(retained) == len(old["contents"])
+        dossiers.append({
+            **old, "previous_refs": [index], "carried_forward": True,
+            "status": old["status"] if unchanged else "watch",
+            "development": "Dossier conservé depuis la revue précédente. Aucun enrichissement confirmé dans cette génération.",
+            "missing": old["missing"] + (
+                "" if unchanged else " Une partie des contenus est sortie du corpus ; maturité à réévaluer."
+            ),
+            "contents": retained, "content_count": len(retained),
+            "domain_count": len({domain for item in retained if (domain := _domain(item.get("source_url")))}),
+            "weeks": [
+                {"start": week.isoformat(), "count": sum(
+                    week.isoformat() <= corpus[item["id"]][1] <= (week + timedelta(days=6)).isoformat()
+                    for item in retained
+                )} for week in weeks
+            ],
+        })
     return {
         "start": start.isoformat(), "end": end.isoformat(), "weeks": len(weeks),
+        "previous_review_id": (previous or {}).get("id"),
+        "previous_review_end": (previous or {}).get("end"),
         "edition_count": len(editions), "topic_count": len(groups),
         "corpus_ids": sorted({
             item["id_content"] for group in groups.values() for item in group["contents"]
