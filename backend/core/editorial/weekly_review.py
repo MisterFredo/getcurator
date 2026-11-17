@@ -161,6 +161,9 @@ def build_weekly_review(end: date, available_from: date):
     return {
         "start": start.isoformat(), "end": end.isoformat(), "weeks": len(weeks),
         "edition_count": len(editions), "topic_count": len(groups),
+        "corpus_ids": sorted({
+            item["id_content"] for group in groups.values() for item in group["contents"]
+        }),
         "days_without_editions": [
             day.isoformat() for day in (start + timedelta(days=i) for i in range((end - start).days + 1))
             if day.isoformat() not in covered_days
