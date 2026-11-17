@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type Dossier = {
+  carried_forward?: boolean;
   title: string;
   status: "ready" | "watch" | "new";
   development: string;
@@ -18,6 +19,7 @@ type Dossier = {
 };
 
 type Review = {
+  previous_review_end?: string | null;
   id: string;
   start: string;
   end: string;
@@ -129,6 +131,9 @@ function ReviewPanel({ review }: { review: Review }) {
         <p className="text-sm text-slate-700">
           {review.start} → {review.end} · {review.weeks}/4 semaines dans la fenêtre · {review.edition_count} Éditos · {review.topic_count} candidats
         </p>
+        {review.previous_review_end && (
+          <p className="text-sm text-slate-600">Reprise des dossiers de la revue du {review.previous_review_end}.</p>
+        )}
         {!!review.days_without_editions.length && (
           <p className="text-sm text-amber-800">Aucun Édito terminé le : {review.days_without_editions.join(", ")}.</p>
         )}
@@ -143,6 +148,9 @@ function ReviewPanel({ review }: { review: Review }) {
             {dossiers.map((dossier, index) => (
               <article key={index} className="space-y-2 rounded-lg border bg-white p-4">
                 <h4 className="text-lg font-semibold text-ratecard-blue">{dossier.title}</h4>
+                {dossier.carried_forward && (
+                  <p className="text-xs text-amber-800">Dossier conservé · enrichissement à confirmer</p>
+                )}
                 <p className="text-xs text-slate-600">
                   {dossier.content_count} contenus distincts · {dossier.domain_count} domaines visibles
                 </p>
