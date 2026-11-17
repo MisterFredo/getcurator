@@ -118,7 +118,8 @@ def weekly_review(request: WeeklyReviewRequest):
     if request.week_end >= datetime.now(ZoneInfo("Europe/Paris")).date():
         raise HTTPException(422, "La semaine sélectionnée n’est pas terminée.")
     try:
-        review = build_weekly_review(request.week_end, request.available_from)
+        previous = review_history.previous_review(request.week_end, request.available_from)
+        review = build_weekly_review(request.week_end, request.available_from, previous)
         return review_history.public_review(review_history.save_review(review))
     except ReviewUnavailable as exc:
         raise HTTPException(502, str(exc)) from exc
