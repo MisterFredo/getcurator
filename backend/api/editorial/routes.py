@@ -10,6 +10,7 @@ from openai import APIError
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.editorial import repository, service
+from core.editorial import review_history
 from core.editorial.weekly_review import ReviewUnavailable, build_weekly_review
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,33 @@ def weekly_review(request: WeeklyReviewRequest):
     if request.week_end >= datetime.now(ZoneInfo("Europe/Paris")).date():
         raise HTTPException(422, "La semaine sélectionnée n’est pas terminée.")
     try:
-        return build_weekly_review(request.week_end, request.available_from)
+        review = build_weekly_review(request.week_end, request.available_from)
+        return review_history.public_review(review_history.save_review(review))
     except ReviewUnavailable as exc:
         raise HTTPException(502, str(exc)) from exc
+
+
+@router.get("/weekly-reviews")
+def list_weekly_reviews(limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return {"reviews": review_history.list_reviews(limit, offset)}
+
+
+def _read_weekly_review(review_id: UUID):
+    review = review_history.read_review(str(review_id))
+    if not review:
+        raise HTTPException(404, "Revue introuvable.")
+    return review
+
+
+@router.get("/weekly-reviews/compare")
+def compare_weekly_reviews(previous_id: UUID, current_id: UUID):
+    previous = _read_weekly_review(previous_id)
+    current = _read_weekly_review(current_id)
+    if previous["end"] >= current["end"]:
+        raise HTTPException(422, "La clôture de la revue de référence doit être antérieure.")
+    return review_history.compare_reviews(previous, current)
+
+
+@router.get("/weekly-reviews/{review_id}")
+def read_weekly_review(review_id: UUID):
+    return review_history.public_review(_read_weekly_review(review_id))
