@@ -23,7 +23,7 @@ def save_review(result):
 def list_reviews(limit, offset):
     return _rows(f"""
         SELECT REVIEW_ID AS id, CAST(WEEK_START AS STRING) AS start,
-               CAST(WEEK_END AS STRING) AS end, CAST(CREATED_AT AS STRING) AS created_at,
+               CAST(WEEK_END AS STRING) AS `end`, CAST(CREATED_AT AS STRING) AS created_at,
                ARRAY_LENGTH(JSON_QUERY_ARRAY(RESULT_JSON, '$.dossiers')) AS dossier_count
         FROM `{TABLE}`
         ORDER BY WEEK_END DESC, CREATED_AT DESC, REVIEW_ID DESC
