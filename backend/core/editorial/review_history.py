@@ -42,6 +42,16 @@ def read_review(review_id):
     return {"id": review_id, "created_at": rows[0]["created_at"], **json.loads(rows[0]["result"])}
 
 
+def previous_review(end, available_from):
+    rows = _rows(f"""
+        SELECT REVIEW_ID AS id FROM `{TABLE}`
+        WHERE WEEK_END < DATE(@end) AND WEEK_END >= DATE(@available_from)
+          AND WEEK_START >= DATE(@available_from)
+        ORDER BY WEEK_END DESC, CREATED_AT DESC, REVIEW_ID DESC LIMIT 1
+    """, {"end": end.isoformat(), "available_from": available_from.isoformat()})
+    return read_review(rows[0]["id"]) if rows else None
+
+
 def public_review(review):
     return {key: value for key, value in review.items() if key != "corpus_ids"}
 
@@ -84,8 +94,13 @@ def compare_reviews(previous, current):
     current_contents = [_contents(dossier) for dossier in successors]
     predecessors = {}
     unmatched = []
-    for old in previous["dossiers"]:
-        index, method = _match(old, successors, current_contents)
+    for old_index, old in enumerate(previous["dossiers"]):
+        linked = [
+            index for index, dossier in enumerate(successors)
+            if current.get("previous_review_id") == previous.get("id")
+            and old_index + 1 in dossier.get("previous_refs", [])
+        ]
+        index, method = (linked[0], "history") if len(linked) == 1 else _match(old, successors, current_contents)
         if index is None:
             old_ids = _contents(old).keys()
             unmatched.append({
