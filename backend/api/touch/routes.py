@@ -757,7 +757,6 @@ def search_published_touch_reports(payload: LibrarySearchRequest, request: Reque
 
 @router.post("/reports/{report_id}/publish")
 def publish_touch_report(report_id: str, request: Request):
-    _require_library_admin(request)
     try:
         updated = set_report_published(report_id, True)
     except ValueError as exc:
@@ -769,7 +768,6 @@ def publish_touch_report(report_id: str, request: Request):
 
 @router.post("/reports/{report_id}/unpublish")
 def unpublish_touch_report(report_id: str, request: Request):
-    _require_library_admin(request)
     if not set_report_published(report_id, False):
         raise HTTPException(status_code=404, detail="Touch report not found")
     return {"status": "ok", "report_id": report_id}
@@ -810,7 +808,6 @@ def _touch_presentation_call(action):
 
 @router.post("/reports/{report_id}/presentations")
 def start_touch_presentation(report_id: str, payload: TouchPresentationStartRequest, request: Request):
-    _require_library_admin(request)
     item = _touch_presentation_call(lambda: presentation_service.start_presentation(
         report_id, str(payload.artifact_id), payload.expected_version))
     return {"status": "ok", "presentation": item}
@@ -820,14 +817,12 @@ def start_touch_presentation(report_id: str, payload: TouchPresentationStartRequ
 def list_touch_presentations(report_id: str, request: Request,
                             limit: int = Query(default=30, ge=1, le=100),
                             offset: int = Query(default=0, ge=0)):
-    _require_library_admin(request)
     return {"status": "ok", "presentations": _touch_presentation_call(
         lambda: presentation_service.list_presentations(report_id, limit, offset))}
 
 
 @router.get("/reports/{report_id}/presentations/{artifact_id}")
 def read_touch_presentation(report_id: str, artifact_id: UUID, request: Request):
-    _require_library_admin(request)
     return {"status": "ok", "presentation": _touch_presentation_call(
         lambda: presentation_service.get_presentation(report_id, str(artifact_id)))}
 
@@ -835,6 +830,5 @@ def read_touch_presentation(report_id: str, artifact_id: UUID, request: Request)
 @router.post("/reports/{report_id}/presentations/{artifact_id}/refresh")
 def refresh_touch_presentation(report_id: str, artifact_id: UUID,
                                payload: TouchPresentationRefreshRequest, request: Request):
-    _require_library_admin(request)
     return {"status": "ok", "presentation": _touch_presentation_call(
         lambda: presentation_service.refresh_presentation(report_id, str(artifact_id), payload.response_id))}
