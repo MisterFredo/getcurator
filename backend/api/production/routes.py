@@ -114,13 +114,7 @@ def _require_production_admin(
         )
 
 
-router = APIRouter(
-    dependencies=[
-        Depends(
-            _require_production_admin
-        ),
-    ],
-)
+router = APIRouter()
 
 # ============================================================
 # WRITE REPORT FROM REVIEWED PLAN
