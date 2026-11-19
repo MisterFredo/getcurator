@@ -29,10 +29,11 @@ HEADERS = {
 # ============================================================
 
 SOURCE_ENDPOINTS = {
-
     "retailnews.asia":
         "https://crm.retailnews.asia/wp-json/wp/v2/posts",
 
+    "broadbandtvnews.com":
+        "https://www.broadbandtvnews.com/wp-json/wp/v2/posts",
 }
 
 
@@ -140,6 +141,13 @@ def discover_wordpress(
         },
         timeout=30,
     )
+
+    print(f"[DISCOVERY WP] ENDPOINT={endpoint}")
+    print(f"[DISCOVERY WP] STATUS={response.status_code}")
+    print(f"[DISCOVERY WP] FINAL_URL={response.url}")
+    print(f"[DISCOVERY WP] CONTENT_TYPE={response.headers.get('Content-Type')}")
+    print(f"[DISCOVERY WP] REDIRECTS={len(response.history)}")
+    print(f"[DISCOVERY WP] RESPONSE_PREVIEW={response.text[:1000]}")
 
     response.raise_for_status()
 
