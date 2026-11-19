@@ -1,396 +1,148 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional
+import logging
 
 from api.acquisition.models import (
-    ContentRawUpdate,
-    ContentRawDestockRequest,
-    ImportTextRequest,
-    ImportCsvRequest,
-    ImportUrlsRequest,
+    ContentRawUpdate, ContentRawDestockRequest,
+    ImportTextRequest, ImportCsvRequest, ImportUrlsRequest,
 )
-
 from core.acquisition.storage_service import (
-    get_raw_detail,
-    retry_raw_content,
-    update_raw_content,
-    delete_raw_content,
-    get_raw_stats,
-    list_raw_stock,
-    insert_raw_rows,
+    get_raw_detail, retry_raw_content, update_raw_content,
+    delete_raw_content, get_raw_stats, list_raw_stock, insert_raw_rows,
 )
-
 from core.content.raw_processing_service import (
-    destock_raw_contents,
-    destock_all_raw_contents,
+    destock_raw_contents, destock_all_raw_contents,
 )
-
+from core.content.destock_job import (
+    start_destock_job, get_destock_status, update_destock_progress,
+)
 from core.acquisition.import_service import (
-    import_raw_content,
-    import_urls_batch,
-    import_urls_csv,
+    import_raw_content, import_urls_batch, import_urls_csv,
 )
-
-import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# IMPORT RAW CONTENT
-# ============================================================
-
-@router.post("/raw/import")
-def import_raw_route(
-    payload: ImportTextRequest,
-):
-
-    text = payload.text
-
-    id_source = payload.id_source
-
-    id_primary_company = payload.id_primary_company
-
+@router.post('/raw/import')
+def import_raw_route(payload: ImportTextRequest):
     count = import_raw_content(
-        text=text,
-        id_source=id_source,
-        id_primary_company=id_primary_company,
+        text=payload.text, id_source=payload.id_source,
+        id_primary_company=payload.id_primary_company,
     )
+    return {'imported': count}
 
-    return {
-        "imported": count,
-    }
-
-
-@router.post("/raw/import-csv")
-def import_csv_route(
-    payload: ImportCsvRequest
-):
-
+@router.post('/raw/import-csv')
+def import_csv_route(payload: ImportCsvRequest):
     if not payload.csv_text.strip():
-
-        raise HTTPException(
-            400,
-            "CSV manquant"
-        )
-
+        raise HTTPException(400, 'CSV manquant')
     if not payload.id_source:
-
-        raise HTTPException(
-            400,
-            "Source obligatoire"
-        )
-
+        raise HTTPException(400, 'Source obligatoire')
     try:
-
-        result = import_urls_csv(
-            csv_text=payload.csv_text,
-            id_source=payload.id_source,
-        )
-
-        return {
-            "status": "ok",
-            **result
-        }
-
+        result = import_urls_csv(csv_text=payload.csv_text, id_source=payload.id_source)
+        return {'status': 'ok', **result}
     except Exception as e:
+        logger.exception('Erreur import CSV')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur import CSV"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# LIST RAW STOCK
-# ============================================================
-
-@router.get("/raw/stock")
+@router.get('/raw/stock')
 def raw_stock_route(
-    status: Optional[str] = None,
-    source_id: Optional[str] = None,
-    import_type: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
+    status: Optional[str] = None, source_id: Optional[str] = None,
+    import_type: Optional[str] = None, limit: int = 50, offset: int = 0,
 ):
-
     try:
-
         result = list_raw_stock(
-            status=status,
-            source_id=source_id,
-            import_type=import_type,
-            limit=limit,
-            offset=offset,
+            status=status, source_id=source_id, import_type=import_type,
+            limit=limit, offset=offset,
         )
-
-        return {
-            "status": "ok",
-            "rows": result["rows"],
-            "total": result["total"],
-        }
-
+        return {'status': 'ok', 'rows': result['rows'], 'total': result['total']}
     except Exception as e:
+        logger.exception('Erreur stock raw')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur stock raw"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# RAW DETAIL
-# ============================================================
-
-@router.get("/raw/detail/{id_raw}")
+@router.get('/raw/detail/{id_raw}')
 def raw_detail_route(id_raw: str):
-
     try:
-
         raw = get_raw_detail(id_raw)
-
         if not raw:
-
-            raise HTTPException(
-                404,
-                "RAW introuvable"
-            )
-
-        return {
-            "status": "ok",
-            **raw
-        }
-
+            raise HTTPException(404, 'RAW introuvable')
+        return {'status': 'ok', **raw}
     except HTTPException:
-
         raise
-
     except Exception as e:
+        logger.exception('Erreur récupération RAW detail')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur récupération RAW detail"
-        )
+# One global destock at a time, including individual RAW requests.
+@router.get('/raw/destock/status')
+def raw_destock_status_route():
+    return get_destock_status()
 
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# DESTOCK RAW (BATCH)
-# ============================================================
-
-@router.post("/raw/destock")
-def destock_raw_route(
-    payload: ContentRawDestockRequest
-):
-
-    # ========================================================
-    # SINGLE RAW
-    # ========================================================
-
+@router.post('/raw/destock', status_code=202)
+def destock_raw_route(payload: ContentRawDestockRequest):
     if payload.id_raw:
-
-        result = destock_raw_contents(
-            limit=1,
-            specific_id=payload.id_raw
+        work = lambda: destock_raw_contents(limit=1, specific_id=payload.id_raw)
+    else:
+        work = lambda: destock_all_raw_contents(
+            batch_size=payload.limit or 50,
+            on_batch=update_destock_progress,
         )
+    state = start_destock_job(work)
+    if state is None:
+        raise HTTPException(409, 'Un déstockage RAW est déjà en cours.')
+    return state
 
-        return {
-            "status": "ok",
-            "processed": result
-        }
-
-    # ========================================================
-    # FULL DESTOCK
-    # ========================================================
-
-    result = destock_all_raw_contents(
-        batch_size=payload.limit or 50
-    )
-
-    return {
-        "status": "ok",
-        "processed": result
-    }
-
-
-# ============================================================
-# DELETE RAW CONTENT
-# ============================================================
-
-@router.delete("/raw/delete/{id_raw}")
+@router.delete('/raw/delete/{id_raw}')
 def delete_raw_route(id_raw: str):
-
     try:
-
         delete_raw_content(id_raw)
-
-        return {
-            "status": "ok",
-            "deleted_id": id_raw
-        }
-
+        return {'status': 'ok', 'deleted_id': id_raw}
     except Exception as e:
+        logger.exception('Erreur suppression RAW')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur suppression RAW"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# IMPORT RAW CONTENT FROM URLS (BATCH)
-# ============================================================
-
-@router.post("/raw/import-urls")
-def import_urls_route(
-    payload: ImportUrlsRequest
-):
-
+@router.post('/raw/import-urls')
+def import_urls_route(payload: ImportUrlsRequest):
     if not payload.urls_text.strip():
-
-        raise HTTPException(
-            400,
-            "URLs manquantes"
-        )
-
+        raise HTTPException(400, 'URLs manquantes')
     if not payload.id_source:
-
-        raise HTTPException(
-            400,
-            "Source obligatoire"
-        )
-
+        raise HTTPException(400, 'Source obligatoire')
     try:
-
         result = import_urls_batch(
-            urls_text=payload.urls_text,
-            id_source=payload.id_source,
+            urls_text=payload.urls_text, id_source=payload.id_source,
             id_primary_company=payload.id_primary_company,
         )
-
-        return {
-            "status": "ok",
-            **result
-        }
-
+        return {'status': 'ok', **result}
     except Exception as e:
+        logger.exception('Erreur import URLs')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur import URLs"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-
-# ============================================================
-# UPDATE RAW
-# ============================================================
-
-@router.put("/raw/update/{id_raw}")
-def update_raw(
-    id_raw: str,
-    payload: ContentRawUpdate,
-):
-
+@router.put('/raw/update/{id_raw}')
+def update_raw(id_raw: str, payload: ContentRawUpdate):
     try:
-
         update_raw_content(
-
-            id_raw=id_raw,
-
-            date_source=payload.date_source,
-
-            source_title=payload.source_title,
-
-            raw_text=payload.raw_text,
-
+            id_raw=id_raw, date_source=payload.date_source,
+            source_title=payload.source_title, raw_text=payload.raw_text,
             id_primary_company=payload.id_primary_company,
-
         )
-
-        return {
-
-            "status": "ok",
-
-        }
-
+        return {'status': 'ok'}
     except Exception as e:
+        raise HTTPException(400, str(e))
 
-        raise HTTPException(
-
-            400,
-
-            str(e),
-
-        )
-
-# ============================================================
-# RAW STATS (ADMIN)
-# ============================================================
-
-@router.get("/raw/admin/stats")
+@router.get('/raw/admin/stats')
 def raw_stats_route():
-
     try:
-
-        stats = get_raw_stats()
-
-        return {
-            "status": "ok",
-            "stats": stats
-        }
-
+        return {'status': 'ok', 'stats': get_raw_stats()}
     except Exception as e:
+        logger.exception('Erreur stats raw')
+        raise HTTPException(400, str(e))
 
-        logger.exception(
-            "Erreur stats raw"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
-# ============================================================
-# RETRY RAW CONTENT
-# ============================================================
-
-@router.post("/raw/retry/{id_raw}")
+@router.post('/raw/retry/{id_raw}')
 def retry_raw_route(id_raw: str):
-
+    if get_destock_status()['status'] == 'RUNNING':
+        raise HTTPException(409, 'Déstockage en cours : retry indisponible.')
     try:
-
         retry_raw_content(id_raw)
-
-        return {
-            "status": "ok"
-        }
-
+        return {'status': 'ok'}
     except Exception as e:
-
-        logger.exception(
-            "Erreur retry raw"
-        )
-
-        raise HTTPException(
-            400,
-            str(e)
-        )
-
+        logger.exception('Erreur retry raw')
+        raise HTTPException(400, str(e))
