@@ -100,6 +100,17 @@ def create_content(
             "CONTENT_BODY_EN obligatoire"
         )
 
+    # Idempotence pour les reprises séquentielles d'un même RAW.
+    # La concurrence est empêchée séparément par le verrou du job.
+    if data.id_raw:
+        existing = query_bq(
+            f"SELECT ID_CONTENT FROM `{TABLE_CONTENT}` "
+            "WHERE ID_RAW = @id_raw ORDER BY CREATED_AT ASC LIMIT 1",
+            {"id_raw": data.id_raw},
+        )
+        if existing:
+            return existing[0]["ID_CONTENT"]
+
     # ========================================================
     # META
     # ========================================================
