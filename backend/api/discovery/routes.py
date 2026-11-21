@@ -3,6 +3,9 @@
 
 import logging
 import requests
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile, Form
 
@@ -23,6 +26,8 @@ from core.discovery.service import (
     scan_all_sources,
     scan_source,
     list_discovery_items,
+    list_no_go_rules,
+    save_no_go_rule,
     store_discovery_urls,
     ignore_discovery_urls,
     mark_discovery_manual,
@@ -595,6 +600,35 @@ def scan_source_route(source_id: str):
 # ============================================================
 # LIST DISCOVERY
 # ============================================================
+
+class NoGoRuleIn(BaseModel):
+    id_rule: UUID | None = None
+    expression: str = Field(min_length=1, max_length=160)
+    reason: str = Field(min_length=1, max_length=240)
+    is_active: bool = True
+
+    class Config:
+        extra = "forbid"
+
+
+@router.get("/no-go-rules")
+def no_go_rules_route():
+    return {"rules": list_no_go_rules()}
+
+
+@router.post("/no-go-rules")
+def save_no_go_rule_route(data: NoGoRuleIn):
+    try:
+        save_no_go_rule(data.id_rule, data.expression, data.reason, data.is_active)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        if "Cette expression existe déjà." in str(exc):
+            raise HTTPException(409, "Cette expression existe déjà.") from exc
+        logger.exception("Échec de l’enregistrement d’une expression No Go")
+        raise HTTPException(500, "Impossible d’enregistrer l’expression.") from exc
+    return {"status": "ok"}
+
 
 @router.get(
     "/list",
