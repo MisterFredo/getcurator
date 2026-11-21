@@ -21,6 +21,14 @@ import DiscoveryTable from "@/components/admin/discovery/DiscoveryTable";
    TYPES
 ========================================================= */
 
+const recommendationGroups = [
+  { value: "GO", label: "Go" },
+  { value: "TO_CHECK", label: "To check" },
+  { value: "NO_GO", label: "No Go" },
+] as const;
+
+type Recommendation = (typeof recommendationGroups)[number]["value"];
+
 type DiscoveryItem = {
 
   id_discovery: string;
@@ -32,6 +40,8 @@ type DiscoveryItem = {
   title?: string | null;
 
   status: string;
+  recommendation?: Recommendation;
+  recommendation_reason?: string | null;
 
   date_found?: string | null;
   published_at?: string | null;
@@ -86,6 +96,7 @@ export default function DiscoveryPage() {
   const [scanErrors,setScanErrors]=useState<string[]>([]);
   const mounted=useRef(true);
   const stopScan=useRef(false);
+  const seenDiscoveryIds = useRef(new Set<string>());
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stopScan.current=true;};},[]);
 
   const [
@@ -184,9 +195,18 @@ export default function DiscoveryPage() {
           ),
         ]);
   
-      setItems(
-        discoveryRes.items || []
-      );
+      const nextItems: DiscoveryItem[] = discoveryRes.items || [];
+      const nextIds = new Set(nextItems.map(item => item.id_discovery));
+      const newGoIds = nextItems
+        .filter(item => item.recommendation === "GO"
+          && !seenDiscoveryIds.current.has(item.id_discovery))
+        .map(item => item.id_discovery);
+      nextIds.forEach(id => seenDiscoveryIds.current.add(id));
+      setItems(nextItems);
+      setSelectedIds(previous => [
+        ...previous.filter(id => nextIds.has(id)),
+        ...newGoIds,
+      ]);
   
       setSources(
         sourceRes.sources || []
@@ -345,26 +365,15 @@ export default function DiscoveryPage() {
   }
 
 
-  function toggleAllSelections() {
-
-    if (
-      selectedIds.length ===
-      items.length
-    ) {
-
-      setSelectedIds([]);
-
-      return;
-
-    }
-
-    setSelectedIds(
-      items.map(
-        (item) =>
-          item.id_discovery
-      )
-    );
-
+  function toggleGroupSelections(groupItems: DiscoveryItem[]) {
+    const groupIds = new Set(groupItems.map(item => item.id_discovery));
+    setSelectedIds(previous => {
+      const selected = new Set(previous);
+      if (groupItems.every(item => selected.has(item.id_discovery))) {
+        return previous.filter(id => !groupIds.has(id));
+      }
+      return [...new Set([...previous, ...groupIds])];
+    });
   }
 
 
@@ -828,21 +837,39 @@ export default function DiscoveryPage() {
 
       ) : (
 
-        <DiscoveryTable
-          disabled={isScanning||loading||!sourcesReady}
-          items={
-            items
-          }
-          selectedIds={
-            selectedIds
-          }
-          onToggle={
-            toggleSelection
-          }
-          onToggleAll={
-            toggleAllSelections
-          }
-        />
+        <div className="space-y-4">
+          {recommendationGroups.map(({ value, label }) => {
+            const groupItems = items.filter(
+              item => (item.recommendation ?? "TO_CHECK") === value
+            );
+            if (groupItems.length === 0) return null;
+
+            const groupIds = new Set(groupItems.map(item => item.id_discovery));
+            const reasons = [...new Set(
+              groupItems.map(item => item.recommendation_reason).filter(Boolean)
+            )];
+
+            return (
+              <section key={value} aria-labelledby={`discovery-${value}`}>
+                <h2 id={`discovery-${value}`} className="mb-2 font-semibold">
+                  {label} ({groupItems.length})
+                  {reasons.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-600">
+                      {reasons.join(", ")}
+                    </span>
+                  )}
+                </h2>
+                <DiscoveryTable
+                  disabled={isScanning || loading || !sourcesReady}
+                  items={groupItems}
+                  selectedIds={selectedIds.filter(id => groupIds.has(id))}
+                  onToggle={toggleSelection}
+                  onToggleAll={() => toggleGroupSelections(groupItems)}
+                />
+              </section>
+            );
+          })}
+        </div>
 
       )}
 
