@@ -382,7 +382,36 @@ def scan_all_sources(
 # LIST DISCOVERY
 # ============================================================
 
-SPONSORED_CONTENT = re.compile(r"\bsponsored\s+content\b", re.IGNORECASE)
+GLOBAL_NO_GO_TITLE_RULES = (
+    (re.compile(r"\bsponsored\s+content\b", re.IGNORECASE), "Contenu sponsorisé"),
+)
+
+# Source IDs and rules validated against the November replay.
+SOURCE_NO_GO_TITLE_RULES = {
+    "2c5c7af6-1579-498e-8a31-1f27cb7ff1ec": (
+        (re.compile(r"^news\s+briefs\s+for\b", re.IGNORECASE), "Rubrique News Briefs"),
+    ),
+}
+SOURCE_GO_REASONS = {
+    "dc9867f3-a9f1-4c75-9f12-20bfb76cc6b3": "Source à fort taux de conservation",
+}
+
+
+def recommend_discovery(source_id: str, title: str | None) -> tuple[str, str | None]:
+    normalized_title = (title or "").strip()
+    for pattern, reason in GLOBAL_NO_GO_TITLE_RULES:
+        if pattern.search(normalized_title):
+            return "NO_GO", reason
+
+    for pattern, reason in SOURCE_NO_GO_TITLE_RULES.get(source_id, ()):
+        if pattern.search(normalized_title):
+            return "NO_GO", reason
+
+    reason = SOURCE_GO_REASONS.get(source_id)
+    if reason is not None:
+        return "GO", reason
+
+    return "TO_CHECK", None
 
 
 def list_discovery_items():
@@ -415,7 +444,7 @@ def list_discovery_items():
     items = []
     for r in rows:
         title = r.get("TITLE")
-        sponsored = SPONSORED_CONTENT.search(title or "") is not None
+        recommendation, reason = recommend_discovery(r["SOURCE_ID"], title)
         items.append({
             "id_discovery": r["ID_DISCOVERY"],
             "source_id": r["SOURCE_ID"],
@@ -424,8 +453,8 @@ def list_discovery_items():
             ),
             "url": r["URL"],
             "title": title,
-            "recommendation": "NO_GO" if sponsored else "TO_CHECK",
-            "recommendation_reason": "Contenu sponsorisé" if sponsored else None,
+            "recommendation": recommendation,
+            "recommendation_reason": reason,
             "status": r["STATUS"],
             "published_at": r.get("PUBLISHED_AT"),
             "date_found": r.get(
