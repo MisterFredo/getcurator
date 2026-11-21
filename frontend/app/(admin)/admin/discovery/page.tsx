@@ -22,12 +22,20 @@ import DiscoveryTable from "@/components/admin/discovery/DiscoveryTable";
 ========================================================= */
 
 const recommendationGroups = [
-  { value: "GO", label: "Go" },
-  { value: "TO_CHECK", label: "To check" },
+  { value: "TO_CHECK", label: "À vérifier" },
   { value: "NO_GO", label: "No Go" },
 ] as const;
 
 type Recommendation = (typeof recommendationGroups)[number]["value"];
+
+type NoGoRule = {
+  id_rule?: string;
+  expression: string;
+  reason: string;
+  is_active: boolean;
+};
+
+const emptyRule: NoGoRule = { expression: "", reason: "", is_active: true };
 
 type DiscoveryItem = {
 
@@ -89,6 +97,45 @@ type SourceMode =
 
 export default function DiscoveryPage() {
 
+  const [showRules, setShowRules] = useState(false);
+  const [rules, setRules] = useState<NoGoRule[]>([]);
+  const [ruleDraft, setRuleDraft] = useState<NoGoRule>(emptyRule);
+  const [rulesBusy, setRulesBusy] = useState(false);
+  const [rulesError, setRulesError] = useState("");
+
+  async function loadRules() {
+    const response = await api.get("/discovery/no-go-rules");
+    setRules(response.rules || []);
+  }
+
+  async function toggleRules() {
+    setShowRules(!showRules);
+    if (showRules) return;
+    setRulesBusy(true);
+    setRulesError("");
+    try {
+      await loadRules();
+    } catch {
+      setRulesError("Impossible de charger les expressions.");
+    } finally {
+      setRulesBusy(false);
+    }
+  }
+
+  async function saveRule(rule: NoGoRule) {
+    setRulesError("");
+    setRulesBusy(true);
+    try {
+      await api.post("/discovery/no-go-rules", rule);
+      setRuleDraft(emptyRule);
+      await Promise.all([loadRules(), loadData()]);
+    } catch (error) {
+      setRulesError(error instanceof Error ? error.message : "Impossible d’enregistrer l’expression.");
+    } finally {
+      setRulesBusy(false);
+    }
+  }
+
   const [scanProgress,setScanProgress]=useState("");
   const [sourcesReady,setSourcesReady]=useState(false);
   const [linkedinReports,setLinkedinReports]=useState<Record<string,LinkedInReport>>({});
@@ -96,7 +143,6 @@ export default function DiscoveryPage() {
   const [scanErrors,setScanErrors]=useState<string[]>([]);
   const mounted=useRef(true);
   const stopScan=useRef(false);
-  const seenDiscoveryIds = useRef(new Set<string>());
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stopScan.current=true;};},[]);
 
   const [
@@ -197,17 +243,9 @@ export default function DiscoveryPage() {
   
       const nextItems: DiscoveryItem[] = discoveryRes.items || [];
       const nextIds = new Set(nextItems.map(item => item.id_discovery));
-      const newGoIds = nextItems
-        .filter(item => item.recommendation === "GO"
-          && !seenDiscoveryIds.current.has(item.id_discovery))
-        .map(item => item.id_discovery);
-      nextIds.forEach(id => seenDiscoveryIds.current.add(id));
       setItems(nextItems);
-      setSelectedIds(previous => [
-        ...previous.filter(id => nextIds.has(id)),
-        ...newGoIds,
-      ]);
-  
+      setSelectedIds(previous => previous.filter(id => nextIds.has(id)));
+
       setSources(
         sourceRes.sources || []
       );
@@ -803,6 +841,67 @@ export default function DiscoveryPage() {
       {isScanning&&<button className="border rounded px-3 py-2" onClick={()=>{stopScan.current=true;}}>Arrêter le suivi après l’étape en cours</button>}
       {!!scanWarnings.length&&<details><summary>Avertissements ({scanWarnings.length})</summary><ul className="list-disc pl-5">{scanWarnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>}
       {!!scanErrors.length&&<div role="alert" className="text-red-700">{scanErrors.map((e,i)=><p key={i}>{e}</p>)}</div>}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="rounded border px-3 py-2"
+          aria-expanded={showRules} disabled={rulesBusy}
+          onClick={toggleRules}>
+          Gérer les expressions No Go
+        </button>
+        <button type="button" className="rounded border px-3 py-2"
+          disabled={loading || isScanning || rulesBusy} onClick={loadData}>
+          Actualiser la liste
+        </button>
+      </div>
+
+      {showRules && (
+        <section className="space-y-3 rounded border p-4" aria-label="Expressions No Go">
+          {rulesError && <p role="alert" className="text-red-700">{rulesError}</p>}
+          {rulesBusy && <p role="status">Mise à jour des expressions…</p>}
+          <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
+            event.preventDefault();
+            void saveRule(ruleDraft);
+          }}>
+            <label className="flex flex-col gap-1">
+              Expression
+              <input required maxLength={160} className="rounded border p-2"
+                value={ruleDraft.expression} disabled={rulesBusy}
+                onChange={event => setRuleDraft({ ...ruleDraft, expression: event.target.value })} />
+            </label>
+            <label className="flex flex-col gap-1">
+              Motif
+              <input required maxLength={240} className="rounded border p-2"
+                value={ruleDraft.reason} disabled={rulesBusy}
+                onChange={event => setRuleDraft({ ...ruleDraft, reason: event.target.value })} />
+            </label>
+            <button type="submit" className="rounded border px-3 py-2"
+              disabled={rulesBusy || !ruleDraft.expression.trim() || !ruleDraft.reason.trim()}>
+              {ruleDraft.id_rule ? "Enregistrer" : "Ajouter"}
+            </button>
+            {ruleDraft.id_rule && (
+              <button type="button" disabled={rulesBusy} onClick={() => setRuleDraft(emptyRule)}>
+                Annuler
+              </button>
+            )}
+          </form>
+
+          {rules.length === 0 && !rulesBusy && !rulesError && <p>Aucune expression.</p>}
+          <ul className="divide-y">
+            {rules.map(rule => (
+              <li key={rule.id_rule} className="flex flex-wrap items-center gap-3 py-2">
+                <span className="font-medium">{rule.expression}</span>
+                <span>{rule.reason}</span>
+                <span>{rule.is_active ? "Active" : "Désactivée"}</span>
+                <button type="button" className="underline" disabled={rulesBusy}
+                  onClick={() => setRuleDraft(rule)}>Modifier</button>
+                <button type="button" className="underline" disabled={rulesBusy}
+                  onClick={() => void saveRule({ ...rule, is_active: !rule.is_active })}>
+                  {rule.is_active ? "Désactiver" : "Activer"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <DiscoveryActions
         disabled={isScanning||loading||!sourcesReady}
         selectedCount={
