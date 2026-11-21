@@ -1,5 +1,6 @@
 from typing import List, Dict
 from datetime import datetime
+import re
 import uuid
 import time
 from config import BQ_PROJECT, BQ_DATASET
@@ -381,6 +382,9 @@ def scan_all_sources(
 # LIST DISCOVERY
 # ============================================================
 
+SPONSORED_CONTENT = re.compile(r"\bsponsored\s+content\b", re.IGNORECASE)
+
+
 def list_discovery_items():
 
     sql = f"""
@@ -408,15 +412,20 @@ def list_discovery_items():
 
     rows = query_bq(sql)
 
-    return [
-        {
+    items = []
+    for r in rows:
+        title = r.get("TITLE")
+        sponsored = SPONSORED_CONTENT.search(title or "") is not None
+        items.append({
             "id_discovery": r["ID_DISCOVERY"],
             "source_id": r["SOURCE_ID"],
             "source_name": r.get(
                 "SOURCE_NAME"
             ),
             "url": r["URL"],
-            "title": r.get("TITLE"),
+            "title": title,
+            "recommendation": "NO_GO" if sponsored else "TO_CHECK",
+            "recommendation_reason": "Contenu sponsorisé" if sponsored else None,
             "status": r["STATUS"],
             "published_at": r.get("PUBLISHED_AT"),
             "date_found": r.get(
@@ -425,9 +434,8 @@ def list_discovery_items():
             "created_at": r.get(
                 "CREATED_AT"
             ),
-        }
-        for r in rows
-    ]
+        })
+    return items
 
 
 def dismiss_discovery(
