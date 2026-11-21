@@ -382,36 +382,69 @@ def scan_all_sources(
 # LIST DISCOVERY
 # ============================================================
 
-GLOBAL_NO_GO_TITLE_RULES = (
-    (re.compile(r"\bsponsored\s+content\b", re.IGNORECASE), "Contenu sponsorisé"),
-)
-
-# Source IDs and rules validated against the November replay.
-SOURCE_NO_GO_TITLE_RULES = {
-    "2c5c7af6-1579-498e-8a31-1f27cb7ff1ec": (
-        (re.compile(r"^news\s+briefs\s+for\b", re.IGNORECASE), "Rubrique News Briefs"),
-    ),
-}
-SOURCE_GO_REASONS = {
-    "dc9867f3-a9f1-4c75-9f12-20bfb76cc6b3": "Source à fort taux de conservation",
-}
+TABLE_NO_GO_RULES = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DISCOVERY_NO_GO_RULE"
 
 
-def recommend_discovery(source_id: str, title: str | None) -> tuple[str, str | None]:
-    normalized_title = (title or "").strip()
-    for pattern, reason in GLOBAL_NO_GO_TITLE_RULES:
-        if pattern.search(normalized_title):
-            return "NO_GO", reason
+def list_no_go_rules(active_only: bool = False):
+    where = "WHERE IS_ACTIVE" if active_only else ""
+    rows = query_bq(f"""
+        SELECT ID_RULE, EXPRESSION, REASON, IS_ACTIVE
+        FROM `{TABLE_NO_GO_RULES}`
+        {where}
+        ORDER BY LENGTH(EXPRESSION) DESC, EXPRESSION, ID_RULE
+    """)
+    return [
+        {
+            "id_rule": row["ID_RULE"],
+            "expression": row["EXPRESSION"],
+            "reason": row["REASON"],
+            "is_active": row["IS_ACTIVE"],
+        }
+        for row in rows
+    ]
 
-    for pattern, reason in SOURCE_NO_GO_TITLE_RULES.get(source_id, ()):
-        if pattern.search(normalized_title):
-            return "NO_GO", reason
 
-    reason = SOURCE_GO_REASONS.get(source_id)
-    if reason is not None:
-        return "GO", reason
+def save_no_go_rule(rule_id, expression: str, reason: str, is_active: bool):
+    expression = " ".join(expression.split())
+    reason = reason.strip()
+    if not expression or not reason:
+        raise ValueError("L’expression et le motif sont obligatoires.")
 
-    return "TO_CHECK", None
+    expression_key = expression.casefold()
+    creating = rule_id is None
+    if creating:
+        rule_id = uuid.uuid4()
+
+    query_bq(f"""
+        ASSERT @creating = 'true' OR NOT EXISTS (
+            SELECT 1 FROM `{TABLE_NO_GO_RULES}`
+            WHERE EXPRESSION_KEY = @expression_key AND ID_RULE != @rule_id
+        ) AS 'Cette expression existe déjà.';
+
+        MERGE `{TABLE_NO_GO_RULES}` AS target
+        USING (SELECT @rule_id AS ID_RULE) AS source
+        ON (@creating = 'true' AND target.EXPRESSION_KEY = @expression_key)
+           OR (@creating = 'false' AND target.ID_RULE = source.ID_RULE)
+        WHEN MATCHED AND @creating = 'false' THEN UPDATE SET
+            EXPRESSION = @expression,
+            EXPRESSION_KEY = @expression_key,
+            REASON = @reason,
+            IS_ACTIVE = (@active = 'true'),
+            UPDATED_AT = CURRENT_TIMESTAMP()
+        WHEN NOT MATCHED AND @creating = 'true' THEN
+            INSERT (ID_RULE, EXPRESSION, EXPRESSION_KEY, REASON, IS_ACTIVE, UPDATED_AT)
+            VALUES (
+                @rule_id, @expression, @expression_key, @reason,
+                @active = 'true', CURRENT_TIMESTAMP()
+            )
+    """, {
+        "rule_id": str(rule_id),
+        "expression": expression,
+        "expression_key": expression_key,
+        "reason": reason,
+        "active": "true" if is_active else "false",
+        "creating": "true" if creating else "false",
+    })
 
 
 def list_discovery_items():
@@ -441,10 +474,25 @@ def list_discovery_items():
 
     rows = query_bq(sql)
 
+    active_rules = [
+        (
+            re.compile(
+                r"(?<!\w)" + re.escape(rule["expression"].casefold()) + r"(?!\w)"
+            ),
+            rule["reason"],
+        )
+        for rule in list_no_go_rules(active_only=True)
+    ] if rows else []
+
     items = []
     for r in rows:
         title = r.get("TITLE")
-        recommendation, reason = recommend_discovery(r["SOURCE_ID"], title)
+        normalized_title = " ".join((title or "").casefold().split())
+        reason = next(
+            (reason for pattern, reason in active_rules if pattern.search(normalized_title)),
+            None,
+        )
+        recommendation = "NO_GO" if reason else "TO_CHECK"
         items.append({
             "id_discovery": r["ID_DISCOVERY"],
             "source_id": r["SOURCE_ID"],
