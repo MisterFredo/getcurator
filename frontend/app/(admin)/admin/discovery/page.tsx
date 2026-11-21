@@ -372,7 +372,8 @@ export default function DiscoveryPage() {
       if (groupItems.every(item => selected.has(item.id_discovery))) {
         return previous.filter(id => !groupIds.has(id));
       }
-      return [...new Set([...previous, ...groupIds])];
+      groupIds.forEach(id => selected.add(id));
+      return Array.from(selected);
     });
   }
 
@@ -845,9 +846,9 @@ export default function DiscoveryPage() {
             if (groupItems.length === 0) return null;
 
             const groupIds = new Set(groupItems.map(item => item.id_discovery));
-            const reasons = [...new Set(
+            const reasons = Array.from(new Set(
               groupItems.map(item => item.recommendation_reason).filter(Boolean)
-            )];
+            ));
 
             return (
               <section key={value} aria-labelledby={`discovery-${value}`}>
