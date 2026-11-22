@@ -388,7 +388,7 @@ TABLE_NO_GO_RULES = f"{BQ_PROJECT}.{BQ_DATASET}.RATECARD_DISCOVERY_NO_GO_RULE"
 def list_no_go_rules(active_only: bool = False):
     where = "WHERE IS_ACTIVE" if active_only else ""
     rows = query_bq(f"""
-        SELECT ID_RULE, EXPRESSION, REASON, IS_ACTIVE
+        SELECT ID_RULE, EXPRESSION, REASON, IS_ACTIVE, COALESCE(RULE_TYPE, 'NO_GO') AS RULE_TYPE
         FROM `{TABLE_NO_GO_RULES}`
         {where}
         ORDER BY LENGTH(EXPRESSION) DESC, EXPRESSION, ID_RULE
@@ -399,12 +399,13 @@ def list_no_go_rules(active_only: bool = False):
             "expression": row["EXPRESSION"],
             "reason": row["REASON"],
             "is_active": row["IS_ACTIVE"],
+            "rule_type": row["RULE_TYPE"],
         }
         for row in rows
     ]
 
 
-def save_no_go_rule(rule_id, expression: str, reason: str, is_active: bool):
+def save_no_go_rule(rule_id, expression: str, reason: str, is_active: bool, rule_type: str = "NO_GO"):
     expression = " ".join(expression.split())
     reason = reason.strip()
     if not expression or not reason:
@@ -429,12 +430,13 @@ def save_no_go_rule(rule_id, expression: str, reason: str, is_active: bool):
             EXPRESSION = @expression,
             EXPRESSION_KEY = @expression_key,
             REASON = @reason,
+            RULE_TYPE = @rule_type,
             IS_ACTIVE = (@active = 'true'),
             UPDATED_AT = CURRENT_TIMESTAMP()
         WHEN NOT MATCHED AND @creating = 'true' THEN
-            INSERT (ID_RULE, EXPRESSION, EXPRESSION_KEY, REASON, IS_ACTIVE, UPDATED_AT)
+            INSERT (ID_RULE, EXPRESSION, EXPRESSION_KEY, REASON, RULE_TYPE, IS_ACTIVE, UPDATED_AT)
             VALUES (
-                @rule_id, @expression, @expression_key, @reason,
+                @rule_id, @expression, @expression_key, @reason, @rule_type,
                 @active = 'true', CURRENT_TIMESTAMP()
             )
     """, {
@@ -442,9 +444,37 @@ def save_no_go_rule(rule_id, expression: str, reason: str, is_active: bool):
         "expression": expression,
         "expression_key": expression_key,
         "reason": reason,
+        "rule_type": rule_type,
         "active": "true" if is_active else "false",
         "creating": "true" if creating else "false",
     })
+
+
+def normalize_signal(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def compile_title_signal(value: str) -> re.Pattern:
+    return re.compile(r"(?<!\w)" + re.escape(normalize_signal(value)) + r"(?!\w)")
+
+
+def recommend_title(title, signals):
+    normalized_title = normalize_signal(title or "")
+    matches = {
+        kind: next(
+            (reason for pattern, reason in patterns if pattern.search(normalized_title)),
+            None,
+        )
+        for kind, patterns in signals.items()
+    }
+    go, no_go = matches["GO"], matches["NO_GO"]
+    if go and no_go:
+        return "TO_CHECK", f"Signaux contradictoires · GO : {go} · NO GO : {no_go}"
+    if go:
+        return "GO", go
+    if no_go:
+        return "NO_GO", no_go
+    return "TO_CHECK", None
 
 
 def list_discovery_items():
@@ -474,25 +504,29 @@ def list_discovery_items():
 
     rows = query_bq(sql)
 
-    active_rules = [
-        (
-            re.compile(
-                r"(?<!\w)" + re.escape(rule["expression"].casefold()) + r"(?!\w)"
-            ),
-            rule["reason"],
+    if not rows:
+        return []
+
+    rules = list_no_go_rules(active_only=True)
+    companies = query_bq(f"""
+        SELECT DISTINCT TRIM(NAME) AS NAME
+        FROM `{BQ_PROJECT}.{BQ_DATASET}.RATECARD_COMPANY`
+        WHERE NULLIF(TRIM(NAME), '') IS NOT NULL
+        ORDER BY LENGTH(NAME) DESC, NAME
+    """)
+    signals = {"GO": [], "NO_GO": []}
+    for rule in rules:
+        signals[rule["rule_type"]].append(
+            (compile_title_signal(rule["expression"]), rule["reason"])
         )
-        for rule in list_no_go_rules(active_only=True)
-    ] if rows else []
+    for company in companies:
+        name = company["NAME"]
+        signals["GO"].append((compile_title_signal(name), f"Société détectée · {name}"))
 
     items = []
     for r in rows:
         title = r.get("TITLE")
-        normalized_title = " ".join((title or "").casefold().split())
-        reason = next(
-            (reason for pattern, reason in active_rules if pattern.search(normalized_title)),
-            None,
-        )
-        recommendation = "NO_GO" if reason else "TO_CHECK"
+        recommendation, reason = recommend_title(title, signals)
         items.append({
             "id_discovery": r["ID_DISCOVERY"],
             "source_id": r["SOURCE_ID"],
