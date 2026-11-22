@@ -857,7 +857,7 @@ export default function DiscoveryPage() {
 
       {showRules && (
         <section className="space-y-3 rounded border p-4" aria-label="Expressions GO et NO GO">
-          <p className="text-sm text-gray-600">Les expressions sont recherchées dans le titre et le chemin de l’URL.</p>
+          <p className="text-sm text-gray-600">Les expressions sont recherchées dans le titre et le chemin de l’URL. Une règle comme linkedin.com/pulse cible aussi les sous-domaines.</p>
           {rulesError && <p role="alert" className="text-red-700">{rulesError}</p>}
           {rulesBusy && <p role="status">Mise à jour des expressions…</p>}
           <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
