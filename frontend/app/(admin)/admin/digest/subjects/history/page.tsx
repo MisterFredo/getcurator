@@ -50,8 +50,8 @@ export default function SubjectDigestHistoryPage() {
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/digest/subjects" className="text-sm text-ratecard-blue underline">Produire un Digest par sujets</Link>
-      <h1 className="text-3xl font-semibold">Historique des Digests par sujets</h1>
+      <Link href="/admin/digest" className="text-sm text-ratecard-blue underline">Produire un Digest</Link>
+      <h1 className="text-3xl font-semibold">Historique des Digests</h1>
       <label className="flex items-center gap-3 text-sm">
         Début de semaine
         <input type="date" value={week} className="rounded border px-3 py-2" onChange={event => {
