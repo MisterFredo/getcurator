@@ -1,202 +1,169 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import {
+  digestV2Endpoint as endpoint, previousDigestMonday, generateUserDigestsV2,
+  digestBatchMessage, type DigestRecipient,
+} from "@/lib/digest-v2";
 import SubjectDigestDocument, { type SubjectDigest } from "@/components/digest/SubjectDigestDocument";
 
-const endpoint = "/digest/admin/subject-digests";
+type Saved = { id: string; name: string; user_id: string };
 
-type Recipient = { id: string; name: string; company?: string };
-const audiences = [
-  { id: "user", label: "Utilisateurs" },
-  { id: "expert", label: "Experts" },
-] as const;
-type Audience = (typeof audiences)[number]["id"];
-type RecipientList = { items: Recipient[]; loading: boolean; error?: string };
-type SavedDigest = { id: string; name: string; user_id: string; generated_at: string };
-
-function previousMonday() {
-  const now = new Date();
-  now.setHours(12, 0, 0, 0);
-  now.setDate(now.getDate() - ((now.getDay() + 6) % 7) - 7);
-  return now.toISOString().slice(0, 10);
-}
-
-function message(error: unknown) {
-  return error instanceof Error ? error.message : "Action indisponible.";
-}
-
-
-export default function SubjectDigestsPage() {
-  const [periodStart, setPeriodStart] = useState(previousMonday);
-  const [lists, setLists] = useState<Record<Audience, RecipientList>>({
-    user: { items: [], loading: true },
-    expert: { items: [], loading: true },
-  });
-  const [selection, setSelection] = useState<string[]>([]);
+export default function DigestPage() {
+  const [week, setWeek] = useState(previousDigestMonday);
+  const [experts, setExperts] = useState<DigestRecipient[]>([]);
+  const [expertLoading, setExpertLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [saved, setSaved] = useState<SavedDigest[]>([]);
-  const [document, setDocument] = useState<SubjectDigest | null>(null);
-  const [progress, setProgress] = useState("");
-  const [errors, setErrors] = useState<string[]>([]);
-  const [requestedDigest, setRequestedDigest] = useState<{ id: string; week: string } | null>(null);
+  const [saved, setSaved] = useState<Saved[]>([]);
+  const [document, setDocument] = useState<(SubjectDigest & { user_id: string }) | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const week = params.get("period_start");
-    if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) return;
-    setPeriodStart(week);
+    const start = params.get("period_start");
+    if (start && /^\d{4}-\d{2}-\d{2}$/.test(start)) setWeek(start);
     const id = params.get("digest_id");
-    if (id) setRequestedDigest({ id, week });
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    for (const { id } of audiences) {
-      api.get(endpoint + "/recipients?audience=" + id)
-        .then(result => {
-          if (active) setLists(current => ({
-            ...current, [id]: { items: result.recipients, loading: false },
-          }));
-        })
-        .catch(error => {
-          if (active) setLists(current => ({
-            ...current, [id]: { items: [], loading: false, error: message(error) },
-          }));
-        });
+    if (id) {
+      api.get(endpoint + "/" + encodeURIComponent(id))
+        .then(result => setDocument(result.document))
+        .catch(failure => setError(failure instanceof Error ? failure.message : "Digest indisponible."));
     }
+    let active = true;
+    api.get(endpoint + "/recipients?audience=expert")
+      .then(result => { if (active) setExperts(result.recipients); })
+      .catch(failure => { if (active) setError(failure instanceof Error ? failure.message : "Experts indisponibles."); })
+      .finally(() => { if (active) setExpertLoading(false); });
     return () => { active = false; };
   }, []);
 
-  async function readWeek(start: string): Promise<SavedDigest[]> {
-    const result = await api.get(endpoint + "?period_start=" + encodeURIComponent(start));
-    return result.digests;
+  async function readWeek(start: string) {
+    const result: Saved[] = [];
+    for (let offset = 0; ; offset += 200) {
+      const response = await api.get(endpoint + "?" + new URLSearchParams({
+        period_start: start, limit: "200", offset: String(offset),
+      }).toString());
+      result.push(...response.digests);
+      if (response.digests.length < 200) return result;
+    }
   }
 
   useEffect(() => {
     let active = true;
     setSaved([]);
-    setDocument(null);
-    if (periodStart) {
-      readWeek(periodStart)
-        .then(items => { if (active) setSaved(items); })
-        .catch(error => { if (active) setErrors(current => [...current, message(error)]); });
-    }
+    if (week) readWeek(week)
+      .then(items => { if (active) setSaved(items); })
+      .catch(failure => { if (active) setError(failure instanceof Error ? failure.message : "Historique indisponible."); });
     return () => { active = false; };
-  }, [periodStart]);
+  }, [week]);
 
-  useEffect(() => {
-    if (!requestedDigest || requestedDigest.week !== periodStart) return;
-    let active = true;
-    setProgress("Chargement du Digest…");
-    api.get(endpoint + "/" + encodeURIComponent(requestedDigest.id))
-      .then(result => { if (active) setDocument(result.document); })
-      .catch(error => { if (active) setErrors(current => [...current, message(error)]); })
-      .finally(() => {
-        if (active) {
-          setRequestedDigest(null);
-          setProgress("");
-        }
-      });
-    return () => { active = false; };
-  }, [requestedDigest, periodStart]);
-
-  async function generate(ids: string[], regenerate = false) {
-    setErrors([]);
-    const failures: string[] = [];
-    for (let index = 0; index < ids.length; index += 1) {
-      const userId = ids[index];
-      const name = (lists.user.items.find(item => item.id === userId)
-        ?? lists.expert.items.find(item => item.id === userId))?.name ?? document?.profile.name ?? userId;
-      setProgress(`${index + 1}/${ids.length} · ${name}`);
-      try {
-        const result = await api.post(endpoint, { user_id: userId, period_start: periodStart, regenerate });
-        setDocument(result.document);
-      } catch (error) {
-        failures.push(`${name} · ${message(error)}`);
-      }
-    }
+  async function perform(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
     try {
-      setSaved(await readWeek(periodStart));
-    } catch (error) {
-      failures.push(message(error));
+      await action();
+      setSaved(await readWeek(week));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Opération indisponible.");
     } finally {
-      setErrors(failures);
-      setProgress("");
+      setBusy(false);
     }
   }
 
-  const searchTerm = search.trim().toLowerCase();
-  const selectedSaved = saved.find(item => item.id === document?.id);
+  async function generateUsers() {
+    await perform(async () => {
+      const result = await generateUserDigestsV2(week, setStatus);
+      setStatus(digestBatchMessage(result));
+      if (result.errors.length) setError(result.errors.join(" · "));
+    });
+  }
+
+  async function generateExpert(person: DigestRecipient) {
+    await perform(async () => {
+      setStatus("Génération · " + person.name);
+      const result = await api.post(endpoint, { user_id: person.id, period_start: week });
+      setDocument(result.document);
+      setStatus("Digest disponible · " + person.name);
+    });
+  }
+
+  async function open(id: string) {
+    await perform(async () => {
+      const result = await api.get(endpoint + "/" + encodeURIComponent(id));
+      setDocument(result.document);
+      setStatus("");
+    });
+  }
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/digest" className="text-sm text-ratecard-blue underline">Retour aux Digests</Link>
-      <Link href="/admin/digest/subjects/history" className="ml-4 text-sm text-ratecard-blue underline">Historique des Digests par sujets</Link>
-      <h1 className="text-3xl font-semibold">Digests par sujets</h1>
-      <fieldset disabled={!!progress} className="space-y-4 rounded-xl border bg-white p-5">
-        <div className="flex flex-wrap gap-4">
-          <label className="grid gap-1 text-sm">Début de semaine
-            <input className="rounded border px-3 py-2" type="date" value={periodStart}
-              onChange={event => setPeriodStart(event.target.value)} />
-          </label>
-        </div>
-        <label className="grid gap-1 text-sm">Rechercher un profil
-          <input className="rounded border px-3 py-2" value={search} onChange={event => setSearch(event.target.value)} />
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-semibold">Digests</h1>
+        <Link href="/admin/digest/subjects/history" className="rounded border bg-white px-4 py-2 text-sm">Historique des Digests</Link>
+      </header>
+      <fieldset disabled={busy} className="space-y-4 rounded-xl border bg-white p-5">
+        <label className="grid max-w-xs gap-1 text-sm">
+          Semaine commençant le lundi
+          <input type="date" value={week} className="rounded border px-3 py-2" onChange={event => {
+            setWeek(event.target.value);
+            setDocument(null);
+            setStatus("");
+          }} />
         </label>
-        <div className="grid gap-4 md:grid-cols-2">
-          {audiences.map(({ id, label }) => {
-            const list = lists[id];
-            const filtered = list.items.filter(person =>
-              (person.name + " " + (person.company ?? "")).toLowerCase().includes(searchTerm));
-            const count = list.items.filter(person => selection.includes(person.id)).length;
-            return (
-              <section key={id} aria-labelledby={id + "-recipients"} className="rounded border">
-                <h2 id={id + "-recipients"} className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
-                  {label}{count > 0 && " · " + count + " sélectionné(s)"}
-                </h2>
-                <div className="max-h-56 space-y-1 overflow-auto p-3">
-                  {list.loading && <p role="status" className="text-sm text-gray-500">Chargement…</p>}
-                  {list.error && <p role="alert" className="text-sm text-red-700">{list.error}</p>}
-                  {!list.loading && !list.error && !filtered.length && (
-                    <p className="text-sm text-gray-500">{searchTerm ? "Aucun profil trouvé." : "Aucun profil éligible."}</p>
-                  )}
-                  {filtered.map(person => (
-                    <label key={person.id} className="flex gap-2 text-sm">
-                      <input type="checkbox" checked={selection.includes(person.id)} onChange={event => {
-                        const checked = event.target.checked;
-                        setSelection(current => checked
-                          ? Array.from(new Set([...current, person.id]))
-                          : current.filter(selectedId => selectedId !== person.id));
-                      }} />
-                      {[person.name, person.company].filter(Boolean).join(" · ")}
-                    </label>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-        <button type="button" disabled={!periodStart || !selection.length}
-          className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50"
-          onClick={() => void generate(selection)}>
-          Générer ({selection.length})
-        </button>
+        <section className="space-y-2">
+          <h2 className="font-semibold">Utilisateurs</h2>
+          <p className="text-sm text-gray-500">Génération pour tous les utilisateurs éligibles de cette semaine. Garder la page ouverte pendant le traitement.</p>
+          <button type="button" disabled={!week} onClick={() => void generateUsers()}
+            className="rounded bg-ratecard-blue px-4 py-2 text-white disabled:opacity-50">Générer les Digests Users</button>
+        </section>
+        <section className="space-y-3 border-t pt-4">
+          <h2 className="font-semibold">Experts</h2>
+          <input aria-label="Rechercher un expert" placeholder="Rechercher un expert" value={search}
+            onChange={event => setSearch(event.target.value)} className="w-full rounded border px-3 py-2 text-sm" />
+          {expertLoading && <p role="status">Chargement des experts…</p>}
+          <ul className="max-h-80 divide-y overflow-auto">
+            {experts.filter(person => (person.name + " " + (person.company ?? "")).toLowerCase().includes(search.toLowerCase())).map(person => {
+              const existing = saved.find(item => item.user_id === person.id);
+              return <li key={person.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span>{person.name}</span>
+                <button type="button" disabled={!week} className="rounded border px-3 py-2"
+                  onClick={() => existing ? void open(existing.id) : void generateExpert(person)}>
+                  {existing ? "Ouvrir · généré" : "Générer"}
+                </button>
+              </li>;
+            })}
+          </ul>
+        </section>
       </fieldset>
-      {progress && <p role="status">{progress}</p>}
-      {!!errors.length && <ul role="alert" className="space-y-1 text-sm text-red-700">
-        {errors.map((error, index) => <li key={index}>{error}</li>)}
-      </ul>}
-      {document && (
-        <>
-          {selectedSaved && (
-            <button type="button" disabled={!!progress} className="rounded border bg-white px-3 py-2 text-sm"
-              onClick={() => void generate([selectedSaved.user_id], true)}>Régénérer ce Digest</button>
-          )}
-          <SubjectDigestDocument digest={document} />
-        </>
-      )}
+      {status && <p role="status" className="text-sm text-green-700">{status}</p>}
+      {error && <p role="alert" className="whitespace-pre-line text-sm text-red-700">{error}</p>}
+      {!!saved.length && <section className="space-y-2">
+        <h2 className="font-semibold">Digests générés cette semaine ({saved.length})</h2>
+        <div className="flex flex-wrap gap-2">
+          {saved.map(item => <button key={item.id} type="button" disabled={busy} onClick={() => void open(item.id)}
+            className="rounded border bg-white px-3 py-2 text-sm">{item.name}</button>)}
+        </div>
+      </section>}
+      {document && <>
+        <button type="button" disabled={busy} className="rounded border bg-white px-3 py-2 text-sm" onClick={() => {
+          if (!window.confirm("Régénérer et remplacer ce Digest enregistré ?")) return;
+          void perform(async () => {
+            const result = await api.post(endpoint, {
+              user_id: document.user_id, period_start: document.period_start, regenerate: true,
+            });
+            setDocument(result.document);
+            setStatus("Digest régénéré.");
+          });
+        }}>Régénérer ce Digest</button>
+        <SubjectDigestDocument key={document.id} digest={document} />
+      </>}
+      <footer className="border-t pt-3 text-xs">
+        <Link href="/admin/digest/v1" className="text-gray-500 underline">Accéder aux Digests V1</Link>
+      </footer>
     </div>
   );
 }
