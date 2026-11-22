@@ -3,6 +3,7 @@ from datetime import datetime
 import re
 import uuid
 import time
+from urllib.parse import unquote, urlsplit
 from config import BQ_PROJECT, BQ_DATASET
 
 from utils.bigquery_utils import (
@@ -458,15 +459,30 @@ def compile_title_signal(value: str) -> re.Pattern:
     return re.compile(r"(?<!\w)" + re.escape(normalize_signal(value)) + r"(?!\w)")
 
 
-def recommend_title(title, signals):
+URL_PATH_SEPARATORS = re.compile(r"[-_/.]+")
+
+
+def recommend_discovery(title, url, signals):
     normalized_title = normalize_signal(title or "")
-    matches = {
-        kind: next(
-            (reason for pattern, reason in patterns if pattern.search(normalized_title)),
-            None,
-        )
-        for kind, patterns in signals.items()
-    }
+    try:
+        url_path = normalize_signal(unquote(urlsplit(url or "").path))
+    except ValueError:
+        url_path = ""
+    url_words = normalize_signal(URL_PATH_SEPARATORS.sub(" ", url_path))
+
+    matches = {}
+    for kind, patterns in signals.items():
+        matches[kind] = None
+        for title_pattern, url_pattern, reason in patterns:
+            if title_pattern.search(normalized_title):
+                matches[kind] = reason
+                break
+            if url_pattern and (
+                url_path and (title_pattern.search(url_path) or url_pattern.search(url_words))
+            ):
+                matches[kind] = f"{reason} · URL"
+                break
+
     go, no_go = matches["GO"], matches["NO_GO"]
     if go and no_go:
         return "TO_CHECK", f"Signaux contradictoires · GO : {go} · NO GO : {no_go}"
@@ -517,16 +533,22 @@ def list_discovery_items():
     signals = {"GO": [], "NO_GO": []}
     for rule in rules:
         signals[rule["rule_type"]].append(
-            (compile_title_signal(rule["expression"]), rule["reason"])
+            (
+                compile_title_signal(rule["expression"]),
+                compile_title_signal(URL_PATH_SEPARATORS.sub(" ", rule["expression"]))
+                if normalize_signal(URL_PATH_SEPARATORS.sub(" ", rule["expression"]))
+                else compile_title_signal(rule["expression"]),
+                rule["reason"],
+            )
         )
     for company in companies:
         name = company["NAME"]
-        signals["GO"].append((compile_title_signal(name), f"Société détectée · {name}"))
+        signals["GO"].append((compile_title_signal(name), None, f"Société détectée · {name}"))
 
     items = []
     for r in rows:
         title = r.get("TITLE")
-        recommendation, reason = recommend_title(title, signals)
+        recommendation, reason = recommend_discovery(title, r["URL"], signals)
         items.append({
             "id_discovery": r["ID_DISCOVERY"],
             "source_id": r["SOURCE_ID"],
