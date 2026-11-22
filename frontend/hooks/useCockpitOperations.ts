@@ -1,263 +1,69 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { digestBatchMessage, generateUserDigestsV2 } from "@/lib/digest-v2";
 
-import {
-  api,
-} from "@/lib/api";
-
-
-/* =========================================================
-   DIGEST ROUTES
-========================================================= */
-
-const DIGEST_OPERATION_ROUTES:
-  Record<string, string> = {
-
-    "initialize-digest-histories":
-      "/digest/bootstrap-all",
-
-    "generate-all-digests":
-      "/digest/campaigns/generate-all",
-
-  };
-
-
-/* =========================================================
-   TOUCH OPERATIONS
-========================================================= */
-
-const TOUCH_OPERATION_MONTHS:
-  Record<string, number> = {
-
-    "initialize-touch-histories":
-      3,
-
-    "prepare-latest-touch-editions":
-      1,
-
-  };
-
-
-/* ========================================================= */
+const DIGEST_OPERATION_ROUTES: Record<string, string> = {
+  "initialize-digest-histories": "/digest/bootstrap-all",
+};
+const TOUCH_OPERATION_MONTHS: Record<string, number> = {
+  "initialize-touch-histories": 3,
+  "prepare-latest-touch-editions": 1,
+};
 
 export function useCockpitOperations() {
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    success,
-    setSuccess,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    error,
-    setError,
-  ] = useState<string | null>(
-    null,
-  );
-
-
-  /* =====================================================
-     RUN
-  ===================================================== */
-
-  async function run(
-    operation: string,
-  ) {
-
+  async function run(operation: string) {
+    setLoading(true);
+    setSuccess(null);
+    setError(null);
     try {
-
-      setLoading(true);
-
-      setSuccess(null);
-
-      setError(null);
-
-      const touchMonths =
-        TOUCH_OPERATION_MONTHS[
-          operation
-        ];
-
-      const endpoint = (
-
-        touchMonths
-          ? "/touch/editions/prepare"
-          : (
-              DIGEST_OPERATION_ROUTES[
-                operation
-              ]
-
-              || `/cockpit/operations/${operation}`
-            )
-
-      );
-
-      const res =
-        await api.post(
-          endpoint,
-          touchMonths
-            ? {
-                months_count:
-                  touchMonths,
-              }
-            : {},
-        );
-
-      setSuccess(
-        buildSuccessMessage(
-          operation,
-          res,
-        ),
-      );
-
-      return res;
-
-    } catch (e: any) {
-
-      console.error(
-        "Cockpit operation failed",
-        e,
-      );
-
-      setError(
-        e?.message
-        || "Operation failed.",
-      );
-
-      throw e;
-
+      if (operation === "generate-all-digests" || operation === "generate-user-digests-v2") {
+        const result = await generateUserDigestsV2(undefined, setSuccess);
+        setSuccess(digestBatchMessage(result));
+        if (result.errors.length) setError(result.errors.join(" · "));
+        return result;
+      }
+      const months = TOUCH_OPERATION_MONTHS[operation];
+      const endpoint = months ? "/touch/editions/prepare"
+        : DIGEST_OPERATION_ROUTES[operation] || "/cockpit/operations/" + operation;
+      const result = await api.post(endpoint, months ? { months_count: months } : {});
+      if (months) {
+        const preparation = result.preparation ?? {};
+        const prefix = preparation.status === "failed" ? "Preparation failed — "
+          : preparation.status === "partial" ? "Preparation partially completed — " : "";
+        setSuccess(prefix + [
+          `${preparation.processed_count ?? 0} experts processed`,
+          `${preparation.prepared_count ?? 0} editions ready for review`,
+          `${preparation.skipped_count ?? 0} existing editions preserved`,
+          `${preparation.failed_count ?? 0} failed`,
+        ].join(" · "));
+      } else if (operation === "initialize-digest-histories") {
+        setSuccess([
+          `${result.processed_count ?? 0} profiles processed`,
+          `${result.generated_count ?? 0} Digests generated`,
+          `${result.skipped_count ?? 0} already available`,
+          `${result.failed_count ?? 0} failed`,
+        ].join(" · "));
+      } else {
+        setSuccess(result.message || "Operation completed.");
+      }
+      return result;
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Operation failed.");
+      throw failure;
     } finally {
-
       setLoading(false);
-
     }
-
   }
-
-
-  /* =====================================================
-     RESET
-  ===================================================== */
 
   function reset() {
-
     setSuccess(null);
-
     setError(null);
-
   }
-
-
-  /* =====================================================
-     RETURN
-  ===================================================== */
-
-  return {
-
-    loading,
-
-    success,
-
-    error,
-
-    run,
-
-    reset,
-
-  };
-
-}
-
-
-/* =========================================================
-   SUCCESS MESSAGE
-========================================================= */
-
-function buildSuccessMessage(
-  operation: string,
-  result: any,
-): string {
-
-  if (
-    TOUCH_OPERATION_MONTHS[
-      operation
-    ]
-  ) {
-
-    const preparation =
-      result.preparation ?? {};
-
-    const summary = [
-
-      `${preparation.processed_count ?? 0} experts processed`,
-
-      `${preparation.prepared_count ?? 0} editions ready for review`,
-
-      `${preparation.skipped_count ?? 0} existing editions preserved`,
-
-      `${preparation.failed_count ?? 0} failed`,
-
-    ].join(" · ");
-
-    return (
-
-      preparation.status === "failed"
-        ? "Preparation failed — "
-        : preparation.status === "partial"
-          ? "Preparation partially completed — "
-          : ""
-
-    ) + summary;
-
-  }
-
-  if (
-    operation
-    === "initialize-digest-histories"
-  ) {
-
-    return [
-
-      `${result.processed_count ?? 0} profiles processed`,
-
-      `${result.generated_count ?? 0} Digests generated`,
-
-      `${result.skipped_count ?? 0} already available`,
-
-      `${result.failed_count ?? 0} failed`,
-
-    ].join(" · ");
-
-  }
-
-  if (
-    operation
-    === "generate-all-digests"
-  ) {
-
-    return [
-
-      `${result.campaigns_count ?? 0} Campaigns processed`,
-
-      `${result.generated_count ?? 0} Digests generated`,
-
-      `${result.failed_count ?? 0} failed`,
-
-    ].join(" · ");
-
-  }
-
-  return (
-    result.message
-    || "Operation completed."
-  );
-
+  return { loading, success, error, run, reset };
 }
