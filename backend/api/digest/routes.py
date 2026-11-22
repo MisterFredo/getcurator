@@ -712,6 +712,22 @@ def list_subject_digests_route(
     return {"digests": list_subject_digests(period_start, limit, offset)}
 
 
+@router.get("/admin/subject-digest-history")
+def subject_digest_history_route(
+    query: str = Query("", max_length=300),
+    audience: Literal["user", "expert"] | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    from core.digest.subject_history_service import search_history
+
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(422, "La date de début doit précéder la date de fin.")
+    return search_history(query, audience or "", date_from, date_to, limit, offset)
+
+
 class SubjectDigestStatusRequest(BaseModel):
     pairs: list[SubjectDigestRequest] = Field(max_length=200)
 
