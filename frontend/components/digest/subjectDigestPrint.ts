@@ -1,20 +1,3 @@
-export function subjectReportBasename(
-  profileName: string,
-  periodStart: string,
-  periodEnd: string,
-  language?: string,
-) {
-  const profile = profileName.normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[œŒ]/g, value => value === "œ" ? "oe" : "OE")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .slice(0, 100)
-    .replace(/^-+|-+$/g, "");
-  const title = profile ? "Digest-Sujets-" + profile : "Digest-Sujets";
-  const lang = /^fr(?:$|[-_])/i.test(language?.trim() ?? "") ? "FR" : "EN";
-  return `GetCurator_${title}_${periodStart}_to_${periodEnd}_${lang}_Report`;
-}
-
 export function subjectPrintHtml(content: string, title: string) {
   const safeTitle = title.replace(/[<&>]/g, character => (
     character === "<" ? "&lt;" : character === ">" ? "&gt;" : "&amp;"
@@ -73,9 +56,24 @@ export function printSubjectDigest(source: HTMLElement, title: string) {
       frame.remove();
       return;
     }
-    view.addEventListener("afterprint", () => frame.remove(), { once: true });
-    view.focus();
-    view.print();
+    // Some browsers use the parent page title for an iframe's PDF filename.
+    const previousTitle = document.title;
+    const cleanup = () => {
+      view.removeEventListener("afterprint", cleanup);
+      window.removeEventListener("afterprint", cleanup);
+      if (document.title === title) document.title = previousTitle;
+      frame.remove();
+    };
+    view.addEventListener("afterprint", cleanup);
+    window.addEventListener("afterprint", cleanup);
+    document.title = title;
+    try {
+      view.focus();
+      view.print();
+    } catch (error) {
+      cleanup();
+      throw error;
+    }
   };
   frame.srcdoc = subjectPrintHtml(clone.outerHTML, title);
   document.body.append(frame);
