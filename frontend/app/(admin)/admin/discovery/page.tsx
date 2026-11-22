@@ -22,8 +22,9 @@ import DiscoveryTable from "@/components/admin/discovery/DiscoveryTable";
 ========================================================= */
 
 const recommendationGroups = [
-  { value: "TO_CHECK", label: "À vérifier" },
-  { value: "NO_GO", label: "No Go" },
+  { value: "GO", label: "GO" },
+  { value: "NO_GO", label: "NO GO" },
+  { value: "TO_CHECK", label: "To review" },
 ] as const;
 
 type Recommendation = (typeof recommendationGroups)[number]["value"];
@@ -33,9 +34,10 @@ type NoGoRule = {
   expression: string;
   reason: string;
   is_active: boolean;
+  rule_type: "GO" | "NO_GO";
 };
 
-const emptyRule: NoGoRule = { expression: "", reason: "", is_active: true };
+const emptyRule: NoGoRule = { expression: "", reason: "", is_active: true, rule_type: "NO_GO" };
 
 type DiscoveryItem = {
 
@@ -845,7 +847,7 @@ export default function DiscoveryPage() {
         <button type="button" className="rounded border px-3 py-2"
           aria-expanded={showRules} disabled={rulesBusy}
           onClick={toggleRules}>
-          Gérer les expressions No Go
+          Gérer les expressions GO / NO GO
         </button>
         <button type="button" className="rounded border px-3 py-2"
           disabled={loading || isScanning || rulesBusy} onClick={loadData}>
@@ -854,13 +856,25 @@ export default function DiscoveryPage() {
       </div>
 
       {showRules && (
-        <section className="space-y-3 rounded border p-4" aria-label="Expressions No Go">
+        <section className="space-y-3 rounded border p-4" aria-label="Expressions GO et NO GO">
           {rulesError && <p role="alert" className="text-red-700">{rulesError}</p>}
           {rulesBusy && <p role="status">Mise à jour des expressions…</p>}
           <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
             event.preventDefault();
             void saveRule(ruleDraft);
           }}>
+            <label className="flex flex-col gap-1">
+              Type
+              <select className="rounded border p-2"
+                value={ruleDraft.rule_type} disabled={rulesBusy}
+                onChange={event => setRuleDraft({
+                  ...ruleDraft,
+                  rule_type: event.target.value === "GO" ? "GO" : "NO_GO",
+                })}>
+                <option value="GO">GO</option>
+                <option value="NO_GO">NO GO</option>
+              </select>
+            </label>
             <label className="flex flex-col gap-1">
               Expression
               <input required maxLength={160} className="rounded border p-2"
@@ -889,6 +903,7 @@ export default function DiscoveryPage() {
             {rules.map(rule => (
               <li key={rule.id_rule} className="flex flex-wrap items-center gap-3 py-2">
                 <span className="font-medium">{rule.expression}</span>
+                <span>{rule.rule_type === "GO" ? "GO" : "NO GO"}</span>
                 <span>{rule.reason}</span>
                 <span>{rule.is_active ? "Active" : "Désactivée"}</span>
                 <button type="button" className="underline" disabled={rulesBusy}
@@ -945,23 +960,19 @@ export default function DiscoveryPage() {
             if (groupItems.length === 0) return null;
 
             const groupIds = new Set(groupItems.map(item => item.id_discovery));
-            const reasons = Array.from(new Set(
-              groupItems.map(item => item.recommendation_reason).filter(Boolean)
-            ));
+            const displayItems = groupItems.map(item => item.recommendation_reason
+              ? { ...item, title: `${item.title || item.url} · ${item.recommendation_reason}` }
+              : item
+            );
 
             return (
               <section key={value} aria-labelledby={`discovery-${value}`}>
                 <h2 id={`discovery-${value}`} className="mb-2 font-semibold">
                   {label} ({groupItems.length})
-                  {reasons.length > 0 && (
-                    <span className="ml-2 text-sm font-normal text-gray-600">
-                      {reasons.join(", ")}
-                    </span>
-                  )}
                 </h2>
                 <DiscoveryTable
                   disabled={isScanning || loading || !sourcesReady}
-                  items={groupItems}
+                  items={displayItems}
                   selectedIds={selectedIds.filter(id => groupIds.has(id))}
                   onToggle={toggleSelection}
                   onToggleAll={() => toggleGroupSelections(groupItems)}
