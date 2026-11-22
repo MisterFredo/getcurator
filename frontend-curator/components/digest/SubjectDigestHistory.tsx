@@ -90,7 +90,7 @@ function SubjectCard({ card, digestId, expertId }: { card: Card; digestId: strin
       </div>}
       <p className="text-sm leading-relaxed">{card.development}</p>
       <p className="border-l-2 border-emerald-600 pl-3 text-sm leading-relaxed text-slate-700">
-        <strong>Why it matters</strong><br />{card.reason}
+        <strong>Why it matters to you</strong><br />{card.reason}
       </p>
       <details className="text-sm">
         <summary className="cursor-pointer font-medium text-emerald-700">Supporting content ({card.contents.length})</summary>
