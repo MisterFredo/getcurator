@@ -4,6 +4,7 @@
 import logging
 import requests
 from uuid import UUID
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -606,6 +607,7 @@ class NoGoRuleIn(BaseModel):
     expression: str = Field(min_length=1, max_length=160)
     reason: str = Field(min_length=1, max_length=240)
     is_active: bool = True
+    rule_type: Literal["GO", "NO_GO"] = "NO_GO"
 
     class Config:
         extra = "forbid"
@@ -619,7 +621,7 @@ def no_go_rules_route():
 @router.post("/no-go-rules")
 def save_no_go_rule_route(data: NoGoRuleIn):
     try:
-        save_no_go_rule(data.id_rule, data.expression, data.reason, data.is_active)
+        save_no_go_rule(data.id_rule, data.expression, data.reason, data.is_active, data.rule_type)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     except Exception as exc:
