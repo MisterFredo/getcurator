@@ -462,22 +462,43 @@ def compile_title_signal(value: str) -> re.Pattern:
 URL_PATH_SEPARATORS = re.compile(r"[-_/.]+")
 
 
+DOMAIN_EXPRESSION = re.compile(
+    r"(?:https?://)?(?P<domain>[a-z0-9-]+(?:\.[a-z0-9-]+)+)(?P<path>/\S*)?"
+)
+
+
+def compile_domain_signal(expression):
+    match = DOMAIN_EXPRESSION.fullmatch(normalize_signal(expression))
+    if not match:
+        return None
+    path = unquote(match["path"] or "").casefold().rstrip("/")
+    return re.compile(
+        r"^(?:[^./]+\.)*" + re.escape(match["domain"] + path) + r"(?=/|$)"
+    )
+
+
 def recommend_discovery(title, url, signals):
     normalized_title = normalize_signal(title or "")
     try:
-        url_path = normalize_signal(unquote(urlsplit(url or "").path))
+        parts = urlsplit(url or "")
+        url_path = normalize_signal(unquote(parts.path))
+        host_and_path = (parts.hostname or "").casefold() + url_path
     except ValueError:
         url_path = ""
+        host_and_path = ""
     url_words = normalize_signal(URL_PATH_SEPARATORS.sub(" ", url_path))
 
     matches = {}
     for kind, patterns in signals.items():
         matches[kind] = None
-        for title_pattern, url_pattern, reason in patterns:
+        for title_pattern, url_pattern, domain_pattern, reason in patterns:
             if title_pattern.search(normalized_title):
                 matches[kind] = reason
                 break
-            if url_pattern and (
+            if domain_pattern and domain_pattern.search(host_and_path):
+                matches[kind] = f"{reason} · URL"
+                break
+            if not domain_pattern and url_pattern and (
                 url_path and (title_pattern.search(url_path) or url_pattern.search(url_words))
             ):
                 matches[kind] = f"{reason} · URL"
@@ -538,12 +559,13 @@ def list_discovery_items():
                 compile_title_signal(URL_PATH_SEPARATORS.sub(" ", rule["expression"]))
                 if normalize_signal(URL_PATH_SEPARATORS.sub(" ", rule["expression"]))
                 else compile_title_signal(rule["expression"]),
+                compile_domain_signal(rule["expression"]),
                 rule["reason"],
             )
         )
     for company in companies:
         name = company["NAME"]
-        signals["GO"].append((compile_title_signal(name), None, f"Société détectée · {name}"))
+        signals["GO"].append((compile_title_signal(name), None, None, f"Société détectée · {name}"))
 
     items = []
     for r in rows:
