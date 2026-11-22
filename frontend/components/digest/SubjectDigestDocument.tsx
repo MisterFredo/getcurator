@@ -121,7 +121,7 @@ export default function SubjectDigestDocument({ digest }: { digest: SubjectDiges
                     </div>
                   )}
                   <p className="text-sm leading-relaxed">{card.development}</p>
-                  <p data-digest-why className="rounded bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700"><strong className="text-ratecard-blue">Why it matters</strong><br />{card.reason}</p>
+                  <p data-digest-why className="rounded bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700"><strong className="text-ratecard-blue">Why it matters to you</strong><br />{card.reason}</p>
                   <details open={expanded || undefined} className="border-t border-slate-100 pt-2 text-xs">
                     <summary className="cursor-pointer font-medium text-slate-600">
                       Supporting content ({card.contents.length})
