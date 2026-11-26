@@ -2,6 +2,8 @@ from typing import (
     Optional,
 )
 
+from core.touch.notebook_recipient_context import get_notebook_recipient_context
+
 from core.expertise.content_service import (
     load_contents_by_ids,
 )
@@ -352,6 +354,10 @@ def build_touch_notebook(
                 request
             )
         )
+
+        # Resolve once, before expensive generation; copied requests retain
+        # this private server-side cache throughout organization and summary.
+        get_notebook_recipient_context(normalized_request)
 
         print(
             "TOUCH_NOTEBOOK_REPORT_DESIGN",
