@@ -69,11 +69,6 @@ def load_touch_expert_context(
             "Expert Touch introuvable."
         )
 
-    if account.get("PROFILE_TYPE") != "EXPERT":
-        raise ValueError(
-            "Le profil sélectionné n’est pas un expert."
-        )
-
     profile = get_user_profile(
         user_id=cleaned_id,
     ) or {}
