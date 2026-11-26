@@ -93,6 +93,7 @@ export default function TouchMonthlyEditionList({
         api.get("/touch/editions?limit=200"),
         loadAllSavedReports(() => active),
         api.get("/user/admin/experts"),
+        api.get("/digest/admin/subject-digests/recipients?audience=user"),
       ]);
       if (!active) return;
       // Commit both lists together: partial data cannot reliably deduplicate.
@@ -104,9 +105,13 @@ export default function TouchMonthlyEditionList({
         setError(failed?.status === "rejected" && failed.reason instanceof Error
           ? failed.reason.message : "Unable to load reports and editions.");
       }
-      if (results[2].status === "fulfilled") {
+      {
         const names: Record<string, string> = {};
-        for (const expert of results[2].value.experts ?? []) {
+        const profiles = [
+          ...(results[2].status === "fulfilled" ? results[2].value.experts ?? [] : []),
+          ...(results[3].status === "fulfilled" ? results[3].value.recipients ?? [] : []),
+        ];
+        for (const expert of profiles) {
           const id = expert.ID_USER ?? expert.id_user ?? expert.user_id ?? expert.id;
           if (id) names[id] = expert.DISPLAY_NAME ?? expert.display_name ?? expert.NAME ?? expert.name ?? id;
         }
@@ -132,8 +137,8 @@ export default function TouchMonthlyEditionList({
         reportId: edition.report_id, edition, report,
       };
     });
-    const standalone: Row[] = reports.filter(report => report.report_type !== "MONTHLY" && !linkedIds.has(report.report_id)).map(report => ({
-      key: `report:${report.report_id}`, type: "STANDALONE",
+    const standalone: Row[] = reports.filter(report => !linkedIds.has(report.report_id)).map(report => ({
+      key: `report:${report.report_id}`, type: report.report_type === "MONTHLY" ? "MONTHLY" : "STANDALONE",
       subject: report.subject, expertId: report.expert_id ?? null,
       period: report.period_start?.slice(0, 7) ?? "",
       status: report.archived_at ? "ARCHIVED" : "GENERATED",
@@ -237,8 +242,8 @@ export default function TouchMonthlyEditionList({
           <option value="ACTIVE">All active statuses</option><option value="">All statuses, including archives</option>
           {Object.entries(STATUS_LABELS).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
         </select>
-        <select aria-label="Filter by expert" value={expertFilter} onChange={event => setExpertFilter(event.target.value)} className={selectClass}>
-          <option value="">All experts</option><option value="NO_EXPERT">Without an expert</option>
+        <select aria-label="Filter by profile" value={expertFilter} onChange={event => setExpertFilter(event.target.value)} className={selectClass}>
+          <option value="">All profiles — Users and Experts</option><option value="NO_EXPERT">Without a profile</option>
           {expertIds.map(id => <option key={id} value={id}>{expertNames[id] ?? id}</option>)}
         </select>
         <select aria-label="Filter by period" value={periodFilter} onChange={event => setPeriodFilter(event.target.value)} className={selectClass}>
