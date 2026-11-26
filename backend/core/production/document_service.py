@@ -7,6 +7,7 @@ from openai import OpenAI
 from core.production.document_models import ProductionDocument
 from core.production.models import ProductionPreparedCorpus
 from core.production.repository import get_production
+from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
 NUMERIC_VALIDATOR_REVISION = "20261113-watch-coverage-v7"
@@ -365,7 +366,10 @@ def validate_against_corpus(document, corpus):
             )
 
         source.label = str(report.get("subject") or source.label)
-        if report.get("source_type") == "COMPANY_WATCH":
+        if report.get("source_type") == "DIGEST_SUBJECT":
+            from core.production.digest_source import validate_digest_citation
+            validate_digest_citation(report, source)
+        elif report.get("source_type") == "COMPANY_WATCH":
             if source.content_id is not None:
                 raise ValueError(f"Source {source.id} : content_id doit être nul pour la veille.")
             coverage_label = WATCH_COVERAGE_LABELS.get(source.json_pointer)
@@ -466,7 +470,9 @@ def start_document(production_id, reviewed_plan, on_created=None):
     with client() as connection:
         response = connection.responses.create(
             model=os.getenv("PRODUCTION_DOCUMENT_MODEL") or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
-            instructions=INSTRUCTIONS,
+            instructions=INSTRUCTIONS + (
+                "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
+            ),
             input=[{"role": "user", "content": [{"type": "input_text", "text": json.dumps(payload, ensure_ascii=False, allow_nan=False)}]}],
             text={"format": {"type": "json_schema", "name": "getcurator_document", "strict": True,
                              "schema": ProductionDocument.model_json_schema()}},
