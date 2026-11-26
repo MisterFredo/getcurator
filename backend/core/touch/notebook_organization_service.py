@@ -1,3 +1,5 @@
+from core.touch.notebook_recipient_context import with_notebook_recipient_context
+
 import json
 import logging
 import os
@@ -858,8 +860,8 @@ def _repair_remaining_note_assignments(request, organization, notes, exclusions,
         "unassigned_notes": [note.model_dump(mode="json") for note in missing],
     }
     raw = run_llm_json(
-        prompt="Assign only the unassigned notes. Return the required JSON.\n"
-               + json.dumps(payload, ensure_ascii=False),
+        prompt=with_notebook_recipient_context(request, "Assign only the unassigned notes. Return the required JSON.\n"
+               + json.dumps(payload, ensure_ascii=False)),
         model=model,
         temperature=0.0,
         profile="basic",
@@ -1075,7 +1077,7 @@ def _prepare_chapter_outline(request, notes, model=None):
         return None
     try:
         raw = run_llm_json(
-            prompt=build_touch_notebook_outline_prompt(request, notes),
+            prompt=with_notebook_recipient_context(request, build_touch_notebook_outline_prompt(request, notes)),
             model=model,
             temperature=0.0,
             system_prompt=TOUCH_NOTEBOOK_OUTLINE_SYSTEM_PROMPT,
@@ -1134,11 +1136,11 @@ def _review_single_section_navigation(
 
     raw = run_llm_json(
         prompt=(
-            "Review this single-section documentary plan. "
+            with_notebook_recipient_context(request, "Review this single-section documentary plan. "
             "Return JSON with needs_reorganization (boolean), "
             "reason (string), and suggested_chapters (array of objects "
             "with title and example_note_ids).\n\n"
-            + json.dumps(payload, ensure_ascii=False)
+            + json.dumps(payload, ensure_ascii=False))
         ),
         model=model,
         temperature=0.0,
@@ -1322,7 +1324,7 @@ def _review_note_assignment_coherence(request, notes, chapters, assignments, mod
                "assignments": list(retained.values()),
                "retained_notes": [n.model_dump(mode="json") for n in notes if n.note_id in retained]}
     try:
-        raw = run_llm_json(prompt=json.dumps(payload, ensure_ascii=False), model=model,
+        raw = run_llm_json(prompt=with_notebook_recipient_context(request, json.dumps(payload, ensure_ascii=False)), model=model,
                           temperature=0.0,
                                                      system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_REVIEW_SYSTEM_PROMPT,
                            profile="smart", operation="touch_notebook_assignment_review")
@@ -1382,7 +1384,7 @@ def _assign_note_batch(request, batch, chapters, model, max_attempts, offset):
         parsed = None
         try:
             raw = run_llm_json(
-                prompt=prompt, model=model, temperature=0.0,
+                prompt=with_notebook_recipient_context(request, prompt), model=model, temperature=0.0,
                 system_prompt=TOUCH_NOTEBOOK_ASSIGNMENT_SYSTEM_PROMPT,
                 profile="basic",
                 operation="touch_notebook_assignment",
@@ -1463,7 +1465,7 @@ def _organize_from_note_assignments(request, notes, certified_numbers,
     assessment = {}
     for attempt in range(max(1, max_attempts)):
         try:
-            raw = run_llm_json(prompt=assessment_prompt, model=model, temperature=0.0,
+            raw = run_llm_json(prompt=with_notebook_recipient_context(request, assessment_prompt), model=model, temperature=0.0,
                                                              system_prompt=TOUCH_NOTEBOOK_ASSESSMENT_SYSTEM_PROMPT,
                                profile="smart", operation="touch_notebook_assessment")
             payload = extract_json_object(raw)
@@ -1551,7 +1553,7 @@ def organize_notebook(
 
             raw_content = run_llm_json(
 
-                prompt=prompt,
+                prompt=with_notebook_recipient_context(request, prompt),
 
                 model=model,
 
