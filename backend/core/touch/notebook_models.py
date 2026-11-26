@@ -10,6 +10,7 @@ from typing import (
 from pydantic import (
     BaseModel,
     Field,
+    PrivateAttr,
     field_validator,
 )
 
@@ -630,6 +631,10 @@ class TouchNotebookReportDesign(
 class TouchNotebookRequest(
     StrictTouchNotebookModel,
 ):
+
+    # Server-loaded editorial context. Never accepted from the API payload
+    # or included in model_dump / the public request schema.
+    _recipient_context_payload: dict | None = PrivateAttr(default=None)
 
     report_id: str | None = None
 
