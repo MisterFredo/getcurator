@@ -21,6 +21,10 @@ type SourceReport = {
   report_id: string; subject: string; output_language: string;
   period_start?: string | null; period_end?: string | null;
 };
+type DigestSource = {
+  id: string; user_id: string; name: string;
+  period_start: string; period_end: string; generated_at: string;
+};
 type WatchReport = {
   id_company: string;
   name: string;
@@ -91,7 +95,15 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
   const [reportSearch, setReportSearch] = useState("");
   const [productionSearch, setProductionSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const sourceCount = selected.length + selectedWatch.length;
+  const [digests, setDigests] = useState<DigestSource[]>([]);
+  const [selectedDigests, setSelectedDigests] = useState<DigestSource[]>([]);
+  const [digestQuery, setDigestQuery] = useState("");
+  const [analysisStart, setAnalysisStart] = useState("");
+  const [analysisEnd, setAnalysisEnd] = useState("");
+  const [digestOffset, setDigestOffset] = useState(0);
+  const [moreDigests, setMoreDigests] = useState(false);
+  const [digestError, setDigestError] = useState("");
+  const sourceCount = selected.length + selectedWatch.length + selectedDigests.length;
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
   const [audience, setAudience] = useState("Décideurs médias et marketing");
@@ -239,13 +251,34 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
     finally { actionLock.current = false; setBusy(false); }
   }
   async function create() {
+    if (selectedDigests.length && (!analysisStart || !analysisEnd || analysisEnd < analysisStart)) {
+      throw new Error("Précisez une période d’analyse valide pour les Digests.");
+    }
     const res = await api.post("/production/", {
       title: title.trim(), report_ids: selected, objective: objective.trim(),
       ...(selectedWatch.length ? { watch_reports: selectedWatch } : {}),
+      ...(selectedDigests.length ? {
+        digest_ids: selectedDigests.map(digest => digest.id),
+        analysis_start: analysisStart, analysis_end: analysisEnd,
+      } : {}),
       target_audience: audience.trim(), output_language: language,
       output_format: "AUTONOMOUS_REPORT", target_page_count: pages,
     });
     window.location.assign(`/admin/production/reports?production=${encodeURIComponent(res.production.production_id)}`);
+  }
+  async function loadDigests(append = false) {
+    setDigestError("");
+    try {
+      const offset = append ? digestOffset : 0;
+      const params = new URLSearchParams({ query: digestQuery.trim(), limit: "100", offset: String(offset) });
+      if (analysisStart) params.set("start", analysisStart);
+      if (analysisEnd) params.set("end", analysisEnd);
+      const res = await api.get(`/production/digest-sources?${params.toString()}`);
+      const items: DigestSource[] = res.digests ?? [];
+      setDigests(current => append ? [...current, ...items.filter(item => !current.some(d => d.id === item.id))] : items);
+      setDigestOffset(offset + items.length);
+      setMoreDigests(items.length === 100);
+    } catch (err) { setDigestError(message(err)); }
   }
   async function chooseArtifact(id: string) {
     if (!production) return;
@@ -339,7 +372,7 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
   return <div className="mx-auto max-w-[1600px] space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-semibold">{mode === "create" ? "Nouvelle production" : "Productions enregistrées"}</h1>
-        <p className="mt-2 text-sm text-slate-500">Rapports Touch sauvegardés → plan relu → rapport autonome.</p></div>
+        <p className="mt-2 text-sm text-slate-500">Rapports Touch, bilans Corpo et Digests V2 → plan relu → rapport autonome.</p></div>
       <div className="flex flex-wrap gap-2">
         <Link className={BUTTON} onClick={event => {
           if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) event.preventDefault();
@@ -401,6 +434,34 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
                   </label>;
                 }))}
             </div>
+          </div>
+          <div className="border-t pt-3 space-y-3">
+            <h3 className="text-sm font-medium">Digests V2 · {selectedDigests.length} sélectionné(s)</h3>
+            <input className={INPUT} placeholder="Nom du destinataire, par exemple Marion" value={digestQuery}
+              disabled={busy} onChange={e => { setDigestQuery(e.target.value); setMoreDigests(false); }} />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm">Analyse du<input type="date" className={INPUT} value={analysisStart} disabled={busy}
+                onChange={e => { setAnalysisStart(e.target.value); setMoreDigests(false); }} /></label>
+              <label className="text-sm">Au (inclus)<input type="date" className={INPUT} value={analysisEnd} disabled={busy}
+                onChange={e => { setAnalysisEnd(e.target.value); setMoreDigests(false); }} /></label>
+            </div>
+            <p className="text-xs text-slate-500">Les Digests chevauchant la période sont proposés. Seuls leurs contenus publiés dans cette période seront conservés. La sélection reste active entre les recherches.</p>
+            <button type="button" className={BUTTON} disabled={busy} onClick={() => void act(() => loadDigests())}>Rechercher les Digests</button>
+            {digestError && <p role="alert" className="text-sm text-red-800">{digestError}</p>}
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {digests.map(digest => <label key={digest.id} className="flex gap-2 rounded border p-3 text-sm">
+                <input type="checkbox" checked={selectedDigests.some(d => d.id === digest.id)}
+                  disabled={busy || (!selectedDigests.some(d => d.id === digest.id) && sourceCount >= 20)}
+                  onChange={() => setSelectedDigests(current => current.some(d => d.id === digest.id)
+                    ? current.filter(d => d.id !== digest.id) : [...current, digest])} />
+                <span>{digest.name}<span className="block text-xs text-slate-500">{digest.period_start} → {digest.period_end}</span></span>
+              </label>)}
+            </div>
+            {moreDigests && <button type="button" className={BUTTON} disabled={busy} onClick={() => void act(() => loadDigests(true))}>Charger plus de Digests</button>}
+            {selectedDigests.length > 0 && <details><summary className="cursor-pointer text-sm">Digests sélectionnés ({selectedDigests.length})</summary>
+              <ul className="space-y-2 mt-2">{selectedDigests.map(d => <li key={d.id} className="text-xs">{d.name} · {d.period_start} → {d.period_end}
+                <button type="button" className="ml-2 underline" disabled={busy} onClick={() => setSelectedDigests(current => current.filter(item => item.id !== d.id))}>Retirer</button></li>)}</ul>
+            </details>}
           </div>
           <p className="text-xs text-slate-600">{sourceCount} / 20 rapports sources</p>
           <button className={`${PRIMARY} w-full`} disabled={busy || !title.trim() || !sourceCount} onClick={() => void act(create)}>Créer la production</button>
