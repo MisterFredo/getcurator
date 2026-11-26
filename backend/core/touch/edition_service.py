@@ -64,8 +64,8 @@ def bootstrap_expert_touch_editions(
     expert_id = (expert_id or "").strip()
     account = get_user_by_id(expert_id) if expert_id else None
 
-    if not account or account.get("PROFILE_TYPE") != "EXPERT":
-        raise ValueError("Expert Touch introuvable ou invalide.")
+        if not account:
+            raise ValueError("Profil Touch introuvable.")
 
     result = {
         "status": "completed",
@@ -105,22 +105,31 @@ def bootstrap_expert_touch_editions(
                 continue
 
             month = start.strftime("%Y-%m")
+            subject = f"{context.display_name} — {month}"
+
             if language == "fr":
-                subject = f"{context.display_name} — {month}"
                 query = (
-                    f"Documenter les évolutions de {context.display_name} "
-                    f"durant le mois {month}, selon le mandat complet de "
-                    "l'expert. Couvrir les axes pour lesquels le corpus "
-                    "fournit des informations concrètes, sans inventer "
-                    "de faits ni de recommandations."
+                    f"Documenter les évolutions pertinentes pour le profil "
+                    f"de {context.display_name} durant le mois {month}. "
+                    "Respecter l'ensemble de ses instructions de suivi, "
+                    "priorités professionnelles, critères de pertinence "
+                    "et exclusions. Organiser la synthèse autour de ses "
+                    "enjeux et des axes étayés par le corpus. "
+                    "Distinguer faits nouveaux, analyses et pratiques "
+                    "documentées. Ne pas inventer de faits, de liens avec "
+                    "le profil ni de recommandations."
                 )
             else:
-                subject = f"{context.display_name} — {month}"
                 query = (
-                    f"Document developments in {context.display_name} during "
-                    f"{month}, using the expert's full monitoring mandate. "
-                    "Cover axes supported by concrete corpus evidence. "
-                    "Do not invent facts or recommendations."
+                    f"Document developments relevant to "
+                    f"{context.display_name}'s profile during {month}. "
+                    "Follow all monitoring instructions, professional "
+                    "priorities, relevance criteria and exclusions. "
+                    "Organize the synthesis around the profile's concerns "
+                    "and axes supported by corpus evidence. Distinguish "
+                    "new facts, analysis and documented practices. "
+                    "Do not invent facts, connections to the profile "
+                    "or recommendations."
                 )
 
             claim_touch_edition(
