@@ -116,6 +116,25 @@ def _require_production_admin(
 
 router = APIRouter()
 
+
+@router.get("/digest-sources")
+def browse_digest_sources(
+    query: str = Query(default="", max_length=200),
+    start: str | None = None,
+    end: str | None = None,
+    limit: int = Query(default=100, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    from datetime import date
+    from core.production.digest_source import list_digest_sources
+    try:
+        return {"digests": list_digest_sources(
+            query, date.fromisoformat(start) if start else None,
+            date.fromisoformat(end) if end else None, limit, offset,
+        )}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 # ============================================================
 # WRITE REPORT FROM REVIEWED PLAN
 # ============================================================
