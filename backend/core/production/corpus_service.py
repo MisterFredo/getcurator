@@ -5,11 +5,8 @@ from typing import Any
 from uuid import uuid4
 
 from core.production.models import (
-    ProductionCorpusCounts,
-    ProductionEvidenceReference,
-    ProductionPrepareRequest,
-    ProductionPreparedCorpus,
-    ProductionReportSnapshot,
+    ProductionCorpusCounts, ProductionEvidenceReference, ProductionPrepareRequest,
+    ProductionPreparedCorpus, ProductionReportSnapshot,
 )
 from core.touch.notebook_models import TouchCorpusNotebook
 from core.touch.notebook_report_service import get_touch_report
@@ -24,8 +21,7 @@ def _sha256(value: Any) -> str:
 
 
 EVIDENCE_COLLECTIONS = (
-    ("notes", "note_id", "NOTE"),
-    ("events", "event_id", "EVENT"),
+    ("notes", "note_id", "NOTE"), ("events", "event_id", "EVENT"),
     ("validated_numbers", "number_id", "NUMBER"),
     ("sections", "section_id", "SECTION"),
     ("executive_summary", "summary_id", "SUMMARY"),
@@ -36,16 +32,12 @@ EVIDENCE_COLLECTIONS = (
 def _reference(snapshot, kind, local_id):
     return ProductionEvidenceReference(
         reference_id=_canonical_json([snapshot.report_id, snapshot.version_number, kind, local_id]),
-        report_id=snapshot.report_id,
-        report_version=snapshot.version_number,
-        kind=kind,
-        local_id=local_id,
+        report_id=snapshot.report_id, report_version=snapshot.version_number,
+        kind=kind, local_id=local_id,
     )
 
 
-def _build_evidence_index(
-    snapshot: ProductionReportSnapshot, notebook: TouchCorpusNotebook,
-) -> list[ProductionEvidenceReference]:
+def _build_evidence_index(snapshot: ProductionReportSnapshot, notebook: TouchCorpusNotebook):
     references = []
     for collection_name, id_field, kind in EVIDENCE_COLLECTIONS:
         seen_ids = set()
@@ -63,7 +55,8 @@ def _build_evidence_index(
 def _snapshot(report_id, version, report):
     payload = json.loads(_canonical_json(report))
     return ProductionReportSnapshot(
-        report_id=report_id, version_number=version, snapshot_sha256=_sha256(payload), payload=payload,
+        report_id=report_id, version_number=version,
+        snapshot_sha256=_sha256(payload), payload=payload,
     )
 
 
@@ -101,7 +94,6 @@ def prepare_production_corpus(request: ProductionPrepareRequest) -> ProductionPr
 
     if request.watch_reports:
         from core.production.watch_report_source import read_watch_report
-
         for ref in request.watch_reports:
             snapshot = _snapshot(*read_watch_report(ref))
             snapshots.append(snapshot)
@@ -116,20 +108,43 @@ def prepare_production_corpus(request: ProductionPrepareRequest) -> ProductionPr
                 for index in range(len(facts)):
                     evidence_index.append(_reference(snapshot, "WATCH_FACT", f"/sections/{section}/{index}"))
 
+    if request.digest_ids:
+        from core.production.digest_source import read_digest_source, EVIDENCE_FIELDS
+        profile_cache = {}
+        for digest_id in request.digest_ids:
+            snapshot = _snapshot(*read_digest_source(
+                digest_id, request.analysis_start, request.analysis_end, profile_cache,
+            ))
+            snapshots.append(snapshot)
+            for index, content in enumerate(snapshot.payload["contents"]):
+                content_ids.add(content["content_id"])
+                for field in EVIDENCE_FIELDS:
+                    value = content.get(field)
+                    if isinstance(value, str) and value.strip():
+                        evidence_index.append(_reference(snapshot, "DIGEST_CONTENT", f"/contents/{index}/{field}"))
+                    elif field == "chiffres" and isinstance(value, list):
+                        for number_index, number in enumerate(value):
+                            if isinstance(number, str) and number.strip():
+                                evidence_index.append(_reference(snapshot, "DIGEST_CONTENT", f"/contents/{index}/{field}/{number_index}"))
+            # Editorial topic groupings are not notes or certified Numbers.
+
     request_payload = request.model_dump(mode="json")
     if not request.watch_reports:
         request_payload.pop("watch_reports")
+    if not request.digest_ids:
+        request_payload.pop("digest_ids")
+    if request.analysis_start is None and request.analysis_end is None:
+        request_payload.pop("analysis_start")
+        request_payload.pop("analysis_end")
     corpus_sha256 = _sha256({
         "request": request_payload,
         "reports": [snapshot.model_dump(exclude={"payload"}) for snapshot in snapshots],
     })
     return ProductionPreparedCorpus(
-        production_id=str(uuid4()),
-        prepared_at=datetime.now(timezone.utc),
-        request=request,
-        reports=snapshots,
-        evidence_index=evidence_index,
-        data_policy="SAVED_TOUCH_AND_WATCH_REPORTS" if request.watch_reports else "SAVED_TOUCH_REPORTS_ONLY",
+        production_id=str(uuid4()), prepared_at=datetime.now(timezone.utc), request=request,
+        reports=snapshots, evidence_index=evidence_index,
+        data_policy=("SAVED_REPORTS_AND_DIGEST_CONTENTS" if request.digest_ids else
+                     "SAVED_TOUCH_AND_WATCH_REPORTS" if request.watch_reports else "SAVED_TOUCH_REPORTS_ONLY"),
         counts=ProductionCorpusCounts(
             reports=len(snapshots), unique_contents=len(content_ids) + len(watch_source_ids),
             unique_number_ids=len(number_ids), **totals,
