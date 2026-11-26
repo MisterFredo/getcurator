@@ -253,16 +253,11 @@ def save_touch_report(
             request.expert_id,
         )
 
-        if (
-            not expert
-            or expert.get(
-                "PROFILE_TYPE"
-            ) != "EXPERT"
-        ):
+        if not expert:
 
             raise ValueError(
-                "L'expert associé au rapport "
-                "est introuvable ou invalide."
+                "Le profil associé au rapport "
+                "est introuvable."
             )
 
     sources = (
