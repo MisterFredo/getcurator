@@ -907,26 +907,42 @@ export default function TouchPage() {
 
   }, []);
 
-  /* =======================================================
-     LOAD EXPERTS
+    /* =======================================================
+     LOAD PROFILES — EXPERTS + USERS
   ======================================================= */
 
   useEffect(() => {
     let active = true;
 
-    async function loadExperts() {
+    async function loadProfiles() {
+      setExpertsLoading(true);
+      setExpertsError(null);
+
       try {
-        const response = await api.get(
-          "/user/admin/experts",
-        );
+        const [expertsResponse, usersResponse] = await Promise.all([
+          api.get("/user/admin/experts"),
+          api.get(
+            "/digest/admin/subject-digests/recipients?audience=user",
+          ),
+        ]);
 
         if (!active) return;
 
         setExpertOptions(
           normalizeOptions(
-            response.experts ?? [],
+            [
+              ...(expertsResponse.experts ?? []),
+              ...(usersResponse.recipients ?? []),
+            ],
             ["ID_USER", "id_user", "user_id", "id"],
-            ["DISPLAY_NAME", "display_name", "NAME", "name", "EMAIL", "email"],
+            [
+              "DISPLAY_NAME",
+              "display_name",
+              "NAME",
+              "name",
+              "EMAIL",
+              "email",
+            ],
           ),
         );
       } catch (caughtError) {
@@ -935,14 +951,14 @@ export default function TouchPage() {
         setExpertsError(
           caughtError instanceof Error
             ? caughtError.message
-            : "Unable to load experts.",
+            : "Unable to load profiles.",
         );
       } finally {
         if (active) setExpertsLoading(false);
       }
     }
 
-    loadExperts();
+    void loadProfiles();
 
     return () => {
       active = false;
