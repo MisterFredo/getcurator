@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -30,15 +31,31 @@ class ProductionPrepareRequest(ProductionModel):
 
     report_ids: list[str] = Field(default_factory=list, max_length=20)
     watch_reports: list[ProductionWatchReportRef] = Field(default_factory=list, max_length=20)
+    digest_ids: list[str] = Field(default_factory=list, max_length=20)
+    analysis_start: date | None = None
+    analysis_end: date | None = None
+
+    @field_validator("digest_ids")
+    @classmethod
+    def normalize_digest_ids(cls, values: list[str]) -> list[str]:
+        return [str(UUID(value.strip())) for value in values]
 
     @model_validator(mode="after")
     def validate_sources(self):
-        count = len(self.report_ids) + len(self.watch_reports)
+        count = len(self.report_ids) + len(self.watch_reports) + len(self.digest_ids)
         if not 1 <= count <= 20:
             raise ValueError("Sélectionnez de 1 à 20 rapports sources.")
         keys = {(ref.company_id, ref.month, ref.language, ref.revision) for ref in self.watch_reports}
         if len(keys) != len(self.watch_reports):
             raise ValueError("Un rapport de veille a été sélectionné plusieurs fois.")
+        if len(set(self.digest_ids)) != len(self.digest_ids):
+            raise ValueError("Un Digest a été sélectionné plusieurs fois.")
+        if self.digest_ids and (self.analysis_start is None or self.analysis_end is None):
+            raise ValueError("Précisez les dates de début et de fin de l’analyse des Digests.")
+        if (self.analysis_start is None) != (self.analysis_end is None):
+            raise ValueError("Les deux bornes de la période sont obligatoires.")
+        if self.analysis_start and self.analysis_end and self.analysis_start > self.analysis_end:
+            raise ValueError("La fin de période précède son début.")
         return self
 
     objective: str = Field(
@@ -131,6 +148,7 @@ ProductionEvidenceKind = Literal[
     "SUMMARY",
     "CROSS_READING",
     "WATCH_FACT",
+    "DIGEST_CONTENT",
 ]
 
 
@@ -186,6 +204,7 @@ class ProductionPreparedCorpus(ProductionModel):
     data_policy: Literal[
         "SAVED_TOUCH_REPORTS_ONLY",
         "SAVED_TOUCH_AND_WATCH_REPORTS",
+        "SAVED_REPORTS_AND_DIGEST_CONTENTS",
     ] = "SAVED_TOUCH_REPORTS_ONLY"
 
     request: ProductionPrepareRequest
