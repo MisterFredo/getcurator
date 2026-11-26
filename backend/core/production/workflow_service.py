@@ -10,6 +10,7 @@ from openai import APIStatusError
 from core.production import workflow_repository as repo
 from core.production import document_service as document_validator
 from core.production.document_models import ProductionDocument
+from core.production.digest_source import DIGEST_INSTRUCTIONS
 from core.production.document_service import (
     client, load_corpus, start_document, get_document_job, validate_against_corpus,
 )
@@ -161,7 +162,9 @@ def start_plan(production_id, artifact_id):
             response = connection.responses.create(
                 model=os.getenv("PRODUCTION_PLAN_MODEL") or os.getenv("PRODUCTION_DOCUMENT_MODEL")
                       or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
-                instructions=PLAN_INSTRUCTIONS,
+                instructions=PLAN_INSTRUCTIONS + (
+                    "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
+                ),
                 input=json.dumps(payload, ensure_ascii=False, allow_nan=False),
                 reasoning={"effort": "medium"}, max_output_tokens=48000,
                 background=True, store=True,
