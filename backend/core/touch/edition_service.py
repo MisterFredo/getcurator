@@ -26,18 +26,35 @@ def build_touch_monthly_periods(
 ) -> list[tuple[datetime, datetime]]:
     """Newest first; complete UTC months, inclusive end."""
     if count not in (1, 3):
-        raise ValueError("Choisir le dernier mois ou les trois derniers mois.")
+        raise ValueError(
+            "Choisir le dernier mois ou les trois derniers mois."
+        )
 
     current = now or datetime.now(timezone.utc)
+
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
+
     current = current.astimezone(timezone.utc)
-    cursor = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    cursor = current.replace(
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
     periods = []
 
     for _ in range(count):
         end = cursor - timedelta(microseconds=1)
-        start = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start = end.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
         periods.append((start, end))
         cursor = start
 
@@ -45,7 +62,7 @@ def build_touch_monthly_periods(
 
 
 # ============================================================
-# PREPARE ONE EXPERT'S MONTHLY EDITIONS
+# PREPARE ONE PROFILE'S MONTHLY EDITIONS
 # ============================================================
 
 def bootstrap_expert_touch_editions(
@@ -54,18 +71,24 @@ def bootstrap_expert_touch_editions(
     model: str | None = None,
 ) -> dict:
     """
-    Prepare corpora only. Manual validation and notebook generation
-    remain inside the existing Touch workflow.
+    Prepare corpora for an expert or user profile.
 
-    TO_REVIEW, GENERATED and BUILDING editions are not regenerated.
+    Manual validation and notebook generation remain inside
+    the existing Touch workflow.
+
+    Existing non-ERROR editions are preserved.
     ERROR editions are retried.
+
+    The function name and expert_id parameter are retained
+    for compatibility with existing callers.
     """
     periods = build_touch_monthly_periods(months_count)
+
     expert_id = (expert_id or "").strip()
     account = get_user_by_id(expert_id) if expert_id else None
 
-        if not account:
-            raise ValueError("Profil Touch introuvable.")
+    if not account:
+        raise ValueError("Profil Touch introuvable.")
 
     result = {
         "status": "completed",
@@ -78,17 +101,22 @@ def bootstrap_expert_touch_editions(
     }
 
     if account.get("IS_ACTIVE") is False:
-        result.update(status="not_eligible", reason="Expert inactif.")
+        result.update(
+            status="not_eligible",
+            reason="Profil inactif.",
+        )
         return result
 
-    # Same eligibility as expert-backed Touch research:
-    # a valid, READY structured profile with monitoring instructions.
+    # A valid, READY structured profile with monitoring
+    # instructions is required for users and experts alike.
     context = load_touch_expert_context(expert_id)
+
     language = account.get("LANGUAGE") or "fr"
     language = language if language in ("fr", "en") else "fr"
 
     for start, end in periods:
         edition_id = build_touch_edition_id(expert_id, start)
+
         item = {
             "edition_id": edition_id,
             "period_start": start.isoformat(),
@@ -98,9 +126,13 @@ def bootstrap_expert_touch_editions(
 
         try:
             existing = get_touch_edition(edition_id)
+
             if existing and existing["status"] != "ERROR":
                 result["skipped_count"] += 1
-                item.update(status=existing["status"], action="skipped")
+                item.update(
+                    status=existing["status"],
+                    action="skipped",
+                )
                 result["editions"].append(item)
                 continue
 
@@ -109,7 +141,7 @@ def bootstrap_expert_touch_editions(
 
             if language == "fr":
                 query = (
-                    f"Documenter les évolutions pertinentes pour le profil "
+                    "Documenter les évolutions pertinentes pour le profil "
                     f"de {context.display_name} durant le mois {month}. "
                     "Respecter l'ensemble de ses instructions de suivi, "
                     "priorités professionnelles, critères de pertinence "
@@ -121,7 +153,7 @@ def bootstrap_expert_touch_editions(
                 )
             else:
                 query = (
-                    f"Document developments relevant to "
+                    "Document developments relevant to "
                     f"{context.display_name}'s profile during {month}. "
                     "Follow all monitoring instructions, professional "
                     "priorities, relevance criteria and exclusions. "
@@ -133,9 +165,15 @@ def bootstrap_expert_touch_editions(
                 )
 
             claim_touch_edition(
-                edition_id, expert_id, start, end, subject, language,
+                edition_id,
+                expert_id,
+                start,
+                end,
+                subject,
+                language,
             )
             claimed = True
+
             if existing is None:
                 result["created_count"] += 1
 
@@ -156,6 +194,7 @@ def bootstrap_expert_touch_editions(
                 edition_id=edition_id,
                 search=outcome.model_dump(mode="json"),
             )
+
             result["prepared_count"] += 1
             item.update(
                 status="TO_REVIEW",
@@ -166,13 +205,25 @@ def bootstrap_expert_touch_editions(
 
         except Exception as exc:
             message = str(exc)
+
             if claimed:
                 try:
-                    record_touch_edition_error(edition_id, message)
+                    record_touch_edition_error(
+                        edition_id,
+                        message,
+                    )
                 except Exception as persistence_exc:
-                    message += f" | Enregistrement de l'erreur : {persistence_exc}"
+                    message += (
+                        " | Enregistrement de l'erreur : "
+                        f"{persistence_exc}"
+                    )
+
             result["failed_count"] += 1
-            item.update(status="ERROR", action="failed", error=message)
+            item.update(
+                status="ERROR",
+                action="failed",
+                error=message,
+            )
 
         result["editions"].append(item)
 
