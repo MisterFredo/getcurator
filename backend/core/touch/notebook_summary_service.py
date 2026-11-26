@@ -1,3 +1,5 @@
+from core.touch.notebook_recipient_context import with_notebook_recipient_context
+
 import re
 
 from typing import (
@@ -511,7 +513,7 @@ def build_notebook_executive_summary(
         try:
 
             raw_content = run_llm_json(
-                prompt=prompt,
+                prompt=with_notebook_recipient_context(request, prompt),
                 model=model,
                 temperature=0.0,
                 system_prompt=TOUCH_NOTEBOOK_SUMMARY_SYSTEM_PROMPT,
