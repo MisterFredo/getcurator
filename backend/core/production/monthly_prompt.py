@@ -12,6 +12,8 @@ professionnel étayé ou une question à examiner, jamais une pratique interne s
 Avant chaque paraphrase, conserve l'acteur, le produit, le système, la population
 et le statut exacts du passage cité. Un environnement technologique ne peut pas
 être remplacé par un produit plus étroit ou voisin sans preuve explicite.
+Un pays, un acteur ou un thème commun n'établit pas que deux développements
+forment un seul dispositif. Préserve cette distinction dans la synthèse aussi.
 Pas d'indicateurs décoratifs. Une date ou une année de lancement reste un repère
 temporel, jamais un KPI. Préfère un passage analytique contextualisé aux chaînes
 chiffres : un libellé extrait « utilisateurs » ne qualifie pas des annonceurs
