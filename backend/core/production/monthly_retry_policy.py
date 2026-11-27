@@ -1,138 +1,64 @@
-"""Bound technical rewrites and local repairs; one migration recovery only."""
-from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND, repair_plan
-from core.production.monthly_repair_revision import (
-    REPAIR_REVISION, PAGE_REPAIR_MODE, MAX_LEGACY_RECOVERY_REPAIRS, MAX_TOTAL_LOCAL_REPAIRS,
-)
-
-from core.production.monthly_page_repair import page_repair_plan
-
-from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, METRIC_RETRACTION_MODE, metric_retraction_plan
-
-from core.production.monthly_text_amendment import AMENDMENT_MODE, amendment_plan
+"""Fixed per-page correction budgets, including all saved legacy attempts."""
+from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND
+from core.production.monthly_repair_contract import MAX_PAGE_REPAIRS, repair_plan, page_budget
 
 MAX_DOCUMENT_ATTEMPTS = 4
-MAX_LOCAL_REPAIRS = 2
 
 
 def document_budget(history, read_artifact):
-    documents = sorted(
-        (row for row in history if row["stage"] == "DOCUMENT"),
-        key=lambda row: row["version_number"], reverse=True,
-    )
-    loaded = {row["artifact_id"]: read_artifact(row) for row in documents}
-    repairs = [
-        row for row in documents
-        if (loaded[row["artifact_id"]].get("request") or {}).get("kind") == REPAIR_KIND
-    ]
-    full_documents = [row for row in documents if row not in repairs]
-    # Old in-flight operations keep their original contract. Their history is
-    # retained; the current service may recover once, never reset its counters.
-    legacy_repairs = [
-        row for row in repairs
-        if (loaded[row["artifact_id"]].get("request") or {}).get("repair_mode")
-        != PAGE_REPAIR_MODE
-    ]
-    current_repairs = [row for row in repairs if row not in legacy_repairs]
-    recovery = bool(
-        len(repairs) >= MAX_LOCAL_REPAIRS
-        and legacy_repairs
-        and len(current_repairs) < MAX_LEGACY_RECOVERY_REPAIRS
-        and len(repairs) < MAX_TOTAL_LOCAL_REPAIRS
-    )
-    repair_slot = len(repairs) < MAX_LOCAL_REPAIRS or recovery
-    consecutive_failures = 0
-    for row in documents:
-        if row["status"] not in {"validation_failed", "incomplete"}:
-            break
-        consecutive_failures += 1
-    document_ids = {row["artifact_id"] for row in documents}
+    details = {}
+    def read(row):
+        if row["artifact_id"] not in details:
+            details[row["artifact_id"]] = read_artifact(row) or {}
+        return details[row["artifact_id"]]
+    documents = sorted((r for r in history if r["stage"] == "DOCUMENT"),
+                       key=lambda r: r["version_number"], reverse=True)
+    repairs = [r for r in documents if (read(r).get("request") or {}).get("kind") == REPAIR_KIND]
+    full = [r for r in documents if r not in repairs]
+    latest = read(documents[0]) if documents else None
     reviews = []
     for row in sorted(history, key=lambda r: r["version_number"], reverse=True):
         if row["stage"] not in {"REVIEW", "REVIEW_BATCH"} or row["status"] != "completed":
             continue
-        item = read_artifact(row)
-        if (item.get("request") or {}).get("document_artifact_id") not in document_ids:
-            continue
+        item = read(row)
         if ((item.get("result") or {}).get("review") or {}).get("passed") is False:
             reviews.append(item)
-    latest = loaded[documents[0]["artifact_id"]] if documents else None
-    assessment = next((
-        review for review in reviews
-        if latest
-        and review["request"]["document_artifact_id"] == latest["artifact_id"]
-        and review["request"].get("audit_revision") == AUDIT_REVISION
-    ), None)
-    local_repair = False
-    unhandled_locations = []
-    # Compute diagnostics even when no slot remains.
-    if latest and latest["status"] == "completed" and assessment:
-        plan = page_repair_plan(
-            (latest.get("result") or {}).get("document") or {},
-            assessment["result"]["review"]["issues"],
-        )
-        unhandled_locations = plan["unhandled_locations"]
-        local_repair = bool(repair_slot and plan["targets"] and not unhandled_locations)
-    # A single non-generative fallback after the existing editorial budget.
-    # It cannot reset counters, edit sources, or permit a technical rewrite.
-    retraction_available = bool(
-        latest and latest["status"] == "completed" and assessment
-        and len(repairs) >= MAX_LOCAL_REPAIRS
-        and len(repairs) <= MAX_TOTAL_LOCAL_REPAIRS
-        and (latest.get("request") or {}).get("repair_mode") == PAGE_REPAIR_MODE
-        and not any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode")
-                    == RETRACTION_MODE for r in repairs)
-        and retraction_plan((latest.get("result") or {}).get("document") or {},
-                            assessment["result"]["review"]["issues"])
-    )
-    metric_retraction_available = bool(
-        latest and latest["status"] == "completed" and assessment
-        and MAX_LOCAL_REPAIRS <= len(repairs) <= MAX_TOTAL_LOCAL_REPAIRS + 1
-        and (latest.get("request") or {}).get("repair_mode") in {PAGE_REPAIR_MODE, RETRACTION_MODE}
-        and not any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode")
-                    == METRIC_RETRACTION_MODE for r in repairs)
-        and metric_retraction_plan((latest.get("result") or {}).get("document") or {},
-                                   assessment["result"]["review"]["issues"])
-    )
-    amendment_available = bool(
-        latest and assessment
-        and not any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode")
-                    == AMENDMENT_MODE for r in repairs)
-        and amendment_plan(latest, assessment)
-    )
-    # Technical rewrites remain forbidden after a localized repair.
-    regular_correction = bool(
-        len(full_documents) < MAX_DOCUMENT_ATTEMPTS
-        and consecutive_failures < 2
-        and latest is not None
-        and latest["status"] in {"validation_failed", "incomplete"}
-        and (latest.get("request") or {}).get("kind") != REPAIR_KIND
-    )
-    max_repairs = (
-        min(MAX_TOTAL_LOCAL_REPAIRS, max(MAX_LOCAL_REPAIRS, len(legacy_repairs))
-            + MAX_LEGACY_RECOVERY_REPAIRS)
-        if legacy_repairs else MAX_LOCAL_REPAIRS
-    )
-    if retraction_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == RETRACTION_MODE for r in repairs):
-        max_repairs = max(max_repairs, len(repairs) + int(retraction_available))
-    if metric_retraction_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == METRIC_RETRACTION_MODE for r in repairs):
-        max_repairs = max(max_repairs, len(repairs) + int(metric_retraction_available))
-    if amendment_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == AMENDMENT_MODE for r in repairs):
-        max_repairs = max(max_repairs, len(repairs) + int(amendment_available))
-    return {
-        "document_attempts": len(documents),
-        "technical_failures": sum(
-            row["status"] in {"validation_failed", "incomplete"} for row in documents
-        ),
-        "failed_reviews": len(reviews),
-        "full_document_attempts": len(full_documents),
-        "local_repair_attempts": len(repairs),
-        "max_document_attempts": MAX_DOCUMENT_ATTEMPTS + max_repairs,
-        "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
-        "max_editorial_corrections": max_repairs,
-        "targeted_repair_available": local_repair or retraction_available or metric_retraction_available or amendment_available,
-        "reviewed_text_amendment_available": amendment_available,
-        "deterministic_metric_retraction_available": metric_retraction_available,
-        "deterministic_retraction_available": retraction_available,
-        "unhandled_locations": unhandled_locations,
-        "can_correct": regular_correction or local_repair or retraction_available or metric_retraction_available or amendment_available,
-    }
+    assessment = next((r for r in reviews if latest
+        and (r.get("request") or {}).get("document_artifact_id") == latest["artifact_id"]
+        and r["request"].get("audit_revision") == AUDIT_REVISION), None)
+    available, unhandled, exhausted, errors = False, [], [], []
+    counts = {}
+    if latest and latest["status"] == "completed":
+        document = (latest.get("result") or {}).get("document") or {}
+        budget = page_budget(history, read, document, REPAIR_KIND)
+        counts, errors = budget["attempts_by_page"], budget["errors"]
+        if assessment:
+            plan = repair_plan(document, assessment["result"]["review"]["issues"])
+            unhandled = plan["unhandled_locations"]
+            exhausted = [p for p in plan["page_ids"] if counts.get(p, 0) >= MAX_PAGE_REPAIRS]
+            available = bool(plan["targets"] and not (unhandled or exhausted or errors))
+    consecutive = 0
+    for row in documents:
+        if row["status"] not in {"validation_failed", "incomplete"}:
+            break
+        consecutive += 1
+    # A localized validation/submission failure never authorizes a full rewrite.
+    regular = bool(latest and latest["status"] in {"validation_failed", "incomplete"}
+                   and (latest.get("request") or {}).get("kind") != REPAIR_KIND
+                   and len(full) < MAX_DOCUMENT_ATTEMPTS and consecutive < 2)
+    # Compatibility for the existing UI: this is an upper bound on operations,
+    # not a counter that gets reset after a failed review. Multi-page operations
+    # consume one slot on each affected page.
+    max_local = max(len(repairs), sum(max(MAX_PAGE_REPAIRS, n) for n in counts.values()))
+    return {"document_attempts": len(documents),
+            "technical_failures": sum(r["status"] in {"validation_failed", "incomplete"} for r in documents),
+            "failed_reviews": len(reviews), "full_document_attempts": len(full),
+            "local_repair_attempts": len(repairs),
+            "max_document_attempts": MAX_DOCUMENT_ATTEMPTS + max_local,
+            "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
+            "max_editorial_corrections": max_local,
+            "correction_budget_unit": "PAGE", "max_corrections_per_page": MAX_PAGE_REPAIRS,
+            "page_correction_attempts": counts, "exhausted_page_ids": exhausted,
+            "correction_history_errors": errors,
+            "targeted_repair_available": available, "unhandled_locations": unhandled,
+            "can_correct": regular or available}
