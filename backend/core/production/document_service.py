@@ -347,6 +347,13 @@ def validator_diagnostics():
 
 
 def validate_against_corpus(document, corpus):
+    monthly = corpus.request.monthly_user
+    if monthly:
+        # Identity and inclusive calendar bounds are deterministic metadata,
+        # not facts for the model to infer from publication dates.
+        name = str(monthly["name"])[:120]
+        provisional = (" · Provisoire" if corpus.request.output_language == "fr" else " · Provisional") if monthly["provisional"] else ""
+        document.subtitle = f"{name} · {monthly['period_start']} → {monthly['period_end']}{provisional}"
     reports = {(r.report_id, r.version_number): r.payload for r in corpus.reports}
     sources = {s.id: s for s in document.sources}
 
@@ -458,7 +465,7 @@ def validate_against_corpus(document, corpus):
 
     return document
 
-def start_document(production_id, reviewed_plan, on_created=None):
+def start_document(production_id, reviewed_plan, on_created=None, additional_instructions=None):
     if not reviewed_plan.strip():
         raise ValueError("Le plan relu est obligatoire.")
     corpus = load_corpus(production_id)
@@ -472,7 +479,7 @@ def start_document(production_id, reviewed_plan, on_created=None):
             model=os.getenv("PRODUCTION_DOCUMENT_MODEL") or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
             instructions=INSTRUCTIONS + (
                 "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
-            ),
+            ) + ("\n\n" + additional_instructions if additional_instructions else ""),
             input=[{"role": "user", "content": [{"type": "input_text", "text": json.dumps(payload, ensure_ascii=False, allow_nan=False)}]}],
             text={"format": {"type": "json_schema", "name": "getcurator_document", "strict": True,
                              "schema": ProductionDocument.model_json_schema()}},
