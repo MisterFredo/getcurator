@@ -26,6 +26,7 @@ def list_monthlies(user_id="", month="", status="", limit=50, offset=0):
               WHEN l.ARTIFACT_STATUS='SUBMISSION_UNKNOWN' THEN 'submission_unknown'
               WHEN l.ARTIFACT_STATUS IN ('failed','incomplete','cancelled','validation_failed') THEN 'needs_attention'
               WHEN l.STAGE='REVIEW' AND l.ARTIFACT_STATUS='completed' AND l.REVIEW_PASSED='false' THEN 'needs_attention'
+              WHEN l.STAGE IN ('REVIEW_PAGE','REVIEW_CROSS') THEN 'reviewing'
               WHEN l.STAGE='REVIEW' THEN 'reviewing'
               WHEN l.STAGE='DOCUMENT' THEN 'writing'
               WHEN l.STAGE='APPROVED_PLAN' THEN 'writing'
