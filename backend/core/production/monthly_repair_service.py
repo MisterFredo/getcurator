@@ -21,6 +21,12 @@ en vigueur n'est pas établie, ne l'invente pas. N'ajoute ni chiffre ni
 supposition sur le destinataire. Garde les réserves nécessaires, la langue et
 le rôle analytique du passage. Les sources et tous les autres champs sont
 figés ; utilise seulement les preuves déjà citées sur la page concernée.
+Si un champ metrics est signalé, retourne null pour le retirer. N'invente pas
+une autre valeur ou un nouveau libellé. Une métrique ambiguë ou sans fonction
+analytique peut être supprimée. Pour une synthèse, distingue explicitement les
+développements séparés ; une entreprise ou un pays commun ne prouve pas une
+intégration entre leurs dispositifs. Si une couverture ne porte pas de citation,
+ses preuves sont celles des pages du rapport, fournies dans le contexte.
 Réponds en JSON selon le schéma, sans réécrire le rapport complet.
 """.strip()
 
@@ -82,9 +88,10 @@ def start_repair(production_id, artifact_id, document_id, review_id):
     proof = review_input(document, corpus)
     payload = {"language": corpus.request.output_language, "issues": review["issues"],
                "pages": pages, "targets": targets,
-               "cited_evidence": [p for p in proof["cited_evidence"] if p["source"]["id"] in source_ids]}
+               "cited_evidence": [p for p in proof["cited_evidence"] if p["source"]["id"] in source_ids
+                                  or any(not page["source_ids"] and page["layout"] in {"COVER", "SUMMARY"} for page in pages)]}
     schema = {"type": "object", "properties": {"replacements": {
-        "type": "object", "properties": {p: {"type": "string"} for p in targets},
+        "type": "object", "properties": {p: {"type": "null" if "/metrics/" in p else "string"} for p in targets},
         "required": targets, "additionalProperties": False}},
         "required": ["replacements"], "additionalProperties": False}
     item, created = workflow._reserve(
