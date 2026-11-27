@@ -12,7 +12,7 @@ from core.production.repository import get_production
 from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261127-frozen-evidence-v9"
+NUMERIC_VALIDATOR_REVISION = "20261127-numeric-witness-v10"
 WATCH_COVERAGE_LABELS = {
     "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
     "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
@@ -312,6 +312,13 @@ def numbers_in_quote(quote):
         flags=re.IGNORECASE,
     )
 
+    # Preserve the reported coefficient: 993M -> 993, 17B -> 17.
+    # Scale/unit interpretation remains a semantic check, never a conversion.
+    numeric_text = re.sub(
+        r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?)([kmbt])(?![\w])",
+        r"\1 \2", numeric_text, flags=re.IGNORECASE,
+    )
+
     compact = re.sub(
         r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?:\D|$))",
         "",
@@ -368,6 +375,7 @@ def validator_diagnostics():
         "revision": NUMERIC_VALIDATOR_REVISION,
         "unit_count_probe": sorted(str(value) for value in numbers_in_quote("un marchand par panier")),
         "multiplier_probe": sorted(str(value) for value in numbers_in_quote("3x")),
+        "compact_scale_probe": sorted(str(value) for value in numbers_in_quote("993M quarterly orders")),
         "written_scale_probe": sorted(
             str(value) for value in numbers_in_quote("approximately two million cases")
         ),
@@ -492,6 +500,10 @@ def validate_against_corpus(document, corpus, normalizations=None):
                 saved_source.get("title") or report.get("subject") or source.label
             )
 
+    if monthly:
+        from core.production.metric_evidence import normalize_monthly_metrics
+        normalize_monthly_metrics(document, corpus, numbers_in_quote, normalizations)
+        sources = {source.id: source for source in document.sources}
     number_issues = []
     for page in document.pages:
         for metric in page.metrics:
