@@ -17,7 +17,7 @@ from config import BQ_DATASET, BQ_PROJECT
 from core.production import workflow_repository as repo, workflow_service as workflow
 from core.production.document_service import client, load_corpus
 from core.production.monthly_audit_service import (
-    _hash, _serialize, audit_requests, AUDIT_WORKFLOW, PAGE_INSTRUCTIONS, CROSS_INSTRUCTIONS,
+    _hash, _serialize as _base_serialize, audit_requests, AUDIT_WORKFLOW, PAGE_INSTRUCTIONS, CROSS_INSTRUCTIONS,
 )
 from core.production.monthly_models import MonthlyQualityReview
 from core.production.monthly_repair_rules import AUDIT_REVISION
@@ -26,6 +26,16 @@ from core.production import monthly_state as state
 from core.production.monthly_parallel_repository import save_batch
 from core.production.monthly_runtime import review_payload
 from utils.bigquery_utils import query_bq
+
+from core.production.monthly_metric_audit import (
+    add_contract, extend_schema, serialize as serialize_metric_review,
+    INSTRUCTIONS as METRIC_INSTRUCTIONS,
+)
+
+
+def _serialize(response, request):
+    return serialize_metric_review(response, request, _base_serialize)
+
 
 logger = logging.getLogger(__name__)
 BATCH_KIND = "MONTHLY_PARALLEL_REVIEW_V1"
@@ -132,7 +142,7 @@ def _persist(item, job):
 def _merge(job, key, result):
     child = job["checks"][key]
     values = {"status": result["status"], "response_id": result.get("id") or child.get("response_id")}
-    for field in ("model", "review", "error", "usage"):
+    for field in ("model", "review", "error", "usage", "metric_verdicts"):
         if field in result and (result[field] is not None or field == "error"):
             values[field] = result[field]
     changed = any(child.get(k) != v for k, v in values.items())
@@ -209,14 +219,17 @@ def _submit_pending(item, job):
             schema["$defs"]["MonthlyReviewIssue"]["properties"]["location"] = {
                 "type": "string", "enum": check["payload"]["locations"],
             }
+        schema = extend_schema(schema, check["payload"])
         try:
             with client() as connection:
                 response = connection.responses.create(
                     model=os.getenv("PRODUCTION_REVIEW_MODEL") or os.getenv("PRODUCTION_DOCUMENT_MODEL") or "gpt-5.4",
-                    instructions=PAGE_INSTRUCTIONS if check["stage"] == "REVIEW_PAGE" else CROSS_INSTRUCTIONS,
-                    input=json.dumps(review_payload(check["payload"]), ensure_ascii=False, allow_nan=False),
+                    instructions=(PAGE_INSTRUCTIONS + "\n" + METRIC_INSTRUCTIONS) if check["stage"] == "REVIEW_PAGE" else CROSS_INSTRUCTIONS,
+                    input=json.dumps({**review_payload(check["payload"]),
+                        **{k: check["payload"][k] for k in ("metric_audit_contract", "metric_checks")
+                           if k in check["payload"]}}, ensure_ascii=False, allow_nan=False),
                     text={"format": {"type": "json_schema", "name": "monthly_page_review", "strict": True, "schema": schema}},
-                    reasoning={"effort": "low"}, max_output_tokens=8000,
+                    reasoning={"effort": "medium"}, max_output_tokens=8000,
                     background=True, store=True, metadata=_metadata(item, key),
                 )
             logger.info("Monthly review accepted production=%s artifact=%s check=%s response=%s",
@@ -259,6 +272,7 @@ def start_parallel_review(production_id, artifact_id, document_id):
         document = parent["result"]["document"]
         checks = {}
         for stage, payload in audit_requests(document, corpus):
+            payload = add_contract(payload) if stage == "REVIEW_PAGE" else payload
             key = _request_key(stage, payload)
             checks[key] = {"stage": stage, "payload": payload, "input_sha256": key}
         cached = {}
