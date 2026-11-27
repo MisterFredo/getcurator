@@ -10,6 +10,8 @@ from core.production.monthly_review import review_input
 from core.production.monthly_repair_revision import REPAIR_REVISION, PAGE_REPAIR_MODE
 from core.production.monthly_page_repair import page_repair_plan, apply_page_repair
 
+from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, apply_retraction
+
 REPAIR_WORKFLOW = "getcurator_monthly_targeted_repair_v1"
 EVIDENCE_MODE = PAGE_REPAIR_MODE
 BOUND_MODES = {"EVIDENCE_BOUND_V2", "EVIDENCE_BOUND_V3", PAGE_REPAIR_MODE}
@@ -131,6 +133,32 @@ def start_repair(production_id, artifact_id, document_id, review_id):
     if not parent or not assessment:
         raise LookupError("Document ou contrôle introuvable.")
     issues = (assessment.get("result") or {}).get("review", {}).get("issues") or []
+    # After a page-coherence repair, eligible residual findings are removed
+    # deterministically. No provider call and no replacement factual assertion.
+    if (parent.get("request") or {}).get("repair_mode") == PAGE_REPAIR_MODE:
+        withdrawal = retraction_plan((parent.get("result") or {}).get("document") or {}, issues)
+        if withdrawal:
+            request = {"kind": REPAIR_KIND, "document_artifact_id": document_id,
+                       "review_artifact_id": review_id, "targets": withdrawal["targets"],
+                       "repair_mode": RETRACTION_MODE, "repair_revision": RETRACTION_MODE,
+                       "page_indexes": withdrawal["page_indexes"]}
+            corpus, document, review = _context(production_id, request)
+            candidate = apply_retraction(document, review["issues"])
+            validated = validate_against_corpus(ProductionDocument.model_validate(candidate), corpus)
+            if validated.model_dump(mode="json") != candidate:
+                raise ValueError("La validation modifierait le document au-delà des retraits.")
+            item, created = workflow._reserve(
+                production_id=production_id, artifact_id=artifact_id, stage="DOCUMENT",
+                corpus_sha256=corpus.corpus_sha256, request=request, parent_id=document_id,
+            )
+            if not created:
+                return item
+            return repo.save_job(production_id, artifact_id, {
+                "id": None, "status": "completed", "model": None, "text": "",
+                "document": candidate, "error": None, "usage": None,
+                "production_id": production_id, "corpus_sha256": corpus.corpus_sha256,
+                "origin": REPAIR_KIND, "repaired_paths": withdrawal["targets"],
+            })
     plan = page_repair_plan((parent.get("result") or {}).get("document") or {}, issues)
     if plan["unhandled_locations"] or not plan["targets"]:
         raise ValueError("La revue ne permet pas de correction locale par page.")
