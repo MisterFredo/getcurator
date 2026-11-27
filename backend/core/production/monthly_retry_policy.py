@@ -6,6 +6,8 @@ from core.production.monthly_repair_revision import (
 
 from core.production.monthly_page_repair import page_repair_plan
 
+from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan
+
 MAX_DOCUMENT_ATTEMPTS = 4
 MAX_LOCAL_REPAIRS = 2
 
@@ -68,6 +70,18 @@ def document_budget(history, read_artifact):
         )
         unhandled_locations = plan["unhandled_locations"]
         local_repair = bool(repair_slot and plan["targets"] and not unhandled_locations)
+    # A single non-generative fallback after the existing editorial budget.
+    # It cannot reset counters, edit sources, or permit a technical rewrite.
+    retraction_available = bool(
+        latest and latest["status"] == "completed" and assessment
+        and len(repairs) >= MAX_LOCAL_REPAIRS
+        and len(repairs) <= MAX_TOTAL_LOCAL_REPAIRS
+        and (latest.get("request") or {}).get("repair_mode") == PAGE_REPAIR_MODE
+        and not any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode")
+                    == RETRACTION_MODE for r in repairs)
+        and retraction_plan((latest.get("result") or {}).get("document") or {},
+                            assessment["result"]["review"]["issues"])
+    )
     # Technical rewrites remain forbidden after a localized repair.
     regular_correction = bool(
         len(full_documents) < MAX_DOCUMENT_ATTEMPTS
@@ -81,6 +95,8 @@ def document_budget(history, read_artifact):
             + MAX_LEGACY_RECOVERY_REPAIRS)
         if legacy_repairs else MAX_LOCAL_REPAIRS
     )
+    if retraction_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == RETRACTION_MODE for r in repairs):
+        max_repairs = max(max_repairs, len(repairs) + int(retraction_available))
     return {
         "document_attempts": len(documents),
         "technical_failures": sum(
@@ -92,7 +108,8 @@ def document_budget(history, read_artifact):
         "max_document_attempts": MAX_DOCUMENT_ATTEMPTS + max_repairs,
         "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
         "max_editorial_corrections": max_repairs,
-        "targeted_repair_available": local_repair,
+        "targeted_repair_available": local_repair or retraction_available,
+        "deterministic_retraction_available": retraction_available,
         "unhandled_locations": unhandled_locations,
-        "can_correct": regular_correction or local_repair,
+        "can_correct": regular_correction or local_repair or retraction_available,
     }
