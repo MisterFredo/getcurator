@@ -22,12 +22,12 @@ def list_monthlies(user_id="", month="", status="", limit=50, offset=0):
             JSON_VALUE(p.CORPUS_JSON, '$.request.monthly_user.month') AS MONTH,
             JSON_VALUE(p.CORPUS_JSON, '$.request.monthly_user.provisional') AS PROVISIONAL,
             CASE
-              WHEN l.STAGE='REVIEW' AND l.ARTIFACT_STATUS='completed' AND l.REVIEW_PASSED='true' THEN 'completed'
+              WHEN l.STAGE IN ('REVIEW','REVIEW_BATCH') AND l.ARTIFACT_STATUS='completed' AND l.REVIEW_PASSED='true' THEN 'completed'
               WHEN l.ARTIFACT_STATUS='SUBMISSION_UNKNOWN' THEN 'submission_unknown'
               WHEN l.ARTIFACT_STATUS IN ('failed','incomplete','cancelled','validation_failed') THEN 'needs_attention'
-              WHEN l.STAGE='REVIEW' AND l.ARTIFACT_STATUS='completed' AND l.REVIEW_PASSED='false' THEN 'needs_attention'
+              WHEN l.STAGE IN ('REVIEW','REVIEW_BATCH') AND l.ARTIFACT_STATUS='completed' AND l.REVIEW_PASSED='false' THEN 'needs_attention'
               WHEN l.STAGE IN ('REVIEW_PAGE','REVIEW_CROSS') THEN 'reviewing'
-              WHEN l.STAGE='REVIEW' THEN 'reviewing'
+              WHEN l.STAGE IN ('REVIEW','REVIEW_BATCH') THEN 'reviewing'
               WHEN l.STAGE='DOCUMENT' THEN 'writing'
               WHEN l.STAGE='APPROVED_PLAN' THEN 'writing'
               WHEN l.STAGE='PLAN' THEN 'planning'
@@ -70,7 +70,7 @@ def previous_reference(user_id, month, language):
           AND JSON_VALUE(p.CORPUS_JSON, '$.request.monthly_user.user_id')=@user
           AND JSON_VALUE(p.CORPUS_JSON, '$.request.monthly_user.month')=@month
           AND p.OUTPUT_LANGUAGE=@language
-          AND a.STAGE='REVIEW' AND a.STATUS='completed'
+          AND a.STAGE IN ('REVIEW','REVIEW_BATCH') AND a.STATUS='completed'
           AND JSON_VALUE(a.RESULT_JSON, '$.review.passed')='true'
           AND JSON_VALUE(p.CORPUS_JSON, '$.request.monthly_user.provisional')='false'
         ORDER BY p.CREATED_AT DESC, a.VERSION_NUMBER DESC LIMIT 1
