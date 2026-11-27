@@ -29,6 +29,9 @@ Chaque texte de remplacement doit indiquer ses preuves dans evidence_bindings.
 Ne choisis pas une référence seulement parce qu'elle partage une entreprise ou
 un thème avec le passage. Ne renvoie aucun identifiant inventé. Pour une métrique
 retirée, evidence_bindings est une liste vide. Tous les autres champs restent figés.
+Un champ source_ids désigné reçoit null et une liste evidence_bindings vide :
+le serveur supprime uniquement les citations strictement identiques et met à jour
+leurs références. Ne modifie pas la composition de la page pour cette action.
 Si un champ metrics est signalé, retourne null pour le retirer. N'invente pas
 une autre valeur ou un nouveau libellé. Une métrique ambiguë ou sans fonction
 analytique peut être supprimée. Pour une synthèse, distingue explicitement les
@@ -48,6 +51,12 @@ produit inexactes ne prouvent pas un mécanisme d'interprétation par un assista
 N'ajoute pas une condition locale ou opérationnelle à partir d'un contexte général.
 Pour une implication, reste au niveau de la question métier étayée ; si une
 inférence n'est pas démontrable, retire-la au lieu d'inventer une autre inférence.
+Une règle régionale ne devient pas nationale. Une entrée en vigueur future
+reste future dans les titres et conclusions aussi. Les bornes techniques
+exclusives des snapshots ne sont pas les dates inclusives de l'analyse mensuelle.
+Une comparaison exige des preuves des deux périodes sur la page ; sinon retire
+la comparaison. Une liste de sources décrit ses références, sans certifier
+globalement la véracité de tout le rapport. N'assimile pas partenariat et acquisition.
 Réponds en JSON selon le schéma, sans réécrire le rapport complet.
 """.strip()
 
@@ -121,10 +130,10 @@ def start_repair(production_id, artifact_id, document_id, review_id):
                "pages": [{"page": page, "current_evidence_ids": list(page["source_ids"])} for page in pages],
                "targets": targets, "available_evidence": list(evidence.values())}
     schema = {"type": "object", "properties": {"replacements": {
-        "type": "object", "properties": {p: {"type": "null" if "/metrics/" in p else "string"} for p in targets},
+        "type": "object", "properties": {p: {"type": "null" if "/metrics/" in p or p.endswith("/source_ids") else "string"} for p in targets},
         "required": targets, "additionalProperties": False}, "evidence_bindings": {
             "type": "object", "properties": {p: {"type": "array", "items": {"type": "string", "enum": list(evidence)},
-                **({"maxItems": 0} if "/metrics/" in p else {"minItems": 1})} for p in targets},
+                **({"maxItems": 0} if "/metrics/" in p or p.endswith("/source_ids") else {"minItems": 1})} for p in targets},
             "required": targets, "additionalProperties": False}},
         "required": ["replacements", "evidence_bindings"], "additionalProperties": False}
     item, created = workflow._reserve(
