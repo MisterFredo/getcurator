@@ -115,7 +115,10 @@ def client():
 
 
 def load_corpus(production_id):
-    production = get_production(production_id=production_id)
+    from core.production.monthly_state import cached_production
+    production = cached_production(production_id)
+    if production is None:
+        production = get_production(production_id=production_id)
     if production is None:
         raise LookupError("Production introuvable.")
     return ProductionPreparedCorpus.model_validate(production["corpus"])
@@ -487,6 +490,10 @@ def start_document(production_id, reviewed_plan, on_created=None, additional_ins
         "reviewed_plan": reviewed_plan,
         "saved_reports": [r.payload for r in corpus.reports],
     }
+    monthly = bool(corpus.request.monthly_user)
+    if monthly:
+        from core.production.monthly_runtime import generation_payload
+        payload = generation_payload(corpus, reviewed_plan)
     with client() as connection:
         response = connection.responses.create(
             model=os.getenv("PRODUCTION_DOCUMENT_MODEL") or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
@@ -496,7 +503,7 @@ def start_document(production_id, reviewed_plan, on_created=None, additional_ins
             input=[{"role": "user", "content": [{"type": "input_text", "text": json.dumps(payload, ensure_ascii=False, allow_nan=False)}]}],
             text={"format": {"type": "json_schema", "name": "getcurator_document", "strict": True,
                              "schema": ProductionDocument.model_json_schema()}},
-            reasoning={"effort": "medium"}, max_output_tokens=48000,
+            reasoning={"effort": "low" if monthly else "medium"}, max_output_tokens=48000,
             background=True, store=True,
             metadata={"workflow": WORKFLOW, "stage": "document", "input_mode": "json",
                       "production_id": production_id, "corpus_sha256": corpus.corpus_sha256},
