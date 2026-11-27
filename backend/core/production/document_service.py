@@ -32,11 +32,21 @@ Pas de page par défaut imposée par un thème ou un acteur.
 COVER : titre, sous-titre, texte court, aucun graphique.
 SUMMARY : 3-4 enseignements, éventuellement quelques indicateurs utiles.
 METRICS : indicateurs séparés, chacun avec unité, contexte et source.
+Chaque indicateur doit servir l'argument précis de la page. Explicite la base
+d'un pourcentage dans son libellé ou son contexte, à partir de la preuve seule.
+Un effectif d'étude n'est pas un résultat commercial. Si le sens, le dénominateur
+ou l'utilité analytique restent ambigus, retire l'indicateur et change de
+composition si nécessaire. Ne complète jamais une page par des KPI décoratifs.
 COMPARISON : même mesure et unité, périmètres compatibles, barres.
 TREND : même mesure, même périmètre, observations chronologiques, points.
 CASE_STUDY : contexte, dispositif, résultats et limites.
 ANALYSIS : explication sans graphique forcé.
 IMPLICATIONS : décisions qui découlent des faits cités.
+La personnalisation utilise seulement le mandat documenté du destinataire.
+Ne suppose pas son organisation interne, ses pratiques, ses moyens ou ses résultats.
+Conserve le périmètre exact de chaque preuve dans les paraphrases : acteur,
+produit, système, marché, population et statut. N'introduis pas un produit plus
+spécifique ou voisin si la source ne l'établit pas explicitement.
 SOURCES : bibliographie, pas de longue répétition du texte du rapport.
 
 Chaque page vise 100-160 mots ; moins si elle contient un graphique.
