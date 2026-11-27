@@ -226,12 +226,15 @@ def _plan_job(response):
     }
 
 
-def start_plan(production_id, artifact_id):
+def start_plan(production_id, artifact_id, additional_instructions=None):
     corpus = load_corpus(production_id)
     if corpus.request.output_format != "AUTONOMOUS_REPORT":
         raise ValueError("Le moteur intégré prend actuellement en charge le rapport autonome.")
     item, created = _reserve(production_id=production_id, artifact_id=artifact_id,
-        stage="PLAN", corpus_sha256=corpus.corpus_sha256, request={"kind": "full_saved_json"})
+        stage="PLAN", corpus_sha256=corpus.corpus_sha256, request={
+            "kind": "full_saved_json",
+            **({"additional_instructions": additional_instructions} if additional_instructions else {}),
+        })
     if not created:
         return item
 
@@ -245,7 +248,7 @@ def start_plan(production_id, artifact_id):
                       or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
                 instructions=PLAN_INSTRUCTIONS + (
                     "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
-                ),
+                ) + ("\n\n" + additional_instructions if additional_instructions else ""),
                 input=json.dumps(payload, ensure_ascii=False, allow_nan=False),
                 reasoning={"effort": "medium"}, max_output_tokens=48000,
                 background=True, store=True,
@@ -257,7 +260,7 @@ def start_plan(production_id, artifact_id):
     return _submit(production_id, artifact_id, submit)
 
 
-def approve_plan(production_id, artifact_id, text, parent_id=None):
+def approve_plan(production_id, artifact_id, text, parent_id=None, approval_origin=None):
     text = text.strip()
     if not text:
         raise ValueError("Le plan relu est vide.")
@@ -270,22 +273,27 @@ def approve_plan(production_id, artifact_id, text, parent_id=None):
             raise ValueError("Le plan source doit être complet et correspondre au socle.")
     item, _ = _reserve(production_id=production_id, artifact_id=artifact_id,
         stage="APPROVED_PLAN", corpus_sha256=corpus.corpus_sha256, parent_id=parent_id,
-        request={"reviewed_plan": text}, ready_result={"status": "completed", "text": text})
+        request={"reviewed_plan": text,
+                 **({"approval_origin": approval_origin} if approval_origin else {})},
+        ready_result={"status": "completed", "text": text,
+                      **({"origin": approval_origin} if approval_origin else {})})
     return item
 
 
-def start_managed_document(production_id, artifact_id, plan_id):
+def start_managed_document(production_id, artifact_id, plan_id, additional_instructions=None):
     corpus = load_corpus(production_id)
     if corpus.request.output_format != "AUTONOMOUS_REPORT":
         raise ValueError("Seul le rapport autonome est disponible dans cette version.")
     plan = _parent(production_id, plan_id, corpus)
     item, created = _reserve(production_id=production_id, artifact_id=artifact_id,
         stage="DOCUMENT", corpus_sha256=corpus.corpus_sha256, parent_id=plan["artifact_id"],
-        request={"plan_artifact_id": plan["artifact_id"]})
+        request={"plan_artifact_id": plan["artifact_id"],
+                 **({"additional_instructions": additional_instructions} if additional_instructions else {})})
     if not created:
         return item
     return _submit(production_id, artifact_id, lambda accepted: start_document(
-        production_id, plan["result"]["text"], on_created=accepted))
+        production_id, plan["result"]["text"], on_created=accepted,
+        additional_instructions=additional_instructions))
 
 
 def refresh_artifact(production_id, artifact_id, response_id=None):
