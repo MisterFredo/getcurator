@@ -374,6 +374,9 @@ export default function ProductionWorkspace({ mode }: { mode: "create" | "list" 
       <div><h1 className="text-2xl font-semibold">{mode === "create" ? "Nouvelle production" : "Productions enregistrées"}</h1>
         <p className="mt-2 text-sm text-slate-500">Rapports Touch, bilans Corpo et Digests V2 → plan relu → rapport autonome.</p></div>
       <div className="flex flex-wrap gap-2">
+        <Link className={BUTTON} href="/admin/production/monthly" onClick={event => {
+          if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) event.preventDefault();
+        }}>Monthly Users</Link>
         <Link className={BUTTON} onClick={event => {
           if (editorDirty.current && !window.confirm("Quitter le plan sans enregistrer ces modifications ?")) event.preventDefault();
         }} href={mode === "create" ? "/admin/production/reports" : "/admin/production"}>{mode === "create" ? "Voir les productions" : "Nouvelle production"}</Link>
