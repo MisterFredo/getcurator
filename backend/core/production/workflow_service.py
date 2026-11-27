@@ -300,6 +300,9 @@ def refresh_artifact(production_id, artifact_id, response_id=None):
     item = repo.get_artifact(production_id, artifact_id)
     if not item:
         raise LookupError("Version introuvable.")
+    if item["stage"] in {"REVIEW_PAGE", "REVIEW_CROSS"}:
+        from core.production.monthly_audit_service import refresh_audit
+        return refresh_audit(production_id, artifact_id, response_id)
     if (item.get("request") or {}).get("kind") == "MONTHLY_TARGETED_REPAIR":
         from core.production.monthly_repair_service import refresh_repair
         return refresh_repair(production_id, artifact_id, response_id)
