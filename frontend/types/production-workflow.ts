@@ -1,6 +1,6 @@
 import type { ProductionDocument } from "@/types/production-document";
 
-export type WorkflowStage = "PLAN" | "APPROVED_PLAN" | "DOCUMENT" | "REVIEW";
+export type WorkflowStage = "PLAN" | "APPROVED_PLAN" | "DOCUMENT" | "REVIEW" | "REVIEW_PAGE" | "REVIEW_CROSS";
 export type WorkflowStatus = "STARTING" | "SUBMISSION_UNKNOWN" | "queued" | "in_progress" | "completed" | "failed" | "incomplete" | "cancelled" | "validation_failed";
 export type WorkflowSummary = {
   artifact_count: number;
@@ -55,7 +55,7 @@ export type ProductionWorkspace = ProductionListItem & {
 };
 export const isRunning = (status: string) => ["STARTING", "queued", "in_progress"].includes(status);
 export const blocksSubmission = (status: string) => isRunning(status) || status === "SUBMISSION_UNKNOWN";
-export const stageLabel = (stage: WorkflowStage) => ({ PLAN: "Plan généré", APPROVED_PLAN: "Plan validé", DOCUMENT: "Rapport", REVIEW: "Contrôle qualité" })[stage];
+export const stageLabel = (stage: WorkflowStage) => ({ PLAN: "Plan généré", APPROVED_PLAN: "Plan validé", DOCUMENT: "Rapport", REVIEW: "Contrôle qualité", REVIEW_PAGE: "Contrôle de page", REVIEW_CROSS: "Cohérence du rapport" })[stage];
 export const statusLabel = (status: string) => ({
   STARTING: "Démarrage", SUBMISSION_UNKNOWN: "Acceptation à vérifier", queued: "En attente",
   in_progress: "En cours", completed: "Enregistré", failed: "Échec", incomplete: "Réponse partielle",
