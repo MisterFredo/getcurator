@@ -71,6 +71,16 @@ Pour les seuls volumes LinkedIn observés, tu peux aussi citer
 quote doit être le compteur entier complet, sous forme de chaîne.
 Ces compteurs décrivent le corpus observé, pas l’audience, la performance
 ni un recensement exhaustif des publications.
+Chaque proposition factuelle d'une page doit être soutenue par ses propres
+source_ids. Une preuve citée ailleurs dans le rapport ne soutient pas cette
+page sans rattachement explicite de son identifiant. Lorsqu'une page réunit
+plusieurs mécanismes, cite les preuves distinctes de chacun sur cette page.
+Ne transforme pas une utilisation ou un partenariat en dépendance établie,
+une description de données en mécanisme d'interprétation, ou un contexte
+général en contrainte locale. Une implication est formulée comme une question
+étayée et proportionnée, sans ajouter de mécanisme absent des preuves.
+Une annonce antérieure reste un contexte daté. N'affirme pas que le mois du
+rapport apporte un nouvel éclairage sans passage de ce mois qui l'établisse.
 Chaque source a un identifiant S1, S2... et un json_pointer RFC 6901
 vers une valeur scalaire EXACTE du rapport sauvegardé, par exemple
 /notebook/notes/4/statement. quote est une sous-chaîne verbatim non vide
