@@ -116,6 +116,58 @@ def _require_production_admin(
 
 router = APIRouter()
 
+# Dedicated Monthly User entry points. They must precede /{production_id}.
+from uuid import UUID
+from fastapi import BackgroundTasks
+from core.production.monthly_models import MonthlyStartRequest, MonthlyRefreshRequest
+from core.production import monthly_service, monthly_repository
+
+
+def _monthly_action(action):
+    try:
+        return action()
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/monthly-users/recipients")
+def monthly_user_recipients():
+    from core.digest.subject_production_service import list_subject_recipients
+    return {"recipients": list_subject_recipients("user")}
+
+
+@router.get("/monthly-users/coverage")
+def monthly_user_coverage(user_id: UUID, month: str = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")):
+    return _monthly_action(lambda: monthly_service.coverage(str(user_id), month))
+
+
+@router.get("/monthly-users")
+def browse_monthly_users(user_id: str = "", month: str = "", status: str = "",
+                         limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return {"monthlies": monthly_repository.list_monthlies(user_id, month, status, limit, offset)}
+
+
+@router.post("/monthly-users", status_code=202)
+def start_monthly_user(payload: MonthlyStartRequest, background_tasks: BackgroundTasks):
+    production = _monthly_action(lambda: monthly_service.prepare(payload))
+    background_tasks.add_task(monthly_service.run_background, production["production_id"])
+    return {"monthly": _monthly_action(lambda: monthly_service.detail(production["production_id"]))}
+
+
+@router.get("/monthly-users/{production_id}")
+def read_monthly_user(production_id: UUID):
+    return {"monthly": _monthly_action(lambda: monthly_service.detail(str(production_id)))}
+
+
+@router.post("/monthly-users/{production_id}/refresh")
+def refresh_monthly_user(production_id: UUID, payload: MonthlyRefreshRequest,
+                         background_tasks: BackgroundTasks):
+    detail = _monthly_action(lambda: monthly_service.detail(str(production_id)))
+    background_tasks.add_task(monthly_service.run_background, str(production_id), payload.response_id)
+    return {"monthly": detail}
+
 
 @router.get("/digest-sources")
 def browse_digest_sources(
