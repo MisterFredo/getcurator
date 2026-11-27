@@ -12,7 +12,7 @@ from core.production.repository import get_production
 from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261127-content-identity-v8"
+NUMERIC_VALIDATOR_REVISION = "20261127-frozen-evidence-v9"
 WATCH_COVERAGE_LABELS = {
     "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
     "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
@@ -374,11 +374,28 @@ def validator_diagnostics():
     }
 
 
-def validation_signature(text, corpus_sha256):
+def validation_signature(text, corpus_sha256, citation_mode=None, catalog_sha256=None):
     payload = json.dumps({"text": text, "corpus_sha256": corpus_sha256,
+                          "citation_mode": citation_mode,
+                          "catalog_sha256": catalog_sha256,
                           "validator_revision": NUMERIC_VALIDATOR_REVISION},
                          ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def document_from_saved_text(text, corpus, citation_mode=None, catalog_sha256=None):
+    if citation_mode is None:
+        return ProductionDocument.model_validate_json(text)
+    from core.production.evidence_catalog import CATALOG_MODE, build_catalog, hydrate_sources
+    if citation_mode != CATALOG_MODE:
+        raise ValueError("Protocole de citations inconnu.")
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("Le document généré doit être un objet JSON.")
+    catalog = build_catalog(corpus)
+    if not catalog_sha256 or catalog["catalog_sha256"] != catalog_sha256:
+        raise ValueError("Le catalogue de preuves ne correspond pas à celui de la génération.")
+    return ProductionDocument.model_validate(hydrate_sources(payload, catalog))
 
 
 def validate_against_corpus(document, corpus, normalizations=None):
@@ -391,16 +408,13 @@ def validate_against_corpus(document, corpus, normalizations=None):
         document.subtitle = f"{name} · {monthly['period_start']} → {monthly['period_end']}{provisional}"
     reports = {(r.report_id, r.version_number): r.payload for r in corpus.reports}
     sources = {s.id: s for s in document.sources}
+    from core.production.citation_resolution import prepare_digest_citations
+    prepare_digest_citations(document.sources, reports, materialize=bool(monthly), normalizations=normalizations)
 
     for source in document.sources:
         report = reports.get((source.report_id, source.report_version))
         if report is None:
             raise ValueError(f"Source {source.id} : rapport ou version inconnus.")
-
-        from core.production.citation_resolution import resolve_digest_pointer
-        note = resolve_digest_pointer(source, report)
-        if note and normalizations is not None:
-            normalizations.append(note)
 
         try:
             value = pointer_value(report, source.json_pointer)
@@ -478,30 +492,29 @@ def validate_against_corpus(document, corpus, normalizations=None):
                 saved_source.get("title") or report.get("subject") or source.label
             )
 
+    number_issues = []
     for page in document.pages:
         for metric in page.metrics:
             if Decimal(str(metric.value)) not in numbers_in_quote(metric.display_value):
-                raise ValueError(
-                    f"Page {page.page_id} : affichage {metric.display_value!r} "
-                    f"incompatible avec la valeur {metric.value} ({metric.source_id})."
-                )
+                number_issues.append({"code": "NUMBER", "location": f"{page.page_id} metrics",
+                    "message": f"Page {page.page_id} : affichage {metric.display_value!r} incompatible avec la valeur {metric.value} ({metric.source_id})."})
 
         for metric in page.metrics:
             quote = sources[metric.source_id].quote
             if Decimal(str(metric.value)) not in numbers_in_quote(quote):
-                raise ValueError(
-                    f"Page {page.page_id} : valeur {metric.value} "
-                    f"absente de la citation {metric.source_id}."
-                )
+                number_issues.append({"code": "NUMBER", "location": f"{page.page_id} metrics",
+                    "message": f"Page {page.page_id} : valeur {metric.value} absente de la citation {metric.source_id}."})
 
         if page.chart:
             for point in page.chart.points:
                 quote = sources[point.source_id].quote
                 if not chart_value_in_quote(point.value, quote, page.chart.unit):
-                    raise ValueError(
-                        f"Page {page.page_id} : valeur {point.value} "
-                        f"absente de la citation {point.source_id}."
-                    )
+                    number_issues.append({"code": "NUMBER", "location": f"{page.page_id} chart",
+                        "message": f"Page {page.page_id} : valeur {point.value} absente de la citation {point.source_id}."})
+
+    if number_issues:
+        from core.production.citation_resolution import CitationValidationError
+        raise CitationValidationError(number_issues)
 
     return document
 
@@ -515,22 +528,32 @@ def start_document(production_id, reviewed_plan, on_created=None, additional_ins
         "saved_reports": [r.payload for r in corpus.reports],
     }
     monthly = bool(corpus.request.monthly_user)
+    citation_mode = None
+    schema = ProductionDocument.model_json_schema()
     if monthly:
         from core.production.monthly_runtime import generation_payload
         payload = generation_payload(corpus, reviewed_plan)
+        from core.production.evidence_catalog import CATALOG_MODE, CATALOG_INSTRUCTIONS, build_catalog, payload_for_model, wire_schema
+        catalog = build_catalog(corpus)
+        payload = payload_for_model(payload, catalog)
+        schema = wire_schema(schema, catalog)
+        citation_mode = CATALOG_MODE
     with client() as connection:
         response = connection.responses.create(
             model=os.getenv("PRODUCTION_DOCUMENT_MODEL") or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
             instructions=INSTRUCTIONS + (
                 "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
-            ) + ("\n\n" + additional_instructions if additional_instructions else ""),
+            ) + ("\n\n" + additional_instructions if additional_instructions else "")
+            + ("\n\n" + CATALOG_INSTRUCTIONS if monthly else ""),
             input=[{"role": "user", "content": [{"type": "input_text", "text": json.dumps(payload, ensure_ascii=False, allow_nan=False)}]}],
             text={"format": {"type": "json_schema", "name": "getcurator_document", "strict": True,
-                             "schema": ProductionDocument.model_json_schema()}},
+                             "schema": schema}},
             reasoning={"effort": "low" if monthly else "medium"}, max_output_tokens=48000,
             background=True, store=True,
             metadata={"workflow": WORKFLOW, "stage": "document", "input_mode": "json",
-                      "production_id": production_id, "corpus_sha256": corpus.corpus_sha256},
+                      "production_id": production_id, "corpus_sha256": corpus.corpus_sha256,
+                      **({"citation_mode": citation_mode, "evidence_catalog_sha256": catalog["catalog_sha256"]}
+                         if citation_mode else {})},
         )
     if on_created is not None:
         on_created(response)
@@ -549,6 +572,8 @@ def serialize_document_response(response):
         "refusal": [getattr(p, "refusal", "") for item in response.output or []
                     for p in getattr(item, "content", []) or [] if getattr(p, "type", "") == "refusal"],
         "document": None,
+        "citation_mode": metadata.get("citation_mode"),
+        "evidence_catalog_sha256": metadata.get("evidence_catalog_sha256"),
         "validation_diagnostics": validator_diagnostics(),
         "validation_notes": [
             "Contrôles automatiques : schéma, références, versions, chemins, citations et présence des valeurs.",
@@ -558,17 +583,19 @@ def serialize_document_response(response):
     if response.status == "completed":
         normalizations = []
         try:
-            document = ProductionDocument.model_validate_json(job["text"])
             corpus = load_corpus(metadata["production_id"])
             if corpus.corpus_sha256 != metadata.get("corpus_sha256"):
                 raise ValueError("Le socle ne correspond plus à celui de la génération.")
+            document = document_from_saved_text(job["text"], corpus, job["citation_mode"], job["evidence_catalog_sha256"])
             document = validate_against_corpus(document, corpus, normalizations=normalizations)
             job["document"] = document.model_dump(mode="json")
         except (ValueError, LookupError, KeyError) as exc:
             job["status"] = "validation_failed"
             job["error"] = {"message": str(exc)}
+            if getattr(exc, "issues", None):
+                job["error"]["issues"] = exc.issues
         job["validation_check"] = {
-            "fingerprint": validation_signature(job["text"], job["corpus_sha256"]),
+            "fingerprint": validation_signature(job["text"], job["corpus_sha256"], job["citation_mode"], job["evidence_catalog_sha256"]),
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "validator_revision": NUMERIC_VALIDATOR_REVISION,
             "origin": "GENERATION_RESULT_VALIDATION", "citation_normalizations": normalizations,
