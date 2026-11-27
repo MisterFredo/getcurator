@@ -1,8 +1,10 @@
 """Generate generic documents from frozen source reports and a reviewed plan."""
 import json
+import hashlib
 import os
 import re
 from decimal import Decimal
+from datetime import datetime, timezone
 from openai import OpenAI
 from core.production.document_models import ProductionDocument
 from core.production.models import ProductionPreparedCorpus
@@ -10,7 +12,7 @@ from core.production.repository import get_production
 from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261113-watch-coverage-v7"
+NUMERIC_VALIDATOR_REVISION = "20261127-content-identity-v8"
 WATCH_COVERAGE_LABELS = {
     "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
     "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
@@ -372,7 +374,14 @@ def validator_diagnostics():
     }
 
 
-def validate_against_corpus(document, corpus):
+def validation_signature(text, corpus_sha256):
+    payload = json.dumps({"text": text, "corpus_sha256": corpus_sha256,
+                          "validator_revision": NUMERIC_VALIDATOR_REVISION},
+                         ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def validate_against_corpus(document, corpus, normalizations=None):
     monthly = corpus.request.monthly_user
     if monthly:
         # Identity and inclusive calendar bounds are deterministic metadata,
@@ -387,6 +396,11 @@ def validate_against_corpus(document, corpus):
         report = reports.get((source.report_id, source.report_version))
         if report is None:
             raise ValueError(f"Source {source.id} : rapport ou version inconnus.")
+
+        from core.production.citation_resolution import resolve_digest_pointer
+        note = resolve_digest_pointer(source, report)
+        if note and normalizations is not None:
+            normalizations.append(note)
 
         try:
             value = pointer_value(report, source.json_pointer)
@@ -542,16 +556,23 @@ def serialize_document_response(response):
         ],
     }
     if response.status == "completed":
+        normalizations = []
         try:
             document = ProductionDocument.model_validate_json(job["text"])
             corpus = load_corpus(metadata["production_id"])
             if corpus.corpus_sha256 != metadata.get("corpus_sha256"):
                 raise ValueError("Le socle ne correspond plus à celui de la génération.")
-            document = validate_against_corpus(document, corpus)
+            document = validate_against_corpus(document, corpus, normalizations=normalizations)
             job["document"] = document.model_dump(mode="json")
         except (ValueError, LookupError, KeyError) as exc:
             job["status"] = "validation_failed"
             job["error"] = {"message": str(exc)}
+        job["validation_check"] = {
+            "fingerprint": validation_signature(job["text"], job["corpus_sha256"]),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "validator_revision": NUMERIC_VALIDATOR_REVISION,
+            "origin": "GENERATION_RESULT_VALIDATION", "citation_normalizations": normalizations,
+        }
     return job
 
 
