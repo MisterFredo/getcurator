@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import MonthlyReviewCorrections from "./MonthlyReviewCorrections";
 import ProductionDocumentPreview from "./ProductionDocumentPreview";
 import type { ProductionSourceMetadata } from "./ProductionDocumentPreview";
 import type { ProductionDocument } from "@/types/production-document";
@@ -24,7 +25,7 @@ type Monthly = {
     reference_production_id: string | null; current_coverage: Coverage; previous_coverage: Coverage };
   document: ProductionDocument | null; document_artifact_id: string | null;
   history: Artifact[]; latest_artifact: Artifact | null; document_attempts: number;
-  retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number; targeted_repair_available?: boolean; full_document_attempts?: number; local_repair_attempts?: number; unhandled_locations?: string[] };
+  retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number; targeted_repair_available?: boolean; full_document_attempts?: number; local_repair_attempts?: number; unhandled_locations?: string[]; editorial_edit_count?: number; max_corrections_per_page?: number; page_correction_attempts?: Record<string, number>; exhausted_page_ids?: string[]; correction_history_errors?: string[] };
   error: { message?: string; issues?: { code: string; location: string; message: string }[] } | null;
   export_context: PdfExportContext; source_metadata: ProductionSourceMetadata;
   queue?: { queued: boolean; running: boolean; max_reports: number };
@@ -87,11 +88,15 @@ export default function MonthlyUserWorkspace() {
   const [reload, setReload] = useState(0);
   const [selected, setSelected] = useState<Monthly | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editorialSaving, setEditorialSaving] = useState(false);
   const [error, setError] = useState("");
   const [pollError, setPollError] = useState("");
   const [responseId, setResponseId] = useState("");
   const [clock, setClock] = useState(() => Date.now());
   const [viewGeneration, setViewGeneration] = useState(0);
+  const selectedId = useRef<string | null>(null);
+  selectedId.current = selected?.production_id ?? null;
+  const controlsBusy = busy || editorialSaving;
   const openSequence = useRef(0);
   const actionLock = useRef(false);
   const shouldPoll = Boolean(selected && RUNNING.includes(selected.status));
@@ -185,7 +190,7 @@ export default function MonthlyUserWorkspace() {
   }, [selected?.production_id, shouldPoll, viewGeneration]);
 
   async function start() {
-    if (actionLock.current || !userId || !month) return;
+    if (actionLock.current || editorialSaving || !userId || !month) return;
     actionLock.current = true; setBusy(true); setError("");
     const key = `getcurator-monthly:${userId}:${month}:${language}:${newVersion ? "revision" : "initial"}`;
     let requestId: string = crypto.randomUUID();
@@ -208,7 +213,7 @@ export default function MonthlyUserWorkspace() {
   }
 
   async function refresh() {
-    if (!selected || actionLock.current) return;
+    if (!selected || actionLock.current || editorialSaving) return;
     actionLock.current = true; setBusy(true); setError("");
     try {
       await api.post(`/production/monthly-users/${selected.production_id}/refresh`,
@@ -222,7 +227,7 @@ export default function MonthlyUserWorkspace() {
 
   const recipientOptions = recipients.filter(r => `${r.name} ${r.company || ""}`.toLowerCase().includes(search.toLowerCase()));
   const canStart = Boolean(userId && month && coverage && coverage.current.digest_ids.length
-    && (coverage.current.complete || allowIncomplete) && !coverageLoading && !busy);
+    && (coverage.current.complete || allowIncomplete) && !coverageLoading && !controlsBusy);
 
   return <div className="mx-auto max-w-[1600px] space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-3">
@@ -236,14 +241,14 @@ export default function MonthlyUserWorkspace() {
       <div className="grid gap-4 md:grid-cols-4">
         <label className="text-sm md:col-span-2">Utilisateur
           <input className={`${INPUT} mb-2`} value={search} placeholder="Rechercher par nom ou société" onChange={e => setSearch(e.target.value)} />
-          <select className={INPUT} value={userId} onChange={e => setUserId(e.target.value)} disabled={busy}>
+          <select className={INPUT} value={userId} onChange={e => setUserId(e.target.value)} disabled={controlsBusy}>
             <option value="">Choisir un utilisateur</option>
             {recipients.filter(r => r.id === userId || recipientOptions.some(o => o.id === r.id)).map(r =>
               <option key={r.id} value={r.id}>{r.name}{r.company ? ` · ${r.company}` : ""}</option>)}
           </select>
         </label>
-        <label className="text-sm">Mois<input type="month" className={INPUT} value={month} disabled={busy} onChange={e => setMonth(e.target.value)} /></label>
-        <label className="text-sm">Langue<select className={INPUT} value={language} disabled={busy} onChange={e => setLanguage(e.target.value as "fr" | "en")}><option value="en">English</option><option value="fr">Français</option></select></label>
+        <label className="text-sm">Mois<input type="month" className={INPUT} value={month} disabled={controlsBusy} onChange={e => setMonth(e.target.value)} /></label>
+        <label className="text-sm">Langue<select className={INPUT} value={language} disabled={controlsBusy} onChange={e => setLanguage(e.target.value as "fr" | "en")}><option value="en">English</option><option value="fr">Français</option></select></label>
       </div>
       {coverageLoading && <p className="text-sm text-slate-500">Vérification des éditions disponibles…</p>}
       {coverageError && <p role="alert" className="text-sm text-red-800">{coverageError}</p>}
@@ -260,9 +265,9 @@ export default function MonthlyUserWorkspace() {
       </div>}
       <div className="flex flex-wrap items-center gap-4">
         <button type="button" className={PRIMARY} disabled={!canStart} onClick={() => void start()}>{busy ? "Traitement…" : "Générer / ouvrir le Monthly"}</button>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newVersion} disabled={busy} onChange={e => setNewVersion(e.target.checked)} />Créer une nouvelle version, en conservant les précédentes.</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newVersion} disabled={controlsBusy} onChange={e => setNewVersion(e.target.checked)} />Créer une nouvelle version, en conservant les précédentes.</label>
       </div>
-      <p className="text-xs text-slate-500">Le plan, la rédaction et le contrôle qualité sont enchaînés automatiquement. Une correction ciblée au maximum est générée si nécessaire. Les générations et le contrôle qualité utilisent le LLM. Sans nouvelle version, le Monthly existant est repris.</p>
+      <p className="text-xs text-slate-500">Le plan, la rédaction et le contrôle qualité sont enchaînés automatiquement. Les corrections automatiques sont limitées par page. Si elles s’arrêtent, une relecture éditoriale permet de corriger les passages signalés puis de relancer les contrôles. Les générations et le contrôle qualité utilisent le LLM. Sans nouvelle version, le Monthly existant est repris.</p>
     </section>
 
     <section className={PANEL}>
@@ -285,7 +290,7 @@ export default function MonthlyUserWorkspace() {
         <td className="p-3 font-medium">{row.name}</td><td className="p-3">{row.month}{row.provisional ? " · provisoire" : ""}</td>
         <td className="p-3">{row.language.toUpperCase()}</td><td className="p-3">{LABELS[row.status] || row.status}</td>
         <td className="p-3">{new Date(row.created_at).toLocaleDateString("fr-FR")}</td>
-        <td className="p-3"><button className={BUTTON} disabled={busy} onClick={() => void openMonthly(row.production_id)}>Ouvrir</button></td>
+        <td className="p-3"><button className={BUTTON} disabled={controlsBusy} onClick={() => void openMonthly(row.production_id)}>Ouvrir</button></td>
       </tr>)}</tbody></table></div>
       <div className="flex gap-3"><button className={BUTTON} disabled={!offset || listLoading} onClick={() => setOffset(v => Math.max(0, v - 50))}>Précédent</button><button className={BUTTON} disabled={!more || listLoading} onClick={() => setOffset(v => v + 50)}>Suivant</button></div>
     </section>
@@ -293,7 +298,7 @@ export default function MonthlyUserWorkspace() {
     {selected && <section className="space-y-5">
       <div className={PANEL}>
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{selected.monthly.name} · {selected.monthly.month}{selected.monthly.provisional ? " · Provisoire" : ""}</h2>
-          <button className={BUTTON} disabled={busy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
+          <button className={BUTTON} disabled={controlsBusy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
         <p role="status" className="font-medium text-emerald-800">{selected.queue?.queued ? "En attente d’un créneau de production" : LABELS[selected.status] || selected.status}</p>
         {selected.status === "revalidating" && <p className="text-sm text-slate-600">Le JSON déjà enregistré est contrôlé avec le validateur actuel. Cette étape ne lance aucun appel LLM et ne consomme pas de tentative de rédaction.</p>}
         {selected.queue?.queued && <p className="text-sm text-slate-500">Jusqu’à {selected.queue.max_reports} Monthlys sont traités simultanément. La demande est enregistrée.</p>}
@@ -302,19 +307,33 @@ export default function MonthlyUserWorkspace() {
           <p>{selected.review_progress.checks_running} contrôles actifs · {selected.review_progress.checks_waiting} en attente · Contrôle transversal : {CHECK_LABELS[selected.review_progress.cross_status] || selected.review_progress.cross_status}</p>
           <p>Temps de cette revue : {elapsed(selected.review_progress.started_at, selected.review_progress.finished_at ? Date.parse(selected.review_progress.finished_at) : clock)} · Dernière activité : {selected.last_activity ? new Date(selected.last_activity).toLocaleTimeString("fr-FR") : "—"}</p>
         </div>}
-        <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts}/{selected.retry_budget?.max_document_attempts ?? 2} rédactions.</p>
-        {selected.retry_budget && <p className="text-xs text-slate-500">Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Corrections localisées : {selected.retry_budget.local_repair_attempts ?? 0}/{selected.retry_budget.max_editorial_corrections} · Échecs techniques : {selected.retry_budget.technical_failures}. Toutes les pages sont contrôlées avant correction ; les contrôles déjà acquis sont conservés tant que la page et ses preuves ne changent pas.</p>}
-        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera les passages identifiés et pourra retirer les métriques signalées ou fusionner les citations strictement identiques. Le rapport sera contrôlé à nouveau avant validation.</p>}
-        {!!selected.retry_budget?.unhandled_locations?.length && <p role="alert" className="text-sm text-amber-800">Remarques sans correction automatique disponible : {selected.retry_budget.unhandled_locations.join(" · ")}. Les passages corrigeables peuvent être repris ; ces remarques restent à résoudre avant validation.</p>}
+        <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts} versions du document.</p>
+        {selected.retry_budget && <div className="space-y-1 text-xs text-slate-500">
+          <p>Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Corrections automatiques : {selected.retry_budget.local_repair_attempts ?? 0} · Corrections éditoriales enregistrées : {selected.retry_budget.editorial_edit_count ?? 0} · Échecs techniques : {selected.retry_budget.technical_failures}.</p>
+          <p>Toutes les pages sont contrôlées avant correction. Les contrôles acquis sont conservés tant que la page et ses preuves ne changent pas.</p>
+          {selected.retry_budget.max_corrections_per_page && <p>Limite automatique : {selected.retry_budget.max_corrections_per_page} opérations par page, historique compris.</p>}
+          {!!selected.retry_budget.exhausted_page_ids?.length && <p className="text-amber-800">Limite atteinte pour : {selected.retry_budget.exhausted_page_ids.join(", ")}. Une correction éditoriale explicite reste possible sur les passages de texte signalés.</p>}
+          {!!selected.retry_budget.correction_history_errors?.length && <p className="text-amber-800">{selected.retry_budget.correction_history_errors.join(" · ")}</p>}
+        </div>}
+        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera uniquement les champs de texte signalés, en conservant les autres textes, métriques et sources. Le rapport sera contrôlé à nouveau avant validation.</p>}
+        {!!selected.retry_budget?.unhandled_locations?.length && <p role="alert" className="text-sm text-amber-800">Remarques hors correction automatique : {selected.retry_budget.unhandled_locations.join(" · ")}. Aucun traitement partiel ne les marque comme résolues.</p>}
         <p className="text-sm">Référence : {selected.monthly.comparison_mode === "MONTHLY_REPORT" ? `Monthly validé de ${selected.monthly.previous_month}`
           : selected.monthly.comparison_mode === "DIGESTS" ? `Digests de ${selected.monthly.previous_month} (pas de Monthly précédent)` : "Premier point de référence, aucune matière comparative disponible"}.</p>
-        {selected.monthly.reference_production_id && <button className="text-sm underline" disabled={busy} onClick={() => void openMonthly(selected.monthly.reference_production_id!)}>Ouvrir le Monthly de référence</button>}
+        {selected.monthly.reference_production_id && <button className="text-sm underline" disabled={controlsBusy} onClick={() => void openMonthly(selected.monthly.reference_production_id!)}>Ouvrir le Monthly de référence</button>}
         {RUNNING.includes(selected.status) && <p className="text-sm text-slate-500">Le traitement avance en arrière-plan. Vous pouvez fermer cette page. Les étapes sont enregistrées ; après une interruption du serveur, Actualiser / reprendre relance le suivi sans recommencer les étapes acquises.</p>}
         {pollError && <p role="alert" className="text-red-800">{pollError}</p>}
         {selected.error && <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p>{selected.error.message}</p>
           {selected.error.issues?.map((issue, index) => <p key={index}>{issue.location} · {issue.message}</p>)}
         </div>}
-        {selected.status === "failed" && <p className="text-sm">Le traitement est arrêté. Le diagnostic et le document sont conservés ; aucun rapport n’est présenté comme terminé. Après une correction du service, « Actualiser / reprendre » réévalue la reprise sur cette version. Une nouvelle version reste un déclenchement distinct.</p>}
+        {selected.status === "failed" && <p className="text-sm">Le traitement est arrêté. Le diagnostic et le document sont conservés ; aucun rapport n’est présenté comme terminé. Utilisez la relecture éditoriale ci-dessous pour les remarques portant sur du texte. « Actualiser / reprendre » relance le suivi des étapes enregistrées ; il ne recharge pas le budget automatique. Une nouvelle production reste un déclenchement distinct.</p>}
+        {selected.status === "failed" && Boolean(selected.error?.issues?.length) && <MonthlyReviewCorrections
+          key={`${selected.production_id}:${selected.latest_artifact?.artifact_id || "review"}`}
+          productionId={selected.production_id} disabled={busy}
+          onSavingChange={setEditorialSaving}
+          onSaved={async id => {
+            if (selectedId.current !== id) return;
+            await openMonthly(id); setReload(value => value + 1);
+          }} />}
         {(selected.status === "submission_unknown" || (selected.status === "starting" && !selected.latest_artifact?.response_id)) && <label className="block text-sm">Rattacher une réponse retrouvée dans les logs
           <input className={INPUT} placeholder="resp_…" value={responseId} onChange={e => setResponseId(e.target.value)} />
           <span className="text-xs text-slate-500">Actualiser / reprendre vérifie son rattachement. Ne créez pas une nouvelle version pour contourner une acceptation inconnue.</span>
