@@ -10,6 +10,18 @@ const escape = (value: string) => value.replace(/[&<>"']/g, c => ({
 }[c] || c));
 const number = (value: number) => value.toLocaleString("fr-FR", { maximumSignificantDigits: 6 });
 
+export type ProductionSourceMetadata = Record<string, {
+  title?: string | null; source_name?: string | null;
+  original_title?: string | null; url?: string | null; published_at?: string | null; publication_day?: string | null;
+}>;
+function safeUrl(value?: string | null): string | null {
+  try {
+    if (!value) return null;
+    const parsed = new URL(value);
+    return ["https:", "http:"].includes(parsed.protocol) ? parsed.href : null;
+  } catch { return null; }
+}
+
 function chartHtml(chart: DocumentChart): string {
   const points = chart.points;
   const values = points.map(p => p.value);
@@ -74,15 +86,15 @@ export type RenderableDocument = Omit<ProductionDocument, "sources"> & {
     report_id?: string; report_version?: number;
   })[];
 };
-export function buildDocumentHtml(document: RenderableDocument, filename?: string | null, language: "fr" | "en" = "fr", touchPresentation = false): string {
+export function buildDocumentHtml(document: RenderableDocument, filename?: string | null, language: "fr" | "en" = "fr", touchPresentation = false, sourceMetadata: ProductionSourceMetadata = {}): string {
   const known = new Map(document.sources.map(source => [source.id, source]));
   const used = new Set(document.pages.flatMap(page => page.source_ids));
-  const groups = new Map<string, { ids: string[]; label: string; version: number | undefined }>();
+  const groups = new Map<string, { ids: string[]; label: string; version: number | undefined; contentId: string | null }>();
   for (const source of document.sources.filter(item => used.has(item.id))) {
-    const key = `${source.report_id}:${source.report_version}:${source.content_id || "report"}`;
+    const key = source.content_id || `${source.report_id}:${source.report_version}:report`;
     const existing = groups.get(key);
     if (existing) existing.ids.push(source.id);
-    else groups.set(key, { ids: [source.id], label: source.label, version: source.report_version });
+    else groups.set(key, { ids: [source.id], label: source.label, version: source.report_version, contentId: source.content_id });
   }
   const bibliographyEntries = Array.from(groups.values());
   // Bibliography is an appendix, never stacked below the full method page.
@@ -103,7 +115,7 @@ export function buildDocumentHtml(document: RenderableDocument, filename?: strin
   chunks.forEach((entries, index) => composed.push({
     page: {
       page_id: `bibliography-${index + 1}`, layout: "SOURCES",
-      title: touchPresentation && language === "en" ? "Documentary references" : "Références documentaires", eyebrow: `${touchPresentation && language === "en" ? "Bibliography" : "Bibliographie"} · ${index + 1}/${chunks.length}`,
+      title: language === "en" ? "Documentary references" : "Références documentaires", eyebrow: `${language === "en" ? "Bibliography" : "Bibliographie"} · ${index + 1}/${chunks.length}`,
       paragraphs: [], bullets: [], metrics: [], chart: null, takeaway: "",
       cautions: [], source_ids: [],
     }, entries,
@@ -118,17 +130,31 @@ export function buildDocumentHtml(document: RenderableDocument, filename?: strin
       ? `${escape(titlePeriod[1])}<span class="cover-period">${escape(titlePeriod[2])}</span>`
       : escape(document.title);
     const chart = page.chart ? chartHtml(page.chart) : "";
-    const metrics = page.metrics.length ? `${page.chart ? '<p class="complement-label">Indicateurs complémentaires — hors série graphique</p>' : ""}<div class="metrics">${page.metrics.map(metric => `<div class="metric"><div class="value">${escape(metric.display_value)}</div><div class="label">${escape(metric.label)}</div><div class="context">${escape(metric.context)} [${escape(metric.source_id)}]</div></div>`).join("")}</div>` : "";
+    const metrics = page.metrics.length ? `${page.chart ? `<p class="complement-label">${language === "en" ? "Additional indicators - outside the chart series" : "Indicateurs complémentaires — hors série graphique"}</p>` : ""}<div class="metrics">${page.metrics.map(metric => `<div class="metric"><div class="value">${escape(metric.display_value)}</div><div class="label">${escape(metric.label)}</div><div class="context">${escape(metric.context)} [${escape(metric.source_id)}]</div></div>`).join("")}</div>` : "";
     const visual = chart + metrics;
     const paragraphs = page.paragraphs.map(text => `<p>${escape(text)}</p>`).join("");
     const bullets = page.bullets.length ? `<ul class="${page.layout === "SUMMARY" || page.layout === "IMPLICATIONS" ? "bullets" : ""}">${page.bullets.map(text => `<li>${escape(text)}</li>`).join("")}</ul>` : "";
-    const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${escape(source.label)}</span><br><span class="source-report">${source.version === undefined ? (language === "fr" ? "Source du rapport Touch" : "Touch report source") : `Rapport sauvegardé · version ${source.version}`}</span></li>`).join("")}</ul>` : "";
+    const bibliography = entries.length ? `<ul class="bibliography">${entries.map(source => {
+      const metadata = source.contentId ? sourceMetadata[source.contentId] : undefined;
+      const analysis = source.contentId ? `https://www.getcurator.ai/feed?analysis_id=${encodeURIComponent(source.contentId)}` : null;
+      const original = safeUrl(metadata?.url);
+      const label = escape(metadata?.title || metadata?.original_title || source.label);
+      const sourceName = metadata?.source_name ? escape(metadata.source_name) : "";
+      const publication = metadata?.publication_day ? escape(metadata.publication_day)
+        : metadata?.published_at ? escape(metadata.published_at.slice(0, 10)) : "";
+      const origin = sourceName ? (original ? `<a href="${escape(original)}" target="_blank" rel="noopener noreferrer">${sourceName}</a>` : sourceName)
+        : original ? `<a href="${escape(original)}" target="_blank" rel="noopener noreferrer">${language === "en" ? "Original source" : "Source originale"}</a>` : "";
+      return `<li><span class="source-label">${source.ids.map(id => `[${escape(id)}]`).join(" ")} ${analysis ? `<a href="${escape(analysis)}" target="_blank" rel="noopener noreferrer">${label}</a>` : label}</span><br><span class="source-report">${[origin, publication].filter(Boolean).join(" · ") || (language === "en" ? "Referenced source" : "Source référencée")}</span></li>`;
+    }).join("")}</ul>` : "";
     const citations = page.source_ids.filter(id => known.has(id)).map(id => `[${escape(id)}]`).join(" ");
-    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (touchPresentation ? "Touch" : cover ? "Rapport autonome" : "Analyse & perspectives"))}</div><h1>${cover ? coverTitle : escape(page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${cover && paragraphs ? `<div class="cover-introduction">${paragraphs}</div>` : paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · ${touchPresentation ? (language === "fr" ? "TOUCH · PRÉSENTATION" : "TOUCH · PRESENTATION") : "RAPPORT AUTONOME"}</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
+    return `<section class="sheet ${cover ? "cover" : ""} ${sources ? "sources-page" : ""} ${visual ? "has-visual" : ""} ${page.chart && page.metrics.length ? "has-mixed" : ""}" data-page="${index + 1}"><div class="header"><div class="brand"><span>✦</span>GetCurator</div><div class="tagline">Bringing clarity to complexity</div></div><div class="eyebrow">${escape(page.eyebrow || (touchPresentation ? "Touch" : cover ? (language === "en" ? "Autonomous report" : "Rapport autonome") : (language === "en" ? "Analysis & implications" : "Analyse & perspectives")))}</div><h1>${cover ? coverTitle : escape(page.title)}</h1>${cover ? `<p class="subtitle">${escape(document.subtitle)}</p>` : ""}${visual}${cover && paragraphs ? `<div class="cover-introduction">${paragraphs}</div>` : paragraphs}${bullets}${page.takeaway ? `<p class="takeaway" style="color:#142333;background-color:#eaf5f2">${escape(page.takeaway)}</p>` : ""}${bibliography}${citations && !sources ? `<p class="notes">Sources : ${citations}</p>` : ""}${page.cautions.map(caution => `<p class="notes">${escape(caution)}</p>`).join("")}<div class="footer"><span>GETCURATOR · ${touchPresentation ? (language === "fr" ? "TOUCH · PRÉSENTATION" : "TOUCH · PRESENTATION") : (language === "en" ? "AUTONOMOUS REPORT" : "RAPPORT AUTONOME")}</span><span>${String(index + 1).padStart(2, "0")}</span></div></section>`;
   }).join("")}</body></html>`;
 }
 
-export default function ProductionDocumentPreview({ document, exportContext }: { document: ProductionDocument; exportContext?: PdfExportContext }) {
+export default function ProductionDocumentPreview({ document, exportContext, sourceMetadata = {}, lockExportContext = false }: {
+  document: ProductionDocument; exportContext?: PdfExportContext;
+  sourceMetadata?: ProductionSourceMetadata; lockExportContext?: boolean;
+}) {
   const [naming, setNaming] = useState<PdfExportContext>(() => exportContext || {
     subject: document.title, language: "fr", periodStart: "", periodEnd: "",
   });
@@ -137,7 +163,7 @@ export default function ProductionDocumentPreview({ document, exportContext }: {
   const [overflow, setOverflow] = useState<number[]>([]);
   const [checkedHtml, setCheckedHtml] = useState("");
   const [printedPages, setPrintedPages] = useState(document.pages.length);
-  const html = useMemo(() => buildDocumentHtml(document, filename, naming.language), [document, filename, naming.language]);
+  const html = useMemo(() => buildDocumentHtml(document, filename, naming.language, false, sourceMetadata), [document, filename, naming.language, sourceMetadata]);
   const printable = checkedHtml === html && Boolean(filename);
 
   function checkLayout() {
@@ -180,7 +206,7 @@ export default function ProductionDocumentPreview({ document, exportContext }: {
     <h2 className="text-lg font-semibold">Rapport GetCurator — compositions génériques</h2>
     <p className="text-sm text-gray-600">{document.pages.length} pages éditoriales{checkedHtml === html && printedPages > document.pages.length ? ` + ${printedPages - document.pages.length} page(s) de bibliographie` : ""} · A4 paysage · modèle {document.template}. Les contrôles de structure et de provenance ne remplacent pas la relecture des interprétations.</p>
     {overflow.length > 0 && <p role="alert" className="rounded bg-amber-50 p-3 text-amber-900">Débordement sur les pages {overflow.join(", ")}. Export autorisé : vérifiez le résultat dans l’aperçu d’impression.</p>}
-    <fieldset className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
+    <fieldset disabled={lockExportContext} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
       <legend className="px-1 text-sm font-medium">Nom du fichier PDF</legend>
       <label className="text-sm">Sujet<input className="mt-1 w-full rounded border px-3 py-2" value={naming.subject} maxLength={250} onChange={e => setNaming(current => ({ ...current, subject: e.target.value }))} /></label>
       <label className="text-sm">Langue<select className="mt-1 w-full rounded border px-3 py-2" value={naming.language} onChange={e => setNaming(current => ({ ...current, language: e.target.value as "fr" | "en" }))}><option value="fr">FR</option><option value="en">EN</option></select></label>
