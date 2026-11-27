@@ -162,6 +162,7 @@ def read_digest_source(digest_id, start: date, end: date, profile_cache):
                 for ref in card.get("contents", []) if ref.get("id") == c["content_id"]), None),
             "original_title": c.get("source_title"), "url": c.get("source_url"),
             "published_at": c.get("published_at"),
+            "publication_day": c.get("publication_day"),
         } for c in retained],
         "evidence_policy": (
             "Only /contents analytical fields are factual evidence. Profile and topics are editorial context. "
