@@ -1,4 +1,5 @@
 """Durable, evidence-bound text repairs; the server freezes all other fields."""
+import copy
 import json
 import os
 
@@ -11,6 +12,8 @@ from core.production.monthly_repair_revision import REPAIR_REVISION, PAGE_REPAIR
 from core.production.monthly_page_repair import page_repair_plan, apply_page_repair
 
 from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, apply_retraction, METRIC_RETRACTION_MODE, metric_retraction_plan, apply_metric_retraction
+
+from core.production.monthly_text_amendment import AMENDMENT_MODE, amendment_plan, apply_amendment
 
 REPAIR_WORKFLOW = "getcurator_monthly_targeted_repair_v1"
 EVIDENCE_MODE = PAGE_REPAIR_MODE
@@ -107,7 +110,7 @@ def _serialize(response, corpus, document, request):
                 candidate = (apply_evidence_repair(
                     document, raw["replacements"], request["targets"], raw["evidence_bindings"])
                     if bound else apply_repair(document, raw["replacements"], request["targets"]))
-            validated = validate_against_corpus(ProductionDocument.model_validate(candidate), corpus)
+            validated = validate_against_corpus(ProductionDocument.model_validate(copy.deepcopy(candidate)), corpus)
             repaired = validated.model_dump(mode="json")
             if repaired != candidate:
                 raise ValueError("La validation modifierait des champs figés du rapport.")
@@ -133,6 +136,30 @@ def start_repair(production_id, artifact_id, document_id, review_id):
     if not parent or not assessment:
         raise LookupError("Document ou contrôle introuvable.")
     issues = (assessment.get("result") or {}).get("review", {}).get("issues") or []
+    amendment = amendment_plan(parent, assessment)
+    if amendment:
+        request = {"kind": REPAIR_KIND, "document_artifact_id": document_id,
+                   "review_artifact_id": review_id, "targets": amendment["targets"],
+                   "repair_mode": AMENDMENT_MODE, "repair_revision": AMENDMENT_MODE,
+                   "reviewed_amendment": amendment}
+        corpus, document, review = _context(production_id, request)
+        candidate = apply_amendment(document, amendment)
+        validated = validate_against_corpus(ProductionDocument.model_validate(copy.deepcopy(candidate)), corpus)
+        if validated.model_dump(mode="json") != candidate:
+            raise ValueError("La validation modifierait des champs hors amendement.")
+        item, created = workflow._reserve(
+            production_id=production_id, artifact_id=artifact_id, stage="DOCUMENT",
+            corpus_sha256=corpus.corpus_sha256, request=request, parent_id=document_id,
+        )
+        if not created:
+            return item
+        return repo.save_job(production_id, artifact_id, {
+            "id": None, "status": "completed", "model": None, "text": "",
+            "document": candidate, "error": None, "usage": None,
+            "production_id": production_id, "corpus_sha256": corpus.corpus_sha256,
+            "origin": REPAIR_KIND, "repaired_paths": amendment["targets"],
+            "reviewed_amendment_id": amendment["amendment_id"],
+        })
     # After a page-coherence repair, eligible residual findings are removed
     # deterministically. No provider call and no replacement factual assertion.
     parent_mode = (parent.get("request") or {}).get("repair_mode")
@@ -149,7 +176,7 @@ def start_repair(production_id, artifact_id, document_id, review_id):
             corpus, document, review = _context(production_id, request)
             candidate = (apply_metric_retraction(document, review["issues"]) if metric_withdrawal
                          else apply_retraction(document, review["issues"]))
-            validated = validate_against_corpus(ProductionDocument.model_validate(candidate), corpus)
+            validated = validate_against_corpus(ProductionDocument.model_validate(copy.deepcopy(candidate)), corpus)
             if validated.model_dump(mode="json") != candidate:
                 raise ValueError("La validation modifierait le document au-delà des retraits.")
             item, created = workflow._reserve(
