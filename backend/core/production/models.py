@@ -34,6 +34,8 @@ class ProductionPrepareRequest(ProductionModel):
     digest_ids: list[str] = Field(default_factory=list, max_length=20)
     analysis_start: date | None = None
     analysis_end: date | None = None
+    # Populated by the dedicated Monthly User service, frozen in CORPUS_JSON.
+    monthly_user: dict[str, Any] | None = None
 
     @field_validator("digest_ids")
     @classmethod
