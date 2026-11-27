@@ -18,8 +18,8 @@ def deterministic_issues(document, corpus):
         if payload.get("source_type") != "DIGEST_SUBJECT":
             issues.append({"code": "CITATION", "location": source["id"],
                            "message": "Citer un contenu lié, pas le rapport de référence ni le profil."})
-    for page in document["pages"]:
-        for metric in page["metrics"]:
+    for page_index, page in enumerate(document["pages"]):
+        for metric_index, metric in enumerate(page["metrics"]):
             label = metric["label"].lower()
             source = next((s for s in document["sources"] if s["id"] == metric["source_id"]), None)
             year_as_count = False
@@ -31,7 +31,7 @@ def deterministic_issues(document, corpus):
                     year_as_count = (len(parts) >= 3 and parts[2] in {"ans", "year", "years", "année", "années"}
                                      and 1900 <= metric["value"] <= 2100)
             if year_as_count or re.search(r"\b(year|année|launch date|date de lancement|rollout date)\b", label):
-                issues.append({"code": "NUMBER", "location": page["page_id"],
+                issues.append({"code": "NUMBER", "location": f"/pages/{page_index}/metrics/{metric_index}",
                                "message": "Une date ou année n’est pas un KPI ; conserver le repère dans le texte."})
     all_text = " ".join([document["title"], document["subtitle"]] + [
         text for p in document["pages"] for text in
