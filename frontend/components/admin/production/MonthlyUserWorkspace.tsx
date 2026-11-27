@@ -38,9 +38,10 @@ const LABELS: Record<string, string> = {
   prepared: "Prêt à démarrer", starting: "Démarrage", planning: "Préparation du plan",
   preparing_document: "Préparation de la rédaction", writing: "Rédaction", reviewing: "Contrôle qualité",
   correcting: "Correction automatique", completed: "Terminé", failed: "Échec après contrôle",
+  revalidating: "Revalidation technique du document sauvegardé",
   submission_unknown: "Acceptation à vérifier", needs_attention: "À vérifier",
 };
-const RUNNING = ["prepared", "starting", "planning", "preparing_document", "writing", "reviewing", "correcting"];
+const RUNNING = ["prepared", "starting", "planning", "preparing_document", "writing", "reviewing", "correcting", "revalidating"];
 const CHECK_LABELS: Record<string, string> = { pending: "en attente", queued: "en file", SUBMITTING: "envoi",
   in_progress: "en cours", completed: "terminé", failed: "échec", validation_failed: "réponse invalide",
   incomplete: "incomplet", cancelled: "annulé", SUBMISSION_UNKNOWN: "acceptation à vérifier" };
@@ -294,6 +295,7 @@ export default function MonthlyUserWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{selected.monthly.name} · {selected.monthly.month}{selected.monthly.provisional ? " · Provisoire" : ""}</h2>
           <button className={BUTTON} disabled={busy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
         <p role="status" className="font-medium text-emerald-800">{selected.queue?.queued ? "En attente d’un créneau de production" : LABELS[selected.status] || selected.status}</p>
+        {selected.status === "revalidating" && <p className="text-sm text-slate-600">Le JSON déjà enregistré est contrôlé avec le validateur actuel. Cette étape ne lance aucun appel LLM et ne consomme pas de tentative de rédaction.</p>}
         {selected.queue?.queued && <p className="text-sm text-slate-500">Jusqu’à {selected.queue.max_reports} Monthlys sont traités simultanément. La demande est enregistrée.</p>}
         {selected.review_progress && <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm" aria-live="polite">
           <p className="font-medium">{selected.review_progress.pages_completed}/{selected.review_progress.pages_total} pages contrôlées · {selected.review_progress.pages_reused} contrôles réutilisés</p>
