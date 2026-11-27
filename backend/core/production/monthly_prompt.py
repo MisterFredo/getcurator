@@ -44,6 +44,10 @@ Un changement de mandat du profil ou de couverture documentaire peut expliquer
 une différence de sélection : ne le présente pas comme une évolution du marché.
 Une publication datée n'établit pas la date d'un lancement. Préserve le statut
 annoncé, bêta, testé ou déployé. Une nouvelle analyse n'est pas un nouvel événement.
+L'expression « nouvelle analyse du mois » exige elle aussi une preuve du mois.
+À défaut, conserve seulement le contexte antérieur explicitement daté, sans
+inventer ce que le mois aurait clarifié. Chaque fait d'une synthèse doit être
+couvert par les source_ids de cette page, pas seulement par une citation ailleurs.
 S'il n'y a pas d'évolution directement comparable étayée, explique la limite
 plutôt que de fabriquer une chronologie. Conserve les contributions importantes
 sans imposer un nombre de sujets ou de pages au-delà du contrat existant.
