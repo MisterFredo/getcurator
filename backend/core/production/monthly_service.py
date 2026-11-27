@@ -25,7 +25,14 @@ from core.production.monthly_repository import latest_for, previous_reference
 from core.production.monthly_review import refresh_review
 from core.production.monthly_audit_service import start_audit as start_review, refresh_audit, AUDIT_STAGES
 from core.production.monthly_repair_rules import AUDIT_REVISION
-from core.production.repository import get_production, save_prepared_production
+from core.production.monthly_parallel_review import (
+    BATCH_STAGE, start_parallel_review, refresh_parallel_review, progress as review_progress,
+)
+from core.production import monthly_state as pipeline_state
+from core.production.monthly_runtime import AUTOMATIC_FRAMING
+from core.production import monthly_queue
+from core.production.repository import save_prepared_production
+from core.production.monthly_state import get_production
 from core.user.user_service import get_user_by_id
 from core.user.user_profile_service import get_user_profile
 from utils.bigquery_utils import query_bq
@@ -233,26 +240,29 @@ def _id(production_id, phase):
 
 
 def _history(production_id):
-    result = []
-    while True:
-        batch = artifacts.list_artifacts(production_id, limit=100, offset=len(result))
-        result.extend(batch)
-        if len(batch) < 100:
-            return result
+    return [{key: value for key, value in item.items() if key not in {"request", "result"}}
+            for item in pipeline_state.history(production_id)]
 
 
 def _detail(production_id, summary):
-    return artifacts.get_artifact(production_id, summary["artifact_id"])
+    return pipeline_state.get_artifact(production_id, summary["artifact_id"])
 
 
 def advance(production_id, response_id=None):
+    with pipeline_state.pipeline_scope(production_id):
+        return _advance(production_id, response_id)
+
+
+def _advance(production_id, response_id=None):
     production = get_production(production_id)
     if not production or not production["corpus"]["request"].get("monthly_user"):
         raise LookupError("Monthly User introuvable.")
     rows = _history(production_id)
     active = next((r for r in rows if r["status"] in artifacts.ACTIVE), None)
     if active:
-        if active.get("response_id") or response_id:
+        if active["stage"] == BATCH_STAGE:
+            refresh_parallel_review(production_id, active["artifact_id"], response_id)
+        elif active.get("response_id") or response_id:
             if active["stage"] in AUDIT_STAGES:
                 refresh_audit(production_id, active["artifact_id"], response_id)
             elif active["stage"] == "REVIEW":
@@ -261,25 +271,28 @@ def advance(production_id, response_id=None):
                 workflow.refresh_artifact(production_id, active["artifact_id"], response_id)
         return
     latest = _detail(production_id, rows[0]) if rows else None
-    if (latest and latest["stage"] == "REVIEW" and latest["status"] == "completed"
+    if (latest and latest["stage"] in {"REVIEW", BATCH_STAGE} and latest["status"] == "completed"
             and ((latest.get("result") or {}).get("review") or {}).get("passed")):
         return
     plans = [r for r in rows if r["stage"] == "PLAN"]
     documents = [r for r in rows if r["stage"] == "DOCUMENT"]
-    if not plans:
-        workflow.start_plan(production_id, _id(production_id, "plan:1"), MONTHLY_INSTRUCTIONS)
+    framing_id = _id(production_id, "automatic-framing:v1")
+    automatic = pipeline_state.get_artifact(production_id, framing_id)
+    if not plans and not automatic:
+        workflow.approve_plan(production_id, framing_id, AUTOMATIC_FRAMING,
+                              approval_origin="MONTHLY_AUTOMATIC_FRAMING")
         return
     # Retry only a definitively returned, invalid/incomplete plan, never a
     # rejected or ambiguously submitted provider operation.
-    last_plan = _detail(production_id, plans[0])
-    if last_plan["status"] != "completed":
+    last_plan = _detail(production_id, plans[0]) if plans else None
+    if last_plan and last_plan["status"] != "completed":
         if last_plan["status"] in {"validation_failed", "incomplete"} and len(plans) < MAX_PLAN_ATTEMPTS:
             feedback = (last_plan.get("result") or {}).get("error") or {"message": "Le plan précédent était incomplet."}
             workflow.start_plan(production_id, _id(production_id, f"plan:{len(plans)+1}"),
                 MONTHLY_INSTRUCTIONS + "\nCORRECTION DU PLAN :\n" + json.dumps(feedback, ensure_ascii=False))
         return
-    approved_id = _id(production_id, f"approved:{last_plan['artifact_id']}")
-    approved = artifacts.get_artifact(production_id, approved_id)
+    approved_id = _id(production_id, f"approved:{last_plan['artifact_id']}") if last_plan else framing_id
+    approved = pipeline_state.get_artifact(production_id, approved_id)
     if not approved:
         workflow.approve_plan(production_id, approved_id, last_plan["result"]["text"], last_plan["artifact_id"],
                               approval_origin="MONTHLY_AUTOMATIC")
@@ -289,9 +302,9 @@ def advance(production_id, response_id=None):
         return
     last_document = _detail(production_id, documents[0])
     review_id = _id(production_id, f"review:{last_document['artifact_id']}:{AUDIT_REVISION}")
-    review = artifacts.get_artifact(production_id, review_id)
+    review = pipeline_state.get_artifact(production_id, review_id)
     if last_document["status"] == "completed" and not review:
-        start_review(production_id, review_id, last_document["artifact_id"])
+        start_parallel_review(production_id, review_id, last_document["artifact_id"])
         return
     if review and review["status"] == "completed" and (review.get("result") or {}).get("review", {}).get("passed"):
         return
@@ -352,6 +365,11 @@ def _advance_once(production_id, response_id=None):
 
 
 def detail(production_id):
+    with pipeline_state.pipeline_scope(production_id):
+        return _detail_view(production_id)
+
+
+def _detail_view(production_id):
     production = get_production(production_id)
     if not production or not production["corpus"]["request"].get("monthly_user"):
         raise LookupError("Monthly User introuvable.")
@@ -364,15 +382,15 @@ def detail(production_id):
     if latest:
         state, stage = latest["status"], latest["stage"]
         error = (latest.get("result") or {}).get("error")
-        if state == "SUBMISSION_UNKNOWN" or (state == "STARTING" and not latest.get("response_id")):
+        if state == "SUBMISSION_UNKNOWN" or (state == "STARTING" and not latest.get("response_id") and stage != BATCH_STAGE):
             status = "submission_unknown" if state == "SUBMISSION_UNKNOWN" else "starting"
         elif state in artifacts.ACTIVE:
             status = {"PLAN": "planning", "DOCUMENT": "writing", "REVIEW": "reviewing",
-                      "REVIEW_PAGE": "reviewing", "REVIEW_CROSS": "reviewing"}.get(stage, "writing")
-        elif stage == "REVIEW" and state == "completed":
+                      "REVIEW_PAGE": "reviewing", "REVIEW_CROSS": "reviewing", BATCH_STAGE: "reviewing"}.get(stage, "writing")
+        elif stage in {"REVIEW", BATCH_STAGE} and state == "completed":
             review = (latest.get("result") or {}).get("review") or {}
             if review.get("passed"):
-                source = artifacts.get_artifact(production_id, latest["request"]["document_artifact_id"])
+                source = pipeline_state.get_artifact(production_id, latest["request"]["document_artifact_id"])
                 document, document_id = source["result"]["document"], source["artifact_id"]
                 status = "completed"
             elif (latest.get("request") or {}).get("audit_revision") != AUDIT_REVISION:
@@ -408,6 +426,8 @@ def detail(production_id):
             "document_artifact_id": document_id, "history": history,
             "latest_artifact": latest, "error": error, "document_attempts": attempts,
             "retry_budget": budget,
+            "review_progress": review_progress(latest), "queue": monthly_queue.position(production_id),
+            "last_activity": latest.get("updated_at") if latest else production["created_at"],
             "source_metadata": source_metadata,
             "export_context": {"subject": f"Monthly-{metadata['name']}",
                 "language": production["output_language"], "periodStart": metadata["period_start"],
@@ -415,6 +435,10 @@ def detail(production_id):
 
 
 def run_background(production_id, response_id=None):
+    monthly_queue.enqueue(production_id, response_id)
+
+
+def _run_background(production_id, response_id=None):
     """Continue without an open browser; resume safely after process restart.
 
     The in-process lock prevents duplicate pollers. Artifact reservations are
@@ -427,16 +451,20 @@ def run_background(production_id, response_id=None):
     try:
         deadline = time.monotonic() + 45 * 60
         while time.monotonic() < deadline:
-            _advance_once(production_id, response_id)
-            response_id = None
             try:
-                state = detail(production_id)["status"]
+                with pipeline_state.pipeline_scope(production_id):
+                    status = detail(production_id)["status"]
+                    if status in {"completed", "failed", "submission_unknown"} and not response_id:
+                        return
+                    _advance_once(production_id, response_id)
+                    response_id = None
             except Exception:
                 logger.exception("Suivi Monthly suspendu ; reprise par actualisation : %s", production_id)
                 return
-            if state in {"completed", "failed", "submission_unknown"}:
-                return
-            time.sleep(8)
+            # No wait between local transitions. Poll active provider work
+            # at 1s; a turn has just two workflow reads, not one per artifact.
+            if status in {"starting", "planning", "writing", "reviewing"}:
+                time.sleep(1)
         logger.info("Suivi Monthly suspendu après 45 minutes ; actualiser pour reprendre : %s", production_id)
     finally:
         lock.release()
