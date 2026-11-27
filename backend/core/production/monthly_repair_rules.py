@@ -6,7 +6,7 @@ REPAIR_KIND = "MONTHLY_TARGETED_REPAIR"
 AUDIT_REVISION = "monthly-page-audit-v1"
 
 
-def repair_targets(document, issues):
+def _strict_targets(document, issues):
     if not issues:
         return []
     targets = []
@@ -72,6 +72,53 @@ def repair_targets(document, issues):
     return targets
 
 
+def duplicate_source_aliases(document):
+    """Only identical saved passages are interchangeable; never compare labels."""
+    seen, aliases = {}, {}
+    for source in document.get("sources") or []:
+        fields = ("report_id", "report_version", "json_pointer", "quote", "content_id")
+        if any(key not in source for key in fields):
+            continue
+        key = tuple(source[field] for field in fields)
+        if key in seen:
+            aliases[source["id"]] = seen[key]
+        else:
+            seen[key] = source["id"]
+    return aliases
+
+
+def repair_plan(document, issues):
+    targets, unhandled = [], []
+    for issue in issues or []:
+        found = _strict_targets(document, [issue])
+        location = (issue.get("location") or "").strip()
+        layout = re.fullmatch(r"/pages/(\d+)/layout", location)
+        if not found and layout and int(layout[1]) < len(document.get("pages") or []) and duplicate_source_aliases(document):
+            # This authorizes exact citation canonicalization, never a layout edit.
+            found = [f"/pages/{layout[1]}/source_ids"]
+        if not found:
+            unhandled.append(location or "Emplacement non précisé")
+        targets.extend(pointer for pointer in found if pointer not in targets)
+    return {"targets": targets, "unhandled_locations": list(dict.fromkeys(unhandled))}
+
+
+def repair_targets(document, issues):
+    return repair_plan(document, issues)["targets"]
+
+
+def canonicalize_sources(document, aliases=None):
+    aliases = duplicate_source_aliases(document) if aliases is None else aliases
+    if not aliases:
+        return
+    document["sources"] = [s for s in document["sources"] if s["id"] not in aliases]
+    for page in document["pages"]:
+        page["source_ids"] = list(dict.fromkeys(aliases.get(value, value) for value in page["source_ids"]))
+        for metric in page.get("metrics") or []:
+            metric["source_id"] = aliases.get(metric["source_id"], metric["source_id"])
+        for point in (page.get("chart") or {}).get("points", []):
+            point["source_id"] = aliases.get(point["source_id"], point["source_id"])
+
+
 def apply_repair(document, replacements, targets, allow_unchanged=False):
     if not isinstance(replacements, dict) or set(replacements) != set(targets) or not targets:
         raise ValueError("La correction doit viser exactement les passages autorisés.")
@@ -82,6 +129,11 @@ def apply_repair(document, replacements, targets, allow_unchanged=False):
         match = re.fullmatch(r"/pages/(\d+)/(paragraphs|bullets|cautions|metrics)/(\d+)", pointer)
         scalar = re.fullmatch(r"/pages/(\d+)/(title|eyebrow|takeaway)", pointer)
         value = replacements[pointer]
+        if re.fullmatch(r"/pages/\d+/source_ids", pointer):
+            if value is not None or not duplicate_source_aliases(result):
+                raise ValueError("La déduplication exige des passages strictement identiques et une action null.")
+            changed = True
+            continue
         if scalar:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("Le texte corrigé doit être non vide.")
@@ -107,6 +159,8 @@ def apply_repair(document, replacements, targets, allow_unchanged=False):
         del result["pages"][index]["metrics"][offset]
         if not result["pages"][index]["metrics"] and result["pages"][index]["layout"] == "METRICS":
             result["pages"][index]["layout"] = "ANALYSIS"
+    if any(pointer.endswith("/source_ids") for pointer in targets):
+        canonicalize_sources(result, duplicate_source_aliases(document))
     if not changed and not allow_unchanged:
         raise ValueError("La correction ne modifie aucun passage signalé.")
     return result
@@ -122,7 +176,7 @@ def apply_evidence_repair(document, replacements, targets, bindings):
         ids = bindings[pointer]
         if not isinstance(ids, list) or any(not isinstance(value, str) or value not in known for value in ids):
             raise ValueError("La correction cite une preuve absente du rapport validé.")
-        if "/metrics/" in pointer:
+        if "/metrics/" in pointer or pointer.endswith("/source_ids"):
             if ids:
                 raise ValueError("Une métrique retirée ne doit pas réintroduire de preuve ou de chiffre.")
             continue
@@ -131,6 +185,8 @@ def apply_evidence_repair(document, replacements, targets, bindings):
         page_index = int(pointer.split("/")[2])
         page = result["pages"][page_index]
         page["source_ids"] = list(dict.fromkeys([*page["source_ids"], *ids]))
+    if any(pointer.endswith("/source_ids") for pointer in targets):
+        canonicalize_sources(result, duplicate_source_aliases(document))
     if result == document:
         raise ValueError("Aucun texte ni rattachement de preuve n’a changé.")
     return result
