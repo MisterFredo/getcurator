@@ -65,7 +65,8 @@ def audit_requests(document, corpus):
                    "cited_evidence": [item for item in proof["cited_evidence"]
                                       if item["source"]["id"] in refs or (not refs and page["layout"] in {"COVER", "SUMMARY"})]}
         jobs.append(("REVIEW_PAGE", payload))
-    cross = {"brief": brief, "document": document, "previous_report_context": proof["previous_report_context"]}
+    cross = {"brief": brief, "document": document, "previous_report_context": proof["previous_report_context"],
+             "locations": [location for _, payload in jobs for location in payload["locations"]]}
     jobs.append(("REVIEW_CROSS", cross))
     return jobs
 
@@ -80,7 +81,7 @@ def _serialize(response, request):
             if model.passed != (not model.issues):
                 raise ValueError("Contrôle incohérent : résultat et anomalies divergent.")
             review = model.model_dump(mode="json")
-            if request["stage"] == "REVIEW_PAGE":
+            if "locations" in request["payload"]:
                 allowed = request["payload"]["locations"]
                 if any(issue["location"] not in allowed for issue in review["issues"]):
                     raise ValueError("Le contrôle de page doit localiser chaque anomalie dans un champ existant.")
@@ -106,7 +107,7 @@ def _start(production_id, corpus, stage, payload):
     if not created:
         return item
     schema = MonthlyQualityReview.model_json_schema()
-    if stage == "REVIEW_PAGE":
+    if "locations" in payload:
         schema["$defs"]["MonthlyReviewIssue"]["properties"]["location"] = {
             "type": "string", "enum": payload["locations"],
         }
