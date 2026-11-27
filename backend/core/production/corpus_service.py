@@ -129,6 +129,8 @@ def prepare_production_corpus(request: ProductionPrepareRequest) -> ProductionPr
             # Editorial topic groupings are not notes or certified Numbers.
 
     request_payload = request.model_dump(mode="json")
+    if request.monthly_user is None:
+        request_payload.pop("monthly_user")
     if not request.watch_reports:
         request_payload.pop("watch_reports")
     if not request.digest_ids:
