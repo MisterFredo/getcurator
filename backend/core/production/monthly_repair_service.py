@@ -10,7 +10,7 @@ from core.production.monthly_review import review_input
 from core.production.monthly_repair_revision import REPAIR_REVISION, PAGE_REPAIR_MODE
 from core.production.monthly_page_repair import page_repair_plan, apply_page_repair
 
-from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, apply_retraction
+from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, apply_retraction, METRIC_RETRACTION_MODE, metric_retraction_plan, apply_metric_retraction
 
 REPAIR_WORKFLOW = "getcurator_monthly_targeted_repair_v1"
 EVIDENCE_MODE = PAGE_REPAIR_MODE
@@ -135,15 +135,20 @@ def start_repair(production_id, artifact_id, document_id, review_id):
     issues = (assessment.get("result") or {}).get("review", {}).get("issues") or []
     # After a page-coherence repair, eligible residual findings are removed
     # deterministically. No provider call and no replacement factual assertion.
-    if (parent.get("request") or {}).get("repair_mode") == PAGE_REPAIR_MODE:
-        withdrawal = retraction_plan((parent.get("result") or {}).get("document") or {}, issues)
+    parent_mode = (parent.get("request") or {}).get("repair_mode")
+    if parent_mode in {PAGE_REPAIR_MODE, RETRACTION_MODE}:
+        metric_withdrawal = metric_retraction_plan((parent.get("result") or {}).get("document") or {}, issues)
+        withdrawal = metric_withdrawal or (retraction_plan((parent.get("result") or {}).get("document") or {}, issues)
+                                          if parent_mode == PAGE_REPAIR_MODE else None)
+        withdrawal_mode = METRIC_RETRACTION_MODE if metric_withdrawal else RETRACTION_MODE
         if withdrawal:
             request = {"kind": REPAIR_KIND, "document_artifact_id": document_id,
                        "review_artifact_id": review_id, "targets": withdrawal["targets"],
-                       "repair_mode": RETRACTION_MODE, "repair_revision": RETRACTION_MODE,
+                       "repair_mode": withdrawal_mode, "repair_revision": withdrawal_mode,
                        "page_indexes": withdrawal["page_indexes"]}
             corpus, document, review = _context(production_id, request)
-            candidate = apply_retraction(document, review["issues"])
+            candidate = (apply_metric_retraction(document, review["issues"]) if metric_withdrawal
+                         else apply_retraction(document, review["issues"]))
             validated = validate_against_corpus(ProductionDocument.model_validate(candidate), corpus)
             if validated.model_dump(mode="json") != candidate:
                 raise ValueError("La validation modifierait le document au-delà des retraits.")
