@@ -72,7 +72,7 @@ def repair_targets(document, issues):
     return targets
 
 
-def apply_repair(document, replacements, targets):
+def apply_repair(document, replacements, targets, allow_unchanged=False):
     if not isinstance(replacements, dict) or set(replacements) != set(targets) or not targets:
         raise ValueError("La correction doit viser exactement les passages autorisés.")
     result = copy.deepcopy(document)
@@ -107,6 +107,30 @@ def apply_repair(document, replacements, targets):
         del result["pages"][index]["metrics"][offset]
         if not result["pages"][index]["metrics"] and result["pages"][index]["layout"] == "METRICS":
             result["pages"][index]["layout"] = "ANALYSIS"
-    if not changed:
+    if not changed and not allow_unchanged:
         raise ValueError("La correction ne modifie aucun passage signalé.")
+    return result
+
+
+def apply_evidence_repair(document, replacements, targets, bindings):
+    """Edit flagged text and add only existing, validated source IDs to its page."""
+    if not isinstance(bindings, dict) or set(bindings) != set(targets):
+        raise ValueError("Chaque passage corrigé doit expliciter ses preuves.")
+    known = {source["id"] for source in document["sources"]}
+    result = apply_repair(document, replacements, targets, allow_unchanged=True)
+    for pointer in targets:
+        ids = bindings[pointer]
+        if not isinstance(ids, list) or any(not isinstance(value, str) or value not in known for value in ids):
+            raise ValueError("La correction cite une preuve absente du rapport validé.")
+        if "/metrics/" in pointer:
+            if ids:
+                raise ValueError("Une métrique retirée ne doit pas réintroduire de preuve ou de chiffre.")
+            continue
+        if not ids:
+            raise ValueError("Un texte corrigé doit indiquer au moins une preuve existante.")
+        page_index = int(pointer.split("/")[2])
+        page = result["pages"][page_index]
+        page["source_ids"] = list(dict.fromkeys([*page["source_ids"], *ids]))
+    if result == document:
+        raise ValueError("Aucun texte ni rattachement de preuve n’a changé.")
     return result
