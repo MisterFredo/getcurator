@@ -276,6 +276,11 @@ def _advance(production_id, response_id=None):
         return
     plans = [r for r in rows if r["stage"] == "PLAN"]
     documents = [r for r in rows if r["stage"] == "DOCUMENT"]
+    if documents:
+        saved_document = _detail(production_id, documents[0])
+        if saved_document["status"] == "validation_failed" and workflow.needs_saved_document_revalidation(saved_document):
+            workflow.revalidate_saved_document(production_id, saved_document["artifact_id"])
+            return
     framing_id = _id(production_id, "automatic-framing:v1")
     automatic = pipeline_state.get_artifact(production_id, framing_id)
     if not plans and not automatic:
@@ -412,7 +417,10 @@ def _detail_view(production_id):
         elif stage == "APPROVED_PLAN":
             status = "preparing_document"
         elif stage == "DOCUMENT" and state in {"validation_failed", "incomplete"}:
-            status = "correcting" if budget["can_correct"] else "failed"
+            if workflow.needs_saved_document_revalidation(latest):
+                status, error = "revalidating", None
+            else:
+                status = "correcting" if budget["can_correct"] else "failed"
         elif stage == "PLAN" and state in {"validation_failed", "incomplete"}:
             status = "planning" if len([r for r in history if r["stage"] == "PLAN"]) < MAX_PLAN_ATTEMPTS else "failed"
         else:
