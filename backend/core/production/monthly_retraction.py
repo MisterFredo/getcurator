@@ -59,3 +59,42 @@ def apply_retraction(document, issues):
         else:
             del result["pages"][index]["paragraphs"][int(path.rsplit("/", 1)[1])]
     return result
+
+
+METRIC_RETRACTION_MODE = "DETERMINISTIC_METRIC_RETRACTION_V1"
+
+
+def metric_retraction_plan(document, issues):
+    """Only explicit NUMBER findings on existing metric objects may be removed."""
+    if not issues or len(issues) > 4:
+        return None
+    paths, indexes = [], set()
+    for issue in issues:
+        match = re.fullmatch(r"/pages/(\d+)/metrics/(\d+)", issue.get("location") or "")
+        if issue.get("code") != "NUMBER" or not match:
+            return None
+        index, offset = map(int, match.groups())
+        pages = document.get("pages") or []
+        if index >= len(pages) or offset >= len(pages[index].get("metrics") or []):
+            return None
+        page = pages[index]
+        # Do not alter layout, charts or a page whose only content is the KPI.
+        if page.get("layout") != "ANALYSIS" or not any(t.strip() for t in page.get("paragraphs") or []):
+            return None
+        indexes.add(index)
+        if issue["location"] not in paths:
+            paths.append(issue["location"])
+    if len(indexes) != 1:
+        return None
+    return {"targets": paths, "page_indexes": sorted(indexes)}
+
+
+def apply_metric_retraction(document, issues):
+    plan = metric_retraction_plan(document, issues)
+    if not plan:
+        raise ValueError("Le contrôle ne permet pas ce retrait de métriques.")
+    result = copy.deepcopy(document)
+    for path in sorted(plan["targets"], key=lambda p: int(p.rsplit("/", 1)[1]), reverse=True):
+        index, offset = int(path.split("/")[2]), int(path.rsplit("/", 1)[1])
+        del result["pages"][index]["metrics"][offset]
+    return result
