@@ -27,6 +27,11 @@ analytique peut être supprimée. Pour une synthèse, distingue explicitement le
 développements séparés ; une entreprise ou un pays commun ne prouve pas une
 intégration entre leurs dispositifs. Si une couverture ne porte pas de citation,
 ses preuves sont celles des pages du rapport, fournies dans le contexte.
+Traite l'ensemble des remarques en une seule réponse. Ne rétablis pas un
+chiffre supprimé dans le texte. Si une proposition n'est pas étayée par les
+preuves disponibles sur sa page, retire ou réduis cette proposition au lieu
+d'inventer une autre preuve. Une annonce antérieure peut être analysée dans
+le mois du rapport ; elle ne devient pas un événement de ce mois.
 Réponds en JSON selon le schéma, sans réécrire le rapport complet.
 """.strip()
 
@@ -108,7 +113,7 @@ def start_repair(production_id, artifact_id, document_id, review_id):
                 instructions=INSTRUCTIONS, input=json.dumps(payload, ensure_ascii=False, allow_nan=False),
                 text={"format": {"type": "json_schema", "name": "monthly_targeted_repair",
                                   "strict": True, "schema": schema}},
-                reasoning={"effort": "medium"}, max_output_tokens=8000, background=True, store=True,
+                reasoning={"effort": "low"}, max_output_tokens=16000, background=True, store=True,
                 metadata={"workflow": REPAIR_WORKFLOW, "production_id": production_id,
                           "corpus_sha256": corpus.corpus_sha256, "artifact_id": artifact_id,
                           "document_artifact_id": document_id, "review_artifact_id": review_id},
