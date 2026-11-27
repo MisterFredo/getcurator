@@ -19,7 +19,7 @@ def document_budget(history, read_artifact):
     reviews = []
     document_ids = {row["artifact_id"] for row in documents}
     for row in history:
-        if row["stage"] != "REVIEW" or row["status"] != "completed":
+        if row["stage"] not in {"REVIEW", "REVIEW_BATCH"} or row["status"] != "completed":
             continue
         item = read_artifact(row)
         if (item.get("request") or {}).get("document_artifact_id") not in document_ids:
