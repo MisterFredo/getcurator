@@ -1,5 +1,5 @@
 """Bound full technical rewrites and localized editorial repairs separately."""
-from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND, repair_targets
+from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND, repair_plan
 
 MAX_DOCUMENT_ATTEMPTS = 4
 MAX_LOCAL_REPAIRS = 2
@@ -28,15 +28,18 @@ def document_budget(history, read_artifact):
         if review.get("passed") is False:
             reviews.append(item)
     local_repair = False
+    unhandled_locations = []
     if len(repairs) < MAX_LOCAL_REPAIRS:
         latest = loaded[documents[0]["artifact_id"]] if documents else None
         assessment = next((review for review in reviews
                            if latest and review["request"]["document_artifact_id"] == latest["artifact_id"]
                            and review["request"].get("audit_revision") == AUDIT_REVISION), None)
         if latest and latest["status"] == "completed" and assessment:
-            local_repair = bool(repair_targets(
+            plan = repair_plan(
                 (latest.get("result") or {}).get("document") or {}, assessment["result"]["review"]["issues"],
-            ))
+            )
+            local_repair = bool(plan["targets"])
+            unhandled_locations = plan["unhandled_locations"]
     # Full rewrites recover technical failures only. Editorial findings use
     # bounded field repairs after the exhaustive, page-scoped assessment.
     latest = loaded[documents[0]["artifact_id"]] if documents else None
@@ -52,5 +55,6 @@ def document_budget(history, read_artifact):
         "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
         "max_editorial_corrections": MAX_LOCAL_REPAIRS,
         "targeted_repair_available": local_repair,
+        "unhandled_locations": unhandled_locations,
         "can_correct": regular_correction or local_repair,
     }
