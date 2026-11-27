@@ -8,6 +8,8 @@ from core.production.monthly_page_repair import page_repair_plan
 
 from core.production.monthly_retraction import RETRACTION_MODE, retraction_plan, METRIC_RETRACTION_MODE, metric_retraction_plan
 
+from core.production.monthly_text_amendment import AMENDMENT_MODE, amendment_plan
+
 MAX_DOCUMENT_ATTEMPTS = 4
 MAX_LOCAL_REPAIRS = 2
 
@@ -91,6 +93,12 @@ def document_budget(history, read_artifact):
         and metric_retraction_plan((latest.get("result") or {}).get("document") or {},
                                    assessment["result"]["review"]["issues"])
     )
+    amendment_available = bool(
+        latest and assessment
+        and not any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode")
+                    == AMENDMENT_MODE for r in repairs)
+        and amendment_plan(latest, assessment)
+    )
     # Technical rewrites remain forbidden after a localized repair.
     regular_correction = bool(
         len(full_documents) < MAX_DOCUMENT_ATTEMPTS
@@ -108,6 +116,8 @@ def document_budget(history, read_artifact):
         max_repairs = max(max_repairs, len(repairs) + int(retraction_available))
     if metric_retraction_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == METRIC_RETRACTION_MODE for r in repairs):
         max_repairs = max(max_repairs, len(repairs) + int(metric_retraction_available))
+    if amendment_available or any((loaded[r["artifact_id"]].get("request") or {}).get("repair_mode") == AMENDMENT_MODE for r in repairs):
+        max_repairs = max(max_repairs, len(repairs) + int(amendment_available))
     return {
         "document_attempts": len(documents),
         "technical_failures": sum(
@@ -119,9 +129,10 @@ def document_budget(history, read_artifact):
         "max_document_attempts": MAX_DOCUMENT_ATTEMPTS + max_repairs,
         "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
         "max_editorial_corrections": max_repairs,
-        "targeted_repair_available": local_repair or retraction_available or metric_retraction_available,
+        "targeted_repair_available": local_repair or retraction_available or metric_retraction_available or amendment_available,
+        "reviewed_text_amendment_available": amendment_available,
         "deterministic_metric_retraction_available": metric_retraction_available,
         "deterministic_retraction_available": retraction_available,
         "unhandled_locations": unhandled_locations,
-        "can_correct": regular_correction or local_repair or retraction_available or metric_retraction_available,
+        "can_correct": regular_correction or local_repair or retraction_available or metric_retraction_available or amendment_available,
     }
