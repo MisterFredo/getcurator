@@ -27,6 +27,11 @@ type Monthly = {
   retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number; targeted_repair_available?: boolean; full_document_attempts?: number; local_repair_attempts?: number };
   error: { message?: string; issues?: { code: string; location: string; message: string }[] } | null;
   export_context: PdfExportContext; source_metadata: ProductionSourceMetadata;
+  queue?: { queued: boolean; running: boolean; max_reports: number };
+  last_activity?: string | null;
+  review_progress?: { pages_total: number; pages_completed: number; pages_reused: number;
+    checks_running: number; checks_waiting: number; cross_status: string;
+    started_at: string | null; updated_at: string | null; finished_at?: string | null } | null;
 };
 
 const LABELS: Record<string, string> = {
@@ -36,6 +41,9 @@ const LABELS: Record<string, string> = {
   submission_unknown: "Acceptation à vérifier", needs_attention: "À vérifier",
 };
 const RUNNING = ["prepared", "starting", "planning", "preparing_document", "writing", "reviewing", "correcting"];
+const CHECK_LABELS: Record<string, string> = { pending: "en attente", queued: "en file", SUBMITTING: "envoi",
+  in_progress: "en cours", completed: "terminé", failed: "échec", validation_failed: "réponse invalide",
+  incomplete: "incomplet", cancelled: "annulé", SUBMISSION_UNKNOWN: "acceptation à vérifier" };
 const INPUT = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm";
 const BUTTON = "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm disabled:opacity-50";
 const PRIMARY = "rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50";
@@ -44,6 +52,11 @@ const message = (e: unknown) => e instanceof Error ? e.message : "Une erreur est
 function previousMonth() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+}
+
+function elapsed(start: string | null | undefined, now: number): string {
+  const seconds = start ? Math.max(0, Math.floor((now - Date.parse(start)) / 1000)) : NaN;
+  return Number.isFinite(seconds) ? `${Math.floor(seconds / 60)} min ${seconds % 60} s` : "—";
 }
 function downloadDiagnostic(value: Monthly) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
@@ -76,8 +89,17 @@ export default function MonthlyUserWorkspace() {
   const [error, setError] = useState("");
   const [pollError, setPollError] = useState("");
   const [responseId, setResponseId] = useState("");
+  const [clock, setClock] = useState(() => Date.now());
+  const [viewGeneration, setViewGeneration] = useState(0);
   const openSequence = useRef(0);
   const actionLock = useRef(false);
+  const shouldPoll = Boolean(selected && RUNNING.includes(selected.status));
+
+  useEffect(() => {
+    if (!shouldPoll) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [shouldPoll]);
 
   useEffect(() => {
     let active = true;
@@ -128,23 +150,28 @@ export default function MonthlyUserWorkspace() {
       const url = new URL(window.location.href); url.searchParams.set("monthly", id);
       window.history.replaceState(null, "", url.toString());
     } catch (e) { if (token === openSequence.current) setError(message(e)); }
-    finally { if (token === openSequence.current) setBusy(false); }
+    finally { if (token === openSequence.current) { setBusy(false); setViewGeneration(value => value + 1); } }
   }
 
   useEffect(() => {
-    if (!selected || !RUNNING.includes(selected.status)) return;
+    if (!selected || !shouldPoll) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     const id = selected.production_id;
     const token = openSequence.current;
     async function poll() {
       try {
-        // Only POST advances the pipeline; reads remain side-effect free.
-        await api.post(`/production/monthly-users/${encodeURIComponent(id)}/refresh`, {});
         const res = await api.get(`/production/monthly-users/${encodeURIComponent(id)}`);
         if (!active || token !== openSequence.current) return;
         setSelected(res.monthly); setPollError("");
-        if (RUNNING.includes(res.monthly.status)) timer = setTimeout(() => void poll(), 8000);
+        if (RUNNING.includes(res.monthly.status)) {
+          // Reading does not write BQ or enqueue duplicate background workers.
+          // Resume explicitly only when no worker survives a process restart.
+          if (res.monthly.queue && !res.monthly.queue.running && !res.monthly.queue.queued) {
+            await api.post(`/production/monthly-users/${encodeURIComponent(id)}/refresh`, {});
+          }
+          if (active) timer = setTimeout(() => void poll(), 4000);
+        }
         else setReload(value => value + 1);
       } catch (e) {
         if (active) setPollError(`${message(e)} Le suivi est suspendu. Utilisez Actualiser / reprendre.`);
@@ -154,7 +181,7 @@ export default function MonthlyUserWorkspace() {
     return () => { active = false; clearTimeout(timer); };
     // Run one polling loop per opened Monthly; updates do not restart the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.production_id]);
+  }, [selected?.production_id, shouldPoll, viewGeneration]);
 
   async function start() {
     if (actionLock.current || !userId || !month) return;
@@ -266,7 +293,13 @@ export default function MonthlyUserWorkspace() {
       <div className={PANEL}>
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{selected.monthly.name} · {selected.monthly.month}{selected.monthly.provisional ? " · Provisoire" : ""}</h2>
           <button className={BUTTON} disabled={busy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
-        <p role="status" className="font-medium text-emerald-800">{LABELS[selected.status] || selected.status}</p>
+        <p role="status" className="font-medium text-emerald-800">{selected.queue?.queued ? "En attente d’un créneau de production" : LABELS[selected.status] || selected.status}</p>
+        {selected.queue?.queued && <p className="text-sm text-slate-500">Jusqu’à {selected.queue.max_reports} Monthlys sont traités simultanément. La demande est enregistrée.</p>}
+        {selected.review_progress && <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm" aria-live="polite">
+          <p className="font-medium">{selected.review_progress.pages_completed}/{selected.review_progress.pages_total} pages contrôlées · {selected.review_progress.pages_reused} contrôles réutilisés</p>
+          <p>{selected.review_progress.checks_running} contrôles actifs · {selected.review_progress.checks_waiting} en attente · Contrôle transversal : {CHECK_LABELS[selected.review_progress.cross_status] || selected.review_progress.cross_status}</p>
+          <p>Temps de cette revue : {elapsed(selected.review_progress.started_at, selected.review_progress.finished_at ? Date.parse(selected.review_progress.finished_at) : clock)} · Dernière activité : {selected.last_activity ? new Date(selected.last_activity).toLocaleTimeString("fr-FR") : "—"}</p>
+        </div>}
         <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts}/{selected.retry_budget?.max_document_attempts ?? 2} rédactions.</p>
         {selected.retry_budget && <p className="text-xs text-slate-500">Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Corrections localisées : {selected.retry_budget.local_repair_attempts ?? 0}/{selected.retry_budget.max_editorial_corrections} · Échecs techniques : {selected.retry_budget.technical_failures}. Toutes les pages sont contrôlées avant correction ; les contrôles déjà acquis sont conservés tant que la page et ses preuves ne changent pas.</p>}
         {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera uniquement les textes signalés. Les autres passages et les références seront conservés, puis le rapport complet sera contrôlé à nouveau.</p>}
@@ -284,7 +317,7 @@ export default function MonthlyUserWorkspace() {
           <span className="text-xs text-slate-500">Actualiser / reprendre vérifie son rattachement. Ne créez pas une nouvelle version pour contourner une acceptation inconnue.</span>
         </label>}
         <details><summary className="cursor-pointer text-sm">Étapes et diagnostic</summary>
-          <ol className="mt-3 space-y-2 text-sm">{selected.history.map(item => <li key={item.artifact_id}>V{item.version_number} · {item.stage} · {item.status}</li>)}</ol>
+          <ol className="mt-3 space-y-2 text-sm">{selected.history.map(item => <li key={item.artifact_id}>V{item.version_number} · {item.stage === "REVIEW_BATCH" ? "Contrôles parallèles" : item.stage} · {item.status}</li>)}</ol>
           <button className={`${BUTTON} mt-3`} onClick={() => downloadDiagnostic(selected)}>Télécharger le diagnostic</button>
           <Link className="ml-3 text-sm underline" href={`/admin/production/reports?production=${selected.production_id}`}>Ouvrir le détail technique Production</Link>
         </details>
