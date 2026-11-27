@@ -1,8 +1,10 @@
 """Bound technical rewrites and local repairs; one migration recovery only."""
 from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND, repair_plan
 from core.production.monthly_repair_revision import (
-    REPAIR_REVISION, MAX_LEGACY_RECOVERY_REPAIRS,
+    REPAIR_REVISION, PAGE_REPAIR_MODE, MAX_LEGACY_RECOVERY_REPAIRS, MAX_TOTAL_LOCAL_REPAIRS,
 )
+
+from core.production.monthly_page_repair import page_repair_plan
 
 MAX_DOCUMENT_ATTEMPTS = 4
 MAX_LOCAL_REPAIRS = 2
@@ -23,15 +25,15 @@ def document_budget(history, read_artifact):
     # retained; the current service may recover once, never reset its counters.
     legacy_repairs = [
         row for row in repairs
-        if (loaded[row["artifact_id"]].get("request") or {}).get("repair_revision")
-        != REPAIR_REVISION
+        if (loaded[row["artifact_id"]].get("request") or {}).get("repair_mode")
+        != PAGE_REPAIR_MODE
     ]
     current_repairs = [row for row in repairs if row not in legacy_repairs]
     recovery = bool(
         len(repairs) >= MAX_LOCAL_REPAIRS
         and legacy_repairs
         and len(current_repairs) < MAX_LEGACY_RECOVERY_REPAIRS
-        and len(repairs) < MAX_LOCAL_REPAIRS + MAX_LEGACY_RECOVERY_REPAIRS
+        and len(repairs) < MAX_TOTAL_LOCAL_REPAIRS
     )
     repair_slot = len(repairs) < MAX_LOCAL_REPAIRS or recovery
     consecutive_failures = 0
@@ -60,7 +62,7 @@ def document_budget(history, read_artifact):
     unhandled_locations = []
     # Compute diagnostics even when no slot remains.
     if latest and latest["status"] == "completed" and assessment:
-        plan = repair_plan(
+        plan = page_repair_plan(
             (latest.get("result") or {}).get("document") or {},
             assessment["result"]["review"]["issues"],
         )
@@ -74,8 +76,10 @@ def document_budget(history, read_artifact):
         and latest["status"] in {"validation_failed", "incomplete"}
         and (latest.get("request") or {}).get("kind") != REPAIR_KIND
     )
-    max_repairs = MAX_LOCAL_REPAIRS + (
-        MAX_LEGACY_RECOVERY_REPAIRS if legacy_repairs else 0
+    max_repairs = (
+        min(MAX_TOTAL_LOCAL_REPAIRS, max(MAX_LOCAL_REPAIRS, len(legacy_repairs))
+            + MAX_LEGACY_RECOVERY_REPAIRS)
+        if legacy_repairs else MAX_LOCAL_REPAIRS
     )
     return {
         "document_attempts": len(documents),
