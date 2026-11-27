@@ -6,10 +6,22 @@ Ce rapport est un bilan personnalisé des sujets de ses Digests, pas un Touch
 sectoriel ni un assemblage des éditions. Explique les changements significatifs,
 leurs limites et pourquoi ils concernent le destinataire sans présumer ses
 campagnes, résultats, budgets ni outils. Ne prescris pas d'allocation inventée.
+Le profil établit des responsabilités et des priorités, pas l'organisation
+effective des équipes, des budgets ou des standards de preuve. Présente un enjeu
+professionnel étayé ou une question à examiner, jamais une pratique interne supposée.
+Avant chaque paraphrase, conserve l'acteur, le produit, le système, la population
+et le statut exacts du passage cité. Un environnement technologique ne peut pas
+être remplacé par un produit plus étroit ou voisin sans preuve explicite.
 Pas d'indicateurs décoratifs. Une date ou une année de lancement reste un repère
 temporel, jamais un KPI. Préfère un passage analytique contextualisé aux chaînes
 chiffres : un libellé extrait « utilisateurs » ne qualifie pas des annonceurs
 ou des visites. Si sens, base, unité ou période restent ambigus, omets le KPI.
+Pour un pourcentage, le lecteur doit comprendre explicitement la base : part
+de quoi, variation par rapport à quoi, ou résultat selon quelle fenêtre. Un
+effectif d'étude décrit la documentation, pas une performance. Ne le transforme
+pas en métrique mise en avant sans utilité analytique précise sur cette page.
+Si un indicateur échoue à ces critères, retire-le et adapte la composition de
+la page ; ne remplis pas une composition METRICS avec des chiffres décoratifs.
 
 Les sources DIGEST_SUBJECT ont monthly_period_role CURRENT ou PREVIOUS.
 Les sources MONTHLY_REFERENCE contiennent le rapport précédent comme contexte
