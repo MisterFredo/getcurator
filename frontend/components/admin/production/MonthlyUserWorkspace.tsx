@@ -24,6 +24,7 @@ type Monthly = {
     reference_production_id: string | null; current_coverage: Coverage; previous_coverage: Coverage };
   document: ProductionDocument | null; document_artifact_id: string | null;
   history: Artifact[]; latest_artifact: Artifact | null; document_attempts: number;
+  retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number };
   error: { message?: string; issues?: { code: string; location: string; message: string }[] } | null;
   export_context: PdfExportContext; source_metadata: ProductionSourceMetadata;
 };
@@ -266,7 +267,8 @@ export default function MonthlyUserWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{selected.monthly.name} · {selected.monthly.month}{selected.monthly.provisional ? " · Provisoire" : ""}</h2>
           <button className={BUTTON} disabled={busy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
         <p role="status" className="font-medium text-emerald-800">{LABELS[selected.status] || selected.status}</p>
-        <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts}/2 tentatives de rédaction.</p>
+        <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts}/{selected.retry_budget?.max_document_attempts ?? 2} rédactions.</p>
+        {selected.retry_budget && <p className="text-xs text-slate-500">Échecs techniques : {selected.retry_budget.technical_failures} · Contrôles éditoriaux non satisfaits : {selected.retry_budget.failed_reviews}. Une correction éditoriale est prévue, avec au plus une reprise technique par phase ; le parcours reste plafonné à quatre rédactions.</p>}
         <p className="text-sm">Référence : {selected.monthly.comparison_mode === "MONTHLY_REPORT" ? `Monthly validé de ${selected.monthly.previous_month}`
           : selected.monthly.comparison_mode === "DIGESTS" ? `Digests de ${selected.monthly.previous_month} (pas de Monthly précédent)` : "Premier point de référence, aucune matière comparative disponible"}.</p>
         {selected.monthly.reference_production_id && <button className="text-sm underline" disabled={busy} onClick={() => void openMonthly(selected.monthly.reference_production_id!)}>Ouvrir le Monthly de référence</button>}
