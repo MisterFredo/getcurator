@@ -22,7 +22,9 @@ from core.production.monthly_prompt import MONTHLY_INSTRUCTIONS
 from core.production.monthly_retry_policy import MAX_DOCUMENT_ATTEMPTS, document_budget
 from core.production.monthly_repair_service import start_repair
 from core.production.monthly_repository import latest_for, previous_reference
-from core.production.monthly_review import start_review, refresh_review
+from core.production.monthly_review import refresh_review
+from core.production.monthly_audit_service import start_audit as start_review, refresh_audit, AUDIT_STAGES
+from core.production.monthly_repair_rules import AUDIT_REVISION
 from core.production.repository import get_production, save_prepared_production
 from core.user.user_service import get_user_by_id
 from core.user.user_profile_service import get_user_profile
@@ -231,7 +233,12 @@ def _id(production_id, phase):
 
 
 def _history(production_id):
-    return artifacts.list_artifacts(production_id, limit=100)
+    result = []
+    while True:
+        batch = artifacts.list_artifacts(production_id, limit=100, offset=len(result))
+        result.extend(batch)
+        if len(batch) < 100:
+            return result
 
 
 def _detail(production_id, summary):
@@ -246,12 +253,17 @@ def advance(production_id, response_id=None):
     active = next((r for r in rows if r["status"] in artifacts.ACTIVE), None)
     if active:
         if active.get("response_id") or response_id:
-            if active["stage"] == "REVIEW":
+            if active["stage"] in AUDIT_STAGES:
+                refresh_audit(production_id, active["artifact_id"], response_id)
+            elif active["stage"] == "REVIEW":
                 refresh_review(production_id, active["artifact_id"], response_id)
             else:
                 workflow.refresh_artifact(production_id, active["artifact_id"], response_id)
         return
     latest = _detail(production_id, rows[0]) if rows else None
+    if (latest and latest["stage"] == "REVIEW" and latest["status"] == "completed"
+            and ((latest.get("result") or {}).get("review") or {}).get("passed")):
+        return
     plans = [r for r in rows if r["stage"] == "PLAN"]
     documents = [r for r in rows if r["stage"] == "DOCUMENT"]
     if not plans:
@@ -276,7 +288,7 @@ def advance(production_id, response_id=None):
         workflow.start_managed_document(production_id, _id(production_id, "document:1"), approved_id, MONTHLY_INSTRUCTIONS)
         return
     last_document = _detail(production_id, documents[0])
-    review_id = _id(production_id, f"review:{last_document['artifact_id']}")
+    review_id = _id(production_id, f"review:{last_document['artifact_id']}:{AUDIT_REVISION}")
     review = artifacts.get_artifact(production_id, review_id)
     if last_document["status"] == "completed" and not review:
         start_review(production_id, review_id, last_document["artifact_id"])
@@ -355,17 +367,24 @@ def detail(production_id):
         if state == "SUBMISSION_UNKNOWN" or (state == "STARTING" and not latest.get("response_id")):
             status = "submission_unknown" if state == "SUBMISSION_UNKNOWN" else "starting"
         elif state in artifacts.ACTIVE:
-            status = {"PLAN": "planning", "DOCUMENT": "writing", "REVIEW": "reviewing"}.get(stage, "writing")
+            status = {"PLAN": "planning", "DOCUMENT": "writing", "REVIEW": "reviewing",
+                      "REVIEW_PAGE": "reviewing", "REVIEW_CROSS": "reviewing"}.get(stage, "writing")
         elif stage == "REVIEW" and state == "completed":
             review = (latest.get("result") or {}).get("review") or {}
             if review.get("passed"):
                 source = artifacts.get_artifact(production_id, latest["request"]["document_artifact_id"])
                 document, document_id = source["result"]["document"], source["artifact_id"]
                 status = "completed"
+            elif (latest.get("request") or {}).get("audit_revision") != AUDIT_REVISION:
+                # Existing monolithic assessments are retained but do not
+                # substitute for the new, complete page-by-page audit.
+                status, error = "reviewing", None
             else:
                 status = "correcting" if budget["can_correct"] else "failed"
                 error = {"message": "Contrôle qualité non satisfait.", "issues": review.get("issues", [])}
         elif stage == "DOCUMENT" and state == "completed":
+            status = "reviewing"
+        elif stage in AUDIT_STAGES and state == "completed":
             status = "reviewing"
         elif stage == "PLAN" and state == "completed":
             status = "preparing_document"
