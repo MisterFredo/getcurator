@@ -305,7 +305,7 @@ def needs_saved_document_revalidation(item):
     text = job.get("text")
     if not isinstance(text, str) or not text.strip():
         return False
-    fingerprint = document_validator.validation_signature(text, item["corpus_sha256"])
+    fingerprint = document_validator.validation_signature(text, item["corpus_sha256"], job.get("citation_mode"), job.get("evidence_catalog_sha256"))
     return (job.get("validation_check") or {}).get("fingerprint") != fingerprint
 
 
@@ -322,15 +322,17 @@ def revalidate_saved_document(production_id, artifact_id):
     job = dict(item["result"])
     notes = []
     try:
-        document = ProductionDocument.model_validate_json(job["text"])
+        document = document_validator.document_from_saved_text(job["text"], corpus, job.get("citation_mode"), job.get("evidence_catalog_sha256"))
         document = validate_against_corpus(document, corpus, normalizations=notes)
         job.update(document=document.model_dump(mode="json"), status="completed", error=None)
     except (ValueError, KeyError, IndexError, LookupError) as exc:
         job.update(document=None, status="validation_failed", error={"message": str(exc)})
+        if getattr(exc, "issues", None):
+            job["error"]["issues"] = exc.issues
     diagnostics = document_validator.validator_diagnostics()
     job["validation_diagnostics"] = diagnostics
     job["validation_check"] = {
-        "fingerprint": document_validator.validation_signature(job["text"], item["corpus_sha256"]),
+        "fingerprint": document_validator.validation_signature(job["text"], item["corpus_sha256"], job.get("citation_mode"), job.get("evidence_catalog_sha256")),
         "checked_at": datetime.now(timezone.utc).isoformat(), "validator_revision": diagnostics["revision"],
         "origin": "SAVED_DOCUMENT_REVALIDATION", "citation_normalizations": notes,
     }
