@@ -6,6 +6,7 @@ refresh POSTs retrieve an existing response and save it; they never regenerate.
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from openai import APIStatusError
 from core.production import workflow_repository as repo
 from core.production import document_service as document_validator
@@ -296,6 +297,50 @@ def start_managed_document(production_id, artifact_id, plan_id, additional_instr
         additional_instructions=additional_instructions))
 
 
+def needs_saved_document_revalidation(item):
+    if (not item or item["stage"] != "DOCUMENT" or item["status"] != "validation_failed"
+            or (item.get("request") or {}).get("kind") == "MONTHLY_TARGETED_REPAIR"):
+        return False
+    job = item.get("result") or {}
+    text = job.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return False
+    fingerprint = document_validator.validation_signature(text, item["corpus_sha256"])
+    return (job.get("validation_check") or {}).get("fingerprint") != fingerprint
+
+
+def revalidate_saved_document(production_id, artifact_id):
+    """Revalidate frozen output; no provider call and no new workflow artifact."""
+    item = repo.get_artifact(production_id, artifact_id)
+    if not item:
+        raise LookupError("Document sauvegardé introuvable.")
+    if not needs_saved_document_revalidation(item):
+        return item
+    corpus = load_corpus(production_id)
+    if corpus.corpus_sha256 != item["corpus_sha256"]:
+        raise ValueError("Le document ne correspond plus au socle figé.")
+    job = dict(item["result"])
+    notes = []
+    try:
+        document = ProductionDocument.model_validate_json(job["text"])
+        document = validate_against_corpus(document, corpus, normalizations=notes)
+        job.update(document=document.model_dump(mode="json"), status="completed", error=None)
+    except (ValueError, KeyError, IndexError, LookupError) as exc:
+        job.update(document=None, status="validation_failed", error={"message": str(exc)})
+    diagnostics = document_validator.validator_diagnostics()
+    job["validation_diagnostics"] = diagnostics
+    job["validation_check"] = {
+        "fingerprint": document_validator.validation_signature(job["text"], item["corpus_sha256"]),
+        "checked_at": datetime.now(timezone.utc).isoformat(), "validator_revision": diagnostics["revision"],
+        "origin": "SAVED_DOCUMENT_REVALIDATION", "citation_normalizations": notes,
+    }
+    from core.production.saved_validation_repository import save_revalidation
+    from core.production.monthly_state import remember
+    saved = save_revalidation(item, job)
+    remember(saved)
+    return saved
+
+
 def refresh_artifact(production_id, artifact_id, response_id=None):
     item = repo.get_artifact(production_id, artifact_id)
     if not item:
@@ -314,23 +359,7 @@ def refresh_artifact(production_id, artifact_id, response_id=None):
     if item["status"] == "completed":
         return item
     if item["status"] == "validation_failed" and item["stage"] == "DOCUMENT" and (item.get("result") or {}).get("text"):
-        # A validator update must not depend on provider response retention.
-        job = dict(item["result"])
-        diagnostic = getattr(document_validator, "validator_diagnostics", None)
-        job["validation_diagnostics"] = diagnostic() if callable(diagnostic) else {
-            "revision": "missing-unit-count-v5",
-        }
-        try:
-            corpus = load_corpus(production_id)
-            if corpus.corpus_sha256 != item["corpus_sha256"]:
-                raise ValueError("Le document ne correspond plus au socle.")
-            document = ProductionDocument.model_validate_json(job["text"])
-            job["document"] = validate_against_corpus(document, corpus).model_dump(mode="json")
-            job["status"] = "completed"
-            job["error"] = None
-        except ValueError as exc:
-            job["error"] = {"message": str(exc)}
-        return repo.save_job(production_id, artifact_id, job)
+        return revalidate_saved_document(production_id, artifact_id)
     if response_id and item.get("response_id") and response_id != item["response_id"]:
         raise ValueError("Cette version est déjà rattachée à une autre réponse.")
     response_id = response_id or item.get("response_id")
