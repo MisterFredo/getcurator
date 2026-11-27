@@ -20,6 +20,7 @@ from core.production.digest_source import DIGEST_TABLE, EVIDENCE_FIELDS, read_di
 from core.production.models import ProductionPrepareRequest, ProductionPreparedCorpus, ProductionCorpusCounts
 from core.production.monthly_prompt import MONTHLY_INSTRUCTIONS
 from core.production.monthly_retry_policy import MAX_DOCUMENT_ATTEMPTS, document_budget
+from core.production.monthly_repair_service import start_repair
 from core.production.monthly_repository import latest_for, previous_reference
 from core.production.monthly_review import start_review, refresh_review
 from core.production.repository import get_production, save_prepared_production
@@ -288,6 +289,10 @@ def advance(production_id, response_id=None):
     elif review and review["status"] == "completed":
         feedback = (review.get("result") or {}).get("review")
     budget = document_budget(rows, lambda row: _detail(production_id, row))
+    if budget["targeted_repair_available"]:
+        start_repair(production_id, _id(production_id, f"document:{len(documents)+1}"),
+                     last_document["artifact_id"], review["artifact_id"])
+        return
     if feedback and budget["can_correct"]:
         # Carry earlier editorial findings through a subsequent technical retry.
         # A schema/citation failure must not erase the correction mandate.
