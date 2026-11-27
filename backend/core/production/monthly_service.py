@@ -343,13 +343,15 @@ def _advance(production_id, response_id=None):
 def _advance_once(production_id, response_id=None):
     try:
         advance(production_id, response_id)
+        return True
     except workflow.WorkflowConflict:
         logger.info("Monthly déjà en traitement : %s", production_id)
+        return False
     except Exception as exc:
         logger.exception("Monthly interrompu ; reprise via actualisation : %s", production_id)
         try:
             if any(r["status"] in artifacts.ACTIVE for r in _history(production_id)):
-                return
+                return False
             production = get_production(production_id)
             error_id = _id(production_id, "pipeline-error:" + hashlib.sha256(str(exc).encode()).hexdigest())
             item, created = workflow._reserve(
@@ -362,6 +364,7 @@ def _advance_once(production_id, response_id=None):
                 })
         except Exception:
             logger.exception("Impossible de persister le diagnostic Monthly : %s", production_id)
+        return False
 
 
 def detail(production_id):
@@ -450,14 +453,18 @@ def _run_background(production_id, response_id=None):
         return
     try:
         deadline = time.monotonic() + 45 * 60
+        first_turn = True
         while time.monotonic() < deadline:
             try:
                 with pipeline_state.pipeline_scope(production_id):
                     status = detail(production_id)["status"]
-                    if status in {"completed", "failed", "submission_unknown"} and not response_id:
+                    if status in {"completed", "failed", "submission_unknown"} and not response_id and not (first_turn and status == "failed"):
                         return
-                    _advance_once(production_id, response_id)
+                    progressed = _advance_once(production_id, response_id)
                     response_id = None
+                    first_turn = False
+                    if not progressed:
+                        return
             except Exception:
                 logger.exception("Suivi Monthly suspendu ; reprise par actualisation : %s", production_id)
                 return
