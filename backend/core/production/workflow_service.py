@@ -300,6 +300,9 @@ def refresh_artifact(production_id, artifact_id, response_id=None):
     item = repo.get_artifact(production_id, artifact_id)
     if not item:
         raise LookupError("Version introuvable.")
+    if item["stage"] == "REVIEW_BATCH":
+        from core.production.monthly_parallel_review import refresh_parallel_review
+        return refresh_parallel_review(production_id, artifact_id, response_id)
     if item["stage"] in {"REVIEW_PAGE", "REVIEW_CROSS"}:
         from core.production.monthly_audit_service import refresh_audit
         return refresh_audit(production_id, artifact_id, response_id)
