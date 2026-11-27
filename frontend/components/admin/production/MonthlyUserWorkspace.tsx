@@ -24,7 +24,7 @@ type Monthly = {
     reference_production_id: string | null; current_coverage: Coverage; previous_coverage: Coverage };
   document: ProductionDocument | null; document_artifact_id: string | null;
   history: Artifact[]; latest_artifact: Artifact | null; document_attempts: number;
-  retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number; targeted_repair_available?: boolean; full_document_attempts?: number; local_repair_attempts?: number };
+  retry_budget?: { max_document_attempts: number; technical_failures: number; failed_reviews: number; max_editorial_corrections: number; targeted_repair_available?: boolean; full_document_attempts?: number; local_repair_attempts?: number; unhandled_locations?: string[] };
   error: { message?: string; issues?: { code: string; location: string; message: string }[] } | null;
   export_context: PdfExportContext; source_metadata: ProductionSourceMetadata;
   queue?: { queued: boolean; running: boolean; max_reports: number };
@@ -304,7 +304,8 @@ export default function MonthlyUserWorkspace() {
         </div>}
         <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts}/{selected.retry_budget?.max_document_attempts ?? 2} rédactions.</p>
         {selected.retry_budget && <p className="text-xs text-slate-500">Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Corrections localisées : {selected.retry_budget.local_repair_attempts ?? 0}/{selected.retry_budget.max_editorial_corrections} · Échecs techniques : {selected.retry_budget.technical_failures}. Toutes les pages sont contrôlées avant correction ; les contrôles déjà acquis sont conservés tant que la page et ses preuves ne changent pas.</p>}
-        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera uniquement les textes signalés. Les autres passages et les références seront conservés, puis le rapport complet sera contrôlé à nouveau.</p>}
+        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera les passages identifiés et pourra retirer les métriques signalées ou fusionner les citations strictement identiques. Le rapport sera contrôlé à nouveau avant validation.</p>}
+        {!!selected.retry_budget?.unhandled_locations?.length && <p role="alert" className="text-sm text-amber-800">Remarques sans correction automatique disponible : {selected.retry_budget.unhandled_locations.join(" · ")}. Les passages corrigeables peuvent être repris ; ces remarques restent à résoudre avant validation.</p>}
         <p className="text-sm">Référence : {selected.monthly.comparison_mode === "MONTHLY_REPORT" ? `Monthly validé de ${selected.monthly.previous_month}`
           : selected.monthly.comparison_mode === "DIGESTS" ? `Digests de ${selected.monthly.previous_month} (pas de Monthly précédent)` : "Premier point de référence, aucune matière comparative disponible"}.</p>
         {selected.monthly.reference_production_id && <button className="text-sm underline" disabled={busy} onClick={() => void openMonthly(selected.monthly.reference_production_id!)}>Ouvrir le Monthly de référence</button>}
@@ -313,7 +314,7 @@ export default function MonthlyUserWorkspace() {
         {selected.error && <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p>{selected.error.message}</p>
           {selected.error.issues?.map((issue, index) => <p key={index}>{issue.location} · {issue.message}</p>)}
         </div>}
-        {selected.status === "failed" && <p className="text-sm">Les tentatives automatiques sont épuisées ou une étape a échoué. Le diagnostic est conservé ; aucun rapport n’est présenté comme terminé. Une nouvelle version peut être déclenchée explicitement.</p>}
+        {selected.status === "failed" && <p className="text-sm">Le traitement est arrêté. Le diagnostic et le document sont conservés ; aucun rapport n’est présenté comme terminé. Après une correction du service, « Actualiser / reprendre » réévalue la reprise sur cette version. Une nouvelle version reste un déclenchement distinct.</p>}
         {(selected.status === "submission_unknown" || (selected.status === "starting" && !selected.latest_artifact?.response_id)) && <label className="block text-sm">Rattacher une réponse retrouvée dans les logs
           <input className={INPUT} placeholder="resp_…" value={responseId} onChange={e => setResponseId(e.target.value)} />
           <span className="text-xs text-slate-500">Actualiser / reprendre vérifie son rattachement. Ne créez pas une nouvelle version pour contourner une acceptation inconnue.</span>
