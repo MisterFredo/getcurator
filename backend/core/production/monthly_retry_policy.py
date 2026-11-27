@@ -1,6 +1,6 @@
 """Fixed per-page correction budgets, including all saved legacy attempts."""
 from core.production.monthly_repair_rules import AUDIT_REVISION, REPAIR_KIND
-from core.production.monthly_repair_contract import MAX_PAGE_REPAIRS, repair_plan, page_budget
+from core.production.monthly_repair_contract import MAX_PAGE_REPAIRS, EDITORIAL_EDIT_KIND, repair_plan, page_budget
 
 MAX_DOCUMENT_ATTEMPTS = 4
 
@@ -14,7 +14,8 @@ def document_budget(history, read_artifact):
     documents = sorted((r for r in history if r["stage"] == "DOCUMENT"),
                        key=lambda r: r["version_number"], reverse=True)
     repairs = [r for r in documents if (read(r).get("request") or {}).get("kind") == REPAIR_KIND]
-    full = [r for r in documents if r not in repairs]
+    editorial = [r for r in documents if (read(r).get("request") or {}).get("kind") == EDITORIAL_EDIT_KIND]
+    full = [r for r in documents if r not in repairs and r not in editorial]
     latest = read(documents[0]) if documents else None
     reviews = []
     for row in sorted(history, key=lambda r: r["version_number"], reverse=True):
@@ -44,7 +45,7 @@ def document_budget(history, read_artifact):
         consecutive += 1
     # A localized validation/submission failure never authorizes a full rewrite.
     regular = bool(latest and latest["status"] in {"validation_failed", "incomplete"}
-                   and (latest.get("request") or {}).get("kind") != REPAIR_KIND
+                   and (latest.get("request") or {}).get("kind") not in {REPAIR_KIND, EDITORIAL_EDIT_KIND}
                    and len(full) < MAX_DOCUMENT_ATTEMPTS and consecutive < 2)
     # Compatibility for the existing UI: this is an upper bound on operations,
     # not a counter that gets reset after a failed review. Multi-page operations
@@ -53,7 +54,7 @@ def document_budget(history, read_artifact):
     return {"document_attempts": len(documents),
             "technical_failures": sum(r["status"] in {"validation_failed", "incomplete"} for r in documents),
             "failed_reviews": len(reviews), "full_document_attempts": len(full),
-            "local_repair_attempts": len(repairs),
+            "local_repair_attempts": len(repairs), "editorial_edit_count": len(editorial),
             "max_document_attempts": MAX_DOCUMENT_ATTEMPTS + max_local,
             "max_full_document_attempts": MAX_DOCUMENT_ATTEMPTS,
             "max_editorial_corrections": max_local,
