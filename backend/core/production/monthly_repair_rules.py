@@ -12,7 +12,16 @@ def repair_targets(document, issues):
     targets = []
     pages = document.get("pages") or []
     for issue in issues:
-        location = issue.get("location") or ""
+        location = (issue.get("location") or "").strip()
+        # Legacy cross-page reviews sometimes use an explicit page identifier
+        # instead of the canonical array index. Resolve only a unique exact ID.
+        alias = re.fullmatch(r"pages\[([^\]]+)\]\.(paragraphs|bullets|cautions|metrics)\[(\d+)\]", location)
+        if alias:
+            page_id, field, offset = alias.groups()
+            matches = [index for index, page in enumerate(pages) if page.get("page_id") == page_id]
+            if len(matches) != 1:
+                return []
+            location = f"/pages/{matches[0]}/{field}/{offset}"
         machine = re.fullmatch(r"/pages/(\d+)/(paragraphs|bullets|cautions|metrics)/(\d+)", location)
         scalar = re.fullmatch(r"/pages/(\d+)/(title|eyebrow|takeaway)", location)
         if machine or scalar:
