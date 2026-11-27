@@ -253,6 +253,28 @@ def _workflow_action(action):
         )) from exc
 
 
+# Explicit admin corrections after automatic Monthly review has stopped.
+from core.production.monthly_editorial_models import MonthlyEditorialEditRequest
+from core.production.monthly_editorial_service import editorial_context, save_editorial_edit
+
+
+@router.get("/monthly-users/{production_id}/editorial-context",
+            dependencies=[Depends(_require_production_admin)])
+def read_monthly_editorial_context(production_id: UUID):
+    return _workflow_action(lambda: {"context": editorial_context(str(production_id))})
+
+
+@router.post("/monthly-users/{production_id}/editorial-edits", status_code=201,
+             dependencies=[Depends(_require_production_admin)])
+def create_monthly_editorial_edit(production_id: UUID, payload: MonthlyEditorialEditRequest,
+                                  request: Request, background_tasks: BackgroundTasks):
+    artifact = _workflow_action(lambda: save_editorial_edit(
+        str(production_id), payload, get_user_id_from_request(request)))
+    # Only a successful durable save schedules the independent review.
+    background_tasks.add_task(monthly_service.run_background, str(production_id))
+    return {"status": "ok", "artifact_id": artifact["artifact_id"]}
+
+
 @router.get("/{production_id}/workflow")
 def read_production_workflow(production_id: str, limit: int = Query(30, ge=1, le=100),
                              offset: int = Query(0, ge=0)):
