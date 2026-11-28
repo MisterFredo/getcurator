@@ -30,6 +30,7 @@ type Monthly = {
   export_context: PdfExportContext; source_metadata: ProductionSourceMetadata;
   queue?: { queued: boolean; running: boolean; max_reports: number };
   last_activity?: string | null;
+  correction_progress?: { proposal_id: string; mode: string; status: string; stage: string; review_artifact_id: string; error?: { message?: string } | null; checks?: { location: string; reason: string; issue_resolved: boolean; evidence_supported: boolean; scope_preserved: boolean; no_new_material_issue: boolean }[] } | null;
   review_progress?: { pages_total: number; pages_completed: number; pages_reused: number;
     checks_running: number; checks_waiting: number; cross_status: string;
     started_at: string | null; updated_at: string | null; finished_at?: string | null } | null;
@@ -300,6 +301,9 @@ export default function MonthlyUserWorkspace() {
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{selected.monthly.name} · {selected.monthly.month}{selected.monthly.provisional ? " · Provisoire" : ""}</h2>
           <button className={BUTTON} disabled={controlsBusy} onClick={() => void refresh()}>Actualiser / reprendre</button></div>
         <p role="status" className="font-medium text-emerald-800">{selected.queue?.queued ? "En attente d’un créneau de production" : LABELS[selected.status] || selected.status}</p>
+        {selected.correction_progress && <p className="text-sm text-emerald-900">{selected.correction_progress.stage === "CORRECTION_PROPOSAL" ? "Proposition de corrections" : "Vérification indépendante des corrections"} · {selected.correction_progress.status}</p>}
+        {selected.correction_progress?.status === "rejected" && <div role="alert" className="text-sm text-amber-900">La proposition a été refusée avant application.{selected.correction_progress.checks?.filter(check => !check.issue_resolved || !check.evidence_supported || !check.scope_preserved || !check.no_new_material_issue).map(check => <p key={check.location}>{check.reason}</p>)}</div>}
+        {selected.correction_progress?.error?.message && <p role="alert" className="text-sm text-amber-900">{selected.correction_progress.error.message}</p>}
         {selected.status === "revalidating" && <p className="text-sm text-slate-600">Le JSON déjà enregistré est contrôlé avec le validateur actuel. Cette étape ne lance aucun appel LLM et ne consomme pas de tentative de rédaction.</p>}
         {selected.queue?.queued && <p className="text-sm text-slate-500">Jusqu’à {selected.queue.max_reports} Monthlys sont traités simultanément. La demande est enregistrée.</p>}
         {selected.review_progress && <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm" aria-live="polite">
@@ -309,13 +313,13 @@ export default function MonthlyUserWorkspace() {
         </div>}
         <p className="text-sm">Période : {selected.monthly.period_start} → {selected.monthly.period_end} · {selected.language.toUpperCase()} · {selected.document_attempts} versions du document.</p>
         {selected.retry_budget && <div className="space-y-1 text-xs text-slate-500">
-          <p>Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Corrections automatiques : {selected.retry_budget.local_repair_attempts ?? 0} · Corrections éditoriales enregistrées : {selected.retry_budget.editorial_edit_count ?? 0} · Échecs techniques : {selected.retry_budget.technical_failures}.</p>
-          <p>Toutes les pages sont contrôlées avant correction. Les contrôles acquis sont conservés tant que la page et ses preuves ne changent pas.</p>
+          <p>Rédactions complètes : {selected.retry_budget.full_document_attempts ?? selected.document_attempts} · Cycles de correction automatique : {selected.retry_budget.local_repair_attempts ?? 0} · Corrections éditoriales enregistrées : {selected.retry_budget.editorial_edit_count ?? 0} · Échecs techniques : {selected.retry_budget.technical_failures}.</p>
+          <p>Toutes les pages sont contrôlées avant correction. Les contrôles acquis sont conservés tant que le contenu, les preuves et les critères de contrôle ne changent pas.</p>
           {selected.retry_budget.max_corrections_per_page && <p>Limite automatique : {selected.retry_budget.max_corrections_per_page} opérations par page, historique compris.</p>}
           {!!selected.retry_budget.exhausted_page_ids?.length && <p className="text-amber-800">Limite atteinte pour : {selected.retry_budget.exhausted_page_ids.join(", ")}. Une correction éditoriale explicite reste possible sur les passages de texte signalés.</p>}
           {!!selected.retry_budget.correction_history_errors?.length && <p className="text-amber-800">{selected.retry_budget.correction_history_errors.join(" · ")}</p>}
         </div>}
-        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise corrigera uniquement les champs de texte signalés, en conservant les autres textes, métriques et sources. Le rapport sera contrôlé à nouveau avant validation.</p>}
+        {selected.retry_budget?.targeted_repair_available && <p className="text-sm text-slate-600">La reprise proposera des corrections ciblées, les vérifiera séparément et appliquera uniquement les propositions acceptées. Le rapport sera contrôlé à nouveau avant validation.</p>}
         {!!selected.retry_budget?.unhandled_locations?.length && <p role="alert" className="text-sm text-amber-800">Remarques hors correction automatique : {selected.retry_budget.unhandled_locations.join(" · ")}. Aucun traitement partiel ne les marque comme résolues.</p>}
         <p className="text-sm">Référence : {selected.monthly.comparison_mode === "MONTHLY_REPORT" ? `Monthly validé de ${selected.monthly.previous_month}`
           : selected.monthly.comparison_mode === "DIGESTS" ? `Digests de ${selected.monthly.previous_month} (pas de Monthly précédent)` : "Premier point de référence, aucune matière comparative disponible"}.</p>
@@ -326,10 +330,11 @@ export default function MonthlyUserWorkspace() {
           {selected.error.issues?.map((issue, index) => <p key={index}>{issue.location} · {issue.message}</p>)}
         </div>}
         {selected.status === "failed" && <p className="text-sm">Le traitement est arrêté. Le diagnostic et le document sont conservés ; aucun rapport n’est présenté comme terminé. Utilisez la relecture éditoriale ci-dessous pour les remarques portant sur du texte. « Actualiser / reprendre » relance le suivi des étapes enregistrées ; il ne recharge pas le budget automatique. Une nouvelle production reste un déclenchement distinct.</p>}
-        {selected.status === "failed" && Boolean(selected.error?.issues?.length) && <MonthlyReviewCorrections
-          key={`${selected.production_id}:${selected.latest_artifact?.artifact_id || "review"}`}
+        {(selected.status === "failed" || selected.status === "needs_attention" || selected.correction_progress?.mode === "EDITORIAL") && Boolean(selected.error?.issues?.length) && <MonthlyReviewCorrections
+          key={`${selected.production_id}:${selected.correction_progress?.review_artifact_id || selected.latest_artifact?.artifact_id || "review"}`}
           productionId={selected.production_id} disabled={busy}
           onSavingChange={setEditorialSaving}
+          onProgress={async id => { if (selectedId.current === id) await openMonthly(id); }}
           onSaved={async id => {
             if (selectedId.current !== id) return;
             await openMonthly(id); setReload(value => value + 1);
@@ -339,7 +344,7 @@ export default function MonthlyUserWorkspace() {
           <span className="text-xs text-slate-500">Actualiser / reprendre vérifie son rattachement. Ne créez pas une nouvelle version pour contourner une acceptation inconnue.</span>
         </label>}
         <details><summary className="cursor-pointer text-sm">Étapes et diagnostic</summary>
-          <ol className="mt-3 space-y-2 text-sm">{selected.history.map(item => <li key={item.artifact_id}>V{item.version_number} · {item.stage === "REVIEW_BATCH" ? "Contrôles parallèles" : item.stage} · {item.status}</li>)}</ol>
+          <ol className="mt-3 space-y-2 text-sm">{selected.history.map(item => <li key={item.artifact_id}>V{item.version_number} · {item.stage === "REVIEW_BATCH" ? "Contrôles parallèles" : item.stage === "CORRECTION_PROPOSAL" ? "Proposition de corrections" : item.stage === "CORRECTION_CHECK" ? "Vérification des corrections" : item.stage} · {item.status}</li>)}</ol>
           <button className={`${BUTTON} mt-3`} onClick={() => downloadDiagnostic(selected)}>Télécharger le diagnostic</button>
           <Link className="ml-3 text-sm underline" href={`/admin/production/reports?production=${selected.production_id}`}>Ouvrir le détail technique Production</Link>
         </details>
