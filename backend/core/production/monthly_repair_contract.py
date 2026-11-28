@@ -3,6 +3,11 @@ import copy
 import re
 
 EDITORIAL_EDIT_KIND = "MONTHLY_EDITORIAL_EDIT_V1"
+PROPOSAL_STAGE = "CORRECTION_PROPOSAL"
+CHECK_STAGE = "CORRECTION_CHECK"
+CORRECTION_STAGES = {PROPOSAL_STAGE, CHECK_STAGE}
+PROPOSAL_KIND = "MONTHLY_CORRECTION_PROPOSAL_V1"
+VERIFIED_DOCUMENT_KIND = "MONTHLY_VERIFIED_CORRECTION_V1"
 REPAIR_MODE = "MONTHLY_SCOPED_TEXT_REPAIR_V1"
 MAX_PAGE_REPAIRS = 3
 MAX_REPAIR_PAGES = 4
@@ -98,14 +103,16 @@ def page_budget(history, read_artifact, current_document, repair_kind):
     pages = {p["page_id"]: 0 for p in current_document.get("pages") or []}
     errors = []
     for row in history:
-        if row["stage"] != "DOCUMENT":
+        if row["stage"] not in {"DOCUMENT", PROPOSAL_STAGE}:
             continue
         item = read_artifact(row)
         if not item:
             errors.append("Artefact historique introuvable")
             continue
         request = item.get("request") or {}
-        if request.get("kind") != repair_kind:
+        legacy = row["stage"] == "DOCUMENT" and request.get("kind") == repair_kind
+        proposal = row["stage"] == PROPOSAL_STAGE and request.get("kind") == PROPOSAL_KIND and request.get("mode") == "AUTOMATIC"
+        if not (legacy or proposal):
             continue
         parent_row = lookup.get(request.get("document_artifact_id"))
         if not parent_row or not request.get("targets"):
