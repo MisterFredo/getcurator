@@ -1,5 +1,6 @@
 """Generate generic documents from frozen source reports and a reviewed plan."""
 import json
+import copy
 import hashlib
 import os
 import re
@@ -12,7 +13,7 @@ from core.production.repository import get_production
 from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261127-numeric-witness-v10"
+NUMERIC_VALIDATOR_REVISION = "20261128-monthly-layout-v11"
 WATCH_COVERAGE_LABELS = {
     "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
     "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
@@ -391,8 +392,33 @@ def validation_signature(text, corpus_sha256, citation_mode=None, catalog_sha256
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def document_from_saved_text(text, corpus, citation_mode=None, catalog_sha256=None):
+def normalize_monthly_layouts(payload, normalizations=None):
+    """A chartless comparison is textual analysis, not a fabricated chart.
+
+    Preserve every fact and source. Other layout/chart inconsistencies still
+    fail the strict model. This helper never changes the saved raw response.
+    """
+    result = copy.deepcopy(payload)
+    if not isinstance(result, dict) or not isinstance(result.get("pages"), list):
+        return result
+    for index, page in enumerate(result["pages"]):
+        if (not isinstance(page, dict) or page.get("layout") not in {"COMPARISON", "TREND"}
+                or "chart" not in page or page["chart"] is not None):
+            continue
+        before = page["layout"]
+        page["layout"] = "ANALYSIS"
+        if normalizations is not None:
+            normalizations.append({"code": "LAYOUT", "location": f"/pages/{index}/layout",
+                "page_id": page.get("page_id"), "before": before, "after": "ANALYSIS",
+                "reason": "Composition textuelle : aucun graphique fourni."})
+    return result
+
+
+def document_from_saved_text(text, corpus, citation_mode=None, catalog_sha256=None, normalizations=None):
+    monthly = bool(corpus.request.monthly_user)
     if citation_mode is None:
+        if monthly:
+            return ProductionDocument.model_validate(normalize_monthly_layouts(json.loads(text), normalizations))
         return ProductionDocument.model_validate_json(text)
     from core.production.evidence_catalog import CATALOG_MODE, build_catalog, hydrate_sources
     if citation_mode != CATALOG_MODE:
@@ -403,7 +429,10 @@ def document_from_saved_text(text, corpus, citation_mode=None, catalog_sha256=No
     catalog = build_catalog(corpus)
     if not catalog_sha256 or catalog["catalog_sha256"] != catalog_sha256:
         raise ValueError("Le catalogue de preuves ne correspond pas à celui de la génération.")
-    return ProductionDocument.model_validate(hydrate_sources(payload, catalog))
+    hydrated = hydrate_sources(payload, catalog)
+    if monthly:
+        hydrated = normalize_monthly_layouts(hydrated, normalizations)
+    return ProductionDocument.model_validate(hydrated)
 
 
 def validate_against_corpus(document, corpus, normalizations=None):
@@ -602,7 +631,7 @@ def serialize_document_response(response):
             corpus = load_corpus(metadata["production_id"])
             if corpus.corpus_sha256 != metadata.get("corpus_sha256"):
                 raise ValueError("Le socle ne correspond plus à celui de la génération.")
-            document = document_from_saved_text(job["text"], corpus, job["citation_mode"], job["evidence_catalog_sha256"])
+            document = document_from_saved_text(job["text"], corpus, job["citation_mode"], job["evidence_catalog_sha256"], normalizations=normalizations)
             document = validate_against_corpus(document, corpus, normalizations=normalizations)
             job["document"] = document.model_dump(mode="json")
         except (ValueError, LookupError, KeyError) as exc:
