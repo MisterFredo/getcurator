@@ -12,7 +12,7 @@ from core.production import workflow_repository as repo, workflow_service as wor
 from core.production.document_models import ProductionDocument
 from core.production.document_service import load_corpus, validate_against_corpus
 from core.production.monthly_repair_rules import AUDIT_REVISION
-from core.production.monthly_repair_contract import EDITORIAL_EDIT_KIND, repair_plan, apply_repair
+from core.production.monthly_repair_contract import EDITORIAL_EDIT_KIND, PROPOSAL_STAGE, CHECK_STAGE, repair_plan, apply_repair
 from core.production.monthly_retry_policy import document_budget
 
 
@@ -52,6 +52,13 @@ def _current(production_id):
     review = ((assessment or {}).get("result") or {}).get("review") or {}
     if review.get("passed") is not False or not review.get("issues"):
         raise workflow.WorkflowConflict("Un contrôle terminé avec des remarques est requis.")
+    if rows[0]["stage"] == PROPOSAL_STAGE and rows[0]["status"] == "completed":
+        raise workflow.WorkflowConflict("La proposition attend sa vérification. Reprenez son suivi.")
+    if rows[0]["stage"] == CHECK_STAGE:
+        last_check = repo.get_artifact(production_id, rows[0]["artifact_id"])
+        if (last_check["request"].get("mode") == "AUTOMATIC"
+                and (last_check.get("result") or {}).get("verification", {}).get("approved")):
+            raise workflow.WorkflowConflict("La correction vérifiée attend son application automatique.")
     budget = document_budget(rows, lambda row: repo.get_artifact(production_id, row["artifact_id"]))
     if budget["can_correct"]:
         raise workflow.WorkflowConflict("Une correction automatique est encore disponible. Reprenez son suivi.")
@@ -87,7 +94,7 @@ def editorial_context(production_id):
 def save_editorial_edit(production_id, payload, actor_user_id):
     if not actor_user_id:
         raise ValueError("L’auteur de la correction doit être identifié.")
-    body = payload.model_dump(mode="json")
+    body = payload.model_dump(mode="json", exclude_none=True)
     artifact_id = str(uuid5(NAMESPACE_URL, f"monthly-editorial-edit/{production_id}/{body['request_id']}"))
     request = {"kind": EDITORIAL_EDIT_KIND, "document_artifact_id": body["document_artifact_id"],
                "review_artifact_id": body["review_artifact_id"], "actor_user_id": actor_user_id,
@@ -109,6 +116,19 @@ def save_editorial_edit(production_id, payload, actor_user_id):
             raise workflow.WorkflowConflict("Le document ou son contrôle a changé. Rechargez les passages avant de les enregistrer.")
         if plan["unhandled_locations"] or not plan["targets"]:
             raise ValueError("Toutes les remarques doivent viser des champs texte corrigeables.")
+        proposal_reference = None
+        if body.get("proposal_artifact_id"):
+            from core.production import monthly_correction_service as corrections
+            proposed = corrections.summary(production_id, body["proposal_artifact_id"])
+            root = repo.get_artifact(production_id, body["proposal_artifact_id"])
+            if (proposed["status"] != "ready" or proposed["mode"] != "EDITORIAL"
+                    or proposed["document_artifact_id"] != parent["artifact_id"]
+                    or proposed["review_artifact_id"] != assessment["artifact_id"]
+                    or root["request"].get("user_context_sha256") != token):
+                raise workflow.WorkflowConflict("Cette proposition n’est pas vérifiée pour ce contexte.")
+            proposal_reference = {"proposal_artifact_id": body["proposal_artifact_id"],
+                "applied_unchanged": proposed["replacements"] == body["replacements"]
+                    and proposed["evidence_bindings"] == body["evidence_bindings"]}
         candidate = apply_repair(document, plan, body["replacements"], body["evidence_bindings"])
         validated = validate_against_corpus(ProductionDocument.model_validate(copy.deepcopy(candidate)), corpus)
         if validated.model_dump(mode="json") != candidate:
@@ -119,7 +139,7 @@ def save_editorial_edit(production_id, payload, actor_user_id):
                   "document_artifact_id": artifact_id, "parent_document_artifact_id": parent["artifact_id"],
                   "repaired_paths": plan["targets"], "before_values": plan["before_values"],
                   "evidence_bindings": body["evidence_bindings"], "reason": body["reason"],
-                  "actor_user_id": actor_user_id, "error": None, "model": None, "usage": None}
+                  "actor_user_id": actor_user_id, "proposal_reference": proposal_reference, "error": None, "model": None, "usage": None}
         item, created = repo.reserve_artifact(
             production_id, artifact_id, "DOCUMENT", corpus.corpus_sha256, request,
             parent_id=parent["artifact_id"], ready_result=result,
