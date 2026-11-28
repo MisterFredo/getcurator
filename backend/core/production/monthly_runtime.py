@@ -3,21 +3,29 @@ import copy
 
 AUTOMATIC_FRAMING = """
 MONTHLY USER — CADRAGE AUTOMATIQUE
-Construis directement le rapport final à partir du mandat et des preuves
-figées. Le sujet, la période inclusive, la langue, la couverture et le mode
-de comparaison sont dans le brief. Dérive les thèmes et leur ordre des faits
-réellement étayés ; aucun thème ni nombre de sujets n'est imposé.
-Prévois une couverture, une synthèse utile, les développements significatifs
-et leur pertinence professionnelle, une lecture de l'évolution par rapport
-à la référence disponible, puis les sources. Une comparaison impossible doit
-être explicitée sans inventer d'évolution. Adapte la pagination au corpus
-dans le contrat existant de 4 à 40 pages, sans remplissage.
-Les sources, et non ce cadrage, sont l'autorité factuelle. Préserve les dates,
-statuts et périmètres ; ne transforme pas une publication du mois en événement
-du mois. Le profil définit les priorités, pas des pratiques internes établies.
-Une synthèse ne fusionne pas des mécanismes distincts. N'exhibe un chiffre
-que si son sens et sa fonction analytique sont explicites. Préfère l'omettre
-à inventer son dénominateur ou son interprétation.
+Construis directement le bilan mensuel à partir des sujets sélectionnés dans
+les Digests, de leurs contenus sources et du mandat du destinataire. Le brief
+établit la période inclusive, la langue, la couverture et le contexte précédent.
+Parcours tous les sujets du mois courant, rapproche les reprises et hiérarchise
+les développements distincts selon leur intérêt métier. Ne réduis pas plusieurs
+changements concrets d'un même acteur à une conclusion générale répétée.
+Prévois une couverture courte, une synthèse, les développements significatifs
+avec leurs faits, exemples et implications, puis les sources. Les implications
+peuvent être des analyses directes ou des pistes conditionnelles, pas seulement
+des questions. Fais évoluer la structure selon la matière disponible : pas de
+quota de sujets ni de page systématique par acteur. Respecte le contrat de 4 à
+40 pages sans remplissage. Une page trop pauvre doit être regroupée ou enrichie
+à partir d'un apport distinct réellement disponible.
+Utilise le mois précédent lorsqu'il apporte une comparaison utile et étayée.
+Une référence partielle reste un contexte limité, pas une base exhaustive.
+Regroupe les réserves générales dans une courte note ; ne les répète pas après
+chaque développement. Les limites locales restent visibles lorsqu'elles
+changent le sens ou l'applicabilité d'un fait.
+Les contenus sont l'autorité factuelle ; les cartes et le profil guident la
+sélection. Préserve dates, acteurs, marchés, statuts et portée des chiffres.
+Le mandat n'établit pas les pratiques internes du destinataire. Un rapprochement
+thématique ne prouve pas une intégration et une attribution n'est pas une
+preuve d'incrémentalité. N'impose ni chiffres ni graphiques décoratifs.
 FIN_DU_PLAN
 """.strip()
 
@@ -45,8 +53,7 @@ def generation_payload(corpus, reviewed_plan):
     for snapshot in corpus.reports:
         report = copy.deepcopy(snapshot.payload)
         if report.get("source_type") == "DIGEST_SUBJECT":
-            # The authoritative structured profile is already in the brief.
-            # Keep every content, array index, evidence field and source URL.
+            # Keep every topic, content, array index and evidence field.
             for field in ("profile", "current_profile_context", "evidence_policy"):
                 report.pop(field, None)
         reports.append(report)
