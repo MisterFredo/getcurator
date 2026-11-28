@@ -20,7 +20,8 @@ from core.production.digest_source import DIGEST_TABLE, EVIDENCE_FIELDS, read_di
 from core.production.models import ProductionPrepareRequest, ProductionPreparedCorpus, ProductionCorpusCounts
 from core.production.monthly_prompt import MONTHLY_INSTRUCTIONS
 from core.production.monthly_retry_policy import MAX_DOCUMENT_ATTEMPTS, document_budget
-from core.production.monthly_repair_service import start_repair
+from core.production import monthly_correction_service as corrections
+from core.production.monthly_repair_contract import PROPOSAL_STAGE, CHECK_STAGE, CORRECTION_STAGES
 from core.production.monthly_repository import latest_for, previous_reference
 from core.production.monthly_review import refresh_review
 from core.production.monthly_audit_service import start_audit as start_review, refresh_audit, AUDIT_STAGES
@@ -260,7 +261,9 @@ def _advance(production_id, response_id=None):
     rows = _history(production_id)
     active = next((r for r in rows if r["status"] in artifacts.ACTIVE), None)
     if active:
-        if active["stage"] == BATCH_STAGE:
+        if active["stage"] in CORRECTION_STAGES:
+            corrections.refresh(production_id, active["artifact_id"], response_id)
+        elif active["stage"] == BATCH_STAGE:
             refresh_parallel_review(production_id, active["artifact_id"], response_id)
         elif active.get("response_id") or response_id:
             if active["stage"] in AUDIT_STAGES:
@@ -271,6 +274,19 @@ def _advance(production_id, response_id=None):
                 workflow.refresh_artifact(production_id, active["artifact_id"], response_id)
         return
     latest = _detail(production_id, rows[0]) if rows else None
+    if latest and latest["stage"] in CORRECTION_STAGES:
+        if latest["status"] != "completed":
+            return
+        if latest["stage"] == PROPOSAL_STAGE:
+            corrections.start_check(production_id, latest["artifact_id"])
+            return
+        if latest["request"]["mode"] == "EDITORIAL":
+            return
+        if (latest.get("result") or {}).get("verification", {}).get("approved"):
+            corrections.commit(production_id, latest["artifact_id"])
+            return
+        # A semantic rejection can produce a revised proposal only if the
+        # same fixed page budget still allows it. Technical failures stop.
     if (latest and latest["stage"] in {"REVIEW", BATCH_STAGE} and latest["status"] == "completed"
             and ((latest.get("result") or {}).get("review") or {}).get("passed")):
         return
@@ -320,8 +336,9 @@ def _advance(production_id, response_id=None):
         feedback = (review.get("result") or {}).get("review")
     budget = document_budget(rows, lambda row: _detail(production_id, row))
     if budget["targeted_repair_available"]:
-        start_repair(production_id, _id(production_id, f"document:{len(documents)+1}"),
-                     last_document["artifact_id"], review["artifact_id"])
+        phase = f"correction:{last_document['artifact_id']}:{review['artifact_id']}:{budget['local_repair_attempts']+1}"
+        corrections.start(production_id, _id(production_id, phase),
+                          last_document["artifact_id"], review["artifact_id"])
         return
     if feedback and budget["can_correct"]:
         # Carry earlier editorial findings through a subsequent technical retry.
@@ -385,12 +402,33 @@ def _detail_view(production_id):
     history = _history(production_id)
     latest = _detail(production_id, history[0]) if history else None
     status, document, document_id, error = "prepared", None, None, None
+    correction_progress = None
     attempts = len([r for r in history if r["stage"] == "DOCUMENT"])
     budget = document_budget(history, lambda row: _detail(production_id, row))
     if latest:
         state, stage = latest["status"], latest["stage"]
         error = (latest.get("result") or {}).get("error")
-        if state == "SUBMISSION_UNKNOWN" or (state == "STARTING" and not latest.get("response_id") and stage != BATCH_STAGE):
+        if stage in CORRECTION_STAGES:
+            proposal_id = latest["artifact_id"] if stage == PROPOSAL_STAGE else latest["request"]["proposal_artifact_id"]
+            correction_progress = corrections.summary(production_id, proposal_id)
+            phase_status = correction_progress["status"]
+            if phase_status == "STARTING" and not latest.get("response_id"):
+                status = "starting"
+            elif phase_status == "SUBMISSION_UNKNOWN":
+                status = "submission_unknown"
+            elif phase_status in {"STARTING", "queued", "in_progress", "checking"}:
+                status = "correcting"
+            elif phase_status == "ready":
+                status = "needs_attention" if correction_progress["mode"] == "EDITORIAL" else "correcting"
+            elif phase_status == "rejected":
+                status = "needs_attention" if correction_progress["mode"] == "EDITORIAL" else ("correcting" if budget["can_correct"] else "failed")
+            else:
+                status = "failed"
+            source_review = pipeline_state.get_artifact(production_id, latest["request"]["review_artifact_id"])
+            source_issues = ((source_review or {}).get("result") or {}).get("review", {}).get("issues", [])
+            error = {"message": "Proposition de correction en cours de vérification." if status == "correcting" else "Le document attend une correction éditoriale ou une reprise du suivi.",
+                     "issues": source_issues}
+        elif state == "SUBMISSION_UNKNOWN" or (state == "STARTING" and not latest.get("response_id") and stage != BATCH_STAGE):
             status = "submission_unknown" if state == "SUBMISSION_UNKNOWN" else "starting"
         elif state in artifacts.ACTIVE:
             status = {"PLAN": "planning", "DOCUMENT": "writing", "REVIEW": "reviewing",
@@ -436,7 +474,7 @@ def _detail_view(production_id):
             "created_at": production["created_at"], "document": document,
             "document_artifact_id": document_id, "history": history,
             "latest_artifact": latest, "error": error, "document_attempts": attempts,
-            "retry_budget": budget,
+            "retry_budget": budget, "correction_progress": correction_progress,
             "review_progress": review_progress(latest), "queue": monthly_queue.position(production_id),
             "last_activity": latest.get("updated_at") if latest else production["created_at"],
             "source_metadata": source_metadata,
@@ -466,7 +504,7 @@ def _run_background(production_id, response_id=None):
             try:
                 with pipeline_state.pipeline_scope(production_id):
                     status = detail(production_id)["status"]
-                    if status in {"completed", "failed", "submission_unknown"} and not response_id and not (first_turn and status == "failed"):
+                    if status in {"completed", "failed", "submission_unknown", "needs_attention"} and not response_id and not (first_turn and status == "failed"):
                         return
                     progressed = _advance_once(production_id, response_id)
                     response_id = None
@@ -478,7 +516,7 @@ def _run_background(production_id, response_id=None):
                 return
             # No wait between local transitions. Poll active provider work
             # at 1s; a turn has just two workflow reads, not one per artifact.
-            if status in {"starting", "planning", "writing", "reviewing"}:
+            if status in {"starting", "planning", "writing", "reviewing", "correcting"}:
                 time.sleep(1)
         logger.info("Suivi Monthly suspendu après 45 minutes ; actualiser pour reprendre : %s", production_id)
     finally:
