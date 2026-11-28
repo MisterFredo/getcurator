@@ -258,6 +258,29 @@ from core.production.monthly_editorial_models import MonthlyEditorialEditRequest
 from core.production.monthly_editorial_service import editorial_context, save_editorial_edit
 
 
+from core.production.monthly_correction_models import MonthlyCorrectionProposalRequest
+from core.production import monthly_correction_service
+
+
+@router.post("/monthly-users/{production_id}/correction-proposals", status_code=202,
+             dependencies=[Depends(_require_production_admin)])
+def create_monthly_correction_proposal(production_id: UUID, payload: MonthlyCorrectionProposalRequest,
+                                       request: Request, background_tasks: BackgroundTasks):
+    proposal = _workflow_action(lambda: monthly_correction_service.start_editorial(
+        str(production_id), payload, get_user_id_from_request(request)))
+    background_tasks.add_task(monthly_service.run_background, str(production_id))
+    return {"proposal": proposal}
+
+
+@router.get("/monthly-users/{production_id}/correction-proposals/{proposal_id}",
+            dependencies=[Depends(_require_production_admin)])
+def read_monthly_correction_proposal(production_id: UUID, proposal_id: UUID):
+    from core.production import monthly_queue
+    result = _workflow_action(lambda: monthly_correction_service.summary(str(production_id), str(proposal_id)))
+    result["queue"] = monthly_queue.position(str(production_id))
+    return {"proposal": result}
+
+
 @router.get("/monthly-users/{production_id}/editorial-context",
             dependencies=[Depends(_require_production_admin)])
 def read_monthly_editorial_context(production_id: UUID):
