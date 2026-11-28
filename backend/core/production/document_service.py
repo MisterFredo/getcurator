@@ -13,7 +13,7 @@ from core.production.repository import get_production
 from core.production.digest_source import DIGEST_INSTRUCTIONS
 
 WORKFLOW = "getcurator_document_v1"
-NUMERIC_VALIDATOR_REVISION = "20261128-monthly-layout-v11"
+NUMERIC_VALIDATOR_REVISION = "20261128-number-formats-v12"
 WATCH_COVERAGE_LABELS = {
     "/coverage/LINKEDIN_EMPLOYEE": "LinkedIn employee items observed",
     "/coverage/LINKEDIN_CORPORATE": "LinkedIn corporate items observed",
@@ -313,10 +313,11 @@ def numbers_in_quote(quote):
         flags=re.IGNORECASE,
     )
 
-    # Preserve the reported coefficient: 993M -> 993, 17B -> 17.
+    # Preserve the reported coefficient: 993M -> 993, $17bn -> 17, 2,5Mds€ -> 2.5.
+    # Match complete suffixes only; do not extract a number from an identifier.
     # Scale/unit interpretation remains a semantic check, never a conversion.
     numeric_text = re.sub(
-        r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?)([kmbt])(?![\w])",
+        r"(?<![\w.])([-+−]?\d+(?:[.,]\d+)?)(bn|mn|mds?|[kmbt])(?![\w])",
         r"\1 \2", numeric_text, flags=re.IGNORECASE,
     )
 
@@ -377,6 +378,7 @@ def validator_diagnostics():
         "unit_count_probe": sorted(str(value) for value in numbers_in_quote("un marchand par panier")),
         "multiplier_probe": sorted(str(value) for value in numbers_in_quote("3x")),
         "compact_scale_probe": sorted(str(value) for value in numbers_in_quote("993M quarterly orders")),
+        "financial_suffix_probe": sorted(str(value) for value in numbers_in_quote("$17bn")),
         "written_scale_probe": sorted(
             str(value) for value in numbers_in_quote("approximately two million cases")
         ),
