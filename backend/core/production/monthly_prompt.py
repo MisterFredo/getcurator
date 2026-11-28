@@ -89,6 +89,10 @@ pas uniquement des questions de vérification. Aucun graphique n'est obligatoire
 Dérive le nombre et l'ordre des sujets de la matière disponible, sans format
 universel imposant quelques thèmes. Une page presque vide doit être fusionnée
 ou enrichie par un apport distinct disponible, jamais par du remplissage.
+COMPARISON et TREND exigent un graphique non nul dont kind correspond à layout.
+Une comparaison qualitative rédigée en texte utilise ANALYSIS. Si aucun graphique
+n'est utile ou étayé, utilise ANALYSIS et chart=null au lieu d'une composition
+COMPARISON ou TREND vide.
 La couverture est courte : titre naturel indiquant destinataire et mois, sans
 introduction générique du type Developments in. Les références bibliographiques
 sont rendues par l'export : la page SOURCES ne doit pas devenir une longue page
