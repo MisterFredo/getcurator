@@ -17,6 +17,7 @@ class MonthlyEditorialEditRequest(BaseModel):
     context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     replacements: dict[str, Annotated[str, Field(min_length=1, max_length=2200)]] = Field(min_length=1, max_length=8)
     evidence_bindings: dict[str, EvidenceIds] = Field(min_length=1, max_length=8)
+    proposal_artifact_id: UUID | None = None
     reason: str = Field(min_length=1, max_length=2000)
 
     @field_validator("reason")
