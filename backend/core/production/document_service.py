@@ -550,10 +550,14 @@ def start_document(production_id, reviewed_plan, on_created=None, additional_ins
         payload = payload_for_model(payload, catalog)
         schema = wire_schema(schema, catalog)
         citation_mode = CATALOG_MODE
+    writing_instructions = INSTRUCTIONS
+    if monthly:
+        from core.production.monthly_prompt import MONTHLY_DOCUMENT_INSTRUCTIONS
+        writing_instructions = MONTHLY_DOCUMENT_INSTRUCTIONS
     with client() as connection:
         response = connection.responses.create(
             model=os.getenv("PRODUCTION_DOCUMENT_MODEL") or os.getenv("PRODUCTION_PDF_MODEL") or "gpt-5.4",
-            instructions=INSTRUCTIONS + (
+            instructions=writing_instructions + (
                 "\n\n" + DIGEST_INSTRUCTIONS if corpus.request.digest_ids else ""
             ) + ("\n\n" + additional_instructions if additional_instructions else "")
             + ("\n\n" + CATALOG_INSTRUCTIONS if monthly else ""),
