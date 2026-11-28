@@ -33,8 +33,15 @@ from core.production.monthly_metric_audit import (
 )
 
 
+from core.production.monthly_field_audit import (
+    add_contract as add_field_contract, extend_schema as extend_field_schema,
+    serialize as serialize_field_review, INSTRUCTIONS as FIELD_INSTRUCTIONS,
+)
+
+
 def _serialize(response, request):
-    return serialize_metric_review(response, request, _base_serialize)
+    return serialize_field_review(response, request,
+        lambda view, req: serialize_metric_review(view, req, _base_serialize))
 
 
 logger = logging.getLogger(__name__)
@@ -142,7 +149,7 @@ def _persist(item, job):
 def _merge(job, key, result):
     child = job["checks"][key]
     values = {"status": result["status"], "response_id": result.get("id") or child.get("response_id")}
-    for field in ("model", "review", "error", "usage", "metric_verdicts"):
+    for field in ("model", "review", "error", "usage", "metric_verdicts", "field_verdicts"):
         if field in result and (result[field] is not None or field == "error"):
             values[field] = result[field]
     changed = any(child.get(k) != v for k, v in values.items())
@@ -219,14 +226,14 @@ def _submit_pending(item, job):
             schema["$defs"]["MonthlyReviewIssue"]["properties"]["location"] = {
                 "type": "string", "enum": check["payload"]["locations"],
             }
-        schema = extend_schema(schema, check["payload"])
+        schema = extend_field_schema(extend_schema(schema, check["payload"]), check["payload"])
         try:
             with client() as connection:
                 response = connection.responses.create(
                     model=os.getenv("PRODUCTION_REVIEW_MODEL") or os.getenv("PRODUCTION_DOCUMENT_MODEL") or "gpt-5.4",
-                    instructions=(PAGE_INSTRUCTIONS + "\n" + METRIC_INSTRUCTIONS) if check["stage"] == "REVIEW_PAGE" else CROSS_INSTRUCTIONS,
+                    instructions=(PAGE_INSTRUCTIONS + "\n" + METRIC_INSTRUCTIONS + "\n" + FIELD_INSTRUCTIONS) if check["stage"] == "REVIEW_PAGE" else CROSS_INSTRUCTIONS,
                     input=json.dumps({**review_payload(check["payload"]),
-                        **{k: check["payload"][k] for k in ("metric_audit_contract", "metric_checks")
+                        **{k: check["payload"][k] for k in ("metric_audit_contract", "metric_checks", "field_audit_contract", "field_checks", "page")
                            if k in check["payload"]}}, ensure_ascii=False, allow_nan=False),
                     text={"format": {"type": "json_schema", "name": "monthly_page_review", "strict": True, "schema": schema}},
                     reasoning={"effort": "medium"}, max_output_tokens=8000,
@@ -272,7 +279,7 @@ def start_parallel_review(production_id, artifact_id, document_id):
         document = parent["result"]["document"]
         checks = {}
         for stage, payload in audit_requests(document, corpus):
-            payload = add_contract(payload) if stage == "REVIEW_PAGE" else payload
+            payload = add_field_contract(add_contract(payload)) if stage == "REVIEW_PAGE" else payload
             key = _request_key(stage, payload)
             checks[key] = {"stage": stage, "payload": payload, "input_sha256": key}
         cached = {}
